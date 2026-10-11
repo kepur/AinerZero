@@ -143,6 +143,66 @@ def diverse_memory_plan():
     return plan
 
 
+def relabel_memory_plan():
+    """M2m adds only a per-sample consistent byte relabeling to the M2l protocol."""
+    plan = diverse_memory_plan()
+    plan.update(
+        protocol="m2m_consistent_relabel_single_edge_tail_fit_v1",
+        augmentation="per_sample_consistent_byte_bijection_both_frames_all_visible_cells_permute_symbols",
+        augmentation_scope="training_batches_only_local_checks_and_evaluations_unpermuted",
+        training_permutations=3200,
+        comparison_caveat="single_factor_vs_M2l_relabel_only_same_start_pool_schedule_seeds",
+        scope="relabeled_public_training_edges_one_step_retention_not_independent_acceptance",
+        relabel_evaluation={
+            "seed": 9103,
+            "rows": 256,
+            "branch": "zero_context_tail",
+            "particles": 8,
+            "keys": "paired_query_keys_of_each_pool_row_seed_7103",
+            "model_units": 4096,
+            "disjoint_from_training_permutations": True,
+        },
+        m2l_comparison={
+            "candidate": "frozen_completed_m2l_candidate_no_updates",
+            "paired_with_cells_model_units": 82080,
+            "relabel_pool_model_units": 4096,
+            "paired_must_reproduce_m2l_report_exactly": True,
+        },
+        stratification={
+            "coverage_reference": "visible_previous_frame_targets_of_m2l_256_pool_rows_unpermuted",
+            "flags": ["same_position_seen"],
+            "frame_novel_buckets": [[0, 0], [1, 2], [3, 5], [6, 8]],
+            "branches": ["zero_context_tail", "history_tail"],
+            "groups": [
+                "all",
+                "selected_train",
+                "unselected_train_previous_in_pool",
+                "unselected_train_previous_not_in_pool",
+                "development",
+            ],
+            "model_units": 0,
+        },
+        transfer_levels={
+            "not_transferred_below": 0.10,
+            "transferred_min": 0.80,
+            "transferred_changed_min": 0.50,
+        },
+        regression={
+            "reconstruction": "gate_passed_and_all_544_correct",
+            "action_accuracy": "not_below_before",
+            "action_nll_increase_max": {"1": 0.05, "4": 0.15},
+        },
+        expected_total_model_units=174208 + 4096 + 82080 + 4096,
+        total_reserved_seconds_if_complete=1670,
+        supervised_deadline_seconds=1720,
+    )
+    plan["seeds"].update(augmentation=2307, relabel_evaluation=9103)
+    plan["resource_seconds"].update(
+        m2l_paired_cells=300, m2l_relabel_pool=30, after_relabel_pool=30, verification=20
+    )
+    return plan
+
+
 def validate_diverse_comparison(report, *, source, identity, queries):
     """Use only a completed frozen M2k report on the same source and queries."""
     from ainerzero.runtime.paired_memory_worker import paired_memory_plan
@@ -265,6 +325,169 @@ def memory_screen(result, plan):
     }
 
 
+def _compare_m2l_paired(observed, expected):
+    """The frozen M2l candidate must reproduce its own paired report exactly."""
+    for field in ("query_manifest_sha256", "random_schedule_sha256", "seed", "particles"):
+        if observed.get(field) != expected.get(field):
+            raise RuntimeError(f"M2l paired reproduction differs in {field}")
+    if observed["logical_model_transitions"] != 82080 or len(observed["per_query"]) != len(
+        expected["per_query"]
+    ):
+        raise RuntimeError("M2l paired reproduction has the wrong size")
+    for row, reference in zip(observed["per_query"], expected["per_query"], strict=True):
+        if row != reference:
+            raise RuntimeError(
+                f"M2l paired score did not reproduce exactly at row {reference['row']}"
+            )
+    if observed["groups"] != expected["groups"] or observed["per_world"] != expected["per_world"]:
+        raise RuntimeError("M2l paired group or world summaries did not reproduce exactly")
+    return {
+        "exact_match": True,
+        "queries": len(observed["per_query"]),
+        "random_schedule_sha256": observed["random_schedule_sha256"],
+        "logical_model_transitions": observed["logical_model_transitions"],
+    }
+
+
+def _prepare_relabel(
+    config,
+    episodes,
+    identity,
+    source,
+    source_metadata,
+    fixed_samples,
+    pool,
+    training_evidence,
+    queries,
+    m2l_report_path,
+    m2l_checkpoint_path,
+):
+    """CPU-only binding to the completed M2l candidate plus all relabel evidence."""
+    from ainerzero.learning.coverage_diagnostic import (
+        classify_query_cells,
+        pool_position_symbol_sets,
+        query_frames,
+        query_labels,
+    )
+    from ainerzero.learning.micro_memory import _batch_digest
+    from ainerzero.learning.relabel_memory import (
+        relabel_evaluation_pool,
+        training_permutation_manifest,
+    )
+    from ainerzero.runtime.coverage_worker import POOL_FIELDS, validate_coverage_source
+
+    m2l_tensors, m2l_metadata = load_checkpoint(m2l_checkpoint_path)
+    m2l_report_bytes = m2l_report_path.read_bytes()
+    m2l_report = json.loads(m2l_report_bytes)
+    m2l_candidate = {
+        "checkpoint": str(m2l_checkpoint_path.resolve()),
+        "run_id": m2l_metadata["run_id"],
+        "checkpoint_manifest_sha256": hashlib.sha256(
+            (m2l_checkpoint_path / "manifest.json").read_bytes()
+        ).hexdigest(),
+    }
+    validate_coverage_source(
+        source_metadata,
+        m2l_metadata,
+        config.model_dump(mode="json"),
+        identity,
+        source,
+        m2l_candidate,
+        m2l_report,
+        fixed_samples,
+        training_evidence,
+        queries,
+    )
+    run_directory = m2l_checkpoint_path.resolve().parents[1]
+    pool_path = run_directory / "training-pool.npz"
+    if m2l_report.get("run_directory") != str(run_directory) or m2l_report.get(
+        "training_pool_path"
+    ) != str(pool_path):
+        raise ValueError("M2l pool must be the archive saved beside the M2l checkpoint")
+    pool_bytes = pool_path.read_bytes()
+    with np.load(pool_path, allow_pickle=False) as archive:
+        saved = {name: archive[name] for name in archive.files}
+    if (
+        set(saved) != set(POOL_FIELDS)
+        or any(
+            saved[k].dtype != pool[k].dtype or not np.array_equal(saved[k], pool[k])
+            for k in POOL_FIELDS
+        )
+        or _batch_digest(saved) != training_evidence["batch_sha256"]
+    ):
+        raise ValueError("saved M2l training pool differs from the rebuilt registered pool")
+    frames, frame_evidence = query_frames(episodes)
+    if frame_evidence["query_manifest_sha256"] != queries["query_manifest_sha256"]:
+        raise ValueError("query frames changed after registration")
+    labels = query_labels(frame_evidence["queries"], training_evidence)
+    symbol_sets = pool_position_symbol_sets(pool)
+    classification = classify_query_cells(frames, symbol_sets)
+    positions = {
+        (row["episode_id"], row["query_tick"]): index
+        for index, row in enumerate(frame_evidence["queries"])
+    }
+    pool_query_rows = [
+        positions[(row["episode_id"], row["query_tick"])] for row in training_evidence["samples"]
+    ]
+    seeds = [
+        m2l_report["paired"]["per_query"][row]["paired_random_seeds"] for row in pool_query_rows
+    ]
+    training_manifest = training_permutation_manifest()
+    if training_manifest["unique_count"] != training_manifest["count"]:
+        raise ValueError("registered training bijections must be distinct")
+    batch, evaluation = relabel_evaluation_pool(pool, training_manifest)
+    m2l_reference = {
+        "report": {
+            "path": str(m2l_report_path.resolve()),
+            "sha256": hashlib.sha256(m2l_report_bytes).hexdigest(),
+            "run_id": m2l_report["run_id"],
+            "experiment_id": m2l_report.get("experiment_id"),
+            "manifest_hash": m2l_report["manifest_hash"],
+        },
+        "candidate": m2l_candidate,
+        "training_pool": {
+            "path": str(pool_path),
+            "sha256": hashlib.sha256(pool_bytes).hexdigest(),
+            "batch_sha256": training_evidence["batch_sha256"],
+        },
+    }
+    coverage = {
+        "symbol_sets": symbol_sets,
+        "classification_sha256": classification["classification_sha256"],
+        "query_label_sha256": hashlib.sha256(json.dumps(labels).encode()).hexdigest(),
+        "pool_query_rows": pool_query_rows,
+        "pool_row_seeds": seeds,
+    }
+    summary = {
+        "m2l": m2l_reference,
+        "coverage": coverage,
+        "training_permutations": training_manifest,
+        "relabel_evaluation": evaluation,
+    }
+    return {
+        "declaration": summary,
+        "report": {
+            "m2l": m2l_reference,
+            "coverage": {k: v for k, v in coverage.items() if k != "pool_row_seeds"},
+            "training_permutations_sha256": training_manifest["manifest_sha256"],
+            "relabel_evaluation": {k: v for k, v in evaluation.items() if k != "digests"},
+        },
+        "m2l_report": m2l_report,
+        "m2l_report_bytes": m2l_report_bytes,
+        "m2l_tensors": m2l_tensors,
+        "m2l_candidate": m2l_candidate,
+        "pool_path": pool_path,
+        "pool_bytes": pool_bytes,
+        "training_manifest": training_manifest,
+        "batch": batch,
+        "seeds": seeds,
+        "pool_query_rows": pool_query_rows,
+        "classification": classification,
+        "labels": labels,
+        "targets": frames["previous_symbols"],
+    }
+
+
 def run_memory(
     config_path,
     dataset_path,
@@ -276,25 +499,39 @@ def run_memory(
     local_fit=False,
     diverse_fit=False,
     comparison_report_path=None,
+    relabel_fit=False,
+    m2l_report_path=None,
+    m2l_checkpoint_path=None,
 ):
     from ainerzero.cli import pilot_manifest
 
     started = time.perf_counter()
     if diverse_fit and local_fit:
         raise ValueError("choose one memory training protocol")
+    if relabel_fit and (diverse_fit or local_fit):
+        raise ValueError("choose one memory training protocol")
+    if bool(relabel_fit) != (m2l_report_path is not None) or bool(relabel_fit) != (
+        m2l_checkpoint_path is not None
+    ):
+        raise ValueError("relabel memory requires exactly its M2l report and checkpoint")
+    diverse_fit = diverse_fit or relabel_fit
     if bool(diverse_fit) != (comparison_report_path is not None):
         raise ValueError("diverse memory requires its M2k comparison report only")
     local_fit = local_fit or diverse_fit
     config = load_pilot_config(config_path)
     plan = (
-        diverse_memory_plan()
+        relabel_memory_plan()
+        if relabel_fit
+        else diverse_memory_plan()
         if diverse_fit
         else micro_memory_plan()
         if local_fit
         else memory_plan()
     )
     phase_name = (
-        "diverse_memory_fit"
+        "relabel_memory_fit"
+        if relabel_fit
+        else "diverse_memory_fit"
         if diverse_fit
         else "micro_memory_fit"
         if local_fit
@@ -339,6 +576,21 @@ def run_memory(
             "sha256": hashlib.sha256(comparison_bytes).hexdigest(),
             "run_id": comparison["run_id"],
         }
+    relabel = None
+    if relabel_fit:
+        relabel = _prepare_relabel(
+            config,
+            episodes,
+            identity,
+            source,
+            source_metadata,
+            sample_evidence,
+            diverse_pool,
+            training_evidence,
+            queries,
+            m2l_report_path,
+            m2l_checkpoint_path,
+        )
     declaration = pilot_manifest(config_path)["manifest"]
     declaration.update(
         purpose=f"c0_{phase_name}_training_v1",
@@ -354,6 +606,8 @@ def run_memory(
             paired_samples=queries,
             comparison_report=comparison_reference,
         )
+    if relabel_fit:
+        declaration.update(relabel=relabel["declaration"])
     directory = Path(output_root) / f"pilot-{uuid4().hex}"
     directory.mkdir(parents=True)
     report_path = directory / "report.json"
@@ -385,6 +639,12 @@ def run_memory(
             training_samples=training_evidence,
             comparison_report=comparison_reference,
             comparison_groups=comparison_groups,
+        )
+    if relabel_fit:
+        report.update(
+            relabel=relabel["report"],
+            relabel_pool={},
+            before_matches_m2l=None,
         )
     store = RunStore(control_db)
     run_id = None
@@ -457,6 +717,20 @@ def run_memory(
                 or prior_experiment.manifest_hash != comparison["manifest_hash"]
             ):
                 raise ValueError("canonical ledger does not confirm M2k comparison")
+        if relabel_fit:
+            m2l_report = relabel["m2l_report"]
+            prior = store.get_run(m2l_report["run_id"])
+            prior_experiment = store.get_experiment(prior.experiment_id)
+            if (
+                prior.state != "completed"
+                or prior.experiment_id != m2l_report.get("experiment_id")
+                or prior.role != "model"
+                or prior.reserved_optimizer_steps != 200
+                or prior.reserved_environment_steps != 0
+                or prior.reserved_model_transitions != 174208
+                or prior_experiment.manifest_hash != m2l_report["manifest_hash"]
+            ):
+                raise ValueError("canonical ledger does not confirm the completed M2l candidate")
         experiment = store.create_experiment(declaration, experiment_id, experiment_id)
         atomic_write_json(directory / "preregistration.json", declaration)
         run_id = str(uuid4())
@@ -618,13 +892,68 @@ def run_memory(
                 guard(force=True)
                 persist()
 
+        if relabel_fit:
+            from ainerzero.learning.paired_memory import evaluate_zero_context_inputs
+            from ainerzero.learning.relabel_memory import summarize_relabel_pool
+
+            stage("m2l_paired_cells")
+            reference = SharedSymbolPredictor(config.model, key=mx.random.key(999))
+            reference.update(
+                tree_unflatten(
+                    [
+                        (k[6:], mx.array(v))
+                        for k, v in relabel["m2l_tensors"].items()
+                        if k.startswith("model.")
+                    ]
+                )
+            )
+            reference.freeze()
+            mx.eval(reference.parameters())
+            loaded = {f"model.{k}": np.array(v) for k, v in tree_flatten(reference.parameters())}
+            if set(loaded) != {k for k in relabel["m2l_tensors"] if k.startswith("model.")} or any(
+                not np.array_equal(v, relabel["m2l_tensors"][k]) for k, v in loaded.items()
+            ):
+                raise RuntimeError("frozen M2l comparison weights did not load exactly")
+            m2l_paired = evaluate_paired_memory(
+                reference,
+                episodes,
+                before_work=reserve,
+                cell_outputs=True,
+                **plan["paired_evaluation"],
+            )
+            completed_units += m2l_paired["logical_model_transitions"]
+            m2l_cells = m2l_paired.pop("per_query_cells")
+            report["m2l_paired_reproduction"] = _compare_m2l_paired(
+                m2l_paired, relabel["m2l_report"]["paired"]
+            )
+            guard(force=True)
+            persist()
+            stage("m2l_relabel_pool")
+            scored = evaluate_zero_context_inputs(
+                reference, relabel["batch"], relabel["seeds"], before_work=reserve
+            )
+            completed_units += scored["logical_model_transitions"]
+            report["relabel_pool"]["m2l"] = summarize_relabel_pool(
+                scored["argmax"], scored["nll"], relabel["batch"]
+            )
+            report["relabel_pool"]["m2l_cells"] = {
+                "argmax": scored["argmax"].tolist(),
+                "nll": [[None if np.isnan(v) else float(v) for v in row] for row in scored["nll"]],
+            }
+            del reference
+            guard(force=True)
+            persist()
         evaluate_phase("before")
+        if relabel_fit:
+            report["before_matches_m2l"] = report["before"] == relabel["m2l_report"]["before"]
         if report["before"]["reconstruction"]["gate"]["status"] != "passed":
             raise RuntimeError("source current-observation reconstruction gate failed")
         evaluate_local(0)
         window_rng = None if local_fit else np.random.default_rng(plan["seeds"]["windows"])
         augmentation_rng = (
-            None if local_fit else np.random.default_rng(plan["seeds"]["augmentation"])
+            np.random.default_rng(plan["seeds"]["augmentation"])
+            if relabel_fit or not local_fit
+            else None
         )
         key = mx.random.key(plan["seeds"]["latent"])
         value_grad = nn.value_and_grad(model, memory_sequence_loss)
@@ -632,8 +961,20 @@ def run_memory(
         for index in range(plan["updates"]):
             stage("training_update", updates=1, units=plan["training_model_units_per_update"])
             tick = time.perf_counter()
+            permutation_digests = None
             if local_fit:
                 batch = get_diverse_batch(diverse_pool, index) if diverse_fit else fixed_batch
+                if relabel_fit:
+                    from ainerzero.learning.relabel_memory import relabel_batch
+
+                    batch, permutation_digests = relabel_batch(batch, augmentation_rng)
+                    registered = relabel["training_manifest"]["digests"][
+                        index * plan["batch_size"] : (index + 1) * plan["batch_size"]
+                    ]
+                    if permutation_digests != registered:
+                        raise RuntimeError(
+                            "training bijections differ from the registered manifest"
+                        )
                 sample_key = key  # Fixed training noise is part of the local-fit diagnostic.
             else:
                 batch = permute_symbols(
@@ -713,6 +1054,8 @@ def run_memory(
                 )
             if diverse_fit:
                 entry["training_sample_rows"] = diverse_training_schedule()[index].tolist()
+            if relabel_fit:
+                entry["permutation_sha256"] = permutation_digests
             with (directory / "updates.jsonl").open("a") as stream:
                 stream.write(json.dumps(entry, allow_nan=False) + "\n")
             report["latest_update"] = entry
@@ -742,12 +1085,60 @@ def run_memory(
         if diverse_fit:
             stage("after_paired")
             report["paired"] = evaluate_paired_memory(
-                model, episodes, before_work=reserve, **plan["paired_evaluation"]
+                model,
+                episodes,
+                before_work=reserve,
+                **plan["paired_evaluation"],
+                **({"cell_outputs": True} if relabel_fit else {}),
             )
             completed_units += report["paired"]["logical_model_transitions"]
+            m2m_cells = report["paired"].pop("per_query_cells", None)
             if report["paired"]["query_manifest_sha256"] != queries["query_manifest_sha256"]:
                 raise RuntimeError("diverse paired query identities changed after registration")
             report["diverse_groups"] = summarize_diverse_pairs(report["paired"], training_evidence)
+            guard(force=True)
+            persist()
+        if relabel_fit:
+            from ainerzero.learning.relabel_memory import (
+                compare_strata,
+                next_step,
+                regression_flags,
+                transfer_level,
+            )
+
+            if [
+                report["paired"]["per_query"][row]["paired_random_seeds"]
+                for row in relabel["pool_query_rows"]
+            ] != relabel["seeds"]:
+                raise RuntimeError("relabel pool keys differ from the paired pool-row keys")
+            stage("after_relabel_pool")
+            scored = evaluate_zero_context_inputs(
+                model, relabel["batch"], relabel["seeds"], before_work=reserve
+            )
+            completed_units += scored["logical_model_transitions"]
+            report["relabel_pool"]["m2m"] = summarize_relabel_pool(
+                scored["argmax"], scored["nll"], relabel["batch"]
+            )
+            report["relabel_pool"]["m2m_cells"] = {
+                "argmax": scored["argmax"].tolist(),
+                "nll": [[None if np.isnan(v) else float(v) for v in row] for row in scored["nll"]],
+            }
+            report["cells"] = {"m2m": m2m_cells, "m2l": m2l_cells}
+            report["stratified"] = compare_strata(
+                relabel["classification"],
+                relabel["labels"],
+                relabel["targets"],
+                m2m_cells,
+                m2l_cells,
+            )
+            report["regression"] = regression_flags(report["before"], report["after"])
+            development = report["paired"]["groups"]["development"]["methods"]["zero_context_tail"]
+            report["transfer"] = next_step(
+                all(item["status"] == "passed" for item in report["local_screens"].values()),
+                transfer_level(development),
+                transfer_level(report["relabel_pool"]["m2m"]),
+                report["regression"]["regression"],
+            )
             guard(force=True)
             persist()
 
@@ -769,7 +1160,12 @@ def run_memory(
                 "manifest_hash": experiment.manifest_hash,
                 "optimizer_steps": report["actual_optimizer_steps"],
                 "source": source,
-                "rng_states": {"fixed_seed": plan["seeds"]["latent"]}
+                "rng_states": {
+                    "fixed_seed": plan["seeds"]["latent"],
+                    "augmentation": augmentation_rng.bit_generator.state,
+                }
+                if relabel_fit
+                else {"fixed_seed": plan["seeds"]["latent"]}
                 if local_fit
                 else {
                     "windows": window_rng.bit_generator.state,
@@ -777,6 +1173,15 @@ def run_memory(
                 },
                 "fixed_samples": sample_evidence,
                 **({"training_samples": training_evidence} if diverse_fit else {}),
+                **(
+                    {
+                        "relabel_training_permutations_sha256": relabel["training_manifest"][
+                            "manifest_sha256"
+                        ]
+                    }
+                    if relabel_fit
+                    else {}
+                ),
                 "sampler": {"burn_in": plan["burn_in"], "sequence_steps": plan["sequence_steps"]},
                 "readout_protocol": plan["readout"],
                 "optimizer": {
@@ -822,6 +1227,16 @@ def run_memory(
                 and hashlib.sha256((checkpoint_path / "manifest.json").read_bytes()).hexdigest()
                 == source["checkpoint_manifest_sha256"]
             )
+            if relabel_fit:
+                load_checkpoint(m2l_checkpoint_path)
+                report["source_files_unchanged"] = report["source_files_unchanged"] and (
+                    m2l_report_path.read_bytes() == relabel["m2l_report_bytes"]
+                    and hashlib.sha256(
+                        (m2l_checkpoint_path / "manifest.json").read_bytes()
+                    ).hexdigest()
+                    == relabel["m2l_candidate"]["checkpoint_manifest_sha256"]
+                    and relabel["pool_path"].read_bytes() == relabel["pool_bytes"]
+                )
             if not report["source_files_unchanged"]:
                 raise RuntimeError("diverse source checkpoint or comparison report changed")
         report["mlx_peak_bytes"] = mx.get_peak_memory()
@@ -855,6 +1270,9 @@ def main():
     parser.add_argument("--local-fit", action="store_true")
     parser.add_argument("--diverse-fit", action="store_true")
     parser.add_argument("--comparison-report", type=Path)
+    parser.add_argument("--relabel-fit", action="store_true")
+    parser.add_argument("--m2l-report", type=Path)
+    parser.add_argument("--m2l-checkpoint", type=Path)
     args = parser.parse_args()
     report = run_memory(
         args.config,
@@ -866,6 +1284,9 @@ def main():
         local_fit=args.local_fit,
         diverse_fit=args.diverse_fit,
         comparison_report_path=args.comparison_report,
+        relabel_fit=args.relabel_fit,
+        m2l_report_path=args.m2l_report,
+        m2l_checkpoint_path=args.m2l_checkpoint,
     )
     print(json.dumps(report, ensure_ascii=False))
     return 0 if report["status"] == "completed" else 1

@@ -207,6 +207,7 @@ def evaluate_paired_memory(
     before_work: Callable[[int], None],
     seed: int = 7103,
     particles: int = 8,
+    cell_outputs: bool = False,
 ) -> dict:
     """Score identical edges under history, zero context, and current-only reset.
 
@@ -218,6 +219,10 @@ def evaluate_paired_memory(
     Each initial observation or imagine/observe edge reserves eight units before
     tensor/model work; readouts are included in those units. Full evaluation costs
     82,080 logical units: 20,640 history + 40,960 zero context + 20,480 reset.
+
+    ``cell_outputs`` additionally returns per-cell argmax/NLL of the history and
+    zero-context tails (``per_query_cells``) from the same probabilities; it does
+    not change any model call, key, unit count, or other returned field.
     """
     if not callable(before_work):
         raise ValueError("before_work must be a budget reservation callback")
@@ -225,9 +230,12 @@ def evaluate_paired_memory(
         raise ValueError("seed must be an integer in [0, 2**32)")
     if type(particles) is not int or particles != 8:
         raise ValueError("particles must be exactly 8")
+    if type(cell_outputs) is not bool:
+        raise ValueError("cell_outputs must be a Boolean")
     episodes, evidence = _prepare(episodes_by_partition)
     rng = np.random.default_rng(seed)
     schedules = [rng.integers(0, 2**32, size=257, dtype=np.uint64).tolist() for _ in episodes]
+    cells = []
     groups = {
         name: {"methods": {method: _Summary() for method in METHODS}, "paired": {}}
         for name in GROUPS
@@ -327,6 +335,17 @@ def evaluate_paired_memory(
             for counts in (group["paired"], world_paired):
                 for name, count in paired.items():
                     counts[name] = counts.get(name, 0) + count
+            if cell_outputs:
+                cell_row = {}
+                for name in ("history_tail", "zero_context_tail"):
+                    argmax, nll = _cell_scores(
+                        predictions[name], target.symbols, target.visible_mask
+                    )
+                    cell_row[name] = {
+                        "argmax": argmax.tolist(),
+                        "nll": [None if np.isnan(v) else float(v) for v in nll],
+                    }
+                cells.append(cell_row)
             per_query.append(
                 {
                     **identity,
@@ -355,7 +374,7 @@ def evaluate_paired_memory(
             "methods": methods,
             "paired": _paired_result(group["paired"], methods),
         }
-    return {
+    result = {
         **{name: value for name, value in evidence.items() if name not in ("queries", "groups")},
         "seed": seed,
         "particles": particles,
@@ -394,6 +413,9 @@ def evaluate_paired_memory(
             "promotion": "not_authorized_by_this_diagnostic",
         },
     }
+    if cell_outputs:
+        result["per_query_cells"] = cells
+    return result
 
 
 def zero_context_tail_probabilities(

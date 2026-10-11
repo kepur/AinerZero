@@ -81,6 +81,7 @@ def train_pilot_command(args) -> dict:
     memory = getattr(args, "memory_training", False)
     micro_memory = getattr(args, "micro_memory_training", False)
     diverse_memory = getattr(args, "diverse_memory_training", False)
+    relabel_memory = getattr(args, "relabel_memory_training", False)
     interference = getattr(args, "interference_diagnostic", False)
     paired_memory = getattr(args, "paired_memory_diagnostic", False)
     coverage = getattr(args, "coverage_diagnostic", False)
@@ -111,7 +112,7 @@ def train_pilot_command(args) -> dict:
             "--candidate-checkpoint",
             str(args.candidate_checkpoint.resolve()),
         ]
-    elif memory or micro_memory or diverse_memory:
+    elif memory or micro_memory or diverse_memory or relabel_memory:
         module = "ainerzero.runtime.memory_worker"
         extra = [
             "--dataset",
@@ -124,6 +125,18 @@ def train_pilot_command(args) -> dict:
         if diverse_memory:
             extra.extend(
                 ["--diverse-fit", "--comparison-report", str(args.comparison_report.resolve())]
+            )
+        if relabel_memory:
+            extra.extend(
+                [
+                    "--relabel-fit",
+                    "--comparison-report",
+                    str(args.comparison_report.resolve()),
+                    "--m2l-report",
+                    str(args.m2l_report.resolve()),
+                    "--m2l-checkpoint",
+                    str(args.m2l_checkpoint.resolve()),
+                ]
             )
     elif history or recall or residual:
         module = "ainerzero.runtime.history_worker"
@@ -209,6 +222,8 @@ def train_pilot_command(args) -> dict:
                 timeout=min(
                     750
                     if coverage
+                    else 1770
+                    if relabel_memory
                     else 1550
                     if memory or micro_memory or diverse_memory
                     else 650
@@ -371,6 +386,17 @@ def main(argv: list[str] | None = None) -> int:
     diverse_memory.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
     diverse_memory.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
     diverse_memory.add_argument("--output", type=Path)
+    relabel_memory = commands.add_parser(
+        "train-relabel-memory",
+        help="M2m：在 M2l 设置上仅加入每样本一致换名，固定200次尾部更新并与 M2l 同查询对照",
+    )
+    relabel_memory.set_defaults(relabel_memory_training=True)
+    for name in ("dataset", "checkpoint", "comparison-report", "m2l-report", "m2l-checkpoint"):
+        relabel_memory.add_argument(f"--{name}", type=Path, required=True)
+    relabel_memory.add_argument("--experiment-id", required=True)
+    relabel_memory.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    relabel_memory.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    relabel_memory.add_argument("--output", type=Path)
     interference = commands.add_parser(
         "diagnose-interference", help="冻结三组模型，定位记忆训练对动作预测的干扰"
     )
@@ -444,6 +470,7 @@ def main(argv: list[str] | None = None) -> int:
             "train-memory",
             "train-micro-memory",
             "train-diverse-memory",
+            "train-relabel-memory",
             "diagnose-interference",
             "diagnose-paired-memory",
             "diagnose-memory-coverage",
