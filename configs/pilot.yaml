@@ -1,0 +1,95 @@
+# First C0 experiment declaration; check-pilot does not start a learner.
+# Omitted fields are validated defaults, included in the resolved snapshot/hash.
+schema_version: 1
+profile: pilot_predictor
+project_name: ainerzero
+route: neural
+teacher: none
+run_seeds: [0, 1, 2]
+mechanisms:
+  revision: pilot_mechanisms_v1
+  learning_implementation: c0_prediction_only
+  planning_implementation: planned
+  environment_implementation: c0_only
+  experience_contract: experience_v2
+  pretrained_weights: none
+  preinstalled_world_knowledge: none
+  hypothesis_grammar: none
+budget:
+  max_environment_steps: 20000
+  max_optimizer_steps: 1000
+  max_model_transitions: 1000000
+  max_wall_seconds: 1800
+  max_daily_active_seconds: 21600
+  timezone: Europe/Belgrade
+experiment_budget:
+  max_model_runs: 3
+  max_environment_steps: 60000
+  max_optimizer_steps: 3000
+  max_model_transitions: 3000000
+  max_wall_seconds: 7200
+  max_calibration_seconds: 900
+model:
+  initialization: random
+  byte_embedding_dim: 16
+  encoder_hidden_dim: 128
+  embedding_dim: 128
+  hidden_dim: 256
+  latent_dim: 16
+  action_embedding_dim: 16
+  prior_hidden_dim: 128
+  posterior_hidden_dim: 128
+  decoder_hidden_dim: 128
+  ensemble_heads: 0
+  ensemble_hidden_dim: 128
+training:
+  precision: float32
+  effective_batch_size: 16
+  burn_in_steps: 4
+  sequence_steps: 16
+  kl_warmup_updates: 100
+  prior_prediction_loss_weight: 1.0
+  ensemble_loss_weight: 0.0
+  validation_interval_updates: 100
+  checkpoint_interval_updates: 100
+resources:
+  mode: adaptive
+  active:
+    cpu_workers: 1
+    vector_environments: 8
+    micro_batch_size: 4
+    project_memory_gib: 8
+    mlx_memory_gib: 4
+    mlx_cache_gib: 0.5
+    training_duty_cycle: 0.25
+  idle:
+    cpu_workers: 1
+    vector_environments: 16
+    micro_batch_size: 8
+    project_memory_gib: 8
+    mlx_memory_gib: 4
+    mlx_cache_gib: 0.5
+    training_duty_cycle: 1.0
+  system_reserve_gib: 16
+  pause_training_on_battery: true
+storage:
+  disk_budget_gib: 20
+  persistent_data_gib: 2
+  replay_max_transitions: 60000
+  ram_cache_gib: 0.25
+  trajectory_shard_mib: 16
+environment:
+  course: C0
+  max_episode_ticks: 128
+planning:
+  horizon: 4
+  candidates: 32
+  elites: 4
+  iterations: 2
+  latent_samples: 1
+  disagreement_penalty: 0.0
+evaluation:
+  latent_particles: 8
+  support_ticks: 32
+  support_query_weights: frozen
+  probability_aggregation: mean_probabilities_then_nll
