@@ -143,8 +143,20 @@ def diverse_memory_plan():
     return plan
 
 
-def relabel_memory_plan():
-    """M2m adds only a per-sample consistent byte relabeling to the M2l protocol."""
+RELABEL_LEARNING_RATES = {
+    0.001: "m2m_consistent_relabel_single_edge_tail_fit_v1",
+    0.003: "m2m_c_consistent_relabel_lr0003_single_edge_tail_fit_v1",
+}
+
+
+def relabel_memory_plan(learning_rate=0.001):
+    """M2m adds only a per-sample consistent byte relabeling to the M2l protocol.
+
+    M2m-c is the single registered learning-rate variant (0.003); every other
+    field is identical to M2m stage B.  No other learning rate is accepted.
+    """
+    if type(learning_rate) is not float or learning_rate not in RELABEL_LEARNING_RATES:
+        raise ValueError("relabel learning rate must be one registered value")
     plan = diverse_memory_plan()
     plan.update(
         protocol="m2m_consistent_relabel_single_edge_tail_fit_v1",
@@ -200,6 +212,16 @@ def relabel_memory_plan():
     plan["resource_seconds"].update(
         m2l_paired_cells=300, m2l_relabel_pool=30, after_relabel_pool=30, verification=20
     )
+    if learning_rate != 0.001:
+        plan.update(
+            protocol=RELABEL_LEARNING_RATES[learning_rate],
+            learning_rate=learning_rate,
+            comparison_caveat=(
+                "single_factor_vs_M2m_stage_B_learning_rate_only_same_start_pool_schedule_"
+                "permutations_seeds_gates"
+            ),
+            stage_b_comparison="cpu_only_from_saved_stage_b_cells_no_model_calls",
+        )
     return plan
 
 
@@ -502,6 +524,7 @@ def run_memory(
     relabel_fit=False,
     m2l_report_path=None,
     m2l_checkpoint_path=None,
+    relabel_learning_rate=None,
 ):
     from ainerzero.cli import pilot_manifest
 
@@ -514,13 +537,15 @@ def run_memory(
         m2l_checkpoint_path is not None
     ):
         raise ValueError("relabel memory requires exactly its M2l report and checkpoint")
+    if relabel_learning_rate is not None and not relabel_fit:
+        raise ValueError("learning rate variant applies only to relabel memory")
     diverse_fit = diverse_fit or relabel_fit
     if bool(diverse_fit) != (comparison_report_path is not None):
         raise ValueError("diverse memory requires its M2k comparison report only")
     local_fit = local_fit or diverse_fit
     config = load_pilot_config(config_path)
     plan = (
-        relabel_memory_plan()
+        relabel_memory_plan(0.001 if relabel_learning_rate is None else relabel_learning_rate)
         if relabel_fit
         else diverse_memory_plan()
         if diverse_fit
@@ -1273,6 +1298,7 @@ def main():
     parser.add_argument("--relabel-fit", action="store_true")
     parser.add_argument("--m2l-report", type=Path)
     parser.add_argument("--m2l-checkpoint", type=Path)
+    parser.add_argument("--relabel-learning-rate", choices=("0.001", "0.003"))
     args = parser.parse_args()
     report = run_memory(
         args.config,
@@ -1287,6 +1313,9 @@ def main():
         relabel_fit=args.relabel_fit,
         m2l_report_path=args.m2l_report,
         m2l_checkpoint_path=args.m2l_checkpoint,
+        relabel_learning_rate=(
+            None if args.relabel_learning_rate is None else float(args.relabel_learning_rate)
+        ),
     )
     print(json.dumps(report, ensure_ascii=False))
     return 0 if report["status"] == "completed" else 1

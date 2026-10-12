@@ -136,6 +136,8 @@ def train_pilot_command(args) -> dict:
                     str(args.m2l_report.resolve()),
                     "--m2l-checkpoint",
                     str(args.m2l_checkpoint.resolve()),
+                    "--relabel-learning-rate",
+                    getattr(args, "learning_rate", "0.001"),
                 ]
             )
     elif history or recall or residual:
@@ -394,6 +396,12 @@ def main(argv: list[str] | None = None) -> int:
     for name in ("dataset", "checkpoint", "comparison-report", "m2l-report", "m2l-checkpoint"):
         relabel_memory.add_argument(f"--{name}", type=Path, required=True)
     relabel_memory.add_argument("--experiment-id", required=True)
+    relabel_memory.add_argument(
+        "--learning-rate",
+        choices=("0.001", "0.003"),
+        default="0.001",
+        help="0.001 为阶段 B；0.003 为登记的 M2m-c 单一学习率对照，不接受其他值",
+    )
     relabel_memory.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
     relabel_memory.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
     relabel_memory.add_argument("--output", type=Path)
