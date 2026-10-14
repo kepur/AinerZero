@@ -127,7 +127,9 @@ class PilotResourceProfile(ResourceProfile):
     project_memory_gib: Annotated[float, Field(strict=True, gt=0, le=8)] = 8
     mlx_memory_gib: Annotated[float, Field(strict=True, gt=0, le=4)] = 4
     mlx_cache_gib: Annotated[float, Field(strict=True, ge=0, le=0.5)] = 0.5
-    training_duty_cycle: Annotated[float, Field(strict=True, gt=0, le=1)] = 0.25
+    # M20261013-09 (user: remove the idle limit): active default 0.25 -> 1.0, matching
+    # configs/pilot.yaml. Pacing only; explicit 0.25 configs (historical runs) still parse.
+    training_duty_cycle: Annotated[float, Field(strict=True, gt=0, le=1)] = 1.0
 
     @field_validator("vector_environments", "micro_batch_size")
     @classmethod

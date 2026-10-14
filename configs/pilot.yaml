@@ -61,7 +61,9 @@ resources:
     project_memory_gib: 8
     mlx_memory_gib: 4
     mlx_cache_gib: 0.5
-    training_duty_cycle: 0.25
+    # 2026-10-13 用户指示「取消空闲限制、全力跑」：0.25 → 1.0。只改节奏（每次更新后不再休息 3 倍时间），
+    # 不改任何训练数学、种子、门槛；内存/swap/磁盘/电源保护线不变。memory_worker 读的就是 active 档。
+    training_duty_cycle: 1.0
   idle:
     cpu_workers: 1
     vector_environments: 16

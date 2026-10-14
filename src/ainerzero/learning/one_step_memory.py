@@ -20,13 +20,24 @@ from ainerzero.learning.evaluation import _mean_probabilities, _Summary
 METHODS = ("memory_tail", "reset_history", "copy_current", "fixed_current_codec")
 
 
-def memory_sequence_loss(model, batch: dict, *, burn_in: int = 4, key):
+def memory_sequence_loss(model, batch: dict, *, burn_in: int = 4, key,
+                         truncate_each_step: bool = False):
     """Uniform visible-symbol CE for o_t read from post-observation state at t+1.
 
     Observations are [B,T+1,8], actions [B,T], episode_start [B,T+1], and optional
     valid_mask [B,T]. Burn-in supplies context but contributes no loss; both h
     and z are detached at its boundary. Hidden past slots, invalid transitions,
     and transitions crossing an episode boundary never become labels.
+
+    ``truncate_each_step`` (M2n-M4; default False is the registered behaviour of
+    every earlier protocol) additionally detaches the incoming ``(h, z)`` at
+    *every* loss step ``t > burn_in``, not only at ``t == burn_in``. The forward
+    pass is untouched (``stop_gradient`` is the identity forward), so the loss
+    value, the logical units and the teacher/student passes stay bitwise
+    identical; only the backward graph of the history half changes: each loss
+    term's CE (and a caller's KL on the same readouts) reaches the parameters
+    through exactly one transition instead of the whole window. The flag is
+    validated strictly so a truthy non-bool cannot silently enable the protocol.
 
     There is exactly one initial observation and T imagine/observe feedback
     edges: the caller must reserve B*(T+1) logical units before calling. No past
@@ -42,6 +53,8 @@ def memory_sequence_loss(model, batch: dict, *, burn_in: int = 4, key):
     size, steps = actions.shape
     if size < 1 or type(burn_in) is not int or not 0 <= burn_in < steps:
         raise ValueError("burn_in must leave at least one training transition")
+    if type(truncate_each_step) is not bool:
+        raise ValueError("truncate_each_step must be a bool")
     for name, shape in {
         "symbols": (size, steps + 1, 8),
         "visible_mask": (size, steps + 1, 8),
@@ -70,7 +83,11 @@ def memory_sequence_loss(model, batch: dict, *, burn_in: int = 4, key):
     errors, masks, transitions = [], [], []
     for t in range(steps):
         h, z = state["h"], state["z"]
-        if t == burn_in:
+        # One detach at the burn-in boundary is the registered behaviour; the
+        # M2n-M4 protocol detaches at every later loss step as well, which leaves
+        # the forward pass and the units untouched but truncates backpropagation
+        # to one transition per loss term.
+        if t == burn_in or (truncate_each_step and t > burn_in):
             h, z = mx.stop_gradient(h), mx.stop_gradient(z)
         imagined = model.imagine(h, z, actions[:, t], key=keys[2 * t + 1])
         starts = batch["episode_start"][:, t + 1]

@@ -70,6 +70,199 @@ def pilot_manifest(config_path: Path) -> dict:
     }
 
 
+WEIGHT025_PROTOCOL = "m2m_n_mixed_history_weight025_v1"
+WEIGHT0_CONTROL_PROTOCOL = "m2m_n_mixed_history_weight0_control_v1"
+WEIGHT025_REQUIRED_FILES = frozenset(
+    {
+        "src/ainerzero/cli.py",
+        "src/ainerzero/runtime/memory_worker.py",
+        "src/ainerzero/learning/action_preservation_closure.py",
+        "src/ainerzero/learning/action_preservation.py",
+        "configs/pilot.yaml",
+        "artifacts/reports/relay-codex-20261013/A3-registration.json",
+    }
+)
+WEIGHT0_CONTROL_REQUIRED_FILES = frozenset(
+    {
+        "src/ainerzero/cli.py",
+        "src/ainerzero/runtime/memory_worker.py",
+        "src/ainerzero/learning/action_preservation_closure.py",
+        "src/ainerzero/learning/action_preservation.py",
+        "configs/pilot.yaml",
+        "artifacts/reports/relay-claude-20261014/M2NM3-control-registration.json",
+    }
+)
+
+
+def _is_sha256(value) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
+
+
+def verify_weight025_identity(root: Path, recorded: dict | None = None, config_path: Path | None = None) -> None:
+    """Fail closed unless the freeze matches the required schema and this config.
+
+    An empty or partial file map is rejected. ``config_path`` is the command's
+    actual ``--config``, not a hardcoded default. Does not take the worker lock
+    and does not start a run. This is not the E24 freeze.
+    """
+    if recorded is None:
+        recorded = json.loads(
+            (root / "artifacts/reports/E25-weighted/weight025-identity.json").read_text()
+        )
+    if not isinstance(recorded, dict):
+        raise RuntimeError("weight025 identity schema: record must be an object")
+    required = {"protocol", "condition_sha256", "design_registration_sha256", "config_hash", "files"}
+    missing = sorted(required - set(recorded))
+    if missing:
+        raise RuntimeError("weight025 identity schema: missing " + ",".join(missing))
+    if recorded["protocol"] != WEIGHT025_PROTOCOL:
+        raise RuntimeError("weight025 identity mismatch: protocol")
+    for name in ("condition_sha256", "design_registration_sha256", "config_hash"):
+        if not _is_sha256(recorded[name]):
+            raise RuntimeError(f"weight025 identity schema: {name} is not a sha256")
+    files = recorded["files"]
+    if not isinstance(files, dict) or set(files) != set(WEIGHT025_REQUIRED_FILES):
+        raise RuntimeError("weight025 identity schema: files must be exactly the required set")
+    mismatches = []
+    for rel, expected in files.items():
+        if not _is_sha256(expected):
+            raise RuntimeError(f"weight025 identity schema: {rel} is not a sha256")
+        file_path = root / rel
+        if not file_path.is_file():
+            mismatches.append(rel)
+            continue
+        if hashlib.sha256(file_path.read_bytes()).hexdigest() != expected:
+            mismatches.append(rel)
+    if config_path is None:
+        raise RuntimeError("weight025 identity schema: config path required")
+    actual_config = pilot_config_hash(load_pilot_config(config_path))
+    if actual_config != recorded["config_hash"]:
+        mismatches.append("config_hash")
+    from ainerzero.learning.action_preservation_closure import mixed_weight025_condition_plan
+
+    plan = mixed_weight025_condition_plan()
+    if plan["protocol"] != WEIGHT025_PROTOCOL or plan["condition_sha256"] != recorded["condition_sha256"]:
+        mismatches.append("condition_sha256")
+    if plan["design_registration_sha256"] != recorded["design_registration_sha256"]:
+        mismatches.append("design_registration_sha256")
+    if mismatches:
+        raise RuntimeError("weight025 identity mismatch: " + ", ".join(mismatches))
+
+
+ONESTEP_PROTOCOL = "m2m_n_mixed_history_onestep_v1"
+ONESTEP_REQUIRED_FILES = frozenset(
+    {
+        "src/ainerzero/cli.py",
+        "src/ainerzero/runtime/memory_worker.py",
+        "src/ainerzero/learning/action_preservation_closure.py",
+        "src/ainerzero/learning/action_preservation.py",
+        "src/ainerzero/learning/one_step_memory.py",
+        "configs/pilot.yaml",
+        "artifacts/reports/relay-claude-20261014/M2NM4-onestep-registration.json",
+    }
+)
+
+
+def verify_onestep_identity(root: Path, recorded: dict | None = None, config_path: Path | None = None) -> None:
+    """Fail closed unless the M2n-M4 freeze matches the required schema and this config.
+
+    Strictly bytewise with no exemption of any kind: an empty or partial file map is
+    rejected, ``config_path`` is the command's actual ``--config``, and the recorded
+    condition/design digests must equal the live plan's. The identity file ships as
+    ``status=identity_frozen_run_not_authorized``; per-run authorization lives in the
+    relay run task, never in this file. Does not take the worker lock, does not start
+    a run and does not import MLX.
+    """
+    if recorded is None:
+        recorded = json.loads(
+            (root / "artifacts/reports/E27-onestep/onestep-identity.json").read_text()
+        )
+    if not isinstance(recorded, dict):
+        raise RuntimeError("onestep identity schema: record must be an object")
+    required = {"protocol", "condition_sha256", "design_registration_sha256", "config_hash", "files"}
+    missing = sorted(required - set(recorded))
+    if missing:
+        raise RuntimeError("onestep identity schema: missing " + ",".join(missing))
+    if recorded["protocol"] != ONESTEP_PROTOCOL:
+        raise RuntimeError("onestep identity mismatch: protocol")
+    for name in ("condition_sha256", "design_registration_sha256", "config_hash"):
+        if not _is_sha256(recorded[name]):
+            raise RuntimeError(f"onestep identity schema: {name} is not a sha256")
+    files = recorded["files"]
+    if not isinstance(files, dict) or set(files) != set(ONESTEP_REQUIRED_FILES):
+        raise RuntimeError("onestep identity schema: files must be exactly the required set")
+    mismatches = []
+    for rel, expected in files.items():
+        if not _is_sha256(expected):
+            raise RuntimeError(f"onestep identity schema: {rel} is not a sha256")
+        file_path = root / rel
+        if not file_path.is_file():
+            mismatches.append(rel)
+            continue
+        if hashlib.sha256(file_path.read_bytes()).hexdigest() != expected:
+            mismatches.append(rel)
+    if config_path is None:
+        raise RuntimeError("onestep identity schema: config path required")
+    actual_config = pilot_config_hash(load_pilot_config(config_path))
+    if actual_config != recorded["config_hash"]:
+        mismatches.append("config_hash")
+    from ainerzero.learning.action_preservation_closure import mixed_onestep_condition_plan
+
+    plan = mixed_onestep_condition_plan()
+    if plan["protocol"] != ONESTEP_PROTOCOL or plan["condition_sha256"] != recorded["condition_sha256"]:
+        mismatches.append("condition_sha256")
+    if plan["design_registration_sha256"] != recorded["design_registration_sha256"]:
+        mismatches.append("design_registration_sha256")
+    if mismatches:
+        raise RuntimeError("onestep identity mismatch: " + ", ".join(mismatches))
+
+
+def verify_weight0_control_identity(root: Path, recorded: dict | None = None, config_path: Path | None = None) -> None:
+    """Fail closed unless the freeze matches the required schema and this config."""
+    if recorded is None:
+        recorded = json.loads(
+            (root / "artifacts/reports/E26-weight0/weight0-identity.json").read_text()
+        )
+    if not isinstance(recorded, dict):
+        raise RuntimeError("weight0_control identity schema: record must be an object")
+    required = {"protocol", "condition_sha256", "design_registration_sha256", "config_hash", "files"}
+    missing = sorted(required - set(recorded))
+    if missing:
+        raise RuntimeError("weight0_control identity schema: missing " + ",".join(missing))
+    if recorded["protocol"] != WEIGHT0_CONTROL_PROTOCOL:
+        raise RuntimeError("weight0_control identity mismatch: protocol")
+    for name in ("condition_sha256", "design_registration_sha256", "config_hash"):
+        if not _is_sha256(recorded[name]):
+            raise RuntimeError(f"weight0_control identity schema: {name} is not a sha256")
+    files = recorded["files"]
+    if not isinstance(files, dict) or set(files) != set(WEIGHT0_CONTROL_REQUIRED_FILES):
+        raise RuntimeError("weight0_control identity schema: files must be exactly the required set")
+    mismatches = []
+    for rel, expected in files.items():
+        if not _is_sha256(expected):
+            raise RuntimeError(f"weight0_control identity schema: {rel} is not a sha256")
+        file_path = root / rel
+        if not file_path.is_file():
+            mismatches.append(rel)
+            continue
+        if hashlib.sha256(file_path.read_bytes()).hexdigest() != expected:
+            mismatches.append(rel)
+    if config_path is None:
+        raise RuntimeError("weight0_control identity schema: config path required")
+    actual_config = pilot_config_hash(load_pilot_config(config_path))
+    if actual_config != recorded["config_hash"]:
+        mismatches.append("config_hash")
+    from ainerzero.learning.action_preservation_closure import mixed_weight0_control_condition_plan
+
+    plan = mixed_weight0_control_condition_plan()
+    if plan["protocol"] != WEIGHT0_CONTROL_PROTOCOL or plan["condition_sha256"] != recorded["condition_sha256"]:
+        mismatches.append("condition_sha256")
+    if plan["design_registration_sha256"] != recorded["design_registration_sha256"]:
+        mismatches.append("design_registration_sha256")
+    if mismatches:
+        raise RuntimeError("weight0_control identity mismatch: " + ", ".join(mismatches))
+
+
 def train_pilot_command(args) -> dict:
     """Exclusive, bounded worker with visible cleanup on native failure/timeout."""
     from ainerzero.runtime.pilot_worker import fit_manifest
@@ -82,10 +275,61 @@ def train_pilot_command(args) -> dict:
     micro_memory = getattr(args, "micro_memory_training", False)
     diverse_memory = getattr(args, "diverse_memory_training", False)
     relabel_memory = getattr(args, "relabel_memory_training", False)
+    action_memory = getattr(args, "action_preserved_memory_training", False)
+    action_lambda10 = getattr(args, "action_preserved_lambda10_training", False)
+    action_distill = getattr(args, "action_preserved_distill_training", False)
+    action_history = getattr(args, "action_preserved_history_training", False)
+    action_mixed = getattr(args, "action_preserved_mixed_training", False)
+    action_weight025 = getattr(args, "action_preserved_mixed_weight025_training", False)
+    action_weight0_control = getattr(args, "action_preserved_mixed_weight0_control_training", False)
+    action_onestep = getattr(args, "action_preserved_mixed_onestep_training", False)
+    action_probe = getattr(args, "action_preservation_probe", False)
     interference = getattr(args, "interference_diagnostic", False)
     paired_memory = getattr(args, "paired_memory_diagnostic", False)
     coverage = getattr(args, "coverage_diagnostic", False)
     history = getattr(args, "history_diagnostic", False)
+    if action_weight025 and (
+        action_mixed or action_memory or action_probe or action_lambda10
+        or action_distill or action_history or action_weight0_control or action_onestep
+    ):
+        return {
+            "status": "failed",
+            "error": "weight025 entry is exclusive with every other action-preservation command",
+            "fail_closed": True,
+        }
+    if action_weight0_control and (
+        action_mixed or action_memory or action_probe or action_lambda10
+        or action_distill or action_history or action_weight025 or action_onestep
+    ):
+        return {
+            "status": "failed",
+            "error": "weight0_control entry is exclusive with every other action-preservation command",
+            "fail_closed": True,
+        }
+    if action_onestep and (
+        action_mixed or action_memory or action_probe or action_lambda10
+        or action_distill or action_history or action_weight025 or action_weight0_control
+    ):
+        return {
+            "status": "failed",
+            "error": "onestep entry is exclusive with every other action-preservation command",
+            "fail_closed": True,
+        }
+    if action_onestep:
+        try:
+            verify_onestep_identity(project_root(args.config), config_path=args.config)
+        except (OSError, json.JSONDecodeError, RuntimeError, ValueError) as exc:
+            return {"status": "failed", "error": str(exc), "fail_closed": True}
+    if action_weight025:
+        try:
+            verify_weight025_identity(project_root(args.config), config_path=args.config)
+        except (OSError, json.JSONDecodeError, RuntimeError, ValueError) as exc:
+            return {"status": "failed", "error": str(exc), "fail_closed": True}
+    if action_weight0_control:
+        try:
+            verify_weight0_control_identity(project_root(args.config), config_path=args.config)
+        except (OSError, json.JSONDecodeError, RuntimeError, ValueError) as exc:
+            return {"status": "failed", "error": str(exc), "fail_closed": True}
     if paired_memory or coverage:
         module = (
             "ainerzero.runtime.coverage_worker"
@@ -111,6 +355,41 @@ def train_pilot_command(args) -> dict:
             str(args.checkpoint.resolve()),
             "--candidate-checkpoint",
             str(args.candidate_checkpoint.resolve()),
+        ]
+    elif (action_memory or action_probe or action_lambda10 or action_distill
+          or action_history or action_mixed or action_weight025 or action_weight0_control
+          or action_onestep):
+        module = "ainerzero.runtime.memory_worker"
+        extra = [
+            "--dataset",
+            str(args.dataset.resolve()),
+            "--checkpoint",
+            str(args.checkpoint.resolve()),
+            "--comparison-report",
+            str(args.comparison_report.resolve()),
+            "--m2l-report",
+            str(args.m2l_report.resolve()),
+            "--m2l-checkpoint",
+            str(args.m2l_checkpoint.resolve()),
+            "--action-preservation-probe"
+            if action_probe
+            else "--action-preservation-mixed-onestep"
+            if action_onestep
+            else "--action-preservation-mixed-weight0-control"
+            if action_weight0_control
+            else "--action-preservation-mixed-weight025"
+            if action_weight025
+            else "--action-preservation-mixed"
+            if action_mixed
+            else "--action-preservation-history"
+            if action_history
+            else "--action-preservation-distill"
+            if action_distill
+            else "--action-preservation-lambda10"
+            if action_lambda10
+            else "--action-preservation-fit",
+            "--m2mc-report",
+            str(args.m2mc_report.resolve()),
         ]
     elif memory or micro_memory or diverse_memory or relabel_memory:
         module = "ainerzero.runtime.memory_worker"
@@ -224,6 +503,18 @@ def train_pilot_command(args) -> dict:
                 timeout=min(
                     750
                     if coverage
+                    else 279
+                    if action_probe
+                    else 1780
+                    if action_weight0_control or action_weight025 or action_mixed or action_onestep
+                    else 1790
+                    if action_history
+                    else 1640
+                    if action_distill
+                    else 1710
+                    if action_lambda10
+                    else 1710
+                    if action_memory
                     else 1770
                     if relabel_memory
                     else 1550
@@ -405,6 +696,168 @@ def main(argv: list[str] | None = None) -> int:
     relabel_memory.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
     relabel_memory.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
     relabel_memory.add_argument("--output", type=Path)
+    action_memory = commands.add_parser(
+        "train-action-preserved-memory",
+        help="M2m-d：M2m-c 记忆分支加冻结 M2d 蒸馏动作保持，固定200次尾部更新；无学习率或科学参数",
+    )
+    action_memory.set_defaults(action_preserved_memory_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_memory.add_argument(f"--{name}", type=Path, required=True)
+    action_memory.add_argument("--experiment-id", required=True)
+    action_memory.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_memory.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_memory.add_argument("--output", type=Path)
+    action_mixed = commands.add_parser(
+        "train-action-preserved-mixed-memory",
+        help="M2n-M：12 行登记单边 ＋ 4 行历史窗口 ＋ 批内教师蒸馏；固定 200 次，无科学参数",
+    )
+    action_mixed.set_defaults(action_preserved_mixed_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_mixed.add_argument(f"--{name}", type=Path, required=True)
+    action_mixed.add_argument("--experiment-id", required=True)
+    action_mixed.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_mixed.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_mixed.add_argument("--output", type=Path)
+    action_weight025 = commands.add_parser(
+        "train-action-preserved-mixed-weight025-memory",
+        help="M2n-M2：E24 混合批的历史半权重 0.25；固定 200 次，无科学参数；A5 仍为 draft",
+    )
+    action_weight025.set_defaults(action_preserved_mixed_weight025_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_weight025.add_argument(f"--{name}", type=Path, required=True)
+    action_weight025.add_argument("--experiment-id", required=True)
+    action_weight025.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_weight025.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_weight025.add_argument("--output", type=Path)
+    action_weight0_control = commands.add_parser(
+        "train-action-preserved-mixed-weight0-control-memory",
+        help="M2n-M3-control：E24 混合批的历史半权重 0.0 对照；固定 200 次，无科学参数",
+    )
+    action_weight0_control.set_defaults(action_preserved_mixed_weight0_control_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_weight0_control.add_argument(f"--{name}", type=Path, required=True)
+    action_weight0_control.add_argument("--experiment-id", required=True)
+    action_weight0_control.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_weight0_control.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_weight0_control.add_argument("--output", type=Path)
+    action_onestep = commands.add_parser(
+        "train-action-preserved-mixed-onestep-memory",
+        help="M2n-M4：E24 混合批的历史半反传截断到每损失步一步；固定 200 次，无科学参数",
+    )
+    action_onestep.set_defaults(action_preserved_mixed_onestep_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_onestep.add_argument(f"--{name}", type=Path, required=True)
+    action_onestep.add_argument("--experiment-id", required=True)
+    action_onestep.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_onestep.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_onestep.add_argument("--output", type=Path)
+    action_history = commands.add_parser(
+        "train-action-preserved-history-memory",
+        help="M2n：D 的批内蒸馏 + 多步真实历史窗口（burn_in4/8步）；固定200次，无科学参数",
+    )
+    action_history.set_defaults(action_preserved_history_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_history.add_argument(f"--{name}", type=Path, required=True)
+    action_history.add_argument("--experiment-id", required=True)
+    action_history.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_history.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_history.add_argument("--output", type=Path)
+    action_distill = commands.add_parser(
+        "train-action-preserved-distill-memory",
+        help="D：把冻结 M2d 教师的 KL 折进同一记忆批与同一次前向；固定200次，无科学参数",
+    )
+    action_distill.set_defaults(action_preserved_distill_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_distill.add_argument(f"--{name}", type=Path, required=True)
+    action_distill.add_argument("--experiment-id", required=True)
+    action_distill.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_distill.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_distill.add_argument("--output", type=Path)
+    action_lambda10 = commands.add_parser(
+        "train-action-preserved-lambda10-memory",
+        help="C07：与 M2m-d 完全相同，仅保持权重 lambda=10；固定200次，无科学参数",
+    )
+    action_lambda10.set_defaults(action_preserved_lambda10_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_lambda10.add_argument(f"--{name}", type=Path, required=True)
+    action_lambda10.add_argument("--experiment-id", required=True)
+    action_lambda10.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_lambda10.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_lambda10.add_argument("--output", type=Path)
+    action_probe = commands.add_parser(
+        "probe-action-preserved-memory",
+        help="C06a：M2m-d 有界数值/资源探针，5,025单位/179秒，3次更新，不存checkpoint；无科学参数",
+    )
+    action_probe.set_defaults(action_preservation_probe=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_probe.add_argument(f"--{name}", type=Path, required=True)
+    action_probe.add_argument("--experiment-id", required=True)
+    action_probe.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_probe.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_probe.add_argument("--output", type=Path)
     interference = commands.add_parser(
         "diagnose-interference", help="冻结三组模型，定位记忆训练对动作预测的干扰"
     )
@@ -479,6 +932,15 @@ def main(argv: list[str] | None = None) -> int:
             "train-micro-memory",
             "train-diverse-memory",
             "train-relabel-memory",
+            "train-action-preserved-memory",
+            "train-action-preserved-lambda10-memory",
+            "train-action-preserved-distill-memory",
+            "train-action-preserved-history-memory",
+            "train-action-preserved-mixed-memory",
+            "train-action-preserved-mixed-weight025-memory",
+            "train-action-preserved-mixed-weight0-control-memory",
+            "train-action-preserved-mixed-onestep-memory",
+            "probe-action-preserved-memory",
             "diagnose-interference",
             "diagnose-paired-memory",
             "diagnose-memory-coverage",

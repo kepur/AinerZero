@@ -11,3 +11,8 @@
 - 当前阶段、任务状态与候选参数以 [COORDINATION.md](COORDINATION.md) / [AGENT_TASKS.md](AGENT_TASKS.md) 为准。已有运行先交接实现、测试与证据，不重复启动；本规则本身不授权新增运行。根目录研究结论由当前主责统筹整合。
 
 本文件是协作约定；锁、预算和执行权限的技术实现仍以现有源码为准。未实现的调度、任务领取互斥或跨进程续训不得宣称已经可用。
+
+## 任务接力台（AinerRelay，可选）
+
+- **是什么**：本机 http://127.0.0.1:8790，项目 ID 是 `ainerzero`。统筹可以在这里登记任务、派给执行层、挂起等结果、写交接单；执行层用 `relay next` 领活、`relay report` 交结果。用法见 `~/AinerWorkFlow/AinerRelay/AGENTS.md`。
+- **不是什么**：接力台只管派活和交接，**不构成运行授权**。真实的 MLX 训练和评测仍须走本仓库的 CLI、共享锁、RunStore 和预算登记；接力台的 GPU 闸门只用 lsof 观察 `m0-worker.lock`，不会去抢锁。

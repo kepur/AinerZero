@@ -116,6 +116,14 @@ M2m-c 1,999/2,048＝97.61%（变化 133/140＝95.0%，NLL 1.963，各位置 96.1
 
 证据：[原始报告](artifacts/reports/m2mc-lr0003-relabel.json)、[独立核对](artifacts/reports/m2mc-verification.json)（[脚本](artifacts/reports/m2mc-verify.py)，含与阶段 B 的同查询比较）、[运行前测试](artifacts/reports/m2mc-tests-prerun.xml)、[收尾测试](artifacts/reports/m2mc-tests-final.xml)。
 
+## 统筹交接与解读勘误（2026-10-12，Codex）
+
+用户已交接 E08–E11，由 Codex 补根目录共享文档，任务状态 reported。上面的预登记、分类标签及原始数值保留；`coverage_main_cause` 不自动证明覆盖是唯一或主要原因。当前支持一致换名＋0.003 在固定预算实现所测零状态迁移、B 对优化设置敏感；M2l 对照同时相差换名与学习率，归因及交互尚未拆清。原“位置未见”相对未换名 M2l 池，增强训练已暴露字节，不能称为学生此前完全不认识的新词汇/语义。
+
+NLL≈2 不能单独推出预测置信度或校准情况。动作两步长各新增 92 个未变化格错误，变化命中始终 0/7、0/25；变化格 NLL 略有改善，不能称所有动作子项均恶化。零状态 transferred、动作回归 true、正式连续 memory_screen failed、未晋升分别记录；当前先准备动作保持候选，不能直接进入 M2n。
+
+收尾 XML 1,884 项包含未提交 S01 的 14 项自测；执行者 verification 的 1,870 是预运行计数。S01 作者为 grokbot-newbot，待 S02，不由 Codex 认领或提前提交。执行者另写的 CPU 复算与本次只读交接核对的边界见 [研究记录 D07/D08](RESEARCH_LOG.md)；本次未重生成模型概率、重算冻结张量或验证跨进程下一次优化更新。
+
 ## 可重复入口
 
 ```sh

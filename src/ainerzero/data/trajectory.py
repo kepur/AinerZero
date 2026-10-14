@@ -41,6 +41,7 @@ SCHEMA_VERSION = 1
 MAX_FILE_BYTES = 4 * 1024 * 1024
 _DATA_FILES = {"public.jsonl", "private.json"}
 _ALL_FILES = _DATA_FILES | {"manifest.json"}
+_PUBLIC_FILES = {"public.jsonl", "manifest.json"}
 StopReason = Literal["requested_steps", "episode_limit", "budget_exhausted"]
 StepCount = Annotated[int, Field(strict=True, ge=0, le=MAX_EPISODE_TICKS)]
 SchemaVersion = Annotated[int, Field(strict=True, ge=SCHEMA_VERSION, le=SCHEMA_VERSION)]
@@ -179,12 +180,15 @@ def _write_file(path: Path, data: bytes) -> None:
         os.fsync(handle.fileno())
 
 
-def _load_manifest(path: Path, expected_id: UUID) -> _Manifest:
+def _load_manifest(path: Path, expected_id: UUID, *, public_only: bool = False) -> _Manifest:
     if path.is_symlink() or not path.is_dir():
         raise TrajectoryError("Trajectory must be a complete directory, not a symlink")
-    if {entry.name for entry in path.iterdir()} != _ALL_FILES:
+    if public_only and any(parent.is_symlink() for parent in path.absolute().parents):
+        raise TrajectoryError("Public trajectory cannot be reached through a symlink")
+    expected_files = _PUBLIC_FILES if public_only else _ALL_FILES
+    if {entry.name for entry in path.iterdir()} != expected_files:
         raise TrajectoryError("Trajectory contains missing or unexpected files")
-    for name in _ALL_FILES:
+    for name in expected_files:
         item = path / name
         if item.is_symlink() or not item.is_file():
             raise TrajectoryError(f"Trajectory entry must be a regular file: {name}")
@@ -309,6 +313,25 @@ def load_trajectory(path: Path) -> EpisodeTrajectory:
         return _load_public(path, manifest)
     except OSError as exc:
         raise TrajectoryError(f"Unable to read trajectory: {path}") from exc
+
+
+def load_public_trajectory(path: Path) -> EpisodeTrajectory:
+    """Explicit read-only profile for exactly public.jsonl and manifest.json.
+
+    The original manifest bytes/metadata are retained, including its private
+    file description, but no private entry is required, opened or verified.
+    This is a public contract fixture/export reader, not training admission or
+    replay. The default complete loader and those entry points remain strict.
+    """
+    path = Path(path)
+    try:
+        episode_id = UUID(path.name)
+        if str(episode_id) != path.name:
+            raise TrajectoryError("Trajectory directory must use its canonical episode UUID")
+        manifest = _load_manifest(path, episode_id, public_only=True)
+        return _load_public(path, manifest)
+    except OSError as exc:
+        raise TrajectoryError(f"Unable to read public trajectory: {path}") from exc
 
 
 def load_training_trajectory(path: Path, policy: TrainingPolicy) -> EpisodeTrajectory:

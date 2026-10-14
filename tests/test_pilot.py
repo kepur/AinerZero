@@ -31,6 +31,26 @@ def test_checked_in_pilot_matches_resolved_defaults():
     assert load_pilot_config(DEFAULT_CONFIG) == PilotConfig()
 
 
+def test_registered_duty_cycle_policy_m20261013_09():
+    # exact registered values, not "any value in range"
+    assert PilotConfig().resources.active.training_duty_cycle == 1.0
+    assert PilotConfig().resources.idle.training_duty_cycle == 1.0
+    assert load_pilot_config(DEFAULT_CONFIG).resources.active.training_duty_cycle == 1.0
+
+
+def test_explicit_historical_duty_cycle_still_parses(tmp_path):
+    old = PilotConfig.model_validate({"resources": {"active": {"training_duty_cycle": 0.25}}})
+    assert old.resources.active.training_duty_cycle == 0.25
+    assert old != PilotConfig()
+    assert pilot_config_hash(old) != pilot_config_hash(PilotConfig())
+    path = tmp_path / "pilot.yaml"
+    path.write_text("resources:\n  active:\n    training_duty_cycle: 0.25\n")
+    assert load_pilot_config(path).resources.active.training_duty_cycle == 0.25
+    for bad in (0, 0.0, -0.25, 1.5, "0.25"):
+        with pytest.raises(ValidationError):
+            PilotConfig.model_validate({"resources": {"active": {"training_duty_cycle": bad}}})
+
+
 @pytest.mark.parametrize(
     "raw",
     [
