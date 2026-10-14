@@ -14,6 +14,8 @@ from test_sequences import make_episode
 from ainerzero.core.experience import DatasetPartition
 from ainerzero.learning.one_step_memory import evaluate_one_step_memory, memory_sequence_loss
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 @pytest.fixture(autouse=True)
 def cpu_only():

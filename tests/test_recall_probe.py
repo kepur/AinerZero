@@ -21,6 +21,8 @@ from ainerzero.learning.recall_probe import (
     score_probe_rows,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 @pytest.fixture(autouse=True)
 def cpu_stream():

@@ -20,6 +20,8 @@ from ainerzero.learning.pilot_model import (  # noqa: E402
     sequence_loss,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 @pytest.fixture(autouse=True)
 def cpu_only():

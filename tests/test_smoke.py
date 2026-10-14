@@ -17,6 +17,7 @@ def mlx_available():
         )
 
 
+@pytest.mark.native_mlx(reason="real optimizer updates (A39)")
 @pytest.mark.parametrize("steps", [16, 128])
 def test_real_cpu_forward_backward_and_restored_continuation(tmp_path, mlx_available, steps):
     report = run_smoke(Path("configs/brain0.yaml"), tmp_path / "m0", "cpu", steps)
@@ -38,6 +39,7 @@ def test_real_cpu_forward_backward_and_restored_continuation(tmp_path, mlx_avail
     assert requested_config == load_config("configs/brain0.yaml")
 
 
+@pytest.mark.native_mlx(reason="real optimizer updates (A39)")
 def test_low_budget_never_reports_unperformed_updates(tmp_path, mlx_available):
     config = ProjectConfig.model_validate({"budget": {"max_optimizer_steps": 2}})
     config_path = tmp_path / "budget.yaml"

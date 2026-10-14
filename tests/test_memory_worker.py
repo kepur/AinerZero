@@ -292,9 +292,6 @@ def install_worker_fakes(tmp_path, monkeypatch):
     monkeypatch.setattr(
         memory_worker.psutil, "disk_usage", lambda _: SimpleNamespace(free=100 * 2**30)
     )
-    monkeypatch.setattr(
-        memory_worker.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(stdout="AC Power")
-    )
     import_attempts = []
     original_import = builtins.__import__
 

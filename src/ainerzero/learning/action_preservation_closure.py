@@ -1071,3 +1071,103 @@ def weight0_control_source_schedule_compat(metadata: dict, live_config: dict, id
             "live": WEIGHT025_LIVE_DUTY,
         },
     }
+
+
+# ------- M2n-M5 condition: E24 mixed batch + frozen GRU tail self-recurrent block (A42/A43)
+
+TAILSELF_PROTOCOL = "m2m_n_mixed_history_tailself_frozen_v1"
+# Bound to the bytes of the A42 registration draft; tier 1 re-binds on registration.
+TAILSELF_DESIGN_REGISTRATION_SHA256 = "9666c142eaf9256e7cb57554ebe8150aeb2045a033be8becc5addfd89546bcfb"
+MIXED_TAILSELF_HISTORY_WEIGHT = 1.0  # E24's implicit lambda_h, explicit
+TAILSELF_FROZEN_BLOCK = {
+    "tensor": "model.gru.Wh",
+    "rows": [[128, 256], [384, 512], [640, 768]],
+    "cols": [128, 256],
+    "elements": 49_152,
+    "value": "M2d_source_bitwise",
+    "mechanism": "gradient_mask+applied_gradient_guard_l2<=1e-8+post_AdamW_projection+per_step_and_final_bitwise_check",
+    "parameters": {"total": 393_232, "trainable": 61_952, "frozen": 331_280},
+}
+
+
+def mixed_tailself_condition_plan() -> dict:
+    """Registered M2n-M5 condition: E24 mixed batch with Wh[tail rows, tail cols] frozen.
+
+    The single scientific change against the E24 mixed condition (``dd02c4fe...``):
+    ``model.gru.Wh`` rows 128:256/384:512/640:768 x cols 128:256 (49,152 elements)
+    stay at their M2d values. Objective, rows (12+4), denominator 16, lambda_h=1,
+    full backward, seeds, data, windows, schedule, lr, clip, gates and budget
+    (202,304 units / 1,740 s, deadlines 1,760 / 1,780) are E24's.
+    """
+    plan = mixed_condition_plan()
+    plan["mixed_condition_sha256"] = plan.pop("condition_sha256")
+    plan["mixed_protocol"] = plan["protocol"]
+    plan["protocol"] = TAILSELF_PROTOCOL
+    plan["single_factor"] = "additionally_freeze_gru_Wh_tail_rows_x_tail_cols_at_M2d_values_relative_to_E24_mixed"
+    plan["history_weight"] = MIXED_TAILSELF_HISTORY_WEIGHT
+    plan["renormalize_after_scaling"] = False
+    plan["design_registration_sha256"] = TAILSELF_DESIGN_REGISTRATION_SHA256
+    plan["frozen_block"] = json.loads(json.dumps(TAILSELF_FROZEN_BLOCK))
+    plan["start"] = {
+        "checkpoint": "original_M2d_f33974c9-b86f-4429-9ea9-8ea0e733142a",
+        "optimizer": "fresh_AdamW",
+        "resume": "none",
+    }
+    plan["condition_sha256"] = _digest(plan)
+    return plan
+
+
+def tailself_source_schedule_compat(metadata: dict, live_config: dict, identity: dict) -> dict:
+    """Same registered active-duty migration as M2n-M4 (0.25 -> 1.0 only), recorded as M2n-M5."""
+    try:
+        record = onestep_source_schedule_compat(metadata, live_config, identity)
+    except ValueError as exc:
+        raise ValueError(str(exc).replace("onestep", "tailself", 1)) from exc
+    record["protocol"] = TAILSELF_PROTOCOL
+    return record
+
+
+# ------- M2n-M6 condition: M2n-M5 + one-sided half-gradient projection (A50/A51)
+
+HALFPROJ_PROTOCOL = "m2m_n_mixed_history_tailself_halfproj_v1"
+# Bound to the bytes of the A50 registration draft; tier 1 re-binds on registration.
+HALFPROJ_DESIGN_REGISTRATION_SHA256 = "acca1d7d6fc4824f6e53bb3aa2004e4c7705df4a9f1ebd0aa9e122f1daccb2cb"
+HALFPROJ_PROJECTION = {
+    "vectors": "flattened_trainable_elements_of_masked_half_gradients_front_rows_and_tailself_block_excluded",
+    "rule": "if dot(g_h,g_s)<0: g_h <- g_h - dot(g_h,g_s)/||g_s||^2*g_s; g_s never modified",
+    "skip_if_norm_sq_below": 1e-12,
+    "dtype": "float64_inner_products_float32_result",
+    "post_check": "dot(g_h_new,g_s) >= -1e-6*||g_h||*||g_s|| and all finite",
+    "placement": "after_per_half_masking_before_12_4_merge",
+    "telemetry_per_update": ["cos_gh_gs", "projected", "removed_fraction", "history_l2", "single_l2"],
+    "extra_model_calls": 0,
+}
+
+
+def mixed_halfproj_condition_plan() -> dict:
+    """Registered M2n-M6 condition: the M2n-M5 condition plus one projection field.
+
+    Sole scientific change against M2n-M5 (``mixed_tailself_condition_plan``): before
+    the 12:4 merge the history-half gradient is projected off the single-edge half
+    gradient when their inner product is negative. Everything else is M2n-M5's.
+    """
+    plan = mixed_tailself_condition_plan()
+    plan["tailself_condition_sha256"] = plan.pop("condition_sha256")
+    plan["tailself_protocol"] = plan["protocol"]
+    plan["tailself_design_registration_sha256"] = plan["design_registration_sha256"]
+    plan["protocol"] = HALFPROJ_PROTOCOL
+    plan["single_factor"] = "one_sided_projection_of_history_half_gradient_off_single_edge_half_gradient_when_inner_product_negative"
+    plan["design_registration_sha256"] = HALFPROJ_DESIGN_REGISTRATION_SHA256
+    plan["half_projection"] = json.loads(json.dumps(HALFPROJ_PROJECTION))
+    plan["condition_sha256"] = _digest(plan)
+    return plan
+
+
+def halfproj_source_schedule_compat(metadata: dict, live_config: dict, identity: dict) -> dict:
+    """Same registered active-duty migration as M2n-M5, recorded as M2n-M6."""
+    try:
+        record = onestep_source_schedule_compat(metadata, live_config, identity)
+    except ValueError as exc:
+        raise ValueError(str(exc).replace("onestep", "halfproj", 1)) from exc
+    record["protocol"] = HALFPROJ_PROTOCOL
+    return record

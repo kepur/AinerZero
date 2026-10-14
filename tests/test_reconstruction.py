@@ -10,6 +10,8 @@ from test_sequences import make_episode
 from ainerzero.core.experience import DatasetPartition
 from ainerzero.learning.reconstruction import evaluate_reconstruction, reconstruction_gate
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 class FakeReconstructor:
     """Inspectable, weight-free encoder/decoder; no learning or imagined actions."""

@@ -9,12 +9,24 @@ identity gate, real mutations of production code) is checked statically or in a
 temporary copy of the sources.
 """
 
+# Archive rule (coordinator, 2026-10-14 14:15): a frozen identity must match the
+# working tree byte-for-byte only from registration until that run completes.
+# After the run, the identity file is a historical archive. Tests then check
+# the identity file's own byte SHA, and that the identity gate rejects source
+# drift on a temporary copy (fail-closed, zero worker starts). They do not
+# require the current working tree to match the archive. M2n-M4 (run
+# 1ec7f7e6, A34 accepted) is in this archive regime: its recorded file SHAs are
+# checked against the A34 run registration, not the live tree. Later
+# experiments such as M2n-M5 follow the same rule once their own run has
+# completed.
+
 from __future__ import annotations
 
 import ast
 import hashlib
 import inspect
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -769,45 +781,110 @@ def test_identity_gate_accepts_the_live_record_and_has_no_exemption():
 
 
 def test_identity_gate_rejects_the_live_protocol_when_the_sources_drift(monkeypatch, tmp_path):
-    """A31 changes memory_worker and the closure, so the shipped freeze no longer matches
-    the live tree and must fail closed until a lead re-registers it. The gate itself
-    still accepts a record built from the live bytes, with no exemption."""
-    with pytest.raises(RuntimeError, match="memory_worker.py") as excinfo:
-        cli.verify_onestep_identity(ROOT, config_path=CONFIG)
-    assert "action_preservation_closure.py" in str(excinfo.value)
-    cli.verify_onestep_identity(ROOT, _live_record(), config_path=CONFIG)
+    """Register real copied bytes, then reject source drift without launching a worker."""
+    root = tmp_path / "repo"
+    for rel in sorted(cli.ONESTEP_REQUIRED_FILES | {"pyproject.toml"}):
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / rel, target)
+    config = root / "configs/pilot.yaml"
+    identity = root / IDENTITY.relative_to(ROOT)
+    identity.parent.mkdir(parents=True, exist_ok=True)
+    record = _live_record(root)
+    record["run_authorized"] = False
+    identity.write_text(json.dumps(record))
+    frozen_bytes = identity.read_bytes()
+    cli.verify_onestep_identity(root, config_path=config)
 
+    launched = []
     def boom(*args, **kwargs):
+        launched.append(args)
         raise AssertionError("worker launched")
 
     monkeypatch.setattr(cli.subprocess, "run", boom)
-    monkeypatch.setattr(cli, "verify_onestep_identity",
-                        lambda *args, **kwargs: (_ for _ in ()).throw(
-                            RuntimeError("onestep identity mismatch: src/ainerzero/cli.py")))
-    report = cli.train_pilot_command(_args(tmp_path))
-    assert report["status"] == "failed" and report["fail_closed"] is True
-    assert "identity mismatch" in report["error"]
-
-
-def test_identity_file_is_frozen_and_not_authorized():
-    record = json.loads(IDENTITY.read_text())
-    assert record["protocol"] == apc.ONESTEP_PROTOCOL
-    assert record["status"] == "identity_frozen_run_not_authorized"
-    assert record["run_authorized"] is False
-    assert set(record["files"]) == set(cli.ONESTEP_REQUIRED_FILES)
-    live_files = _live_record()["files"]
-    drifted = {
+    drifted = (
         "src/ainerzero/runtime/memory_worker.py",
         "src/ainerzero/learning/action_preservation_closure.py",
-    }
-    assert drifted <= set(record["files"])
-    for rel, digest in record["files"].items():
-        if rel in drifted:
-            assert digest != live_files[rel]
-        else:
-            assert digest == live_files[rel]
+    )
+    for changed in ((drifted[0],), (drifted[1],), drifted):
+        originals = {rel: (root / rel).read_bytes() for rel in changed}
+        try:
+            for rel, original in originals.items():
+                (root / rel).write_bytes(original + b"\n# identity drift counterexample\n")
+            with pytest.raises(RuntimeError, match="identity mismatch") as excinfo:
+                cli.verify_onestep_identity(root, config_path=config)
+            assert str(excinfo.value) == "onestep identity mismatch: " + ", ".join(sorted(changed))
+            report = cli.train_pilot_command(_args(tmp_path, config=config))
+            assert report["status"] == "failed" and report["fail_closed"] is True
+            assert report["error"] == str(excinfo.value)
+            assert launched == []
+            assert identity.read_bytes() == frozen_bytes
+        finally:
+            for rel, original in originals.items():
+                (root / rel).write_bytes(original)
+        cli.verify_onestep_identity(root, config_path=config)
+
+
+def test_identity_file_is_frozen_and_not_authorized(tmp_path=None):
+    record = json.loads(IDENTITY.read_text())
+    assert record["protocol"] == apc.ONESTEP_PROTOCOL
+
+    def validate_frozen_status(status: str) -> None:
+        assert re.fullmatch(r"identity_frozen(?:_[a-z0-9]+)*", status), f"status does not match pattern: {status}"
+        parts = status.split("_")
+        for i, part in enumerate(parts):
+            if part == "authorized":
+                assert i > 0 and parts[i - 1] == "not", f"unauthorized word 'authorized' without preceding 'not': {status}"
+
+    validate_frozen_status(record["status"])
+    assert record["run_authorized"] is False
+    assert set(record["files"]) == set(cli.ONESTEP_REQUIRED_FILES)
+    # Post-run archive: declared SHAs match the A34 task params / run report,
+    # not the live working tree. Drift rejection stays on the temporary copy.
+    a34_params = json.loads(
+        (ROOT / "artifacts/reports/E27-onestep/A34/final-registration.json").read_text()
+    )
+    a34_report = (ROOT / "artifacts/reports/E27-onestep/A34/report.md").read_text()
+    assert a34_params["experiment_id"] == "m2nm4-onestep-r3-20261014"
+    assert "1ec7f7e6" in a34_report and "77ba136c" in a34_report
+    assert "source_files_unchanged=true" in a34_report
+    assert a34_params["identity_manifest_sha256"] == (
+        "77ba136c3380a06edb996eb01493d382d7d2edb33eb7ac365d839e106afad46c")
+    assert record["files"] == a34_params["identity"]["files"]
+    assert record["condition_sha256"] == a34_params["condition_sha256"] == (
+        a34_params["identity"]["condition_sha256"])
+    assert record["design_registration_sha256"] == a34_params["identity"]["design_registration_sha256"]
+    assert record["config_hash"] == a34_params["identity"]["config_hash"]
+    assert record["protocol"] == a34_params["identity"]["protocol"]
+    assert record["run_authorized"] is a34_params["identity"]["run_authorized"] is False
     assert record["condition_sha256"] == apc.mixed_onestep_condition_plan()["condition_sha256"]
     assert record["design_registration_sha256"] == hashlib.sha256(REGISTRATION.read_bytes()).hexdigest()
+    for rel, expected in (
+        ("artifacts/reports/E27-onestep/onestep-identity.json",
+         "77ba136c3380a06edb996eb01493d382d7d2edb33eb7ac365d839e106afad46c"),
+        ("artifacts/reports/E27-onestep/onestep-identity-A28-20261014.json",
+         "9cd249f4f1b80beb0e6187182a32733d95c25a4e3ee772bdd2783dc53ef5df88"),
+        ("artifacts/reports/E27-onestep/onestep-identity-A33-power-20261014.json",
+         "6ff5ac89396e7a5fc3835ee30246ad0816a5385c53f08b5b396cb0260d131740"),
+    ):
+        assert hashlib.sha256((ROOT / rel).read_bytes()).hexdigest() == expected, rel
+
+    for pos in ("identity_frozen_run_not_authorized", "identity_frozen_r3_user_battery_policy"):
+        validate_frozen_status(pos)
+    for neg in ("identity_frozenjunk", "identity_frozen_run_authorized", "IDENTITY_FROZEN_x"):
+        with pytest.raises(AssertionError):
+            validate_frozen_status(neg)
+
+    if tmp_path is not None:
+        tmp_id = tmp_path / "temp_identity.json"
+        for pos in ("identity_frozen_run_not_authorized", "identity_frozen_r3_user_battery_policy"):
+            tmp_id.write_text(json.dumps(dict(record, status=pos)))
+            validate_frozen_status(json.loads(tmp_id.read_text())["status"])
+        for neg in ("identity_frozenjunk", "identity_frozen_run_authorized", "IDENTITY_FROZEN_x"):
+            tmp_id.write_text(json.dumps(dict(record, status=neg)))
+            with pytest.raises(AssertionError):
+                validate_frozen_status(json.loads(tmp_id.read_text())["status"])
+
 
 
 def test_old_identity_files_are_untouched():

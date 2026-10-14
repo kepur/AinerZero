@@ -559,9 +559,6 @@ def test_stops_before_native_work_and_books_only_registered_stage(tmp_path, monk
         lambda: SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=1)),
     )
     monkeypatch.setattr(worker.psutil, "disk_usage", lambda _: SimpleNamespace(free=100 * 2**30))
-    monkeypatch.setattr(
-        worker.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(stdout="AC Power")
-    )
     imports = []
     original_import = builtins.__import__
 

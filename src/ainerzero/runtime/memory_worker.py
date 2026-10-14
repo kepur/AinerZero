@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -548,6 +547,74 @@ def action_preservation_mixed_onestep_memory_plan():
     return plan
 
 
+def action_preservation_mixed_tailself_memory_plan():
+    """M2n-M5: the E24 mixed batch with GRU Wh[tail rows, tail cols] frozen at M2d.
+
+    Forward, objective, units (152/202304), seconds (1740/1760/1780), gates, seeds,
+    windows, schedule, learning rate and clip stay those of the E24 mixed plan; only the
+    trainable scope shrinks from 111,104 to 61,952 elements (331,280 frozen).
+    """
+    from ainerzero.learning import action_preservation_closure as apc
+    from ainerzero.learning import tailself_freeze as tsf
+
+    plan = action_preservation_mixed_memory_plan()
+    condition = apc.mixed_tailself_condition_plan()
+    plan.update(
+        protocol=apc.TAILSELF_PROTOCOL,
+        history_weight=apc.MIXED_TAILSELF_HISTORY_WEIGHT,
+        renormalize_after_scaling=False,
+        trainable_parameter_count=tsf.TAILSELF_TRAINABLE_PARAMETER_COUNT,
+        frozen_parameter_count=tsf.TAILSELF_FROZEN_PARAMETER_COUNT,
+        frozen_block=condition["frozen_block"],
+        action_preservation_condition=condition,
+    )
+    weights, denominator = apc.mixed_half_weights(
+        plan["single_edge_rows"], plan["history_rows"], plan["history_weight"]
+    )
+    if (plan["single_edge_rows"], plan["history_rows"], denominator) != (12, 4, 16.0):
+        raise RuntimeError("tailself condition must keep the 12/4 rows and the 16-row denominator")
+    if weights != {"single_edge": 12.0, "history": 4.0}:
+        raise RuntimeError("tailself condition weights must stay E24's unscaled 12/4")
+    if condition["mixed_protocol"] != apc.MIXED_PROTOCOL or condition["history_weight"] != 1.0:
+        raise RuntimeError("tailself condition must derive from the unweighted E24 mixed condition")
+    if "truncate_each_step" in condition or plan.get("truncate_each_step"):
+        raise RuntimeError("tailself condition keeps E24's full backward pass")
+    counts = tsf.mask_counts()
+    if (counts["trainable"], counts["frozen"], counts["tailself_block"]) != (61_952, 331_280, 49_152):
+        raise RuntimeError("tailself mask element counts differ from the registration")
+    if plan["training_model_units_per_update"] != 152 or plan["expected_total_model_units"] != 202_304:
+        raise RuntimeError("tailself condition must keep the registered unit budget")
+    if (plan["total_reserved_seconds_if_complete"], plan["supervised_deadline_seconds"],
+            plan["supervisor_deadline_seconds"]) != (1_740, 1_760, 1_780):
+        raise RuntimeError("tailself condition must keep the registered seconds and deadlines")
+    if condition["units"]["total"] != plan["expected_total_model_units"]:
+        raise RuntimeError("tailself condition units must match the plan budget")
+    return plan
+
+
+def action_preservation_mixed_tailself_halfproj_memory_plan():
+    """M2n-M6: the M2n-M5 plan plus the one-sided half-gradient projection.
+
+    Units, seconds, deadlines, rows, weights, frozen block and every guard are
+    M2n-M5's; the projection is tensor arithmetic on gradients already computed.
+    """
+    from ainerzero.learning import action_preservation_closure as apc
+
+    plan = action_preservation_mixed_tailself_memory_plan()
+    tailself_condition = plan["action_preservation_condition"]
+    condition = apc.mixed_halfproj_condition_plan()
+    if condition["tailself_condition_sha256"] != tailself_condition["condition_sha256"]:
+        raise RuntimeError("halfproj condition must derive from the M2n-M5 condition")
+    plan.update(
+        protocol=apc.HALFPROJ_PROTOCOL,
+        half_projection=condition["half_projection"],
+        action_preservation_condition=condition,
+    )
+    if condition["units"]["total"] != plan["expected_total_model_units"] or condition["half_projection"]["extra_model_calls"] != 0:
+        raise RuntimeError("halfproj condition must keep the M2n-M5 unit budget")
+    return plan
+
+
 def validate_diverse_comparison(report, *, source, identity, queries):
     """Use only a completed frozen M2k report on the same source and queries."""
     from ainerzero.runtime.paired_memory_worker import paired_memory_plan
@@ -962,6 +1029,8 @@ def run_memory(
     action_preservation_mixed_weight025=False,
     action_preservation_mixed_weight0_control=False,
     action_preservation_mixed_onestep=False,
+    action_preservation_mixed_tailself=False,
+    action_preservation_mixed_tailself_halfproj=False,
 ):
     from ainerzero.cli import pilot_manifest
 
@@ -990,6 +1059,21 @@ def run_memory(
                 or action_preservation_mixed_onestep):
             raise ValueError("choose one action-preservation condition")
         action_preservation_mixed = True  # same mixed branch, history half weighted by lambda_h
+    if action_preservation_mixed_tailself_halfproj:
+        if (action_preservation_mixed_tailself or action_preservation_mixed
+                or action_preservation_mixed_weight025
+                or action_preservation_mixed_weight0_control or action_preservation_distill
+                or action_preservation_lambda10 or action_preservation_history
+                or action_preservation_mixed_onestep):
+            raise ValueError("choose one action-preservation condition")
+        action_preservation_mixed_tailself = True  # M2n-M5 branch + half projection
+    if action_preservation_mixed_tailself:
+        if (action_preservation_mixed or action_preservation_mixed_weight025
+                or action_preservation_mixed_weight0_control or action_preservation_distill
+                or action_preservation_lambda10 or action_preservation_history
+                or action_preservation_mixed_onestep):
+            raise ValueError("choose one action-preservation condition")
+        action_preservation_mixed = True  # same mixed branch, Wh tail-self block frozen
     if action_preservation_mixed_onestep:
         if (action_preservation_mixed or action_preservation_mixed_weight025
                 or action_preservation_mixed_weight0_control or action_preservation_distill
@@ -1032,7 +1116,11 @@ def run_memory(
     local_fit = local_fit or diverse_fit
     config = load_pilot_config(config_path)
     plan = (
-        action_preservation_mixed_onestep_memory_plan()
+        action_preservation_mixed_tailself_halfproj_memory_plan()
+        if action_preservation_mixed_tailself_halfproj
+        else action_preservation_mixed_tailself_memory_plan()
+        if action_preservation_mixed_tailself
+        else action_preservation_mixed_onestep_memory_plan()
         if action_preservation_mixed_onestep
         else action_preservation_mixed_weight0_control_memory_plan()
         if action_preservation_mixed_weight0_control
@@ -1057,7 +1145,11 @@ def run_memory(
         else memory_plan()
     )
     phase_name = (
-        "action_preserved_mixed_onestep_memory_fit"
+        "action_preserved_mixed_tailself_halfproj_memory_fit"
+        if action_preservation_mixed_tailself_halfproj
+        else "action_preserved_mixed_tailself_memory_fit"
+        if action_preservation_mixed_tailself
+        else "action_preserved_mixed_onestep_memory_fit"
         if action_preservation_mixed_onestep
         else "action_preserved_mixed_weight0_control_memory_fit"
         if action_preservation_mixed_weight0_control
@@ -1098,6 +1190,14 @@ def run_memory(
         from ainerzero.learning.action_preservation_closure import onestep_source_schedule_compat
 
         schedule_compat = onestep_source_schedule_compat(source_metadata, live_config, identity)
+    elif action_preservation_mixed_tailself_halfproj:
+        from ainerzero.learning.action_preservation_closure import halfproj_source_schedule_compat
+
+        schedule_compat = halfproj_source_schedule_compat(source_metadata, live_config, identity)
+    elif action_preservation_mixed_tailself:
+        from ainerzero.learning.action_preservation_closure import tailself_source_schedule_compat
+
+        schedule_compat = tailself_source_schedule_compat(source_metadata, live_config, identity)
     else:
         validate_history_source(source_metadata, live_config, identity)
     fixed_batch = sample_evidence = None
@@ -1153,7 +1253,7 @@ def run_memory(
             m2l_checkpoint_path,
             weight025_lineage=action_preservation_mixed_weight025,
             weight0_control_lineage=action_preservation_mixed_weight0_control,
-            onestep_lineage=action_preservation_mixed_onestep,
+            onestep_lineage=action_preservation_mixed_onestep or action_preservation_mixed_tailself,
         )
     keep = None
     if action_preservation_fit:
@@ -1222,6 +1322,12 @@ def run_memory(
             frozen_parameter_count=282128,
             tail_protection_checks=0,
         )
+        if action_preservation_mixed_tailself:
+            report.update(
+                effective_trainable_parameter_count=plan["trainable_parameter_count"],
+                frozen_parameter_count=plan["frozen_parameter_count"],
+                tailself_frozen_block=plan["frozen_block"],
+            )
     if diverse_fit:
         report.update(
             training_samples=training_evidence,
@@ -1244,7 +1350,7 @@ def run_memory(
     run_id = None
     model = optimizer = None
     stage_started = stage_seconds = None
-    last_guard = last_power = 0.0
+    last_guard = 0.0
     initial_swap = psutil.swap_memory().used
     completed_units = 0
     reserved_units = 0
@@ -1254,7 +1360,7 @@ def run_memory(
         atomic_write_json(report_path, report)
 
     def guard(force=False):
-        nonlocal last_guard, last_power
+        nonlocal last_guard
         now = time.monotonic()
         if stage_started is not None and time.perf_counter() - stage_started > stage_seconds:
             raise RuntimeError("memory experiment exceeded prepaid stage window")
@@ -1271,14 +1377,7 @@ def run_memory(
             raise RuntimeError("memory experiment swap growth limit reached")
         if psutil.disk_usage(directory).free < config.resources.minimum_disk_free_gib * 2**30:
             raise RuntimeError("memory experiment disk reserve reached")
-        if force or now - last_power > 15:
-            power = subprocess.run(
-                ["pmset", "-g", "batt"], capture_output=True, text=True, timeout=5, check=True
-            ).stdout
-            if "AC Power" not in power:
-                raise RuntimeError("memory experiment requires AC power")
-            last_power = now
-
+        # User policy: battery power does not block registered model work.
     def stage(name, *, updates=0, units=0):
         nonlocal stage_started, stage_seconds, reserved_units
         guard(force=True)
@@ -1411,6 +1510,18 @@ def run_memory(
                 source_tensors,
                 {f"model.{k}": np.array(v) for k, v in tree_flatten(model.parameters())},
             )
+            if action_preservation_mixed_tailself:
+                from ainerzero.learning.tailself_freeze import (
+                    check_applied_frozen_gradient,
+                    mask_tailself_gradients,
+                    project_tailself,
+                    verify_tailself_update,
+                )
+
+                verify_tailself_update(
+                    source_tensors,
+                    {f"model.{k}": np.array(v) for k, v in tree_flatten(model.parameters())},
+                )
         optimizer = optim.AdamW(
             learning_rate=plan["learning_rate"],
             betas=config.training.adam_betas,
@@ -1891,6 +2002,22 @@ def run_memory(
                     )
                     if scaled_history_l2 != 0.0:
                         raise RuntimeError("scaled history gradient must be strictly 0")
+                if action_preservation_mixed_tailself_halfproj:
+                    # M2n-M6: one-sided projection of the history half off the
+                    # single-edge half, before the unchanged 12:4 merge.
+                    from ainerzero.learning.halfproj import project_history_half
+
+                    new_history, projection = project_history_half(
+                        {"gru": {k.removeprefix("gru."): np.asarray(v)
+                                 for k, v in tree_flatten(half_grads["history"])}},
+                        {"gru": {k.removeprefix("gru."): np.asarray(v)
+                                 for k, v in tree_flatten(half_grads["single_edge"])}},
+                    )
+                    if projection["projected"]:
+                        half_grads["history"] = {
+                            "gru": {k: mx.array(v) for k, v in new_history["gru"].items()}
+                        }
+                    mixed_details["half_projection"] = projection
                 gradients = apc.combine_mixed_halves(half_grads, weights, total_weight, tree_map)
                 total = sum(
                     weights[name] * (details["ce"] + plan["keep_lambda"] * details["kl"])
@@ -1971,7 +2098,19 @@ def run_memory(
                     report["distill_first_update"] = first
             elif action_preservation_fit:
                 gradients, keep_details = keep_update(index, memory_sum, target_count)
+            tailself_guard = None
+            if action_preservation_mixed_tailself:
+                # M2n-M5: mask the Wh tail-self block (and front rows) before clipping.
+                tailself_raw = {k.removeprefix("gru."): np.asarray(v) for k, v in tree_flatten(gradients)}
+                gradients = mask_tailself_gradients(gradients)
             gradients, norm = optim.clip_grad_norm(gradients, config.training.gradient_clip_norm)
+            if action_preservation_mixed_tailself:
+                mx.eval(gradients, norm)
+                # Guard the gradient actually handed to AdamW over all frozen GRU elements.
+                tailself_guard = check_applied_frozen_gradient(
+                    tailself_raw,
+                    {k.removeprefix("gru."): np.asarray(v) for k, v in tree_flatten(gradients)},
+                )
             if action_preservation_fit:
                 mx.eval(gradients, norm)
                 for name, value in tree_flatten(gradients):
@@ -1980,7 +2119,10 @@ def run_memory(
                         raise RuntimeError("clipped gradient has nonzero frozen rows")
             params_before = [np.array(v) for _, v in tree_flatten(model.parameters())] if action_preservation_mixed else None
             optimizer.update(model, gradients)
-            if local_fit:
+            if local_fit and action_preservation_mixed_tailself:
+                # AdamW weight decay also moves the masked block: restore front rows + block.
+                project_tailself(model, source_tensors)
+            elif local_fit:
                 # Gradient masking alone does not stop AdamW's front-row weight decay.
                 project_gru_front(model, source_tensors)
             mx.eval(model.parameters(), optimizer.state, norm, key)
@@ -2001,11 +2143,15 @@ def run_memory(
                 if action_preservation_fit and not action_preservation_distill else 0
             )
             if local_fit:
-                report["latest_tail_protection"] = verify_tail_update(
+                report["latest_tail_protection"] = (
+                    verify_tailself_update if action_preservation_mixed_tailself else verify_tail_update
+                )(
                     source_tensors,
                     {f"model.{k}": np.array(v) for k, v in tree_flatten(model.parameters())},
                 )
                 report["tail_protection_checks"] += 1
+                if tailself_guard is not None:
+                    report["latest_tailself_gradient_guard"] = tailself_guard
             elapsed = time.perf_counter() - tick
             entry = {
                 "update": index + 1,
@@ -2247,7 +2393,9 @@ def run_memory(
         if report["logical_model_transitions"] != reserved_units:
             raise RuntimeError("memory measured work differs from reserved model units")
         if local_fit:
-            report["tail_protection"] = verify_tail_update(source_tensors, saved)
+            report["tail_protection"] = (
+                verify_tailself_update if action_preservation_mixed_tailself else verify_tail_update
+            )(source_tensors, saved)
             if report["logical_model_transitions"] != plan["expected_total_model_units"]:
                 raise RuntimeError("micro memory model units differ from fixed plan")
         if diverse_fit:
@@ -2489,7 +2637,7 @@ def run_action_preservation_probe(
     store = RunStore(control_db)
     run_id = None
     stage_started = stage_seconds = stage_name = None
-    last_guard = last_power = 0.0
+    last_guard = 0.0
     initial_swap = psutil.swap_memory().used
     completed_units = reserved_units = 0
 
@@ -2498,7 +2646,7 @@ def run_action_preservation_probe(
         atomic_write_json(report_path, report)
 
     def guard(force=False):
-        nonlocal last_guard, last_power
+        nonlocal last_guard
         now = time.monotonic()
         if stage_started is not None and time.perf_counter() - stage_started > stage_seconds:
             raise RuntimeError(f"probe exceeded prepaid stage window ({stage_name})")
@@ -2515,14 +2663,7 @@ def run_action_preservation_probe(
             raise RuntimeError("probe swap growth limit reached")
         if psutil.disk_usage(directory).free < config.resources.minimum_disk_free_gib * 2**30:
             raise RuntimeError("probe disk reserve reached")
-        if force or now - last_power > 15:
-            power = subprocess.run(
-                ["pmset", "-g", "batt"], capture_output=True, text=True, timeout=5, check=True
-            ).stdout
-            if "AC Power" not in power:
-                raise RuntimeError("probe requires AC power")
-            last_power = now
-
+        # User policy: battery power does not block registered model work.
     def close_stage():
         nonlocal stage_started
         if stage_started is not None:
@@ -2913,7 +3054,42 @@ def main():
     parser.add_argument("--action-preservation-mixed-weight025", action="store_true")
     parser.add_argument("--action-preservation-mixed-weight0-control", action="store_true")
     parser.add_argument("--action-preservation-mixed-onestep", action="store_true")
+    parser.add_argument("--action-preservation-mixed-tailself", action="store_true")
+    parser.add_argument("--action-preservation-mixed-tailself-halfproj", action="store_true")
     args = parser.parse_args()
+    if args.action_preservation_mixed_tailself_halfproj and (
+        args.local_fit
+        or args.diverse_fit
+        or args.relabel_fit
+        or args.relabel_learning_rate is not None
+        or args.action_preservation_fit
+        or args.action_preservation_probe
+        or args.action_preservation_lambda10
+        or args.action_preservation_distill
+        or args.action_preservation_history
+        or args.action_preservation_mixed
+        or args.action_preservation_mixed_weight025
+        or args.action_preservation_mixed_weight0_control
+        or args.action_preservation_mixed_onestep
+        or args.action_preservation_mixed_tailself
+    ):
+        raise SystemExit("the half-projection mixed condition is exclusive with every other protocol flag")
+    if args.action_preservation_mixed_tailself and (
+        args.local_fit
+        or args.diverse_fit
+        or args.relabel_fit
+        or args.relabel_learning_rate is not None
+        or args.action_preservation_fit
+        or args.action_preservation_probe
+        or args.action_preservation_lambda10
+        or args.action_preservation_distill
+        or args.action_preservation_history
+        or args.action_preservation_mixed
+        or args.action_preservation_mixed_weight025
+        or args.action_preservation_mixed_weight0_control
+        or args.action_preservation_mixed_onestep
+    ):
+        raise SystemExit("the tail-self-frozen mixed condition is exclusive with every other protocol flag")
     if args.action_preservation_mixed_onestep and (
         args.local_fit
         or args.diverse_fit
@@ -3060,6 +3236,8 @@ def main():
         action_preservation_mixed_weight025=args.action_preservation_mixed_weight025,
         action_preservation_mixed_weight0_control=args.action_preservation_mixed_weight0_control,
         action_preservation_mixed_onestep=args.action_preservation_mixed_onestep,
+        action_preservation_mixed_tailself=args.action_preservation_mixed_tailself,
+        action_preservation_mixed_tailself_halfproj=args.action_preservation_mixed_tailself_halfproj,
     )
     print(json.dumps(report, ensure_ascii=False))
     return 0 if report["status"] == "completed" else 1

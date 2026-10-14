@@ -13,6 +13,7 @@
 | 最新完成产物 | [D 条件一次有界训练](artifacts/reports/E20-d/D-result-20261013.md)，200 次；**五项门全部通过（动作保持首次通过），历史 memory_screen 仍失败，未晋升** |
 | 当前交接 | run `96b72328-d9c1-4b48-b69c-1fa30ba8123c`（experiment `m2md-distill-20261013-r2`）completed：D 条件 184,704 单位/1,540 秒、480.4 秒；三次尝试（实现缺陷/环境超窗/成功）全部留档；[E14b](artifacts/reports/E14b-integration-independent-review-20261013.md)、[C06a](artifacts/reports/C06a-probe-execution-20261013.md)、[C07](artifacts/reports/C07-result-20261013.md) 报告保留 |
 | 当前主张 | **D 条件（同批同前向换名教师 KL，λ=1）五项门全过**：动作 377/384（−0.0090）与 359/384（−0.0773）＝M2d 基线逐格、迁移高于 λ=1/λ=10；根因（符号空间冲突）确认；**不晋升、下一步 M2n 需另行授权与登记**（[M2n 方案](M2N_NONZERO_HISTORY_PROPOSAL.md) 路线 A）|
+| 最新路线判读（10-14，A30/A49） | 混合批历史路线五次对照都没让动作、迁移与历史同时过门。M2n-M4 一步截断只减轻 31–40% 动作退化；M2n-M5 冻结尾部自循环块消掉 85–89% 动作退化（主通道得证），但零状态迁移与换名池失守、历史屏降到 0.158。D 仍是唯一过五门候选；下一步 (ii) 梯度投影需用户批准预算，(iv) 为预算内备选。见 [A30](artifacts/reports/relay-claude-20261014/A30-interpretation.md)、[A49](artifacts/reports/relay-claude-20261014/A49-interpretation.md) |
 | 当前工程状态 | C06a 探针 5,025 单位/179 秒、E15 208,546 单位/1,610 秒全部按登记执行；冻结 282,128 逐位、应用前部梯度 200/200 为 0、checkpoint 回读通过；586 项 CPU 回归 0 失败；独立 E16 复核仍建议另派 |
 | 本次工作范围 | Claude 执行：E14b 最终审查、C06a 登记与探针、E15 首次（失败留档）、名字绑定修复＋回归、E15 重跑、E16 第一遍只读核对（正式第二方核对已另派 subagent）、保持项只读[诊断](artifacts/reports/E17-diagnosis/keep-branch-diagnosis-20261013.md)、[M2n 方案草案](M2N_NONZERO_HISTORY_PROPOSAL.md)、含 MLX 全量测试（持锁后台）；未提交/推送，未改科学参数与门 |
 | 执行清单 | [AGENT_TASKS.md](AGENT_TASKS.md) |
@@ -129,3 +130,12 @@ E24 r2与A2限完整性范围accepted，动作及历史能力失败不晋升。�
 **2026-10-14 A7（Claude）**：M2n-M2 负结果已判读（λ_h 杠杆在 [0.25,1] 对动作不敏感，不晋升）；当前主线为 M2n-M3-control（λ_h=0 唯一因素诊断对照，非能力候选），主责 Claude。见 RESEARCH_LOG R20261014-Relay-07。
 
 **2026-10-14 A22（Claude）**：λ_h=0 对照证实，在共享尾部行 + 单一 AdamW 下，只要历史梯度非零就会伤动作，损失加权路线关闭。下一步为解耦路线设计（A25，一级），D 仍为五门候选。见 RESEARCH_LOG R20261014-Relay-10。
+
+
+### 2026-10-14 17:3x 一级接力（Codex，M6/A53）
+
+当前M6实验主责Codex；A51/A52工程及实际worker CPU准备闭包已验收。十文件身份登记见E29-halfproj/halfproj-identity.json（a7359170…），科学参数与A50不变；m2nm6-halfproj-20261014按A53 params v1一次CLI/共享锁/中央RunStore运行，预算202304/1740/1760/1780，200更新，不重试不晋升。等待A54独立运行核对后A55按A50四支判读。root旧段落是历史交接，最新任务状态以Relay为准；旧科学报告与旧身份字节保留。
+
+
+### 2026-10-14 M6闭环（Codex，A55）
+M6单次run4cd99aa7…及A54完整性验收，按A50归(d)，五门2过3不过、历史失败，不晋升不重跑。当前主责完成M6判读；后续完整(ii)需新增10400单位到212704（teacher不复用223104），秒数/门不变，预算尚未授权，不能新运行或沿M6身份复用。科学与证据边界见A55报告；原M5等档案与E29十文件快照保留。

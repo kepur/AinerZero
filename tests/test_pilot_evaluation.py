@@ -22,6 +22,8 @@ from ainerzero.learning.baselines import NoActionBaseline
 from ainerzero.learning.evaluation import evaluate_predictor
 from ainerzero.runtime.c0_collection import RANDOM_ACTOR
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 def episode(*, seed=9, steps=6, partition=DatasetPartition.DEVELOPMENT, payloads=None):
     env = C0Environment(seed)

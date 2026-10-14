@@ -370,9 +370,6 @@ def test_micro_codec_failure_preregisters_samples_and_stops_before_tensor_work(
     monkeypatch.setattr(
         memory_worker.psutil, "disk_usage", lambda _: SimpleNamespace(free=100 * 2**30)
     )
-    monkeypatch.setattr(
-        memory_worker.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(stdout="AC Power")
-    )
     imports = []
     original_import = builtins.__import__
 

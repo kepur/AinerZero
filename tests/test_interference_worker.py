@@ -503,9 +503,6 @@ def test_tensor_validation_failure_is_budgeted_and_terminal_before_model_import(
     monkeypatch.setattr(
         interference_worker.psutil, "disk_usage", lambda _: SimpleNamespace(free=100 * 2**30)
     )
-    monkeypatch.setattr(
-        interference_worker.subprocess, "run", lambda *a, **kw: SimpleNamespace(stdout="AC Power")
-    )
     imported = []
     original_import = builtins.__import__
 

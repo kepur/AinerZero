@@ -9,7 +9,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -238,7 +237,7 @@ def run_observation(
     started = time.perf_counter()
     profile = config.resources.active
     initial_swap = psutil.swap_memory().used
-    last_guard = last_power = 0.0
+    last_guard = 0.0
     run_id = None
     model = optimizer = phase = None
 
@@ -247,7 +246,7 @@ def run_observation(
         atomic_write_json(report_path, report)
 
     def guard(force=False):
-        nonlocal last_guard, last_power
+        nonlocal last_guard
         now = time.monotonic()
         if not force and now - last_guard < 1:
             return
@@ -262,14 +261,7 @@ def run_observation(
             raise RuntimeError("swap growth limit reached")
         if psutil.disk_usage(directory).free < config.resources.minimum_disk_free_gib * 2**30:
             raise RuntimeError("disk reserve reached")
-        if force or now - last_power > 15:
-            power = subprocess.run(
-                ["pmset", "-g", "batt"], capture_output=True, text=True, timeout=5, check=True
-            ).stdout
-            last_power = now
-            if "AC Power" not in power:
-                raise RuntimeError("observation training requires confirmed AC power")
-
+        # User policy: battery power does not block registered model work.
     try:
         guard(force=True)
         experiment = store.create_experiment(declaration, experiment_id, experiment_id)

@@ -502,9 +502,6 @@ def test_paired_rejects_unconfirmed_or_invalid_candidate_before_native_work(
         lambda: SimpleNamespace(memory_info=lambda: SimpleNamespace(rss=1)),
     )
     monkeypatch.setattr(worker.psutil, "disk_usage", lambda _: SimpleNamespace(free=100 * 2**30))
-    monkeypatch.setattr(
-        worker.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(stdout="AC Power")
-    )
     imports = []
     original_import = builtins.__import__
 

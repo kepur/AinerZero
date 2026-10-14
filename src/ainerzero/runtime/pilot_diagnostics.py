@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -117,11 +116,9 @@ def run_diagnostics(config_path, source_path, output_root, control_db, experimen
     store = RunStore(control_db)
     run_id = None
     initial_swap = psutil.swap_memory().used
-    last_power = 0.0
     work_started = None
 
     def guard():
-        nonlocal last_power
         if work_started is not None and time.perf_counter() - work_started > 90:
             raise RuntimeError("frozen diagnostics exceeded the 90-second reserved window")
         if psutil.virtual_memory().available < config.resources.system_reserve_gib * 2**30:
@@ -132,15 +129,7 @@ def run_diagnostics(config_path, source_path, output_root, control_db, experimen
             raise RuntimeError("diagnostic swap growth limit reached")
         if psutil.disk_usage(directory).free < config.resources.minimum_disk_free_gib * 2**30:
             raise RuntimeError("diagnostic disk reserve reached")
-        now = time.monotonic()
-        if now - last_power > 15:
-            power = subprocess.run(
-                ["pmset", "-g", "batt"], capture_output=True, text=True, timeout=5, check=True
-            ).stdout
-            if "AC Power" not in power:
-                raise RuntimeError("diagnostics require AC power")
-            last_power = now
-
+        # User policy: battery power does not block registered model work.
     try:
         guard()
         experiment = store.create_experiment(declaration, experiment_id, experiment_id)

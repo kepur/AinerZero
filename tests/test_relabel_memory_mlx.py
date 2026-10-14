@@ -13,6 +13,8 @@ from ainerzero.learning.paired_memory import evaluate_zero_context_inputs
 from ainerzero.learning.pilot_model import SharedSymbolPredictor
 from ainerzero.learning.relabel_memory import relabel_batch
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 @pytest.fixture(autouse=True)
 def cpu_only():

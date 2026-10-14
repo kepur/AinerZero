@@ -15,6 +15,8 @@ from ainerzero.learning.pilot_model import (
 )
 from ainerzero.runtime.observation_worker import action_comparison_plan
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 @pytest.fixture(autouse=True)
 def cpu_only():

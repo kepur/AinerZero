@@ -121,7 +121,6 @@ def test_resource_caps_apply_in_both_operating_modes(profile, field, value):
     "raw",
     [
         {"resources": {"system_reserve_gib": 15}},
-        {"resources": {"pause_training_on_battery": False}},
         {"resources": {"active": {"project_memory_gib": 3, "mlx_memory_gib": 4}}},
         {"resources": {"idle": {"mlx_memory_gib": 0.25, "mlx_cache_gib": 0.5}}},
         {"storage": {"disk_budget_gib": 21}},
@@ -320,3 +319,7 @@ raise SystemExit(result)
     )
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["execution_status"] == "not_started"
+
+
+def test_battery_policy_can_be_disabled():
+    assert PilotConfig.model_validate({"resources": {"pause_training_on_battery": False}}).resources.pause_training_on_battery is False

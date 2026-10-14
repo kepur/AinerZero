@@ -150,12 +150,7 @@ class PilotResources(ResourceConfig):
     system_reserve_gib: Annotated[float, Field(strict=True, ge=16)] = 16
     pause_training_on_battery: Annotated[bool, Field(strict=True)] = True
 
-    @field_validator("pause_training_on_battery")
-    @classmethod
-    def mains_power_required(cls, value: bool) -> bool:
-        if not value:
-            raise ValueError("pilot requires mains power")
-        return value
+    # Retained for historical config identity; AC power is no longer required.
 
 
 class PilotStorage(StorageConfig):

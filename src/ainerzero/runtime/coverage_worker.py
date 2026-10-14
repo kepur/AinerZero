@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -397,7 +396,7 @@ def run_coverage_diagnostic(
     store = RunStore(control_db)
     run_id = None
     stage_started = stage_seconds = None
-    last_guard = last_power = 0.0
+    last_guard = 0.0
     initial_swap = psutil.swap_memory().used
     reserved_units = 0
 
@@ -406,7 +405,7 @@ def run_coverage_diagnostic(
         atomic_write_json(report_path, report)
 
     def guard(force=False):
-        nonlocal last_guard, last_power
+        nonlocal last_guard
         now = time.monotonic()
         if stage_started is not None and time.perf_counter() - stage_started > stage_seconds:
             raise RuntimeError("coverage diagnostic exceeded prepaid stage window")
@@ -423,14 +422,7 @@ def run_coverage_diagnostic(
             raise RuntimeError("coverage diagnostic swap growth limit reached")
         if psutil.disk_usage(directory).free < config.resources.minimum_disk_free_gib * 2**30:
             raise RuntimeError("coverage diagnostic disk reserve reached")
-        if force or now - last_power > 15:
-            power = subprocess.run(
-                ["pmset", "-g", "batt"], capture_output=True, text=True, timeout=5, check=True
-            ).stdout
-            if "AC Power" not in power:
-                raise RuntimeError("coverage diagnostic requires AC power")
-            last_power = now
-
+        # User policy: battery power does not block registered model work.
     def stage(name):
         nonlocal stage_started, stage_seconds
         guard(force=True)

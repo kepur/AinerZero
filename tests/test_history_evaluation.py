@@ -10,6 +10,8 @@ from test_pilot_evaluation import episode, payloads_for
 
 from ainerzero.learning.evaluation import evaluate_predictor
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 @pytest.fixture(autouse=True)
 def cpu_stream():
