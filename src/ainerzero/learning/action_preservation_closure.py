@@ -980,6 +980,56 @@ def mixed_onestep_condition_plan() -> dict:
     return plan
 
 
+def onestep_source_schedule_compat(metadata: dict, live_config: dict, identity: dict) -> dict:
+    """Allow only the registered active-duty migration for the one-step protocol.
+
+    Same registered difference as weight025 (active duty 0.25 stored on M2d,
+    live duty 1.0). The source config is read from ``metadata["config"]``.
+    Callers cannot pass a substitute. Every other field must match. This is
+    not a general exemption: the recorded protocol is only
+    ``m2m_n_mixed_history_onestep_v1``.
+    """
+    if (
+        metadata.get("architecture") != "pilot_shared_symbol_v1"
+        or metadata.get("phase") not in {"action_prediction", "action_refinement"}
+        or type(metadata.get("optimizer_steps")) is not int
+        or metadata["optimizer_steps"] < 1
+        or not metadata.get("run_id")
+        or metadata.get("dataset_source") != identity
+        or not isinstance(metadata.get("config"), dict)
+        or not isinstance(live_config, dict)
+    ):
+        raise ValueError(
+            "onestep source architecture, phase, completed updates, dataset or config mismatch"
+        )
+    source_config = metadata["config"]
+    diffs = _config_differences(source_config, live_config)
+    allowed = [
+        item for item in diffs
+        if item["path"] == WEIGHT025_DUTY_PATH
+        and item["source"] == WEIGHT025_SOURCE_DUTY
+        and item["live"] == WEIGHT025_LIVE_DUTY
+        and type(item["source"]) is float
+        and type(item["live"]) is float
+    ]
+    other = [item for item in diffs if item not in allowed]
+    if other or len(allowed) != 1:
+        shown = [".".join(item["path"]) for item in other] or ["resources.active.training_duty_cycle"]
+        raise ValueError("onestep source config mismatch: " + ", ".join(shown))
+    encoded = json.dumps(
+        source_config, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode()
+    return {
+        "protocol": ONESTEP_PROTOCOL,
+        "source_config_sha256": hashlib.sha256(encoded).hexdigest(),
+        "allowed_difference": {
+            "path": "resources.active.training_duty_cycle",
+            "source": WEIGHT025_SOURCE_DUTY,
+            "live": WEIGHT025_LIVE_DUTY,
+        },
+    }
+
+
 def weight0_control_source_schedule_compat(metadata: dict, live_config: dict, identity: dict) -> dict:
     """Allow only the registered active duty migration for weight0 control, and record it."""
     if (

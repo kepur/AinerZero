@@ -709,12 +709,13 @@ def _prepare_relabel(
     *,
     weight025_lineage=False,
     weight0_control_lineage=False,
+    onestep_lineage=False,
 ):
     """CPU-only binding to the completed M2l candidate plus all relabel evidence.
 
-    ``weight025_lineage`` and ``weight0_control_lineage`` do not take a
-    caller-supplied config. After the registered duty check accepts
-    ``source_metadata["config"]`` against the live dump, that stored
+    ``weight025_lineage``, ``weight0_control_lineage`` and ``onestep_lineage``
+    do not take a caller-supplied config. After the registered duty check
+    accepts ``source_metadata["config"]`` against the live dump, that stored
     historical config is the lineage view. The live config object is left unchanged.
     """
     from ainerzero.learning.coverage_diagnostic import (
@@ -751,6 +752,11 @@ def _prepare_relabel(
         from ainerzero.learning.action_preservation_closure import weight0_control_source_schedule_compat
 
         weight0_control_source_schedule_compat(source_metadata, live_config, identity)
+        lineage_config = source_metadata["config"]
+    elif onestep_lineage:
+        from ainerzero.learning.action_preservation_closure import onestep_source_schedule_compat
+
+        onestep_source_schedule_compat(source_metadata, live_config, identity)
         lineage_config = source_metadata["config"]
     validate_coverage_source(
         source_metadata,
@@ -1088,6 +1094,10 @@ def run_memory(
         from ainerzero.learning.action_preservation_closure import weight0_control_source_schedule_compat
 
         schedule_compat = weight0_control_source_schedule_compat(source_metadata, live_config, identity)
+    elif action_preservation_mixed_onestep:
+        from ainerzero.learning.action_preservation_closure import onestep_source_schedule_compat
+
+        schedule_compat = onestep_source_schedule_compat(source_metadata, live_config, identity)
     else:
         validate_history_source(source_metadata, live_config, identity)
     fixed_batch = sample_evidence = None
@@ -1143,6 +1153,7 @@ def run_memory(
             m2l_checkpoint_path,
             weight025_lineage=action_preservation_mixed_weight025,
             weight0_control_lineage=action_preservation_mixed_weight0_control,
+            onestep_lineage=action_preservation_mixed_onestep,
         )
     keep = None
     if action_preservation_fit:

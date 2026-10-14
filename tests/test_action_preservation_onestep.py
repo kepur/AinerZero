@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import inspect
 import json
 import shutil
 import subprocess
@@ -768,9 +769,13 @@ def test_identity_gate_accepts_the_live_record_and_has_no_exemption():
 
 
 def test_identity_gate_rejects_the_live_protocol_when_the_sources_drift(monkeypatch, tmp_path):
-    """The shipped identity file is a freeze for the M2n-M4 sources: it must accept the
-    live tree while they agree, and fail closed for the worker launch path."""
-    cli.verify_onestep_identity(ROOT, config_path=CONFIG)
+    """A31 changes memory_worker and the closure, so the shipped freeze no longer matches
+    the live tree and must fail closed until a lead re-registers it. The gate itself
+    still accepts a record built from the live bytes, with no exemption."""
+    with pytest.raises(RuntimeError, match="memory_worker.py") as excinfo:
+        cli.verify_onestep_identity(ROOT, config_path=CONFIG)
+    assert "action_preservation_closure.py" in str(excinfo.value)
+    cli.verify_onestep_identity(ROOT, _live_record(), config_path=CONFIG)
 
     def boom(*args, **kwargs):
         raise AssertionError("worker launched")
@@ -790,7 +795,17 @@ def test_identity_file_is_frozen_and_not_authorized():
     assert record["status"] == "identity_frozen_run_not_authorized"
     assert record["run_authorized"] is False
     assert set(record["files"]) == set(cli.ONESTEP_REQUIRED_FILES)
-    assert record["files"] == _live_record()["files"]
+    live_files = _live_record()["files"]
+    drifted = {
+        "src/ainerzero/runtime/memory_worker.py",
+        "src/ainerzero/learning/action_preservation_closure.py",
+    }
+    assert drifted <= set(record["files"])
+    for rel, digest in record["files"].items():
+        if rel in drifted:
+            assert digest != live_files[rel]
+        else:
+            assert digest == live_files[rel]
     assert record["condition_sha256"] == apc.mixed_onestep_condition_plan()["condition_sha256"]
     assert record["design_registration_sha256"] == hashlib.sha256(REGISTRATION.read_bytes()).hexdigest()
 
@@ -799,6 +814,103 @@ def test_old_identity_files_are_untouched():
     for rel, expected in (("artifacts/reports/E25-weighted/weight025-identity.json", "e30504d25b711f0d"),
                           ("artifacts/reports/E26-weight0/weight0-identity.json", "bea2df343d5d0f9d")):
         assert hashlib.sha256((ROOT / rel).read_bytes()).hexdigest().startswith(expected), rel
+
+
+# --------------------------------------------------------------------------
+# 4b. one-step source schedule: the registered duty migration, nothing else
+# --------------------------------------------------------------------------
+M2D_META = (
+    ROOT / "artifacts/pilot/pilot-92e978f05bb941768a34f13a76ddf3f5/checkpoints"
+    / "f33974c9-b86f-4429-9ea9-8ea0e733142a/metadata.json"
+)
+FROZEN_ONESTEP_CONDITION = "f6e71ddcc8d0f686414875c3619b8b34e31e347a8aab8f5c2cc5ce4990b22df0"
+
+
+def _duty_pair():
+    metadata = json.loads(M2D_META.read_text())
+    live = cli.load_pilot_config(CONFIG).model_dump(mode="json")
+    return metadata, live
+
+
+def test_onestep_protocol_accepts_only_the_registered_duty_migration():
+    metadata, live = _duty_pair()
+    before = hashlib.sha256(M2D_META.read_bytes()).hexdigest()
+    record = apc.onestep_source_schedule_compat(metadata, live, metadata["dataset_source"])
+    assert hashlib.sha256(M2D_META.read_bytes()).hexdigest() == before
+    assert record["protocol"] == apc.ONESTEP_PROTOCOL
+    assert record["allowed_difference"] == {
+        "path": "resources.active.training_duty_cycle",
+        "source": 0.25,
+        "live": 1.0,
+    }
+    assert live["resources"]["active"]["training_duty_cycle"] == 1.0
+    assert metadata["config"]["resources"]["active"]["training_duty_cycle"] == 0.25
+    assert "source_config" not in inspect.signature(apc.onestep_source_schedule_compat).parameters
+    assert apc.mixed_onestep_condition_plan()["condition_sha256"] == FROZEN_ONESTEP_CONDITION
+    assert apc.mixed_condition_plan()["condition_sha256"] == (
+        "dd02c4fe58059d5c505705e35afa97042bbde2af3923239ca7b7caa6f470a4f2")
+
+
+def test_weight025_and_strict_history_keep_their_old_behavior():
+    metadata, live = _duty_pair()
+    weight = apc.weight025_source_schedule_compat(metadata, live, metadata["dataset_source"])
+    assert weight["protocol"] == apc.WEIGHT025_PROTOCOL
+    assert weight["allowed_difference"]["source"] == 0.25
+    with pytest.raises(ValueError, match="config mismatch"):
+        validate_history_source = __import__(
+            "ainerzero.runtime.history_worker", fromlist=["validate_history_source"]
+        ).validate_history_source
+        validate_history_source(metadata, live, metadata["dataset_source"])
+    memory = inspect.getsource(mw.run_memory)
+    assert "elif action_preservation_mixed_onestep:" in memory
+    assert "onestep_source_schedule_compat" in memory
+    assert "if action_preservation_mixed_weight025:" in memory
+    assert "weight025_source_schedule_compat" in memory
+    assert 'metadata.get("config") != config' in inspect.getsource(
+        __import__("ainerzero.runtime.history_worker", fromlist=["validate_history_source"]).validate_history_source
+    )
+    signature = inspect.signature(mw._prepare_relabel)
+    assert "onestep_lineage" in signature.parameters
+    assert "lineage_config" not in signature.parameters
+    assert "source_config" not in signature.parameters
+
+
+def test_onestep_rejects_unregistered_duty_and_other_fields():
+    metadata, live = _duty_pair()
+    identity = metadata["dataset_source"]
+    bumped = json.loads(json.dumps(live))
+    bumped["training"]["learning_rate"] = bumped["training"]["learning_rate"] + 1.0
+    with pytest.raises(ValueError, match="learning_rate"):
+        apc.onestep_source_schedule_compat(metadata, bumped, identity)
+    for path, value in (
+        (("resources", "active", "training_duty_cycle"), 0.5),
+        (("resources", "idle", "training_duty_cycle"), 0.5),
+        (("resources", "pause_training_on_battery"), False),
+    ):
+        changed = json.loads(json.dumps(live))
+        node = changed
+        for key in path[:-1]:
+            node = node[key]
+        node[path[-1]] = value
+        with pytest.raises(ValueError, match="onestep source config mismatch"):
+            apc.onestep_source_schedule_compat(metadata, changed, identity)
+    wrong_source = json.loads(json.dumps(metadata))
+    wrong_source["config"]["resources"]["active"]["training_duty_cycle"] = 0.5
+    with pytest.raises(ValueError, match="training_duty_cycle"):
+        apc.onestep_source_schedule_compat(wrong_source, live, identity)
+
+
+def test_onestep_full_cpu_chain_binds_historical_config():
+    script = ROOT / "artifacts/reports/E27-onestep/source-full-chain/probe.py"
+    proc = subprocess.run(
+        [sys.executable, str(script)], cwd=ROOT, capture_output=True, text=True, timeout=600,
+    )
+    assert proc.returncode == 0, proc.stderr[-4000:] + proc.stdout[-2000:]
+    log = json.loads((script.parent / "probe-log.json").read_text())
+    assert log["strict_history_rejected"] and log["unscoped_relabel_rejected"]
+    assert log["live_duty"] == 1.0 and log["historical_duty"] == 0.25
+    assert log["condition_sha_unchanged"] and log["protocol"] == apc.ONESTEP_PROTOCOL
+    assert log["m2l_weights_loaded"] is False and log["mlx_loaded"] is False
 
 
 # --------------------------------------------------------------------------
