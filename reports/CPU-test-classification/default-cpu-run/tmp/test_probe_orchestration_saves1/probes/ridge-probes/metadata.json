@@ -1,0 +1,63 @@
+{
+  "architecture": "external_recall_probe_v1",
+  "completed_probe_fits": 9,
+  "fit_partition": "train",
+  "not_a_student_checkpoint": true,
+  "phase": "diagnostic_probe",
+  "plan": {
+    "architecture": "pilot_shared_symbol_v1",
+    "capacity_caveat": "same_affine_dimensions_different_effective_rank_report_train_rank_and_constant_columns",
+    "current_only": "masked_frozen_byte_embeddings_128_plus_mask8_cursor8_padded_with128_zeros",
+    "delays": [
+      1,
+      2,
+      4
+    ],
+    "development_feature_seed": 2901,
+    "development_minimum_tick": 32,
+    "external_probe_coefficients_each": 34944,
+    "external_probe_coefficients_total": 314496,
+    "feature_kinds": [
+      "full_state",
+      "reset_state",
+      "current_only"
+    ],
+    "feature_reduction": "mean_of_8_posterior_h_z_particles_after_current_observation",
+    "feature_width": 272,
+    "fit_order": "all_train_only_fits_saved_before_development_feature_extraction",
+    "fit_weighting": "uniform_visible_past_targets_no_change_reweighting",
+    "label": "public_observation_at_t_minus_delay; changed_means_past_differs_from_current",
+    "linear_system_solves": 72,
+    "new_environment_steps": 0,
+    "parameter_count": 393232,
+    "probe_fits": 9,
+    "query_stride": 1,
+    "references": [
+      "copy_current_with_1percent_smoothing",
+      "target_embedding_codec_oracle_not_model_input"
+    ],
+    "resource_seconds": {
+      "development_features": 90,
+      "development_score": 45,
+      "fit": 90,
+      "initialization": 15,
+      "probe_save": 15,
+      "reconstruction": 45,
+      "train_features": 180,
+      "train_score": 60,
+      "verification": 5
+    },
+    "ridge": 0.01,
+    "ridge_objective": "mean_samples_squared_error_per_output_plus_0.01_weight_norm; intercept_unpenalized",
+    "selection": "fixed_single_ridge_no_dev_tuning_no_student_update_or_promotion",
+    "standardization": "train_rows_only; std_at_most_1e-6_replaced_with1",
+    "student_optimizer_steps": 0,
+    "supervised_deadline_seconds": 620,
+    "train_feature_seed": 1901,
+    "train_minimum_tick": 4
+  },
+  "student_optimizer_steps": 0,
+  "student_source": {
+    "checkpoint": "frozen-student-fixture"
+  }
+}

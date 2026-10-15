@@ -351,6 +351,75 @@ def verify_halfproj_identity(root: Path, recorded: dict | None = None, config_pa
         raise RuntimeError("halfproj identity mismatch: " + ", ".join(mismatches))
 
 
+FULLPROJ_PROTOCOL = "m2m_n_mixed_history_tailself_fullproj_v1"
+FULLPROJ_IDENTITY_PATH = "artifacts/reports/E30-fullproj/fullproj-identity.json"
+FULLPROJ_REQUIRED_FILES = frozenset(
+    {
+        "src/ainerzero/cli.py",
+        "src/ainerzero/runtime/memory_worker.py",
+        "src/ainerzero/learning/action_preservation_closure.py",
+        "src/ainerzero/learning/action_preservation.py",
+        "src/ainerzero/learning/one_step_memory.py",
+        "src/ainerzero/learning/tail_update.py",
+        "src/ainerzero/learning/tailself_freeze.py",
+        "src/ainerzero/learning/halfproj.py",
+        "src/ainerzero/learning/fullproj.py",
+        "configs/pilot.yaml",
+        "artifacts/reports/relay-claude-20261014/M2NM7-fullproj-registration.json",
+    }
+)
+
+
+def verify_fullproj_identity(root: Path, recorded: dict | None = None, config_path: Path | None = None) -> None:
+    """Fail closed unless the M2n-M7 freeze matches the required schema and this config.
+
+    Same contract as ``verify_halfproj_identity`` with its own protocol, file set,
+    identity path and live ``mixed_fullproj_condition_plan`` digests. A missing
+    identity file raises ``OSError``; no lock, run or MLX import here.
+    """
+    if recorded is None:
+        recorded = json.loads((root / FULLPROJ_IDENTITY_PATH).read_text())
+    if not isinstance(recorded, dict):
+        raise RuntimeError("fullproj identity schema: record must be an object")
+    required = {"protocol", "condition_sha256", "design_registration_sha256", "config_hash", "files"}
+    missing = sorted(required - set(recorded))
+    if missing:
+        raise RuntimeError("fullproj identity schema: missing " + ",".join(missing))
+    if recorded["protocol"] != FULLPROJ_PROTOCOL:
+        raise RuntimeError("fullproj identity mismatch: protocol")
+    for name in ("condition_sha256", "design_registration_sha256", "config_hash"):
+        if not _is_sha256(recorded[name]):
+            raise RuntimeError(f"fullproj identity schema: {name} is not a sha256")
+    files = recorded["files"]
+    if not isinstance(files, dict) or set(files) != set(FULLPROJ_REQUIRED_FILES):
+        raise RuntimeError("fullproj identity schema: files must be exactly the required set")
+    mismatches = []
+    for rel, expected in files.items():
+        if not _is_sha256(expected):
+            raise RuntimeError(f"fullproj identity schema: {rel} is not a sha256")
+        file_path = root / rel
+        if not file_path.is_file():
+            mismatches.append(rel)
+            continue
+        if hashlib.sha256(file_path.read_bytes()).hexdigest() != expected:
+            mismatches.append(rel)
+    if config_path is None:
+        raise RuntimeError("fullproj identity schema: config path required")
+    actual_config = pilot_config_hash(load_pilot_config(config_path))
+    if actual_config != recorded["config_hash"]:
+        mismatches.append("config_hash")
+    from ainerzero.learning.action_preservation_closure import mixed_fullproj_condition_plan
+
+    plan = mixed_fullproj_condition_plan()
+    if plan["protocol"] != FULLPROJ_PROTOCOL or plan["condition_sha256"] != recorded["condition_sha256"]:
+        mismatches.append("condition_sha256")
+    if plan["design_registration_sha256"] != recorded["design_registration_sha256"]:
+        mismatches.append("design_registration_sha256")
+    if mismatches:
+        raise RuntimeError("fullproj identity mismatch: " + ", ".join(mismatches))
+
+
+
 def verify_weight0_control_identity(root: Path, recorded: dict | None = None, config_path: Path | None = None) -> None:
     """Fail closed unless the freeze matches the required schema and this config."""
     if recorded is None:
@@ -419,14 +488,31 @@ def train_pilot_command(args) -> dict:
     action_onestep = getattr(args, "action_preserved_mixed_onestep_training", False)
     action_tailself = getattr(args, "action_preserved_mixed_tailself_training", False)
     action_halfproj = getattr(args, "action_preserved_mixed_halfproj_training", False)
+    action_fullproj = getattr(args, "action_preserved_mixed_fullproj_training", False)
     action_probe = getattr(args, "action_preservation_probe", False)
     interference = getattr(args, "interference_diagnostic", False)
     paired_memory = getattr(args, "paired_memory_diagnostic", False)
     coverage = getattr(args, "coverage_diagnostic", False)
     history = getattr(args, "history_diagnostic", False)
+    if action_fullproj and (
+        action_mixed or action_memory or action_probe or action_lambda10
+        or action_distill or action_history or action_weight025 or action_weight0_control
+        or action_onestep or action_tailself or action_halfproj
+    ):
+        return {
+            "status": "failed",
+            "error": "fullproj entry is exclusive with every other action-preservation command",
+            "fail_closed": True,
+        }
+    if action_fullproj:
+        try:
+            verify_fullproj_identity(project_root(args.config), config_path=args.config)
+        except (OSError, json.JSONDecodeError, RuntimeError, ValueError) as exc:
+            return {"status": "failed", "error": str(exc), "fail_closed": True}
     if action_weight025 and (
         action_mixed or action_memory or action_probe or action_lambda10
         or action_distill or action_history or action_weight0_control or action_onestep
+        or action_fullproj
     ):
         return {
             "status": "failed",
@@ -436,6 +522,7 @@ def train_pilot_command(args) -> dict:
     if action_weight0_control and (
         action_mixed or action_memory or action_probe or action_lambda10
         or action_distill or action_history or action_weight025 or action_onestep
+        or action_fullproj
     ):
         return {
             "status": "failed",
@@ -445,6 +532,7 @@ def train_pilot_command(args) -> dict:
     if action_onestep and (
         action_mixed or action_memory or action_probe or action_lambda10
         or action_distill or action_history or action_weight025 or action_weight0_control
+        or action_fullproj
     ):
         return {
             "status": "failed",
@@ -454,7 +542,7 @@ def train_pilot_command(args) -> dict:
     if action_halfproj and (
         action_mixed or action_memory or action_probe or action_lambda10
         or action_distill or action_history or action_weight025 or action_weight0_control
-        or action_onestep or action_tailself
+        or action_onestep or action_tailself or action_fullproj
     ):
         return {
             "status": "failed",
@@ -469,7 +557,7 @@ def train_pilot_command(args) -> dict:
     if action_tailself and (
         action_mixed or action_memory or action_probe or action_lambda10
         or action_distill or action_history or action_weight025 or action_weight0_control
-        or action_onestep
+        or action_onestep or action_halfproj or action_fullproj
     ):
         return {
             "status": "failed",
@@ -524,7 +612,7 @@ def train_pilot_command(args) -> dict:
         ]
     elif (action_memory or action_probe or action_lambda10 or action_distill
           or action_history or action_mixed or action_weight025 or action_weight0_control
-          or action_onestep or action_tailself or action_halfproj):
+          or action_onestep or action_tailself or action_halfproj or action_fullproj):
         module = "ainerzero.runtime.memory_worker"
         extra = [
             "--dataset",
@@ -539,6 +627,8 @@ def train_pilot_command(args) -> dict:
             str(args.m2l_checkpoint.resolve()),
             "--action-preservation-probe"
             if action_probe
+            else "--action-preservation-mixed-tailself-fullproj"
+            if action_fullproj
             else "--action-preservation-mixed-tailself-halfproj"
             if action_halfproj
             else "--action-preservation-mixed-tailself"
@@ -677,7 +767,7 @@ def train_pilot_command(args) -> dict:
                     if action_probe
                     else 1780
                     if action_weight0_control or action_weight025 or action_mixed or action_onestep
-                    or action_tailself or action_halfproj
+                    or action_tailself or action_halfproj or action_fullproj
                     else 1790
                     if action_history
                     else 1640
@@ -993,6 +1083,42 @@ def main(argv: list[str] | None = None) -> int:
     action_halfproj.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
     action_halfproj.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
     action_halfproj.add_argument("--output", type=Path)
+    action_fullproj = commands.add_parser(
+        "train-action-preserved-mixed-fullproj-memory",
+        help="M2n-M7：M2n-M6＋历史半内部 CE_h 对 KL_h 投影（内积<0 时）；固定 200 次，无科学参数",
+    )
+    action_fullproj.set_defaults(action_preserved_mixed_fullproj_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_fullproj.add_argument(f"--{name}", type=Path, required=True)
+    action_fullproj.add_argument("--experiment-id", required=True)
+    action_fullproj.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_fullproj.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_fullproj.add_argument("--output", type=Path)
+    action_fullproj_alias = commands.add_parser(
+        "train-action-preserved-mixed-tailself-fullproj-memory",
+        help="M2n-M7 别名：同 train-action-preserved-mixed-fullproj-memory",
+    )
+    action_fullproj_alias.set_defaults(action_preserved_mixed_fullproj_training=True)
+    for name in (
+        "dataset",
+        "checkpoint",
+        "comparison-report",
+        "m2l-report",
+        "m2l-checkpoint",
+        "m2mc-report",
+    ):
+        action_fullproj_alias.add_argument(f"--{name}", type=Path, required=True)
+    action_fullproj_alias.add_argument("--experiment-id", required=True)
+    action_fullproj_alias.add_argument("--config", type=Path, default=Path("configs/pilot.yaml"))
+    action_fullproj_alias.add_argument("--output-dir", type=Path, default=Path("artifacts/pilot"))
+    action_fullproj_alias.add_argument("--output", type=Path)
     action_history = commands.add_parser(
         "train-action-preserved-history-memory",
         help="M2n：D 的批内蒸馏 + 多步真实历史窗口（burn_in4/8步）；固定200次，无科学参数",
@@ -1149,6 +1275,8 @@ def main(argv: list[str] | None = None) -> int:
             "train-action-preserved-mixed-onestep-memory",
             "train-action-preserved-mixed-tailself-memory",
             "train-action-preserved-mixed-tailself-halfproj-memory",
+            "train-action-preserved-mixed-fullproj-memory",
+            "train-action-preserved-mixed-tailself-fullproj-memory",
             "probe-action-preserved-memory",
             "diagnose-interference",
             "diagnose-paired-memory",

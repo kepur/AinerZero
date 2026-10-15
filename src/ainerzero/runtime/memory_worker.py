@@ -615,6 +615,37 @@ def action_preservation_mixed_tailself_halfproj_memory_plan():
     return plan
 
 
+def action_preservation_mixed_tailself_fullproj_memory_plan():
+    """M2n-M7: the M2n-M6 plan plus intra-history CE/KL gradient projection.
+
+    Inside the history half, student forward/backward is run twice (once for CE,
+    once for KL distillation with teacher logits reused from the first pass).
+    Units per update increase by 52 (4 rows x 13 frames) from 152 to 204.
+    Total units = 212,704. Seconds 1,740 / 1,760 / 1,780 unchanged.
+    """
+    from ainerzero.learning import action_preservation_closure as apc
+
+    plan = action_preservation_mixed_tailself_halfproj_memory_plan()
+    halfproj_condition = plan["action_preservation_condition"]
+    condition = apc.mixed_fullproj_condition_plan()
+    if condition["halfproj_condition_sha256"] != halfproj_condition["condition_sha256"]:
+        raise RuntimeError("fullproj condition must derive from the M2n-M6 condition")
+    plan.update(
+        protocol=apc.FULLPROJ_PROTOCOL,
+        half_projection=condition["full_projection"],
+        full_projection=condition["full_projection"],
+        action_preservation_condition=condition,
+        training_model_units_per_update=condition["windows"]["units_per_update"],
+        expected_total_model_units=condition["units"]["total"],
+    )
+    if condition["units"]["total"] != 212_704 or condition["full_projection"]["extra_model_calls"] != 52:
+        raise RuntimeError("fullproj condition must match the 212,704 unit budget")
+    if plan["training_model_units_per_update"] != 204:
+        raise RuntimeError("fullproj units per update must equal 204")
+    return plan
+
+
+
 def validate_diverse_comparison(report, *, source, identity, queries):
     """Use only a completed frozen M2k report on the same source and queries."""
     from ainerzero.runtime.paired_memory_worker import paired_memory_plan
@@ -1031,6 +1062,7 @@ def run_memory(
     action_preservation_mixed_onestep=False,
     action_preservation_mixed_tailself=False,
     action_preservation_mixed_tailself_halfproj=False,
+    action_preservation_mixed_tailself_fullproj=False,
 ):
     from ainerzero.cli import pilot_manifest
 
@@ -1059,8 +1091,16 @@ def run_memory(
                 or action_preservation_mixed_onestep):
             raise ValueError("choose one action-preservation condition")
         action_preservation_mixed = True  # same mixed branch, history half weighted by lambda_h
+    if action_preservation_mixed_tailself_fullproj:
+        if (action_preservation_mixed_tailself_halfproj or action_preservation_mixed_tailself or action_preservation_mixed
+                or action_preservation_mixed_weight025
+                or action_preservation_mixed_weight0_control or action_preservation_distill
+                or action_preservation_lambda10 or action_preservation_history
+                or action_preservation_mixed_onestep):
+            raise ValueError("choose one action-preservation condition")
+        action_preservation_mixed_tailself = True  # M2n-M5 branch + full projection
     if action_preservation_mixed_tailself_halfproj:
-        if (action_preservation_mixed_tailself or action_preservation_mixed
+        if (action_preservation_mixed_tailself_fullproj or action_preservation_mixed_tailself or action_preservation_mixed
                 or action_preservation_mixed_weight025
                 or action_preservation_mixed_weight0_control or action_preservation_distill
                 or action_preservation_lambda10 or action_preservation_history
@@ -1116,7 +1156,9 @@ def run_memory(
     local_fit = local_fit or diverse_fit
     config = load_pilot_config(config_path)
     plan = (
-        action_preservation_mixed_tailself_halfproj_memory_plan()
+        action_preservation_mixed_tailself_fullproj_memory_plan()
+        if action_preservation_mixed_tailself_fullproj
+        else action_preservation_mixed_tailself_halfproj_memory_plan()
         if action_preservation_mixed_tailself_halfproj
         else action_preservation_mixed_tailself_memory_plan()
         if action_preservation_mixed_tailself
@@ -1145,7 +1187,9 @@ def run_memory(
         else memory_plan()
     )
     phase_name = (
-        "action_preserved_mixed_tailself_halfproj_memory_fit"
+        "action_preserved_mixed_tailself_fullproj_memory_fit"
+        if action_preservation_mixed_tailself_fullproj
+        else "action_preserved_mixed_tailself_halfproj_memory_fit"
         if action_preservation_mixed_tailself_halfproj
         else "action_preserved_mixed_tailself_memory_fit"
         if action_preservation_mixed_tailself
@@ -1178,7 +1222,11 @@ def run_memory(
     source_tensors, source_metadata = load_checkpoint(checkpoint_path)
     live_config = config.model_dump(mode="json")
     schedule_compat = None
-    if action_preservation_mixed_weight025:
+    if action_preservation_mixed_tailself_fullproj:
+        from ainerzero.learning.action_preservation_closure import fullproj_source_schedule_compat
+
+        schedule_compat = fullproj_source_schedule_compat(source_metadata, live_config, identity)
+    elif action_preservation_mixed_weight025:
         from ainerzero.learning.action_preservation_closure import weight025_source_schedule_compat
 
         schedule_compat = weight025_source_schedule_compat(source_metadata, live_config, identity)
@@ -1915,7 +1963,127 @@ def run_memory(
                 # two-frame backward pass and the teacher path is unchanged.
                 truncate_history = bool(action_preservation_mixed_onestep
                                         and plan.get("truncate_each_step", False))
+                fullproj_history_ce, fullproj_history_kl = None, None
                 for name, half, burn_in, rows, parts in halves:
+                    if action_preservation_mixed_tailself_fullproj and name == "history":
+                        from ainerzero.learning.action_preservation_mlx import _ReadoutRecorder
+                        from ainerzero.learning.one_step_memory import memory_sequence_loss
+
+                        # Rejection fix (A57 r2): this loop overwrites the per-part
+                        # CE/KL gradients instead of accumulating them by visible
+                        # weight; fail closed unless the registered parts==1.
+                        if parts != 1:
+                            raise RuntimeError(
+                                "fullproj history half requires parts==1 (fail-closed): "
+                                "per-part CE/KL gradients are not accumulated across parts"
+                            )
+
+                        h_targets, h_kls = 0.0, []
+                        for part in range(parts):
+                            data = {
+                                k: mx.array(v[part * micro : (part + 1) * micro])
+                                for k, v in half.items()
+                            }
+                            # Teacher pass: compute once and cache teacher logits
+                            teacher_recorder = _ReadoutRecorder(distill_teacher)
+                            memory_sequence_loss(
+                                teacher_recorder, data, burn_in=burn_in, key=keys[part],
+                                truncate_each_step=False,
+                            )
+                            cached_teacher_logits = [mx.stop_gradient(l) for l in teacher_recorder.logits]
+
+                            # Student CE pass
+                            def ce_objective(student, batch_data, *, b_in, s_key):
+                                return memory_sequence_loss(student, batch_data, burn_in=b_in, key=s_key)
+
+                            ce_vg = nn.value_and_grad(model, ce_objective)
+                            (ce_loss, ce_metrics), ce_grads = ce_vg(
+                                model, data, b_in=burn_in, s_key=keys[part]
+                            )
+                            mx.eval(ce_loss, ce_metrics, ce_grads)
+
+                            # Student KL pass
+                            def kl_objective(student, cached_logits, batch_data, *, b_in, s_key, lam):
+                                student_rec = _ReadoutRecorder(student)
+                                _, s_metrics = memory_sequence_loss(
+                                    student_rec, batch_data, burn_in=b_in, key=s_key, truncate_each_step=False
+                                )
+                                actions = batch_data["actions"]
+                                steps = actions.shape[1]
+                                valid = batch_data.get("valid_mask")
+                                if valid is None:
+                                    valid = mx.ones(actions.shape, dtype=mx.bool_)
+                                starts = batch_data["episode_start"]
+                                total_kl = None
+                                for offset, step in enumerate(range(b_in, steps)):
+                                    path_valid = valid[:, step] & ~starts[:, step + 1]
+                                    visible = batch_data["visible_mask"][:, step] & path_valid[:, None]
+                                    teacher_logits = cached_logits[offset]
+                                    student_logits = student_rec.logits[offset]
+                                    teacher_ls = teacher_logits - mx.logsumexp(teacher_logits, axis=-1, keepdims=True)
+                                    student_ls = student_logits - mx.logsumexp(student_logits, axis=-1, keepdims=True)
+                                    cell_kl = mx.sum(mx.exp(teacher_ls) * (teacher_ls - student_ls), axis=-1)
+                                    masked_kl = mx.sum(cell_kl * visible.astype(mx.float32))
+                                    total_kl = masked_kl if total_kl is None else total_kl + masked_kl
+                                count = mx.maximum(s_metrics["visible_targets"], 1)
+                                kl = total_kl / count
+                                loss = float(lam) * kl
+                                return loss, {"distill_kl": kl, "visible_targets": s_metrics["visible_targets"]}
+
+                            kl_vg = nn.value_and_grad(model, kl_objective)
+                            (kl_loss, kl_metrics), kl_grads = kl_vg(
+                                model, cached_teacher_logits, data, b_in=burn_in, s_key=keys[part], lam=distill_lambda
+                            )
+                            mx.eval(kl_loss, kl_metrics, kl_grads)
+
+                            h_kls.append(float(np.array(kl_metrics["distill_kl"])))
+                            visible = float(ce_metrics["visible_targets"].item())
+                            h_targets += visible
+
+                            fullproj_history_ce = mask_gru_tail_gradients(ce_grads)
+                            fullproj_history_kl = mask_gru_tail_gradients(kl_grads)
+                            guard()
+
+                        if h_targets <= 0:
+                            raise RuntimeError(f"mixed {name} half has no supervised visible targets")
+
+                        sum_grads = tree_map(lambda a, b: a + b, fullproj_history_ce, fullproj_history_kl)
+                        # Rejection fix (A57 r2): M2n-M6's front-row telemetry
+                        # formula on the history half — the L2 difference between
+                        # the unmasked g_CEh+g_KLh sum and the masked sum that is
+                        # actually applied, so a non-zero front gradient is
+                        # recorded instead of a hard-coded 0.0.
+                        unmasked_sum = tree_map(lambda a, b: a + b, ce_grads, kl_grads)
+                        half_front = float(
+                            np.sqrt(
+                                sum(
+                                    np.sum((np.asarray(a) - np.asarray(b)) ** 2, dtype=np.float64)
+                                    for (_, a), (_, b) in zip(
+                                        tree_flatten(unmasked_sum), tree_flatten(sum_grads)
+                                    )
+                                )
+                            )
+                        )
+                        if not np.isfinite(half_front):
+                            raise RuntimeError("mixed history fullproj front-output gradient is not finite")
+                        half_grads[name] = sum_grads
+                        mixed_details[name] = {
+                            "rows": rows,
+                            "targets": h_targets,
+                            "ce": float(ce_loss.item()),
+                            "kl": float(np.mean(h_kls)),
+                            "front_row_gradient_l2": half_front,
+                            "gradient_l2": float(
+                                np.sqrt(
+                                    sum(
+                                        np.sum(np.asarray(v) ** 2, dtype=np.float64)
+                                        for _, v in tree_flatten(sum_grads)
+                                    )
+                                )
+                            ),
+                        }
+                        distill_kls.extend(h_kls)
+                        continue
                     h_grads, h_loss, h_targets, h_kls = None, 0.0, 0.0, []
                     for part in range(parts):
                         data = {
@@ -2002,7 +2170,27 @@ def run_memory(
                     )
                     if scaled_history_l2 != 0.0:
                         raise RuntimeError("scaled history gradient must be strictly 0")
-                if action_preservation_mixed_tailself_halfproj:
+                if action_preservation_mixed_tailself_fullproj:
+                    # M2n-M7: two-stage projection:
+                    # 1. Intra-history: project g_CEh off g_KLh when <g_CEh, g_KLh> < 0
+                    # 2. Inter-half: project g_h off g_s when <g_h, g_s> < 0 (M2n-M6)
+                    from ainerzero.learning.fullproj import project_full
+
+                    new_history, projection = project_full(
+                        {"gru": {k.removeprefix("gru."): np.asarray(v)
+                                 for k, v in tree_flatten(fullproj_history_ce)}},
+                        {"gru": {k.removeprefix("gru."): np.asarray(v)
+                                 for k, v in tree_flatten(fullproj_history_kl)}},
+                        {"gru": {k.removeprefix("gru."): np.asarray(v)
+                                 for k, v in tree_flatten(half_grads["single_edge"])}},
+                    )
+                    half_grads["history"] = {
+                        "gru": {k: mx.array(v) for k, v in new_history["gru"].items()}
+                    }
+                    mixed_details["half_projection"] = projection
+                    mixed_details["full_projection"] = projection
+                    mixed_details["history"]["gradient_l2"] = projection["history_l2"]
+                elif action_preservation_mixed_tailself_halfproj:
                     # M2n-M6: one-sided projection of the history half off the
                     # single-edge half, before the unchanged 12:4 merge.
                     from ainerzero.learning.halfproj import project_history_half
@@ -3056,7 +3244,26 @@ def main():
     parser.add_argument("--action-preservation-mixed-onestep", action="store_true")
     parser.add_argument("--action-preservation-mixed-tailself", action="store_true")
     parser.add_argument("--action-preservation-mixed-tailself-halfproj", action="store_true")
+    parser.add_argument("--action-preservation-mixed-tailself-fullproj", action="store_true")
     args = parser.parse_args()
+    if args.action_preservation_mixed_tailself_fullproj and (
+        args.local_fit
+        or args.diverse_fit
+        or args.relabel_fit
+        or args.relabel_learning_rate is not None
+        or args.action_preservation_fit
+        or args.action_preservation_probe
+        or args.action_preservation_lambda10
+        or args.action_preservation_distill
+        or args.action_preservation_history
+        or args.action_preservation_mixed
+        or args.action_preservation_mixed_weight025
+        or args.action_preservation_mixed_weight0_control
+        or args.action_preservation_mixed_onestep
+        or args.action_preservation_mixed_tailself
+        or args.action_preservation_mixed_tailself_halfproj
+    ):
+        raise SystemExit("the full-projection mixed condition is exclusive with every other protocol flag")
     if args.action_preservation_mixed_tailself_halfproj and (
         args.local_fit
         or args.diverse_fit
@@ -3072,6 +3279,7 @@ def main():
         or args.action_preservation_mixed_weight0_control
         or args.action_preservation_mixed_onestep
         or args.action_preservation_mixed_tailself
+        or args.action_preservation_mixed_tailself_fullproj
     ):
         raise SystemExit("the half-projection mixed condition is exclusive with every other protocol flag")
     if args.action_preservation_mixed_tailself and (
@@ -3238,6 +3446,7 @@ def main():
         action_preservation_mixed_onestep=args.action_preservation_mixed_onestep,
         action_preservation_mixed_tailself=args.action_preservation_mixed_tailself,
         action_preservation_mixed_tailself_halfproj=args.action_preservation_mixed_tailself_halfproj,
+        action_preservation_mixed_tailself_fullproj=args.action_preservation_mixed_tailself_fullproj,
     )
     print(json.dumps(report, ensure_ascii=False))
     return 0 if report["status"] == "completed" else 1

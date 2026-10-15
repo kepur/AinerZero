@@ -1,0 +1,116 @@
+# Brain-0 defaults are experiment settings, not measured model performance.
+# Every run snapshots all resolved defaults and their canonical SHA-256 hash.
+schema_version: 1
+project_name: ainerzero
+seed: 0
+budget:
+  max_environment_steps: 1000000
+  max_optimizer_steps: 20000
+  max_wall_seconds: 21600
+  max_daily_active_seconds: 21600
+  timezone: Europe/Belgrade
+model:
+  architecture: brain0_rssm
+  initialization: random
+  cells: 8
+  symbol_vocabulary: 256
+  action_count: 4
+  byte_embedding_dim: 16
+  encoder_hidden_dim: 512
+  embedding_dim: 512
+  hidden_dim: 1024
+  latent_dim: 64
+  action_embedding_dim: 32
+  prior_hidden_dim: 1024
+  posterior_hidden_dim: 1024
+  decoder_hidden_dim: 1024
+  ensemble_heads: 5
+  ensemble_hidden_dim: 512
+  minimum_std: 0.1
+  activation: silu
+training:
+  precision: float32
+  effective_batch_size: 32
+  burn_in_steps: 16
+  sequence_steps: 64
+  optimizer: adamw
+  learning_rate: 0.0003
+  adam_betas: [0.9, 0.999]
+  adam_epsilon: 0.00000001
+  weight_decay: 0.0001
+  bias_correction: true
+  gradient_clip_norm: 1.0
+  symbol_loss_weight: 1.0
+  visibility_loss_weight: 0.2
+  cursor_loss_weight: 0.2
+  kl_loss_weight: 0.1
+  kl_warmup_updates: 1000
+  kl_free_nats: 1.0
+  ensemble_loss_weight: 0.1
+  ema_decay: 0.99
+  bootstrap_probability: 0.8
+  warmup_transitions: 10000
+  initial_fit_updates: 500
+  collect_transitions: 1024
+  updates_per_collection: 8
+  validation_interval_updates: 500
+  checkpoint_interval_updates: 1000
+  replay: {recent: 0.5, reservoir: 0.3, failure: 0.2}
+resources:
+  mode: adaptive
+  active:
+    cpu_workers: 2
+    vector_environments: 8
+    micro_batch_size: 8
+    project_memory_gib: 16
+    mlx_memory_gib: 8
+    mlx_cache_gib: 1
+    training_duty_cycle: 0.25
+  idle:
+    cpu_workers: 4
+    vector_environments: 32
+    micro_batch_size: 32
+    project_memory_gib: 64
+    mlx_memory_gib: 48
+    mlx_cache_gib: 4
+    training_duty_cycle: 1.0
+  idle_after_seconds: 300
+  activity_poll_seconds: 2
+  duty_window_seconds: 2
+  target_micro_step_seconds: 0.5
+  system_reserve_gib: 16
+  pause_below_available_gib: 8
+  minimum_disk_free_gib: 50
+  pause_training_on_battery: true
+  swap_growth_gib: 1
+  swap_sample_seconds: 10
+  swap_growth_samples: 3
+storage:
+  data_dir: artifacts
+  disk_budget_gib: 20
+  replay_max_transitions: 1000000
+  ram_cache_gib: 2
+  trajectory_shard_mib: 256
+  keep_recent_checkpoints: 3
+  keep_best_versions: 2
+environment:
+  name: switchlab_v1
+  course: C0
+  max_episode_ticks: 128
+  hidden_placeholder_byte: 0
+planning:
+  horizon: 12
+  candidates: 128
+  elites: 16
+  iterations: 3
+  latent_samples: 4
+  old_distribution_weight: 0.2
+  action_cost: 0.01
+  disagreement_penalty: 0.1
+teaching:
+  mode: guided
+  allow_teacher_demonstrations: true
+evaluation:
+  development_seed_count: 3
+  final_seed_count: 5
+  episodes_per_course_per_seed: 100

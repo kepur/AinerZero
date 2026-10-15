@@ -1171,3 +1171,93 @@ def halfproj_source_schedule_compat(metadata: dict, live_config: dict, identity:
         raise ValueError(str(exc).replace("onestep", "halfproj", 1)) from exc
     record["protocol"] = HALFPROJ_PROTOCOL
     return record
+
+
+# ------- M2n-M7 condition: M2n-M6 + intra-history CE/KL gradient projection (A56/A57)
+
+FULLPROJ_PROTOCOL = "m2m_n_mixed_history_tailself_fullproj_v1"
+FULLPROJ_DESIGN_REGISTRATION_SHA256 = "0a1f8dd020d6760024d2afff545291202f49e95076eaa6a4571c1f9a48ee1c03"
+FULLPROJ_PROJECTION = {
+    "vectors": "flattened_trainable_elements_of_masked_gradients_front_rows_and_tailself_block_excluded",
+    "intra_rule": "if dot(g_CEh,g_KLh)<0: g_CEh <- g_CEh - dot(g_CEh,g_KLh)/||g_KLh||^2*g_KLh; g_KLh never modified",
+    "inter_rule": "if dot(g_h,g_s)<0: g_h <- g_h - dot(g_h,g_s)/||g_s||^2*g_s; g_s never modified",
+    "skip_if_norm_sq_below": 1e-12,
+    "dtype": "float64_inner_products_float32_result",
+    "post_check": "dot(g_CEh_new,g_KLh) >= -1e-6*||g_CEh||*||g_KLh|| and dot(g_h_new,g_s) >= -1e-6*||g_h||*||g_s|| and all finite",
+    "placement": "intra_history_projection_before_gh_formation_then_half_projection_before_12_4_merge",
+    "telemetry_per_update": [
+        "cos_gCEh_gKLh",
+        "intra_projected",
+        "intra_removed_fraction",
+        "cos_gh_gs",
+        "projected",
+        "removed_fraction",
+        "history_l2",
+        "single_l2",
+        "kl_h_l2",
+        "ce_h_l2",
+    ],
+    "extra_model_calls": 52,
+}
+
+
+def mixed_fullproj_condition_plan() -> dict:
+    """Registered M2n-M7 condition: the M2n-M6 condition plus intra-history projection.
+
+    Sole scientific change against M2n-M6 (``mixed_halfproj_condition_plan``): inside
+    the history half, student CE and KL gradients are computed in two separate
+    backward passes with teacher logits reused (+52 units per update: 4 rows x 13 frames).
+    If <g_CEh, g_KLh> < 0, g_CEh is projected off g_KLh (g_KLh never modified). The
+    resulting g_h = g_CEh' + g_KLh is then projected off g_s if <g_h, g_s> < 0 (unchanged
+    M2n-M6 rule).
+    """
+    plan = mixed_halfproj_condition_plan()
+    plan["halfproj_condition_sha256"] = plan.pop("condition_sha256")
+    plan["halfproj_protocol"] = plan["protocol"]
+    plan["halfproj_design_registration_sha256"] = plan["design_registration_sha256"]
+    plan["protocol"] = FULLPROJ_PROTOCOL
+    plan["single_factor"] = (
+        "inside_the_history_half_compute_CE_h_and_KL_h_gradients_by_two_separate_backward_passes_"
+        "and_project_g_CEh_off_g_KLh_when_their_inner_product_is_negative_everything_else_identical_to_M2n-M6"
+    )
+    plan["design_registration_sha256"] = FULLPROJ_DESIGN_REGISTRATION_SHA256
+    plan["full_projection"] = json.loads(json.dumps(FULLPROJ_PROJECTION))
+    student_single = 200 * MIXED_SINGLE_ROWS * MIXED_SINGLE_UNITS_PER_ROW
+    student_history = 200 * MIXED_HISTORY_ROWS * MIXED_HISTORY_UNITS_PER_ROW
+    student_history_recompute = 200 * MIXED_HISTORY_ROWS * MIXED_HISTORY_UNITS_PER_ROW
+    teacher = (
+        200 * MIXED_SINGLE_ROWS * MIXED_SINGLE_UNITS_PER_ROW
+        + 200 * MIXED_HISTORY_ROWS * MIXED_HISTORY_UNITS_PER_ROW
+    )
+    plan["units"] = {
+        "retained": 171_904,
+        "single_edge_student": student_single,
+        "history_student": student_history,
+        "history_student_recompute": student_history_recompute,
+        "teacher_online": teacher,
+        "keep_branch": 0,
+        "total": 171_904 + student_single + student_history + student_history_recompute + teacher,
+    }
+    plan["windows"]["units_per_update"] = 204
+    plan["windows"]["units_per_update_breakdown"] = {
+        "student_single_edge": MIXED_SINGLE_ROWS * MIXED_SINGLE_UNITS_PER_ROW,
+        "student_history": MIXED_HISTORY_ROWS * MIXED_HISTORY_UNITS_PER_ROW,
+        "student_history_recompute": MIXED_HISTORY_ROWS * MIXED_HISTORY_UNITS_PER_ROW,
+        "teacher_both_halves": (
+            MIXED_SINGLE_ROWS * MIXED_SINGLE_UNITS_PER_ROW
+            + MIXED_HISTORY_ROWS * MIXED_HISTORY_UNITS_PER_ROW
+        ),
+    }
+    plan["condition_sha256"] = _digest(plan)
+    return plan
+
+
+def fullproj_source_schedule_compat(metadata: dict, live_config: dict, identity: dict) -> dict:
+    """Same registered active-duty migration as M2n-M6, recorded as M2n-M7."""
+    try:
+        record = onestep_source_schedule_compat(metadata, live_config, identity)
+    except ValueError as exc:
+        raise ValueError(str(exc).replace("onestep", "fullproj", 1)) from exc
+    record["protocol"] = FULLPROJ_PROTOCOL
+    return record
+

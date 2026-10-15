@@ -1,0 +1,39 @@
+command: ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--basetemp=/Users/mac/AinerWorkFlow/AinerZero/reports/CPU-test-classification-review/runs/onestep-identity/tmp", "--junitxml=/Users/mac/AinerWorkFlow/AinerZero/reports/CPU-test-classification-review/runs/onestep-identity/pytest.xml", "tests/test_action_preservation_onestep.py"]
+...................F..........                                           [100%]
+=================================== FAILURES ===================================
+_______________ test_identity_file_is_frozen_and_not_authorized ________________
+
+tmp_path = None
+
+    def test_identity_file_is_frozen_and_not_authorized(tmp_path=None):
+        record = json.loads(IDENTITY.read_text())
+        assert record["protocol"] == apc.ONESTEP_PROTOCOL
+    
+        def validate_frozen_status(status: str) -> None:
+            assert re.fullmatch(r"identity_frozen(?:_[a-z0-9]+)*", status), f"status does not match pattern: {status}"
+            parts = status.split("_")
+            for i, part in enumerate(parts):
+                if part == "authorized":
+                    assert i > 0 and parts[i - 1] == "not", f"unauthorized word 'authorized' without preceding 'not': {status}"
+    
+        validate_frozen_status(record["status"])
+        assert record["run_authorized"] is False
+        assert set(record["files"]) == set(cli.ONESTEP_REQUIRED_FILES)
+        live = _live_record()
+        for field, actual in live.items():
+>           assert record[field] == actual, field
+E           AssertionError: files
+E           assert {'artifacts/r...2e75aa2', ...} == {'artifacts/r...2e75aa2', ...}
+E             
+E             Omitting 4 identical items, use -vv to show
+E             Differing items:
+E             {'src/ainerzero/runtime/memory_worker.py': '9ef833682c1694e1a07f4d430015fd551b6b4eb76e4fc9cf7cf7b4a7364b72bf'} != {'src/ainerzero/runtime/memory_worker.py': 'af5135365b2ccc2b00dbdbfe1ffc1d4f4498988e6b9ee631cbc2e006a3585350'}
+E             {'src/ainerzero/learning/action_preservation_closure.py': 'd411d00a1e62e0e23ddd3d788a1ee65e8fc25863adf395e4be7f1b8b6ff7cbb8'} != {'src/ainerzero/learning/action_preservation_closure.py': 'ff2731e4edf694d2a2c662e195b20f51ec60113fa1fcadc0c3d99761272e085e'}
+E             {'src/ainerzero/cli.py': '9b20ac504624e...
+E             
+E             ...Full output truncated (2 lines hidden), use '-vv' to show
+
+tests/test_action_preservation_onestep.py:833: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_action_preservation_onestep.py::test_identity_file_is_frozen_and_not_authorized
+1 failed, 29 passed in 8.31s

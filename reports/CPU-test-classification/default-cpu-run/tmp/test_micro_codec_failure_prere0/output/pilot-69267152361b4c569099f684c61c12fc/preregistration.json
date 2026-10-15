@@ -1,0 +1,270 @@
+{
+  "budget": {
+    "max_daily_active_seconds": 21600.0,
+    "max_environment_steps": 20000,
+    "max_model_transitions": 1000000,
+    "max_optimizer_steps": 1000,
+    "max_wall_seconds": 1800.0,
+    "timezone": "Europe/Belgrade"
+  },
+  "environment": {
+    "course": "C0",
+    "hidden_placeholder_byte": 0,
+    "max_episode_ticks": 128,
+    "name": "switchlab_v1"
+  },
+  "evaluation": {
+    "latent_particles": 8,
+    "probability_aggregation": "mean_probabilities_then_nll",
+    "support_query_weights": "frozen",
+    "support_ticks": 32
+  },
+  "experiment_budget": {
+    "max_calibration_seconds": 900.0,
+    "max_environment_steps": 60000,
+    "max_model_runs": 3,
+    "max_model_transitions": 3000000,
+    "max_optimizer_steps": 3000,
+    "max_wall_seconds": 7200.0
+  },
+  "fixed_samples": {
+    "batch_sha256": "fixed-cpu-fixture",
+    "partition": "train"
+  },
+  "mechanisms": {
+    "environment_implementation": "c0_only",
+    "experience_contract": "experience_v2",
+    "fixed_mechanisms": [
+      "rssm_architecture_and_random_initialization",
+      "observation_action_contract",
+      "posterior_reconstruction_and_action_conditioned_prior_loss",
+      "adamw_parameter_updates_and_kl_schedule",
+      "replay_selection_and_episode_state_reset",
+      "bounded_local_cem_planning",
+      "fixed_curriculum_and_random_collection",
+      "evaluation_and_promotion_rules"
+    ],
+    "hypothesis_grammar": "none",
+    "learning_implementation": "c0_prediction_only",
+    "mutable_states": [
+      "network_parameters",
+      "optimizer_and_rng_state",
+      "episode_belief",
+      "observed_experience_replay"
+    ],
+    "planning_implementation": "planned",
+    "preinstalled_world_knowledge": "none",
+    "pretrained_weights": "none",
+    "revision": "pilot_mechanisms_v1"
+  },
+  "model": {
+    "action_count": 4,
+    "action_embedding_dim": 16,
+    "activation": "silu",
+    "architecture": "brain0_rssm",
+    "byte_embedding_dim": 16,
+    "cells": 8,
+    "decoder_hidden_dim": 128,
+    "embedding_dim": 128,
+    "encoder_hidden_dim": 128,
+    "ensemble_heads": 0,
+    "ensemble_hidden_dim": 128,
+    "hidden_dim": 256,
+    "initialization": "random",
+    "latent_dim": 16,
+    "minimum_std": 0.1,
+    "posterior_hidden_dim": 128,
+    "prior_hidden_dim": 128,
+    "symbol_vocabulary": 256
+  },
+  "one_step_memory": {
+    "architecture": "pilot_shared_symbol_v1",
+    "augmentation": "none_fixed_batch_repeated",
+    "automatic_promotion": false,
+    "batch_size": 16,
+    "burn_in": 0,
+    "evaluation": {
+      "particles": 8,
+      "query_stride": 1,
+      "support_ticks": 32
+    },
+    "expected_total_model_units": 92128,
+    "frozen_parameter_count": 282128,
+    "learning_rate": 0.001,
+    "local_check_model_units": 48,
+    "local_checks": [
+      0,
+      50,
+      100,
+      150,
+      200
+    ],
+    "local_evaluation": "one_particle_same_four_micro_batches_same_inputs_two_fixed_noise_seeds",
+    "local_screen": {
+      "changed_accuracy_min": 0.8,
+      "minimum_changed_count": 16,
+      "overall_accuracy_min": 0.95
+    },
+    "micro_batch_size": 4,
+    "new_environment_steps": 0,
+    "optimizer_tensor_parameter_count": 222208,
+    "parameter_count": 393232,
+    "protocol": "m2j_fixed_single_edge_tail_fit_v1",
+    "readout": "reuse_frozen_symbol_head_on_h_tail_8_by_16_after_next_observation",
+    "resource_seconds": {
+      "after_action": 60,
+      "after_memory_development": 45,
+      "after_memory_train": 90,
+      "after_reconstruction": 45,
+      "before_action": 60,
+      "before_memory_development": 45,
+      "before_memory_train": 90,
+      "before_reconstruction": 45,
+      "checkpoint": 30,
+      "compatibility": 15,
+      "initialization": 15,
+      "local_check": 5,
+      "training_update": 2,
+      "verification": 10
+    },
+    "sample_selection": "exactly_16_train_worlds_sorted_episode_then_world_first_visible_change",
+    "scope": "fixed_training_examples_single_feedback_edge_fit_not_general_memory",
+    "screen": {
+      "changed_accuracy_min": 0.8,
+      "minimum_changed_count": 30,
+      "overall_accuracy_min": 0.95,
+      "per_world_changed_accuracy_min": 0.5
+    },
+    "seeds": {
+      "latent": 2203,
+      "local_new_noise": 2603,
+      "memory_development": 4901,
+      "memory_train": 3901
+    },
+    "selection": "one_fixed_run_no_dev_tuning_no_automatic_retry_or_promotion",
+    "sequence_steps": 1,
+    "source_optimizer": "reset_AdamW_GRU_masked_and_projected_front",
+    "supervised_deadline_seconds": 1500,
+    "target": "previous_visible_public_observation_uniform_symbol_cross_entropy",
+    "total_reserved_seconds_if_complete": 1000,
+    "trainable_modules": [
+      "gru"
+    ],
+    "trainable_parameter_count": 111104,
+    "trainable_scope": "GRU_tail_output_rows_only_mask_gradients_project_front_after_AdamW",
+    "training_model_units_per_update": 32,
+    "transitions_per_window": 1,
+    "updates": 200
+  },
+  "planning": {
+    "action_cost": 0.01,
+    "candidates": 32,
+    "disagreement_penalty": 0.0,
+    "elites": 4,
+    "horizon": 4,
+    "iterations": 2,
+    "latent_samples": 1,
+    "old_distribution_weight": 0.2
+  },
+  "profile": "pilot_predictor",
+  "project_name": "ainerzero",
+  "purpose": "c0_micro_memory_fit_training_v1",
+  "resources": {
+    "active": {
+      "cpu_workers": 1,
+      "micro_batch_size": 4,
+      "mlx_cache_gib": 0.5,
+      "mlx_memory_gib": 4.0,
+      "project_memory_gib": 8.0,
+      "training_duty_cycle": 1.0,
+      "vector_environments": 8
+    },
+    "activity_poll_seconds": 2.0,
+    "duty_window_seconds": 2.0,
+    "idle": {
+      "cpu_workers": 1,
+      "micro_batch_size": 8,
+      "mlx_cache_gib": 0.5,
+      "mlx_memory_gib": 4.0,
+      "project_memory_gib": 8.0,
+      "training_duty_cycle": 1.0,
+      "vector_environments": 16
+    },
+    "idle_after_seconds": 300.0,
+    "minimum_disk_free_gib": 50.0,
+    "mode": "adaptive",
+    "pause_below_available_gib": 8.0,
+    "pause_training_on_battery": true,
+    "swap_growth_gib": 1.0,
+    "swap_growth_samples": 3,
+    "swap_sample_seconds": 10.0,
+    "system_reserve_gib": 16.0,
+    "target_micro_step_seconds": 0.5
+  },
+  "route": "neural",
+  "run_seeds": [
+    0,
+    1,
+    2
+  ],
+  "schema_version": 1,
+  "source": {
+    "sha256": "fixture"
+  },
+  "storage": {
+    "data_dir": "artifacts",
+    "disk_budget_gib": 20.0,
+    "keep_best_versions": 2,
+    "keep_recent_checkpoints": 3,
+    "persistent_data_gib": 2.0,
+    "ram_cache_gib": 0.25,
+    "replay_max_transitions": 60000,
+    "trajectory_shard_mib": 16
+  },
+  "student_source": {
+    "checkpoint": "/Users/mac/AinerWorkFlow/AinerZero/reports/CPU-test-classification/default-cpu-run/tmp/test_micro_codec_failure_prere0/checkpoint",
+    "checkpoint_manifest_sha256": "218589323cbe80b7ed077e3ee36f1663e7cb5f8f4e4ad02c938ad8a5c2c5a6b9",
+    "dataset": {
+      "hash": "micro-test-dataset"
+    },
+    "parent_run_id": "source"
+  },
+  "teacher": "none",
+  "training": {
+    "adam_betas": [
+      0.9,
+      0.999
+    ],
+    "adam_epsilon": 1e-08,
+    "bias_correction": true,
+    "bootstrap_probability": 0.8,
+    "burn_in_steps": 4,
+    "checkpoint_interval_updates": 100,
+    "collect_transitions": 1024,
+    "cursor_loss_weight": 0.2,
+    "effective_batch_size": 16,
+    "ema_decay": 0.99,
+    "ensemble_loss_weight": 0.0,
+    "gradient_clip_norm": 1.0,
+    "initial_fit_updates": 500,
+    "kl_free_nats": 1.0,
+    "kl_loss_weight": 0.1,
+    "kl_warmup_updates": 100,
+    "learning_rate": 0.0003,
+    "optimizer": "adamw",
+    "precision": "float32",
+    "prior_prediction_loss_weight": 1.0,
+    "replay": {
+      "failure": 0.2,
+      "recent": 0.5,
+      "reservoir": 0.3
+    },
+    "sequence_steps": 16,
+    "symbol_loss_weight": 1.0,
+    "updates_per_collection": 8,
+    "validation_interval_updates": 100,
+    "visibility_loss_weight": 0.2,
+    "warmup_transitions": 10000,
+    "weight_decay": 0.0001
+  }
+}

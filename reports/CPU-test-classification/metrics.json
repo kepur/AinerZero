@@ -1,0 +1,74 @@
+{
+  "task": "ainerzero.M2.A39",
+  "agent": "grokbot-r2t1",
+  "status": "reported",
+  "experiment": "未执行",
+  "collection": {
+    "original_noconftest": {
+      "collected": 2292,
+      "of_which_new_test_cpu_collection": 3,
+      "original_equivalent": 2289,
+      "errors": 9,
+      "hidden_native_instances_ref": 258
+    },
+    "default_pure_cpu": {
+      "collected_total": 2292,
+      "selected": 2287,
+      "deselected": 5,
+      "ignored_modules": 9,
+      "mlx_import_attempts": 0
+    },
+    "native_optin": {
+      "selected": 263,
+      "composition": "258 module instances + 5 node tests",
+      "under_sentinel": "9 collection errors (requires real MLX)"
+    }
+  },
+  "default_cpu_run": {
+    "passed": 2287,
+    "failed": 0,
+    "errors": 0,
+    "deselected": 5,
+    "seconds": 110.81,
+    "processes": 43,
+    "processes_with_real_mlx": 0,
+    "mlx_import_attempts": 0,
+    "mem_min_gib": 46.0,
+    "reserve_gib": 16,
+    "lock": "m0-worker.lock flock held"
+  },
+  "native_inventory_not_covered": {
+    "modules": {
+      "test_dynamics.py": 8,
+      "test_history_evaluation.py": 10,
+      "test_micro_memory.py": 24,
+      "test_one_step_memory.py": 24,
+      "test_pilot_evaluation.py": 16,
+      "test_pilot_model.py": 25,
+      "test_recall_probe.py": 18,
+      "test_reconstruction.py": 15,
+      "test_relabel_memory_mlx.py": 1
+    },
+    "module_test_functions": 141,
+    "tests": [
+      "tests/test_smoke.py::test_real_cpu_forward_backward_and_restored_continuation[16]",
+      "tests/test_smoke.py::test_real_cpu_forward_backward_and_restored_continuation[128]",
+      "tests/test_smoke.py::test_low_budget_never_reports_unperformed_updates",
+      "tests/test_gridlab_s07_r2.py::test_isolation_check_detects_mlx_and_ignores_parent_state",
+      "tests/test_gridlab_s07_r2.py::test_f3_negative_control_separates_importerror_from_assertion"
+    ]
+  },
+  "budget": {
+    "reserved_updates": 0,
+    "actual_updates": 0,
+    "real_model_starts": 0
+  },
+  "limitations": [
+    "previously no test carried a metal mark: -m 'not metal' was a no-op",
+    "one unguarded --native-mlx --collect-only during development imported mlx modules (collection only, no updates, not used as evidence)",
+    "tests/test_gridlab.py does not exist; GridLab nodes are in out-of-scope test_gridlab_s07_r2.py, marked via conftest by nodeid without editing it",
+    "report path reports/ deviates from convention artifacts/reports/",
+    "test_action_preservation_onestep.py SHA changed during session by another party, not A39",
+    "no registered native pytest runner exists; --native-mlx grants no run authority"
+  ]
+}

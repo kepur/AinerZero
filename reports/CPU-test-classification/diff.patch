@@ -1,0 +1,137 @@
+diff --git a/tests/test_dynamics.py b/tests/test_dynamics.py
+index 14b0dd6..0806a7f 100644
+--- a/tests/test_dynamics.py
++++ b/tests/test_dynamics.py
+@@ -15,6 +15,8 @@ from ainerzero.learning.pilot_model import (
+ )
+ from ainerzero.runtime.observation_worker import action_comparison_plan
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ @pytest.fixture(autouse=True)
+ def cpu_only():
+diff --git a/tests/test_history_evaluation.py b/tests/test_history_evaluation.py
+index 2d4f60f..992078f 100644
+--- a/tests/test_history_evaluation.py
++++ b/tests/test_history_evaluation.py
+@@ -10,6 +10,8 @@ from test_pilot_evaluation import episode, payloads_for
+ 
+ from ainerzero.learning.evaluation import evaluate_predictor
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ @pytest.fixture(autouse=True)
+ def cpu_stream():
+diff --git a/tests/test_micro_memory.py b/tests/test_micro_memory.py
+index 69e66fa..2da13cb 100644
+--- a/tests/test_micro_memory.py
++++ b/tests/test_micro_memory.py
+@@ -20,6 +20,8 @@ from ainerzero.learning.micro_memory import (
+ )
+ from ainerzero.learning.one_step_memory import memory_sequence_loss
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ @pytest.fixture(autouse=True)
+ def cpu_only():
+diff --git a/tests/test_one_step_memory.py b/tests/test_one_step_memory.py
+index c6cebfe..91f975c 100644
+--- a/tests/test_one_step_memory.py
++++ b/tests/test_one_step_memory.py
+@@ -14,6 +14,8 @@ from test_sequences import make_episode
+ from ainerzero.core.experience import DatasetPartition
+ from ainerzero.learning.one_step_memory import evaluate_one_step_memory, memory_sequence_loss
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ @pytest.fixture(autouse=True)
+ def cpu_only():
+diff --git a/tests/test_pilot_evaluation.py b/tests/test_pilot_evaluation.py
+index af7c7e2..fb37b56 100644
+--- a/tests/test_pilot_evaluation.py
++++ b/tests/test_pilot_evaluation.py
+@@ -22,6 +22,8 @@ from ainerzero.learning.baselines import NoActionBaseline
+ from ainerzero.learning.evaluation import evaluate_predictor
+ from ainerzero.runtime.c0_collection import RANDOM_ACTOR
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ def episode(*, seed=9, steps=6, partition=DatasetPartition.DEVELOPMENT, payloads=None):
+     env = C0Environment(seed)
+diff --git a/tests/test_pilot_model.py b/tests/test_pilot_model.py
+index 061ef08..fbdd885 100644
+--- a/tests/test_pilot_model.py
++++ b/tests/test_pilot_model.py
+@@ -20,6 +20,8 @@ from ainerzero.learning.pilot_model import (  # noqa: E402
+     sequence_loss,
+ )
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ @pytest.fixture(autouse=True)
+ def cpu_only():
+diff --git a/tests/test_recall_probe.py b/tests/test_recall_probe.py
+index 0905d33..0d297b5 100644
+--- a/tests/test_recall_probe.py
++++ b/tests/test_recall_probe.py
+@@ -21,6 +21,8 @@ from ainerzero.learning.recall_probe import (
+     score_probe_rows,
+ )
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ @pytest.fixture(autouse=True)
+ def cpu_stream():
+diff --git a/tests/test_reconstruction.py b/tests/test_reconstruction.py
+index 781adf4..6639ee6 100644
+--- a/tests/test_reconstruction.py
++++ b/tests/test_reconstruction.py
+@@ -10,6 +10,8 @@ from test_sequences import make_episode
+ from ainerzero.core.experience import DatasetPartition
+ from ainerzero.learning.reconstruction import evaluate_reconstruction, reconstruction_gate
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ class FakeReconstructor:
+     """Inspectable, weight-free encoder/decoder; no learning or imagined actions."""
+diff --git a/tests/test_relabel_memory_mlx.py b/tests/test_relabel_memory_mlx.py
+index 4a4ceff..495d26c 100644
+--- a/tests/test_relabel_memory_mlx.py
++++ b/tests/test_relabel_memory_mlx.py
+@@ -13,6 +13,8 @@ from ainerzero.learning.paired_memory import evaluate_zero_context_inputs
+ from ainerzero.learning.pilot_model import SharedSymbolPredictor
+ from ainerzero.learning.relabel_memory import relabel_batch
+ 
++pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
++
+ 
+ @pytest.fixture(autouse=True)
+ def cpu_only():
+diff --git a/tests/test_smoke.py b/tests/test_smoke.py
+index e538122..6265220 100644
+--- a/tests/test_smoke.py
++++ b/tests/test_smoke.py
+@@ -17,6 +17,7 @@ def mlx_available():
+         )
+ 
+ 
++@pytest.mark.native_mlx(reason="real optimizer updates (A39)")
+ @pytest.mark.parametrize("steps", [16, 128])
+ def test_real_cpu_forward_backward_and_restored_continuation(tmp_path, mlx_available, steps):
+     report = run_smoke(Path("configs/brain0.yaml"), tmp_path / "m0", "cpu", steps)
+@@ -38,6 +39,7 @@ def test_real_cpu_forward_backward_and_restored_continuation(tmp_path, mlx_avail
+     assert requested_config == load_config("configs/brain0.yaml")
+ 
+ 
++@pytest.mark.native_mlx(reason="real optimizer updates (A39)")
+ def test_low_budget_never_reports_unperformed_updates(tmp_path, mlx_available):
+     config = ProjectConfig.model_validate({"budget": {"max_optimizer_steps": 2}})
+     config_path = tmp_path / "budget.yaml"
