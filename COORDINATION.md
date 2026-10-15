@@ -8,12 +8,14 @@
 
 | 项 | 当前状态 |
 | --- | --- |
+| **总目标（2026-10-15，D-011）** | 三个系统加共享底座：制作脑（影视创作与控制，代码归 AinerHub）、世界系统（AnimeWorld）、世界脑（AinerZero，“世界模型”只指它）。总文档见 [NORTH_STAR](../AnimeWorldZero/docs/NORTH_STAR.md)，决定见 [ADR-0011](../AnimeWorldZero/docs/adr/ADR-0011-three-systems.md)；本仓库只引用，不复制。 |
+| **训练暂停（2026-10-15 用户决定）** | **AinerZero 训练暂停，资源全部转向世界系统（AnimeWorld）。** 不再新增训练、运行登记或运行授权；P1 历史旁路单元登记草案随之搁置（未批准、未运行）。所有检查点、登记、报告和失败证据原样保留，恢复时从原状态接着做，需要用户另行决定。暂停时没有在途运行：`m0-worker.lock` 无人持有；接力台上的 A65/A66 是为 AWZ CCIP 做的纯 CPU 可行性探针，不属于 AinerZero 训练，不受影响。见 [RESEARCH_LOG](RESEARCH_LOG.md) R20261015-pause |
 | 本次文档整合主责 | Claude（2026-10-13 用户指令"接手全部继续训练"后，接手 E13b/E14b/C06a/C06/E15/E16 全链）|
 | 另一统筹者 | Codex（M2m-d 总协议原作者；本轮未参与执行，其决定与报告保留）|
 | 最新完成产物 | [D 条件一次有界训练](artifacts/reports/E20-d/D-result-20261013.md)，200 次；**五项门全部通过（动作保持首次通过），历史 memory_screen 仍失败，未晋升** |
 | 当前交接 | run `96b72328-d9c1-4b48-b69c-1fa30ba8123c`（experiment `m2md-distill-20261013-r2`）completed：D 条件 184,704 单位/1,540 秒、480.4 秒；三次尝试（实现缺陷/环境超窗/成功）全部留档；[E14b](artifacts/reports/E14b-integration-independent-review-20261013.md)、[C06a](artifacts/reports/C06a-probe-execution-20261013.md)、[C07](artifacts/reports/C07-result-20261013.md) 报告保留 |
 | 当前主张 | **D 条件（同批同前向换名教师 KL，λ=1）五项门全过**：动作 377/384（−0.0090）与 359/384（−0.0773）＝M2d 基线逐格、迁移高于 λ=1/λ=10；根因（符号空间冲突）确认；**不晋升、下一步 M2n 需另行授权与登记**（[M2n 方案](M2N_NONZERO_HISTORY_PROPOSAL.md) 路线 A）|
-| 最新路线判读（10-14，A30/A49） | 混合批历史路线五次对照都没让动作、迁移与历史同时过门。M2n-M4 一步截断只减轻 31–40% 动作退化；M2n-M5 冻结尾部自循环块消掉 85–89% 动作退化（主通道得证），但零状态迁移与换名池失守、历史屏降到 0.158。D 仍是唯一过五门候选；下一步 (ii) 梯度投影需用户批准预算，(iv) 为预算内备选。见 [A30](artifacts/reports/relay-claude-20261014/A30-interpretation.md)、[A49](artifacts/reports/relay-claude-20261014/A49-interpretation.md) |
+| 最新路线判读（10-14，A30/A49/A55/A61） | 混合批历史路线七次对照都没让动作、迁移与历史同时过门。M2n-M5 冻结尾部自循环块消掉 85–89% 动作退化；M2n-M6 半间投影几乎无变化；M2n-M7 完整投影让两项动作首次在带历史训练中过门（+0.009/+0.033），但零状态 3653、换名池 1821 低于 λ_h=0 对照，历史屏 0.062——历史半内 CE 与 KL 梯度 199/200 步相反（cos −0.66），投影族关闭（第 (c) 支）。D 仍是唯一过五门候选；推荐下一路线为历史旁路单元（参数扩展，需用户批准），本轮仅做 CPU 可行性。见 [A49](artifacts/reports/relay-claude-20261014/A49-interpretation.md)、[A55](artifacts/reports/E29-halfproj/A55-interpretation/A55-interpretation.md)、[A61](artifacts/reports/E30-fullproj/tier1-decision/A61-decision.md) |
 | 当前工程状态 | C06a 探针 5,025 单位/179 秒、E15 208,546 单位/1,610 秒全部按登记执行；冻结 282,128 逐位、应用前部梯度 200/200 为 0、checkpoint 回读通过；586 项 CPU 回归 0 失败；独立 E16 复核仍建议另派 |
 | 本次工作范围 | Claude 执行：E14b 最终审查、C06a 登记与探针、E15 首次（失败留档）、名字绑定修复＋回归、E15 重跑、E16 第一遍只读核对（正式第二方核对已另派 subagent）、保持项只读[诊断](artifacts/reports/E17-diagnosis/keep-branch-diagnosis-20261013.md)、[M2n 方案草案](M2N_NONZERO_HISTORY_PROPOSAL.md)、含 MLX 全量测试（持锁后台）；未提交/推送，未改科学参数与门 |
 | 执行清单 | [AGENT_TASKS.md](AGENT_TASKS.md) |
