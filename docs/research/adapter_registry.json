@@ -1,5 +1,6 @@
 {
- "access_date": "2026-10-15",
+ "access_date": "2026-10-16",
+ "access_date_note": "修正条目 (vjepa2, stable-worldmodel, thick) 于 2026-10-16 重新只读访问；其余条目沿用 2026-10-15 首次访问记录。",
  "entries": [
   {
    "borrowable_mechanisms": [
@@ -19,7 +20,7 @@
      "conda",
      "HuggingFace 数据集/检查点下载"
     ],
-    "notes": "官方配方 PyTorch/CUDA，非 MLX 原生；macOS GPU/训练成本无证据；先做接口与小规模对照。",
+    "notes": "官方配方 PyTorch/CUDA，非 MLX 原生；macOS GPU/训练成本无证据；先做接口与小规模对照。未 clone/安装，不推断 MLX 可用性。",
     "rating": "低（直接运行不可；机制可借鉴，需重写）"
    },
    "name": "H-JEPA",
@@ -65,7 +66,7 @@
      "stable-worldmodel + stable-pretraining",
      "HDF5 数据集下载"
     ],
-    "notes": "~15M 参数单 GPU 几小时是论文环境结论；本机 MLX 需重写，无速度承诺。",
+    "notes": "~15M 参数单 GPU 几小时是论文环境结论；本机 MLX 需重写，无速度承诺。未 clone/安装。",
     "rating": "低（直接运行不可；小模型思想优先于复制体量）"
    },
    "name": "LeWM / LeWorldModel",
@@ -102,23 +103,25 @@
    "id": "vjepa2",
    "license": {
     "license": "MIT（主体；randaugment/randerase/worker_init_fn 等文件 Apache-2.0）",
-    "source": "仓库 README License 节原文"
+    "source": "仓库 README License 节原文 + GitHub API license.key=mit（2026-10-16 访问）"
    },
    "mlx_feasibility": {
     "deps": [
      "PyTorch + timm + einops",
      "CUDA（官方强烈建议）",
-     "decord（官方声明不支持 macOS，需自行替换）",
+     "decord（官方声明不支持 macOS，需自行替换；README 原话）",
      "80M–2B 外部预训练权重下载"
     ],
-    "notes": "macOS 视频依赖需单独适配；权重只能作教师/基线，不得宣称自主学得。",
+    "notes": "macOS 视频依赖需单独适配；权重只能作教师/基线，不得宣称自主学得。未 clone/安装，不推断 MLX 可用性。",
     "rating": "低（macOS/decord 是已知 blocker；仅权重可作教师）"
    },
    "name": "V-JEPA 2 / 2.1",
    "non_inferables": [
     "EK100/SSv2 等榜单成绩不代表 AWZ 观察收益",
     "冻结特征作输入不能当作世界脑已理解",
-    "V-JEPA 2-AC 的 Franka 抓取成绩不外推到 AWZ 动作"
+    "V-JEPA 2-AC 的 Franka 抓取成绩不外推到 AWZ 动作",
+    "GitHub releases/tags API 当日为空，2.1 没有正式 Release 记录；『2026-03-16 发布』来自仓库 README News 原文，不是 Release 页",
+    "README 的 2.1 [Paper] 外链仍是 arxiv.org/abs/TODO 占位；直链取自 README Citation/BibTeX，未从 [Paper] 外链打开"
    ],
    "paper": {
     "authors": [
@@ -132,20 +135,23 @@
      "Nicolas Ballas",
      "Adrien Bardes"
     ],
-    "date": "2026-03-16（2.1 发布；论文 arXiv 2603.14482）",
+    "date": "2026-03-15（v1；当前 v3 2026-06-11）",
     "title": "V-JEPA 2.1: Unlocking Dense Features in Video Self-Supervised Learning",
-    "url": "https://github.com/facebookresearch/vjepa2",
+    "url": "https://arxiv.org/abs/2603.14482",
+    "version": "v3",
     "paper_ids": [
      "arXiv:2506.09985（V-JEPA 2，2025）",
      "arXiv:2603.14482（V-JEPA 2.1，2026）"
     ],
-    "url_note": "[Paper] 链接在仓库 README 内；本条 url 记仓库页（已核实含引用节）"
+    "url_note": "V-JEPA 2.1 直接论文页（arXiv 提交历史 v1 2026-03-15 / v2 2026-03-17 / v3 2026-06-11）；仓库页 https://github.com/facebookresearch/vjepa2"
    },
    "repo": {
+    "release_date": "2026-03-16",
+    "release_note": "README News『[2026-03-16] V-JEPA 2.1 is released』原文；仓库 releases/tags API 为空，无 Release 页佐证",
     "url": "https://github.com/facebookresearch/vjepa2"
    },
    "status": "verified",
-   "version_note": "2.1 发布 2026-03-16；V-JEPA 2 论文 arXiv:2506.09985（2025）"
+   "version_note": "2.1 仓库发布 2026-03-16（README News，原文保留）；2.1 论文 arXiv:2603.14482（v1 2026-03-15，v3 2026-06-11）；V-JEPA 2 论文 arXiv:2506.09985（2025）"
   },
   {
    "borrowable_mechanisms": [
@@ -164,7 +170,7 @@
      "Linux/Mac Python 3.11+",
      "各环境依赖"
     ],
-    "notes": "JAX ≠ MLX；RL actor-critic 环不在借鉴范围；只保留潜动态思想作基线。",
+    "notes": "JAX ≠ MLX；RL actor-critic 环不在借鉴范围；只保留潜动态思想作基线。未 clone/安装。",
     "rating": "低（栈不同；仅思想与基线对照）"
    },
    "name": "DreamerV3",
@@ -209,7 +215,7 @@
      "Lance/HDF5 数据栈",
      "Gymnasium 系环境"
     ],
-    "notes": "评测 harness 思想可借鉴；H-JEPA/LeWM 均构建其上，版本联动需钉选。",
+    "notes": "评测 harness 思想可借鉴；H-JEPA/LeWM 均构建其上，版本联动需钉选。未 clone/安装。",
     "rating": "中（评测框架思想可借鉴；全栈引入太重）"
    },
    "name": "Stable WorldModel",
@@ -233,7 +239,7 @@
      "Yann LeCun",
      "Randall Balestriero"
     ],
-    "date": "2026-05-26（arXiv 2605.21800）",
+    "date": "2026-05-20（arXiv 2605.21800 v1）",
     "title": "stable-worldmodel: A Platform for Reproducible World Modeling Research and Evaluation",
     "url": "https://arxiv.org/abs/2605.21800",
     "version": "v1"
@@ -242,7 +248,7 @@
     "url": "https://github.com/galilai-group/stable-worldmodel"
    },
    "status": "verified",
-   "version_note": "论文 arXiv:2605.21800；2.3k stars"
+   "version_note": "论文 arXiv:2605.21800 v1（提交历史 2026-05-20，仅 v1）；arXiv 页面论文许可 CC BY 4.0；2.3k stars"
   },
   {
    "borrowable_mechanisms": [
@@ -260,7 +266,7 @@
      "PyTorch（官方实现基于 1.7.1 时代 API）",
      "N-body/QM9 数据生成脚本"
     ],
-    "notes": "模型小、纯前向 MLP+消息传递，概念移植成本在 8 条中最低；仍需 MLX 重写与本机验证。",
+    "notes": "模型小、纯前向 MLP+消息传递，概念移植成本在 8 条中最低；仍需 MLX 重写与本机验证。未 clone/安装。",
     "rating": "中（小而干净；需移植验证）"
    },
    "name": "EGNN",
@@ -303,7 +309,7 @@
      "CLEVR 数据集下载（17.7GB，首次运行自动下载）",
      "单 GPU 16GB（官方测试配置）"
     ],
-    "notes": "TF 栈与本机 MLX 不兼容，；不训练，只借鉴绑定思想；CLEVR 许可/下载须用户批准（本任务未下载）。",
+    "notes": "TF 栈与本机 MLX 不兼容，不训练，只借鉴绑定思想；CLEVR 许可/下载须用户批准（本任务未下载）。未 clone/安装。",
     "rating": "低（栈过时；仅思想）"
    },
    "name": "Slot Attention",
@@ -342,21 +348,25 @@
    ],
    "id": "thick",
    "license": {
-    "license": "未核（OpenReview 记录未声明许可；代码仓库未找到）",
-    "source": "openreview（含摘要/TLDR/作者/venue）；许可与代码均未见"
+    "license": "MIT（CognitiveModeling/THICK）；CognitiveModeling/thix 未声明许可（未核）",
+    "source": "GitHub API repos/CognitiveModeling/THICK license.key=mit；repos/CognitiveModeling/thix license=null（未声明）；两者均由作者页 https://cgumbsch.github.io/ 的 THICK 条目直接链接（2026-10-16 访问）"
    },
    "mlx_feasibility": {
     "deps": [
-     "未知（无官方代码记录）"
+     "TensorFlow 2（THICK 官方实现栈，README 原文）",
+     "JAX（thix『THICK in JAX』栈）",
+     "MiniHack / Multiworld / VisualPinpad 环境（README 运行说明：nle、mujoco）",
+     "thix 许可未核，使用前须确认"
     ],
-    "notes": "只有机制可借鉴；任何实现都是重新推导，需同预算对照验证。",
-    "rating": "未可评（无代码；机制参考）"
+    "notes": "有官方 TF2 与 JAX 两版实现；TensorFlow/JAX 均非 MLX，需重写。未 clone、未安装，不推断 MLX 可用性；thix 无许可声明，复制/派生前须由用户确认。",
+    "rating": "低（栈为 TF2/JAX，非 MLX；机制可借鉴，需重写）"
    },
    "name": "THICK",
    "non_inferables": [
     "ICLR 2024 spotlight ≠ 本机收益证据",
     "稀疏更新/可解释性是论文环境结论",
-    "无代码则复现成本与细节全部未知，不得按已有实现规划"
+    "找到官方实现 ≠ MLX 可安装、可运行（本任务未 clone、未安装）",
+    "thix 未声明许可，不得假定与 THICK 同为 MIT"
    ],
    "paper": {
     "authors": [
@@ -365,18 +375,32 @@
      "Georg Martius",
      "Martin V. Butz"
     ],
-    "date": "ICLR 2024 spotlight",
+    "date": "ICLR 2024（spotlight）",
     "title": "Learning Hierarchical World Models with Adaptive Temporal Abstractions from Discrete Latent Dynamics",
     "url": "https://openreview.net/forum?id=TjCDNssXKU",
     "version": "camera-ready"
    },
    "repo": {
-    "url": "未找到（OpenReview 记录无代码链接；不臆测第三方重实现）"
+    "repos": [
+     {
+      "license": "MIT（GitHub API license.key=mit）",
+      "role": "官方实现（TensorFlow 2）",
+      "url": "https://github.com/CognitiveModeling/THICK"
+     },
+     {
+      "license": "未声明（GitHub API license=null）→ 未核",
+      "role": "官方 JAX 重实现（thix，README『THICK in JAX』）",
+      "url": "https://github.com/CognitiveModeling/thix"
+     }
+    ],
+    "url": "https://github.com/CognitiveModeling/THICK",
+    "url_note": "作者页 https://cgumbsch.github.io/ 的 THICK 条目列 [Code (TF2)] 与 [Code (JAX)]，分别指向上面两个仓库；OpenReview 记录本身无代码链接，以上为作者主页直接链接"
    },
-   "status": "verified-paper-only",
-   "version_note": "全称 Temporal Hierarchies from Invariant Context Kernels（摘要原话）；经统筹问答 #121 指引、由执行者独立在 OpenReview 检索核实（arXiv 无标题匹配）"
+   "status": "verified",
+   "version_note": "全称 Temporal Hierarchies from Invariant Context Kernels（摘要原话）；ICLR 2024 spotlight；官方代码 = CognitiveModeling/THICK（TF2，MIT，pushed 2026-04-28）与 CognitiveModeling/thix（JAX，许可未声明）；经统筹问答 #121 指引由原执行者在 OpenReview 核实论文，本轮按 R2 复核补正代码结论"
   }
  ],
  "registry": "Research Adapter Registry v0",
+ "revision": "r1（2026-10-16，回应 R2 独立复核）：修正 THICK 官方代码结论（补 CognitiveModeling/THICK 与 thix）、stable-worldmodel v1 日期（2026-05-26→2026-05-20）、V-JEPA 2.1 直链（arXiv:2603.14482 与版本），保留 03-16 仓库发布日期与未核项。原 r0 字节归档于 reports/V9-R1/r0-archive/。",
  "scope": "只读研究参考与候选机制；不引入生产依赖；下载代码/权重/数据集一律先经用户批准（ADR-0012 §5）"
 }

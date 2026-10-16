@@ -1,0 +1,382 @@
+{
+  "access_date": "2026-10-15",
+  "entries": [
+    {
+      "borrowable_mechanisms": [
+        "多层 action-conditioned JEPA，每层自有潜空间与时间跨度",
+        "顶层优化朝目标进展，下层把上层预测当子目标（自顶向下规划）",
+        "高层丢弃快变不可预测细节、保留慢速任务相关状态"
+      ],
+      "id": "h-jepa",
+      "license": {
+        "license": "MIT",
+        "source": "仓库页 License 徽标（GitHub 检测）"
+      },
+      "mlx_feasibility": {
+        "deps": [
+          "Python 3.11",
+          "PyTorch（cu128 CUDA 轮）",
+          "conda",
+          "HuggingFace 数据集/检查点下载"
+        ],
+        "notes": "官方配方 PyTorch/CUDA，非 MLX 原生；macOS GPU/训练成本无证据；先做接口与小规模对照。",
+        "rating": "低（直接运行不可；机制可借鉴，需重写）"
+      },
+      "name": "H-JEPA",
+      "non_inferables": [
+        "AntMaze 73.3% 不能推出小说世界/日漫场景收益",
+        "层级规划省算力是论文环境结论，非本机结论",
+        "CUDA 原代码不能假定即插即用 MLX"
+      ],
+      "paper": {
+        "authors": [
+          "Wancong Zhang",
+          "Basile Terver",
+          "Michael Rabbat",
+          "Yann LeCun",
+          "Randall Balestriero"
+        ],
+        "date": "2026-10-05",
+        "title": "H-JEPA: End-to-End Learning of Hierarchical World Models for Visual Planning",
+        "url": "https://arxiv.org/abs/2610.06805",
+        "version": "v1"
+      },
+      "repo": {
+        "url": "https://github.com/kevinghst/H-JEPA"
+      },
+      "status": "verified",
+      "version_note": "论文 v1（2026-10-05）；仓库基于 LeWM + stable-worldmodel"
+    },
+    {
+      "borrowable_mechanisms": [
+        "端到端像素 JEPA：编码器 + 动作条件预测器",
+        "SIGReg（Sketched Isotropic Gaussian Regularizer）防坍塌：潜分布贴各向同性高斯",
+        "CEM 潜空间滚动规划（192 维单 token 梗）"
+      ],
+      "id": "lewm",
+      "license": {
+        "license": "MIT",
+        "source": "仓库页 License 徽标（GitHub 检测）"
+      },
+      "mlx_feasibility": {
+        "deps": [
+          "Python 3.10",
+          "PyTorch",
+          "stable-worldmodel + stable-pretraining",
+          "HDF5 数据集下载"
+        ],
+        "notes": "~15M 参数单 GPU 几小时是论文环境结论；本机 MLX 需重写，无速度承诺。",
+        "rating": "低（直接运行不可；小模型思想优先于复制体量）"
+      },
+      "name": "LeWM / LeWorldModel",
+      "non_inferables": [
+        "48× 规划加速是相对 DINO-WM 的论文数，非本机数",
+        "原样移植不保证提高 C0 记忆分数",
+        "Two-Room 等诊断环境结论不外推到 AWZ 观察"
+      ],
+      "paper": {
+        "authors": [
+          "Lucas Maes",
+          "Quentin Le Lidec",
+          "Damien Scieur",
+          "Yann LeCun",
+          "Randall Balestriero"
+        ],
+        "date": "2026-03-13",
+        "title": "LeWorldModel: Stable End-to-End Joint-Embedding Predictive Architecture from Pixels",
+        "url": "https://arxiv.org/abs/2603.19312",
+        "version": "v3（2026-06-03）"
+      },
+      "repo": {
+        "url": "https://github.com/lucas-maes/le-wm"
+      },
+      "status": "verified",
+      "version_note": "论文 v3（2026-06-03）；仓库 4.5k stars"
+    },
+    {
+      "borrowable_mechanisms": [
+        "掩码潜特征预测的自监督视频编码器",
+        "Dense Predictive Loss + Deep Self-Supervision（2.1 配方）",
+        "冻结特征作教师/感知基线（蒸馏须声明外部来源）"
+      ],
+      "id": "vjepa2",
+      "license": {
+        "license": "MIT（主体；randaugment/randerase/worker_init_fn 等文件 Apache-2.0）",
+        "source": "仓库 README License 节原文"
+      },
+      "mlx_feasibility": {
+        "deps": [
+          "PyTorch + timm + einops",
+          "CUDA（官方强烈建议）",
+          "decord（官方声明不支持 macOS，需自行替换）",
+          "80M–2B 外部预训练权重下载"
+        ],
+        "notes": "macOS 视频依赖需单独适配；权重只能作教师/基线，不得宣称自主学得。",
+        "rating": "低（macOS/decord 是已知 blocker；仅权重可作教师）"
+      },
+      "name": "V-JEPA 2 / 2.1",
+      "non_inferables": [
+        "EK100/SSv2 等榜单成绩不代表 AWZ 观察收益",
+        "冻结特征作输入不能当作世界脑已理解",
+        "V-JEPA 2-AC 的 Franka 抓取成绩不外推到 AWZ 动作"
+      ],
+      "paper": {
+        "authors": [
+          "Lorenzo Mur-Labadia",
+          "Matthew Muckley",
+          "Amir Bar",
+          "Mahmoud Assran",
+          "Koustuv Sinha",
+          "Michael Rabbat",
+          "Yann LeCun",
+          "Nicolas Ballas",
+          "Adrien Bardes"
+        ],
+        "date": "2026-03-16（2.1 发布；论文 arXiv 2603.14482）",
+        "title": "V-JEPA 2.1: Unlocking Dense Features in Video Self-Supervised Learning",
+        "url": "https://github.com/facebookresearch/vjepa2",
+        "paper_ids": [
+          "arXiv:2506.09985（V-JEPA 2，2025）",
+          "arXiv:2603.14482（V-JEPA 2.1，2026）"
+        ],
+        "url_note": "[Paper] 链接在仓库 README 内；本条 url 记仓库页（已核实含引用节）"
+      },
+      "repo": {
+        "url": "https://github.com/facebookresearch/vjepa2"
+      },
+      "status": "verified",
+      "version_note": "2.1 发布 2026-03-16；V-JEPA 2 论文 arXiv:2506.09985（2025）"
+    },
+    {
+      "borrowable_mechanisms": [
+        "RSSM 式潜动态 + 想象轨迹内训练策略（只借鉴世界模型部分）",
+        "categorical 表征与跨域固定超参的鲁棒配方",
+        "action-conditioned rollout 作为现有神经预测基线对照"
+      ],
+      "id": "dreamerv3",
+      "license": {
+        "license": "MIT",
+        "source": "仓库页 License 徽标（GitHub 检测）"
+      },
+      "mlx_feasibility": {
+        "deps": [
+          "JAX（本仓库实现栈）",
+          "Linux/Mac Python 3.11+",
+          "各环境依赖"
+        ],
+        "notes": "JAX ≠ MLX；RL actor-critic 环不在借鉴范围；只保留潜动态思想作基线。",
+        "rating": "低（栈不同；仅思想与基线对照）"
+      },
+      "name": "DreamerV3",
+      "non_inferables": [
+        "150+ 任务与 Minecraft 钻石成绩不代表 AWZ 任务收益",
+        "不得把整套 RL 算法替换进世界脑",
+        "固定超参跨域有效是 RL 语境结论，非本机结论"
+      ],
+      "paper": {
+        "authors": [
+          "Danijar Hafner",
+          "Jurgis Pasukonis",
+          "Jimmy Ba",
+          "Timothy Lillicrap"
+        ],
+        "date": "2023-01-10（v2 2024-04-17；Nature 2025）",
+        "title": "Mastering Diverse Domains through World Models",
+        "url": "https://arxiv.org/abs/2301.04104",
+        "version": "v2"
+      },
+      "repo": {
+        "url": "https://github.com/danijar/dreamerv3"
+      },
+      "status": "verified",
+      "version_note": "本仓库为基于 DreamerV2 代码的 JAX 重实现（作者声明与 Google/DeepMind 无关）"
+    },
+    {
+      "borrowable_mechanisms": [
+        "数据收集→训练→MPC 评测三段统一接口",
+        "CEM/iCEM/MPPI 等采样规划器与 JEPA 基线实现",
+        "环境因子 variation（FoV）做零样本泛化评测"
+      ],
+      "id": "stable-worldmodel",
+      "license": {
+        "license": "MIT",
+        "source": "仓库页 License 徽标（GitHub 检测）"
+      },
+      "mlx_feasibility": {
+        "deps": [
+          "Python 3.10+",
+          "PyTorch",
+          "Lance/HDF5 数据栈",
+          "Gymnasium 系环境"
+        ],
+        "notes": "评测 harness 思想可借鉴；H-JEPA/LeWM 均构建其上，版本联动需钉选。",
+        "rating": "中（评测框架思想可借鉴；全栈引入太重）"
+      },
+      "name": "Stable WorldModel",
+      "non_inferables": [
+        "平台上的基线排名不是 AinerZero 能力排名",
+        "吞吐/存储 benchmark 是作者机器数，非本机数",
+        "引入其环境不等于引入其数据许可（各环境许可另查）"
+      ],
+      "paper": {
+        "authors": [
+          "Lucas Maes",
+          "Quentin Le Lidec",
+          "Luiz Facury",
+          "Nassim Massaudi",
+          "Ayush Chaurasia",
+          "Francesco Capuano",
+          "Richard Gao",
+          "Taj Gillin",
+          "Dan Haramati",
+          "Damien Scieur",
+          "Yann LeCun",
+          "Randall Balestriero"
+        ],
+        "date": "2026-05-20 (v1)",
+        "title": "stable-worldmodel: A Platform for Reproducible World Modeling Research and Evaluation",
+        "url": "https://arxiv.org/abs/2605.21800",
+        "version": "v1"
+      },
+      "repo": {
+        "url": "https://github.com/galilai-group/stable-worldmodel"
+      },
+      "status": "verified",
+      "version_note": "论文 arXiv:2605.21800；2.3k stars"
+    },
+    {
+      "borrowable_mechanisms": [
+        "E(n) 等变消息传递：旋转/平移/反射/置换等变",
+        "无高阶表示的轻量等变层（相对 TFN/SE(3)-Transformer）",
+        "对象图动力学：Delta s_i = f(s_i, neighbors, action, dt) 的等变候选"
+      ],
+      "id": "egnn",
+      "license": {
+        "license": "MIT",
+        "source": "仓库页 License 徽标（GitHub 检测）"
+      },
+      "mlx_feasibility": {
+        "deps": [
+          "PyTorch（官方实现基于 1.7.1 时代 API）",
+          "N-body/QM9 数据生成脚本"
+        ],
+        "notes": "模型小、纯前向 MLP+消息传递，概念移植成本在 8 条中最低；仍需 MLX 重写与本机验证。",
+        "rating": "中（小而干净；需移植验证）"
+      },
+      "name": "EGNN",
+      "non_inferables": [
+        "N-body/QM9 成绩不代表 AWZ 对象动力学收益",
+        "等变性减少自由度，但显式位置真值输入会泄露答案",
+        "不能拿 Blender 真值冒充视觉理解（RFC §4.2 原话）"
+      ],
+      "paper": {
+        "authors": [
+          "Victor Garcia Satorras",
+          "Emiel Hoogeboom",
+          "Max Welling"
+        ],
+        "date": "2021-02-19（v3 2022-02-16）",
+        "title": "E(n) Equivariant Graph Neural Networks",
+        "url": "https://arxiv.org/abs/2102.09844",
+        "version": "v3"
+      },
+      "repo": {
+        "url": "https://github.com/vgsatorras/egnn"
+      },
+      "status": "verified",
+      "version_note": "ICML 2021；官方实现（PyTorch）"
+    },
+    {
+      "borrowable_mechanisms": [
+        "竞争注意力做对象绑定（slots 可交换、绑定任意对象）",
+        "无监督对象发现 + 有监督属性预测两用",
+        "感知侧对象表征（非世界模型）：给 NeuroGeometry 感知/绑定参考"
+      ],
+      "id": "slot-attention",
+      "license": {
+        "license": "Apache-2.0（父仓库 google-research，API 核实）",
+        "source": "api.github.com 父仓库 license 字段 + 论文页代码链接"
+      },
+      "mlx_feasibility": {
+        "deps": [
+          "TensorFlow ≥2.2（官方实现栈）",
+          "CLEVR 数据集下载（17.7GB，首次运行自动下载）",
+          "单 GPU 16GB（官方测试配置）"
+        ],
+        "notes": "TF 栈与本机 MLX 不兼容，；不训练，只借鉴绑定思想；CLEVR 许可/下载须用户批准（本任务未下载）。",
+        "rating": "低（栈过时；仅思想）"
+      },
+      "name": "Slot Attention",
+      "non_inferables": [
+        "CLEVR 对象发现成绩不代表 AWZ 感知收益",
+        "slot 绑定成功不等于对象因果理解",
+        "官方用原版 CLEVR（无 mask），ARI 不可比（README 原话）"
+      ],
+      "paper": {
+        "authors": [
+          "Francesco Locatello",
+          "Dirk Weissenborn",
+          "Thomas Unterthiner",
+          "Aravindh Mahendran",
+          "Georg Heigold",
+          "Jakob Uszkoreit",
+          "Alexey Dosovitskiy",
+          "Thomas Kipf"
+        ],
+        "date": "2020-06-26（v2 2020-10-14；NeurIPS 2020）",
+        "title": "Object-Centric Learning with Slot Attention",
+        "url": "https://arxiv.org/abs/2006.15055",
+        "version": "v2"
+      },
+      "repo": {
+        "url": "https://github.com/google-research/google-research/tree/master/slot_attention"
+      },
+      "status": "verified",
+      "version_note": "NeurIPS 2020；父仓库 Apache-2.0"
+    },
+    {
+      "borrowable_mechanisms": [
+        "离散潜动态 + 稀疏时域更新形成不变上下文（invariant contexts）",
+        "高层只预测上下文切换事件（自适应时间抽象）",
+        "层级预测无缝接入 MBRL/规划（论文结论，待本机验证）"
+      ],
+      "id": "thick",
+      "license": {
+        "license": "MIT",
+        "source": "openreview（含摘要/TLDR/作者/venue）；许可与代码均未见"
+      },
+      "mlx_feasibility": {
+        "deps": [
+          "未知（无官方代码记录）"
+        ],
+        "notes": "只有机制可借鉴；任何实现都是重新推导，需同预算对照验证。",
+        "rating": "未可评（无代码；机制参考）"
+      },
+      "name": "THICK",
+      "non_inferables": [
+        "ICLR 2024 spotlight ≠ 本机收益证据",
+        "稀疏更新/可解释性是论文环境结论",
+        "无代码则复现成本与细节全部未知，不得按已有实现规划"
+      ],
+      "paper": {
+        "authors": [
+          "Christian Gumbsch",
+          "Noor Sajid",
+          "Georg Martius",
+          "Martin V. Butz"
+        ],
+        "date": "ICLR 2024 spotlight",
+        "title": "Learning Hierarchical World Models with Adaptive Temporal Abstractions from Discrete Latent Dynamics",
+        "url": "https://openreview.net/forum?id=TjCDNssXKU",
+        "version": "camera-ready"
+      },
+      "repo": {
+        "url": "https://github.com/CognitiveModeling/THICK"
+      },
+      "status": "verified-paper-only",
+      "version_note": "全称 Temporal Hierarchies from Invariant Context Kernels（摘要原话）；经统筹问答 #121 指引、由执行者独立在 OpenReview 检索核实（arXiv 无标题匹配）"
+    }
+  ],
+  "registry": "Research Adapter Registry v0",
+  "scope": "只读研究参考与候选机制；不引入生产依赖；下载代码/权重/数据集一律先经用户批准（ADR-0012 §5）"
+}
