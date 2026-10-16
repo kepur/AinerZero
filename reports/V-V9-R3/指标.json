@@ -1,0 +1,103 @@
+{
+  "task": "ainerzero.V9.R4",
+  "type": "verify",
+  "verified_task": "ainerzero.V9.R3",
+  "verifier": "deepseek-v4flash-q7m2",
+  "verifier_is_author_of_verified_task": false,
+  "date": "2026-10-16",
+  "cpu_only": true,
+  "no_downloads": true,
+  "no_mlx_import": true,
+  "no_paid_service": true,
+  "no_git_commit": true,
+  "params": {},
+
+  "recommendation": "accept",
+  "recommendation_reason": "28 条来源身份/版次/日期/许可独立复核全一致；0 事实性错误、0 夸大；正向 30/30 绿、21 反例 21/21 红；被验文件字节未变",
+
+  "inputs_sha256": {
+    "docs/research/adapter_registry.json": "3e17cc2b4401b263b57809b58032a5a28e0b534b9da6f91b85236593e7e2acb9",
+    "docs/research/ADAPTER_REGISTRY.md": "597ab7c99ebbf94927e0e03f6d28ef99b3ebb039e4842d3d45852e0c8b6d5dda",
+    "reports/V9-R3/validate_registry_r3.py": "38ea631df64a04543fe073c99875a1896c246751f29475e81451814d8777fc62",
+    "reports/V9-R3/r1-archive/ADAPTER_REGISTRY.md": "ab176e3bb7aee3c756e3228bfb14e59f635103cfe0cec48f8803dc58a3e1a031",
+    "reports/V9-R3/r1-archive/adapter_registry.json": "ff4ddfb9c261e4bee0496cc3098778037e0a53bf9eb647bbc5647c42a0bc7858"
+  },
+  "inputs_sha_unchanged_after_verification": true,
+
+  "r3_self_validator_reproduced": {
+    "green_exit": 0,
+    "green_stdout": "REGISTRY R3 OK: 28 entries verified, access_date=2026-10-16",
+    "red_control_exit": 3,
+    "red_control_cases": 16,
+    "red_control_all_red": true,
+    "r1_archive_compat_exit": 0,
+    "mutate_mode_does_not_touch_verified_files": true
+  },
+
+  "independent_validator": {
+    "script": "reports/V-V9-R3/verify_r3_independent.py",
+    "shares_code_with_r3_validator": false,
+    "assertions_total": 30,
+    "assertions_passed_green": 30,
+    "green_exit": 0,
+    "self_mutation_cases": 21,
+    "self_mutation_cases_red": 21,
+    "self_mutation_not_red": [],
+    "red_exit": 3
+  },
+
+  "independent_source_probes": {
+    "arxiv_abs_rechecked": 19,
+    "crossref_doi_rechecked": 6,
+    "github_api_rechecked": 16,
+    "github_raw_license_rechecked": 1,
+    "github_org_repo_search": 1,
+    "huggingface_dataset_api_rechecked": 1,
+    "official_project_pages_rechecked": 3,
+    "blenderworld_readme_and_harbor_docs_rechecked": 2,
+    "local_blender_version_rechecked": true
+  },
+
+  "per_item_verdict": {
+    "consistent": 28,
+    "inconsistent": 0,
+    "inherently_unverifiable_and_correctly_flagged": 2,
+    "unverifiable_note": [
+      "blenderworld 技术报告发布日期（注册表用仓库 pushed_at=2026-10-16 近似，已注明来源）",
+      "license=null 仓库（tem×2、director、schaeffer-grid-cells、thix）的许可内容在源站缺失"
+    ]
+  },
+
+  "coverage_vs_survey_section8": {
+    "verified_11": 11,
+    "title_only_3": 3,
+    "unverified_12": 12,
+    "addendum_9_1_1": 1,
+    "total_registered": 28,
+    "missing": 0,
+    "double_counted": 0
+  },
+
+  "exaggeration_findings": 0,
+  "fabricated_sources_found": 0,
+
+  "presentation_suggestions": [
+    "指标 status_verified 未区分『身份已核』与『许可已核』（tem/director/schaeffer-grid-cells 属代码许可无法核）",
+    "blenderworld.paper.date 实为仓库 pushed_at，建议与报告发布日期分开标注",
+    "schaeffer-grid-cells 的 mlx_feasibility.rating=高 指零代码依赖，非 MLX 可直接运行",
+    "R3 报告 §4 写『无失败项』，建议同时列出 2 项『无法核』以与 §3 表一致"
+  ],
+
+  "not_run_and_not_claimed": [
+    "未运行 MLX/ORT/模型",
+    "未训练",
+    "未下载任何数据集或权重（含 Qwen/BlenderWorld）",
+    "未 clone、未安装",
+    "未调用付费 VLM 接口",
+    "未在 Linux 上运行 BlenderWorld 官方评测",
+    "不宣称任何世界模型能力通过"
+  ],
+
+  "failures": [],
+  "retryable": false
+}

@@ -1,0 +1,243 @@
+{
+  "blenderworld_readme": "<p align=\"center\">\n  <img src=\"docs/assets/blenderworld-logo.png\" alt=\"BlenderWorld mascot\" width=\"108\" />\n</p>\n\n<h1 align=\"center\">BlenderWorld</h1>\n\n<p align=\"center\"><strong>Benchmarking Visual Agents for 3D Creation from Real-World References</strong></p>\n\n<p align=\"center\">\n  <a href=\"https://blenderworld.github.io/\">Website</a> ·\n  <a href=\"#quickstart\">Quickstart</a> ·\n  <a href=\"#evaluation\">Evaluation</a> ·\n  <a href=\"#documentation\">Documentation</a>\n</p>\n\n<p align=\"center\">\n  📑 <a href=\"https://github.com/QwenLM/BlenderWorld/blob/main/docs/BlenderWorld__Benchmarking_Visual_Agents_for_3D_Creation_from_Real_World_References.pdf\">Technical Report</a> &nbsp;|&nbsp;\n  🤗 <a href=\"https://huggingface.co/datasets/Qwen/BlenderWorld\">Hugging Face</a> &nbsp;|&nbsp;\n  🤖 <a href=\"https://modelscope.cn/datasets/Qwen/BlenderWorld\">ModelScope</a>\n</p>\n\n[![Overview of BlenderWorld: references on the left and top lead to editable 3D scenes on the right and bottom](docs/assets/benchmark-overview.jpg)](docs/assets/benchmark-overview.jpg)\n\n*From real-world references to editable 3D scenes. The benchmark contains 223 tasks across 9 categories and 22 subcategories; references appear on the left/top and GPT-6-Astra outputs on the right/bottom.*\n\nBlenderWorld evaluates agents on realistic 3D creation requests in Blender. Agents receive a task brief, reference media when applicable, and any declared specification files, then deliver an editable Blender project and the requested exports. Run your model with any generation harness, collect one submission ZIP per task, and evaluate it with `bw evaluate`. [Harbor integration](docs/harbor.md) is available as an optional generation and verification adapter.\n\n## Dataset\n\nBlenderWorld contains **223 tasks and 2,651 binary criteria**, spanning products, architecture, environments, characters, animation, and scientific visualization. All tasks use neutral IDs from `bw_0001` to `bw_0223`.\n\n| Input | Tasks |\n| --- | ---: |\n| Text | 78 |\n| Image + text | 130 |\n| Video + text | 15 |\n| Total | 223 |\n\n**59 tasks** also include specification attachments with requirements on dimensions, materials, or camera settings. These files can accompany visual references.\n\n[![Dataset statistics showing application scenarios, reference and specification types, and category importance](docs/assets/dataset-statistics.png)](docs/assets/dataset-statistics.png)\n\n*Dataset statistics. (a) shows the 11 largest application scenarios, covering 213 of 223 tasks; (b) reference and specification types may co-occur; (c) the inner ring shows category and the outer ring shows importance.*\n\n<details>\n<summary><strong>How the benchmark is built</strong></summary>\n\n<br />\n\n[![Benchmark construction flow from production briefs through validation and rubric review](docs/assets/benchmark-construction.png)](docs/assets/benchmark-construction.png)\n\n*From production briefs to verifiable requirements. Diverse tasks and references undergo structural and semantic validation, followed by independent rubric review.*\n\n</details>\n\n## Quickstart\n\n### 1. Install and download\n\nUse Python 3.10+ on Linux. Download the dataset and check every task and resource:\n\n```bash\ngit clone https://github.com/QwenLM/BlenderWorld.git\ncd BlenderWorld\npython -m pip install -e .\nbw download --output data/BlenderWorld\nbw verify data/BlenderWorld\nbw list data/BlenderWorld --modality image\n```\n\nTo use an existing local dataset, pass its directory to `--dataset`. To pin a published revision, pass its commit SHA to `bw download --revision`.\n\n### 2. Prepare, generate, and package\n\nPrepare the inputs for one generation agent:\n\n```bash\nbw prepare --dataset data/BlenderWorld --task-id bw_0001 --output work/bw_0001\n```\n\nThe prepared workspace contains `query.txt`, `input.json`, reference media, and declared attachments. Give the agent access to this workspace and Blender through its normal coding or MCP tools. Save the primary project as `model-output/final.blend`, alongside its requested exports and texture dependencies. Keep inputs and evaluation rubrics outside this output directory. Package its contents as one ZIP for the task:\n\n```bash\nbw pack-submission --source model-output --task-id bw_0001 \\\n  --output submissions/bw_0001.zip\n```\n\nThe ZIP contains `final.blend` at its root, with optional `textures/` and `outputs/` folders. Ordinary ZIP tools are supported too. See [the complete public submission format](docs/submissions.md).\n\nGenerate projects with **Blender 4.2.10**. When using the bundled coding-agent environment, the other pins are **Node.js 22.17.0, Codex CLI 0.147.0, and Claude Code 2.1.220**.\n\n### 3. Evaluate\n\nEvaluation needs Blender 4.2.10, Node.js 22.17.0, ffmpeg/ffprobe, and the configured Claude Code 2.1.220 CLI for rendering and scene inspection, plus a vision-capable Chat Completions endpoint. Configure the endpoint and key variables described in [the evaluation guide](docs/evaluation.md) in your shell. Model aliases must exist at their configured endpoints; the paper uses GPT-5.6-terra for all three evaluator roles.\n\n```bash\nbw evaluate --dataset data/BlenderWorld --submissions submissions \\\n  --task-id bw_0001 --output runs/one-task --dry-run\nbw evaluate --dataset data/BlenderWorld --submissions submissions \\\n  --task-id bw_0001 --output runs/one-task --resume\n```\n\nOmit `--task-id` for all 223 tasks. Missing or failed submissions receive zero and remain in the selected denominator. `--dry-run` writes a plan without invoking Blender or model services. JSON and CSV results are written to the run directory.\n\n## Evaluation\n\n[![Evaluation pipeline combining adaptive renders, scene inspection, rubric scoring, and visual-quality ratings](docs/assets/evaluation-pipeline.png)](docs/assets/evaluation-pipeline.png)\n\n*The paper pipeline combines 8 adaptive views and scene inspection with a weighted binary rubric and 8 visual-quality ratings, weighted 50:50. The figure shows the paper setup (Cycles, GPU, and Blender MCP); the public evaluator also supports CPU Cycles and accepts submissions from any generation harness.*\n\nThe renderer selects **eight adaptive views**, using Cycles at **1024 × 1024 and 64 samples**. It preserves the submitted scene and allows up to **two corrective re-renders per view**. Original authored images and sampled animation frames provide additional evidence.\n\nScene-inspection criteria are assigned to Agent-as-Judge; visual criteria and eight holistic quality dimensions are assigned to the VLM. Each binary criterion has importance weight 1, 2, or 3.\n\n```text\nRubric score    = 100 × Σ(weight × pass) / Σ(weight)\nDimension score = 10 × mean(eight ratings from 1 to 10)\nFinal score     = 0.5 × rubric score + 0.5 × dimension score\n```\n\nThe public protocol applies no score cap. It requires fresh evaluator renders, complete structural verdicts, and all eight dimension ratings. See [the protocol and runtime guide](docs/evaluation.md) for configuration, evidence, and resuming runs.\n\n## Documentation\n\nRead the [dataset format](docs/dataset.md) for task records and resources, the [submission ZIP format](docs/submissions.md) before packaging results, and the [evaluation protocol](docs/evaluation.md) for runtime configuration, evidence, and resuming runs. [Harbor integration](docs/harbor.md) describes the optional generation and verification adapter.\n",
+  "hf_dataset_api": {
+    "status": 200,
+    "cardData": {
+      "pretty_name": "BlenderWorld (Harbor, Base64 Images)",
+      "viewer": false,
+      "license": "mit",
+      "language": [
+        "en",
+        "zh"
+      ],
+      "tags": [
+        "benchmark",
+        "harbor",
+        "blender",
+        "3d-generation",
+        "multimodal"
+      ],
+      "size_categories": [
+        "n<1K"
+      ]
+    },
+    "tags": [
+      "language:en",
+      "language:zh",
+      "license:mit",
+      "size_categories:n<1K",
+      "library:harbor",
+      "region:us",
+      "benchmark",
+      "harbor",
+      "blender",
+      "3d-generation",
+      "multimodal"
+    ],
+    "id": "Qwen/BlenderWorld"
+  },
+  "hf_dataset_readme": {
+    "status": 200,
+    "text": "---\npretty_name: BlenderWorld (Harbor, Base64 Images)\nviewer: false\nlicense: mit\nlanguage:\n  - en\n  - zh\ntags:\n  - benchmark\n  - harbor\n  - blender\n  - 3d-generation\n  - multimodal\nsize_categories:\n  - n<1K\n---\n# BlenderWorld\nBlenderWorld is the first comprehensive benchmark dedicated to evaluating frontier models on realistic 3D creation tasks. BlenderWorld comprises 223 tasks spanning architecture, products, natural environments, and scientific visualization, driven by text, image, video, and structured specification inputs. To rigorously assess these complex deliverables, a unified evaluation protocol is established: The submitted Blender projects are rendered from multiple viewpoints and evaluated against 2,651 task-specific binary rubrics alongside holistic visual quality scores. For more details, please refer to our Project: [BlenderWorld](https://github.com/QwenLM/BlenderWorld).\n\n# BlenderWorld-Harbor\n\nThe benchmark comprises 223 tasks and 2,651 rubric criteria. Each instance includes a Base64-encoded image preview and corresponding JSON data.\n\nThe package contains 78 text, 130 image-and-text, and 15 video-and-text tasks.\nUse **Harbor 0.23.0**, Python 3.12+ and a GPU-capable Linux sandbox.\nThe commands below use the Modal backend. [中文使用说明](使用说明.md)\n\n## Task categories\n\nThe 223 tasks span **9 categories and 22 subcategories**. Use [taxonomy.csv](taxonomy.csv)\nfor the per-task mapping, [taxonomy.json](taxonomy.json) for the hierarchy, counts and\nfigure labels, or [classification_summary.md](classification_summary.md) for a readable table.\nEach task also includes `category`, `subcategory`, `category_short`, `subcategory_short`\nand `taxonomy_version` in `task.toml` metadata and its evaluator dataset record.\n\n## View tasks and embedded images\n\nExtract the ZIP and open `index.html` in a browser. Search by task ID or query,\nor filter by modality. Each task's `environment/inputs/instruction.html` displays\nits query, Base64-embedded reference images and declared attachments.\nVideos play from the bundled files using relative paths.\n\nAll 130 input images are available in `environment/inputs/reference_images.base64.json`.\nEach image record includes `path`, `media_type`, `bytes`, `sha256`, `width`, `height`\nand a complete `data_uri`. Tasks without input images have an empty `images` array.\nThe one verifier-only image is in `bw_0182/tests/rubric_reference_images.base64.json`.\n\n```python\nimport base64, hashlib, json\n\nwith open(\"bw_0006/environment/inputs/reference_images.base64.json\") as f:\n    image = json.load(f)[\"images\"][0]\nraw = base64.b64decode(image[\"data_uri\"].split(\",\", 1)[1], validate=True)\nassert hashlib.sha256(raw).hexdigest() == image[\"sha256\"]\n```\n\nBase64 decoding returns the full image file bytes. `base64_manifest.json` lists all\nimage locations and fingerprints. Standard image files are also available for\nHarbor agents and the evaluator. The agent's `instruction.md` contains a short text\nprompt and file paths; encoded image payloads are in the HTML/JSON files.\n\n## Run with Harbor\n\n```bash\npython -m pip install \"harbor[modal]==0.23.0\"\ncd BlenderWorld-harbor-base64\nsha256sum -c SHA256SUMS\n```\n\nConfigure Modal credentials with `modal token new`, or use your existing Modal\ncredentials. You can select another GPU-capable Harbor backend with `--env`.\nHarbor 0.23.0's built-in Docker backend does not allocate GPUs from `task.toml`;\nuse a backend that supports the declared GPU requirement.\n\nConfigure the generation agent's provider credentials. For the verifier, set the\nenvironment variables documented in `verifier.env.example`:\n\n| Variable | Purpose |\n| --- | --- |\n| `BW_AGENT_JUDGE_ENDPOINT` | Anthropic-compatible endpoint for rendering/scene-inspection agents |\n| `BW_AGENT_JUDGE_API_KEY` | Key for that endpoint |\n| `BW_VISION_JUDGE_ENDPOINT` | Full Chat Completions endpoint for the vision judge |\n| `BW_VISION_JUDGE_API_KEY` | Key for the vision endpoint |\n| `BW_RENDER_MODEL` | Optional rendering-agent model alias |\n| `BW_AGE"
+  },
+  "arxiv_html_github_links": {
+    "2607.12382": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/SynapticSage/cscg_toolkit",
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML",
+        "https://github.com/tristanstoeber/gradCSCG"
+      ]
+    },
+    "2505.13696": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    },
+    "2609.34677": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    },
+    "2601.01075": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    },
+    "2312.03954": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    },
+    "2505.03176": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML",
+        "https://github.com/hafezgh/seq-jepa"
+      ]
+    },
+    "2606.24946": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    },
+    "2208.04933": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML",
+        "https://github.com/lindermanlab/S5"
+      ]
+    },
+    "2606.19928": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    },
+    "1803.07770": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    },
+    "2005.05960": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    },
+    "2206.04114": {
+      "status": 404,
+      "github_links": []
+    },
+    "1812.01537": {
+      "status": 200,
+      "github_links": [
+        "https://github.com/arXiv/html_feedback",
+        "https://github.com/artivis/manif",
+        "https://github.com/brucemiller/LaTeXML"
+      ]
+    }
+  },
+  "github_search": {
+    "gradCSCG": [
+      {
+        "full_name": "tristanstoeber/gradCSCG",
+        "html_url": "https://github.com/tristanstoeber/gradCSCG",
+        "description": "gradCSCG: End-to-end cognitive map learning from continuous image sequences via a fully differentiable Clone-Structured Causal Graph algorithm",
+        "license": {
+          "key": "mit",
+          "name": "MIT License",
+          "spdx_id": "MIT",
+          "url": "https://api.github.com/licenses/mit",
+          "node_id": "MDc6TGljZW5zZTEz"
+        }
+      }
+    ],
+    "ESWM": [
+      {
+        "full_name": "rayyanplus/raymember",
+        "html_url": "https://github.com/rayyanplus/raymember",
+        "description": "Raymember is a model-agnostic, plug-and-play persistent world-memory layer that enables AI agents to store, update, retrieve and reason over spatial, temporal, semantic and episodic information",
+        "license": {
+          "key": "apache-2.0",
+          "name": "Apache License 2.0",
+          "spdx_id": "Apache-2.0",
+          "url": "https://api.github.com/licenses/apache-2.0",
+          "node_id": "MDc6TGljZW5zZTI="
+        }
+      }
+    ],
+    "FAR": [],
+    "flow_equivariant": [
+      {
+        "full_name": "hlillemark/flowm",
+        "html_url": "https://github.com/hlillemark/flowm",
+        "description": "Full model implementation for Flow Equivariant World Models (ICML 2026), world models with memory for dynamic scenes",
+        "license": {
+          "key": "mit",
+          "name": "MIT License",
+          "spdx_id": "MIT",
+          "url": "https://api.github.com/licenses/mit",
+          "node_id": "MDc6TGljZW5zZTEz"
+        }
+      }
+    ],
+    "seq_jepa": [
+      {
+        "full_name": "hafezgh/seq-jepa",
+        "html_url": "https://github.com/hafezgh/seq-jepa",
+        "description": "seq-JEPA: Autoregressive Predictive Learning of Invariant-Equivariant World Models",
+        "license": {
+          "key": "mit",
+          "name": "MIT License",
+          "spdx_id": "MIT",
+          "url": "https://api.github.com/licenses/mit",
+          "node_id": "MDc6TGljZW5zZTEz"
+        }
+      },
+      {
+        "full_name": "Thiggel/SequenceEditingJEPA",
+        "html_url": "https://github.com/Thiggel/SequenceEditingJEPA",
+        "description": null,
+        "license": null
+      },
+      {
+        "full_name": "vram1729/seqMask_LeJepa_cifar10",
+        "html_url": "https://github.com/vram1729/seqMask_LeJepa_cifar10",
+        "description": null,
+        "license": null
+      }
+    ],
+    "cueva_wei": [
+      {
+        "full_name": "22JunShu/Emergence-of-Grid-Cell-Cueva-2018",
+        "html_url": "https://github.com/22JunShu/Emergence-of-Grid-Cell-Cueva-2018",
+        "description": "A reproduction code for “Emergence of grid-like representations by training recurrent neural networks to perform spatial localization”(Cueva & Wei, 2018)",
+        "license": null
+      },
+      {
+        "full_name": "MateuszKunik/reproduction-cueva2018-rnn",
+        "html_url": "https://github.com/MateuszKunik/reproduction-cueva2018-rnn",
+        "description": "Reproduction of Cueva & Wei (2018): Emergence of grid-like representations by training recurrent neural networks for spatial localization.",
+        "license": null
+      }
+    ],
+    "sola_manif": [
+      {
+        "full_name": "artivis/manif",
+        "html_url": "https://github.com/artivis/manif",
+        "description": "A small C++11 header-only library for Lie theory.",
+        "license": {
+          "key": "mit",
+          "name": "MIT License",
+          "spdx_id": "MIT",
+          "url": "https://api.github.com/licenses/mit",
+          "node_id": "MDc6TGljZW5zZTEz"
+        }
+      },
+      {
+        "full_name": "artivis/tf2_manif",
+        "html_url": "https://github.com/artivis/tf2_manif",
+        "description": "Conversion package to convert tf2 to/from manif data structures.",
+        "license": null
+      }
+    ]
+  }
+}
