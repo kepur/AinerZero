@@ -1,0 +1,119 @@
+{
+  "task": "ainerzero.V9.G1",
+  "agent": "codex-exec-r2-20261016",
+  "registered_before_implementation": true,
+  "cpu_only": true,
+  "params_unchanged": {},
+  "model_budget": 0,
+  "round_trip_atol": 1e-09,
+  "property_seed": 20261016,
+  "property_samples": 128,
+  "translation_magnitude_max": 10.0,
+  "principal_rotation": "SO2 (-pi,pi], SO3 norm [0,pi], exact-pi axis lexicographically signed; no global log-exp tangent identity",
+  "small_angles": [
+    0.0,
+    1e-12,
+    1e-08,
+    0.0001
+  ],
+  "pi_offsets": [
+    0.0,
+    1e-12,
+    1e-08,
+    1e-05
+  ],
+  "finite_difference_atol": 2e-06,
+  "numeric_slack": 1e-09,
+  "gridlab_seed": 16,
+  "gridlab_actions": [
+    3,
+    3,
+    1,
+    1,
+    2,
+    2,
+    0,
+    0,
+    3,
+    3,
+    1,
+    1,
+    2,
+    2,
+    0,
+    0,
+    3,
+    3,
+    1,
+    1,
+    2,
+    2,
+    0,
+    0
+  ],
+  "awz_room_waypoints_xz": [
+    [
+      0,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      2
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "awz_reference": "existing Trajectory2D.eval_pos_and_tangent at 25 equally spaced arclength positions, height0, analytic-only small-room path, not rendered scene or public perception test",
+  "reference_fixed_heading": true,
+  "filter_initial_translation_error": [
+    0.04,
+    -0.03
+  ],
+  "filter_odometry_bias_per_step": [
+    0.003,
+    -0.002
+  ],
+  "filter_measurement_bias": [
+    0.002,
+    -0.001
+  ],
+  "filter_covariance_diagonal": [
+    0.04,
+    0.04,
+    0.001
+  ],
+  "filter_process_covariance_rate_diagonal": [
+    0.0004,
+    0.0004,
+    0.0
+  ],
+  "filter_measurement_covariance_diagonal": [
+    0.0025,
+    0.0025
+  ],
+  "filter_assumptions": "fixed heading, commuting pure translations, exact known displacement + fixed bounded additive odometry/observation errors; p=identity; no universal Gaussian/nonlinear pathwise guarantee",
+  "filter_bound": "Bpred=Bprev+||d_odom||2; Bnext=||I-K||2 Bpred+||K||2 ||d_obs||2; exact in translation subspace; report every step and numeric slack separately",
+  "graph_reference_assumptions": "anchor node0 fixed (chosen gauge, not observation/truth claim), fixed known rotations, relative translations with bounded error; connected full-rank reduced incidence matrix A",
+  "graph_bound": "||xhat-xtrue||2 <= ||pinv(sqrt(W) A)||2 ||sqrt(W)e||2; exact linear subgroup only; reference uses uniform weight1, each odometry edge fixed bias, closing loop displacement known exactly",
+  "graph_nonlin": "small SE2/SE3 Gauss-Newton; report rank/gauge/condition and convergence, no global optimum claim; absent anchor or rank deficiency raises observability error",
+  "graph_iterations": 30,
+  "graph_step_tolerance": 1e-10,
+  "graph_numeric_jacobian_step": 1e-06,
+  "source_sha256": {
+    "ARCHITECTURE_V9.md": "ebaf1c4bcf23ad8fcac7fc9424c1f4c384c912a8535b0dbe37a648cbe977ac91",
+    "docs/research/V9_RESEARCH_SURVEY.md": "51f6a984b009d0a0d54884cf938425dee76af9ca91b0c3e8b99377693d378b29",
+    "src/ainerzero/environments/gridlab2d.py": "baea7cb605ca26a9e6c4bd5004dd36f3bbcef0888bc80a8c6a65f582359bc395",
+    "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/kernel/motion.py": "c21cd8a2950cf668008b836a2522b9ba50c4fb10757a43187207ad46e2b47db1"
+  },
+  "scope_exclusion": "G3 canonicalization operator not implemented. Only known point/vector group actions and gravity state; no RGB warp, no sensors/teacher/MLX."
+}

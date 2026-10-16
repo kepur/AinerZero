@@ -1,0 +1,28 @@
+[PASS          ] c1_near_singular_rotation: 0 项违反, poison_detected=True
+      metrics: {"exact_pi_sign_convention_violations": 0, "samples": 2160, "max_exp_log_roundtrip": 1.8797463585684682e-13, "note": "近 pi 主值/轴分支；SO2 (-pi,pi] 含 r[1,0]=-0.0"}
+[FAIL(finding) ] c2_dt_boundaries: 2 项违反, poison_detected=True
+      - dt=1e+300 泄漏 OverflowError: (34, 'Result too large')
+      - dt=1e+308 泄漏 OverflowError: (34, 'Result too large')
+      metrics: {"dt0_mean_drift": 0.0, "dt0_cov_drift": 0.0, "dt0_exact_identity": true, "subnormal_dt_cov_drift": 0.0, "non_valueerror_dt": {"1e+300": "OverflowError: (34, 'Result too large')", "1e+308": "OverflowError: (34, 'Result too large')"}, "rejected_dt": ["-1.0", "-1e-300", "nan", "inf", "-inf"], "cov_trace_by_dt": [0.09999999999999999, 0.1000000000021, 0.10000210312499999, 0.10520163269961069, 2.270978
+[FAIL(finding) ] c3_covariance_guards: 4 项违反, poison_detected=True
+      - 半正定路径拒绝真 PSD [outer([1,2,2]) 整数精确PSD] 200/200 次
+      - 半正定路径拒绝真 PSD [J^T J 整数精确PSD] 200/200 次
+      - 半正定路径拒绝真 PSD [u u^T 随机 rank1] 200/200 次
+      - 半正定路径拒绝真 PSD [J^T J 随机 rank2] 96/200 次
+      metrics: {"psd_rejections_per_200": {"diag(1,1,0) 精确PSD": 0, "outer([1,2,2]) 整数精确PSD": 200, "J^T J 整数精确PSD": 200, "u u^T 随机 rank1": 200, "J^T J 随机 rank2": 96}, "psd_exact_samples": {"diag(1,1,0) 精确PSD": {"eigmin_float64": 0.0, "rejected": false, "exact_reason": "整数元素逐位精确；精确特征值 >= 0"}, "outer([1,2,2]) 整数精确PSD": {"eigmin_float64": -5.551115123125783e-16, "rejected": true, "exact_reason": "整数元素逐位精确；精确特征值 >= 0
+[FAIL(finding) ] c4_gravity_frame: 2 项违反, poison_detected=True
+      - 合法输入被拒 [horizontal 垂直但极短 1e-13]: rejected: horizontal reference must not be parallel to gravity
+      - 合法输入被拒 [horizontal 垂直但极短 1e-20]: rejected: horizontal reference must not be parallel to gravity
+      metrics: {"gravity_guard_results": {"gravity=-9.81*up": "accepted", "gravity=-9.81*up dev 1e-11": "accepted", "gravity=+9.81*up (反号)": "rejected: gravity must point opposite the declared up direction", "gravity=-9.81*up dev 1e-9": "rejected: gravity must point opposite the declared up direction", "horizontal || up": "rejected: horizontal reference must not be parallel to gravity", "horizontal 垂直但极短 1e-13":
+[PASS          ] c5_wrong_loop: 0 项违反, poison_detected=True
+      metrics: {"max_gn_vs_own_lstsq_gap": 5.92250692932339e-11, "min_ls_residual_norm": 0.1571412231902511, "max_true_error_minus_bound": -0.2813914301497593, "fail_closed_guards": {"no anchor": "ObservabilityError", "zero information": "ObservabilityError", "singular info": "ObservabilityError", "self edge": "ValueError", "disconnected": "ObservabilityError"}, "gauge_semantics_gap": 4.440892098500626e-16}
+[PASS          ] c6_observation_jacobian: 0 项违反, poison_detected=True
+      metrics: {"max_gain_vs_numeric_fd_relative_gap": 2.1175144478759675e-09, "note": "G1 自测只比较左右一致，未与数值微分 Jacobian 对照"}
+[PASS          ] c7_tangent_sides: 0 项违反, poison_detected=True
+      metrics: {"max_xi_left_minus_Ad_xi_right": 1.0256552551712872e-16, "mc_relative_error_by_scale": {"SE2@0.5": 0.010763364232474025, "SE2@0.2": 0.010763364232474414, "SE2@0.05": 0.01076336423247421, "SE3@0.5": 0.013426903887434501, "SE3@0.2": 0.013426903887434574, "SE3@0.05": 0.013426903887434552}, "max_side_roundtrip_gap": 1.1102230246251565e-16, "max_left_right_predict_gap": 1.1102230246251565e-16}
+[PASS          ] c8_independent_matrix_exponential: 0 项违反, poison_detected=True
+      metrics: {"SE2_reference_selfcheck": 0.0, "SE3_reference_selfcheck": 0.0, "samples": 312, "max_abs_gap_vs_independent_exp": 4.213296378452469e-13, "max_scaled_gap": 4.213296378452469e-13, "note": "含 theta=2pi（SE Jacobian 精确奇异）与 1e3 大角"}
+[PASS          ] c9_covariance_long_run: 0 项违反, poison_detected=True
+      metrics: {"SE2_steps": 4000, "SE2_failures": 0, "SE2_min_eigenvalue": 1.8442533218404268e-06, "SE3_steps": 4000, "SE3_failures": 0, "SE3_min_eigenvalue": 3.2249867151919684e-06}
+---
+cases=9 findings=3 poison_all_detected=True exit=1

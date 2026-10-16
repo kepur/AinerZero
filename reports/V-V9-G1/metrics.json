@@ -1,0 +1,201 @@
+{
+  "task": "ainerzero.V9.G2",
+  "verified_task": "ainerzero.V9.G1",
+  "verified_author": "codex-exec-r2-20261016",
+  "agent": "deepseek-8seu",
+  "verifier_is_author": false,
+  "cpu_only": true,
+  "recommendation": "conditional_accept",
+  "accept_self": false,
+  "new_adverse_counterexamples": 9,
+  "adverse_cases_failed_as_findings": 3,
+  "adverse_cases_passed": 6,
+  "poison_controls_total": 9,
+  "poison_controls_detected": 9,
+  "counterexample_suite_exit": 1,
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "medium",
+      "kind": "fail-closed 守卫无容差",
+      "case": "c3_covariance_guards",
+      "fact": "semidefinite=True 拒绝精确 PSD 的整数矩阵 outer([1,2,2]) 200/200、整数 J^T J 200/200；solve_pose_graph 的 rank-deficient PSD information 抛 ValueError",
+      "evidence": "evidence/counterexamples.log, evidence/findings-minimal-repro.log"
+    },
+    {
+      "id": "F2",
+      "severity": "low-medium",
+      "kind": "尺度相关守卫",
+      "case": "c4_gravity_frame",
+      "fact": "GravityFrame 水平参考判据是绝对范数 ‖x‖<1e-12；恰好垂直的 [1e-13,0,0] 被拒而 [1,0,0] 被收",
+      "evidence": "evidence/counterexamples.log, evidence/findings-minimal-repro.log"
+    },
+    {
+      "id": "F3",
+      "severity": "process",
+      "kind": "登记文档漂移导致不能原样重放",
+      "case": "freeze_check",
+      "fact": "ARCHITECTURE_V9.md 与 V9_RESEARCH_SURVEY.md 的登记哈希在 G1 交付后 stale；run_reference.py 消费门 AssertionError；豁免两个 .md 后重放与报告 0 字段差异",
+      "evidence": "evidence/freeze-check.log, evidence/original-replay-gate-failure.log, evidence/replay-vs-g1-json-diff.txt"
+    },
+    {
+      "id": "F4",
+      "severity": "low",
+      "kind": "异常类型泄漏/数值范围",
+      "case": "c2_dt_boundaries",
+      "fact": "_abc 用 python float ** ；|θ|≳5.6e102 抛 OverflowError；predict(dt=1e300/1e308) 泄漏 OverflowError 而非文档化的 ValueError",
+      "evidence": "evidence/counterexamples.log, evidence/findings-minimal-repro.log"
+    }
+  ],
+  "case_verdicts": {
+    "c1_near_singular_rotation": "PASS",
+    "c2_dt_boundaries": "FAIL(finding)",
+    "c3_covariance_guards": "FAIL(finding)",
+    "c4_gravity_frame": "FAIL(finding)",
+    "c5_wrong_loop": "PASS",
+    "c6_observation_jacobian": "PASS",
+    "c7_tangent_sides": "PASS",
+    "c8_independent_matrix_exponential": "PASS",
+    "c9_covariance_long_run": "PASS"
+  },
+  "case_metrics_selected": {
+    "c1_max_exp_log_roundtrip": 1.8797463585684682e-13,
+    "c1_exact_pi_convention_violations": 0,
+    "c1_samples": 2160,
+    "c2_dt0_exact_identity": true,
+    "c2_subnormal_dt_cov_drift": 0.0,
+    "c3_psd_rejections_per_200": {
+      "diag(1,1,0) 精确PSD": 0,
+      "outer([1,2,2]) 整数精确PSD": 200,
+      "J^T J 整数精确PSD": 200,
+      "u u^T 随机 rank1": 200,
+      "J^T J 随机 rank2": 96
+    },
+    "c4_lift_project_roundtrip_max": 8.881784197001252e-16,
+    "c5_max_gn_vs_own_lstsq_gap": 5.92250692932339e-11,
+    "c5_min_ls_residual_norm": 0.1571412231902511,
+    "c5_gauge_semantics_gap": 4.440892098500626e-16,
+    "c6_max_gain_vs_numeric_fd_relative_gap": 2.1175144478759675e-09,
+    "c7_max_xi_left_minus_Ad_xi_right": 1.0256552551712872e-16,
+    "c7_mc_relative_error_by_scale": {
+      "SE2@0.5": 0.010763364232474025,
+      "SE2@0.2": 0.010763364232474414,
+      "SE2@0.05": 0.01076336423247421,
+      "SE3@0.5": 0.013426903887434501,
+      "SE3@0.2": 0.013426903887434574,
+      "SE3@0.05": 0.013426903887434552
+    },
+    "c8_max_abs_gap_vs_independent_exp": 4.213296378452469e-13,
+    "c8_samples": 312,
+    "c9_se2_min_eigenvalue": 1.8442533218404268e-06,
+    "c9_se3_min_eigenvalue": 3.2249867151919684e-06,
+    "c9_failures": 0
+  },
+  "analytic_bound": {
+    "A1_own_trajectory": {
+      "steps": 24,
+      "max_error": 0.01313227624176149,
+      "max_bound": 0.013269552381363276,
+      "max_error_over_bound": 0.9896548025391884,
+      "violations": 0
+    },
+    "A2_bound_attainability": 0.9991409741543215,
+    "A3_premise_violation_steps": {
+      "steps_exceeding_bound": 23,
+      "steps": 24
+    },
+    "A4_guards": {
+      "negative_bound": "ValueError",
+      "nan_bound": "ValueError",
+      "nonsquare_gain": "ValueError",
+      "inf_gain": "ValueError"
+    },
+    "B_validity": {
+      "max_true_error_minus_bound": -0.04433182898360272
+    },
+    "B_sharpness_ratio": {
+      "min": 0.9999999999999993,
+      "max": 1.0000000000000004,
+      "note": "沿 A^+ 主左奇异方向构造 e，比值应为 1"
+    },
+    "C_bound_sequence_max_gap": {
+      "steps": 24,
+      "max_gap_prediction_bound": 0.0,
+      "max_gap_updated_bound": 0.0,
+      "max_reported_error_over_bound": 0.9986217364335497,
+      "max_updated_over_predicted_bound": 0.731048405179548
+    },
+    "C_graph_bound": {
+      "mine": 0.14065436840675918,
+      "reported": [
+        0.14065436840675918,
+        0.14065436840675918
+      ]
+    },
+    "suite_exit": 0
+  },
+  "freeze_and_reproduction": {
+    "sha256sums_checked": 35,
+    "sha256sums_mismatched": 0,
+    "registration_sha256": "5aa8199fbc6bbf525b678860d155526053002a78cb975e608d96f53cda5334c6",
+    "registered_inputs_fresh": [
+      "src/ainerzero/environments/gridlab2d.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/kernel/motion.py"
+    ],
+    "registered_inputs_stale": [
+      "ARCHITECTURE_V9.md",
+      "docs/research/V9_RESEARCH_SURVEY.md"
+    ],
+    "cpu_tests_xml": {
+      "tests": 49,
+      "failures": 0,
+      "skipped": 0
+    },
+    "cpu_tests_independent_rerun": "49 passed in 1.24s",
+    "mutations": {
+      "records": 12,
+      "all_exit_1": true
+    },
+    "original_script_replay": "blocked by registered-source gate (F3), exit 1",
+    "patched_replay_exit": 0,
+    "replay_json_field_diffs_vs_report": 0,
+    "tracked_files_modified_before_g1_report": []
+  },
+  "conventions_vs_architecture_v9_section4": {
+    "T_AB_maps_B_to_A": "consistent (T = world<-body)",
+    "right_perturbation_T_Exp_xi": "consistent (boxplus right = compose(mean, exp))",
+    "covariance_adjoint_only_for_left_right_rewrite": "consistent",
+    "explicit_gauge_and_anchor": "consistent",
+    "inconsistencies_found": 0,
+    "doc_notes": 2
+  },
+  "model_budget_reserved": 0,
+  "model_work": 0,
+  "training": 0,
+  "optimizer_updates": 0,
+  "downloads": 0,
+  "installs": 0,
+  "deletes": 0,
+  "git_commit_or_push": 0,
+  "no_model_imports": true,
+  "no_runstore_access": true,
+  "scope": [
+    "reports/V-V9-G1/"
+  ],
+  "report": "reports/V-V9-G1/report.md",
+  "source_sha256_reviewed": {
+    "src/ainerzero/v9/geometry/__init__.py": "694ed4e6ef7a48c1bf69797334942137c539eeb9966c4737d0c0e7fd0a87479c",
+    "src/ainerzero/v9/geometry/belief.py": "e43769812b37afb370213366af976431822a3df291ca1dca5e4111f73a21a1dd",
+    "src/ainerzero/v9/geometry/gravity.py": "4d758a9f8e3d75dcca626974b052144a8fe0beac5baf2d570073ede3f1c1c3da",
+    "src/ainerzero/v9/geometry/lie.py": "fb56767d836f70a7cb08a22a809b9d326ead6b599ba5964125e32a1bbedb6b30",
+    "src/ainerzero/v9/geometry/pose_graph.py": "20d5bbe47282e0a7abd620c373a556775edd0cd2963bf53947bfd6b602ed4ca6",
+    "tests/v9/geometry/test_geometry.py": "44ead2eead63e9cceb94680d8c6aa25a27fd7e2b0e549d180894ea18b02b2941"
+  },
+  "g2_scripts_sha256": {
+    "reports/V-V9-G1/build_metrics.py": "d9c6dc43b90b4f67101f8bc0ceb61862adc8726d3392c1e18f8cc29514ca3f6c",
+    "reports/V-V9-G1/findings_minimal_repro.py": "766034d220e8cea53f57bea487aca5727cd084493a3d55034ccf026f556f5d1d",
+    "reports/V-V9-G1/freeze_check.py": "4e3ffb47c1d75d211209a2dd26eea5d0103aa7a26f088ec9d64280c9d80a89c8",
+    "reports/V-V9-G1/independent_bounds.py": "4bae52e1ed02cb61054a6a7a0948374c9f16fce5df4f832d9aad3a2a47041b39",
+    "reports/V-V9-G1/independent_counterexamples.py": "ae2e4381a142e91cd297fa69d7f6bdce808136296bc2d24c4ab573bbeab40e29"
+  }
+}
