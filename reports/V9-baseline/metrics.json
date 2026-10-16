@@ -1,0 +1,109 @@
+{
+ "task": "ainerzero.V9.A2",
+ "agent": "deepseek-q7m2",
+ "role": "executor",
+ "head": "5175259945b3f7f3a144d3b51995b20fd67f998e",
+ "deliverables": {
+  "script": "scripts/v9_baseline_manifest.py",
+  "script_sha256": "76dbc9ae78dad9a9e51d1477fb0a53f297e9d1ea880bd85ee15c047e387c5852",
+  "manifest": "reports/V9-baseline/baseline_manifest.json",
+  "manifest_digest": "f36594143a851580964806e3c510ce2c7395046a4b116ea49afc960f5e16f38c",
+  "inventory": "reports/V9-baseline/BASELINE_INVENTORY.md"
+ },
+ "coverage": {
+  "checkpoint": {
+   "bytes": 119999100,
+   "files": 41
+  },
+  "dataset.c0": {
+   "bytes": 492682,
+   "files": 8
+  },
+  "dataset.gridlab2d": {
+   "bytes": 13237307,
+   "files": 91
+  },
+  "registration": {
+   "bytes": 78918526,
+   "files": 88
+  },
+  "runstore.file": {
+   "bytes": 68161536,
+   "files": 4
+  }
+ },
+ "files_total": 232,
+ "bytes_total": 280809151,
+ "volatile_checkpoints_excluded": 312,
+ "runstore": {
+  "databases": {
+   "artifacts/control.sqlite3": {
+    "rows": {
+     "daily_budget": 13,
+     "experiments": 44,
+     "metadata": 2,
+     "run_transitions": 417,
+     "runs": 79
+    },
+    "entries_digest": "9f2bfac5f5bb192f853b03e055dd39ee6935ce53b49f42d15abc0ec185a1595e"
+   },
+   "artifacts/control.sqlite3.bak-20261011": {
+    "rows": {
+     "daily_budget": 9,
+     "experiments": 21,
+     "metadata": 2,
+     "run_transitions": 291,
+     "runs": 56
+    },
+    "entries_digest": "0087b2779b44b5c8c41f14ef65071ca85605b20878f0b323844ac6a550c70526"
+   },
+   "artifacts/m0/control.sqlite3": {
+    "rows": {
+     "daily_budget": 1,
+     "metadata": 2,
+     "run_transitions": 27,
+     "runs": 4
+    },
+    "entries_digest": "de00db1c66bf475b21d1d85cbb0311d427d1ea03bc68343edd38d9c80ad8e0d6"
+   },
+   "artifacts/run_store.db": {
+    "rows": {},
+    "entries_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+   }
+  },
+  "entries_digest": "18e491ef60fbb91a0178f448b1ed32e113f64c42deddf5c28d72ee93fe378e6c",
+  "runs_total": 79,
+  "runs_with_pinned_checkpoints": 32,
+  "runs_with_checkpoints_only_in_scratch": []
+ },
+ "verify": {
+  "verdict": "ok",
+  "files_pinned": 232,
+  "files_ok": 232,
+  "problems": [],
+  "exit": 0
+ },
+ "tamper_control": {
+  "cases": 7,
+  "detected": 7,
+  "clean_exit": 0,
+  "blind": [],
+  "exit_codes": {
+   "clean": 0,
+   "checkpoint_byte_flip": 1,
+   "checkpoint_swapped": 1,
+   "registration_truncated": 1,
+   "dataset_file_deleted": 1,
+   "checkpoint_smuggled_in": 1,
+   "runstore_row_forged": 1,
+   "manifest_self_edited": 1
+  }
+ },
+ "determinism": {
+  "two_builds_identical_excluding_generated_at": true
+ },
+ "model_runtime_loaded": false,
+ "gpu_used": false,
+ "artifacts_written": [],
+ "known_side_effect": "two exploratory read-only sqlite connects (before the tool existed) updated artifacts/control.sqlite3-shm mtime; the main DB and -wal were not written; the tool itself uses immutable=1 / temp clones and touches nothing in the artifact tree"
+}

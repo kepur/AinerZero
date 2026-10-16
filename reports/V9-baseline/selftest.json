@@ -1,0 +1,77 @@
+{
+ "selftest": [
+  {
+   "case": "clean",
+   "exit": 0,
+   "fault": "no fault injected",
+   "problems": [],
+   "stderr": ""
+  },
+  {
+   "case": "checkpoint_byte_flip",
+   "exit": 1,
+   "fault": "flipped one byte of tensors.safetensors (size unchanged)",
+   "problems": [
+    "sha256_changed"
+   ],
+   "stderr": ""
+  },
+  {
+   "case": "checkpoint_swapped",
+   "exit": 1,
+   "fault": "copied tensors.safetensors over tensors.safetensors (baseline swap)",
+   "problems": [
+    "size_changed"
+   ],
+   "stderr": ""
+  },
+  {
+   "case": "registration_truncated",
+   "exit": 1,
+   "fault": "truncated a registration document: artifacts/pilot/pilot-00c78153553a42bb88caaa02c074f63c/preregistration.json",
+   "problems": [
+    "size_changed"
+   ],
+   "stderr": ""
+  },
+  {
+   "case": "dataset_file_deleted",
+   "exit": 1,
+   "fault": "deleted a dataset file: artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/manifest.json",
+   "problems": [
+    "missing"
+   ],
+   "stderr": ""
+  },
+  {
+   "case": "checkpoint_smuggled_in",
+   "exit": 1,
+   "fault": "added an unpinned checkpoint next to tensors.safetensors",
+   "problems": [
+    "unexpected_new_file"
+   ],
+   "stderr": ""
+  },
+  {
+   "case": "runstore_row_forged",
+   "exit": 1,
+   "fault": "UPDATE runs SET state='completed_forged' on one row (1 row)",
+   "problems": [
+    "sha256_changed",
+    "runstore_entries_changed"
+   ],
+   "stderr": ""
+  },
+  {
+   "case": "manifest_self_edited",
+   "exit": 1,
+   "fault": "edited the stored sha of files[0] in the manifest copy",
+   "problems": [
+    "manifest_digest",
+    "sha256_changed"
+   ],
+   "stderr": ""
+  }
+ ],
+ "blind": []
+}

@@ -1,0 +1,94 @@
+{
+ "mode": "real",
+ "cases": [
+  {
+   "case": "T0",
+   "verdict": "blocked",
+   "expected": "RED",
+   "observed": "verdict=ok ok=232/232"
+  },
+  {
+   "case": "T1",
+   "verdict": "blocked",
+   "expected": "RED",
+   "observed": "RED [('missing', 'artifacts/m0/m0-cpu-222513b47d0e/checkpoints/midpoint/tensors.safetensors')]"
+  },
+  {
+   "case": "T2",
+   "verdict": "blocked",
+   "expected": "RED",
+   "observed": "RED [('missing', 'artifacts/m0/m0-cpu-222513b47d0e/checkpoints/midpoint/tensors.safetensors')]"
+  },
+  {
+   "case": "T3",
+   "verdict": "finding",
+   "expected": "RED",
+   "observed": "verdict=ok"
+  },
+  {
+   "case": "T4",
+   "verdict": "blocked",
+   "expected": "RED",
+   "observed": "RED [('unexpected_new_file', 'artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/evil.safetensors')]"
+  },
+  {
+   "case": "T5",
+   "verdict": "blocked",
+   "expected": "RED",
+   "observed": "RED [('sha256_changed', 'artifacts/gridlab2d/s06-sample/7a6152de-5cf1-5371-bf80-de3f717ced0b/manifest.json'), ('sha256_changed', 'artifacts/gridlab2d/s06-sample/b5de2315-2e21-5aa7-b93a-354f73f6ff2c/manifest.json')]"
+  },
+  {
+   "case": "T6",
+   "verdict": "blocked",
+   "expected": "RED",
+   "observed": "RED [('size_changed', 'artifacts/reports/C06-rerun-registration-20261013.md')]"
+  },
+  {
+   "case": "T7",
+   "verdict": "observation",
+   "observed": "byte-pinning brittleness（合法 VACUUM 即 RED；作者未登记该限制）",
+   "detail": "VACUUM 后字节不同、行数相同；verify 按文件字节钉选，合法维护会变红"
+  },
+  {
+   "case": "T8",
+   "verdict": "observation",
+   "observed": "hash-based confirmed（mtime 不影响判定，源码断言通过）",
+   "detail": "源码无 mtime 比较；同文件 touch 前后 sha 一致=True"
+  },
+  {
+   "case": "C1",
+   "verdict": "finding",
+   "expected": "RED",
+   "observed": "D 运行目录未钉选 7 个：['artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/checkpoints/96b72328-d9c1-4b48-b69c-1fa30ba8123c/manifest.json', 'artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/checkpoints/96b72328-d9c1-4b48-b69c-1fa30ba8123c/metadata.json', 'artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/fixed-batch.npz', 'artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/report.json', 'artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/training-pool.npz', 'artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/training-schedule.npy', 'artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/updates.jsonl']"
+  },
+  {
+   "case": "C2",
+   "verdict": "finding",
+   "expected": "RED",
+   "observed": "checkpoint 目录下 manifest/metadata 未钉选 78 个（系统性）"
+  },
+  {
+   "case": "C3",
+   "verdict": "finding",
+   "expected": "RED",
+   "observed": "运行级数据/报告/配置未钉选 157 个"
+  },
+  {
+   "case": "C4",
+   "verdict": "observation",
+   "observed": "scope gap（声明过，但 D 结论正文无哈希锚定）",
+   "detail": "根目录 D 相关结论文档 ['M2M_PROPOSAL.md', 'M2D_CHANGED_MULTISTEP.md', 'M2MC_LEARNING_RATE_FIT.md'] 不在 artifacts 冻结范围内（作者声明排除源码与报告正文）"
+  },
+  {
+   "case": "C5",
+   "verdict": "blocked",
+   "expected": "RED",
+   "observed": "artifacts 内 registration 口径文件全钉选=True（88 个）；c0/gridlab/RunStore 已另行全覆盖确认"
+  }
+ ],
+ "summary": {
+  "blocked": 7,
+  "finding": 4,
+  "observation": 3
+ }
+}
