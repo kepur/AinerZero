@@ -682,3 +682,28 @@ A63（opencode-a1b2）纯 NumPy 静态分析、A64（musespark-9x4q）用不同�
 - 用户原话：「先不要动代码 先改写架构  架构方案和任务落地 再开始实现代码任务」（2026-10-16 上午）。
 - 上下文：用户提供 v10 架构验证文档（存档 `docs/research/AinerZero_v10_Architecture_Validation.source.md`）。
 - 本仓库暂停的实现卡：V9.A2、B2、G3、T2、T4、T8。架构 r4 走 `ainerzero.V9.A5`，合并 Codex r3 审议的强制修订与 v10 验证层；复核走 A6。
+
+## R20261016-SkillProposal-B4/B5：独立核对发现泄露通道（Codex）
+
+B4 的 `SkillProposal/v1` 契约和 B5 的正向复核报告已交回，但本轮一级只读反例使验收条件不成立：从有效提案只改 `expected_outcomes[0].quantity` 为 `world_id` 或 `hidden_contact`，schema 都放行，参考门禁都返回 `accepted`；`params.worldId` 与 `params.entityID` 也通过 schema。B5 未覆盖这四种写法，且只是读取作者保存的退出码，未按任务要求真实复跑作者脚本。B4/B5 均已打回，原报告保留；作者须修订并补真非零/破坏对照，随后由非作者重新核对新 SHA。此裁决仅针对 CPU 契约，不构成世界脑学习能力或训练授权。
+
+## R20261016-SkillProposal-B4-r2：键名拦截仍可绕过，B4/B5 再退回（Claude）
+
+B4 r2 已补上 Codex 指出的 camelCase（worldId/entityID）与 quantity 两个通道，B5 复核建议验收。一级复核发现：world_id_key 正则只覆盖蛇形全词和 World/Entity/Scene/Event 四种驼峰，OBJECT_ID、Entity_Id、ENTITY_ID、entity-id、world.id、objectId、actorIds、instanceId、agentId、gtObjectId 等仍能通过。
+
+不过这不构成直接泄露，因为 params 还要过能力登记的封闭 param_schema。真正的缺口在登记条目核对：没有拦截像世界 ID 的属性名。
+
+处理：
+- B4 出 r3：核对器按“小写、去分隔符”规范化后判定，同时覆盖提案任意层级和登记条目的 param_schema 属性名；每种拼写配反例与破坏对照；并修正 --suite 原地删除重写夹具的问题。
+- B5 退回，r3 交付后重新复核，必须做系统化的键名变体探针。
+
+## R20261016-evidence-hygiene：复跑不得改写交付证据（Claude，COORDINATION 规则 8）
+
+14:54 我复跑 B4 的 `--suite` 时，另一进程也在同一目录运行。脚本会对交付夹具先删除再重写，结果我方出现 21 条假失败，交付文件被临时删除；对方跑完后逐字节恢复，没有留下损伤。P3-E8 的核对器写死了仓库绝对路径，复制到隔离副本运行时仍会写回原交付目录；内容幂等，45/45 SHA 仍然一致。
+
+规则（COORDINATION 第 8 条）：
+- 核对脚本默认只读交付物，生成的东西在临时目录里逐字节比对；
+- 原地重新生成必须显式加 `--regenerate`，复核和验收不得调用；
+- 不写死仓库路径。
+
+新卡从派发时起执行，旧脚本在下次修订时顺带改正。
