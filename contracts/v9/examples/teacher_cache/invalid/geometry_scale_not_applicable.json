@@ -1,0 +1,146 @@
+{
+  "schema_version": "az.v9.teacher_cache.v0",
+  "record_type": "cache_entry",
+  "cache_key": "7c6cf3746a911be17531cdd8137aa2c750ada94ad871f95e660febd54c7cab73",
+  "key_material": {
+    "teacher": {
+      "teacher_id": "da3-small",
+      "variant": "depth-anything/DA3-SMALL",
+      "teacher_kind": "geometry",
+      "weights": [
+        {
+          "file": "model.safetensors",
+          "sha256": "f16535a7ab72526b2dbde5b2c27c19cc7a93224aa589acb7edcf082249de47f5"
+        }
+      ],
+      "code_revision": "0000000example",
+      "runtime": {
+        "framework": "pytorch_mps",
+        "framework_version": "example",
+        "compute_units": "gpu",
+        "dtype": "float32"
+      }
+    },
+    "preprocess": {
+      "spec_sha256": "5935c1e43f3a26ec38c0c93a358bad07e2de21deb675e9e5b39432d561862257",
+      "resolution": [
+        504,
+        504
+      ],
+      "frames": 4,
+      "normalization": "imagenet_mean_std",
+      "token_policy": {
+        "kind": "none"
+      }
+    },
+    "input": {
+      "sha256": "4e70585945ff44082ce95be41c9ba0bee23736e8bf35d3a62d573f278dd515de",
+      "media_type": "image/png",
+      "timestamps_s": [
+        0.0,
+        0.5,
+        1.0,
+        1.5
+      ]
+    }
+  },
+  "world_key": "awz:b5-world-0007",
+  "partition": "train",
+  "output": {
+    "kind": "camera_pose",
+    "files": [
+      {
+        "name": "output.safetensors",
+        "bytes": 2048,
+        "sha256": "732e6be2cb883b526fbfe3902381e31831ba195fedc2b72442828843542621f5",
+        "media_type": "application/octet-stream"
+      }
+    ],
+    "shape": [
+      4,
+      3,
+      4
+    ],
+    "dtype": "float32",
+    "scale": "not_applicable",
+    "coordinate_frame": {
+      "camera_convention": "opencv",
+      "to_world": {
+        "matrix": [
+          [
+            1,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            -1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            -1,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "det_sign": 1
+      }
+    },
+    "time_stride_s": null,
+    "token_stats": null
+  },
+  "confidence": {
+    "kind": "per_pixel",
+    "file": "confidence.safetensors"
+  },
+  "reproducibility": "bitwise",
+  "tolerance": null,
+  "provenance": {
+    "source_type": "teacher_feature",
+    "origin_native": {
+      "system": "ainerzero",
+      "origin": "observed",
+      "derived_by": "da3-small",
+      "use": "input"
+    }
+  },
+  "license": {
+    "license_id": "Apache-2.0",
+    "source_url": "https://github.com/ByteDance-Seed/Depth-Anything-3",
+    "verified_at": "2026-10-16",
+    "scope": {
+      "reference": true,
+      "train": true,
+      "eval": true,
+      "commercial_output": true,
+      "redistribute": false
+    },
+    "approval_ref": "R20261016-T6-placeholder"
+  },
+  "noise_model_ref": "nc-da3-small-pose-indoor-toon@1.0",
+  "generation": {
+    "mode": "teacher",
+    "argv": [
+      "python3",
+      "-I",
+      "envs/teachers/t4/extract.py",
+      "--example"
+    ],
+    "started_at": "2026-10-16T03:00:00+03:00",
+    "wall_s": 1.25,
+    "peak_memory_bytes": {
+      "mlx": 4000000000,
+      "rss": 6000000000
+    },
+    "host": "m2max-96gb"
+  }
+}

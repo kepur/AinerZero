@@ -610,3 +610,57 @@ A63（opencode-a1b2）纯 NumPy 静态分析、A64（musespark-9x4q）用不同�
 
 对本仓库的影响：只有名称和接入位置。训练暂停（R20261015-pause）不变，不新增运行、登记或授权，源码和证据不动。世界脑将来按技能、通过与 LLM 共用的技能接口接入世界系统（观察 → 任务与约束 → 提案 → 世界校验执行 → 实际结果）；现有观察仍是 8 格符号、动作 0–3，不能宣称已能控制三维人物。总文档：AnimeWorldZero/docs/NORTH_STAR.md；决定：AnimeWorldZero/docs/adr/ADR-0011-three-systems.md。
 
+
+## R20261015-v9：用户决定采用 v9 目标架构（Claude 记录，D-016）
+- 用户原话：「现在你首要任务是之前框架任务先放下 … 架构要调整最新架构 架构一定要最优后面才不会走弯路 … 理解并实现完整落地v9架构」。
+- 目标架构：`ARCHITECTURE_V9.md`（NeuroGeometry 内核 + 互补记忆 + H-JEPA 式分层潜在动力学 + 主动实验）；现有 RSSM/GRU 降为快速动力学基线与回退，D 候选与全部检查点、失败证据只读保留，P1 历史旁路保留为消融候选。
+- **训练暂停（R20261015-pause）不变**：本决定只启动 P0（契约、接口与假实现、基线冻结清单、研究注册表），全部纯 CPU、无训练、无下载。P2 起每一级训练需用户另行批准预算。
+- 跨系统决定见 AWZ `docs/adr/ADR-0012-v9-neurogeometry-hjepa.md`，落地任务见 AWZ `docs/design/V9_LANDING_PLAN.md` 第 4 节（ainerzero.V9.*）。
+
+## R20261016-T4：用户批准 T4 教师环境与下载（Claude 记录）
+- 用户原话：「批准 T4」（2026-10-16 约 01:40 +03）。批准对象：ainerzero.V9.T4。
+- 下载前许可核对（2026-10-16，浏览器打开 HF 页面）：
+  - `dgrauet/vjepa2-mlx` 代码 MIT，README 写明 "Preserves Meta's upstream MIT license"。
+  - 权重 HF `dgrauet/vjepa-2.1-vitl-mlx`，许可字段 mit。文件：encoder.safetensors 1.22 GB、predictor.safetensors 91.9 MB。由 mlx-forge 转换自 Meta 的 `vjepa2_1_vitl_dist_vitG_384.pt`。Meta 官方 HF 卡 `facebook/vjepa2-vitl-fpc64-256` 的许可字段也是 mit。
+  - `apple/coreml-depth-anything-v2-small` 许可字段 apache-2.0，含 F16/F32 及量化变体共 8 个 mlpackage。
+- 批准范围：
+  1. 在隔离环境装 `vjepa2-core-mlx`。Core ML 运行时 `coremltools`（Apple 官方）作为运行 mlpackage 的必需依赖，装在同一隔离环境。
+  2. 下载上面的 V-JEPA 2.1 ViT-L MLX 权重。
+  3. 下载 Depth Anything V2 Small 的 F16、F32 两个 mlpackage。
+  4. 在 M2 Max 上做数值检查和推理基准。
+- 不在批准内：
+  - VGGT（T6：CC-BY-NC-4.0 待许可审查，还需 PyTorch）。
+  - PyTorch，因此会拉入 torch 的 `[parity]` 额外依赖也不装。
+  - 从 Meta `.pt` 自行转换权重。
+  - V-JEPA2-AC、任何训练、写入 T2 缓存（T2 验收后另发集成卡）。
+- 预算：
+  - 下载总量 ≤ 2 GB。
+  - GPU 推理基准墙钟合计 ≤ 30 分钟，单次 ≤ 10 分钟。
+  - 一次只常驻一个模型；进程内存峰值超过 32 GB 立即停。
+  - 这是推理基准，不是训练。训练暂停（R20261015-pause）不变。
+- 落点：
+  - 环境放 `envs/teachers/`，venv 用 `.venv-*` 名，已被 .gitignore 忽略。
+  - 权重和 HF 缓存放 `artifacts/teachers/`，已忽略。
+  - 报告放 `reports/V9-T4/`。
+  - 不改 `src/`：T2 正在用 `src/ainerzero/v9/teachers/`，避免同目录冲突。
+
+## R20261016-frontier：用户决定把前沿技术增补全部写入架构与任务库（Claude 记录，AWZ D-017）
+- 用户原话：「全部写入」（2026-10-16 约 02:30 +03）。所回问题：要不要把 `docs/research/V9_FRONTIER_COST_SURVEY.md` 写进架构和任务库——零下载项直接写入 ARCHITECTURE_V9 与任务协议，需下载项写成草稿卡等批准，T6 一并改成 DA3。
+- 写入范围：
+  - 零下载项写入 `ARCHITECTURE_V9.md` r3：
+    - 解析规范化（用已估位姿换到重力对齐的智能体坐标系）；
+    - RLT 停帧 token 去重；
+    - Muon / 多步滚动 / epinet 对照臂；
+    - 记忆候选：Titans、Nested Learning、CUT3R、SlotSSMs；
+    - 多教师合一；
+    - S5 的 REPA 式对齐。
+  - 需下载或安装的写成草稿卡：
+    - T6 由 VGGT 改为 DA3-Small/Base（Apache-2.0）；
+    - SAM 2.1 与 TAPNext/BootsTAPIR 对象/点跟踪教师；
+    - MapAnything Apache 版；
+    - Genesis World 物理真值；
+    - DINOv3 自定义许可审阅。
+- 不变：
+  - 本决定不批准任何下载、安装、训练或新的 GPU 运行；
+  - 训练暂停（R20261015-pause）、T4 批准范围（R20261016-T4）、各草稿卡的批准门槛都不变；
+  - 论文加速倍数只作假设，采用前必须本项目 A/B，并照常报告 M2 记忆干扰诊断。

@@ -1,0 +1,390 @@
+{
+  "schema_sha256": "55c899b7517b2a3f66f39bf383f2dd222a39f31937f88b4c998962b40df41d30",
+  "counts": {
+    "valid": 5,
+    "invalid": 19,
+    "semantic": 4
+  },
+  "failures": [],
+  "sabotage_not_caught": [],
+  "rows": [
+    {
+      "set": "valid",
+      "name": "vjepa21_cache_entry",
+      "ok": true,
+      "schema_errors": [],
+      "semantic": []
+    },
+    {
+      "set": "valid",
+      "name": "vjepa21_rlt_cache_entry",
+      "ok": true,
+      "schema_errors": [],
+      "semantic": []
+    },
+    {
+      "set": "valid",
+      "name": "da3_small_pose_cache_entry",
+      "ok": true,
+      "schema_errors": [],
+      "semantic": []
+    },
+    {
+      "set": "valid",
+      "name": "nc_da3_small_pose_registered",
+      "ok": true,
+      "schema_errors": [],
+      "semantic": []
+    },
+    {
+      "set": "valid",
+      "name": "nc_sam2_mask_insufficient",
+      "ok": true,
+      "schema_errors": [],
+      "semantic": []
+    },
+    {
+      "set": "invalid",
+      "name": "final_partition",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "enum",
+        "partition"
+      ],
+      "matched": [
+        "enum@$.partition"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "frame_index_instead_of_time",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "required",
+        "input"
+      ],
+      "matched": [
+        "required@$.key_material.input"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "empty_weights",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "minItems",
+        "weights"
+      ],
+      "matched": [
+        "minItems@$.key_material.teacher.weights"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "teacher_claim_source",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "const",
+        "source_type"
+      ],
+      "matched": [
+        "const@$.provenance.source_type"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "feature_with_metric_scale",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "const",
+        "scale"
+      ],
+      "matched": [
+        "const@$.output.scale"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "geometry_scale_not_applicable",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "enum",
+        "scale"
+      ],
+      "matched": [
+        "enum@$.output.scale"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "rlt_without_tau",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "oneOf",
+        "token_policy"
+      ],
+      "matched": [
+        "oneOf@$.key_material.preprocess.token_policy"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "rlt_without_token_stats",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "type",
+        "token_stats"
+      ],
+      "matched": [
+        "type@$.output.token_stats"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "numeric_without_tolerance",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "type",
+        "tolerance"
+      ],
+      "matched": [
+        "type@$.tolerance"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "feature_with_noise_model",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "type",
+        "noise_model_ref"
+      ],
+      "matched": [
+        "type@$.noise_model_ref"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "det_sign_zero",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "enum",
+        "det_sign"
+      ],
+      "matched": [
+        "enum@$.output.coordinate_frame.to_world.det_sign"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "license_plain_http",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "pattern",
+        "source_url"
+      ],
+      "matched": [
+        "pattern@$.license.source_url"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "uppercase_sha",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "pattern",
+        "cache_key"
+      ],
+      "matched": [
+        "pattern@$.cache_key"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "license_scope_missing_item",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "required",
+        "scope"
+      ],
+      "matched": [
+        "required@$.license.scope"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "calibration_final_partition",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "const",
+        "partition"
+      ],
+      "matched": [
+        "const@$.data.partition"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "calibration_registered_low_coverage",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "minimum",
+        "nees_coverage_95"
+      ],
+      "matched": [
+        "minimum@$.validation.nees_coverage_95"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "calibration_registered_few_worlds",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "minimum",
+        "n_worlds"
+      ],
+      "matched": [
+        "minimum@$.data.n_worlds"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "calibration_mask_as_gaussian",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "const",
+        "family"
+      ],
+      "matched": [
+        "const@$.model.family"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "calibration_student_t_without_dof",
+      "ok": true,
+      "rejected": true,
+      "expected": [
+        "type",
+        "dof"
+      ],
+      "matched": [
+        "type@$.model.dof"
+      ]
+    },
+    {
+      "set": "semantic",
+      "name": "semantic_wrong_cache_key",
+      "ok": true,
+      "schema_ok": true,
+      "semantic": [
+        "cache_key_mismatch"
+      ]
+    },
+    {
+      "set": "semantic",
+      "name": "semantic_derived_by_mismatch",
+      "ok": true,
+      "schema_ok": true,
+      "semantic": [
+        "derived_by_mismatch"
+      ]
+    },
+    {
+      "set": "semantic",
+      "name": "semantic_unapproved_teacher",
+      "ok": true,
+      "schema_ok": true,
+      "semantic": [
+        "unapproved"
+      ]
+    },
+    {
+      "set": "semantic",
+      "name": "semantic_timestamps_decreasing",
+      "ok": true,
+      "schema_ok": true,
+      "semantic": [
+        "cache_key_mismatch",
+        "timestamps_not_monotonic"
+      ]
+    }
+  ],
+  "sabotage": [
+    {
+      "sabotage": "partition_allows_final",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/final_partition"
+      ]
+    },
+    {
+      "sabotage": "source_type_any_string",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/teacher_claim_source"
+      ]
+    },
+    {
+      "sabotage": "no_coverage_band",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/calibration_registered_low_coverage"
+      ]
+    },
+    {
+      "sabotage": "feature_scale_unchecked",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/feature_with_metric_scale",
+        "invalid/geometry_scale_not_applicable"
+      ]
+    },
+    {
+      "sabotage": "rlt_stats_unchecked",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/rlt_without_token_stats"
+      ]
+    },
+    {
+      "sabotage": "semantic_cache_key_off",
+      "turned_red": true,
+      "caught_by": [
+        "semantic/semantic_wrong_cache_key"
+      ]
+    },
+    {
+      "sabotage": "semantic_monotonic_off",
+      "turned_red": true,
+      "caught_by": [
+        "semantic/semantic_timestamps_decreasing"
+      ]
+    },
+    {
+      "sabotage": "semantic_approval_off",
+      "turned_red": true,
+      "caught_by": [
+        "semantic/semantic_unapproved_teacher"
+      ]
+    }
+  ]
+}
