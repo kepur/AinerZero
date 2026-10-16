@@ -83,3 +83,16 @@ Plan2Explore 类“模型集成分歧”探索、学习进展（Oudeyer）与信
 已核（2026-10-15/16 打开）：arXiv 2610.06805（含 HTML 正文方法与附录 K/L）；github.com/lucas-maes/le-wm；github.com/facebookresearch/vjepa2；arXiv 2208.04933、2102.09844、2301.04104、2607.12382、2609.34677、2505.13696、2601.01075、2312.03954。
 仅检索到标题：arXiv 2505.03176、2606.24946、2606.19928。
 未核：CSCG 原文、TEM、CLS、NEC、Banino 2018、Cueva & Wei 2018、Plan2Explore、Director、THICK、Solà 2018、Barrau & Bonnabel 2017、Slot Attention。
+
+## 9. r4 勘误（2026-10-16，依 ainerzero.V9.R2 复核与 Codex r3 审议）
+
+以下两条来自非作者复核 R2（codex-exec-r2-20261016，已验收）的核对结论；本次未重新打开原页，标“据 R2”。原文保留，以本节为准。
+
+1. **THICK**（§3 表格、§8 未核清单）：原文写“arXiv 检索未找到，交 R1”。据 R2：
+   - THICK 作者页直接链接了官方代码 `CognitiveModeling/THICK`（TensorFlow 2，MIT）以及 `thix`（JAX，许可未核）；
+   - 所以“没有官方代码”的说法错误。THICK 仍只作为事件边界的候选来源，`thix` 的许可在使用前单独核对。
+2. **V-JEPA 2.1**（§5）：除仓库发布日期 2026-03-16 外，补直接论文 arXiv 2603.14482（版本以论文页为准）。“权重许可需下载前单独核对”已在 T4 批准前完成（AinerZero RESEARCH_LOG R20261016-T4）。
+3. **通用口径**（Codex 审议）：
+   - 本调研引用的论文成绩都是各自基准上的结果，不代表本机收益；
+   - 作者代码的 MIT 许可不外推到其权重或数据集；
+   - 未核条目保持未知，不据此推断能装、能在 MLX 上跑。

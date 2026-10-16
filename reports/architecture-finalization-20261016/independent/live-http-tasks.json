@@ -1,0 +1,1754 @@
+{
+  "captured_at": "2026-10-16T08:53:33.216498+00:00",
+  "health": {
+    "ok": true,
+    "version": 33,
+    "db": "/Users/mac/AinerWorkFlow/AinerRelay/data/relay.db",
+    "deploy_id": "20261015-a39-param-excluded",
+    "source_digest": "9ffe0d6654ada83a6dafbf23e70e3de1c7ff73a3aeecfde04f92b3c535338250",
+    "source_root": "/Users/mac/AinerWorkFlow/AinerRelay/deploy/snapshots/20261015-a39-param-excluded"
+  },
+  "tasks": [
+    {
+      "id": "ainerzero.V9.A1",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "codex",
+      "assignee": "codex",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "逐节结论；需修订处具体到章节",
+      "prompt": "审议 ARCHITECTURE_V9.md **r2**（起草 claude，2026-10-16 按用户“取最优方案、不融合；先空间与认知地图、再多时间尺度”改写）与调研 docs/research/V9_RESEARCH_SURVEY.md。逐节判断：旧 RSSM 退出新架构只作对照是否合理；结构化状态、重力对齐 SE(2) 等变、“地图即记忆”（等变度量地图 + 情景拓扑图）、H-JEPA 式分层 + 每层逆动力学、潜空间预测目标、数学核心与学习分离；S0–S6 顺序与门槛；M2 记忆干扰常设对照；证据引用是否准确（已核/未核标注）；有无过度设计或遗漏更优方案。结论写进 RESEARCH_LOG。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。",
+      "updated_at": "2026-10-16T09:00:11+03:00"
+    },
+    {
+      "id": "ainerzero.V9.A2",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": "deepseek-q7m2",
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "清单可复验；篡改任一文件复验变红",
+      "prompt": "为现有检查点、登记、RunStore 条目生成只读哈希清单与复验脚本（纯 CPU，**不加载 MLX、不做推理**），用于以后任何新结构的“基线保留”验收。不移动、不改写任何既有文件。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "ainerzero.V9.A3",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 2,
+      "author": "musespark-7f3q",
+      "assignee": "musespark-7f3q",
+      "depends_on": [
+        "ainerzero.V9.A2"
+      ],
+      "verifies": [
+        "ainerzero.V9.A2"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核基线清单完整性（是否漏掉 D 候选相关文件）与复验脚本的防篡改能力。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T01:01:22+03:00"
+    },
+    {
+      "id": "ainerzero.V9.A4",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.A2"
+      ],
+      "verifies": [
+        "ainerzero.V9.A2"
+      ],
+      "params": {},
+      "acceptance": "A3 四条 finding 逐条判定闭合；≥6 个新不利反例真实非零",
+      "prompt": "# 【代码】独立复核 ainerzero.V9.A2 r2（基线冻结清单补齐）\n\n对 A2 r2 复核：A3 的 4 条 finding（D 候选运行级文件、检查点 manifest/metadata、运行级数据/报告/配置、钉选目录内未登记文件）是否闭合；排除清单的理由是否成立；RunStore 维护场景的处理；原 7 类篡改与 A3 的 14 个反例结论不退化。你不能是 A2 作者；只写 reports/V-V9-baseline/r2/；纯 CPU，真实 artifacts 零写入；≥6 个新不利反例真实非零；给出是否建议验收。\n",
+      "updated_at": "2026-10-16T01:01:22+03:00"
+    },
+    {
+      "id": "ainerzero.V9.A5",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": "claude",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "",
+      "prompt": "落实Codex r3逐节审议的强制修订；先逐字节归档r3/调研并记SHA，再修正文和解释。只修设计，不改任何既有科学门/参数/训练代码/预算，不训练不下载。G1已先登记的CPU界不能被改写；T1/A2各自独立修订，架构仅对齐其最终合同。附逐项关闭表与未解决项；不自验收，需非作者一级复核。",
+      "updated_at": "2026-10-16T11:42:47+03:00"
+    },
+    {
+      "id": "ainerzero.V9.A6",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 1,
+      "author": "codex",
+      "assignee": "codex",
+      "depends_on": [
+        "ainerzero.V9.A5"
+      ],
+      "verifies": [
+        "ainerzero.V9.A5"
+      ],
+      "params": {},
+      "acceptance": "",
+      "prompt": "非被验A5任何历任作者的一级独立复核。逐项核Codex 2026-10-16平级审议必修清单、原r3/历史ADR归档SHA与新正文，确认无科学参数/门槛/训练预算变化；仅只读审议，不做模型/GPU/下载/安装/付费/删除/提交推送。写独立关闭表，未关闭即明确不通过，不拿文档整合当能力验收。只report，不自己accept。",
+      "updated_at": "2026-10-16T09:46:15+03:00"
+    },
+    {
+      "id": "ainerzero.V9.A7",
+      "status": "reported",
+      "kind": "design",
+      "tier": 1,
+      "author": "codex",
+      "assignee": "codex",
+      "depends_on": [
+        "ainerzero.V9.A5"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "",
+      "prompt": "用户2026-10-16最新指令：架构方案和任务落地即可，后面慢慢实现，主架构保持最终版。Codex负责README/COORDINATION/AGENT_TASKS的当前入口、架构基线索引与冻结身份清单；Claude继续所有已领取的ARCHITECTURE/ADR/落地方案/教师契约修订，禁止抢写。等待两张A6非作者修订复核；将稳定主架构、任务依赖、后续实现状态、变更升版规则写入单一基线索引，后续实现不反复改主架构。仅文档，禁止源码、模型、训练、下载、运行预算、放行代码、提交推送。已有失败报告原样保留；定版只指设计不宣称实现/能力通过。\n出版收口范围补充：A5已交由非修订作者A9建议设计通过，A7可修改ARCHITECTURE_V9.md的出版状态、r1/v1旧版本指针与历史名称表，不改变架构算法或科学门；可追加落地方案当前基线指针及明确旧表被替代；不得覆盖历史决定。管理员任务元数据：恢复awz.P3.A3原依赖awz.P3.A2（保留A10总门），保存纠正前后；补全任务模块归档。Event/v1若独立复核不通过，按候选待补修列出并写回既有设计卡，不阻断主架构定版且不宣称完整契约验收。两张A6的request_changes是历史报告，不当作通过。收口全部由A8再独立复核。",
+      "updated_at": "2026-10-16T11:51:13+03:00"
+    },
+    {
+      "id": "ainerzero.V9.A8",
+      "status": "claimed",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": "codex-v101-contract-audit-20261016",
+      "depends_on": [
+        "ainerzero.V9.A7"
+      ],
+      "verifies": [
+        "ainerzero.V9.A7"
+      ],
+      "params": {},
+      "acceptance": "",
+      "prompt": "验证 ainerzero.V9.A7 的最终架构基线索引、README/COORDINATION/AGENT_TASKS入口和冻结清单：只能新增 reports/architecture-finalization-20261016/independent/；不改被验文件。核版本唯一、主架构与任务映射/原依赖一致、冻结哈希正确、旧失败/负面审议保留、设计定版与实现/科学能力分开、19实现卡保持暂停、不增加训练/下载/模型授权；没有完整运行测试不阻断设计定版，但未定义或矛盾边界应列必修。只读/文档核查，无产品代码、模型、GPU、训练、下载、安装、付费、提交推送。作者不得自验；只report。",
+      "updated_at": "2026-10-16T11:52:22+03:00"
+    },
+    {
+      "id": "ainerzero.V9.A9",
+      "status": "reported",
+      "kind": "review",
+      "tier": 1,
+      "author": "codex",
+      "assignee": "codex",
+      "depends_on": [
+        "ainerzero.V9.A5"
+      ],
+      "verifies": [
+        "ainerzero.V9.A5"
+      ],
+      "params": {},
+      "acceptance": "F1–F4、C1 与 §4 各项逐条关闭结论；r4 归档 SHA；确认无参数/门槛/预算变化；未关闭即不通过",
+      "prompt": "非修订作者独立复核 ARCHITECTURE_V9 r5（ainerzero.V9.A5 的第二轮修订）。上一轮审议 ainerzero.V9.A6 的必修项见 reports/V9-A1/revision-independent/codex-r4-v101-20261016/REPORT.md；r5 报告 reports/V9-A1/r5-revision/REPORT.md；关闭表 ARCHITECTURE_V9.md §11。\n\n逐项核对：\n- F1：持久世界权威归 AinerHub、AWZ 管运行与求值；三平面只是职责视图，没漏制作脑与 Forge。\n- F2：UpdateScheduler 只用于学习侧；式 12a/12b 读的东西分开；§8.6 的截至时刻引用解析与“同观察、异未来”反例。\n- F3：与 TEACHERS_AND_CACHE r2 一致。\n- F4：活跃集合、宽相、传递闭包、休眠条件、回退、计时口径、确定性域；D-019 总门 awz.V9.A10 已加为前置，各卡原依赖未被绕过。\n- C1：与 G1 belief.py 约定一致。\n- 电源口径与 R20261014-power-policy、ADR-0009 一致；Serafina、命名空间、外部能力边界的写法。\n- r4 归档 SHA；没有科学参数、门槛、训练预算变化。\n\n只读审议；不做模型、GPU、下载、安装、付费、删除、提交推送。写独立关闭表，未关闭即明确不通过，不拿文档整合当能力验收。你不能是 A5 的任何历任作者（claude）；只写 reports/V9-A1/r5-independent/。只 report，不自己 accept。\n",
+      "updated_at": "2026-10-16T11:42:02+03:00"
+    },
+    {
+      "id": "ainerzero.V9.B1",
+      "status": "ready",
+      "kind": "design",
+      "tier": 1,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.A1"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "schema 元校验、反例被拒、改坏契约变红",
+      "prompt": "设计 SkillProposal/v1：actor、ability_id、evidence_version、target_ids、actions、constraints、confidence、expected_outcomes、TTL；只能提案，经 AWZ 能力登记与 E3 命令信封门禁，不能直接改世界库。附 schema、示例、反例与检查脚本。",
+      "updated_at": "2026-10-15T21:47:51+03:00"
+    },
+    {
+      "id": "ainerzero.V9.B2",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.A1",
+        "ainerzero.V9.A5",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "合同测试全过；每条合同有反例；改坏接口测试变红",
+      "prompt": "按 ARCHITECTURE_V9 r3 §3 实现 WorldBrainAdapter、GeometryCore、TimeScaleAdapter、SpatialMemory、PerceptionEncoder、HierarchicalPlanner 的接口与假实现，以及合同测试：只接受 ObservationPacket（遇快照或真值字段拒绝）；GeometryCore 的群运算满足结合律、逆元、exp∘log 恒等、协方差对称正定、重力方向显式；显式 dt 与层级对齐；SpatialMemory 写入不改任何网络参数、度量层随自运动等变变换、final 分区不可写；外部预训练编码器必须声明来源与许可；规划每级有预算与回退。GeometryCore 的真实实现由 ainerzero.V9.G1 负责，本卡只做接口与假实现。不改现有 learning/runtime 代码，不导入 MLX。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\nr3 增补：GeometryCore 接口加 `canonicalize(x, belief)` / `decanonicalize(y, belief)`，合同：二者复合为恒等，且 `canonicalize(g·x, g·belief) = canonicalize(x, belief)`（真实实现归 ainerzero.V9.G3，本卡只做接口与假实现）；PerceptionEncoder 接口加 `token_policy()`，声明是否启用 RLT 及阈值，启用时报告 token 保留率（实现归 ainerzero.V9.T8）。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 按 ARCHITECTURE_V9 r4 §3 实现**七个**接口（r3 六个 + `UpdateScheduler`：mark_dirty/dirty_set/update/fallback_reason）。\n- `WorldBrainAdapter.step(payload)` 只吃 ObservationPacket/v1.1 的 payload（含 time 白名单），拒绝整个信封与快照。\n- GeometryCore 按 r4 §4 约定段：T_AB 方向、右扰动、Adjoint 协方差、规范与锚点；canonicalize 只接受点/对象向量/地图坐标。\n- SpatialMemory：每条记忆带编码器版本，版本不符拒绝解释；`promote` 到 SLOW 必须附独立测试证据。\n- TimeScaleAdapter：`macro_action(level, actions)` 按 r4 §4 式 3 的登记聚合规则。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n## V9-r5-20261016 定版收口要求\n接口依据主架构r5，不再依据旧r4/r3。UpdateScheduler只读允许观察、已执行动作、自身信念，不得读世界Event、隐藏接触、真值图/dirty/fallback；宏动作、SpatialMemory版本与G1约定按正文。不得因此开工。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+      "updated_at": "2026-10-16T11:49:01+03:00"
+    },
+    {
+      "id": "ainerzero.V9.B3",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.B2"
+      ],
+      "verifies": [
+        "ainerzero.V9.B2"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核五个接口的合同是否可被绕过（真值注入、帧号冒充时间、final 写入、未声明预训练等）。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-15T21:47:51+03:00"
+    },
+    {
+      "id": "ainerzero.V9.G1",
+      "status": "reported",
+      "kind": "implement",
+      "tier": 2,
+      "author": "codex-exec-r2-20261016",
+      "assignee": "codex-exec-r2-20261016",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "性质测试全过；改坏任一运算测试变红；参考滤波与位姿图达到登记的解析上界",
+      "prompt": "按 ARCHITECTURE_V9 r2 §3 GeometryCore 与 §4 式 1、2、8 实现纯数学核心（新目录 src/ainerzero/v9/geometry/，numpy 或纯 Python）：SE(2)、SE(3) 的 compose/inverse/log/exp/adjoint，切空间高斯（⊕/⊖、协方差传播），重力对齐 SE(2)×高度 的状态参数化，已知运动学下的预测与观测更新（不变 EKF 形式），最小位姿图与回环纠错（小规模高斯-牛顿）。在 GridLab2D 与 AWZ 小房间的已知运动学轨迹上做解析参考：给出定位误差与回环纠错的理论上界并实测。性质测试：群公理、exp∘log 恒等、数值稳定（小角度、近 π）、协方差对称正定、往返误差 ≤ 1e-9。不学习任何参数。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T04:26:33+03:00"
+    },
+    {
+      "id": "ainerzero.V9.G2",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.G1"
+      ],
+      "verifies": [
+        "ainerzero.V9.G1"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核数学核心：自写群性质与数值边界反例（近奇异旋转、极小/极大 dt、非正定协方差注入、错误重力方向、回环错误约束），核对解析上界推导与实测。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T08:58:46+03:00"
+    },
+    {
+      "id": "ainerzero.V9.G3",
+      "status": "blocked",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.G1",
+        "ainerzero.V9.G2",
+        "ainerzero.V9.A5",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "恒等与等变性质测试全过（误差界写明）；误差传播与一阶预测一致；3 个故意改坏对照全部变红；G1 已验收文件未改",
+      "prompt": "按 ARCHITECTURE_V9 r3 §2、§3 GeometryCore 行与 §4 式 9，在 `src/ainerzero/v9/geometry/canonical.py` 实现解析规范化算子 `canonicalize(x, belief)` / `decanonicalize(y, belief)`。\n\n要求：\n- 支持的输入类型：点集、位姿、速度向量、以智能体为中心的度量网格（栅格要说明插值方式与边界处理）。\n- 只用估计位姿 `μ̂` 的重力对齐部分 `g(μ̂) ∈ SE(2)`；高度与重力方向原样保留，不做完整 SE(3) 规范化。\n- 位姿误差注入工具：按信念协方差 Σ 采样扰动，供训练时使用（本卡只实现与测试，不训练）。\n\n性质测试（numpy，纯 CPU）：\n- `decanonicalize∘canonicalize` 为恒等（误差 ≤ 1e-9，栅格另给插值误差上界）；\n- 对随机 `g ∈ SE(2)`，`canonicalize(g·x, g·belief) = canonicalize(x, belief)`；\n- 整体等变：把任意（随机初始化、非等变的）numpy 函数 f 包进规范化后，对 SE(2) 严格等变；\n- 位姿误差传播：规范化后误差的经验协方差与按 Σ 一阶传播的预测一致（容差写明）；\n- 边界：θ 近 ±π、极小平移、空点集。\n\n故意改坏必须变红：把 g 换成 g⁻¹、漏掉重力对齐（用完整 SO(3)）、栅格旋转方向取反。\n\n依赖 G1 的群运算实现（直接调用，不复制）；不改 G1 已验收的文件，只新增 `canonical.py` 与对应测试。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 只对点、对象向量、地图坐标定义 canonicalize；原始 RGB 不在范围内。\n- 等变误差按来源分列报告：栅格插值、边界、数值误差、数据关联。\n- 约定与 G1 实现一致（T_AB 方向、右扰动），若 G1 与 r4 §4 约定不一致，停下报告，不自行改 G1。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "ainerzero.V9.G4",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.G3"
+      ],
+      "verifies": [
+        "ainerzero.V9.G3"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零；误差传播推导核对结论；G1 文件 SHA 未变",
+      "prompt": "复核 ainerzero.V9.G3 的解析规范化算子：\n- 自写等变与恒等反例（近 π 旋转、反射混入、非刚体变换应被拒绝、栅格越界、协方差非正定注入）；\n- 核对误差传播推导与实测；\n- 确认 G1 已验收文件未被改动（SHA 对比）。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n",
+      "updated_at": "2026-10-16T02:15:52+03:00"
+    },
+    {
+      "id": "ainerzero.V9.P1",
+      "status": "draft",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.B2",
+        "ainerzero.V9.G1",
+        "ainerzero.V9.A2",
+        "awz.V9.B3",
+        "ainerzero.V9.T2",
+        "ainerzero.V9.G3"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "按 ARCHITECTURE_V9 r2 §5 的 S1：在 awz.V9.B3 考场（受限观察，真值封存）上比较——旧 RSSM/D 候选（只复验）、等变度量地图记忆、情景拓扑图、两者组合；同数据、同更新预算、同观测。指标：定位误差、未见地图泛化、混淆观察下拓扑恢复（边精度/召回）、少经验预测未见转移、样本效率曲线；常设对照：M2 记忆干扰诊断原样报告并与 D 候选同表；网格样表示只作诊断。**草稿**：用户批准训练预算后，一级把批准原文写入 RESEARCH_LOG 并改写本卡再发布；批准前不得生成数据或训练。\n\nARCHITECTURE_V9 r3 增补（用户「全部写入」，R20261016-frontier）——S1 另设三组对照臂，同数据、同预算：\n1. 等变来源：解析规范化（§4 式 9，ainerzero.V9.G3；用估计位姿，按协方差注入误差）/ 等变网络 / 无等变；另报“真值位姿规范化”作上界诊断，不计成绩。\n2. 优化器：AdamW / MLX 内置 Muon。\n3. 训练方式：单步预测 / 多步滚动训练（吃自己的预测再算损失，1/5/10/30 步曲线）。\n依赖增加 ainerzero.V9.G3。\n\n【r4 改写（草稿，仍需用户批准训练预算）】按 ARCHITECTURE_V9 r4 §5 与 §8：\n- 并入 E1：四组对照——①有偏差的物理先验（隐藏参数摩擦/弹性/质量/阻尼在数据端随机化，先验不知道）②纯 MLX ③先验+MLX 残差 ④真参数物理（只作上界诊断，不计成绩）；门槛：未见场景 10 步位置误差比①②较好者好≥10%，碰撞 F1 不下降，报告能量漂移与推理延迟。\n- 学生规模 0.1M–2M 起步。\n- S1 共同口径：观察用 ObservationPacket/v1.1 同一组通道，输出写明单位与坐标；D 的旧 C0 指标不能当新 3D 成绩；不可比显式阻断能力结论。\n- 对照臂（等变来源、优化器、多步训练）逐项预登记，不默认全因子，不复用预算。\n- 数据：E0（awz.V9.B11）批量数据经用户批准后使用。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n本机集成增补：S1 设两条观察臂——结构化受限观察 vs 冻结视觉教师特征（ainerzero.V9.T4 缓存）；新增指标：1/5/10/30 步位置/姿态/速度误差、碰撞事件 F1、对象 ID 切换次数；基线：恒速、解析物理、冻结 JEPA 特征；成本：同质量阈值下实测计算量、每千样本教师推理时间、峰值内存、能耗；学生预测器 5M–30M 参数 MLX 原生。依赖增加 ainerzero.V9.T2。",
+      "updated_at": "2026-10-16T09:35:26+03:00"
+    },
+    {
+      "id": "ainerzero.V9.P2",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.P1"
+      ],
+      "verifies": [
+        "ainerzero.V9.P1"
+      ],
+      "params": {},
+      "acceptance": "",
+      "prompt": "草稿：随 P1 发布。复核分区与泄露、同预算公平性、常设对照是否原样报告、样本效率曲线可复算。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。",
+      "updated_at": "2026-10-16T01:00:23+03:00"
+    },
+    {
+      "id": "ainerzero.V9.P3",
+      "status": "draft",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.P1"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "按 ARCHITECTURE_V9 r2 §5 的 S2：同数据、同预算、同观测比较三组；每层 JEPA 预测 + SIGReg + 逆动力学项（防慢特征坍塌）；显式 dt 与不规则采样对照；指标：长时域预测、规划成功率、子目标合法性、规划计算量与墙钟；常设对照：M2 记忆干扰诊断。实现须为 MLX 本地重写，不引入 PyTorch 生产依赖；参考 LeWM/H-JEPA 的结构与超参，不下载其代码或权重（需另行批准）。**草稿**：批准前不得训练。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代。\n\nARCHITECTURE_V9 r3 增补（R20261016-frontier）——S2 另设对照臂：\n1. Nested Learning 式多频率参数更新（arXiv 2512.24695）：快层每步更新、慢层每 k 步更新，k 登记时冻结。\n2. 教师表示对齐（§4 式 11）只作消融臂，不进主线；能力报告注明借外部教师。\n3. 优化器与多步滚动训练沿用 S1 的对照结论。\n两者都要原样报告 M2 记忆干扰诊断。\n\n【r4 改写（草稿，仍需用户批准训练预算）】按 ARCHITECTURE_V9 r4 §4 式 3–4：高层逆动力学的目标是本层宏动作（登记聚合规则、停止梯度、维度、不规则 dt 的 Δt_k），宏动作若由网络编码需另加防坍塌；逆动力学是候选机制，不保证静态信息不丢失；对照臂逐项预登记；L3 仅在 L2 成功后加。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T09:31:34+03:00"
+    },
+    {
+      "id": "ainerzero.V9.P4",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.P3"
+      ],
+      "verifies": [
+        "ainerzero.V9.P3"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "草稿：随 P3 发布。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T01:00:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.P5",
+      "status": "draft",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.P3",
+        "ainerzero.V9.T4",
+        "ainerzero.V9.T8"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "**草稿**：S2 过门、T4 验收后，用户批准训练预算，一级再改写发布。批准前不得训练。\n\n按 ARCHITECTURE_V9 r3 §5 的 S5 与 §7.6：\n1. 多教师合一（Theia 式，arXiv 2407.20179）：把缓存里的 V-JEPA 2.1、DA2/DA3 等已批准教师的特征，蒸馏进一个小 MLX 学生编码器。比较：\n   - 单教师学生；\n   - 多教师学生；\n   - 直接用教师。\n   指标：下游 S1/S2 指标、World Mode 常驻内存、每千样本时间。\n2. 教师表示对齐（式 11，REPA 式，arXiv 2410.06940）：在世界脑主干的中间层加对齐损失，记录“达到同一预测误差所需步数”。只作加速项，能力报告注明借外部教师。\n3. RLT（式 10，ainerzero.V9.T8 实现）开/关对照：token 保留率、墙钟、精度损失。\n\n常设对照：M2 记忆干扰诊断原样报告，与 D 候选同表。外部预训练如实标注；对象 ID 不得泄露。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.P6",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.P5"
+      ],
+      "verifies": [
+        "ainerzero.V9.P5"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "**草稿**：随 P5 发布。复核 ainerzero.V9.P5：\n- 同预算公平性；\n- 蒸馏数据与考场分区不重叠；\n- 对齐损失没有引入真值；\n- 常设对照原样报告；\n- 墙钟与内存可复算。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.P7",
+      "status": "draft",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.P1"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "【草稿：需用户批准训练预算】E2b 世界脑侧稀疏更新：在 S1 的学生上，只对脏集合内的对象做信念更新，与全量更新比较。\n- 非劣检验：按回合配对 bootstrap，误差差值 95% 置信上界 U ≤ δ，δ 先登记（ARCHITECTURE_V9 r4 §4 式 13）；\n- 提速门槛：5% 稀疏率下端到端时间减少 ≥ 30%；\n- 另报回退率与 GPU 时间。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n\n\n## V9-r5-20261016 定版收口要求\n学习侧稀疏只依据允许观察/已执行动作/自身信念；预登记同观察异隐藏未来对照，模型输入、调度和可解析资产相同；不用世界真值dirty集合加速；非劣检验口径照旧，训练暂停且没有新增预算。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+      "updated_at": "2026-10-16T11:49:01+03:00"
+    },
+    {
+      "id": "ainerzero.V9.P8",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.P7"
+      ],
+      "verifies": [
+        "ainerzero.V9.P7"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "【草稿】复核 ainerzero.V9.P7：bootstrap 重算、δ 是否先于结果登记、回退是否被计入耗时。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T09:35:02+03:00"
+    },
+    {
+      "id": "ainerzero.V9.R1",
+      "status": "ready",
+      "kind": "implement",
+      "tier": 2,
+      "author": "musespark-7f3q",
+      "assignee": null,
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "每条有来源链接与访问日期；许可与不可推断项不缺",
+      "prompt": "为每个条目登记：论文与官方仓库链接、版本/日期、许可、可借鉴机制、MLX 可行性与依赖、不可推断项（例如论文成绩不代表本机收益）。只读网页与论文，**不下载代码、权重或数据集**；交付 docs/research/ADAPTER_REGISTRY.md 与机器可读 JSON。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T04:15:44+03:00"
+    },
+    {
+      "id": "ainerzero.V9.R2",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 2,
+      "author": "codex-exec-r2-20261016",
+      "assignee": "codex-exec-r2-20261016",
+      "depends_on": [
+        "ainerzero.V9.R1"
+      ],
+      "verifies": [
+        "ainerzero.V9.R1"
+      ],
+      "params": {},
+      "acceptance": "逐条一致/不一致/无法核",
+      "prompt": "逐条打开来源核对版本、许可与结论原文；指出夸大或缺失。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T04:15:43+03:00"
+    },
+    {
+      "id": "ainerzero.V9.R3",
+      "status": "ready",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.R1"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "每条有来源链接、访问日期、许可、可借鉴机制与不可推断项",
+      "prompt": "按 docs/research/V9_RESEARCH_SURVEY.md §8：把“已核”来源补进 Research Adapter Registry（arXiv 2607.12382、2505.13696、2609.34677、2601.01075、2312.03954、2505.03176、2606.24946）；并逐条核对“未核”来源（CSCG 原文、TEM、CLS、NEC、Banino 2018、Cueva & Wei 2018、Plan2Explore、Director、THICK、Solà 2018、Barrau & Bonnabel 2017、Slot Attention），找到官方出处与许可，核不到标“无法核”。只读网页，不下载代码、权重或数据集。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n9.1 增补：补登记 BlenderWorld（github.com/QwenLM/BlenderWorld，MIT；评测基准，非世界模型）——记录任务规模、评分方法、官方评测环境要求（Linux、Blender 4.2.10、Claude Code CLI、付费视觉接口）与数据集许可（查 HuggingFace 数据卡，核不到标“无法核”）。不下载数据集。",
+      "updated_at": "2026-10-16T01:22:23+03:00"
+    },
+    {
+      "id": "ainerzero.V9.R4",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.R3"
+      ],
+      "verifies": [
+        "ainerzero.V9.R3"
+      ],
+      "params": {},
+      "acceptance": "逐条一致/不一致/无法核",
+      "prompt": "逐条打开来源核对；指出夸大或缺失。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T01:00:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.R5",
+      "status": "ready",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.R3"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "每条有来源链接、访问日期、许可、可借鉴机制、MLX 可行性与不可推断项；未核项给出核对结论或“无法核”",
+      "prompt": "把 `docs/research/V9_FRONTIER_COST_SURVEY.md` §7 的“已核”来源补进 Research Adapter Registry（`docs/research/ADAPTER_REGISTRY.md` 与机器可读 JSON，格式沿用 R1/R3）：\n- 论文：arXiv 2411.04983、2506.09985、2502.14819、2511.08544、2211.06489、2411.05222、2407.20179、2410.06940、2202.03376、2107.08924、2501.00663、2512.24695、2501.12387、2406.12272；\n- 仓库：Depth-Anything-3（逐模型许可表）、map-anything（Apache 版权重）、dinov3（自定义许可要点）、sam2、tapnet、genesis-world、kubric。\n\n并逐条核对“未核”项，核不到标“无法核”：Muon/Moonlight 效率数字、tapnet 各检查点许可、CUT3R 许可、Kubric 许可、AM-RADIO 许可。\n\n每条写：链接、访问日期、许可、可借鉴机制、MLX 可行性与依赖、不可推断项（论文成绩不代表本机收益）。只读网页，不下载代码、权重或数据集。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n",
+      "updated_at": "2026-10-16T02:15:52+03:00"
+    },
+    {
+      "id": "ainerzero.V9.R6",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.R5"
+      ],
+      "verifies": [
+        "ainerzero.V9.R5"
+      ],
+      "params": {},
+      "acceptance": "逐条一致/不一致/无法核；DA3 逐模型许可与 DINOv3 条款摘要有结论",
+      "prompt": "逐条打开 ainerzero.V9.R5 补登记的来源，核对版本、许可与结论原文；重点核 DA3 逐模型许可（Small/Base/Mono-Large/Metric-Large 为 Apache 2.0，Large/Giant/Nested 为 CC BY-NC 4.0）与 DINOv3 许可条款摘要是否准确；指出夸大或缺失。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n",
+      "updated_at": "2026-10-16T02:15:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.R7",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.R1"
+      ],
+      "verifies": [
+        "ainerzero.V9.R1"
+      ],
+      "params": {},
+      "acceptance": "",
+      "prompt": "R2独立复核不通过：THICK作者页直接链接CognitiveModeling/THICK(TF2,MIT)与thix(JAX许可未核)，原无官方代码结论错误；Stable WorldModel v1应2026-05-20而非05-26；V-JEPA2.1补直接论文arxiv2603.14482及版本，03-16仓库发布日期保留。MD/JSON同步，原字节先归档，新修订报告；无法核项保留，不能外推安装/MLX可用。修后由新非作者R7复核，原R2仅证明旧版有误。\n非R1任何历任作者，只写自己的新目录；逐条打开官方来源，核JSON/MD一致，至少6新不利反例真实非零。保留R2的camera-ready无法核与无模型边界；不下载代码/权重，不复用作者测试作唯一证据。只report不accept。",
+      "updated_at": "2026-10-16T04:15:44+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T1",
+      "status": "ready",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": null,
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "三模式规则、缓存 schema、噪声标定方法、授权清单",
+      "prompt": "按 ARCHITECTURE_V9 §7 写 docs/v9/TEACHERS_AND_CACHE.md 与缓存 schema 草案：Teacher/Train/World 三种模式的常驻集与互斥规则（对接接力台 GPU 闸门与 ADR-0006 锁；Core ML 优先神经引擎）；教师特征缓存记录（模型 ID、权重 SHA、预处理 SHA、坐标系、时间戳、置信度、许可、生成命令），作为 Forge APACK `teacher_feature` 包；几何教师作为带噪声观测接入 GeometryCore（噪声模型如何用 Blender 真值标定、按场景类型登记）；每个教师的授权项（下载、安装、许可审查）清单与内存预算（96 GB 统一内存）。只写设计，不下载。\n\nARCHITECTURE_V9 r3 增补：\n- 教师清单按 §7.3 r3：DA3-Small/Base 替代 VGGT，新增 SAM 2.1、TAPNext、MapAnything Apache 版、DINOv3。\n- 授权清单逐项列下载/安装/许可审查，其中 DINOv3 自定义许可（免版税、可衍生；出口管制/ITAR 条款；再分发沿用同许可）列为“用户审阅”项。\n- 缓存 schema 要能记录 RLT 的 token 策略（阈值、保留率、游程长度）。\n- World Mode 的常驻集预留“多教师合一学生编码器”。\n2026-10-16 定版收口：主架构V9-r5-20261016已单独定版，本候选尚未通过ainerzero.V9.T17。当前先补齐退回意见中的协议定义、契约正反例及隔离的破坏对照；不得以本卡重构内核、加载教师或实现生产消费者。逐字节归档当前候选与哈希，使用新修订目录，保留所有负面报告；实现任务仍受A10总门及原依赖约束。",
+      "updated_at": "2026-10-16T11:46:34+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T10",
+      "status": "draft",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T2"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "**草稿**：S4 对象阶段之前，用户批准下载与运行环境后，一级改写发布。批准前不下载、不安装。\n\n拟定范围：\n1. 对象掩码教师 SAM 2.1（`facebookresearch/sam2`，Apache 2.0）：只下一个小号检查点（型号批准时定），输出视频对象掩码与跟踪 ID。\n2. 点跟踪教师 TAPNext / BootsTAPIR（`google-deepmind/tapnet`，代码 Apache 2.0）：下载前先核检查点许可；优先 PyTorch 版检查点，免得再装 JAX。\n3. 在 Blender 合成场景上标定，按场景类型登记：\n   - 对象 ID 切换次数；\n   - 遮挡后重新检出率；\n   - 掩码 IoU；\n   - 点跟踪误差。\n4. 输出写入教师缓存（来源 `teacher_feature`），作为 S4 的对象/运动带噪观测和“遮挡后身份保持”的考题来源。考场仍只给受限观察，真值封存。\n5. 基准同 T4；一次只常驻一个模型。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T11",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T10"
+      ],
+      "verifies": [
+        "ainerzero.V9.T10"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "**草稿**：随 T10 发布。复核 ainerzero.V9.T10：\n- 核权重 SHA 与许可；\n- 重算 ID 切换与重新检出指标；\n- 确认教师输出没有混进封存真值、考场只给受限观察。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T12",
+      "status": "draft",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T2"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "**草稿**：用户批准下载与 PyTorch 环境后，一级改写发布。\n\n拟定范围：\n1. MapAnything 代码（`facebookresearch/map-anything`，Apache 2.0）；只用 Apache 版权重 `facebook/map-anything-apache`，下载前复核许可字段。\n2. 两个用途：\n   - 米制 3D 重建教师：输入图像，加上 Blender 已知的内参、位姿、深度中的任意组合；\n   - 几何评测台：用它的统一接口，同条件比较 DA3-Small/Base 与 GeometryCore 的估计。只跑已批准的模型，不额外下载 VGGT 等。\n3. 指标：米制尺度误差、位姿误差、点云 Chamfer 距离；按场景类型登记。\n4. 基准同 T4。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T13",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T12"
+      ],
+      "verifies": [
+        "ainerzero.V9.T12"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "**草稿**：随 T12 发布。复核 ainerzero.V9.T12：\n- 许可与 SHA；\n- 评测台各模型是否同输入同条件；\n- 尺度对齐方法有没有偷用真值。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:53+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T14",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 2,
+      "author": "codex-v101-contract-audit-20261016",
+      "assignee": "codex-v101-contract-audit-20261016",
+      "depends_on": [
+        "ainerzero.V9.T1"
+      ],
+      "verifies": [
+        "ainerzero.V9.T1"
+      ],
+      "params": {},
+      "acceptance": "归档 SHA 核对；Codex 五项逐条结论；独立交错检查或双进程实验；作者两脚本复现；≥6 个新不利反例真实非零；给出是否建议验收 T1",
+      "prompt": "只读复核 ainerzero.V9.T1 r1（教师与缓存规范的修订）。退回原因见 relay show ainerzero.V9.T1 --full 的 codex rejected 事件；r1 报告见 reports/V9-T1/r1/REPORT.md，关闭表见 docs/v9/TEACHERS_AND_CACHE.md §8。\n\n## 必做\n1. 核对归档：reports/V9-T1/r0-archive/ 的文件 SHA 与 git 提交 995db72 中的 r0 原件一致。\n2. 逐条核对 Codex 退回的五项是否真正关闭：\n   - 试锁释放竞态；\n   - Train/World 互斥缺口；\n   - Core ML 共存矛盾；\n   - 缓存键与来源身份分离（含同内容不同来源/分区）；\n   - sim_truth 只作通道、partition 四值。\n3. 不信作者的模型检查结论：自己写一个独立的交错检查（或真实双进程 fcntl 实验，放临时目录，不碰 artifacts/locks 下的真实锁文件），确认 r0 能撞、r1 不能撞。\n4. 跑作者的两个脚本并复现结论：`lock_model_check.py`；用带 jsonschema 的解释器跑 `check_teacher_cache_v1.py`。\n5. 至少 6 个新不利反例（真实非零）。例如：\n   - 内容块偷带世界键；\n   - 两个条目同块不同分区，其中一个是 quarantine，应当允许；\n   - 条目输入摘要被改；\n   - final 条目放进共享库；\n   - 租约说明文件与真实锁不一致时互斥仍应只看锁；\n   - World 模式内第二个教师加载应被 ModeGuard 设计拒绝。\n\n## 约束\n- 你不能是 T1 的作者（claude）；只写 reports/V-V9-T1-r1/；不改被验文件。\n- 纯 CPU；不训练、不下载、不安装、不提交推送、不删除；不碰真实 artifacts/locks 文件。\n- 给出是否建议验收 ainerzero.V9.T1。\n",
+      "updated_at": "2026-10-16T09:46:15+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T15",
+      "status": "draft",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T4",
+        "ainerzero.V9.T6"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "【草稿：需用户批准下载与运行】E4 教师价值（ARCHITECTURE_V9 r4 §8.3 E4）：无教师、深度教师（DA2/DA3）、V-JEPA 2.1、组合；不含 VGGT（许可）。\n- 计入教师提取与数据生成的完整成本，报告达到同一精度所需小时与电量，不只报迭代速度；\n- 用电池时不跑。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T09:32:19+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T16",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T15"
+      ],
+      "verifies": [
+        "ainerzero.V9.T15"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "【草稿】复核 ainerzero.V9.T15：成本口径是否完整（数据生成 + 教师提取 + 训练 + 评测）；同质量阈值是否先登记；电量测量方法。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T09:35:02+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T17",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 2,
+      "author": "codex-v101-contract-audit-20261016",
+      "assignee": "codex-v101-contract-audit-20261016",
+      "depends_on": [
+        "ainerzero.V9.T1"
+      ],
+      "verifies": [
+        "ainerzero.V9.T1"
+      ],
+      "params": {},
+      "acceptance": "T14 阻断项与 F3 逐条结论；独立实现跑作者全部夹具；作者脚本沙箱复现；≥6 个新不利反例真实非零；给出是否建议验收 T1",
+      "prompt": "只读复核 ainerzero.V9.T1 r2（教师缓存上游来源与训练资格）。前一轮复核 ainerzero.V9.T14 的结论与新发现见 reports/V-V9-T1-r1/codex-v101-20261016/REPORT.md；r2 报告 reports/V9-T1/r2/REPORT.md；关闭表 docs/v9/TEACHERS_AND_CACHE.md §9。\n\n## 必做\n1. 核对 r1 归档 reports/V9-T1/r1-archive/ 的 SHA。\n2. 逐条核对 T14 的阻断问题与 A6 F3 是否关闭：\n   - upstream 能如实保留 AWZ 的 external_derived；\n   - 训练资格取交集；\n   - external_derived 默认拒训，修订路径必须带 revision_ref；\n   - 同块多来源逐条判定、不继承；\n   - use=input 的 as_of 截止；\n   - 电源口径按入口写实。\n3. 不复用作者的 store_problems 与 train_eligible：独立实现并跑作者全部 v2 夹具，结论须一致。\n4. 用带 jsonschema 的解释器在沙箱运行 reports/V9-T1/r2/check_teacher_cache_v2.py（它会写 contracts/v9/examples/teacher_cache_v2/，请复制到你的报告目录再跑），复现计数与 11 个破坏自检。\n5. 至少 6 个新不利反例（真实非零），例如：\n   - basis=adr_0005_revision 但 revision_ref 为空串；\n   - 同块一条 AWZ、一条 AinerZero，却给 AWZ 条目复制了 AinerZero 的资格；\n   - use=target 含未来帧应当允许；\n   - as_of 恰等于末帧应当允许；\n   - upstream.system=awz 却 origin=observed 的组合是否该拒（请给出判断与理由）。\n\n## 约束\n- 你不能是 T1 的作者（claude）；只写 reports/V-V9-T1-r2/；不改被验文件。\n- 纯 CPU；不训练、不下载、不安装、不提交推送、不删除；不碰真实 artifacts/locks。\n- 给出是否建议验收 ainerzero.V9.T1。\n",
+      "updated_at": "2026-10-16T11:46:34+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T18",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T1"
+      ],
+      "verifies": [
+        "ainerzero.V9.T1"
+      ],
+      "params": {},
+      "acceptance": "",
+      "prompt": "先读reports/V-V9-T1-r2/codex-v101-20261016/REPORT.md，非任何历任修订作者。独立核B1–B4：AWZ来源不可洗白、可信空批准登记拒绝伪ADR、source与blob真实时间及Observation时间域绑定、derivation全部指纹一致。至少复现原5隔离语义探针并加入新的不利例；独立资格oracle，作者脚本在隔离副本执行。只读设计/CPU契约，不改被验文件，不做消费者或模型，只report不自行accept。",
+      "updated_at": "2026-10-16T11:46:34+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T2",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T1",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "缓存可复现；元数据缺失拒写；模式违规必拒；改坏守卫测试变红",
+      "prompt": "按 T1 实现缓存读写（内容寻址、元数据完整、重跑哈希可复现）与运行模式守卫（Train Mode 下加载任何教师即拒绝；Teacher Mode 一次只常驻一个教师；模式切换卸载检查）；用假教师（确定性随机特征）测试，不下载任何模型、不导入 MLX/torch。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 以 docs/v9/TEACHERS_AND_CACHE.md r1 与 contracts/v9/teacher_cache.v1.schema.json 为准；v0 只作历史。\n- 单锁 `artifacts/locks/m0-worker.lock` 整段持有、非阻塞取锁失败即 skipped_lock_busy、崩溃由内核释放；租约说明文件只用于观察。\n- 内容块与来源条目两层写入、原子改名、读时核验、broken 标记、`cross_partition_blob` 拒绝；实现 reports/V9-T1/r1/check_teacher_cache_v1.py 的全部库级规则。\n- 用真实双进程测试复现 lock_model_check.py 的结论（在临时目录用临时锁文件，不碰真实 artifacts/locks）。\n\n【T1 r2 更新（2026-10-16）】以 TEACHERS_AND_CACHE r2 与 contracts/v9/teacher_cache.v2.schema.json 为准（v1 只作历史）：来源条目的 upstream/derivation 与训练资格交集、external_derived 默认拒训、同块多来源逐条判定、use=input 的 as_of_t_s 截止；实现 reports/V9-T1/r2/check_teacher_cache_v2.py 的 store_problems 与 train_eligible。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；未获批准不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n\n## V9-r5-20261016 定版收口要求\n必须等待T1回应T17 B1–B4的新修订及T18非作者建议通过。落实可信不可变upstream来源（AWZ固定external_derived）、当前空ADR批准集合拒训、blob真实时间与source及Observation同域绑定、derivation三项指纹匹配。原单锁/双进程/内容-来源分离与跨分区拒绝仍必测；r2候选未通过不能直接照搬。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+      "updated_at": "2026-10-16T11:49:01+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T3",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T2"
+      ],
+      "verifies": [
+        "ainerzero.V9.T2"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核缓存与模式守卫：元数据伪造、跨模型混写、模式绕过、并发写入。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；未获批准不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。",
+      "updated_at": "2026-10-16T01:34:47+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T4",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "1. `env.lock.txt` 存在；主环境前后 freeze 无差异。\n2. `downloads.json` 里 revision 与 SHA256 齐全，只含批准的文件，总量 ≤ 2 GB。\n3. 数值检查全部断言化、真实非零退出；V-JEPA 与 DA2 各至少 1 个故意改坏对照变红。\n4. `bench.json` 每个模型都有：加载耗时、首帧延迟、稳态吞吐（中位数＋范围）、每千样本时间（标外推）、特征/缓存体积、内存峰值两口径。DA2 三种 compute units 齐全。\n5. GPU 墙钟合计 ≤ 30 分钟，有计时证据。\n6. 文件只落在 `envs/teachers/`、`artifacts/teachers/`、`reports/V9-T4/`。\n7. 报告列出未验证项，至少包括“未对照官方 PyTorch 参考”。",
+      "prompt": "用户 2026-10-16 批准（原话「批准 T4」，记录见 AinerZero RESEARCH_LOG `R20261016-T4`）。只做下面批准范围内的事；遇到范围外的需要（例如要装 PyTorch、要下其他文件、超预算）立即停下，在报告里写明并 report，不要自行扩大。\n\n## 1. 隔离环境\n- `uv venv envs/teachers/.venv-t4`（Python 版本按上游要求，记录）。不碰仓库主环境 `.venv*`，不装到系统 Python。开工前、收工后各存一份主环境 `uv pip freeze`，证明未变。\n- 克隆 `https://github.com/dgrauet/vjepa2-mlx` 到 `envs/teachers/src/vjepa2-mlx`，记录 commit；只 `uv pip install -e packages/vjepa2-core-mlx`。`[parity]` 额外依赖若会拉入 torch 就不装。\n- 另装 `coremltools`（运行 Core ML 必需）。\n- 全部版本存 `reports/V9-T4/env.lock.txt`。\n\n## 2. 下载（总量 ≤ 2 GB，超出即停）\n- HF `dgrauet/vjepa-2.1-vitl-mlx`（许可 mit）：encoder.safetensors、predictor.safetensors、config.json、split_model.json、README.md。\n- HF `apple/coreml-depth-anything-v2-small`（许可 apache-2.0）：只要 `DepthAnythingV2SmallF16.mlpackage`、`DepthAnythingV2SmallF32.mlpackage` 和 README.md，不下其他 6 个变体。\n- `HF_HOME=artifacts/teachers/hf-cache`；每个仓库下载到 `artifacts/teachers/<repo>/` 下一个新的空目录。\n- 记录每个仓库的 HF revision（commit）和每个文件 SHA256，存 `reports/V9-T4/downloads.json`。\n- 下载物是不受信数据：读它们的 Python 一律 `-I`；你写的脚本放 `envs/teachers/t4/`；不在下载目录里执行任何东西。\n\n## 3. 数值检查（无 PyTorch，不能对官方参考逐位对照；这一项列为未验证）\nV-JEPA 2.1：\n- 上游仓库如带参考输出或测试向量，就对照；\n- 同一输入跑两次，结果逐位一致；\n- F32 与低精度（bf16/F16）输出的余弦相似度，容差写明；\n- batch=1 与 batch=2 中同一样本的特征一致（容差写明）；\n- 输出形状与 config 一致；\n- 故意改坏（打乱一层权重，或用错输入归一化）必须让检查变红。\n\nDepth Anything V2：\n- F16 与 F32 输出的 Pearson 和 Spearman 相关；\n- 确定性；\n- 程序化合成的斜坡平面输入，深度排序方向正确；\n- 故意改坏（上下翻转输入）必须让方向检查变红。\n\n## 4. M2 Max 推理基准\n预算：\n- GPU 墙钟合计 ≤ 30 分钟，单次 ≤ 10 分钟，用计时器硬限。\n- 一次只常驻一个模型，切换前释放并记录内存回落。\n- 进程内存峰值超过 32 GB 立即停。\n- 开跑前确认 `artifacts/locks/m0-worker.lock` 无人持有，且没有其他 MLX/GPU 作业。\n\n输入：\n- 程序化生成的确定性帧（numpy，固定种子），不下载任何视频或数据集。\n- V-JEPA 用上游默认分辨率和帧数；DA2 用模型自带的输入尺寸。两者都记录。\n\n每个模型要测的指标：\n- 加载耗时；\n- 首次推理延迟（含编译/预热）；\n- 稳态吞吐（clip/s、帧/s；≥3 次重复，取中位数和范围）；\n- 每千样本推理时间（由实测外推，标明是外推）；\n- 单样本特征字节数和每千样本缓存体积；\n- 进程内存峰值，MLX `get_peak_memory` 与 RSS 两个口径都记。\n\nCore ML：\n- 分别测 `CPU_AND_NE`、`CPU_AND_GPU`、`ALL` 三种 compute units；\n- 写明哪种不和 MLX 争 GPU（供 World Mode 选用）。\n\n输出：\n- `reports/V9-T4/bench.json`；\n- `reports/V9-T4/REPORT.md`：命令、版本、SHA、电源状态（如可得）、失败与未验证项。\n\n## 5. 不做\n- 写入 T2 缓存：T2 验收后，一级另发集成卡。\n- 改 `src/`：T2 正在用 `src/ainerzero/v9/teachers/`。\n- 训练、VGGT、V-JEPA2-AC、PyTorch、从 `.pt` 自转权重、提交推送、删除。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T5",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T4"
+      ],
+      "verifies": [
+        "ainerzero.V9.T4"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零；SHA、许可、范围、主环境四项都有核对结论；基准抽测偏差写明；给出是否建议验收。",
+      "prompt": "只读复核 ainerzero.V9.T4（批准记录见 AinerZero RESEARCH_LOG `R20261016-T4`）：\n\n1. 重算 `artifacts/teachers/` 下文件的 SHA256，与 `reports/V9-T4/downloads.json` 一致；用 HF 页面或 API 只读核对 revision 与许可字段。不重新下载。\n2. 在 T4 的隔离环境 `envs/teachers/.venv-t4` 里重跑 T4 的数值检查脚本（不新建环境、不安装），断言结论一致。\n3. 抽 1 个模型重跑基准一次（GPU 墙钟 ≤ 8 分钟；开跑前同样确认 `artifacts/locks/m0-worker.lock` 无人持有），写明与 `bench.json` 中位数的偏差。\n4. 核对主环境未变（freeze 对比），T4 的文件只落在 `envs/teachers/`、`artifacts/teachers/`、`reports/V9-T4/`。\n5. 核对 T4 没有越出批准范围：未装 torch、未下批准外文件、未写 T2 缓存、未改 `src/`。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录 `reports/V-V9-T4/`。\n- 自写不利反例，至少 6 个，真实非零。例如：改动一个下载文件的一个字节，SHA 检查必须变红；在 lock 里多加一个包，freeze 比对必须变红；上下翻转斜坡输入，方向检查必须变红。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。",
+      "updated_at": "2026-10-16T01:49:25+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T6",
+      "status": "draft",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T2"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "**草稿**：用户批准“下载 DA3 权重 + 在隔离环境装 PyTorch”后，一级把原话写入 RESEARCH_LOG 并改写本卡、补预算再发布。批准前不下载、不安装。\nARCHITECTURE_V9 r3 §7.3 决定：用 DA3-Small/Base（Apache 2.0）替代 VGGT-1B（CC-BY-NC-4.0）。\n\n拟定范围（待批准）：\n1. 隔离环境 `envs/teachers/.venv-t6`：PyTorch（MPS 后端）+ 官方 `ByteDance-Seed/Depth-Anything-3` 代码，记录 commit 与全部版本；不碰主环境和 T4 环境。备选路线（另批）：把 DA3-Small 移植到 MLX，以 PyTorch 输出作一致性参考。\n2. 只下载 HF `depth-anything/DA3-SMALL` 与 `depth-anything/DA3-BASE`。下载前在 HF 页面复核许可字段与文件清单，记录 revision 与 SHA256。不下 Large/Giant/Nested（CC BY-NC 4.0）。\n3. 关键帧批处理：输出相机内外参、深度、置信度；T2 验收后写入教师缓存，来源 `teacher_feature`。\n4. 噪声标定（§7.2 带噪传感器）：在 Blender 合成场景（真值已知）上测\n   - 位姿误差：旋转（度）、平移相对误差；\n   - 深度误差：AbsRel、δ1；\n   - 按场景类型登记，作为 GeometryCore 的观测噪声模型。\n5. 基准：指标同 T4（加载、首帧、稳态吞吐、每千样本时间、缓存体积、内存峰值两口径）；GPU 预算批准时定。\n6. 一致性：MPS 与 CPU 输出对照；F32 与 F16 对照。故意改坏（打乱帧序、给错内参）必须变红。\n\n不做：VGGT、DA3 非商用型号、训练、写入未验收的缓存。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:12+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T7",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T6"
+      ],
+      "verifies": [
+        "ainerzero.V9.T6"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "**草稿**：随 T6 发布。复核 ainerzero.V9.T6：\n- 重算权重 SHA，核 HF 许可字段（只允许 Apache 2.0 的 Small/Base）；\n- 在 T6 环境重跑一致性检查；\n- 核对噪声标定的统计方法与样本量；\n- 确认未下载非商用型号、主环境未变。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:12+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T8",
+      "status": "blocked",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "还原误差 ≤ τ；各合成片段保留率与理论值一致；τ=0 不去重；3 个故意改坏对照变红；未导入 MLX/torch",
+      "prompt": "按 ARCHITECTURE_V9 r3 §4 式 10，在 `src/ainerzero/v9/tokenization/rlt.py` 实现 RLT 停帧去重的 numpy 参考实现。\n来源：Choudhury 等，Run-Length Tokenization，arXiv 2411.05222；只读论文，不下载其代码。\n\n功能：\n- 输入视频块序列 `[T, H/p, W/p, D]`；同一位置若 `‖p_t − p_{t−1}‖_∞ < τ` 就并入上一个 token；\n- 输出保留 token、各 token 的游程长度与原位置索引，并能无损还原到每帧块网格（被并入的块用上一 token 填回）；\n- 报告 token 保留率。\n\n合成测试片段（程序化生成、固定种子，不下载任何视频）：\n- 动漫式有限动画：一拍一、一拍二、一拍三；\n- 局部动作（只有嘴/手在动）；\n- 镜头平移（几乎没有可去重的块）；\n- 全静止；\n- 带编码噪声的“伪静止”（τ 敏感性）。\n\n测试：\n- 还原误差 ≤ τ；\n- 保留率与片段的理论值一致（一拍二约 1/2，全静止约 1/T）；\n- τ = 0 时不去重；\n- 位置与游程长度编码可逆；\n- 输出确定性。\n\n故意改坏必须变红：比较方向错一帧、游程长度少计 1、忽略首帧。\n\n交付：`reports/V9-T8/REPORT.md`，写明各片段的保留率表和 τ 敏感性曲线（数值表即可）。在 V-JEPA 2.1 特征上的 GPU 实测（精度损失 vs 吞吐）不在本卡，等 T4 验收后由一级另提预算。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "ainerzero.V9.T9",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "ainerzero.V9.T8"
+      ],
+      "verifies": [
+        "ainerzero.V9.T8"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零；保留率独立重算一致",
+      "prompt": "复核 ainerzero.V9.T8 的 RLT 参考实现：\n- 自写反例：周期性闪烁、单像素变化、τ 恰在边界、超长静止段、首帧/末帧变化、批量混合不同长度；\n- 独立重算保留率；\n- 确认还原可逆、实现不导入 MLX/torch。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n",
+      "updated_at": "2026-10-16T02:15:52+03:00"
+    },
+    {
+      "id": "awz.P3.A3",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": "grok-a70a",
+      "assignee": null,
+      "depends_on": [
+        "awz.P3.A2",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {
+        "resolution": [
+          854,
+          480
+        ],
+        "engine": "EEVEE",
+        "frames": "0-47 每 6 帧取 1，共 8 帧",
+        "max_frames": 8,
+        "repeat_runs": 2,
+        "max_render_wall_s": 900
+      },
+      "acceptance": "8 帧×4 通道齐全有 sha；投影误差 ≤2px 表；两次运行几何/ID 逐位一致；无窗口；墙钟在上限内",
+      "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-A3 任务卡执行（文件范围、内容、参数、验收以任务卡为准）。先读任务卡上方的「P3 通用约束」和 ADR-0010（D-007：Blender 是主引擎）。报告用 AGENT_TASKS.md 末尾的执行报告模板，放到任务卡写的报告目录。边做边留接力点（relay_checkpoint 或 relay heartbeat --msg）。",
+      "updated_at": "2026-10-16T11:43:27+03:00"
+    },
+    {
+      "id": "awz.P3.A7",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.P3.A4",
+        "awz.P3.B2",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {
+        "engine": "EEVEE",
+        "resolutions": [
+          [
+            854,
+            480
+          ],
+          [
+            1280,
+            720
+          ],
+          [
+            1920,
+            1080
+          ]
+        ],
+        "warmup_frames": 2,
+        "measured_frames_min": 10,
+        "max_frames_total": 300,
+        "max_render_wall_s": 1800
+      },
+      "acceptance": "两场景×三分辨率×两质量档的中位/最大单帧耗时与峰值内存；全景支持与否如实；30/60fps 近似与成片换算，并注明近似局限；总墙钟在上限内",
+      "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-A7 任务卡执行（文件范围、内容、参数、验收以任务卡为准）。先读任务卡上方的「P3 通用约束」和 ADR-0010（D-007：Blender 是主引擎）。报告用 AGENT_TASKS.md 中的执行报告模板，放到任务卡写的报告目录。边做边留接力点（relay_checkpoint 或 relay heartbeat --msg）。不用 Cycles，不跑 Godot，不和 MLX 训练同时跑。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "awz.P3.C1",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.P3.B2",
+        "awz.P3.B1",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {
+        "max_iterations": 5,
+        "param_space": "tools/art_loop/param_space.json（本任务定义，统筹验收）",
+        "resolution": [
+          854,
+          480
+        ],
+        "critic": "self_vision_no_paid_api",
+        "max_render_wall_s": 1500
+      },
+      "acceptance": "每轮经验记录 JSON 可校验；第 0 版与最好版对比；分数曲线；写明主观评分非独立评测；不改生成器代码",
+      "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-C1 任务卡执行（文件范围、内容、参数、验收以任务卡为准）。先读任务卡上方的「P3 通用约束」和 ADR-0010（D-007：Blender 是主引擎）。报告用 AGENT_TASKS.md 末尾的执行报告模板，放到任务卡写的报告目录。边做边留接力点（relay_checkpoint 或 relay heartbeat --msg）。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "awz.P3.C3",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.P3.D4",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {
+        "max_iterations_per_ref": 5,
+        "refs_A": 3,
+        "refs_B": 3,
+        "resolution": [
+          1280,
+          720
+        ],
+        "engine": "EEVEE",
+        "max_render_wall_s": 2400
+      },
+      "acceptance": "A 组调参前后分项指标与对比图；B 组只评一次；指标有单元测试；参数空间登记；经验 JSON；未用 B 组调参、未下载新模型",
+      "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-C3 任务卡执行（文件范围、内容、参数、验收以任务卡为准）。先读 docs/research/DILLONGOO_TEARDOWN_20261015.md 第 9、10 节。参考截图在 ~/AinerWorkFlow/_refs/dillongoo_20261015/，只作内部研究，不复制进 git、不进训练。报告用 AGENT_TASKS.md 中的执行报告模板，放到 reports/P3-C3/。边做边留接力点。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "awz.P3.E3",
+      "status": "ready",
+      "kind": "design",
+      "tier": 1,
+      "author": "codex",
+      "assignee": null,
+      "depends_on": [
+        "awz.P3.E4",
+        "awz.P3.E7"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "一个信封、两族操作（持久世界 ops + JSON Patch）、版本对应与原子性、类别不变量、take 过期、跨仓黄金一致性用例；未改 AinerHub 代码",
+      "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-E3 任务卡执行（一级设计任务；交付、内容、验收以任务卡为准）。先读 docs/adr/ADR-0011-three-systems.md 的修订一（D-012）、docs/design/WORLD_COMMAND.md，以及 AinerHub app/worldmodel/service.py 与 world_ 表（只读）。结论写进卡里指定的文档，决定记进 RESEARCH_LOG，再 relay report。",
+      "updated_at": "2026-10-16T04:11:45+03:00"
+    },
+    {
+      "id": "awz.P3.E5",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.P3.E3",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "原设计范围内纯CPU合同与不利反例通过；未实现/未验证边界明确；完整身份与临时数据证据；后接非作者复核",
+      "prompt": "先读本项目规则与前置设计，先领取再改。只做纯CPU工程，不导入MLX/ORT/模型，不渲染、不下载/安装/付费、不重启服务、不提交推送/删除，不改冻结参数和门。所有测试使用新临时根，记录实际命令、输入/源码SHA、失败和未验证项；不写生产库、RunStore或关联项目。没有依赖不得自行安装。摘要30行内，完整证据另存，容量足够report --next，否则capacity-exhausted交接。\n\n先读：/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md，以及同目录草案schema。\n实现提议协议的结构与纯函数语义校验：schema、精确输入摘要（重复键/非有限数拒绝，算法与数值编码明确）、完整base向量、单族/四类、test与move/copy路径/父路径越界、有效tick与外部提供的能力/版本前置。持久ops逐一对照只读Hub service.py真实字段，缺参数和未知引用拒绝；不调用Hub propose/apply，不建第二份持久世界库。只校验并产出candidate/errors/unsupported，不实现真实提交/预览token签发/数据库CAS/回滚，不声称黄金并发已验证。固定fixture覆盖小于1e-6精确源变化、不完整快照、未知持久逆操作、路径逃逸等；尚无权威依赖就未验证，不能用fixture通过冒充跨仓E2E。\n",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "awz.P3.I2",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.P3.I1",
+        "awz.V9.A8",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "七项逐项报成立/不成立/未验证且有证据；同源同日志哈希一致、改一条命令哈希变；快照重算与从头算一致；被拒命令不改状态；kernel 现有文件 sha 不变",
+      "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-I2 任务卡执行（交付、内容、验收以任务卡为准）。先读任务卡上方的「P3 通用约束」和「P3 补充：世界运行与制作计划」两段，以及 docs/adr/ADR-0011-three-systems.md 和 docs/NORTH_STAR.md。报告用 AGENT_TASKS.md 中的执行报告模板，放到 reports/P3-I2/。不得改 python/animeworld/kernel/ 下的现有文件。边做边留接力点（relay_checkpoint 或 relay heartbeat --msg）。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 事件日志按 Event/v1（awz.V9.A8，验收后）输出：event_id、tick、source、affected_ids、event_type、payload、evidence_ref、真实性层、因果父事件、所在修订。\n- 为 E2a/E3 预留：同一运行可导出全量更新与稀疏更新两种轨迹，用于逐位比较状态哈希（比较本身归 awz.V9.B9）。\n\n## V9-r5-20261016 定版收口要求\n等待Event候选回应A9 R1–R4并经A12建议通过，落实run/scene日志命名空间、唯一ID同tick次序、快照因果前缀、可信版本时间线及接触类型登记；有哈希不等于来源完整。仍等P3.I1与A10。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+      "updated_at": "2026-10-16T11:49:01+03:00"
+    },
+    {
+      "id": "awz.V9.A1",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "codex",
+      "assignee": "codex",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "逐项结论与理由；需要修订处具体到章节",
+      "prompt": "对 docs/adr/ADR-0012-v9-neurogeometry-hjepa.md 与 docs/design/V9_LANDING_PLAN.md 做平级审议（起草者 claude，审议者须为另一位一级，如 codex）。\n逐项判断：与 v9 RFC、ADR-0011/D-012 是否一致；现有任务处置（保留/补口径/收束）是否合理，特别是 AWZ W 轨收束与 E1 并入 E3；四个协议归属；阶段门槛与授权边界。\n同意则 report 并在 RESEARCH_LOG 记审议结论；不同意写清改哪里，由 claude 修订。",
+      "updated_at": "2026-10-16T09:00:11+03:00"
+    },
+    {
+      "id": "awz.V9.A10",
+      "status": "draft",
+      "kind": "design",
+      "tier": 1,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A5",
+        "ainerzero.V9.A5"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "两个条件都满足：r5 与整合方案非作者复核建议通过；用户在对话里明确同意放行代码，原话写入 RESEARCH_LOG",
+      "prompt": "【用户门】D-019 代码放行总门（AWZ RESEARCH_LOG D-019；ainerzero.V9.A6 / awz.V9.A6 审议 §4）。\n\n这张卡不做任何实现，只表示“用户已同意开始写代码”。规则：\n- 所有因 D-019 暂停的实现卡，以及按 ARCHITECTURE_V9 r5 新建的代码卡，都依赖本卡；\n- 本卡只有在两件事都满足后才由一级办理：\n  1. 架构 r5 与整合方案经非作者复核建议通过；\n  2. 用户在对话里明确同意放行代码。\n  办理时把用户原话写进 RESEARCH_LOG。\n- 本卡是**附加门**：各卡自己的业务依赖（例如 E5 等 E3、I2 等 I1 与 Event/v1）照旧，不因本卡通过而被绕过；\n- 没有前置的代码卡也不因本卡存在而自行 ready，由一级逐张核原依赖、授权与文件负责人后放行。\n\n不训练、不下载、不运行；本卡没有文件范围。\n",
+      "updated_at": "2026-10-16T09:46:29+03:00"
+    },
+    {
+      "id": "awz.V9.A11",
+      "status": "reported",
+      "kind": "review",
+      "tier": 1,
+      "author": "codex",
+      "assignee": "codex",
+      "depends_on": [
+        "awz.V9.A5"
+      ],
+      "verifies": [
+        "awz.V9.A5"
+      ],
+      "params": {},
+      "acceptance": "F1–F4 落点、总门为附加门且原依赖未改、基线区分、E3 表述、电源口径、归档 SHA 逐条结论；未关闭即不通过",
+      "prompt": "非修订作者独立复核 ADR-0012 修订五 §5.4 与落地方案 §11（awz.V9.A5 第二轮修订）。上一轮审议 awz.V9.A6 的必修项见 reports/V9-A1/revision-independent/codex-r4-v101-20261016/REPORT.md；本轮记录见 reports/V9-A1/consolidated-revision/REPORT.md 末尾 r2 段。\n\n逐项核对：\n- F1–F4 在 ADR 与落地方案中都有落点；\n- D-019 总门 awz.V9.A10 确实是附加门，已加为 21 张卡的前置，各卡原依赖未被删改（对照 relay 卡面）；\n- 19 张与 12 张两个基线的区分；E3 未实现的表述；\n- 电源口径撤回与 R20261014-power-policy、ADR-0009 一致；\n- 原件归档 SHA；已接受的历史决定没有被覆盖，只是追加。\n\n只读审议；不做模型、GPU、下载、安装、付费、删除、提交推送。你不能是 A5 的任何历任作者（claude）；只写 reports/V9-A1/consolidated-r2-independent/。只 report，不自己 accept。\n",
+      "updated_at": "2026-10-16T11:43:27+03:00"
+    },
+    {
+      "id": "awz.V9.A12",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A8"
+      ],
+      "verifies": [
+        "awz.V9.A8"
+      ],
+      "params": {},
+      "acceptance": "",
+      "prompt": "先读reports/V-V9-A8/codex-v101-20261016/REPORT.md，非任何历任修订作者。独立核R1–R4，保留重复ID、同tick倒序、未来日志/关系、换scene重哈希、空接触6类探针；确认缺可信时间线时拒绝/未验证，不能SHA自洽冒充来源验证。只读设计与隔离CPU契约测试，不做消费者/模型，不改被验文件，只report，不自行accept。主架构r5定版不等于本候选通过。",
+      "updated_at": "2026-10-16T11:46:34+03:00"
+    },
+    {
+      "id": "awz.V9.A2",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": "claude",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "两个 schema 元校验、示例与反例、泄露规则表；检查脚本断言全过且改坏变红",
+      "prompt": "按 ADR-0012 决定 2 与 RFC §6 设计两个契约，交付 contracts/v9/world_snapshot.v1.schema.json、contracts/v9/observation_packet.v1.schema.json、示例、docs/design/OBSERVATION_PROTOCOL.md。\nWorldSnapshot：world_id、source_revision、sim_tick、state_hash、mechanics_version、event_log_hash 等；明确“非学生输入”。\nObservationPacket：episode_id、agent_id、observation、pose_sensor_if_allowed、dt、visibility、sensor_noise、provenance；**字段级泄露规则**：绝对真值位姿/ID、未来信息、快照哈希、评测标签一律禁止；相对几何传感只在任务允许时出现并带噪声与可见性。\n与 ainer.scene/v1、AWZ 内核 120 Hz 时钟、P3.I1 事件真实性分层、Forge APACK 分区对齐。附纯 CPU 检查脚本（断言 + 改坏契约对照）。",
+      "updated_at": "2026-10-16T09:39:06+03:00"
+    },
+    {
+      "id": "awz.V9.A3",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A2",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "每类泄露都被拦并给原因；合法包零误报；改坏检测器测试变红",
+      "prompt": "按 awz.V9.A2 的契约实现校验器与泄露检测器（新目录 python/animeworld/protocols/v9/），对任意 ObservationPacket 流判定是否含禁止字段、未来信息、绝对真值或快照哈希；给出逐字段原因。\n测试覆盖：合法包、每类泄露各至少 2 例、噪声与可见性边界、dt 非法值；不改内核与编译器现有文件。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 实现 contracts/v9/{world_snapshot.v1_1,observation_packet.v1_1}.schema.json 与 observation_leak_rules.v1_1.json；v1 只作历史。\n- 规则作用范围：L10 只查 $.payload；实现 time_whitelist_consistent（payload.time 四项且逐项等于信封）。\n- 正反例用 contracts/v9/examples/{world_snapshot_v1_1,observation_packet_v1_1}/，并复现 reports/V9-A2/r1/check_contracts_v1_1.py 的全部结论。\n\n【A7 复核新增缺口（2026-10-16）】ObservationPacket 中可被模型触及的 URI/内容摘要（如 rgb.image.uri）必须按“截至本包 t_ticks”的 as-of 规则解析：不得指向 private/、评测通道、未来 tick 的资产或任何真值文件；解析器要有权限分区。补负例：uri 指向 private/future_tick_*.png、指向快照或 eval 目录、摘要对不上实际文件，都必须被拒绝；并在实际加载路径上测试，不只测字段。参考 reports/V-V9-A2-r1/codex-v101-20261016/future-reference-probe.json。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n## V9-r5-20261016 定版收口要求\n按Event修订显式扩展观察泄露规则及开放字段嵌套反例：event_id/layer/affected_ids/cause_ids、世界版本/base、隐藏接触、真值dirty/fallback不得进入学习侧。实际URI解析允许命名空间并截至当前包时间；两世界同观察异隐藏未来时模型输入/学习调度/可解析资产相同。A2局部契约通过不是consumer证明。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+      "updated_at": "2026-10-16T11:49:01+03:00"
+    },
+    {
+      "id": "awz.V9.A4",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A3"
+      ],
+      "verifies": [
+        "awz.V9.A3"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零；漏拦项写清",
+      "prompt": "对 awz.V9.A3 做泄露对抗：编码/改名/嵌套/数值伪装的真值、跨包拼接的未来信息、相对量反推绝对位姿等，确认检测器能拦或明确记录为已知限制。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-15T21:47:52+03:00"
+    },
+    {
+      "id": "awz.V9.A5",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": "claude",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "",
+      "prompt": "按Codex平级审议统一正文与修订一至四，以现任务状态消除五/六接口、T4授权、T6替代、sim_truth通道等冲突。ADR已接受历史决定不覆盖，采用明确补充/替代表或新修订段；原件先SHA归档。训练暂停/四partition/来源/旧失败与预算原样保留；不下载/不运行/不付费/不改他仓。报告逐项一致性，不自验收，交非作者一级终审。",
+      "updated_at": "2026-10-16T11:43:27+03:00"
+    },
+    {
+      "id": "awz.V9.A6",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 1,
+      "author": "codex",
+      "assignee": "codex",
+      "depends_on": [
+        "awz.V9.A5"
+      ],
+      "verifies": [
+        "awz.V9.A5"
+      ],
+      "params": {},
+      "acceptance": "",
+      "prompt": "非被验A5任何历任作者的一级独立复核。逐项核Codex 2026-10-16平级审议必修清单、原r3/历史ADR归档SHA与新正文，确认无科学参数/门槛/训练预算变化；仅只读审议，不做模型/GPU/下载/安装/付费/删除/提交推送。写独立关闭表，未关闭即明确不通过，不拿文档整合当能力验收。只report，不自己accept。",
+      "updated_at": "2026-10-16T09:46:15+03:00"
+    },
+    {
+      "id": "awz.V9.A7",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 2,
+      "author": "codex-v101-contract-audit-20261016",
+      "assignee": "codex-v101-contract-audit-20261016",
+      "depends_on": [
+        "awz.V9.A2"
+      ],
+      "verifies": [
+        "awz.V9.A2"
+      ],
+      "params": {},
+      "acceptance": "归档 SHA 核对；Codex 三项逐条结论；独立检查复跑全部正反例；作者脚本复现；≥6 个新不利反例真实非零；给出是否建议验收 A2",
+      "prompt": "只读复核 awz.V9.A2 r1（WorldSnapshot/ObservationPacket v1.1）。退回原因见 relay show awz.V9.A2 --full 的 codex rejected 事件；r1 报告 reports/V9-A2/r1/REPORT.md；关闭表 docs/design/OBSERVATION_PROTOCOL.md §9。\n\n## 必做\n1. 核对归档 reports/V9-A2/r0-archive/ 的 SHA 与 git 提交 5ab68620e 中的 v1 原件一致。\n2. 逐条核对 Codex 退回三项是否关闭：\n   - 模型可用的时间白名单；\n   - 快照版本基准与 docs/design/WORLD_CHANGE_PROTOCOL.md §1 的 base 五元组逐字段同义同序；\n   - origin 恒为 external_derived，actor/partition 分字段，没有绕开 ADR-0005。\n3. 不复用作者的参考检测：自写一个独立检查（至少覆盖 L10 只查包体、时间白名单一致性、uuid4、句柄重发），跑作者全部正反例，结论须与作者一致或写明差异。\n4. 用带 jsonschema 的解释器跑 reports/V9-A2/r1/check_contracts_v1_1.py，复现计数与 13 个破坏自检。\n5. 至少 6 个新不利反例（真实非零），例如：\n   - payload.time 与信封差 1 tick；\n   - payload.time 多一个 seq；\n   - actor 写在 payload 里；\n   - base 五元组顺序或类型错；\n   - origin 大小写变体；\n   - 合法包里 partition 只在信封出现应当通过。\n\n## 约束\n- 你不能是 A2 的作者（claude）；只写 reports/V-V9-A2-r1/；不改被验文件。\n- 纯 CPU；不下载、不安装、不提交推送、不删除。\n- 给出是否建议验收 awz.V9.A2。\n",
+      "updated_at": "2026-10-16T09:39:06+03:00"
+    },
+    {
+      "id": "awz.V9.A8",
+      "status": "ready",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A2"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "两个 schema 元校验；正反例；核对脚本断言+改坏变红；与哈希链、base 五元组、泄露规则一致",
+      "prompt": "设计 AWZ 的 Event/v1 契约，并增补 WorldSnapshot v1.2（ARCHITECTURE_V9 r4 §8.2；ADR-0012 修订五 §5.2 第 2 条）。只写设计、schema、正反例与核对脚本，不改内核。\n\nEvent/v1 字段：\n- v10 字段：event_id、tick（120 Hz 绝对 sim_tick）、source（kernel/command/character_runtime/presentation 等登记来源）、affected_ids（世界实体 ID）、event_type、payload、evidence_ref；\n- 增加真实性层 layer：actual、believed、recall、montage、camera_exaggeration（NORTH_STAR §4 第 7 项）；\n- 增加 cause_ids（因果父事件）、base（统一变更信封 base 五元组）、所在 revision。\n\n要求：\n- 与事件日志哈希链对齐（WorldSnapshot.event_log_hash 的 h_k 定义）；\n- 写清 affected_ids 怎样驱动稀疏更新的脏集合种子（r4 §4 式 12）；\n- Event 永远不进 ObservationPacket（泄露规则 L2/L4/L5）。\n\nWorldSnapshot v1.2：在 v1.1 上增 geometry_ref、collider_ref、relations（对象关系图），仍只放权威真值，不放置信度或推断量。\n\n交付：\n- docs/design/EVENT_PROTOCOL.md；\n- contracts/v9/event.v1.schema.json；\n- contracts/v9/world_snapshot.v1_2.schema.json；\n- 正反例；\n- reports/V9-E1/ 核对脚本（断言 + 改坏变红）。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n\n2026-10-16 定版收口：主架构V9-r5-20261016已单独定版，本候选尚未通过awz.V9.A9。当前先补齐退回意见中的协议定义、契约正反例及隔离的破坏对照；不得以本卡重构内核、加载教师或实现生产消费者。逐字节归档当前候选与哈希，使用新修订目录，保留所有负面报告；实现任务仍受A10总门及原依赖约束。",
+      "updated_at": "2026-10-16T11:46:34+03:00"
+    },
+    {
+      "id": "awz.V9.A9",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 2,
+      "author": "codex-v101-contract-audit-20261016",
+      "assignee": "codex-v101-contract-audit-20261016",
+      "depends_on": [
+        "awz.V9.A8"
+      ],
+      "verifies": [
+        "awz.V9.A8"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零；给出是否建议验收 A8",
+      "prompt": "复核 awz.V9.E1 的 Event/v1 与 WorldSnapshot v1.2：\n- 核对真实性层五值与 NORTH_STAR 一致；base 五元组与 WORLD_CHANGE_PROTOCOL.md §1 同义同序；哈希链定义与快照一致；\n- 确认 Event 与快照里都没有置信度、推断量；\n- 自写反例，例如：未登记的 source、layer 缺失、cause_ids 指向未来事件、affected_ids 为空却声明 contact、快照混入 confidence。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T11:46:34+03:00"
+    },
+    {
+      "id": "awz.V9.B1",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A3",
+        "awz.P3.I2",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "学生流零泄露（检测器断言）；真值只在封存通道；同种子重放逐字节一致",
+      "prompt": "在 P3.I2 小房间运行切片之上实现受限传感出口：按 awz.V9.A2 契约输出 ObservationPacket 流；同一 episode 的真值只写入评测通道（按 Forge APACK final 封存约定），学生流必须通过 awz.V9.A3 检测器。\n提供可重放 ID 与 dt；不改内核现有文件，新代码放新目录。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 输出 ObservationPacket/v1.1：信封带 actor 与 origin=external_derived；payload.time 与信封一致；不透传其他信封字段。\n- 快照用 WorldSnapshot/v1.1 的 base 五元组；事件日志按 Event/v1（awz.V9.A8）输出时使用 affected_ids。\n\n【A7 复核新增缺口（2026-10-16）】ObservationPacket 中可被模型触及的 URI/内容摘要（如 rgb.image.uri）必须按“截至本包 t_ticks”的 as-of 规则解析：不得指向 private/、评测通道、未来 tick 的资产或任何真值文件；解析器要有权限分区。补负例：uri 指向 private/future_tick_*.png、指向快照或 eval 目录、摘要对不上实际文件，都必须被拒绝；并在实际加载路径上测试，不只测字段。参考 reports/V-V9-A2-r1/codex-v101-20261016/future-reference-probe.json。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n## V9-r5-20261016 定版收口要求\n实际传感/资产加载路径必须执行A3新Event字段泄露、as-of/允许命名空间及同观察异未来不干扰测试；未来标签独立，教师输入片段截至当前包。学习侧不接raw Event/世界ID/hidden contacts/dirty/fallback。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+      "updated_at": "2026-10-16T11:49:01+03:00"
+    },
+    {
+      "id": "awz.V9.B10",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B9"
+      ],
+      "verifies": [
+        "awz.V9.B9"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核 awz.V9.B9：独立重算状态哈希一致性；构造依赖图漏边（应触发不一致或回退）、k 跳不足、f_max 边界、事件 affected_ids 漏报等反例；复测 5% 稀疏率的提速与回退率。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T09:35:25+03:00"
+    },
+    {
+      "id": "awz.V9.B11",
+      "status": "draft",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A8",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "≤100 段小样同种子逐位复现；隐藏参数随机化；世界划分不相交；final 封存",
+      "prompt": "【草稿：批量生成需用户批准运行预算；小样随代码任务放行】E0 物理真值序列生成器（ARCHITECTURE_V9 r4 §8.3 E0），**不渲染**。\n\n内容：\n- 用 Blender（Bullet 刚体）无头模式生成球体、盒子、桌子、斜坡、遮挡等短序列；\n- 保存精确的位姿、速度、接触、相机；\n- 数据端随机化隐藏参数（摩擦、弹性、质量、阻尼），用于 E1 的有偏先验对照；\n- 3 个随机种子，按世界划分 train/development/final，划分互不相交；\n- final 按 APACK 封存。\n\n本卡只做 ≤ 100 段的 CPU 小样，单次 ≤ 10 分钟墙钟，并验证同种子逐位可复现。1k–10k 段的批量生成另行申请预算。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "awz.V9.B12",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B11"
+      ],
+      "verifies": [
+        "awz.V9.B11"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核 awz.V9.B11：同种子逐位复现；隐藏参数确实随机化且不进学生观察；世界划分不相交；final 封存且未被读取；坐标映射行列式 +1。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T09:35:26+03:00"
+    },
+    {
+      "id": "awz.V9.B2",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B1"
+      ],
+      "verifies": [
+        "awz.V9.B1"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核受限传感出口：重放一致性、泄露、真值封存、dt 与可见性。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-15T21:47:52+03:00"
+    },
+    {
+      "id": "awz.V9.B3",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B1",
+        "forge.V9.A2",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "三类考试各有正反例；分区不相交断言；规则基线成绩与封存审计记录",
+      "prompt": "基于受限传感出口生成三类考试：2D 导航（可达、最短路、回环）、时间（dt 变化、事件先后）、对象关系（遮挡、接触、相对位置）。\ntrain/development 与 final 世界键不相交；final 按 forge.V9.A2 的 ExperienceEpisode 校验器封存，只读一次；附规则基线成绩作参照。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 观察按 ObservationPacket/v1.1。\n- 增加 E3 遮挡后身份考题：对象离开视野再出现，句柄必须重发，考 IDF1 与重识别正确率；事件回放状态哈希一致性作为工程门。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "awz.V9.B4",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B3"
+      ],
+      "verifies": [
+        "awz.V9.B3"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核考场：泄露、分区相交、final 读取次数、题目可解性与规则基线复算。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-15T21:47:52+03:00"
+    },
+    {
+      "id": "awz.V9.B5",
+      "status": "draft",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B1"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "在受限传感出口（awz.V9.B1）之上，用 Blender 5.2.2 生成刚体运动、碰撞、遮挡与相机运动场景：学生拿渲染帧与受限观察；真值（位姿、速度、碰撞事件、对象 ID、可见性）按封存评测通道保存，另以 `sim_truth` 分区供“特权监督”训练对照；坐标映射用 (x,−z,y)（行列式 +1）；每个样本记录渲染设置与 SHA。**草稿**：渲染总墙钟预算由一级提出、用户批准后发布。\n\nADR-0012 修订四增补：\n- 借鉴 Kubric/MOVi 的任务设计：对象数量与材质分级、相机静止/运动两套、分割/深度/光流/对象位姿真值。只移植思路，不装 Kubric（它绑定 Blender 2.93 与 docker）。\n- 物理真值接口要留给 Genesis World 后端（awz.V9.B7，安装待批准）：本卡先用 Blender 刚体，真值格式与坐标映射写成与物理后端无关。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；未获批准不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。",
+      "updated_at": "2026-10-16T02:15:12+03:00"
+    },
+    {
+      "id": "awz.V9.B6",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B5"
+      ],
+      "verifies": [
+        "awz.V9.B5"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "草稿：随 B5 发布；重点核真值不泄露进学生流、坐标映射、碰撞事件标注正确性。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；未获批准不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。",
+      "updated_at": "2026-10-16T01:34:47+03:00"
+    },
+    {
+      "id": "awz.V9.B7",
+      "status": "draft",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B1"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "**草稿**：用户批准安装后，一级改写发布。批准前不安装。\n依据：ADR-0012 修订四；AinerZero ARCHITECTURE_V9 r3 §7.4。\n\n拟定范围：\n1. 在隔离环境安装 Genesis World（`Genesis-Embodied-AI/genesis-world`，Apache-2.0），记录 commit 与版本；只装刚体与基础多物理所需依赖，不装需要 NVIDIA 的可选后端（如 IPC/uipc）。\n2. Apple Metal 后端基准：刚体堆叠、碰撞、滚动、遮挡场景；记录\n   - 步进速度、确定性（同种子逐位一致或给出误差界）、内存峰值；\n   - 与 Blender 刚体结果的轨迹偏差。\n3. 接口设计：Genesis 出物理真值（位姿、速度、接触事件、对象 ID），Blender 只负责渲染与可编辑场景。\n   - 坐标映射与 awz.V9.B5 一致，断言行列式符号；\n   - 真值写入封存评测通道与 `sim_truth` 分区，学生只拿受限观察（awz.V9.B1）。\n4. 自动微分只做可用性探针（对一个刚体参数求梯度并与有限差分对照），不训练。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:54+03:00"
+    },
+    {
+      "id": "awz.V9.B8",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.B7"
+      ],
+      "verifies": [
+        "awz.V9.B7"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "**草稿**：随 B7 发布。复核 awz.V9.B7：\n- 重跑确定性与 Metal 基准；\n- 核对坐标映射与 Blender 轨迹偏差；\n- 确认真值没有进入学生观察；\n- 确认未装 NVIDIA 专用后端、主环境未变。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+      "updated_at": "2026-10-16T02:15:54+03:00"
+    },
+    {
+      "id": "awz.V9.B9",
+      "status": "draft",
+      "kind": "code",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.A8",
+        "awz.P3.I2",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "状态哈希与全量逐位一致；5% 稀疏率提速≥30% 或写明回退；回退率；3 种子",
+      "prompt": "【暂停中（D-019），随代码任务放行】E2a 世界侧稀疏更新 CPU 参考实现与基准（ARCHITECTURE_V9 r4 §4 式 12、§8.3 E2）。\n\n实现：\n- 依赖图 G_t（接触、附着、距离 < r_dep、可见性）；\n- 脏集合 = 种子的 k 跳邻域。种子由 Event/v1 的 affected_ids、动作、接触变化、遮挡变化给出；\n- 扩展比例 > f_max 或监测异常时全量回退；k、r_dep、f_max 先登记、后测量。\n\n基准：\n- 100 / 1000 个对象 × 1% / 5% / 20% 对象变化；\n- 对比全量、仅脏集合、脏集合 + 依赖传播。\n\n门槛：\n- 与全量更新的状态哈希逐位一致（任何不一致都算失败，不允许“误差很小”）；\n- 5% 稀疏率下端到端更新时间减少 ≥ 30%，否则写明回退或重新设计；\n- 另报 CPU 时间、峰值内存、回退率。\n\n纯 CPU，单次运行 ≤ 10 分钟墙钟，3 个种子。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n\n\n## V9-r5-20261016 定版收口要求\n按主架构r5式12a/Event补修：活跃集合覆盖持续力/速度/计时/约束，宽相与全部对象比较，本步新接触及依赖闭包迭代至不动点或安全全量回退，不能只以初始静态闭包声称覆盖；休眠严格不变或逐位等价延迟求值。绑定确定性域、全成本计时、优化全量基线；保留原阈值/研究目标；无实现授权。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+      "updated_at": "2026-10-16T11:49:01+03:00"
+    },
+    {
+      "id": "awz.V9.C1",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": "claude",
+      "depends_on": [
+        "awz.P2.W6"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "结案记录、迁移登记、无训练无删除",
+      "prompt": "待 awz.P2.W6 复核与 W2 终审后执行：在 RESEARCH_LOG 与 AGENT_TASKS 记录 W 轨结案（T08：预算合规、Gate B 未过、研究候选不进生产）；把 W1 数据生成器与评测登记为考场素材与 AinerZero 对照基线（不训练、不移动原代码，只登记引用与 SHA）；W2 线稿编码器划归美术专项；更新 ADR-0010 的引用说明（不改原文，追加修订段）。",
+      "updated_at": "2026-10-16T04:11:45+03:00"
+    },
+    {
+      "id": "awz.V9.D1",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": "claude",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "判据与维度 schema、合成公式、隔离规则、反例；检查脚本断言+改坏变红",
+      "prompt": "设计 AWZ 原生的场景质量评测协议：判据格式（id、权重 1/2/3、路由 structural|visual|either、证据要求）、结构判据优先用 Blender 后台只读脚本确定性判定、只有语义/画质才交 LLM/VLM；画质维度定义（参考 BlenderWorld 八维，可按动漫风格调整并写明理由）、合成公式、缺交与失败计零、渲染与证据留存规则、评测与生产隔离（评测不得改场景）；与 RenderBackend 契约、风格包与 Gate S、ACIS 的关系。产出 docs/design/SCENE_EVAL_PROTOCOL.md 与 schema 草案。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。",
+      "updated_at": "2026-10-16T04:11:45+03:00"
+    },
+    {
+      "id": "awz.V9.D2",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.D1",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "每类判据有正反例；不写回 .blend（前后 SHA 一致）；改坏检查器测试变红",
+      "prompt": "按 awz.V9.D1 的判据格式实现结构检查器：Blender 5.2.2 后台（-b --factory-startup）只读打开 .blend，检查对象与层级、尺寸与单位、材质与贴图依赖、相机参数、灯光、动画关键帧范围等判据，输出逐条 pass/fail 与证据；不渲染、不保存、不改文件。附 10 个以上自造 .blend 夹具（正例与故意违例），夹具只放 tests/ 下的临时目录或报告目录。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。\n\n## 通用约束（v9.1，ADR-0012 修订二）\n- 不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "awz.V9.D3",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.D2"
+      ],
+      "verifies": [
+        "awz.V9.D2"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核结构检查器：误报漏报、单位与坐标（含 Z 上与 (x,−z,y) 映射）、依赖缺失、只读保证。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9.1，ADR-0012 修订二）\n- 不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T01:22:11+03:00"
+    },
+    {
+      "id": "awz.V9.D4",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.D1",
+        "awz.P3.E5",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "≥10 种提分改锁手法全拒；合法未锁定修改不误拒；改坏守卫测试变红",
+      "prompt": "在 E3 统一变更信封（base_revision、scope、locks、WorldDelta）的校验路径上实现锁定守卫：任何触碰用户锁定的角色（身份、形态版本）、镜头（机位、EDL 条目）、剧情事件（世界事件、实际发生层）的变更一律拒绝，错误码与原因可读，**与任何评分无关**；评测流程只读，不得发起修改。对抗套件：模拟“修复智能体”为提高视觉评分改锁定字段的 ≥10 种手法（直接改、改别名、拆成多条、借 add 覆盖、改引用对象、改上游依赖、改时间使锁定事件移位等），全部必须被拒。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 版本基准统一用 ainer.world_change/v1 的 base 五元组（world_version、scene_id、revision、snapshot_sha256、source_sha256）；锁定摘要算法与场景评测协议 base.locked_digest 一致。\n\n## 通用约束（v9.1，ADR-0012 修订二）\n- 不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "awz.V9.D5",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.D4"
+      ],
+      "verifies": [
+        "awz.V9.D4"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核锁定守卫：自造更隐蔽的绕锁手法（间接引用、跨类别变更、时间平移、并发两条各自合法的变更组合）。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9.1，ADR-0012 修订二）\n- 不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T01:22:11+03:00"
+    },
+    {
+      "id": "awz.V9.D6",
+      "status": "draft",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.D2"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "待批准后补全",
+      "prompt": "可选插件，默认关闭，关闭后生产链路零依赖：把我方 3D 创作产出打包成 BlenderWorld 提交格式（final.blend + textures/ + outputs/），并把官方评测结果映射回 AWZ 场景质量报告。**草稿**：数据集下载、Blender 4.2.10 安装（官方仅 Linux）、Claude Code 与付费视觉接口均需用户逐项批准后再发布本卡。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。\n\n## 通用约束（v9.1，ADR-0012 修订二）\n- 不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T01:22:11+03:00"
+    },
+    {
+      "id": "awz.V9.D7",
+      "status": "draft",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "awz.V9.D6"
+      ],
+      "verifies": [
+        "awz.V9.D6"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "草稿：随 D6 发布；重点核“关闭插件不影响生产”。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9.1，ADR-0012 修订二）\n- 不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-16T01:22:11+03:00"
+    },
+    {
+      "id": "forge.V9.A1",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": "claude",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "schema 元校验、反例被拒、改坏契约变红",
+      "prompt": "设计 ExperienceEpisode/v1：observation/action/reward/feedback；teacher_claim、teacher_demo 与 self_observation、仿真真值分区；partition（train/development/quarantine，final 只在封存评测区）；world/asset/style/model 哈希；沿用 APACK 的来源词表、分区、封存与世界键防泄露，不另起格式。附 schema、示例、反例与检查脚本。\n\n9.1 增补（ADR-0012 修订二）：来源词表增加 `agent_trajectory`（3D 创作智能体的生成轨迹）与 `user_correction`（用户修正记录），并定义消费限制：这两类只供场景规划、美术策略等专项模型使用，挂载校验对 AinerZero 训练用途一律拒绝，不得作为物理理解的证据。\n\n本机集成增补（ADR-0012 修订三）：来源词表再增加 `teacher_feature`（冻结教师的离线特征，记录模型 ID、权重 SHA、预处理 SHA、坐标系、时间戳、置信度、许可）与 `sim_truth`（Blender 仿真真值，仅作特权监督分区，挂载给 AinerZero 训练时必须显式声明，能力声明需注明）；Hunyuan3D 等许可禁止训练的产出标 `no_training`，挂载一律拒绝训练用途。",
+      "updated_at": "2026-10-16T04:11:45+03:00"
+    },
+    {
+      "id": "forge.V9.A2",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "forge.V9.A1",
+        "forge.V9.B3",
+        "forge.V9.B5",
+        "awz.V9.A2",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "每条规则有反例；原 82 项测试仍全过",
+      "prompt": "实现 Episode 校验器，并接入现有十步挂载校验器：教师数据不得进 final、自观察与教师分区、哈希齐全、世界键不跨分区。不改 F1 已通过的行为，只新增。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- `observation` 通道除 self_observation、baseline_rollout、teacher_demo 外，接受 `external_derived`（AWZ 实时出口，ObservationPacket r1 §3.11），并在 origin_native 保留 actor；这类通道默认不准 AinerZero 训练挂载，直到登记 ADR-0005 修订。\n- 其余按 docs/EXPERIENCE_EPISODE.md（已验收）实现。\n\n【F3 / T1 r2 更新（2026-10-16）】teacher_feature 来源的包与通道，映射要保留 TEACHERS_AND_CACHE r2 的 upstream（system、origin、actor、资格）与 derivation；挂载时训练资格取“上游资格 ∧ 教师许可 ∧ 条目许可 ∧ 非 unverified ∧ train 分区”的交集；external_derived 默认拒训；同块多来源逐条判定，不继承。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n## 一级2026-10-16补齐文件范围与前置\n原卡只有episode新目录，不能实现已接受A1的完整APACK集成，本次明确扩到登记scope。必须等B3修复和B5非作者复核均通过再改core，修改前归档当前原文件及SHA。\n按docs/EXPERIENCE_EPISODE.md全部规则实现：版本化新增APACK v0.1，不覆盖v0 schema/示例；schema版本路由，v0注册/十步挂载行为保持；v0.1注册与挂载时验证no_training沿lineage传播、source/kind新增词表、consumer用途、跨包通道声明、world_key与sealed_once政策。consumer本机自报字段不是已认证账号。\n仿真真值source_type只能simulator_truth、sim_truth仅通道，partition仍四值。无来源/许可/白名单等必须拒绝；future available_at与target/input分开，内嵌/引用Observation同样不让快照进入模型；不把hashes_complete自报当作来源真实性证明。v0训练DenyAll默认不变，不能为了示例通过添加全局准入或重写已封存final。\n本卡只实现CPU合同/合成包，测试全用明确临时Registry路径，不接触生产素材、训练、RunStore或考场真实final。不得改reader.py（B3已修并冻结）；现有测试不删不放宽，新增有意义的各规则正负例+至少6变异非零。独立A3已配，报告精确哈希/新旧版本回归/未验证。超出本scope需先问一级，不自行扩写。\n\n\n## V9-r5-20261016 定版收口要求\n教师feature映射等待T1回应T17 B1–B4的新修订：保留可信upstream与actor、AWZ external_derived、拒绝伪造ADR批准、blob与来源时间一致/截止、完整derivation指纹一致，不借缓存继承其他来源资格。APACK observation来源政策照旧。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+      "updated_at": "2026-10-16T11:49:01+03:00"
+    },
+    {
+      "id": "forge.V9.A3",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "forge.V9.A2"
+      ],
+      "verifies": [
+        "forge.V9.A2"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核 Episode 校验与挂载集成：教师数据混入 final、分区伪装、哈希缺失、世界键漂移等。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-15T21:47:51+03:00"
+    },
+    {
+      "id": "forge.V9.B1",
+      "status": "accepted",
+      "kind": "implement",
+      "tier": 2,
+      "author": "musespark-7f3q",
+      "assignee": "musespark-7f3q",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "挂载后篡改必被拒读；原测试全过",
+      "prompt": "挂载后读取分片时按登记哈希校验（或改用内容寻址只读副本），篡改即拒读并记录；第 9 步视图与读取路径一致。不改十步已通过行为。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-15T21:57:34+03:00"
+    },
+    {
+      "id": "forge.V9.B2",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 2,
+      "author": "deepseek-q7m2",
+      "assignee": "deepseek-q7m2",
+      "depends_on": [
+        "forge.V9.B1"
+      ],
+      "verifies": [
+        "forge.V9.B1"
+      ],
+      "params": {},
+      "acceptance": "≥6 个新不利反例真实非零",
+      "prompt": "复核读时校验：同长度翻位、追加、符号链接替换、读取并发窗口。\n\n## 复核约束\n- 你不能是被验任务的作者；只读核对，不改被验文件；只写自己的报告目录。\n- 不复用作者测试作为唯一证据：自写不利反例，至少 6 个，真实非零。\n- 给出是否建议验收；不 accept 自己。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+      "updated_at": "2026-10-15T21:57:34+03:00"
+    },
+    {
+      "id": "forge.V9.B3",
+      "status": "reported",
+      "kind": "implement",
+      "tier": 2,
+      "author": "codex-exec-forgeb4-20261016",
+      "assignee": "codex-exec-forgeb4-20261016",
+      "depends_on": [
+        "forge.V9.B1"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "F1/F2 各有正反例；B2 原 13 例结论不变；106 项全过；verifier.py 零改动",
+      "prompt": "# 【代码】读取期完整性两处健壮性修复（forge.V9.B2 发现 F1/F2）\n\n只改 forge/mount/reader.py 与 tests/test_read_integrity.py（及报告目录）：\n- F1：挂载后分片被替换为同名目录（或其他不可读的非文件）时，按“位置内容被篡改”处理——拒读、审计、注册表记 broken，与追写/删除同口径。\n- F2：视图条目字段类型非法（path 非字符串等）一律转为 ReadRefused 并写审计行，按模块约定“坏条目只审计不记 broken”，不得抛出其他异常类型。\n每条补正反例回归；B2 的 13 个反例（reports/V-V9-B1/adversarial.py）必须仍按原结论通过；原 106 项测试全过；十步校验器 verifier.py 零改动（SHA 7032fe09…）。\n纯 CPU；不建 data/forge.db；不下载安装；不提交推送。\n",
+      "updated_at": "2026-10-16T04:24:49+03:00"
+    },
+    {
+      "id": "forge.V9.B4",
+      "status": "accepted",
+      "kind": "verify",
+      "tier": 2,
+      "author": "codex-exec-forgeb4-20261016",
+      "assignee": "codex-exec-forgeb4-20261016",
+      "depends_on": [
+        "forge.V9.B3"
+      ],
+      "verifies": [
+        "forge.V9.B3"
+      ],
+      "params": {},
+      "acceptance": "≥4 个新不利反例真实非零",
+      "prompt": "# 【代码】独立复核 forge.V9.B3\n\n复核 F1/F2 修复：目录、FIFO、无权限文件等非常规替换；各种非法字段类型；确认 B2 原 13 例结论不变、verifier.py 零改动。你不能是 B3 作者；只写 reports/V-V9-B3/；≥4 个新不利反例真实非零。\n",
+      "updated_at": "2026-10-16T04:15:43+03:00"
+    },
+    {
+      "id": "forge.V9.B5",
+      "status": "ready",
+      "kind": "verify",
+      "tier": 2,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "forge.V9.B3"
+      ],
+      "verifies": [
+        "forge.V9.B3"
+      ],
+      "params": {},
+      "acceptance": "",
+      "prompt": "B4不通过：reader.py:121非法JSON路径NUL/孤立代理字符异常逃逸审计0；float/bool bytes、dict partition被接受，非法sha/bytes字典污染broken；stat→open被替换FIFO会阻塞。补严格类型/编码边界、统一ReadRefused与审计、参数错误不把干净包记broken；用nonblocking fd+fstat再读确保FIFO竞态有界拒绝，常规文件/合法符号链接原语义保留。verifier.py冻结。旧B2 c6 oracle把原位覆写误当inode替换，原红灯保留，不靠重跑翻绿；本次增加原位覆写必拒与rename后旧fd读原字节两个正确对照并写清工程断言修正。原c11拒绝语义与全部真正安全门保留。只改B3原scope，本轮无模型/下载/生产。\n非B3任何历任作者，只写新目录；独立真实NUL/孤立代理/非法字段/FIFO stat→open/权限与外组隔离反例，至少6个真非零变异；不能仅跑作者测试。verifier.py与B4身份须相同，常规/符号链接/原位覆写/rename各测。真实子组需全退出，保留原B4和旧c6红灯。零生产数据/模型/下载/安装/付费/删除/提交推送。只report不accept。",
+      "updated_at": "2026-10-16T08:58:47+03:00"
+    },
+    {
+      "id": "hub.P1.D2",
+      "status": "blocked",
+      "kind": "implement",
+      "tier": 2,
+      "author": "deepseek-q5t8",
+      "assignee": null,
+      "depends_on": [
+        "hub.P1.D1",
+        "hub.P1.D4",
+        "awz.V9.A10"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "原设计范围内纯CPU合同与不利反例通过；未实现/未验证边界明确；完整身份与临时数据证据；后接非作者复核",
+      "prompt": "先读本项目规则与前置设计，先领取再改。只做纯CPU工程，不导入MLX/ORT/模型，不渲染、不下载/安装/付费、不重启服务、不提交推送/删除，不改冻结参数和门。所有测试使用新临时根，记录实际命令、输入/源码SHA、失败和未验证项；不写生产库、RunStore或关联项目。没有依赖不得自行安装。摘要30行内，完整证据另存，容量足够report --next，否则capacity-exhausted交接。\n\n先读：/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md，以及同目录草案schema。\n复用D1 schema，写request/response纯函数语义校验与候选曲线检查，不写执行器/渲染/角色包。核120Hz与输出fps换算、预备/到位/停留/回落顺序、任务边界/重复keyframe、值有限且范围与单位合法、控制者和别名部位重叠、锁定项、旧版本、音频未对齐、unknown_controller、pending:D5必unsupported。ones/twos/threes按视频帧保持而非tick。注册控制器只接受显式传入的fixture能力表，真实D5未完不能把占位当可执行。三版本例子全部仍为候选/未支持。反例含相同部位双写、以换名字绕锁、NaN/Inf、负/逆时长、24Hz冒充120Hz、未实现口型写成功。不得改D1设计schema来绕过失败；需变更则向一级提具体建议。\n\n以D1 r2 schema/音频时钟与末节语义层要求为准，等D4独立复审和D1终审通过后实现。r1保持归档，不宣称结构通过即可执行。",
+      "updated_at": "2026-10-16T09:46:39+03:00"
+    },
+    {
+      "id": "hub.V9.A1",
+      "status": "accepted",
+      "kind": "design",
+      "tier": 1,
+      "author": "claude",
+      "assignee": "claude",
+      "depends_on": [],
+      "verifies": [],
+      "params": {},
+      "acceptance": "五种策略对照表、schema 草案、反例",
+      "prompt": "在 ainer.scene/v1.x 制作计划上定义 WORLD_NATIVE、IMAGE_GUIDED、KEYFRAME_GUIDED、HYBRID_NEURAL、FULL_DIFFUSION 五种执行策略：各自的输入（参考图、多参考、首尾帧、多关键帧、动作视频、深度/姿态）、产物是否可编辑回世界、几何矛盾时的报告方式（不得声称 100% 重建）、与世界命令和锁定字段的关系、审片与成本标注。只写设计与 schema 草案，不实现。\n\n本机集成增补（ADR-0012 修订三）：HYBRID_NEURAL 策略可选 WorldForge（CVPR 2026，零样本相机控制；官方依赖 CUDA，本机需另评移植，接入前需批准）；资产生成可选 Hunyuan3D 2.1（许可不适用欧盟/英国/韩国，衍生定义含借其输出训练的模型——产出必须标 no_training，不得进入任何训练数据，接入前需许可审查与用户批准）。",
+      "updated_at": "2026-10-16T04:11:45+03:00"
+    },
+    {
+      "id": "hub.V9.A2",
+      "status": "ready",
+      "kind": "design",
+      "tier": 1,
+      "author": null,
+      "assignee": null,
+      "depends_on": [
+        "hub.V9.A1"
+      ],
+      "verifies": [],
+      "params": {},
+      "acceptance": "流程图、提交与锁定规则、自检与返工回路、数据去向",
+      "prompt": "设计 AinerHub 的 3D 创作智能体：输入（参考图、多参考、视频、规格附件）、分步产出（布局→资产→材质→灯光→相机→动画）、每步经 E3 世界命令信封提交并通过 AWZ 世界状态与版本验证、用户锁定字段不可改、调用 awz.V9.D1/D2 的结构检查做自检与返工、轨迹与用户修正以 agent_trajectory / user_correction 入 Forge ExperienceEpisode（仅专项模型可用）。只写设计与 schema 草案，不实现。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。",
+      "updated_at": "2026-10-16T01:22:11+03:00"
+    }
+  ]
+}

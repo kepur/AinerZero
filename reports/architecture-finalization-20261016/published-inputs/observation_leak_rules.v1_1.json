@@ -1,0 +1,219 @@
+{
+  "schema_version": "awz.observation_leak_rules.v1.1",
+  "applies_to": "awz.observation_packet.v1.1",
+  "doc": "docs/design/OBSERVATION_PROTOCOL.md r1 §4",
+  "key_match": "字段名精确匹配 forbidden_keys，或匹配 forbidden_key_patterns 中任一正则；对整份文档（含 envelope、payload 与任何嵌套对象的键）递归检查，exceptions 中列出的 JSON 路径前缀除外。 规则可带 scope：all（默认，整份文档）或 payload（只查 $.payload 之下）。",
+  "rules": [
+    {
+      "id": "L1",
+      "category": "absolute_truth_pose",
+      "forbidden_keys": [
+        "position",
+        "heading_deg",
+        "velocity",
+        "world_pose",
+        "world_position",
+        "world_heading",
+        "world_velocity",
+        "world_yaw_deg"
+      ],
+      "forbidden_key_patterns": [],
+      "exceptions": [],
+      "cross_checks": [
+        "pose_sensor_requires_permission",
+        "task_frame_goal_requires_pose_sensor"
+      ],
+      "scope": "all"
+    },
+    {
+      "id": "L2",
+      "category": "truth_identity",
+      "forbidden_keys": [
+        "entity_id",
+        "character_id",
+        "instance_id",
+        "object_id",
+        "instance_mask",
+        "track_id",
+        "identity_sha256"
+      ],
+      "forbidden_key_patterns": [],
+      "exceptions": [],
+      "cross_checks": [
+        "handle_reissued_after_occlusion"
+      ],
+      "scope": "all"
+    },
+    {
+      "id": "L3",
+      "category": "future_information",
+      "forbidden_keys": [],
+      "forbidden_key_patterns": [
+        "^future_",
+        "^next_",
+        "^predicted_"
+      ],
+      "exceptions": [],
+      "cross_checks": [
+        "dt_s_matches_ticks",
+        "t_ticks_continuity",
+        "no_time_after_packet",
+        "time_whitelist_consistent"
+      ],
+      "scope": "all"
+    },
+    {
+      "id": "L4",
+      "category": "snapshot_and_revision",
+      "forbidden_keys": [
+        "state_hash",
+        "state_sha256",
+        "event_log_hash",
+        "event_log_len",
+        "source_revision",
+        "source_digest",
+        "base_revision",
+        "expected_revision",
+        "rng_state_hash",
+        "sim_tick",
+        "student_input",
+        "world_version",
+        "scene_revision",
+        "snapshot_sha256",
+        "source_sha256"
+      ],
+      "forbidden_key_patterns": [
+        "^snapshot"
+      ],
+      "exceptions": [],
+      "cross_checks": [],
+      "scope": "all"
+    },
+    {
+      "id": "L5",
+      "category": "evaluation_labels_and_truth_layers",
+      "forbidden_keys": [
+        "truth_layer",
+        "event_layer",
+        "event_layers_present",
+        "label",
+        "labels",
+        "ground_truth",
+        "score",
+        "answer",
+        "correct"
+      ],
+      "forbidden_key_patterns": [
+        "^gt_",
+        "^eval_"
+      ],
+      "exceptions": [],
+      "cross_checks": [
+        "semantic_mask_requires_label_assistance"
+      ],
+      "scope": "all"
+    },
+    {
+      "id": "L6",
+      "category": "randomness",
+      "forbidden_keys": [
+        "noise_seed",
+        "episode_seed",
+        "world_seed",
+        "sensor_salt"
+      ],
+      "forbidden_key_patterns": [
+        "^rng_",
+        "_seed$",
+        "^raw_",
+        "^clean_"
+      ],
+      "exceptions": [],
+      "cross_checks": [],
+      "scope": "all"
+    },
+    {
+      "id": "L7",
+      "category": "unpermitted_privileged_channel",
+      "forbidden_keys": [],
+      "forbidden_key_patterns": [],
+      "exceptions": [],
+      "cross_checks": [
+        "channel_requires_permission",
+        "noise_declared_for_every_channel"
+      ],
+      "scope": "all"
+    },
+    {
+      "id": "L8",
+      "category": "world_identity_metadata",
+      "forbidden_keys": [
+        "world_id",
+        "layout_id",
+        "world_rule_version",
+        "asset_manifest_sha256",
+        "kernel_version",
+        "mechanics_version"
+      ],
+      "forbidden_key_patterns": [],
+      "exceptions": [],
+      "cross_checks": [
+        "episode_id_is_uuid4"
+      ],
+      "scope": "all"
+    },
+    {
+      "id": "L9",
+      "category": "presentation_layer_and_hidden_objects",
+      "forbidden_keys": [
+        "visible",
+        "world_time",
+        "shot_time",
+        "camera_id",
+        "presentation",
+        "art_layer",
+        "occluded"
+      ],
+      "forbidden_key_patterns": [],
+      "exceptions": [],
+      "cross_checks": [],
+      "scope": "all"
+    },
+    {
+      "id": "L10",
+      "category": "envelope_passthrough",
+      "scope": "payload",
+      "forbidden_keys": [
+        "envelope",
+        "episode_id",
+        "agent_id",
+        "seq",
+        "partition",
+        "task",
+        "provenance",
+        "actor",
+        "origin",
+        "assistance",
+        "license"
+      ],
+      "forbidden_key_patterns": [],
+      "exceptions": [],
+      "cross_checks": [
+        "time_whitelist_consistent"
+      ]
+    }
+  ],
+  "cross_check_definitions": {
+    "pose_sensor_requires_permission": "payload.pose_sensor_if_allowed 非 null 时，envelope.task.allowed_sensors 必须含 pose_sensor，且 sensor_noise.pose_sensor 存在",
+    "task_frame_goal_requires_pose_sensor": "task_instruction.goal.kind = task_frame 时，allowed_sensors 必须含 pose_sensor",
+    "handle_reissued_after_occlusion": "流上：某句柄在第 k 个包消失后，之后任何包不得再出现同一句柄；句柄编号单调递增",
+    "dt_s_matches_ticks": "|dt_s − dt_ticks/120| ≤ 1e-9",
+    "t_ticks_continuity": "流上：t_ticks[k] = t_ticks[k−1] + dt_ticks[k]；seq 逐一递增；episode_id 不变",
+    "no_time_after_packet": "payload 中任何以 _ticks 结尾的数值不得大于 envelope.t_ticks",
+    "semantic_mask_requires_label_assistance": "出现 semantic_mask 通道时，provenance.assistance 必须含 label",
+    "channel_requires_permission": "每个通道的 kind 都必须在 allowed_sensors 中",
+    "noise_declared_for_every_channel": "每个通道的 kind（以及非 null 的位姿传感）都必须在 sensor_noise 中有声明",
+    "episode_id_is_uuid4": "episode_id 的版本位为 4、变体位为 8/9/a/b",
+    "time_whitelist_consistent": "payload.time 只含 sim_hz、t_ticks、dt_ticks、dt_s 四项，且逐项等于 envelope 同名字段"
+  }
+}

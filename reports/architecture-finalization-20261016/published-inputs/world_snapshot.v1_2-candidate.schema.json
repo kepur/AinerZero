@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "awz:v9/world_snapshot.v1.2",
+  "title": "WorldSnapshot/v1.2（docs/design/EVENT_PROTOCOL.md §5）",
+  "description": "v1.1 + 实体的 geometry_ref、collider_ref 与状态层级的权威关系 relations；仍只放权威真值，不放置信度或推断量。v1.1 文件照旧有效。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "student_input",
+    "consumers",
+    "world_id",
+    "base",
+    "sim_tick",
+    "sim_hz",
+    "world_time",
+    "state_hash",
+    "mechanics_version",
+    "event_log_hash",
+    "event_log_len",
+    "rng_state_hash",
+    "asset_manifest_sha256",
+    "partition",
+    "state",
+    "event_layers_present",
+    "producer"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "awz.world_snapshot.v1.2"
+    },
+    "student_input": {
+      "const": false
+    },
+    "consumers": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "render",
+          "eval",
+          "replay",
+          "world_command"
+        ]
+      }
+    },
+    "world_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "sim_tick": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sim_hz": {
+      "const": 120
+    },
+    "world_time": {
+      "type": "number"
+    },
+    "state_hash": {
+      "$ref": "#/$defs/sha256"
+    },
+    "mechanics_version": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kernel_version",
+        "world_rule_version",
+        "mechanics_packs"
+      ],
+      "properties": {
+        "kernel_version": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "world_rule_version": {
+          "type": "string",
+          "pattern": "^world-rules-v[0-9]+(\\.[0-9]+)*$"
+        },
+        "mechanics_packs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "pack_id",
+              "version",
+              "sha256"
+            ],
+            "properties": {
+              "pack_id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_.-]*$"
+              },
+              "version": {
+                "type": "string",
+                "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    },
+    "event_log_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "哈希链头：h_k = sha256(h_{k-1} ‖ canonical(event_k))，h_0 为 64 个 0"
+    },
+    "event_log_len": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "rng_state_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "只放摘要，不放 episode_seed（contracts/rng.md）"
+    },
+    "asset_manifest_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "partition": {
+      "enum": [
+        "train",
+        "development",
+        "final",
+        "quarantine"
+      ]
+    },
+    "state": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "entities"
+          ],
+          "properties": {
+            "entities": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "entity_id",
+                  "kind",
+                  "position"
+                ],
+                "properties": {
+                  "entity_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "kind": {
+                    "enum": [
+                      "character",
+                      "cloud",
+                      "puddle",
+                      "prop",
+                      "camera",
+                      "effect"
+                    ]
+                  },
+                  "position": {
+                    "$ref": "#/$defs/vec3"
+                  },
+                  "velocity": {
+                    "$ref": "#/$defs/vec3"
+                  },
+                  "heading_deg": {
+                    "type": "number"
+                  },
+                  "visible": {
+                    "type": "boolean"
+                  },
+                  "clip": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "phase": {
+                    "type": [
+                      "number",
+                      "null"
+                    ]
+                  },
+                  "contacts": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "visual_only": {
+                    "type": "boolean"
+                  },
+                  "geometry_ref": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "uri",
+                      "sha256"
+                    ],
+                    "properties": {
+                      "uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "$ref": "#/$defs/sha256"
+                      }
+                    }
+                  },
+                  "collider_ref": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "uri",
+                      "sha256",
+                      "kind"
+                    ],
+                    "properties": {
+                      "uri": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "sha256": {
+                        "$ref": "#/$defs/sha256"
+                      },
+                      "kind": {
+                        "enum": [
+                          "box",
+                          "sphere",
+                          "capsule",
+                          "convex",
+                          "mesh"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "description": "与 episode.v1 private_state.entities 同结构",
+                "additionalProperties": false
+              }
+            },
+            "relations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "a",
+                  "b",
+                  "since_tick"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "contact",
+                      "attached",
+                      "supports",
+                      "contains"
+                    ]
+                  },
+                  "a": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "b": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "since_tick": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "event_layers_present": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "actual",
+          "believed",
+          "recall",
+          "montage",
+          "camera_exaggeration"
+        ]
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code_revision",
+        "argv"
+      ],
+      "properties": {
+        "code_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "world_version",
+        "scene_id",
+        "revision",
+        "snapshot_sha256",
+        "source_sha256"
+      ],
+      "description": "与 ainer.world_change/v1 的 base 同义同序（docs/design/WORLD_CHANGE_PROTOCOL.md §1）",
+      "properties": {
+        "world_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "snapshot_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    }
+  }
+}

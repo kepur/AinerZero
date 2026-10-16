@@ -1,0 +1,1003 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "awz:v9/observation_packet.v1.1",
+  "title": "ObservationPacket/v1.1（docs/design/OBSERVATION_PROTOCOL.md r1 §3–§4）",
+  "description": "受限传感出口发给世界脑的唯一输入。envelope 给管线用、模型不读；payload 给模型。v1.1：payload 增加模型可消费的最小时间白名单 time（sim_hz、t_ticks、dt_ticks、dt_s），必须与信封逐字段一致，其余信封字段一律不得透传；来源与行动者分字段：origin 沿用 ADR-0005 的 external_derived，actor 另记，partition 仍在信封。跨字段与流上规则见 observation_leak_rules.v1_1.json。v1 原字节归档于 reports/V9-A2/r0-archive/。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "envelope",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "awz.observation_packet.v1.1"
+    },
+    "envelope": {
+      "$ref": "#/$defs/envelope"
+    },
+    "payload": {
+      "$ref": "#/$defs/payload"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "envelope": {
+            "properties": {
+              "seq": {
+                "const": 0
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "envelope": {
+            "properties": {
+              "dt_ticks": {
+                "const": 0
+              },
+              "t_ticks": {
+                "const": 0
+              }
+            }
+          },
+          "payload": {
+            "properties": {
+              "episode_start": {
+                "const": true
+              },
+              "last_action_result": {
+                "type": "null"
+              },
+              "time": {
+                "properties": {
+                  "dt_ticks": {
+                    "const": 0
+                  },
+                  "t_ticks": {
+                    "const": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "envelope": {
+            "properties": {
+              "dt_ticks": {
+                "minimum": 1
+              }
+            }
+          },
+          "payload": {
+            "properties": {
+              "episode_start": {
+                "const": false
+              },
+              "time": {
+                "properties": {
+                  "dt_ticks": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "envelope": {
+            "properties": {
+              "provenance": {
+                "properties": {
+                  "assistance": {
+                    "contains": {
+                      "const": "unknown"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "envelope": {
+            "properties": {
+              "partition": {
+                "const": "quarantine"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "vec3": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    },
+    "sensor_kind": {
+      "enum": [
+        "symbol8",
+        "egocentric_grid",
+        "rgb",
+        "depth",
+        "relative_objects",
+        "ego_motion",
+        "audio_events",
+        "semantic_mask",
+        "pose_sensor"
+      ]
+    },
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "episode_id",
+        "agent_id",
+        "seq",
+        "t_ticks",
+        "dt_ticks",
+        "dt_s",
+        "sim_hz",
+        "partition",
+        "actor",
+        "task",
+        "provenance"
+      ],
+      "properties": {
+        "episode_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+          "description": "随机 uuid4；不能用可由世界种子推出的 uuid5（L8）"
+        },
+        "agent_id": {
+          "type": "string",
+          "pattern": "^agent-[a-z0-9]{4,32}$"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "t_ticks": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "本回合开始以来的 tick（120 Hz）；不是绝对 sim_tick"
+        },
+        "dt_ticks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dt_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "sim_hz": {
+          "const": 120
+        },
+        "partition": {
+          "enum": [
+            "train",
+            "development",
+            "final",
+            "quarantine"
+          ]
+        },
+        "task": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "task_id",
+            "task_version",
+            "allowed_sensors",
+            "handle_policy"
+          ],
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "pattern": "^task-[a-z0-9][a-z0-9-]*$"
+            },
+            "task_version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+$"
+            },
+            "allowed_sensors": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/sensor_kind"
+              }
+            },
+            "handle_policy": {
+              "const": "reissue_after_occlusion"
+            }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "producer",
+            "exit_version",
+            "origin",
+            "assistance",
+            "license"
+          ],
+          "properties": {
+            "producer": {
+              "const": "awz.sensor_exit"
+            },
+            "exit_version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+            },
+            "assistance": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "demonstration",
+                  "curriculum",
+                  "label",
+                  "rule",
+                  "unknown"
+                ]
+              }
+            },
+            "license": {
+              "enum": [
+                "self_generated",
+                "cc0"
+              ]
+            },
+            "origin": {
+              "const": "external_derived",
+              "description": "ADR-0005：AWZ 渲染或模拟出的数据记 external_derived；改变这一映射需要已登记的 ADR-0005 修订"
+            }
+          }
+        },
+        "actor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "actor_id",
+            "policy_revision"
+          ],
+          "description": "谁在做决定（与 AinerZero Actor 对齐）；与来源 origin、分区 partition 分开记录",
+          "properties": {
+            "kind": {
+              "enum": [
+                "student",
+                "baseline",
+                "system",
+                "human_teacher",
+                "llm_teacher"
+              ]
+            },
+            "actor_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "policy_revision": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "noise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "params"
+      ],
+      "properties": {
+        "model": {
+          "enum": [
+            "none",
+            "gaussian",
+            "quantize",
+            "dropout",
+            "gaussian_quantize",
+            "gaussian_dropout"
+          ]
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "传感器规格（如 sigma_m、sigma_deg、step、p_drop）；只放数值，不放种子或加噪前的值（L6）"
+        }
+      },
+      "if": {
+        "properties": {
+          "model": {
+            "const": "none"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "maxProperties": 0
+          }
+        }
+      }
+    },
+    "noise_required": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/noise"
+        },
+        {
+          "properties": {
+            "model": {
+              "not": {
+                "const": "none"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "file_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "ch_symbol8": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "slots",
+        "spec_sha256"
+      ],
+      "properties": {
+        "kind": {
+          "const": "symbol8"
+        },
+        "slots": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        },
+        "spec_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "ch_egocentric_grid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "shape",
+        "cell_m",
+        "cells"
+      ],
+      "properties": {
+        "kind": {
+          "const": "egocentric_grid"
+        },
+        "shape": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "cell_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "cells": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            {
+              "$ref": "#/$defs/file_ref"
+            }
+          ]
+        }
+      }
+    },
+    "ch_rgb": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "image",
+        "width",
+        "height",
+        "intrinsics"
+      ],
+      "properties": {
+        "kind": {
+          "const": "rgb"
+        },
+        "image": {
+          "$ref": "#/$defs/file_ref"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "intrinsics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fx",
+            "fy",
+            "cx",
+            "cy"
+          ],
+          "properties": {
+            "fx": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "fy": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "cx": {
+              "type": "number"
+            },
+            "cy": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "ch_depth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "image",
+        "width",
+        "height",
+        "unit"
+      ],
+      "properties": {
+        "kind": {
+          "const": "depth"
+        },
+        "image": {
+          "$ref": "#/$defs/file_ref"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "unit": {
+          "const": "m"
+        }
+      }
+    },
+    "detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "handle",
+        "appearance_class",
+        "rel_position_m",
+        "rel_yaw_deg",
+        "confidence"
+      ],
+      "properties": {
+        "handle": {
+          "type": "string",
+          "pattern": "^h-[0-9]+$"
+        },
+        "appearance_class": {
+          "type": "string",
+          "pattern": "^[a-z]+(/[a-z0-9_]+)?$",
+          "description": "画面可见的外观类别，取 B1 登记的视觉词表；不是实例 ID"
+        },
+        "rel_position_m": {
+          "$ref": "#/$defs/vec3"
+        },
+        "rel_yaw_deg": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "ch_relative_objects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "detections"
+      ],
+      "properties": {
+        "kind": {
+          "const": "relative_objects"
+        },
+        "detections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/detection"
+          }
+        }
+      }
+    },
+    "ch_ego_motion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "delta"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ego_motion"
+        },
+        "delta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "dx_m",
+            "dy_m",
+            "dz_m",
+            "dyaw_deg"
+          ],
+          "properties": {
+            "dx_m": {
+              "type": "number"
+            },
+            "dy_m": {
+              "type": "number"
+            },
+            "dz_m": {
+              "type": "number"
+            },
+            "dyaw_deg": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "ch_audio_events": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "events"
+      ],
+      "properties": {
+        "kind": {
+          "const": "audio_events"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type",
+              "bearing_deg",
+              "loudness"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "bearing_deg": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": -180,
+                "maximum": 180
+              },
+              "loudness": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "ch_semantic_mask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "image",
+        "width",
+        "height",
+        "class_vocab_sha256"
+      ],
+      "properties": {
+        "kind": {
+          "const": "semantic_mask"
+        },
+        "image": {
+          "$ref": "#/$defs/file_ref"
+        },
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "class_vocab_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "pose_sensor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "position_m",
+        "yaw_deg"
+      ],
+      "properties": {
+        "frame": {
+          "const": "task_frame"
+        },
+        "position_m": {
+          "$ref": "#/$defs/vec3"
+        },
+        "yaw_deg": {
+          "type": "number"
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time",
+        "episode_start",
+        "observation",
+        "pose_sensor_if_allowed",
+        "visibility",
+        "sensor_noise",
+        "last_action_result",
+        "task_instruction"
+      ],
+      "properties": {
+        "time": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sim_hz",
+            "t_ticks",
+            "dt_ticks",
+            "dt_s"
+          ],
+          "description": "模型可消费的最小时间白名单；逐字段等于 envelope 同名字段（跨字段检查 time_whitelist_consistent）",
+          "properties": {
+            "sim_hz": {
+              "const": 120
+            },
+            "t_ticks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dt_ticks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "dt_s": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "episode_start": {
+          "type": "boolean"
+        },
+        "observation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "channels"
+          ],
+          "properties": {
+            "channels": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/ch_symbol8"
+                  },
+                  {
+                    "$ref": "#/$defs/ch_egocentric_grid"
+                  },
+                  {
+                    "$ref": "#/$defs/ch_rgb"
+                  },
+                  {
+                    "$ref": "#/$defs/ch_depth"
+                  },
+                  {
+                    "$ref": "#/$defs/ch_relative_objects"
+                  },
+                  {
+                    "$ref": "#/$defs/ch_ego_motion"
+                  },
+                  {
+                    "$ref": "#/$defs/ch_audio_events"
+                  },
+                  {
+                    "$ref": "#/$defs/ch_semantic_mask"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "pose_sensor_if_allowed": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/pose_sensor"
+            }
+          ]
+        },
+        "visibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fov_deg",
+            "range_m",
+            "occlusion"
+          ],
+          "properties": {
+            "fov_deg": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 360
+            },
+            "range_m": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "occlusion": {
+              "const": "hidden_objects_absent"
+            }
+          }
+        },
+        "sensor_noise": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "symbol8": {
+              "$ref": "#/$defs/noise"
+            },
+            "egocentric_grid": {
+              "$ref": "#/$defs/noise"
+            },
+            "rgb": {
+              "$ref": "#/$defs/noise"
+            },
+            "audio_events": {
+              "$ref": "#/$defs/noise"
+            },
+            "semantic_mask": {
+              "$ref": "#/$defs/noise"
+            },
+            "depth": {
+              "$ref": "#/$defs/noise_required"
+            },
+            "relative_objects": {
+              "$ref": "#/$defs/noise_required"
+            },
+            "ego_motion": {
+              "$ref": "#/$defs/noise_required"
+            },
+            "pose_sensor": {
+              "$ref": "#/$defs/noise_required"
+            }
+          }
+        },
+        "last_action_result": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "action_seq",
+                "status",
+                "reason_code"
+              ],
+              "properties": {
+                "action_seq": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "status": {
+                  "enum": [
+                    "accepted",
+                    "rejected",
+                    "executed",
+                    "interrupted"
+                  ]
+                },
+                "reason_code": {
+                  "enum": [
+                    "none",
+                    "blocked",
+                    "out_of_reach",
+                    "not_interactable",
+                    "invalid_params",
+                    "timeout"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "task_instruction": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "text",
+                "goal"
+              ],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "goal": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind",
+                        "description"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "const": "symbolic"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind",
+                        "rel_position_m"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "const": "relative"
+                        },
+                        "rel_position_m": {
+                          "$ref": "#/$defs/vec3"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind",
+                        "position_m"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "const": "task_frame"
+                        },
+                        "position_m": {
+                          "$ref": "#/$defs/vec3"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

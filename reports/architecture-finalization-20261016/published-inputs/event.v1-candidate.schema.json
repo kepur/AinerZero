@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "awz:v9/event.v1",
+  "title": "Event/v1（docs/design/EVENT_PROTOCOL.md）",
+  "description": "世界事件的权威记录：只给世界系统、渲染、评测、回放，永远不进 ObservationPacket。哈希链、因果顺序、同 tick 序号、payload 嵌套禁用键由核对脚本检查。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "chain_index",
+    "tick",
+    "source",
+    "layer",
+    "event_type",
+    "affected_ids",
+    "state_effect",
+    "cause_ids",
+    "base",
+    "payload",
+    "evidence_ref"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "awz.event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^ev-[0-9]{1,12}-[0-9]{1,6}$"
+    },
+    "chain_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tick": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source": {
+      "enum": [
+        "kernel",
+        "physics",
+        "command",
+        "mechanics_pack",
+        "character_runtime",
+        "presentation"
+      ]
+    },
+    "layer": {
+      "enum": [
+        "actual",
+        "believed",
+        "recall",
+        "montage",
+        "camera_exaggeration"
+      ]
+    },
+    "event_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$"
+    },
+    "affected_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "state_effect": {
+      "type": "boolean"
+    },
+    "believer_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cause_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^ev-[0-9]{1,12}-[0-9]{1,6}$"
+      }
+    },
+    "base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "world_version",
+        "scene_id",
+        "revision",
+        "snapshot_sha256",
+        "source_sha256"
+      ],
+      "properties": {
+        "world_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "scene_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "confidence",
+            "probability",
+            "uncertainty",
+            "inferred",
+            "belief",
+            "score",
+            "evidence_score"
+          ]
+        }
+      },
+      "description": "类型相关内容；顶层与任何嵌套层都不得有置信度、概率、推断量（嵌套层由核对脚本检查）"
+    },
+    "evidence_ref": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "uri",
+            "sha256"
+          ],
+          "properties": {
+            "uri": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "layer": {
+            "const": "actual"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "enum": [
+              "kernel",
+              "physics",
+              "command",
+              "mechanics_pack",
+              "character_runtime"
+            ]
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "state_effect": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "layer": {
+            "const": "believed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "believer_id"
+        ],
+        "properties": {
+          "source": {
+            "const": "character_runtime"
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "required": [
+            "believer_id"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "layer": {
+            "const": "recall"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "enum": [
+              "presentation",
+              "character_runtime"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "layer": {
+            "enum": [
+              "montage",
+              "camera_exaggeration"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "const": "presentation"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state_effect": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "affected_ids": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "source": {
+            "enum": [
+              "command",
+              "mechanics_pack"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "evidence_ref": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ]
+}

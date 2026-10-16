@@ -1,0 +1,49 @@
+--- reviewed-r5
++++ published-r5
+@@ -1,6 +1,6 @@
+ # AinerZero v9 目标架构：几何化的结构状态 × 地图即记忆 × H-JEPA 式分层预测 × v10 工程验证层（r5）
+ 
+-- 状态：设计草案 **r5**（Claude，2026-10-16）· 待非修订作者复核
++- 状态：**当前主架构设计定版 r5**（设计修订 Claude，2026-10-16；非修订作者审议 ainerzero.V9.A9 建议通过）。出版索引与子契约状态见 [ARCHITECTURE_BASELINE.md](ARCHITECTURE_BASELINE.md)，基线 ID `V9-r5-20261016`。设计定版不代表实现、子契约、性能或科学能力全部验收；本次出版只统一状态与版本指针，不改已审架构语义。
+ - r5 依据：Codex 对 r4 的非作者审议 ainerzero.V9.A6（已验收，结论 request_changes）。必修项：
+   - F1：持久世界权威（D-012）；
+   - F2：学习侧事件与未来引用隔离；
+@@ -221,7 +221,7 @@
+   - AWZ 的重任务：按 ADR-0009 第 4 条“用电池时不训练”；
+   - r4 里“用电池时不跑训练与重任务”的笼统说法撤回。
+ 
+-### 7.1 运行模式（以 `docs/v9/TEACHERS_AND_CACHE.md` r1 为准）
++### 7.1 运行模式（`docs/v9/TEACHERS_AND_CACHE.md` r2 候选；来源契约复核与补修状态见基线索引）
+ 
+ | 模式 | 常驻 | 规则 |
+ |---|---|---|
+@@ -298,7 +298,7 @@
+ 
+ | v10 模块 | 在本架构里 | 归属 |
+ |---|---|---|
+-| Perception / Teacher Gateway | T 阶段的教师缓存与运行模式（§7，TEACHERS_AND_CACHE r1） | AinerZero |
++| Perception / Teacher Gateway | T 阶段的教师缓存与运行模式（§7，TEACHERS_AND_CACHE r2 候选，须完成来源补修与非作者复核） | AinerZero |
+ | Persistent World Core | **持久部分**（区域、地标、实例、事实、版本）：AinerHub 持久世界库，唯一写者，复用 Hub 现有 Blender worker；**运行部分**（时间、事件、运行状态、确定性求值）：AWZ 运行时 + WorldSnapshot/v1.2 + 事件日志（Event/v1）。都只放权威真值；置信度与推断量不进世界核心 | AinerHub（持久）/ AWZ（运行） |
+ | Spatial Geometry | GeometryCore（§3–§4）+ 几何教师 + 噪声标定；可观测量与推断量分开 | AinerZero（信念）/ AWZ（真值几何、碰撞体） |
+ | Hybrid Dynamics | §4 式 8 的物理先验 + 残差；式 12 的稀疏更新 | AWZ（世界侧确定性物理）/ AinerZero（世界脑预测） |
+@@ -311,9 +311,9 @@
+ 
+ | v10 接口 | 对应契约 | 差异 |
+ |---|---|---|
+-| `WorldState` | AWZ `WorldSnapshot/v1.1`（awz.V9.A2 r1） | v10 的 `confidence`、`evidence_refs` **不进**快照；`geometry_ref`、`collider_ref`、`relations` 由 WorldSnapshot v1.2 增补（新卡） |
++| `WorldState` | 已复核的 AWZ `WorldSnapshot/v1.1`（awz.V9.A2 r1）；v1.2 为 awz.V9.A8 候选扩展 | v10 的 `confidence`、`evidence_refs` **不进**快照；`geometry_ref`、`collider_ref`、`relations` 由 v1.2 增补，须完成回放语义补修与非作者复核 |
+ | `Event` | AWZ `Event/v1`（awz.V9.A8）；**只给世界侧**，学习侧不得读取 | 在 v10 字段（`event_id`、`tick`、`source`、`affected_ids`、`event_type`、`payload`、`evidence_ref`）之上，增加真实性层（`actual`/`believed`/`recall`/`montage`/`camera_exaggeration`）、因果父事件、所在修订；`affected_ids` 只用世界实体 ID，不进 ObservationPacket |
+-| `TeacherOutput` | `az.v9.teacher_cache.v1` 的内容块 + 来源条目 | v1 比 v10 多：内容寻址、来源与分区分离、可复现等级、计算租约 |
++| `TeacherOutput` | `az.v9.teacher_cache.v2` 候选：内容块 + 来源条目（T1 r2，须补修复核） | 保留内容寻址、分区、可复现等级与计算租约；新增 upstream/derivation、输入时间截止与训练资格交集。v1 为历史输入，不再作为新消费者实现依据 |
+ 
+ ### 8.3 验证实验 V10-E0 – V10-E6（预登记目标，不是已有成果）
+ 
+@@ -392,7 +392,7 @@
+ | 改正 | 世界核心只放真值；置信度与证据引用只在世界脑信念里 | §1、§8.1、§8.2 |
+ | 改正 | VGGT（非商用许可）换成 DA3-Small/Base（Apache 2.0） | §7.3、§8 E4 |
+ | 改正 | E2 的“误差不显著劣于”写成配对 bootstrap 非劣检验 `U ≤ δ`；世界侧要求逐位一致 | §4 式 13、§8 E2 |
+-| 待确认 | “Serafina” 是否就是 AinerRelay | §8.1 |
++| 历史命名 | “Serafina” 别名未证明；当前控制平面使用已存在的 AinerRelay，不因别名确认阻塞设计 | §8.1 |
+ | 待批准 | E0 批量生成、E1/E2b/E3 身份/E4/E6 的训练、下载与渲染 | §8.3 |
+ 
+ ## 11. r5 关闭表（回应 Codex 对 r4 的非作者审议 ainerzero.V9.A6）
