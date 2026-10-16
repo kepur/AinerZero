@@ -1,0 +1,282 @@
+{
+  "counts": {
+    "valid_store": 1,
+    "invalid": 11,
+    "store_invalid": 9
+  },
+  "failures": [],
+  "sabotage_not_caught": [],
+  "rows": [
+    {
+      "set": "valid_store",
+      "name": "store",
+      "ok": true,
+      "errors": [],
+      "problems": []
+    },
+    {
+      "set": "invalid",
+      "name": "entry_final_in_shared_store",
+      "ok": true,
+      "expected": [
+        "const",
+        "store"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "entry_train_in_sealed_store",
+      "ok": true,
+      "expected": [
+        "const",
+        "store"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "entry_partition_sim_truth",
+      "ok": true,
+      "expected": [
+        "enum",
+        "partition"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "entry_source_teacher_claim",
+      "ok": true,
+      "expected": [
+        "const",
+        "source_type"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "blob_with_world_key",
+      "ok": true,
+      "expected": [
+        "additionalProperties",
+        ""
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "blob_lease_not_held",
+      "ok": true,
+      "expected": [
+        "const",
+        "held_from_start_to_end"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "blob_other_lock",
+      "ok": true,
+      "expected": [
+        "const",
+        "lock"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "blob_feature_metric_scale",
+      "ok": true,
+      "expected": [
+        "const",
+        "scale"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "blob_rlt_without_stats",
+      "ok": true,
+      "expected": [
+        "type",
+        "token_stats"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "blob_numeric_without_tolerance",
+      "ok": true,
+      "expected": [
+        "type",
+        "tolerance"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "entry_without_input_ref",
+      "ok": true,
+      "expected": [
+        "required",
+        "source"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "cross_partition_blob",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "cross_partition_blob"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "cross_partition_blob_final",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "cross_partition_blob"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "entry_input_mismatch",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "entry_id_mismatch",
+        "input_mismatch"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "entry_id_wrong",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "entry_id_mismatch"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "blob_key_wrong",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "cache_key_mismatch",
+        "orphan_entry",
+        "orphan_entry"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "entry_orphan",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "orphan_entry"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "feature_entry_with_noise",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "feature_with_noise_model"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "derived_by_wrong",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "derived_by_mismatch"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "unapproved_teacher",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "unapproved"
+      ]
+    }
+  ],
+  "sabotage": [
+    {
+      "sabotage": "final_store_unchecked",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/entry_final_in_shared_store",
+        "invalid/entry_train_in_sealed_store"
+      ]
+    },
+    {
+      "sabotage": "sim_truth_partition_allowed",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/entry_partition_sim_truth"
+      ]
+    },
+    {
+      "sabotage": "lease_hold_optional",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/blob_lease_not_held"
+      ]
+    },
+    {
+      "sabotage": "blob_may_carry_world",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/blob_with_world_key"
+      ]
+    },
+    {
+      "sabotage": "cross_partition_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/cross_partition_blob",
+        "store_invalid/cross_partition_blob_final"
+      ]
+    },
+    {
+      "sabotage": "input_check_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/entry_input_mismatch"
+      ]
+    },
+    {
+      "sabotage": "entry_id_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/entry_id_wrong"
+      ]
+    },
+    {
+      "sabotage": "key_check_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/blob_key_wrong"
+      ]
+    },
+    {
+      "sabotage": "noise_check_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/feature_entry_with_noise"
+      ]
+    },
+    {
+      "sabotage": "derived_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/derived_by_wrong"
+      ]
+    },
+    {
+      "sabotage": "approval_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/unapproved_teacher"
+      ]
+    }
+  ]
+}
