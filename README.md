@@ -1,5 +1,15 @@
 # AinerZero
 
+## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
+
+用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](reports/character-first-landing-20261017/DECISION.md)、[publication.json](reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
+
+[ADR-0013](../AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md)、[逐卡落地计划](../AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md)。Hub 意图/编辑→跨工具编译→AWZ准入/运行求值→既有Hub worker；CPE/ACC/TACE沿原合同补齐。AinerZero旁路学习、训练暂停及M2常设对照不变。
+
+代码总门 `awz.V9.A10` 未放行；本轮不写实现/Schema，不训练、下载或实跑。任务先按现有AinerRelay登记，真实ID/模块/依赖和即时状态由主责后续registration报告记录，不将本地草案冒称在线卡。
+
+以下原基线与旧记录保留其出版时语境；旧“当前”字样不替代本节和最新独立报告。
+
 面向 Apple Silicon 的发育式世界模型研究工程。
 
 **当前主架构：v9 r5，已并入 v10 工程验证层；设计基线定版，代码实现后续分批进行。** 唯一入口是 [架构基线与任务计划](ARCHITECTURE_BASELINE.md)，正文为 [ARCHITECTURE_V9.md](ARCHITECTURE_V9.md)。本轮只做架构与任务落地；代码总门 `awz.V9.A10` 保持草稿，训练继续暂停。子契约是否通过与主架构设计定版分别记录。

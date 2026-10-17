@@ -707,3 +707,13 @@ B4 r2 已补上 Codex 指出的 camelCase（worldId/entityID）与 quantity 两�
 - 不写死仓库路径。
 
 新卡从派发时起执行，旧脚本在下次修订时顺带改正。
+
+
+## R20261017-CF-landing：角色优先兼容扩展与任务工作台落地候选
+
+- 用户新指令：“好的那工作台和方案落地”；已明确工作台为“现有任务工作台（推荐）”，即 AinerRelay。
+- 主责Codex；文档二级proposal_writer；非作者character_inventory。只做正式设计/逐卡队列/当前入口，发布待本轮非作者核对，作者不自行验收。
+- 扩展CF-r1-20261017兼容V9-r5-20261016，见 [ADR-0013](../AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md) 和 [落地计划](../AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md)。原baseline JSON、主架构、旧PROPOSAL/REVIEW/DECISION与失败证据不改，改前字节/摘要另存 [本轮报告目录](reports/character-first-landing-20261017/REPORT.md)。
+- 保留Hub唯一持久世界、AWZ运行/曲线/接触权威、Hub worker只读消费、AinerZero独立研究/训练暂停与M2常设对照；明确情绪/口型同部位唯一blend owner，solve/adopt/render按版本拆无环图。
+- 主责本轮live读取：A8r2+A12已登记accepted，范围仅CPU合成契约层及R1–R4/F2/F4落纸，Event/snapshot仍未采用候选；T1r3+T18亦accepted，缓存仍未采用候选，真实加载/ModeGuard/Forge消费者未实现。原baseline第3节保留出版时失败快照，不倒改旧失败；不能由新正向报告外推来源真实性/内核输出/消费者或能力。
+- 当前入口与任务分层可见不等于代码放行：A10与原业务依赖/paused保留，实施卡仍受门；运行预算另冻结。本次没有产品实现/Schema/测试/模型/训练/渲染/下载安装/付费/提交推送。在线登记由主责另办，真实卡ID与依赖以其后续registration报告为准。

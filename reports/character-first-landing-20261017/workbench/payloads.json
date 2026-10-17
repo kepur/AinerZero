@@ -1,0 +1,1890 @@
+[
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "A",
+    "seq": 1,
+    "title": "【文档】Character First 架构与方案落地（当前整理归档）",
+    "kind": "design",
+    "tier": 2,
+    "status": "ready",
+    "prompt": "用户本轮“好的那工作台和方案落地”授权仅文档/任务落地。当前跨仓文档范围由主责明确授权，未扩大 projects.related_roots；不含实现、Schema、测试、模型、训练、渲染、下载、付费、提交、推送或服务部署。awz.V9.A10 保持 draft，原业务前置与所有冻结身份不变。\n当前文档作者 proposal_writer。先读 CLAIM 和 source-before；在领取文件内整合现行 v9 r5 与 CF 扩展，按真实消费者缺口拆小任务、复用旧卡。改旧文档前逐字节备份与身份校验，保留原报告/附件/冻结基线。提交 REPORT/source-after；不得自验。",
+    "params": {
+      "execution_authorization": "design_only",
+      "module_hint": "0.1",
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017"
+    },
+    "acceptance": "交付 ADR-0013、正式落地计划、原入口追加指针与来源身份；任务逐项保留 A10/原业务依赖、文件范围、非作者搭档及反例。坏对照：AinerZero 被生产前置、World Compiler 获世界写权、ready 实现或未批预算冒充批准，必须被标为不允许。原冻结 JSON/旧候选字节不变。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/architecture-character-first-20261017/PROPOSAL.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/architecture-character-first-20261017/REVIEW.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/CLAIM.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerZero/README.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/AGENT_TASKS.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/RESEARCH_LOG.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/README.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/ARCHITECTURE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/RESEARCH_LOG.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/CLAIM.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/REPORT.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/source-before.json",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/source-after.json",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/backups/"
+    ],
+    "depends_on": [],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "text"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz-A1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "A",
+    "seq": 2,
+    "title": "【只读复核】独立核对 Character First 发布候选（非文档作者）",
+    "kind": "verify",
+    "tier": 2,
+    "status": "ready",
+    "prompt": "用户本轮“好的那工作台和方案落地”授权仅文档/任务落地。当前跨仓文档范围由主责明确授权，未扩大 projects.related_roots；不含实现、Schema、测试、模型、训练、渲染、下载、付费、提交、推送或服务部署。awz.V9.A10 保持 draft，原业务前置与所有冻结身份不变。\n当前非作者 character_inventory。按 A1 精确 source-after 身份只读逐项核对正文/消费者/任务依赖/文件范围，审阅所有新文档和改动入口。报告只写 INDEPENDENT_REVIEW.md；不得修作者正文、不做 CPU/运行测试。检查现场旧卡状态和 related_roots 不能当已有授权。\n同时只读核本轮全部实际新任务及 registry：逐卡 ID/seq/deps/verifies/status/tier/needs/scope/module；对照 projects.json 与 old-gated-fields-before.json 核项目 roots、A10及原卡 status/depends_on/file_scope/params 不变。主责会在注册完毕后补只读证据。",
+    "params": {
+      "execution_authorization": "design_only",
+      "module_hint": "0.1",
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017"
+    },
+    "acceptance": "非作者报告引用最终被审 SHA/改动范围；核对三系统权威、120Hz/音频锁/单写者、ADR-0007、来源隔离、拆卡与非作者配对、旧前置/暂停/预算；实际反例逐项指出拦截条款。发现阻碍必修项即报告，不能通过 accepted/文档完成推断能力通过。 全部新卡与 registry 唯一归属核对；A10/旧gated卡/项目配置无未授权变更；blocked与预算/成熟度/paused边界保留。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/architecture-character-first-20261017/PROPOSAL.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/architecture-character-first-20261017/REVIEW.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/CLAIM.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/workbench/payloads.json",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/workbench/module-mapping.json",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/workbench/projects.json",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/workbench/old-gated-fields-before.json",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/workbench/registration-result.json",
+      "/Users/mac/AinerWorkFlow/AinerRelay/modules/modules.v1.json"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/INDEPENDENT_REVIEW.md"
+    ],
+    "depends_on": [
+      "awz.CF.A1"
+    ],
+    "verifies": [
+      "awz.CF.A1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "text"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz-A2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "A",
+    "seq": 3,
+    "title": "【一级】Character First 设计发布与工作台落地验收",
+    "kind": "decision",
+    "tier": 1,
+    "status": "ready",
+    "prompt": "用户本轮“好的那工作台和方案落地”授权仅文档/任务落地。当前跨仓文档范围由主责明确授权，未扩大 projects.related_roots；不含实现、Schema、测试、模型、训练、渲染、下载、付费、提交、推送或服务部署。awz.V9.A10 保持 draft，原业务前置与所有冻结身份不变。\n主责 Codex 依据 A2 非作者复核对最终文档身份办理设计范围验收。核对每张实际新卡与模块归档、原卡状态/依赖、项目 roots 未变；只在独立报告建议通过且必修项关闭后验收。记录 CF 文档发布与运行/能力未验证的边界。\n该任务只发布CF设计与工作台方案；不办理A10代码放行。registration-result.json和service-restoration.json为主责唯一编辑，执行者不得写入。",
+    "params": {
+      "execution_authorization": "design_only",
+      "module_hint": "0.1",
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017"
+    },
+    "acceptance": "非作者建议通过；精确 SHA 与任务 ID/seq/depends_on/verifies/文件范围逐项匹配；新实现保持 blocked，A10 draft，旧 gated 任务/项目元数据不变；所有新卡唯一模块归档，成熟度与 paused 不变；不得把设计接受写成代码总门/能力/预算通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/architecture-character-first-20261017/PROPOSAL.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/architecture-character-first-20261017/REVIEW.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/CLAIM.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/DECISION.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/character-first-landing-20261017/workbench/overview.md",
+      "/Users/mac/AinerWorkFlow/AinerRelay/modules/modules.v1.json"
+    ],
+    "depends_on": [
+      "awz.CF.A1",
+      "awz.CF.A2"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "text"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz-A3",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "B",
+    "seq": 1,
+    "title": "【设计】合同与实际消费者映射",
+    "kind": "design",
+    "tier": 2,
+    "status": "ready",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n给出字段→控制器→AWZ求值→Hub worker→编辑/回放的实际映射、加载缺口、音频/单位/时钟、单写者及嘴部唯一blend owner、solve(B)→candidate→adopt→approved(B+1)→render无环版本图。只读旧合同及消费者。\n正例：合法精确身份/控制器/半开tick映射可追踪\n反例：错骨/重复别名写者、float秒/双闭边界、pending冒充executable、隐式priority/weight均列拒绝或缺口\n非作者搭档：awz.CF.B2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "4.10",
+      "execution_authorization": "design_only",
+      "local_plan_key": "CF-D01",
+      "non_author_verification_task": "awz.CF.B2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "给出字段→控制器→AWZ求值→Hub worker→编辑/回放的实际映射、加载缺口、音频/单位/时钟、单写者及嘴部唯一blend owner、solve(B)→candidate→adopt→approved(B+1)→render无环版本图。只读旧合同及消费者。 正例：合法精确身份/控制器/半开tick映射可追踪；坏对照必须独立发现/拒绝：错骨/重复别名写者、float秒/双闭边界、pending冒充executable、隐式priority/weight均列拒绝或缺口。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/PRODUCTION_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/production/performance_contract.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_PACKAGE_V2.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_CONSUMER_MAP.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-B1/"
+    ],
+    "depends_on": [
+      "awz.CF.A3"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "text",
+      "code"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.B1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "B",
+    "seq": 2,
+    "title": "【非作者复核】合同与实际消费者映射",
+    "kind": "verify",
+    "tier": 2,
+    "status": "ready",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.B1。交付标准：给出字段→控制器→AWZ求值→Hub worker→编辑/回放的实际映射、加载缺口、音频/单位/时钟、单写者及嘴部唯一blend owner、solve(B)→candidate→adopt→approved(B+1)→render无环版本图。只读旧合同及消费者。\n正例：合法精确身份/控制器/半开tick映射可追踪\n已知坏对照：错骨/重复别名写者、float秒/双闭边界、pending冒充executable、隐式priority/weight均列拒绝或缺口",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "4.10",
+      "execution_authorization": "design_only",
+      "local_plan_key": "CF-VD01",
+      "verification_scope": "design_read_only"
+    },
+    "acceptance": "非作者复核确切交付身份。给出字段→控制器→AWZ求值→Hub worker→编辑/回放的实际映射、加载缺口、音频/单位/时钟、单写者及嘴部唯一blend owner、solve(B)→candidate→adopt→approved(B+1)→render无环版本图。只读旧合同及消费者。 正例：合法精确身份/控制器/半开tick映射可追踪；坏对照必须独立发现/拒绝：错骨/重复别名写者、float秒/双闭边界、pending冒充executable、隐式priority/weight均列拒绝或缺口。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/PRODUCTION_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/production/performance_contract.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_PACKAGE_V2.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_CONSUMER_MAP.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-B1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-B1/"
+    ],
+    "depends_on": [
+      "awz.CF.B1"
+    ],
+    "verifies": [
+      "awz.CF.B1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "text",
+      "code"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.B2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "C",
+    "seq": 1,
+    "title": "【代码】runtime rig/control可执行绑定",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n绑定实际角色/rig/control的精确版本、实际部位/别名、单位/域与可执行证据；缺能力fail-closed，引用唯一blend规则。D5/D10/D11和原schema只读，paused不变；不反依赖AWZ A3。\n正例：冻结合法资产的版本/rig/单位/控制范围逐项核准\n反例：错rig、过期角色摘要、别名冲突、pending/unsupported自称executable拒绝\n非作者搭档：awz.CF.C2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.4",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-R02",
+      "non_author_verification_task": "awz.CF.C2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "绑定实际角色/rig/control的精确版本、实际部位/别名、单位/域与可执行证据；缺能力fail-closed，引用唯一blend规则。D5/D10/D11和原schema只读，paused不变；不反依赖AWZ A3。 正例：冻结合法资产的版本/rig/单位/控制范围逐项核准；坏对照必须独立发现/拒绝：错rig、过期角色摘要、别名冲突、pending/unsupported自称executable拒绝。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_PACKAGE_V2.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/performance/control_registry.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/performance/test_control_registry.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-C1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.P3.D5",
+      "awz.P3.D10",
+      "awz.P3.D11",
+      "hub.P1.D1",
+      "hub.P1.D2",
+      "hub.P1.D6",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A2",
+      "awz.V9.A7",
+      "awz.P3.I1",
+      "awz.P3.I2",
+      "awz.P3.I3"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.C1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "C",
+    "seq": 2,
+    "title": "【非作者复核】runtime rig/control可执行绑定",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.C1。交付标准：绑定实际角色/rig/control的精确版本、实际部位/别名、单位/域与可执行证据；缺能力fail-closed，引用唯一blend规则。D5/D10/D11和原schema只读，paused不变；不反依赖AWZ A3。\n正例：冻结合法资产的版本/rig/单位/控制范围逐项核准\n已知坏对照：错rig、过期角色摘要、别名冲突、pending/unsupported自称executable拒绝",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.4",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VR02",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。绑定实际角色/rig/control的精确版本、实际部位/别名、单位/域与可执行证据；缺能力fail-closed，引用唯一blend规则。D5/D10/D11和原schema只读，paused不变；不反依赖AWZ A3。 正例：冻结合法资产的版本/rig/单位/控制范围逐项核准；坏对照必须独立发现/拒绝：错rig、过期角色摘要、别名冲突、pending/unsupported自称executable拒绝。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_PACKAGE_V2.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/performance/control_registry.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/performance/test_control_registry.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-C1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-C1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.C1"
+    ],
+    "verifies": [
+      "awz.CF.C1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.C2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "D",
+    "seq": 1,
+    "title": "【代码】最小跨工具编译DAG与派生IR",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n实现plan/快照/表演/动作/render job及依赖摘要的最小派生IR，按solve/adopt/render固定不可变generation；候选失败保留、环与revision冲突拒绝。只编排跨工具产物，不取代E3或Blender depsgraph，不与B9世界稀疏求值混淆。\n正例：合法无环编译图可解析到精确版本与核准输出\n反例：循环依赖、B已变仍采用旧候选、render读取未采用candidate拒绝\n非作者搭档：awz.CF.D2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.2.2",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-G04",
+      "non_author_verification_task": "awz.CF.D2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "实现plan/快照/表演/动作/render job及依赖摘要的最小派生IR，按solve/adopt/render固定不可变generation；候选失败保留、环与revision冲突拒绝。只编排跨工具产物，不取代E3或Blender depsgraph，不与B9世界稀疏求值混淆。 正例：合法无环编译图可解析到精确版本与核准输出；坏对照必须独立发现/拒绝：循环依赖、B已变仍采用旧候选、render读取未采用candidate拒绝。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/PRODUCTION_PLAN.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/production_compiler/graph.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/production_compiler/test_graph.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-D1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A2",
+      "awz.V9.A7",
+      "awz.P3.J1",
+      "hub.V9.A1",
+      "hub.V9.A2",
+      "hub.V9.A5"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.D1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "D",
+    "seq": 2,
+    "title": "【非作者复核】最小跨工具编译DAG与派生IR",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.D1。交付标准：实现plan/快照/表演/动作/render job及依赖摘要的最小派生IR，按solve/adopt/render固定不可变generation；候选失败保留、环与revision冲突拒绝。只编排跨工具产物，不取代E3或Blender depsgraph，不与B9世界稀疏求值混淆。\n正例：合法无环编译图可解析到精确版本与核准输出\n已知坏对照：循环依赖、B已变仍采用旧候选、render读取未采用candidate拒绝",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.2.2",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VG04",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。实现plan/快照/表演/动作/render job及依赖摘要的最小派生IR，按solve/adopt/render固定不可变generation；候选失败保留、环与revision冲突拒绝。只编排跨工具产物，不取代E3或Blender depsgraph，不与B9世界稀疏求值混淆。 正例：合法无环编译图可解析到精确版本与核准输出；坏对照必须独立发现/拒绝：循环依赖、B已变仍采用旧候选、render读取未采用candidate拒绝。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/PRODUCTION_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/production_compiler/graph.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/production_compiler/test_graph.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-D1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-D1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.D1"
+    ],
+    "verifies": [
+      "awz.CF.D1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.D2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "D",
+    "seq": 3,
+    "title": "【代码】最小内容缓存身份与闭包失效",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n内容键绑定E3/动作/rig/曲线依赖、版本/seed、物理步长/顺序/暖启动及后端/色彩/相机/输出；命中仍重验锁/来源/分区/能力。早期接触变更闭包失效，无检查点全段回退，记录编译/IO/失效成本。字节复用不授训练资格。\n正例：同身份合法命中，安全相机重渲染与可证明独立嘴型局部重算\n反例：换seed/步长/暖启动/后端仍命中、跨分区资格复用、早期接触漏传播必须拒绝或失效\n非作者搭档：awz.CF.D4",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.2.2",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-K05",
+      "non_author_verification_task": "awz.CF.D4",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "内容键绑定E3/动作/rig/曲线依赖、版本/seed、物理步长/顺序/暖启动及后端/色彩/相机/输出；命中仍重验锁/来源/分区/能力。早期接触变更闭包失效，无检查点全段回退，记录编译/IO/失效成本。字节复用不授训练资格。 正例：同身份合法命中，安全相机重渲染与可证明独立嘴型局部重算；坏对照必须独立发现/拒绝：换seed/步长/暖启动/后端仍命中、跨分区资格复用、早期接触漏传播必须拒绝或失效。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/production_compiler/cache.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/production_compiler/test_cache.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-D3/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.D2",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A2",
+      "awz.V9.A7"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.D3",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "D",
+    "seq": 4,
+    "title": "【非作者复核】最小内容缓存身份与闭包失效",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.D3。交付标准：内容键绑定E3/动作/rig/曲线依赖、版本/seed、物理步长/顺序/暖启动及后端/色彩/相机/输出；命中仍重验锁/来源/分区/能力。早期接触变更闭包失效，无检查点全段回退，记录编译/IO/失效成本。字节复用不授训练资格。\n正例：同身份合法命中，安全相机重渲染与可证明独立嘴型局部重算\n已知坏对照：换seed/步长/暖启动/后端仍命中、跨分区资格复用、早期接触漏传播必须拒绝或失效",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.2.2",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VK05",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。内容键绑定E3/动作/rig/曲线依赖、版本/seed、物理步长/顺序/暖启动及后端/色彩/相机/输出；命中仍重验锁/来源/分区/能力。早期接触变更闭包失效，无检查点全段回退，记录编译/IO/失效成本。字节复用不授训练资格。 正例：同身份合法命中，安全相机重渲染与可证明独立嘴型局部重算；坏对照必须独立发现/拒绝：换seed/步长/暖启动/后端仍命中、跨分区资格复用、早期接触漏传播必须拒绝或失效。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/production_compiler/cache.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/production_compiler/test_cache.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-D3/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-D3/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.D3"
+    ],
+    "verifies": [
+      "awz.CF.D3"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.D4",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "hub",
+    "phase": "CF",
+    "track": "B",
+    "seq": 1,
+    "title": "【代码】既有Hub worker消费核准角色与表演",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n复用实际blender_run→world_multicam链，只读approved精确版本、真实rig/曲线/身份；solve与render分入口，worker不写世界。worker.py为另一历史入口只读，不用未接通新模块冒充集成；不反依赖AWZ A3，AWZ适配仍由原A3/A4承载。\n正例：冻结合法approved产物进入实际角色加载与曲线消费者\n反例：candidate未采用、旧版本/错hash、代理球、未授权世界写入必须失败\n非作者搭档：hub.CF.B2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "3.5.2",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-W03H",
+      "non_author_verification_task": "hub.CF.B2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "复用实际blender_run→world_multicam链，只读approved精确版本、真实rig/曲线/身份；solve与render分入口，worker不写世界。worker.py为另一历史入口只读，不用未接通新模块冒充集成；不反依赖AWZ A3，AWZ适配仍由原A3/A4承载。 正例：冻结合法approved产物进入实际角色加载与曲线消费者；坏对照必须独立发现/拒绝：candidate未采用、旧版本/错hash、代理球、未授权世界写入必须失败。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/README.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/director/blender_worker/worker.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/director/blender_worker/loaders/humanoid_rig.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/render_backend.v1.schema.json"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/director/blender_worker/world_multicam.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/worldmodel/blender_run.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/director/blender_worker/loaders/approved_performance.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/tests/test_approved_performance.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/CF-B1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.C2",
+      "awz.CF.D2",
+      "awz.CF.D4",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A2",
+      "awz.V9.A7",
+      "awz.P3.A2"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "vision"
+    ],
+    "dedupe_key": "cf-r1-20261017-hub.CF.B1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "hub",
+    "phase": "CF",
+    "track": "B",
+    "seq": 2,
+    "title": "【非作者复核】既有Hub worker消费核准角色与表演",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：hub.CF.B1。交付标准：复用实际blender_run→world_multicam链，只读approved精确版本、真实rig/曲线/身份；solve与render分入口，worker不写世界。worker.py为另一历史入口只读，不用未接通新模块冒充集成；不反依赖AWZ A3，AWZ适配仍由原A3/A4承载。\n正例：冻结合法approved产物进入实际角色加载与曲线消费者\n已知坏对照：candidate未采用、旧版本/错hash、代理球、未授权世界写入必须失败",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "3.5.2",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VW03H",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。复用实际blender_run→world_multicam链，只读approved精确版本、真实rig/曲线/身份；solve与render分入口，worker不写世界。worker.py为另一历史入口只读，不用未接通新模块冒充集成；不反依赖AWZ A3，AWZ适配仍由原A3/A4承载。 正例：冻结合法approved产物进入实际角色加载与曲线消费者；坏对照必须独立发现/拒绝：candidate未采用、旧版本/错hash、代理球、未授权世界写入必须失败。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/README.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/director/blender_worker/worker.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/director/blender_worker/loaders/humanoid_rig.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/render_backend.v1.schema.json",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/director/blender_worker/world_multicam.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/worldmodel/blender_run.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/director/blender_worker/loaders/approved_performance.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/tests/test_approved_performance.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/CF-B1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/V-CF-B1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "hub.CF.B1"
+    ],
+    "verifies": [
+      "hub.CF.B1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "vision"
+    ],
+    "dedupe_key": "cf-r1-20261017-hub.CF.B2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "E",
+    "seq": 1,
+    "title": "【代码】Body/Gaze/Hands同步曲线编译",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n按120Hz半开区间编译根运动/姿态/注视/手势与编辑层，核单写者、锁与已执行历史，只产candidate；缺实际控制器返回unsupported。与E3/E4及Hub提交/UI是同批P0，走路单项不等于10秒完整表演通过；Hub旧motion.py仅历史原型。\n正例：合法根/姿态/注视/手势同tick同步且保存可编辑曲线\n反例：错单位/骨架、相邻边界双写、覆盖用户锁/已执行历史拒绝\n非作者搭档：awz.CF.E2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.4",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-P06",
+      "non_author_verification_task": "awz.CF.E2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "按120Hz半开区间编译根运动/姿态/注视/手势与编辑层，核单写者、锁与已执行历史，只产candidate；缺实际控制器返回unsupported。与E3/E4及Hub提交/UI是同批P0，走路单项不等于10秒完整表演通过；Hub旧motion.py仅历史原型。 正例：合法根/姿态/注视/手势同tick同步且保存可编辑曲线；坏对照必须独立发现/拒绝：错单位/骨架、相邻边界双写、覆盖用户锁/已执行历史拒绝。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/worldmodel/motion.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/PERFORMANCE.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/performance/body_compile.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/performance/test_body_compile.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-E1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.C2",
+      "awz.CF.D2",
+      "awz.CF.D4",
+      "awz.P3.I1",
+      "awz.P3.I2",
+      "awz.P3.I3",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A8",
+      "awz.V9.A9",
+      "awz.V9.A13",
+      "awz.V9.A12",
+      "hub.P1.D1",
+      "hub.P1.D2",
+      "hub.P1.D6"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.E1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "E",
+    "seq": 2,
+    "title": "【非作者复核】Body/Gaze/Hands同步曲线编译",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.E1。交付标准：按120Hz半开区间编译根运动/姿态/注视/手势与编辑层，核单写者、锁与已执行历史，只产candidate；缺实际控制器返回unsupported。与E3/E4及Hub提交/UI是同批P0，走路单项不等于10秒完整表演通过；Hub旧motion.py仅历史原型。\n正例：合法根/姿态/注视/手势同tick同步且保存可编辑曲线\n已知坏对照：错单位/骨架、相邻边界双写、覆盖用户锁/已执行历史拒绝",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.4",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VP06",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。按120Hz半开区间编译根运动/姿态/注视/手势与编辑层，核单写者、锁与已执行历史，只产candidate；缺实际控制器返回unsupported。与E3/E4及Hub提交/UI是同批P0，走路单项不等于10秒完整表演通过；Hub旧motion.py仅历史原型。 正例：合法根/姿态/注视/手势同tick同步且保存可编辑曲线；坏对照必须独立发现/拒绝：错单位/骨架、相邻边界双写、覆盖用户锁/已执行历史拒绝。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/worldmodel/motion.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/PERFORMANCE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/performance/body_compile.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/performance/test_body_compile.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-E1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-E1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.E1"
+    ],
+    "verifies": [
+      "awz.CF.E1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.E2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "E",
+    "seq": 3,
+    "title": "【代码】Face/Voice/Mouth音频同步编译",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n情绪/表情/嘴型同步并与E1 gaze分轨；解析嘴部实际别名并登记唯一blend owner。固定audio digest/sample_rate/anchor_tick/offset_samples与可信对齐；缺可信音频/对齐返回unsupported。禁止变速或覆盖定稿音频，不生成/下载声音模型；同批P0。\n正例：固定已定稿音频按采样时钟进入核准情绪和嘴型曲线\n反例：错audio digest/采样时钟/对齐、嘴型覆盖情绪、别名重复写者、偷偷变速拒绝\n非作者搭档：awz.CF.E4",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.3",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-P07",
+      "non_author_verification_task": "awz.CF.E4",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "情绪/表情/嘴型同步并与E1 gaze分轨；解析嘴部实际别名并登记唯一blend owner。固定audio digest/sample_rate/anchor_tick/offset_samples与可信对齐；缺可信音频/对齐返回unsupported。禁止变速或覆盖定稿音频，不生成/下载声音模型；同批P0。 正例：固定已定稿音频按采样时钟进入核准情绪和嘴型曲线；坏对照必须独立发现/拒绝：错audio digest/采样时钟/对齐、嘴型覆盖情绪、别名重复写者、偷偷变速拒绝。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/PERFORMANCE.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/performance/facial_compile.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/performance/test_facial_compile.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-E3/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.C2",
+      "awz.CF.D2",
+      "awz.CF.D4",
+      "hub.P1.D1",
+      "hub.P1.D2",
+      "hub.P1.D6",
+      "awz.P3.D5",
+      "awz.P3.D10",
+      "awz.P3.D11",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.E3",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "E",
+    "seq": 4,
+    "title": "【非作者复核】Face/Voice/Mouth音频同步编译",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.E3。交付标准：情绪/表情/嘴型同步并与E1 gaze分轨；解析嘴部实际别名并登记唯一blend owner。固定audio digest/sample_rate/anchor_tick/offset_samples与可信对齐；缺可信音频/对齐返回unsupported。禁止变速或覆盖定稿音频，不生成/下载声音模型；同批P0。\n正例：固定已定稿音频按采样时钟进入核准情绪和嘴型曲线\n已知坏对照：错audio digest/采样时钟/对齐、嘴型覆盖情绪、别名重复写者、偷偷变速拒绝",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.3",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VP07",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。情绪/表情/嘴型同步并与E1 gaze分轨；解析嘴部实际别名并登记唯一blend owner。固定audio digest/sample_rate/anchor_tick/offset_samples与可信对齐；缺可信音频/对齐返回unsupported。禁止变速或覆盖定稿音频，不生成/下载声音模型；同批P0。 正例：固定已定稿音频按采样时钟进入核准情绪和嘴型曲线；坏对照必须独立发现/拒绝：错audio digest/采样时钟/对齐、嘴型覆盖情绪、别名重复写者、偷偷变速拒绝。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/PERFORMANCE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/performance/facial_compile.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/performance/test_facial_compile.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-E3/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-E3/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.E3"
+    ],
+    "verifies": [
+      "awz.CF.E3"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.E4",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "hub",
+    "phase": "CF",
+    "track": "C",
+    "seq": 1,
+    "title": "【代码】表演版本提交与回放消费者",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n用已挂载production router连接新adapter：编辑提案→版本/锁/时钟核对→AWZ adopt→批准曲线回读，保存新take/receipt/历史。performance_contract.py只读，补修仍归D2。先固定E1/E3 IO合同；全链10秒证据须后续H1/H2在Body/Face/worker合格后采集，不将替身CPU测试算跨仓E2E。\n正例：合法版本提交与核准曲线/receipt回读一致\n反例：stale revision、锁冲突、过去区间修改、candidate直接当approved、错误伪成功拒绝\n非作者搭档：hub.CF.C2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "4.6",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-U08",
+      "non_author_verification_task": "hub.CF.C2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "用已挂载production router连接新adapter：编辑提案→版本/锁/时钟核对→AWZ adopt→批准曲线回读，保存新take/receipt/历史。performance_contract.py只读，补修仍归D2。先固定E1/E3 IO合同；全链10秒证据须后续H1/H2在Body/Face/worker合格后采集，不将替身CPU测试算跨仓E2E。 正例：合法版本提交与核准曲线/receipt回读一致；坏对照必须独立发现/拒绝：stale revision、锁冲突、过去区间修改、candidate直接当approved、错误伪成功拒绝。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/README.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/production/performance_contract.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/main.py"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/production/performance_adapter.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/api/v2/production.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/tests/test_performance_adapter.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/CF-C1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.C2",
+      "hub.P1.D1",
+      "hub.P1.D2",
+      "hub.P1.D6",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A2",
+      "awz.V9.A7"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code"
+    ],
+    "dedupe_key": "cf-r1-20261017-hub.CF.C1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "hub",
+    "phase": "CF",
+    "track": "C",
+    "seq": 2,
+    "title": "【非作者复核】表演版本提交与回放消费者",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：hub.CF.C1。交付标准：用已挂载production router连接新adapter：编辑提案→版本/锁/时钟核对→AWZ adopt→批准曲线回读，保存新take/receipt/历史。performance_contract.py只读，补修仍归D2。先固定E1/E3 IO合同；全链10秒证据须后续H1/H2在Body/Face/worker合格后采集，不将替身CPU测试算跨仓E2E。\n正例：合法版本提交与核准曲线/receipt回读一致\n已知坏对照：stale revision、锁冲突、过去区间修改、candidate直接当approved、错误伪成功拒绝",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "4.6",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VU08",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。用已挂载production router连接新adapter：编辑提案→版本/锁/时钟核对→AWZ adopt→批准曲线回读，保存新take/receipt/历史。performance_contract.py只读，补修仍归D2。先固定E1/E3 IO合同；全链10秒证据须后续H1/H2在Body/Face/worker合格后采集，不将替身CPU测试算跨仓E2E。 正例：合法版本提交与核准曲线/receipt回读一致；坏对照必须独立发现/拒绝：stale revision、锁冲突、过去区间修改、candidate直接当approved、错误伪成功拒绝。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/README.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/production/performance_contract.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/main.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/production/performance_adapter.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/app/api/v2/production.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-core/tests/test_performance_adapter.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/CF-C1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/V-CF-C1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "hub.CF.C1"
+    ],
+    "verifies": [
+      "hub.CF.C1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code"
+    ],
+    "dedupe_key": "cf-r1-20261017-hub.CF.C2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "hub",
+    "phase": "CF",
+    "track": "D",
+    "seq": 1,
+    "title": "【代码】AinerStudio角色可编辑表演曲线",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n新增角色分轨曲线组件和最小Root入口：实际部位/锁/unsupported展示、关键帧拖动、单位/时钟、版本提交/冲突反馈、重新加载核准曲线与回放。已有stage/Curves.tsx只读运镜不可冒充角色编辑。UI不直接写世界；完整10秒须E1/E3合格后由H1/H2采集。\n正例：真实拖动提交后重新加载的approved曲线与回放改变，撤销/冲突可追踪\n反例：UI假保存、丢单位/时钟、嘴型覆盖情绪、绕锁/修改历史必须失败\n非作者搭档：hub.CF.D2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "4.6",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-U09",
+      "non_author_verification_task": "hub.CF.D2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "新增角色分轨曲线组件和最小Root入口：实际部位/锁/unsupported展示、关键帧拖动、单位/时钟、版本提交/冲突反馈、重新加载核准曲线与回放。已有stage/Curves.tsx只读运镜不可冒充角色编辑。UI不直接写世界；完整10秒须E1/E3合格后由H1/H2采集。 正例：真实拖动提交后重新加载的approved曲线与回放改变，撤销/冲突可追踪；坏对照必须独立发现/拒绝：UI假保存、丢单位/时钟、嘴型覆盖情绪、绕锁/修改历史必须失败。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/README.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-studio/src/stage/Curves.tsx",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-studio/src/main.tsx"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-studio/src/performance/",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-studio/src/Root.tsx",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/CF-D1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "hub.CF.C2",
+      "hub.P1.D1",
+      "hub.P1.D2",
+      "hub.P1.D6"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "vision"
+    ],
+    "dedupe_key": "cf-r1-20261017-hub.CF.D1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "hub",
+    "phase": "CF",
+    "track": "D",
+    "seq": 2,
+    "title": "【非作者复核】AinerStudio角色可编辑表演曲线",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：hub.CF.D1。交付标准：新增角色分轨曲线组件和最小Root入口：实际部位/锁/unsupported展示、关键帧拖动、单位/时钟、版本提交/冲突反馈、重新加载核准曲线与回放。已有stage/Curves.tsx只读运镜不可冒充角色编辑。UI不直接写世界；完整10秒须E1/E3合格后由H1/H2采集。\n正例：真实拖动提交后重新加载的approved曲线与回放改变，撤销/冲突可追踪\n已知坏对照：UI假保存、丢单位/时钟、嘴型覆盖情绪、绕锁/修改历史必须失败",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "4.6",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VU09",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。新增角色分轨曲线组件和最小Root入口：实际部位/锁/unsupported展示、关键帧拖动、单位/时钟、版本提交/冲突反馈、重新加载核准曲线与回放。已有stage/Curves.tsx只读运镜不可冒充角色编辑。UI不直接写世界；完整10秒须E1/E3合格后由H1/H2采集。 正例：真实拖动提交后重新加载的approved曲线与回放改变，撤销/冲突可追踪；坏对照必须独立发现/拒绝：UI假保存、丢单位/时钟、嘴型覆盖情绪、绕锁/修改历史必须失败。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/README.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-studio/src/stage/Curves.tsx",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-studio/src/main.tsx",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-studio/src/performance/",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/code/apps/ainer-studio/src/Root.tsx",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/CF-D1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/reports/V-CF-D1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "hub.CF.D1"
+    ],
+    "verifies": [
+      "hub.CF.D1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "vision"
+    ],
+    "dedupe_key": "cf-r1-20261017-hub.CF.D2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "F",
+    "seq": 1,
+    "title": "【代码】基础ACIS/TACE身份与真实通道QA",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n复用GateID/CCIP及原NPR身份风格门，报告真实角色/rig/几何材质摘要、实际通道与unsupported、基础跨帧身份/调色板/轮廓。GateID/session.py/原金样/原D2只读。真实CCIP仍等其原准入预算，未接通就报告身份评分未验证；渲染采集另登记预算。\n正例：固定真实身份/控制器产物及支持通道可追溯且编辑后仍稳定\n反例：交换角色/网格、CPUFake冒充真实CCIP、代理球、缺required通道须识别或拒绝\n非作者搭档：awz.CF.F2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.4.2",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-Q10",
+      "non_author_verification_task": "awz.CF.F2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "复用GateID/CCIP及原NPR身份风格门，报告真实角色/rig/几何材质摘要、实际通道与unsupported、基础跨帧身份/调色板/轮廓。GateID/session.py/原金样/原D2只读。真实CCIP仍等其原准入预算，未接通就报告身份评分未验证；渲染采集另登记预算。 正例：固定真实身份/控制器产物及支持通道可追溯且编辑后仍稳定；坏对照必须独立发现/拒绝：交换角色/网格、CPUFake冒充真实CCIP、代理球、缺required通道须识别或拒绝。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/backend_capabilities.v1.json",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tools/gate_id/ccip/session.py"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tools/character_qa/basic_identity.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/character_qa/test_basic_identity.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-F1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.C2",
+      "awz.CF.D4",
+      "hub.CF.B2",
+      "awz.P3.A3",
+      "awz.P3.A4",
+      "awz.P3.D2",
+      "awz.P3.D3",
+      "awz.P3.D5",
+      "awz.P3.D10",
+      "awz.P3.D11"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "vision"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.F1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "F",
+    "seq": 2,
+    "title": "【非作者复核】基础ACIS/TACE身份与真实通道QA",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.F1。交付标准：复用GateID/CCIP及原NPR身份风格门，报告真实角色/rig/几何材质摘要、实际通道与unsupported、基础跨帧身份/调色板/轮廓。GateID/session.py/原金样/原D2只读。真实CCIP仍等其原准入预算，未接通就报告身份评分未验证；渲染采集另登记预算。\n正例：固定真实身份/控制器产物及支持通道可追溯且编辑后仍稳定\n已知坏对照：交换角色/网格、CPUFake冒充真实CCIP、代理球、缺required通道须识别或拒绝",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.4.2",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VQ10",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。复用GateID/CCIP及原NPR身份风格门，报告真实角色/rig/几何材质摘要、实际通道与unsupported、基础跨帧身份/调色板/轮廓。GateID/session.py/原金样/原D2只读。真实CCIP仍等其原准入预算，未接通就报告身份评分未验证；渲染采集另登记预算。 正例：固定真实身份/控制器产物及支持通道可追溯且编辑后仍稳定；坏对照必须独立发现/拒绝：交换角色/网格、CPUFake冒充真实CCIP、代理球、缺required通道须识别或拒绝。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/backend_capabilities.v1.json",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tools/gate_id/ccip/session.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tools/character_qa/basic_identity.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/character_qa/test_basic_identity.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-F1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-F1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.F1"
+    ],
+    "verifies": [
+      "awz.CF.F1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "vision"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.F2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "G",
+    "seq": 1,
+    "title": "【代码】根轨迹接触计划与风格化后校验",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n实现BeatGraph/根轨迹/手脚与道具接触计划；单一权威物理域烘焙，风格化/重定时后再验实际接触/足滑/穿模/连续性才adopt。计划接触/真实事件/效果分离；夸张带mechanism/作用域，不改冻结kernel或并立物理权威。真实求解/仿真预算另冻结。\n正例：固定合法接触轨迹经最终校验，真实事件与计划/效果区分\n反例：时序错位、删接触修正、艺术夸张当真值、风格化后足滑/穿模必须失败\n非作者搭档：awz.CF.G2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.4",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-A11",
+      "non_author_verification_task": "awz.CF.G2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "实现BeatGraph/根轨迹/手脚与道具接触计划；单一权威物理域烘焙，风格化/重定时后再验实际接触/足滑/穿模/连续性才adopt。计划接触/真实事件/效果分离；夸张带mechanism/作用域，不改冻结kernel或并立物理权威。真实求解/仿真预算另冻结。 正例：固定合法接触轨迹经最终校验，真实事件与计划/效果区分；坏对照必须独立发现/拒绝：时序错位、删接触修正、艺术夸张当真值、风格化后足滑/穿模必须失败。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/EVENT_PROTOCOL.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/choreography/contact_plan.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/choreography/final_validate.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/choreography/test_contact_plan.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/choreography/test_final_validate.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-G1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.E2",
+      "awz.CF.E4",
+      "hub.CF.C2",
+      "hub.CF.D2",
+      "awz.CF.F2",
+      "awz.P3.I1",
+      "awz.P3.I2",
+      "awz.P3.I3",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A8",
+      "awz.V9.A9",
+      "awz.V9.A13",
+      "awz.V9.A12"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.G1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "G",
+    "seq": 2,
+    "title": "【非作者复核】根轨迹接触计划与风格化后校验",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.G1。交付标准：实现BeatGraph/根轨迹/手脚与道具接触计划；单一权威物理域烘焙，风格化/重定时后再验实际接触/足滑/穿模/连续性才adopt。计划接触/真实事件/效果分离；夸张带mechanism/作用域，不改冻结kernel或并立物理权威。真实求解/仿真预算另冻结。\n正例：固定合法接触轨迹经最终校验，真实事件与计划/效果区分\n已知坏对照：时序错位、删接触修正、艺术夸张当真值、风格化后足滑/穿模必须失败",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.4",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VA11",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。实现BeatGraph/根轨迹/手脚与道具接触计划；单一权威物理域烘焙，风格化/重定时后再验实际接触/足滑/穿模/连续性才adopt。计划接触/真实事件/效果分离；夸张带mechanism/作用域，不改冻结kernel或并立物理权威。真实求解/仿真预算另冻结。 正例：固定合法接触轨迹经最终校验，真实事件与计划/效果区分；坏对照必须独立发现/拒绝：时序错位、删接触修正、艺术夸张当真值、风格化后足滑/穿模必须失败。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/EVENT_PROTOCOL.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/choreography/contact_plan.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/choreography/final_validate.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/choreography/test_contact_plan.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/choreography/test_final_validate.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-G1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-G1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.G1"
+    ],
+    "verifies": [
+      "awz.CF.G1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.G2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "G",
+    "seq": 3,
+    "title": "【代码】双人共享节拍与有限联合约束",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n实现共享节拍/接触点/双方约束；有界联合solve或预固定有限迭代/停止后统一adopt，冲突明确返回。与G1/G2分文件，禁止双人互等环或两个物理写者；不依赖多人生成模型。\n正例：固定双人共享时钟/接触点在联合候选中保持一致\n反例：双方错时、角色互换、相互等待DAG环、各自独立双写接触拒绝\n非作者搭档：awz.CF.G4",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.4",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-A12",
+      "non_author_verification_task": "awz.CF.G4",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "实现共享节拍/接触点/双方约束；有界联合solve或预固定有限迭代/停止后统一adopt，冲突明确返回。与G1/G2分文件，禁止双人互等环或两个物理写者；不依赖多人生成模型。 正例：固定双人共享时钟/接触点在联合候选中保持一致；坏对照必须独立发现/拒绝：双方错时、角色互换、相互等待DAG环、各自独立双写接触拒绝。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/EVENT_PROTOCOL.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/choreography/multi_actor.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/choreography/test_multi_actor.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-G3/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.G2",
+      "awz.CF.D2",
+      "awz.CF.D4",
+      "awz.CF.F2",
+      "awz.P3.I1",
+      "awz.P3.I2",
+      "awz.P3.I3",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A8",
+      "awz.V9.A9",
+      "awz.V9.A13",
+      "awz.V9.A12"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.G3",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "G",
+    "seq": 4,
+    "title": "【非作者复核】双人共享节拍与有限联合约束",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.G3。交付标准：实现共享节拍/接触点/双方约束；有界联合solve或预固定有限迭代/停止后统一adopt，冲突明确返回。与G1/G2分文件，禁止双人互等环或两个物理写者；不依赖多人生成模型。\n正例：固定双人共享时钟/接触点在联合候选中保持一致\n已知坏对照：双方错时、角色互换、相互等待DAG环、各自独立双写接触拒绝",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "1.3.4",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VA12",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。实现共享节拍/接触点/双方约束；有界联合solve或预固定有限迭代/停止后统一adopt，冲突明确返回。与G1/G2分文件，禁止双人互等环或两个物理写者；不依赖多人生成模型。 正例：固定双人共享时钟/接触点在联合候选中保持一致；坏对照必须独立发现/拒绝：双方错时、角色互换、相互等待DAG环、各自独立双写接触拒绝。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/EVENT_PROTOCOL.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/choreography/multi_actor.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/choreography/test_multi_actor.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-G3/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-G3/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.G3"
+    ],
+    "verifies": [
+      "awz.CF.G3"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 0,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.G4",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "H",
+    "seq": 1,
+    "title": "【有界运行候选】跨镜头与完整15秒可编辑验收",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n先预登记固定输入/源码/资产/配置/音频身份、数值门/人工量表、正负例、完整argv/预算/停止条件。先采10秒同批完整单人Body/Face/Gaze/Hands/Voice与编辑回放，再采15秒480p/24fps/360帧跨镜头场景；交真实曲线/事件/身份/音频/帧/MP4、顺序与随机访问、接触/足滑/穿模/音画/内存及含编译IO回退的成本。未批任何运行；工具实现也等A10。题目不承诺商业质量。\n正例：冻结完整单人同步表演与15秒产物可回读/编辑/核准/回放，各质量分项独立报告\n反例：身份互换、删接触修正、错音频、过期缓存、历史帧依赖、只改视频未改曲线，均应变红\n非作者搭档：awz.CF.H2",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "4.8",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-Q13",
+      "non_author_verification_task": "awz.CF.H2",
+      "operational_budget_registration": "not_approved"
+    },
+    "acceptance": "先预登记固定输入/源码/资产/配置/音频身份、数值门/人工量表、正负例、完整argv/预算/停止条件。先采10秒同批完整单人Body/Face/Gaze/Hands/Voice与编辑回放，再采15秒480p/24fps/360帧跨镜头场景；交真实曲线/事件/身份/音频/帧/MP4、顺序与随机访问、接触/足滑/穿模/音画/内存及含编译IO回退的成本。未批任何运行；工具实现也等A10。题目不承诺商业质量。 正例：冻结完整单人同步表演与15秒产物可回读/编辑/核准/回放，各质量分项独立报告；坏对照必须独立发现/拒绝：身份互换、删接触修正、错音频、过期缓存、历史帧依赖、只改视频未改曲线，均应变红。不以文件存在/schema通过替代实际消费者/能力证据。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tools/world_player/export_cli.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/review_standard_v0.md"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tools/character_qa/benchmark.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/character_qa/test_benchmark.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-H1/<registered-fixed-run-id>/",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-H1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.C2",
+      "awz.CF.D2",
+      "awz.CF.D4",
+      "hub.CF.B2",
+      "awz.CF.E2",
+      "awz.CF.E4",
+      "hub.CF.C2",
+      "hub.CF.D2",
+      "awz.CF.F2",
+      "awz.CF.G2",
+      "awz.CF.G4",
+      "awz.P3.A3",
+      "awz.P3.A4",
+      "awz.P3.D2",
+      "awz.P3.D3",
+      "awz.P3.D5",
+      "awz.P3.D10",
+      "awz.P3.D11",
+      "hub.P1.D1",
+      "hub.P1.D2",
+      "hub.P1.D6",
+      "awz.P3.I1",
+      "awz.P3.I2",
+      "awz.P3.I3",
+      "awz.P3.E3",
+      "awz.P3.E5",
+      "awz.P3.E6",
+      "awz.V9.A8",
+      "awz.V9.A9",
+      "awz.V9.A13",
+      "awz.V9.A12"
+    ],
+    "verifies": [],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 2,
+    "needs": [
+      "code",
+      "vision",
+      "multimodal"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.H1",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  },
+  {
+    "project": "awz",
+    "phase": "CF",
+    "track": "H",
+    "seq": 2,
+    "title": "【非作者复核】跨镜头与完整15秒可编辑验收",
+    "kind": "verify",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "领取前读本项目 AGENTS/COORDINATION、正式 CF 落地计划与全部前置精确交付。每个文件先确认当前负责人；只改 file_scope，不抢旧卡文件。Hub 唯一持久世界权威、AWZ 唯一运行权威；不新建世界库/调度器。原冻结身份、原失败/金样/候选保留。所有新运行预算未批准；blocked 卡不能执行。用户本轮授权为工作台/方案落地，不打开 A10。禁止下载/模型/训练/渲染/仿真/服务部署/提交/推送，实际运行先由一级冻结输入、argv、预算、停止条件。\n必须由不同于被验任务作者的执行者领取；只读交付，不调用原地 regenerate，不改作者源码/输入/证据。按确切 SHA 和实际消费者独立执行已获授权范围的检查，保留实际命令、stdout/stderr、退出码、资产/配置/输入身份、正反例和未验证项；不可只读作者退出码、硬写通过数或自创门槛。CPU、真实资产/GPU运行、视觉与能力分开报告；缺相应运行预算就记录阻塞，不补跑。\n被验任务：awz.CF.H1。交付标准：先预登记固定输入/源码/资产/配置/音频身份、数值门/人工量表、正负例、完整argv/预算/停止条件。先采10秒同批完整单人Body/Face/Gaze/Hands/Voice与编辑回放，再采15秒480p/24fps/360帧跨镜头场景；交真实曲线/事件/身份/音频/帧/MP4、顺序与随机访问、接触/足滑/穿模/音画/内存及含编译IO回退的成本。未批任何运行；工具实现也等A10。题目不承诺商业质量。\n正例：冻结完整单人同步表演与15秒产物可回读/编辑/核准/回放，各质量分项独立报告\n已知坏对照：身份互换、删接触修正、错音频、过期缓存、历史帧依赖、只改视频未改曲线，均应变红",
+    "params": {
+      "run_authorized": false,
+      "all_new_runtime_budgets": "unapproved",
+      "extension_id": "CF-r1-20261017",
+      "baseline_id": "V9-r5-20261016",
+      "feature_default": "disabled",
+      "module_hint": "4.8",
+      "execution_authorization": "implementation_requires_A10+registered_budget",
+      "local_plan_key": "CF-VQ13",
+      "verification_scope": "product_checks_require_release_and_registered_budget"
+    },
+    "acceptance": "非作者复核确切交付身份。先预登记固定输入/源码/资产/配置/音频身份、数值门/人工量表、正负例、完整argv/预算/停止条件。先采10秒同批完整单人Body/Face/Gaze/Hands/Voice与编辑回放，再采15秒480p/24fps/360帧跨镜头场景；交真实曲线/事件/身份/音频/帧/MP4、顺序与随机访问、接触/足滑/穿模/音画/内存及含编译IO回退的成本。未批任何运行；工具实现也等A10。题目不承诺商业质量。 正例：冻结完整单人同步表演与15秒产物可回读/编辑/核准/回放，各质量分项独立报告；坏对照必须独立发现/拒绝：身份互换、删接触修正、错音频、过期缓存、历史帧依赖、只改视频未改曲线，均应变红。不以文件存在/schema通过替代实际消费者/能力证据。 结论只在实际执行范围内；任何已知坏对照未被发现则不得建议通过。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENTS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0007-render-determinism.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tools/world_player/export_cli.py",
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/review_standard_v0.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tools/character_qa/benchmark.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/tests/character_qa/test_benchmark.py",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-H1/<registered-fixed-run-id>/",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/CF-H1/"
+    ],
+    "file_scope": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/reports/V-CF-H1/"
+    ],
+    "depends_on": [
+      "awz.V9.A10",
+      "awz.CF.H1"
+    ],
+    "verifies": [
+      "awz.CF.H1"
+    ],
+    "workdirs": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero"
+    ],
+    "needs_gpu": 2,
+    "needs": [
+      "code",
+      "vision",
+      "multimodal"
+    ],
+    "dedupe_key": "cf-r1-20261017-awz.CF.H2",
+    "max_attempts": 3,
+    "max_stalls": 5,
+    "lease_s": 1800,
+    "actor": "codex-cf-20261017"
+  }
+]

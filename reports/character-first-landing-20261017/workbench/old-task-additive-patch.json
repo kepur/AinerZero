@@ -1,0 +1,47 @@
+{
+  "task_id": "awz.P3.A3",
+  "method": "PATCH",
+  "path": "/api/tasks/awz.P3.A3",
+  "payload": {
+    "actor": "codex-cf-20261017",
+    "fields": {
+      "depends_on": [
+        "awz.P3.A2",
+        "awz.V9.A10",
+        "awz.CF.B2",
+        "awz.CF.C2",
+        "hub.CF.B2"
+      ]
+    }
+  },
+  "intent": "仅追加三个CF业务前置；不改status/file_scope/params及原depends_on顺序。主责唯一允许旧卡例外。",
+  "before": {
+    "status": "blocked",
+    "depends_on": [
+      "awz.P3.A2",
+      "awz.V9.A10"
+    ],
+    "file_scope": [
+      "python/animeworld/render_backend/blender_adapter.py",
+      "tools/blender/backend/",
+      "tests/render_backend/test_blender_adapter.py",
+      "reports/P3-A3/"
+    ],
+    "params": {
+      "resolution": [
+        854,
+        480
+      ],
+      "engine": "EEVEE",
+      "frames": "0-47 每 6 帧取 1，共 8 帧",
+      "max_frames": 8,
+      "repeat_runs": 2,
+      "max_render_wall_s": 900
+    }
+  },
+  "added_dependencies": [
+    "awz.CF.B2",
+    "awz.CF.C2",
+    "hub.CF.B2"
+  ]
+}

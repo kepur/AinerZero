@@ -1,0 +1,238 @@
+
+FILE /Users/mac/AinerWorkFlow/AinerZero/README.md
+--- 
+
++++ 
+
+@@ -1,2 +1,12 @@
+
+ # AinerZero
++
++## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
++
++用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](reports/character-first-landing-20261017/DECISION.md)、[publication.json](reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
++
++[ADR-0013](../AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md)、[逐卡落地计划](../AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md)。Hub 意图/编辑→跨工具编译→AWZ准入/运行求值→既有Hub worker；CPE/ACC/TACE沿原合同补齐。AinerZero旁路学习、训练暂停及M2常设对照不变。
++
++代码总门 `awz.V9.A10` 未放行；本轮不写实现/Schema，不训练、下载或实跑。任务先按现有AinerRelay登记，真实ID/模块/依赖和即时状态由主责后续registration报告记录，不将本地草案冒称在线卡。
++
++以下原基线与旧记录保留其出版时语境；旧“当前”字样不替代本节和最新独立报告。
+ 
+
+FILE /Users/mac/AinerWorkFlow/AinerZero/COORDINATION.md
+--- 
+
++++ 
+
+@@ -1,2 +1,14 @@
+
+ # AinerZero 统筹与执行分工
++
++## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
++
++用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](reports/character-first-landing-20261017/DECISION.md)、[publication.json](reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
++
++[ADR-0013](../AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md)、[逐卡落地计划](../AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md)。Hub 意图/编辑→跨工具编译→AWZ准入/运行求值→既有Hub worker；CPE/ACC/TACE沿原合同补齐。AinerZero旁路学习、训练暂停及M2常设对照不变。
++
++代码总门 `awz.V9.A10` 未放行；本轮不写实现/Schema，不训练、下载或实跑。任务先按现有AinerRelay登记，真实ID/模块/依赖和即时状态由主责后续registration报告记录，不将本地草案冒称在线卡。
++
++以下原基线与旧记录保留其出版时语境；旧“当前”字样不替代本节和最新独立报告。
++
++本轮：架构主责Codex；二级文档执行proposal_writer；非作者character_inventory。原文件前字节/哈希见 [source-before](reports/character-first-landing-20261017/source-before.json)，扩展身份见同目录source-after；原 `baseline.v1.json` 不改。
+ 
+
+FILE /Users/mac/AinerWorkFlow/AinerZero/AGENT_TASKS.md
+--- 
+
++++ 
+
+@@ -1,2 +1,14 @@
+
+ # AinerZero 执行层任务清单
++
++## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
++
++用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](reports/character-first-landing-20261017/DECISION.md)、[publication.json](reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
++
++[ADR-0013](../AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md)、[逐卡落地计划](../AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md)。Hub 意图/编辑→跨工具编译→AWZ准入/运行求值→既有Hub worker；CPE/ACC/TACE沿原合同补齐。AinerZero旁路学习、训练暂停及M2常设对照不变。
++
++代码总门 `awz.V9.A10` 未放行；本轮不写实现/Schema，不训练、下载或实跑。任务先按现有AinerRelay登记，真实ID/模块/依赖和即时状态由主责后续registration报告记录，不将本地草案冒称在线卡。
++
++以下原基线与旧记录保留其出版时语境；旧“当前”字样不替代本节和最新独立报告。
++
++新增队列以逐卡计划为正文：先设计/消费者映射，再runtime绑定/真实角色与统一worker/最小DAG缓存，同批P0身体+表情口型+编辑消费，再接触双人、跨镜头15秒QA。每项实现配非作者验证，原卡范围、paused与业务依赖保留；下方原19/21集合是2026-10-16出版快照，不当实时总数。
+ 
+
+FILE /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md
+--- 
+
++++ 
+
+@@ -1,2 +1,14 @@
+
+ # 当前架构基线与任务计划
++
++## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
++
++用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](reports/character-first-landing-20261017/DECISION.md)、[publication.json](reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
++
++[ADR-0013](../AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md)、[逐卡落地计划](../AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md)。Hub 意图/编辑→跨工具编译→AWZ准入/运行求值→既有Hub worker；CPE/ACC/TACE沿原合同补齐。AinerZero旁路学习、训练暂停及M2常设对照不变。
++
++代码总门 `awz.V9.A10` 未放行；本轮不写实现/Schema，不训练、下载或实跑。任务先按现有AinerRelay登记，真实ID/模块/依赖和即时状态由主责后续registration报告记录，不将本地草案冒称在线卡。
++
++以下原基线与旧记录保留其出版时语境；旧“当前”字样不替代本节和最新独立报告。
++
++本索引原第1–5节继续描述 **2026-10-16出版快照**，原SHA的意义由该次冻结与发布备份保留；本次入口变更另由CF扩展source-before/source-after登记，不改原冻结JSON。
+ 
+
+FILE /Users/mac/AinerWorkFlow/AinerZero/RESEARCH_LOG.md
+--- 
+
++++ 
+
+@@ -709 +709,11 @@
+
+ 新卡从派发时起执行，旧脚本在下次修订时顺带改正。
++
++
++## R20261017-CF-landing：角色优先兼容扩展与任务工作台落地候选
++
++- 用户新指令：“好的那工作台和方案落地”；已明确工作台为“现有任务工作台（推荐）”，即 AinerRelay。
++- 主责Codex；文档二级proposal_writer；非作者character_inventory。只做正式设计/逐卡队列/当前入口，发布待本轮非作者核对，作者不自行验收。
++- 扩展CF-r1-20261017兼容V9-r5-20261016，见 [ADR-0013](../AnimeWorldZero/docs/adr/ADR-0013-character-first-production.md) 和 [落地计划](../AnimeWorldZero/docs/design/CHARACTER_FIRST_LANDING_PLAN.md)。原baseline JSON、主架构、旧PROPOSAL/REVIEW/DECISION与失败证据不改，改前字节/摘要另存 [本轮报告目录](reports/character-first-landing-20261017/REPORT.md)。
++- 保留Hub唯一持久世界、AWZ运行/曲线/接触权威、Hub worker只读消费、AinerZero独立研究/训练暂停与M2常设对照；明确情绪/口型同部位唯一blend owner，solve/adopt/render按版本拆无环图。
++- 主责本轮live读取：A8r2+A12已登记accepted，范围仅CPU合成契约层及R1–R4/F2/F4落纸，Event/snapshot仍未采用候选；T1r3+T18亦accepted，缓存仍未采用候选，真实加载/ModeGuard/Forge消费者未实现。原baseline第3节保留出版时失败快照，不倒改旧失败；不能由新正向报告外推来源真实性/内核输出/消费者或能力。
++- 当前入口与任务分层可见不等于代码放行：A10与原业务依赖/paused保留，实施卡仍受门；运行预算另冻结。本次没有产品实现/Schema/测试/模型/训练/渲染/下载安装/付费/提交推送。在线登记由主责另办，真实卡ID与依赖以其后续registration报告为准。
+
+FILE /Users/mac/AinerWorkFlow/AnimeWorldZero/README.md
+--- 
+
++++ 
+
+@@ -1,2 +1,14 @@
+
+ # AnimeWorld Zero（AWZ）
++
++## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
++
++用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](../AinerZero/reports/character-first-landing-20261017/DECISION.md)、[publication.json](../AinerZero/reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
++
++[ADR-0013](docs/adr/ADR-0013-character-first-production.md)、[逐卡落地计划](docs/design/CHARACTER_FIRST_LANDING_PLAN.md)；主基线与冻结身份见 [AinerZero统一索引](../AinerZero/ARCHITECTURE_BASELINE.md)。生产主线为Hub意图/编辑→跨工具World Compiler→AWZ准入与运行求值→既有Hub Blender worker；AinerZero旁路学习，不成为出片前置。
++
++实现尚未放行：`awz.V9.A10` 与原业务依赖/paused不动；真实模型/训练/下载/渲染不在本轮授权。每张实现候选配非作者验证，任务在线ID/模块/即时状态由主责后续registration报告记录。AinerStudio曲线编辑只列未来实现候选，本轮不另建网站。
++
++以下R1/Godot/v1.1与旧“当前”描述均为原日期历史正文，保留当时证据，不再作为当前主架构或开工授权；渲染主路径按ADR-0010及r5使用Blender，Godot保留预览/历史范围。
++
++## 2026-10-13 历史介绍与R1入口（原文保留）
+ 
+
+FILE /Users/mac/AinerWorkFlow/AnimeWorldZero/COORDINATION.md
+--- 
+
++++ 
+
+@@ -1,2 +1,14 @@
+
+ # AWZ 统筹与执行分工
++
++## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
++
++用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](../AinerZero/reports/character-first-landing-20261017/DECISION.md)、[publication.json](../AinerZero/reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
++
++[ADR-0013](docs/adr/ADR-0013-character-first-production.md)、[逐卡落地计划](docs/design/CHARACTER_FIRST_LANDING_PLAN.md)；主基线与冻结身份见 [AinerZero统一索引](../AinerZero/ARCHITECTURE_BASELINE.md)。生产主线为Hub意图/编辑→跨工具World Compiler→AWZ准入与运行求值→既有Hub Blender worker；AinerZero旁路学习，不成为出片前置。
++
++实现尚未放行：`awz.V9.A10` 与原业务依赖/paused不动；真实模型/训练/下载/渲染不在本轮授权。每张实现候选配非作者验证，任务在线ID/模块/即时状态由主责后续registration报告记录。AinerStudio曲线编辑只列未来实现候选，本轮不另建网站。
++
++以下R1/Godot/v1.1与旧“当前”描述均为原日期历史正文，保留当时证据，不再作为当前主架构或开工授权；渲染主路径按ADR-0010及r5使用Blender，Godot保留预览/历史范围。
++
++本轮主责Codex、二级文档proposal_writer、非作者character_inventory。原“当前交接”为2026-10-13历史交接；最新设计/任务见上述入口。作者交付须先有非作者建议通过，一级只作架构/裁决/审阅/验收，执行按D-018/D-020拆二级卡。
+ 
+
+FILE /Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md
+--- 
+
++++ 
+
+@@ -1,2 +1,14 @@
+
+ # AWZ 执行层任务清单
++
++## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
++
++用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](../AinerZero/reports/character-first-landing-20261017/DECISION.md)、[publication.json](../AinerZero/reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
++
++[ADR-0013](docs/adr/ADR-0013-character-first-production.md)、[逐卡落地计划](docs/design/CHARACTER_FIRST_LANDING_PLAN.md)；主基线与冻结身份见 [AinerZero统一索引](../AinerZero/ARCHITECTURE_BASELINE.md)。生产主线为Hub意图/编辑→跨工具World Compiler→AWZ准入与运行求值→既有Hub Blender worker；AinerZero旁路学习，不成为出片前置。
++
++实现尚未放行：`awz.V9.A10` 与原业务依赖/paused不动；真实模型/训练/下载/渲染不在本轮授权。每张实现候选配非作者验证，任务在线ID/模块/即时状态由主责后续registration报告记录。AinerStudio曲线编辑只列未来实现候选，本轮不另建网站。
++
++以下R1/Godot/v1.1与旧“当前”描述均为原日期历史正文，保留当时证据，不再作为当前主架构或开工授权；渲染主路径按ADR-0010及r5使用Blender，Godot保留预览/历史范围。
++
++新增CF队列正文见逐卡计划§4；优先复用Hub D1/D2/D6、AWZ D5/D10/D11、A3/A4、D2/D3、I2/I3、E3/E5/E6。原卡状态/依赖不清空，同文件不设两个实现负责人；下方R1任务表保留历史。
+ 
+
+FILE /Users/mac/AinerWorkFlow/AnimeWorldZero/docs/ARCHITECTURE.md
+--- 
+
++++ 
+
+@@ -1,2 +1,14 @@
+
+ # AnimeWorld Zero 总体架构 v1.1
++
++## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
++
++用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](../../AinerZero/reports/character-first-landing-20261017/DECISION.md)、[publication.json](../../AinerZero/reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。
++
++[ADR-0013](adr/ADR-0013-character-first-production.md)、[逐卡落地计划](design/CHARACTER_FIRST_LANDING_PLAN.md)；主基线与冻结身份见 [AinerZero统一索引](../../AinerZero/ARCHITECTURE_BASELINE.md)。生产主线为Hub意图/编辑→跨工具World Compiler→AWZ准入与运行求值→既有Hub Blender worker；AinerZero旁路学习，不成为出片前置。
++
++实现尚未放行：`awz.V9.A10` 与原业务依赖/paused不动；真实模型/训练/下载/渲染不在本轮授权。每张实现候选配非作者验证，任务在线ID/模块/即时状态由主责后续registration报告记录。AinerStudio曲线编辑只列未来实现候选，本轮不另建网站。
++
++以下R1/Godot/v1.1与旧“当前”描述均为原日期历史正文，保留当时证据，不再作为当前主架构或开工授权；渲染主路径按ADR-0010及r5使用Blender，Godot保留预览/历史范围。
++
++## v1.1 历史设计正文（2026-10-13，原文保留）
+ 
+
+FILE /Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md
+--- 
+
++++ 
+
+@@ -267 +267,16 @@
+
+ 子契约补修与实现进度写入各自新修订及任务报告，不反复改写主架构。改变权威职责、来源政策、观察边界或科学门才提 ADR、迁移和非作者复核后升版。训练暂停不变，没有新模型或运行授权。
++
++
++## 13. CF-r1-20261017：角色优先兼容制作能力扩展
++
++用户已同意方向与方案落地，工作台明确为既有AinerRelay；[ADR-0013](../adr/ADR-0013-character-first-production.md) 与 [逐卡计划](CHARACTER_FIRST_LANDING_PLAN.md) 为本轮正式设计/队列候选，待非作者核对和主责追加发布决定。主基线仍V9-r5-20261016+v10工程验证层，原baseline JSON与旧审阅原字节不动。
++
++- 主线：Hub意图/编辑→跨工具编译→AWZ准入/运行求值→既有Hub worker。CPE/ACC/TACE沿Hub表演合同、AWZ角色包/运行/ACIS/NPR补齐；世界脑旁路，训练暂停。
++- 先合同/消费者映射，再runtime rig-control绑定、真实角色与统一worker、最小DAG/cache；身体、面部音频、版本提交与角色曲线UI拆小卡同批P0；随后接触/双人和跨镜头完整15秒QA，可选研究最后。
++- 情绪和口型重叠实际部位由唯一已登记blend owner合成，不虚构现合同priority/weight；solve/adopt/render固定输入/候选/核准版本，多角色联合求解不得形成任务环。
++- 复用原A3/A4（原P3.A2前置不丢）、D2/D3、D5/D10/D11、I2/I3、E3/E5/E6、Hub D1/D2/D6；新卡只补缺口，不扩大AWZ A3到Hub文件，同文件只一负责人。
++- 本轮主责live读取中A8r2+A12已登记accepted，限CPU合成契约层及R1–R4/F2/F4落纸，Event/snapshot仍未采用候选；T1r3+T18同为accepted但缓存仍未采用候选，真实加载/ModeGuard/Forge消费未实现。§12保留2026-10-16出版快照，不将旧失败抹掉，也不将新接受外推消费者/来源真实性/能力。
++- A10与各卡原业务前置/paused不变，不再用旧出版集合总数冒充即时队列；实现仍受门，模型/渲染/实验另冻结输入和预算。原学习来源/封存/科学门不变。
++- 真实CF卡ID、模块一归一、状态和依赖以主责后续registration报告为准；本节本身不宣称卡已创建，不升级工作台源码，不新建网站。
++
++扩展身份与改前备份见 [本轮文档报告](../../../AinerZero/reports/character-first-landing-20261017/REPORT.md)，本稿不自行验收或发布。
+
+FILE /Users/mac/AinerWorkFlow/AnimeWorldZero/RESEARCH_LOG.md
+--- 
+
++++ 
+
+@@ -543 +543,13 @@
+
+ 
++
++
++## C20261017-CF-landing：角色优先兼容扩展与工作台落地候选
++
++- 用户：“好的那工作台和方案落地”；工作台已明确为现有AinerRelay。主责Codex，二级文档proposal_writer，非作者character_inventory。
++- 正式落地候选：[ADR-0013](docs/adr/ADR-0013-character-first-production.md)、[CHARACTER_FIRST_LANDING_PLAN](docs/design/CHARACTER_FIRST_LANDING_PLAN.md)，独立扩展ID CF-r1-20261017；现行V9-r5-20261016和原冻结JSON保留。状态为方向已同意、发布待本轮非作者核对；不是实现/视觉验收。
++- 保留D-011/D-012三系统与单一权威，World Compiler仅跨工具DAG/cache，Hub worker离线候选经AWZ采用；AinerZero不作生产前置，训练暂停/M2常设对照/来源隔离不变。
++- 队列拆分能力绑定、真实角色/统一worker、DAG/cache、身体/表情音频/版本API/角色曲线UI、接触/双人、完整15秒QA；每实现配非作者验证。优先复用原卡，不同时抢写原D1/D2/D5/worker/运行/变更文件，不解冻1.4.3角色包模块。
++- 情绪/口型重叠部位唯一blend owner、solve→adopt→render版本和无环约束写入正式任务正文。120Hz/E3/A2/ADR-0007/ACIS与用户锁不变。
++- 主责live核对：A8r2/A12 accepted限CPU合成契约层及R1–R4/F2/F4落纸，Event/snapshot仍未采用候选；T1r3/T18 accepted亦不代表缓存真实加载/ModeGuard/Forge消费者已实现或候选采用。旧出版失败和原报告保留。
++- 当前入口将旧R1/Godot正文标历史，不重写旧accepted ADR，不提高模块成熟度。A10与原依赖/paused保留，代码、模型、训练、下载、渲染未放行；本轮无产品实现/Schema/测试/运行/提交推送。
++- 在线任务/模块由主责另处理，真实ID/状态/前后依赖以其后续registration报告为准；文档修改前字节与新身份另存 [landing报告](../AinerZero/reports/character-first-landing-20261017/REPORT.md)。

@@ -1,0 +1,4419 @@
+{
+  "awz.V9.A3": {
+    "id": "awz.V9.A3",
+    "project_id": "awz",
+    "track_id": "awz.V9.A",
+    "seq": 3,
+    "title": "【代码】WorldSnapshot/ObservationPacket 纯 CPU 校验器与泄露检测器",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 awz.V9.A2 的契约实现校验器与泄露检测器（新目录 python/animeworld/protocols/v9/），对任意 ObservationPacket 流判定是否含禁止字段、未来信息、绝对真值或快照哈希；给出逐字段原因。\n测试覆盖：合法包、每类泄露各至少 2 例、噪声与可见性边界、dt 非法值；不改内核与编译器现有文件。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 实现 contracts/v9/{world_snapshot.v1_1,observation_packet.v1_1}.schema.json 与 observation_leak_rules.v1_1.json；v1 只作历史。\n- 规则作用范围：L10 只查 $.payload；实现 time_whitelist_consistent（payload.time 四项且逐项等于信封）。\n- 正反例用 contracts/v9/examples/{world_snapshot_v1_1,observation_packet_v1_1}/，并复现 reports/V9-A2/r1/check_contracts_v1_1.py 的全部结论。\n\n【A7 复核新增缺口（2026-10-16）】ObservationPacket 中可被模型触及的 URI/内容摘要（如 rgb.image.uri）必须按“截至本包 t_ticks”的 as-of 规则解析：不得指向 private/、评测通道、未来 tick 的资产或任何真值文件；解析器要有权限分区。补负例：uri 指向 private/future_tick_*.png、指向快照或 eval 目录、摘要对不上实际文件，都必须被拒绝；并在实际加载路径上测试，不只测字段。参考 reports/V-V9-A2-r1/codex-v101-20261016/future-reference-probe.json。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n## V9-r5-20261016 定版收口要求\n按Event修订显式扩展观察泄露规则及开放字段嵌套反例：event_id/layer/affected_ids/cause_ids、世界版本/base、隐藏接触、真值dirty/fallback不得进入学习侧。实际URI解析允许命名空间并截至当前包时间；两世界同观察异隐藏未来时模型输入/学习调度/可解析资产相同。A2局部契约通过不是consumer证明。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "每类泄露都被拦并给原因；合法包零误报；改坏检测器测试变红",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/spec/AinerWorkFlow_v9_RFC.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md"
+    ],
+    "file_scope": [
+      "python/animeworld/protocols/v9/",
+      "tests/protocols/v9/",
+      "reports/V9-A3/"
+    ],
+    "depends_on": [
+      "awz.V9.A2",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "awz-v9-a3-validator",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T21:47:52+03:00",
+    "updated_at": "2026-10-16T11:49:01+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792090072.1423209,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.A2",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4712,
+        "at": "2026-10-16T11:49:01+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.A3",
+        "actor": "codex",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4660,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.A3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4627,
+        "at": "2026-10-16T09:39:06+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.A3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4596,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.A3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files",
+        "data": null
+      },
+      {
+        "id": 4580,
+        "at": "2026-10-16T09:24:45+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.A3",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4326,
+        "at": "2026-10-15T21:47:52+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.A3",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】WorldSnapshot/ObservationPacket 纯 CPU 校验器与泄露检测器",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.V9.A10": {
+    "id": "awz.V9.A10",
+    "project_id": "awz",
+    "track_id": "awz.V9.A",
+    "seq": 10,
+    "title": "【一级·用户门】V9.A10 D-019 代码放行总门（架构 r5 复核通过 + 用户同意后办理）",
+    "kind": "design",
+    "tier": 1,
+    "status": "draft",
+    "prompt": "【用户门】D-019 代码放行总门（AWZ RESEARCH_LOG D-019；ainerzero.V9.A6 / awz.V9.A6 审议 §4）。\n\n这张卡不做任何实现，只表示“用户已同意开始写代码”。规则：\n- 所有因 D-019 暂停的实现卡，以及按 ARCHITECTURE_V9 r5 新建的代码卡，都依赖本卡；\n- 本卡只有在两件事都满足后才由一级办理：\n  1. 架构 r5 与整合方案经非作者复核建议通过；\n  2. 用户在对话里明确同意放行代码。\n  办理时把用户原话写进 RESEARCH_LOG。\n- 本卡是**附加门**：各卡自己的业务依赖（例如 E5 等 E3、I2 等 I1 与 Event/v1）照旧，不因本卡通过而被绕过；\n- 没有前置的代码卡也不因本卡存在而自行 ready，由一级逐张核原依赖、授权与文件负责人后放行。\n\n不训练、不下载、不运行；本卡没有文件范围。\n",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "两个条件都满足：r5 与整合方案非作者复核建议通过；用户在对话里明确同意放行代码，原话写入 RESEARCH_LOG",
+    "context_files": [],
+    "file_scope": [
+      "reports/V9-A10/"
+    ],
+    "depends_on": [
+      "awz.V9.A5",
+      "ainerzero.V9.A5"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "d019-code-release-gate",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1800,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T09:46:29+03:00",
+    "updated_at": "2026-10-16T09:46:29+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "text"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": null,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.A5",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "ainerzero.V9.A5",
+        "status": "accepted",
+        "ok": true
+      }
+    ],
+    "deps_ok": true,
+    "waiting_questions": [],
+    "display_state": "draft",
+    "display_label": "草稿",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4647,
+        "at": "2026-10-16T09:46:29+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.A10",
+        "actor": "claude",
+        "type": "created",
+        "message": "【一级·用户门】V9.A10 D-019 代码放行总门（架构 r5 复核通过 + 用户同意后办理）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.V9.D2": {
+    "id": "awz.V9.D2",
+    "project_id": "awz",
+    "track_id": "awz.V9.D",
+    "seq": 2,
+    "title": "【代码·Blender】确定性结构检查器：Blender 后台只读检查 .blend（不渲染）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 awz.V9.D1 的判据格式实现结构检查器：Blender 5.2.2 后台（-b --factory-startup）只读打开 .blend，检查对象与层级、尺寸与单位、材质与贴图依赖、相机参数、灯光、动画关键帧范围等判据，输出逐条 pass/fail 与证据；不渲染、不保存、不改文件。附 10 个以上自造 .blend 夹具（正例与故意违例），夹具只放 tests/ 下的临时目录或报告目录。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。\n\n## 通用约束（v9.1，ADR-0012 修订二）\n- 不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "每类判据有正反例；不写回 .blend（前后 SHA 一致）；改坏检查器测试变红",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md"
+    ],
+    "file_scope": [
+      "python/animeworld/scene_eval/",
+      "tests/scene_eval/",
+      "reports/V9-D2/"
+    ],
+    "depends_on": [
+      "awz.V9.D1",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "awz-v9-d2-structural-checker",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T01:22:11+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792102931.0595431,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.D1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4661,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.D2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4581,
+        "at": "2026-10-16T09:24:46+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.D2",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4407,
+        "at": "2026-10-16T01:22:11+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.D2",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·Blender】确定性结构检查器：Blender 后台只读检查 .blend（不渲染）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.V9.D4": {
+    "id": "awz.V9.D4",
+    "project_id": "awz",
+    "track_id": "awz.V9.D",
+    "seq": 4,
+    "title": "【代码】锁定守卫：生成/修复的 WorldDelta 触碰锁定字段一律拒绝 + “为提分改锁定字段”对抗套件",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "在 E3 统一变更信封（base_revision、scope、locks、WorldDelta）的校验路径上实现锁定守卫：任何触碰用户锁定的角色（身份、形态版本）、镜头（机位、EDL 条目）、剧情事件（世界事件、实际发生层）的变更一律拒绝，错误码与原因可读，**与任何评分无关**；评测流程只读，不得发起修改。对抗套件：模拟“修复智能体”为提高视觉评分改锁定字段的 ≥10 种手法（直接改、改别名、拆成多条、借 add 覆盖、改引用对象、改上游依赖、改时间使锁定事件移位等），全部必须被拒。\n\n参考（已核 2026-10-16）：github.com/QwenLM/BlenderWorld（MIT；223 任务、2,651 条加权二元判据；评分 50% 判据 + 50% 八个画质维度；结构判据由场景检查、视觉判据由 VLM，分路且结构结论不得用视觉猜测顶替；缺交/失败计零；每次新鲜渲染）。官方评测需 Linux、Blender 4.2.10、Claude Code CLI 与付费视觉接口——本项目不照搬环境，只吸收方法。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 版本基准统一用 ainer.world_change/v1 的 base 五元组（world_version、scene_id、revision、snapshot_sha256、source_sha256）；锁定摘要算法与场景评测协议 base.locked_digest 一致。\n\n## 通用约束（v9.1，ADR-0012 修订二）\n- 不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "≥10 种提分改锁手法全拒；合法未锁定修改不误拒；改坏守卫测试变红",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md"
+    ],
+    "file_scope": [
+      "python/animeworld/locks/",
+      "tests/locks/",
+      "reports/V9-D4/"
+    ],
+    "depends_on": [
+      "awz.V9.D1",
+      "awz.P3.E5",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "awz-v9-d4-lock-guard",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T01:22:11+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792102931.060137,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.D1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.P3.E5",
+        "status": "blocked",
+        "ok": false
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4662,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.D4",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4601,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.D4",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files",
+        "data": null
+      },
+      {
+        "id": 4582,
+        "at": "2026-10-16T09:24:46+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.D4",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4409,
+        "at": "2026-10-16T01:22:11+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.D4",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】锁定守卫：生成/修复的 WorldDelta 触碰锁定字段一律拒绝 + “为提分改锁定字段”对抗套件",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.V9.B1": {
+    "id": "awz.V9.B1",
+    "project_id": "awz",
+    "track_id": "awz.V9.B",
+    "seq": 1,
+    "title": "【代码】受限传感出口 v0：小房间运行切片 → ObservationPacket 流（真值只进封存评测通道）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "在 P3.I2 小房间运行切片之上实现受限传感出口：按 awz.V9.A2 契约输出 ObservationPacket 流；同一 episode 的真值只写入评测通道（按 Forge APACK final 封存约定），学生流必须通过 awz.V9.A3 检测器。\n提供可重放 ID 与 dt；不改内核现有文件，新代码放新目录。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 输出 ObservationPacket/v1.1：信封带 actor 与 origin=external_derived；payload.time 与信封一致；不透传其他信封字段。\n- 快照用 WorldSnapshot/v1.1 的 base 五元组；事件日志按 Event/v1（awz.V9.A8）输出时使用 affected_ids。\n\n【A7 复核新增缺口（2026-10-16）】ObservationPacket 中可被模型触及的 URI/内容摘要（如 rgb.image.uri）必须按“截至本包 t_ticks”的 as-of 规则解析：不得指向 private/、评测通道、未来 tick 的资产或任何真值文件；解析器要有权限分区。补负例：uri 指向 private/future_tick_*.png、指向快照或 eval 目录、摘要对不上实际文件，都必须被拒绝；并在实际加载路径上测试，不只测字段。参考 reports/V-V9-A2-r1/codex-v101-20261016/future-reference-probe.json。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n## V9-r5-20261016 定版收口要求\n实际传感/资产加载路径必须执行A3新Event字段泄露、as-of/允许命名空间及同观察异未来不干扰测试；未来标签独立，教师输入片段截至当前包。学习侧不接raw Event/世界ID/hidden contacts/dirty/fallback。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "学生流零泄露（检测器断言）；真值只在封存通道；同种子重放逐字节一致",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/spec/AinerWorkFlow_v9_RFC.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md"
+    ],
+    "file_scope": [
+      "python/animeworld/sensing/",
+      "tests/sensing/",
+      "reports/V9-B1/"
+    ],
+    "depends_on": [
+      "awz.V9.A3",
+      "awz.P3.I2",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "awz-v9-b1-sensing",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T21:47:52+03:00",
+    "updated_at": "2026-10-16T11:49:01+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792090072.1446662,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.A3",
+        "status": "blocked",
+        "ok": false
+      },
+      {
+        "id": "awz.P3.I2",
+        "status": "blocked",
+        "ok": false
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4713,
+        "at": "2026-10-16T11:49:01+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B1",
+        "actor": "codex",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4663,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B1",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4628,
+        "at": "2026-10-16T09:39:06+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B1",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4617,
+        "at": "2026-10-16T09:35:26+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B1",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4597,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B1",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files",
+        "data": null
+      },
+      {
+        "id": 4583,
+        "at": "2026-10-16T09:24:46+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B1",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4328,
+        "at": "2026-10-15T21:47:52+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B1",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】受限传感出口 v0：小房间运行切片 → ObservationPacket 流（真值只进封存评测通道）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.V9.B3": {
+    "id": "awz.V9.B3",
+    "project_id": "awz",
+    "track_id": "awz.V9.B",
+    "seq": 3,
+    "title": "【代码·数学】考场生成器 v0：2D 导航、时间、对象关系考试（评测真值封存为 APACK final）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "基于受限传感出口生成三类考试：2D 导航（可达、最短路、回环）、时间（dt 变化、事件先后）、对象关系（遮挡、接触、相对位置）。\ntrain/development 与 final 世界键不相交；final 按 forge.V9.A2 的 ExperienceEpisode 校验器封存，只读一次；附规则基线成绩作参照。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 观察按 ObservationPacket/v1.1。\n- 增加 E3 遮挡后身份考题：对象离开视野再出现，句柄必须重发，考 IDF1 与重识别正确率；事件回放状态哈希一致性作为工程门。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "三类考试各有正反例；分区不相交断言；规则基线成绩与封存审计记录",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/spec/AinerWorkFlow_v9_RFC.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md"
+    ],
+    "file_scope": [
+      "python/animeworld/exams/",
+      "tests/exams/",
+      "reports/V9-B3/"
+    ],
+    "depends_on": [
+      "awz.V9.B1",
+      "forge.V9.A2",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "awz-v9-b3-exams",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T21:47:52+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792090072.1469529,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.B1",
+        "status": "blocked",
+        "ok": false
+      },
+      {
+        "id": "forge.V9.A2",
+        "status": "blocked",
+        "ok": false
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4664,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4598,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files",
+        "data": null
+      },
+      {
+        "id": 4584,
+        "at": "2026-10-16T09:24:46+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B3",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4330,
+        "at": "2026-10-15T21:47:52+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B3",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·数学】考场生成器 v0：2D 导航、时间、对象关系考试（评测真值封存为 APACK final）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.V9.B9": {
+    "id": "awz.V9.B9",
+    "project_id": "awz",
+    "track_id": "awz.V9.B",
+    "seq": 9,
+    "title": "【代码·数学】V9.B9 E2a 世界侧稀疏更新参考实现与基准（草稿：随代码任务放行）",
+    "kind": "code",
+    "tier": 2,
+    "status": "draft",
+    "prompt": "【暂停中（D-019），随代码任务放行】E2a 世界侧稀疏更新 CPU 参考实现与基准（ARCHITECTURE_V9 r4 §4 式 12、§8.3 E2）。\n\n实现：\n- 依赖图 G_t（接触、附着、距离 < r_dep、可见性）；\n- 脏集合 = 种子的 k 跳邻域。种子由 Event/v1 的 affected_ids、动作、接触变化、遮挡变化给出；\n- 扩展比例 > f_max 或监测异常时全量回退；k、r_dep、f_max 先登记、后测量。\n\n基准：\n- 100 / 1000 个对象 × 1% / 5% / 20% 对象变化；\n- 对比全量、仅脏集合、脏集合 + 依赖传播。\n\n门槛：\n- 与全量更新的状态哈希逐位一致（任何不一致都算失败，不允许“误差很小”）；\n- 5% 稀疏率下端到端更新时间减少 ≥ 30%，否则写明回退或重新设计；\n- 另报 CPU 时间、峰值内存、回退率。\n\n纯 CPU，单次运行 ≤ 10 分钟墙钟，3 个种子。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n\n\n## V9-r5-20261016 定版收口要求\n按主架构r5式12a/Event补修：活跃集合覆盖持续力/速度/计时/约束，宽相与全部对象比较，本步新接触及依赖闭包迭代至不动点或安全全量回退，不能只以初始静态闭包声称覆盖；休眠严格不变或逐位等价延迟求值。绑定确定性域、全成本计时、优化全量基线；保留原阈值/研究目标；无实现授权。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "状态哈希与全量逐位一致；5% 稀疏率提速≥30% 或写明回退；回退率；3 种子",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md"
+    ],
+    "file_scope": [
+      "python/animeworld/sparse_update/",
+      "tests/sparse_update/",
+      "reports/V9-B9/"
+    ],
+    "depends_on": [
+      "awz.V9.A8",
+      "awz.P3.I2",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "v9-r4-e2a",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T09:35:25+03:00",
+    "updated_at": "2026-10-16T11:49:01+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": null,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.A8",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.P3.I2",
+        "status": "blocked",
+        "ok": false
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "draft",
+    "display_label": "草稿",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4715,
+        "at": "2026-10-16T11:49:01+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B9",
+        "actor": "codex",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4667,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B9",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4612,
+        "at": "2026-10-16T09:35:25+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B9",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·数学】V9.B9 E2a 世界侧稀疏更新参考实现与基准（草稿：随代码任务放行）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.V9.B11": {
+    "id": "awz.V9.B11",
+    "project_id": "awz",
+    "track_id": "awz.V9.B",
+    "seq": 11,
+    "title": "【代码·Blender】V9.B11 E0 物理真值序列生成器小样（不渲染；草稿，批量需批准）",
+    "kind": "code",
+    "tier": 2,
+    "status": "draft",
+    "prompt": "【草稿：批量生成需用户批准运行预算；小样随代码任务放行】E0 物理真值序列生成器（ARCHITECTURE_V9 r4 §8.3 E0），**不渲染**。\n\n内容：\n- 用 Blender（Bullet 刚体）无头模式生成球体、盒子、桌子、斜坡、遮挡等短序列；\n- 保存精确的位姿、速度、接触、相机；\n- 数据端随机化隐藏参数（摩擦、弹性、质量、阻尼），用于 E1 的有偏先验对照；\n- 3 个随机种子，按世界划分 train/development/final，划分互不相交；\n- final 按 APACK 封存。\n\n本卡只做 ≤ 100 段的 CPU 小样，单次 ≤ 10 分钟墙钟，并验证同种子逐位可复现。1k–10k 段的批量生成另行申请预算。\n\n## 通用约束（v9 r4，ADR-0012 修订五）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、耗时、失败与未验证项。\n",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "≤100 段小样同种子逐位复现；隐藏参数随机化；世界划分不相交；final 封存",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md"
+    ],
+    "file_scope": [
+      "python/animeworld/e0/",
+      "tests/e0/",
+      "reports/V9-B11/"
+    ],
+    "depends_on": [
+      "awz.V9.A8",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "v9-r4-e0",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T09:35:25+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": null,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.A8",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "draft",
+    "display_label": "草稿",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4668,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B11",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4614,
+        "at": "2026-10-16T09:35:25+03:00",
+        "project_id": "awz",
+        "task_id": "awz.V9.B11",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·Blender】V9.B11 E0 物理真值序列生成器小样（不渲染；草稿，批量需批准）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.P3.I2": {
+    "id": "awz.P3.I2",
+    "project_id": "awz",
+    "track_id": "awz.P3.I",
+    "seq": 2,
+    "title": "【代码·数学】P3-I2 小房间世界运行切片（纯 CPU，不渲染）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-I2 任务卡执行（交付、内容、验收以任务卡为准）。先读任务卡上方的「P3 通用约束」和「P3 补充：世界运行与制作计划」两段，以及 docs/adr/ADR-0011-three-systems.md 和 docs/NORTH_STAR.md。报告用 AGENT_TASKS.md 中的执行报告模板，放到 reports/P3-I2/。不得改 python/animeworld/kernel/ 下的现有文件。边做边留接力点（relay_checkpoint 或 relay heartbeat --msg）。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 事件日志按 Event/v1（awz.V9.A8，验收后）输出：event_id、tick、source、affected_ids、event_type、payload、evidence_ref、真实性层、因果父事件、所在修订。\n- 为 E2a/E3 预留：同一运行可导出全量更新与稀疏更新两种轨迹，用于逐位比较状态哈希（比较本身归 awz.V9.B9）。\n\n## V9-r5-20261016 定版收口要求\n等待Event候选回应A9 R1–R4并经A12建议通过，落实run/scene日志命名空间、唯一ID同tick次序、快照因果前缀、可信版本时间线及接触类型登记；有哈希不等于来源完整。仍等P3.I1与A10。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "七项逐项报成立/不成立/未验证且有证据；同源同日志哈希一致、改一条命令哈希变；快照重算与从头算一致；被拒命令不改状态；kernel 现有文件 sha 不变",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/NORTH_STAR.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md"
+    ],
+    "file_scope": [
+      "python/animeworld/runtime/",
+      "tests/runtime/",
+      "reports/P3-I2/"
+    ],
+    "depends_on": [
+      "awz.P3.I1",
+      "awz.V9.A8",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "awz-p3-I2",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T15:47:48+03:00",
+    "updated_at": "2026-10-16T11:49:01+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792068468.361279,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.P3.I1",
+        "status": "reported",
+        "ok": false
+      },
+      {
+        "id": "awz.V9.A8",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4714,
+        "at": "2026-10-16T11:49:01+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.I2",
+        "actor": "codex",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4654,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.I2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4616,
+        "at": "2026-10-16T09:35:26+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.I2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、depends_on",
+        "data": null
+      },
+      {
+        "id": 4599,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.I2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files、depends_on",
+        "data": null
+      },
+      {
+        "id": 4574,
+        "at": "2026-10-16T09:24:44+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.I2",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 3433,
+        "at": "2026-10-15T15:47:48+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.I2",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·数学】P3-I2 小房间世界运行切片（纯 CPU，不渲染）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.P3.A3": {
+    "id": "awz.P3.A3",
+    "project_id": "awz",
+    "track_id": "awz.P3.A",
+    "seq": 3,
+    "title": "【代码·Blender】P3-A3 Blender 主路径最小切片（EEVEE＋四通道＋投影一致性）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-A3 任务卡执行（文件范围、内容、参数、验收以任务卡为准）。先读任务卡上方的「P3 通用约束」和 ADR-0010（D-007：Blender 是主引擎）。报告用 AGENT_TASKS.md 末尾的执行报告模板，放到任务卡写的报告目录。边做边留接力点（relay_checkpoint 或 relay heartbeat --msg）。",
+    "params": {
+      "resolution": [
+        854,
+        480
+      ],
+      "engine": "EEVEE",
+      "frames": "0-47 每 6 帧取 1，共 8 帧",
+      "max_frames": 8,
+      "repeat_runs": 2,
+      "max_render_wall_s": 900
+    },
+    "params_version": 0,
+    "acceptance": "8 帧×4 通道齐全有 sha；投影误差 ≤2px 表；两次运行几何/ID 逐位一致；无窗口；墙钟在上限内",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0010-v8-alignment.md"
+    ],
+    "file_scope": [
+      "python/animeworld/render_backend/blender_adapter.py",
+      "tools/blender/backend/",
+      "tests/render_backend/test_blender_adapter.py",
+      "reports/P3-A3/"
+    ],
+    "depends_on": [
+      "awz.P3.A2",
+      "awz.V9.A10",
+      "awz.CF.B2",
+      "awz.CF.C2",
+      "hub.CF.B2"
+    ],
+    "verifies": [],
+    "needs_gpu": true,
+    "dedupe_key": "awz-p3-A3",
+    "max_attempts": 3,
+    "attempts": 1,
+    "assignee": null,
+    "author": "grok-a70a",
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": "结束：bash -lc cd /Users/mac/AinerWorkFlow/AnimeWorldZero && PYTHONPATH=python .venv/b（返回码 0，用时 0.2 分）",
+    "result": "# awz.P3.A3 执行报告\n角色：executor；负责人：grok-a70a；时间：2026-10-15\n任务状态：reported；依据：AGENT_TASKS.md P3-A3 与 P3 通用约束、ADR-0010 决定 2（D-007，Blender 是主引擎）、render_backend.v1、参数 v0\n输入身份：git HEAD `170effa71aa526a0b3f2780ed8775a0846bbc87c`。状态日志 `reports/T04/replay.json` sha256 `8d3f8441cb9f163aa96fa1acd2d4bef6207db40f05514916ec1cd443c9252b30`（T04 报告登记的同一哈希）。风格包 `contracts/examples/style_lineart_bw.example.json` sha256 `255244d60b796402dbab377cfd4225d271a26c0c417aecfb00f4e6951d0e531a`。身份 `heroine_001@v1` 注册表 sha256 `a8404f53f96e0e5576c774fbc2831056fb5f90705d987055f0587c04ed2fa329`。\n修改文件：\n- `python/animeworld/render_backend/blender_adapter.py`：CPU 适配层。构造 RenderJob、正交投影、启动 `blender -b`、汇总 RenderReport 与投影表。不导入 bpy。\n- `tools/blender/backend/eevee_slice.py`：只在 Blender 里跑的数据脚本。地面、水坑多边形、人物代理球；EEVEE 四通道。\n- `tests/render_backend/test_blender_adapter.py`：CPU 测试。\n- `reports/P3-A3/`：本报告、指标、两次运行的 PNG 与日志。\n实际执行：\n1. 本机引擎枚举只有 `BLENDER_EEVEE`（显示名 EEVEE），Blender 5.2.2 LTS。没有照搬网上的 EEVEE_NEXT。\n2. 参数「0–47 每 6 帧取 1，共 8 帧」按已登记的 24fps replay 取源帧 0,6,12,18,24,30,36,42，对应 tick 0,30,60,90,120,150,180,210。输出帧是 0–7，因为契约要求 EDL 覆盖闭区间且不缺帧。示例 job 里的 tick 0,6,…,42 是占位 sha，对不上这份日志。\n3. 验收命令（`relay exec` 包住，自动心跳）：\n   `PYTHONPATH=python .venv/bin/python -m animeworld.render_backend.blender_adapter --out reports/P3-A3 --runs 2`\n   Blender 命令是 `-b --factory-startup --python-exit-code 1 --python tools/blender/backend/eevee_slice.py`。没有另开 GUI 参数。\n4. CPU：`.venv/bin/python -m pytest tests/render_backend/test_blender_adapter.py -q` → 5 passed，0 failed。\n5. 未改 AinerHub，未下载资产，未用 Cycles，未改内核。\n验证结果：\n- 8 帧 × rgb/depth/normal/object_id 共 32 个文件 × 2 次 = 64 张 PNG，单张最大远小于 2MB。sha256 在 `reports/P3-A3/render_report.json`（按像素关键块，去掉 tEXt/eXIf）。\n- 投影：人物最大 0.050 px，水坑最大 1.138 px，门槛 2 px，通过。地面铺满画面、贴边，按裁剪规则排除。CPU 投影与 Blender `world_to_camera_view` 最大差 1.9e-5 px。\n- 两次运行：depth、normal、object_id 与 `geometry.json` 逐位一致。RGB 的 max abs = 0、mean abs = 0（1 采样、关阴影、dither 0 的实测，不是对其他场景的承诺）。\n- 墙钟：最终这一对 5.36 s，上限 900 s。峰值内存约 456 MB（`ru_maxrss`）。\n- 无可见窗口：进程带 `-b`，`bpy.app.background` 为 true。`window_count` 为 1，这是后台模式里 WindowManager 的无界面窗口记录，不是弹出的 GUI。\n产物：\n- `reports/P3-A3/render_job.json`、`render_report.json`、`summary.json`、`指标.json`\n- `reports/P3-A3/run-a/`、`run-b/`（四通道 PNG、`geometry.json`、`blender.log`、`slice_result.json`）\n- 代表帧：`reports/P3-A3/run-a/rgb/0000.png` 及同目录 depth、normal、object_id\n失败与限制：\n- `heroine_001.glb` 能导入（对象 `humanoid_v1`、`heroine_001`），但网格可见质心不是内核脚点。验收比的是像素质心和投影点，所以场景里用半径 0.35 m 的对称球，球心 = 脚点 + (0, 0.8, 0)（身份身高 1.6 m 的一半）。glb 没有留在场景里。\n- 相机是自上而下的正交相机（高 12 m，视高 7 m）。已登记 replay 里没有相机；透视跟拍会让平铺水坑的可见质心偏离中心，过不了 2 px。这是为这条验收选的相机，不是 T04 的 Godot 机位。\n- 法线先用 16 位 PNG 时，第 2 帧有 1 个边缘样本差 4/65535。最终法线改为 8 位、平面着色、dither 0，两次逐位一致。深度仍是 16 位且逐位一致。\n- RenderJob 只请求 rgb/depth/object_id。能力表把 normal 标成 supported=false，`validate_job` 会拒绝它；能力表不在本卡文件范围内，没有改。normal 仍写入了 RenderReport。\n- 没有调用 `world_multicam`。它要 world take 和逐帧 Mixamo 骨骼，这份雨中行走日志没有骨骼；clay 是 WORKBENCH 不是 EEVEE；没有 normal。编造骨骼会变成另一套几何，不再是已登记日志。缺口列在指标的 `worker_gaps`。\n- 信箱 #96 是角色级 notice（收件人不是本 agent）。`relay ack` 返回 403「消息不属于本次持有者」，没法标 received。正文是「若已选定甲方案则复用 worker」。任务卡 D-012 已要求复用；做不到的部分写在上面，没有改 AinerHub。\n交回统筹：\n- 是否把能力表里 blender-eevee 的 normal 改为 supported，以及 8 位平面法线是否算该通道。\n- 人物用代理球是否接受；若必须上 glb，2 px 质心门要改成标记点或包围体，而不是脚点质心。\n- 要不要另开一卡，用真实骨骼调用 `world_multicam`。本卡没有编造骨骼去调用它。\n",
+    "result_data": {
+      "task_id": "awz.P3.A3",
+      "agent": "grok-a70a",
+      "status": "reported",
+      "git_head": "170effa71aa526a0b3f2780ed8775a0846bbc87c",
+      "state_log": {
+        "uri": "reports/T04/replay.json",
+        "sha256": "8d3f8441cb9f163aa96fa1acd2d4bef6207db40f05514916ec1cd443c9252b30",
+        "tick_start": 0,
+        "tick_end": 3595
+      },
+      "style_ref": {
+        "style_id": "lineart_bw",
+        "version": "v1",
+        "sha256": "255244d60b796402dbab377cfd4225d271a26c0c417aecfb00f4e6951d0e531a"
+      },
+      "identity_refs": [
+        {
+          "character_id": "heroine_001",
+          "version": "v1",
+          "sha256": "a8404f53f96e0e5576c774fbc2831056fb5f90705d987055f0587c04ed2fa329"
+        }
+      ],
+      "resolution": [
+        854,
+        480
+      ],
+      "engine_enum_probed": "BLENDER_EEVEE",
+      "engine_report": "EEVEE",
+      "blender_version": "5.2.2 LTS",
+      "source_frame_indices": [
+        0,
+        6,
+        12,
+        18,
+        24,
+        30,
+        36,
+        42
+      ],
+      "ticks": [
+        0,
+        30,
+        60,
+        90,
+        120,
+        150,
+        180,
+        210
+      ],
+      "output_frames": 8,
+      "channels": [
+        "rgb",
+        "depth",
+        "normal",
+        "object_id"
+      ],
+      "job_channels": [
+        "rgb",
+        "depth",
+        "object_id"
+      ],
+      "wall_s": 5.363846291002119,
+      "max_render_wall_s": 900,
+      "within_budget": true,
+      "background": true,
+      "window_count": 1,
+      "peak_memory_mb": 456.25,
+      "pass_elapsed_s": {
+        "rgb": 0.7022020420117769,
+        "depth": 0.6101519160147291,
+        "normal": 0.2894400829973165,
+        "object_id": 0.2679672079975717
+      },
+      "projection_limit_px": 2.0,
+      "projection_max_px": 1.1375036520602748,
+      "projection_pass": true,
+      "projection_max_by_entity_px": {
+        "heroine_001": 0.049548121135188694,
+        "puddle_01": 1.1375036520602748
+      },
+      "ground_excluded": "frustum_clipped",
+      "blender_vs_cpu_max_px": 1.8801007897195632e-05,
+      "bit_exact": {
+        "depth": true,
+        "normal": true,
+        "object_id": true,
+        "geometry_json": true
+      },
+      "geometry_sha256": "2c13b0166ca0c1c0767ff7147c85c5eea382edb19405419cc8d0766b5d912b44",
+      "rgb_max_abs": 0,
+      "rgb_mean_abs": 0.0,
+      "heroine_import": {
+        "imported": true,
+        "used_in_scene": false,
+        "objects": [
+          "humanoid_v1",
+          "heroine_001"
+        ],
+        "reason": "glb imports, but the visible centroid of the mesh is not the kernel marker (feet + 0.8 m). The slice uses a symmetric proxy sphere so the 2 px centroid gate is defined. glb was not left in the scene."
+      },
+      "worker_invoked": false,
+      "worker_gaps": [
+        {
+          "need": "EEVEE rgb of ground/puddle/heroine",
+          "worker": "world_multicam clay is BLENDER_WORKBENCH, not EEVEE",
+          "filled_by": "tools/blender/backend/eevee_slice.py"
+        },
+        {
+          "need": "normal channel",
+          "worker": "no normal renderer; capability table supported=false",
+          "filled_by": "eevee_slice.py data pass; capability table left unchanged"
+        },
+        {
+          "need": "object_id of kernel entities",
+          "worker": "idmask is WORKBENCH flat color of Mixamo rigs, not these entities",
+          "filled_by": "eevee_slice.py emission IDs"
+        },
+        {
+          "need": "call world_multicam as the backend",
+          "worker": "requires a world take plus per-frame Mixamo bones",
+          "filled_by": "not called; rain-walk replay has no bones, inventing them would falsify the kernel"
+        }
+      ],
+      "cpu_tests": {
+        "file": "tests/render_backend/test_blender_adapter.py",
+        "passed": 5,
+        "failed": 0
+      },
+      "png_count": 64,
+      "report_output_files": 32,
+      "acceptance_pair_wall_s": 5.363846291002119
+    },
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T12:17:49+03:00",
+    "updated_at": "2026-10-17T21:07:28+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": 1792090490.666398,
+    "beats": 10,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792113344.410571,
+    "recovery": null,
+    "gpu_level": 1,
+    "deps": [
+      {
+        "id": "awz.P3.A2",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      },
+      {
+        "id": "awz.CF.B2",
+        "status": "ready",
+        "ok": false
+      },
+      {
+        "id": "awz.CF.C2",
+        "status": "blocked",
+        "ok": false
+      },
+      {
+        "id": "hub.CF.B2",
+        "status": "blocked",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 5789,
+        "at": "2026-10-17T21:07:28+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "codex-cf-20261017",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4697,
+        "at": "2026-10-16T11:43:27+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "codex",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4655,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4575,
+        "at": "2026-10-16T09:24:45+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4523,
+        "at": "2026-10-16T04:15:44+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "codex",
+        "type": "rejected",
+        "message": "A4独立CPU已核原64PNG，但A3合同不成立：未复用D-012的既有Hub worker，GLB导入成功却删除换球，normal未请求/能力表不支持却额外输出；原HEAD不含adapter且未登记真实源码SHA。先按原任务修适配层/资产保留/通道合同并登记逐文件身份；关联Hub仍只读，不重开发第二worker。只做CPU修复，A3原两次渲染证据保留，不默许新增A3 GPU补跑。A4本轮0帧/0s，仍可在保护线通过后按其原900s/8帧两遍做独立新鲜复核，不扩大预算或放宽代理条件。",
+        "data": {
+          "requeue": true,
+          "previous_result": "# awz.P3.A3 执行报告\n角色：executor；负责人：grok-a70a；时间：2026-10-15\n任务状态：reported；依据：AGENT_TASKS.md P3-A3 与 P3 通用约束、ADR-0010 决定 2（D-007，Blender 是主引擎）、render_backend.v1、参数 v0\n输入身份：git HEAD `170effa71aa526a0b3f2780ed8775a0846bbc87c`。状态日志 `reports/T04/replay.json` sha256 `8d3f8441cb9f163aa96fa1acd2d4bef6207db40f05514916ec1cd443c9252b30`（T04 报告登记的同一哈希）。风格包 `contracts/examples/style_lineart_bw.example.json` sha256 `255244d60b796402dbab377cfd4225d271a26c0c417aecfb00f4e6951d0e531a`。身份 `heroine_001@v1` 注册表 sha256 `a8404f53f96e0e5576c774fbc2831056fb5f90705d987055f0587c04ed2fa329`。\n修改文件：\n- `python/animeworld/render_backend/blender_adapter.py`：CPU 适配层。构造 RenderJob、正交投影、启动 `blender -b`、汇总 RenderReport 与投影表。不导入 bpy。\n- `tools/blender/backend/eevee_slice.py`：只在 Blender 里跑的数据脚本。地面、水坑多边形、人物代理球；EEVEE 四通道。\n- `tests/render_backend/test_blender_adapter.py`：CPU 测试。\n- `reports/P3-A3/`：本报告、指标、两次运行的 PNG 与日志。\n实际执行：\n1. 本机引擎枚举只有 `BLENDER_EEVEE`（显示名 EEVEE），Blender 5.2.2 LTS。没有照搬网上的 EEVEE_NEXT。\n2. 参数「0–47 每 6 帧取 1，共 8 帧」按已登记的 24fps replay 取源帧 0,6,12,18,24,30,36,42，对应 tick 0,30,60,90,120,150,180,210。输出帧是 0–7，因为契约要求 EDL 覆盖闭区间且不缺帧。示例 job 里的 tick 0,6,…,42 是占位 sha，对不上这份日志。\n3. 验收命令（`relay exec` 包住，自动心跳）：\n   `PYTHONPATH=python .venv/bin/python -m animeworld.render_backend.blender_adapter --out reports/P3-A3 --runs 2`\n   Blender 命令是 `-b --factory-startup --python-exit-code 1 --python tools/blender/backend/eevee_slice.py`。没有另开 GUI 参数。\n4. CPU：`.venv/bin/python -m pytest tests/render_backend/test_blender_adapter.py -q` → 5 passed，0 failed。\n5. 未改 AinerHub，未下载资产，未用 Cycles，未改内核。\n验证结果：\n- 8 帧 × rgb/depth/normal/object_id 共 32 个文件 × 2 次 = 64 张 PNG，单张最大远小于 2MB。sha256 在 `reports/P3-A3/render_report.json`（按像素关键块，去掉 tEXt/eXIf）。\n- 投影：人物最大 0.050 px，水坑最大 1.138 px，门槛 2 px，通过。地面铺满画面、贴边，按裁剪规则排除。CPU 投影与 Blender `world_to_camera_view` 最大差 1.9e-5 px。\n- 两次运行：depth、normal、object_id 与 `geometry.json` 逐位一致。RGB 的 max abs = 0、mean abs = 0（1 采样、关阴影、dither 0 的实测，不是对其他场景的承诺）。\n- 墙钟：最终这一对 5.36 s，上限 900 s。峰值内存约 456 MB（`ru_maxrss`）。\n- 无可见窗口：进程带 `-b`，`bpy.app.background` 为 true。`window_count` 为 1，这是后台模式里 WindowManager 的无界面窗口记录，不是弹出的 GUI。\n产物：\n- `reports/P3-A3/render_job.json`、`render_report.json`、`summary.json`、`指标.json`\n- `reports/P3-A3/run-a/`、`run-b/`（四通道 PNG、`geometry.json`、`blender.log`、`slice_result.json`）\n- 代表帧：`reports/P3-A3/run-a/rgb/0000.png` 及同目录 depth、normal、object_id\n失败与限制：\n- `heroine_001.glb` 能导入（对象 `humanoid_v1`、`heroine_001`），但网格可见质心不是内核脚点。验收比的是像素质心和投影点，所以场景里用半径 0.35 m 的对称球，球心 = 脚点 + (0, 0.8, 0)（身份身高 1.6 m 的一半）。glb 没有留在场景里。\n- 相机是自上而下的正交相机（高 12 m，视高 7 m）。已登记 replay 里没有相机；透视跟拍会让平铺水坑的可见质心偏离中心，过不了 2 px。这是为这条验收选的相机，不是 T04 的 Godot 机位。\n- 法线先用 16 位 PNG 时，第 2 帧有 1 个边缘样本差 4/65535。最终法线改为 8 位、平面着色、dither 0，两次逐位一致。深度仍是 16 位且逐位一致。\n- RenderJob 只请求 rgb/depth/object_id。能力表把 normal 标成 supported=false，`validate_job` 会拒绝它；能力表不在本卡文件范围内，没有改。normal 仍写入了 RenderReport。\n- 没有调用 `world_multicam`。它要 world take 和逐帧 Mixamo 骨骼，这份雨中行走日志没有骨骼；clay 是 WORKBENCH 不是 EEVEE；没有 normal。编造骨骼会变成另一套几何，不再是已登记日志。缺口列在指标的 `worker_gaps`。\n- 信箱 #96 是角色级 notice（收件人不是本 agent）。`relay ack` 返回 403「消息不属于本次持有者」，没法标 received。正文是「若已选定甲方案则复用 worker」。任务卡 D-012 已要求复用；做不到的部分写在上面，没有改 AinerHub。\n交回统筹：\n- 是否把能力表里 blender-eevee 的 normal 改为 supported，以及 8 位平面法线是否算该通道。\n- 人物用代理球是否接受；若必须上 glb，2 px 质心门要改成标记点或包围体，而不是脚点质心。\n- 要不要另开一卡，用真实骨骼调用 `world_multicam`。本卡没有编造骨骼去调用它。\n",
+          "previous_data": {
+            "task_id": "awz.P3.A3",
+            "agent": "grok-a70a",
+            "status": "reported",
+            "git_head": "170effa71aa526a0b3f2780ed8775a0846bbc87c",
+            "state_log": {
+              "uri": "reports/T04/replay.json",
+              "sha256": "8d3f8441cb9f163aa96fa1acd2d4bef6207db40f05514916ec1cd443c9252b30",
+              "tick_start": 0,
+              "tick_end": 3595
+            },
+            "style_ref": {
+              "style_id": "lineart_bw",
+              "version": "v1",
+              "sha256": "255244d60b796402dbab377cfd4225d271a26c0c417aecfb00f4e6951d0e531a"
+            },
+            "identity_refs": [
+              {
+                "character_id": "heroine_001",
+                "version": "v1",
+                "sha256": "a8404f53f96e0e5576c774fbc2831056fb5f90705d987055f0587c04ed2fa329"
+              }
+            ],
+            "resolution": [
+              854,
+              480
+            ],
+            "engine_enum_probed": "BLENDER_EEVEE",
+            "engine_report": "EEVEE",
+            "blender_version": "5.2.2 LTS",
+            "source_frame_indices": [
+              0,
+              6,
+              12,
+              18,
+              24,
+              30,
+              36,
+              42
+            ],
+            "ticks": [
+              0,
+              30,
+              60,
+              90,
+              120,
+              150,
+              180,
+              210
+            ],
+            "output_frames": 8,
+            "channels": [
+              "rgb",
+              "depth",
+              "normal",
+              "object_id"
+            ],
+            "job_channels": [
+              "rgb",
+              "depth",
+              "object_id"
+            ],
+            "wall_s": 5.363846291002119,
+            "max_render_wall_s": 900,
+            "within_budget": true,
+            "background": true,
+            "window_count": 1,
+            "peak_memory_mb": 456.25,
+            "pass_elapsed_s": {
+              "rgb": 0.7022020420117769,
+              "depth": 0.6101519160147291,
+              "normal": 0.2894400829973165,
+              "object_id": 0.2679672079975717
+            },
+            "projection_limit_px": 2.0,
+            "projection_max_px": 1.1375036520602748,
+            "projection_pass": true,
+            "projection_max_by_entity_px": {
+              "heroine_001": 0.049548121135188694,
+              "puddle_01": 1.1375036520602748
+            },
+            "ground_excluded": "frustum_clipped",
+            "blender_vs_cpu_max_px": 1.8801007897195632e-05,
+            "bit_exact": {
+              "depth": true,
+              "normal": true,
+              "object_id": true,
+              "geometry_json": true
+            },
+            "geometry_sha256": "2c13b0166ca0c1c0767ff7147c85c5eea382edb19405419cc8d0766b5d912b44",
+            "rgb_max_abs": 0,
+            "rgb_mean_abs": 0.0,
+            "heroine_import": {
+              "imported": true,
+              "used_in_scene": false,
+              "objects": [
+                "humanoid_v1",
+                "heroine_001"
+              ],
+              "reason": "glb imports, but the visible centroid of the mesh is not the kernel marker (feet + 0.8 m). The slice uses a symmetric proxy sphere so the 2 px centroid gate is defined. glb was not left in the scene."
+            },
+            "worker_invoked": false,
+            "worker_gaps": [
+              {
+                "need": "EEVEE rgb of ground/puddle/heroine",
+                "worker": "world_multicam clay is BLENDER_WORKBENCH, not EEVEE",
+                "filled_by": "tools/blender/backend/eevee_slice.py"
+              },
+              {
+                "need": "normal channel",
+                "worker": "no normal renderer; capability table supported=false",
+                "filled_by": "eevee_slice.py data pass; capability table left unchanged"
+              },
+              {
+                "need": "object_id of kernel entities",
+                "worker": "idmask is WORKBENCH flat color of Mixamo rigs, not these entities",
+                "filled_by": "eevee_slice.py emission IDs"
+              },
+              {
+                "need": "call world_multicam as the backend",
+                "worker": "requires a world take plus per-frame Mixamo bones",
+                "filled_by": "not called; rain-walk replay has no bones, inventing them would falsify the kernel"
+              }
+            ],
+            "cpu_tests": {
+              "file": "tests/render_backend/test_blender_adapter.py",
+              "passed": 5,
+              "failed": 0
+            },
+            "png_count": 64,
+            "report_output_files": 32,
+            "acceptance_pair_wall_s": 5.363846291002119
+          }
+        }
+      },
+      {
+        "id": 4376,
+        "at": "2026-10-15T21:57:17+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "reported",
+        "message": "# awz.P3.A3 执行报告",
+        "data": null
+      },
+      {
+        "id": 4368,
+        "at": "2026-10-15T21:54:50+03:00",
+        "project_id": null,
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "exec_end",
+        "message": "返回码 0",
+        "data": {
+          "exec_id": "c1a345a80d24419189e7581f7128aedb",
+          "state": "finished"
+        }
+      },
+      {
+        "id": 4367,
+        "at": "2026-10-15T21:54:50+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "结束：bash -lc cd /Users/mac/AinerWorkFlow/AnimeWorldZero && PYTHONPATH=python .venv/b（返回码 0，用时 0.2 分）",
+        "data": null
+      },
+      {
+        "id": 4365,
+        "at": "2026-10-15T21:54:40+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "exec_start",
+        "message": "c1a345a80d24419189e7581f7128aedb",
+        "data": null
+      },
+      {
+        "id": 4364,
+        "at": "2026-10-15T21:54:40+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "开始：bash -lc cd /Users/mac/AinerWorkFlow/AnimeWorldZero && PYTHONPATH=python .venv/b",
+        "data": null
+      },
+      {
+        "id": 4361,
+        "at": "2026-10-15T21:54:04+03:00",
+        "project_id": null,
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "exec_end",
+        "message": "返回码 0",
+        "data": {
+          "exec_id": "cbdc862f8da641af8ddf9a3a6f09fc7e",
+          "state": "finished"
+        }
+      },
+      {
+        "id": 4360,
+        "at": "2026-10-15T21:54:04+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "结束：bash -lc cd /Users/mac/AinerWorkFlow/AnimeWorldZero && PYTHONPATH=python .venv/b（返回码 0，用时 0.2 分）",
+        "data": null
+      },
+      {
+        "id": 4359,
+        "at": "2026-10-15T21:53:55+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "exec_start",
+        "message": "cbdc862f8da641af8ddf9a3a6f09fc7e",
+        "data": null
+      },
+      {
+        "id": 4358,
+        "at": "2026-10-15T21:53:55+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "开始：bash -lc cd /Users/mac/AinerWorkFlow/AnimeWorldZero && PYTHONPATH=python .venv/b",
+        "data": null
+      },
+      {
+        "id": 4350,
+        "at": "2026-10-15T21:52:14+03:00",
+        "project_id": null,
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "exec_end",
+        "message": "返回码 0",
+        "data": {
+          "exec_id": "fbdfe8588e7049a59b350a7951d93590",
+          "state": "finished"
+        }
+      },
+      {
+        "id": 4349,
+        "at": "2026-10-15T21:52:14+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "结束：bash -lc cd /Users/mac/AinerWorkFlow/AnimeWorldZero && PYTHONPATH=python .venv/b（返回码 0，用时 0.2 分）",
+        "data": null
+      },
+      {
+        "id": 4346,
+        "at": "2026-10-15T21:52:03+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "exec_start",
+        "message": "fbdfe8588e7049a59b350a7951d93590",
+        "data": null
+      },
+      {
+        "id": 4345,
+        "at": "2026-10-15T21:52:03+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "开始：bash -lc cd /Users/mac/AinerWorkFlow/AnimeWorldZero && PYTHONPATH=python .venv/b",
+        "data": null
+      },
+      {
+        "id": 4344,
+        "at": "2026-10-15T21:52:03+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "单帧烟测投影误差 0.022px。开始 8 帧×2 次正式 EEVEE 渲染",
+        "data": null
+      },
+      {
+        "id": 4304,
+        "at": "2026-10-15T21:47:01+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "引擎 ID=BLENDER_EEVEE。正在写 blender_adapter 与 eevee_slice，normal 由最小脚本补",
+        "data": null
+      },
+      {
+        "id": 4280,
+        "at": "2026-10-15T21:38:25+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "已定位 T04 replay sha 8d3f8441，开始探测本机 Blender 引擎 ID 并写适配层",
+        "data": null
+      },
+      {
+        "id": 4266,
+        "at": "2026-10-15T21:30:32+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "progress",
+        "message": "已领任务，正在读契约、T03/T04 状态日志和 AinerHub blender worker",
+        "data": null
+      },
+      {
+        "id": 4262,
+        "at": "2026-10-15T21:29:48+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "grok-a70a",
+        "type": "claimed",
+        "message": "grok-a70a 领取（第 1 次）",
+        "data": {
+          "params_version": 0
+        }
+      },
+      {
+        "id": 4258,
+        "at": "2026-10-15T21:29:25+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "user",
+        "type": "reserved",
+        "message": "复制预留给 拿到这条复制的人，900 秒",
+        "data": {
+          "mode": "copy",
+          "for": "",
+          "for_kind": "",
+          "ttl": 900
+        }
+      },
+      {
+        "id": 4097,
+        "at": "2026-10-15T20:48:30+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "opencode-nq90",
+        "type": "released",
+        "message": "B2 r2已交回待验收；P3-A3需Blender/EEVEE渲染+godot/vision/GPU，我仅text,code且B2后上下文不足以做8帧×2次渲染，释放给合适agent",
+        "data": null
+      },
+      {
+        "id": 4096,
+        "at": "2026-10-15T20:48:18+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "opencode-nq90",
+        "type": "claimed",
+        "message": "opencode-nq90 领取（第 1 次）",
+        "data": {
+          "params_version": 0
+        }
+      },
+      {
+        "id": 3448,
+        "at": "2026-10-15T16:17:13+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "claude",
+        "type": "message",
+        "message": "开工前必读：AinerHub 的 worldmodel/blender_run.py 已实现 world_multicam（clay/depth/pose）与 world_check（碰撞/可达/视锥）。若用户选定“统一渲染通道”（AinerHub docs/v2/10_PRODUCTION_BRAIN.md 第 3 节甲方案），本卡应改为在其基础上做最小切片而不是重写；开工前先看一级在本任务上的",
+        "data": {
+          "message_id": 96,
+          "kind": "notice",
+          "blocking": false,
+          "exec_id": null
+        }
+      },
+      {
+        "id": 3243,
+        "at": "2026-10-15T12:17:49+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A3",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·Blender】P3-A3 Blender 主路径最小切片（EEVEE＋四通道＋投影一致性）",
+        "data": null
+      }
+    ],
+    "attempt_log": [
+      {
+        "id": 482,
+        "task_id": "awz.P3.A3",
+        "project_id": "awz",
+        "agent": "opencode-nq90",
+        "claimed_at": 1792086498.932087,
+        "last_beat_at": 1792086498.932087,
+        "beats": 0,
+        "ended_at": 1792086510.877865,
+        "outcome": "released",
+        "seconds": 12,
+        "note": "B2 r2已交回待验收；P3-A3需Blender/EEVEE渲染+godot/vision/GPU，我仅text,code且B2后上下文不足以做8帧×2次渲染，释放给合适agent"
+      },
+      {
+        "id": 496,
+        "task_id": "awz.P3.A3",
+        "project_id": "awz",
+        "agent": "grok-a70a",
+        "claimed_at": 1792088988.369998,
+        "last_beat_at": 1792090490.666398,
+        "beats": 10,
+        "ended_at": 1792090637.120896,
+        "outcome": "reported",
+        "seconds": 1649,
+        "note": ""
+      }
+    ],
+    "waiters": []
+  },
+  "awz.P3.A7": {
+    "id": "awz.P3.A7",
+    "project_id": "awz",
+    "track_id": "awz.P3.A",
+    "seq": 7,
+    "title": "【代码·Blender】P3-A7 本机渲染性能基线（EEVEE 每帧耗时与能不能实时）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-A7 任务卡执行（文件范围、内容、参数、验收以任务卡为准）。先读任务卡上方的「P3 通用约束」和 ADR-0010（D-007：Blender 是主引擎）。报告用 AGENT_TASKS.md 中的执行报告模板，放到任务卡写的报告目录。边做边留接力点（relay_checkpoint 或 relay heartbeat --msg）。不用 Cycles，不跑 Godot，不和 MLX 训练同时跑。",
+    "params": {
+      "engine": "EEVEE",
+      "resolutions": [
+        [
+          854,
+          480
+        ],
+        [
+          1280,
+          720
+        ],
+        [
+          1920,
+          1080
+        ]
+      ],
+      "warmup_frames": 2,
+      "measured_frames_min": 10,
+      "max_frames_total": 300,
+      "max_render_wall_s": 1800
+    },
+    "params_version": 0,
+    "acceptance": "两场景×三分辨率×两质量档的中位/最大单帧耗时与峰值内存；全景支持与否如实；30/60fps 近似与成片换算，并注明近似局限；总墙钟在上限内",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0010-v8-alignment.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0011-three-systems.md"
+    ],
+    "file_scope": [
+      "tools/blender/bench/",
+      "tests/render_backend/test_bench_params.py",
+      "reports/P3-A7/"
+    ],
+    "depends_on": [
+      "awz.P3.A4",
+      "awz.P3.B2",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": true,
+    "dedupe_key": "awz-p3-A7",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T16:08:13+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792069693.122388,
+    "recovery": null,
+    "gpu_level": 1,
+    "deps": [
+      {
+        "id": "awz.P3.A4",
+        "status": "blocked",
+        "ok": false
+      },
+      {
+        "id": "awz.P3.B2",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4656,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A7",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4576,
+        "at": "2026-10-16T09:24:45+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A7",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 3442,
+        "at": "2026-10-15T16:08:13+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.A7",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·Blender】P3-A7 本机渲染性能基线（EEVEE 每帧耗时与能不能实时）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.P3.C1": {
+    "id": "awz.P3.C1",
+    "project_id": "awz",
+    "track_id": "awz.P3.C",
+    "seq": 1,
+    "title": "【视觉·Blender】P3-C1 美术迭代闭环 v0（自看图打分，≤5 轮）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-C1 任务卡执行（文件范围、内容、参数、验收以任务卡为准）。先读任务卡上方的「P3 通用约束」和 ADR-0010（D-007：Blender 是主引擎）。报告用 AGENT_TASKS.md 末尾的执行报告模板，放到任务卡写的报告目录。边做边留接力点（relay_checkpoint 或 relay heartbeat --msg）。",
+    "params": {
+      "max_iterations": 5,
+      "param_space": "tools/art_loop/param_space.json（本任务定义，统筹验收）",
+      "resolution": [
+        854,
+        480
+      ],
+      "critic": "self_vision_no_paid_api",
+      "max_render_wall_s": 1500
+    },
+    "params_version": 0,
+    "acceptance": "每轮经验记录 JSON 可校验；第 0 版与最好版对比；分数曲线；写明主观评分非独立评测；不改生成器代码",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0010-v8-alignment.md"
+    ],
+    "file_scope": [
+      "tools/art_loop/",
+      "tests/art_loop/",
+      "reports/P3-C1/"
+    ],
+    "depends_on": [
+      "awz.P3.B2",
+      "awz.P3.B1",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": true,
+    "dedupe_key": "awz-p3-C1",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T12:17:49+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code",
+      "vision"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792055869.27331,
+    "recovery": null,
+    "gpu_level": 1,
+    "deps": [
+      {
+        "id": "awz.P3.B2",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.P3.B1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4657,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.C1",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4577,
+        "at": "2026-10-16T09:24:45+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.C1",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4474,
+        "at": "2026-10-16T03:58:31+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.C1",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 3249,
+        "at": "2026-10-15T12:17:49+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.C1",
+        "actor": "claude",
+        "type": "created",
+        "message": "【视觉·Blender】P3-C1 美术迭代闭环 v0（自看图打分，≤5 轮）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.P3.C3": {
+    "id": "awz.P3.C3",
+    "project_id": "awz",
+    "track_id": "awz.P3.C",
+    "seq": 3,
+    "title": "【视觉·代码→Gemini/Grok】P3-C3 角色技法对标闭环 v0（参考图 → Blender 逼近 → 分项比较）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 `/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md` 的 P3-C3 任务卡执行（文件范围、内容、参数、验收以任务卡为准）。先读 docs/research/DILLONGOO_TEARDOWN_20261015.md 第 9、10 节。参考截图在 ~/AinerWorkFlow/_refs/dillongoo_20261015/，只作内部研究，不复制进 git、不进训练。报告用 AGENT_TASKS.md 中的执行报告模板，放到 reports/P3-C3/。边做边留接力点。",
+    "params": {
+      "max_iterations_per_ref": 5,
+      "refs_A": 3,
+      "refs_B": 3,
+      "resolution": [
+        1280,
+        720
+      ],
+      "engine": "EEVEE",
+      "max_render_wall_s": 2400
+    },
+    "params_version": 0,
+    "acceptance": "A 组调参前后分项指标与对比图；B 组只评一次；指标有单元测试；参数空间登记；经验 JSON；未用 B 组调参、未下载新模型",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/AGENT_TASKS.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/research/DILLONGOO_TEARDOWN_20261015.md"
+    ],
+    "file_scope": [
+      "tools/art_loop/ref_match/",
+      "tests/art_loop/test_ref_match_metrics.py",
+      "reports/P3-C3/"
+    ],
+    "depends_on": [
+      "awz.P3.D4",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": true,
+    "dedupe_key": "awz-p3-C3",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T16:52:37+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code",
+      "vision"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792072357.2513988,
+    "recovery": null,
+    "gpu_level": 1,
+    "deps": [
+      {
+        "id": "awz.P3.D4",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4658,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.C3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4578,
+        "at": "2026-10-16T09:24:45+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.C3",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 3465,
+        "at": "2026-10-15T16:52:37+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.C3",
+        "actor": "claude",
+        "type": "created",
+        "message": "【视觉·代码→Gemini/Grok】P3-C3 角色技法对标闭环 v0（参考图 → Blender 逼近 → 分项比较）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "awz.P3.E5": {
+    "id": "awz.P3.E5",
+    "project_id": "awz",
+    "track_id": "awz.P3.E",
+    "seq": 5,
+    "title": "【代码】统一变更v1纯CPU合同校验（不提交世界）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "先读本项目规则与前置设计，先领取再改。只做纯CPU工程，不导入MLX/ORT/模型，不渲染、不下载/安装/付费、不重启服务、不提交推送/删除，不改冻结参数和门。所有测试使用新临时根，记录实际命令、输入/源码SHA、失败和未验证项；不写生产库、RunStore或关联项目。没有依赖不得自行安装。摘要30行内，完整证据另存，容量足够report --next，否则capacity-exhausted交接。\n\n先读：/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md，以及同目录草案schema。\n实现提议协议的结构与纯函数语义校验：schema、精确输入摘要（重复键/非有限数拒绝，算法与数值编码明确）、完整base向量、单族/四类、test与move/copy路径/父路径越界、有效tick与外部提供的能力/版本前置。持久ops逐一对照只读Hub service.py真实字段，缺参数和未知引用拒绝；不调用Hub propose/apply，不建第二份持久世界库。只校验并产出candidate/errors/unsupported，不实现真实提交/预览token签发/数据库CAS/回滚，不声称黄金并发已验证。固定fixture覆盖小于1e-6精确源变化、不完整快照、未知持久逆操作、路径逃逸等；尚无权威依赖就未验证，不能用fixture通过冒充跨仓E2E。\n",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "原设计范围内纯CPU合同与不利反例通过；未实现/未验证边界明确；完整身份与临时数据证据；后接非作者复核",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/WORLD_CHANGE_PROTOCOL.md"
+    ],
+    "file_scope": [
+      "python/animeworld/world_change/contract.py",
+      "python/animeworld/world_change/__init__.py",
+      "tests/world_change/test_contract.py",
+      "reports/P3-E5/"
+    ],
+    "depends_on": [
+      "awz.P3.E3",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "codex-20261015-worldchange-contract",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "codex",
+    "created_at": "2026-10-15T17:42:17+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792075337.073781,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.P3.E3",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4659,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.E5",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4579,
+        "at": "2026-10-16T09:24:45+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.E5",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 3597,
+        "at": "2026-10-15T17:42:17+03:00",
+        "project_id": "awz",
+        "task_id": "awz.P3.E5",
+        "actor": "codex",
+        "type": "created",
+        "message": "【代码】统一变更v1纯CPU合同校验（不提交世界）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "hub.P1.D2": {
+    "id": "hub.P1.D2",
+    "project_id": "hub",
+    "track_id": "hub.P1.D",
+    "seq": 2,
+    "title": "【代码·数学】表演候选曲线v0纯CPU语义校验",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "先读本项目规则与前置设计，先领取再改。只做纯CPU工程，不导入MLX/ORT/模型，不渲染、不下载/安装/付费、不重启服务、不提交推送/删除，不改冻结参数和门。所有测试使用新临时根，记录实际命令、输入/源码SHA、失败和未验证项；不写生产库、RunStore或关联项目。没有依赖不得自行安装。摘要30行内，完整证据另存，容量足够report --next，否则capacity-exhausted交接。\n\n先读：/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md，以及同目录草案schema。\n复用D1 schema，写request/response纯函数语义校验与候选曲线检查，不写执行器/渲染/角色包。核120Hz与输出fps换算、预备/到位/停留/回落顺序、任务边界/重复keyframe、值有限且范围与单位合法、控制者和别名部位重叠、锁定项、旧版本、音频未对齐、unknown_controller、pending:D5必unsupported。ones/twos/threes按视频帧保持而非tick。注册控制器只接受显式传入的fixture能力表，真实D5未完不能把占位当可执行。三版本例子全部仍为候选/未支持。反例含相同部位双写、以换名字绕锁、NaN/Inf、负/逆时长、24Hz冒充120Hz、未实现口型写成功。不得改D1设计schema来绕过失败；需变更则向一级提具体建议。\n\n以D1 r2 schema/音频时钟与末节语义层要求为准，等D4独立复审和D1终审通过后实现。r1保持归档，不宣称结构通过即可执行。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "原设计范围内纯CPU合同与不利反例通过；未实现/未验证边界明确；完整身份与临时数据证据；后接非作者复核",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerHub_IDEA/docs/v2/production_brain/performance_interface_v0.md"
+    ],
+    "file_scope": [
+      "code/apps/ainer-core/app/production/performance_contract.py",
+      "code/apps/ainer-core/tests/test_production_performance_contract.py",
+      "reports/P1-D2/"
+    ],
+    "depends_on": [
+      "hub.P1.D1",
+      "hub.P1.D4",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "codex-20261015-performance-contract",
+    "max_attempts": 3,
+    "attempts": 1,
+    "assignee": null,
+    "author": "deepseek-q5t8",
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": "D2 完成：106 tests passed + 27 反例 + 26 例 schema 交叉核对；报告与证据已落 reports/P1-D2/，准备 report --next",
+    "result": "# hub.P1.D2 执行报告（deepseek-q5t8，2026-10-15）\n\n角色：二级执行；负责人：deepseek-q5t8；任务状态：reported；实验状态：纯 CPU 工程完成（无模型运行）\n任务依据：hub.P1.D2 任务卡（前置 hub.P1.D1 r3 accepted、hub.P1.D4 r3 accepted）、D-011；参数 v0 照用未改。\n\n## 摘要\n- 交付 `performance_contract.py`：request / response / error 三类记录的纯函数语义校验与候选曲线检查；不写执行器、渲染、角色包。\n- 复用 D1 r3 schema 且未改一个字节（SHA 与 `D1-r3/identities.json` 一致，测试逐项断言枚举零漂移）。\n- 覆盖：120Hz↔输出 fps 精确换算、预备/到位/停留/回落严格递增且落在任务区间、keyframe 有序/无重复/全覆盖、值有限且单位·维度·值域合法、别名展开后的部位唯一写者、锁定项（含换名字绕锁）、旧版本绑定、音频时钟与未对齐口型、unknown_controller、pending:D5 必 unsupported、changed_past。\n- ones/twos/threes 只约束姿态轨并按视频帧换算（24fps twos = 10 tick），不把一拍二写成每 2 tick；口型走音频 sample 网格，不随渲染降频。\n- 控制器注册只认显式传入的 fixture 能力表：缺表即 unknown_controller；真实 D5 未完时占位永远 unsupported，能力表也不能把 `pending:D5/` 登记为 executable。\n- 测试 106 passed（exit 0，新临时根 `/tmp/hub-p1-d2-vR7yCD`）；邻近模块回归 135 passed。\n- 独立交叉核对：26 例对比 D1 JSON Schema（Draft 2020-12，jsonschema 4.26.0）→ 0 假绿、0 标准例被误拒；`--failure-control` 注入假绿后抓到 12/12（两个真实退出码见日志）。\n- 三版本例子（suspense/comedy/dry）语义通过但 `executable` 全为 False：曲线仍是 pending_D5 / unsupported，未宣称结构通过即可执行。\n- 27 项反例矩阵全部按预期码拒绝：相同部位双写、换别名/换控制器名绕锁、NaN/±Inf、负·零时长、逆序/空段阶段、24Hz 冒充 120Hz、请求-响应帧率偷换、未对齐音频写口型、占位被执行、量纲/维度/值域、旧版本、已执行区间、非法 Pointer。\n- 仅改文件范围内三个位置；未安装依赖、未渲染、未下载、未提交推送、未写生产库/RunStore/关联项目。\n- 未验证：真实音频与对齐产物、角色包 D5 控制面、渲染、E2E、全量套件、API 消费者接入、性能基准。\n- 任务卡列出的 `AGENTS.md`/`README.md` 在 AinerHub_IDEA 不存在（与 hub.P1.C2 记录一致），改读 `START_HERE_FOR_AGENTS.md`、`TASK_STATUS.md` 与前置设计文档。\n- 待一级决定：①v0 无优先级与混合权重字段，同优先级重叠一律 control_conflict，blend 仅在显式登记规则+输入时放行；若要优先级/权重需 D1 修订 schema。②错误记录自身形状缺陷只能落十码兜底 `unsupported_action`，若要有专门码需 D1 增枚举。本实现未改 schema 绕过任何失败。\n\n## 交付（文件范围内）\n- `code/apps/ainer-core/app/production/performance_contract.py`（新建，60327 B，`bbb2c2ab8b18c45f65219e5abe7f7770dbd9ce3ae0c497f71e5fadfa825acf4c`）\n- `code/apps/ainer-core/tests/test_production_performance_contract.py`（新建，51010 B，106 passed，`bc643c2714bf2bdd2afb5baa13f20120f88e116cc00c22cf744a525cfe995a5b`）\n- `reports/P1-D2/`：report.md、metrics.json、evidence.json、schema-alignment.json(+log)、schema-alignment-failure-control.json(+log)、pytest-p1d2.log、check_schema_alignment.py、collect_evidence.py\n\n## 验证（实际命令与身份）\n- `TMPDIR=/tmp/hub-p1-d2-vR7yCD PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/test_production_performance_contract.py -q` → 106 passed，exit 0（`reports/P1-D2/pytest-p1d2.log`）。\n- `PYTHONDONTWRITEBYTECODE=1 /Users/mac/AinerWorkFlow/AnimeWorldZero/.venv/bin/python reports/P1-D2/check_schema_alignment.py` → 26 例，0 假绿，RESULT: PASS，exit 0；`--failure-control` → 抓到 12/12 假绿，exit 0。\n- 回归：`pytest tests/test_production_review_contract.py tests/test_production_chain.py tests/test_performance.py -q` → 135 passed，exit 0（未改动这些模块）。\n- 输入身份（只读）：schema `34aba041…d23c`（27505 B）、文档 `73c3e889…3946`（8725 B）；r2 归档 `c8ce4696…bec5` / `39d1743a…f15ff` 字节不变，原失败与证据保留。\n- 反例矩阵与正例控制逐项见 `evidence.json`（counterexamples 27/27、positive_controls 4）；`evidence.json` SHA `47e284e251d64ff9bad8ac9ecb89f6da54fe3014ed11dd0ad169dda9450f4000`。\n\n## 未实现 / 未验证边界（fail-closed 口径）\n- `executable` 为真需同时满足：绑定可核对、已执行区间显式传入、控制器由显式能力表登记 executable、部位别名已登记、无冲突/锁/越界/时钟问题；真实 D5 未完成的数据必为 False。\n- 结构层有意把 sim_hz、intensity 范围、lock/error path 语法、pending 执行状态让给语义层，以给出精确 D1 码；12 条差异逐条记在 `schema-alignment.json → divergences`（其中 5 条 structural-deferred、7 条 D2 语义更严）。\n- 24Hz 冒充 120Hz 只能靠 sim_hz 常量与请求/响应 render_fps 一致性检出；不从曲线形状反推源 fps（无证据不猜）。\n- 未做：阈值/过门线（D1 未登记，不编造）、真实音频对齐、D5 控制面、渲染、跨仓 E2E、全量套件。\n\n## 失败与限制\n- 无测试失败；未跑全量 ainer-core 套件（超出文件范围，部分用例需要服务/数据库），仅邻近 135 项回归。\n- 未删除、未覆盖任何既有文件；未改冻结参数与门；未提交/推送。\n\n## 交回统筹\n- 请安排后接非作者复核，重点核对：别名展开的锁判定与唯一写者口径、blend 放行条件、结构层→十码映射表（尤其兜底 `unsupported_action`）。\n- 若确认需要优先级/混合权重字段或专门的记录形状错误码，请走 D1 修订；本实现不放宽、不绕过。\n",
+    "result_data": {
+      "agent": "deepseek-q5t8",
+      "counterexamples": {
+        "any_executable": false,
+        "by_expected_code": {
+          "changed_past": 1,
+          "control_conflict": 1,
+          "invalid_time_curve": 8,
+          "lock_conflict": 4,
+          "missing_audio_alignment": 1,
+          "out_of_range": 6,
+          "stale_revision": 1,
+          "unknown_actor": 1,
+          "unknown_controller": 2,
+          "unsupported_action": 2
+        },
+        "passed": 27,
+        "total": 27
+      },
+      "cpu_only": true,
+      "date": "2026-10-15",
+      "evidence_files": [
+        "reports/P1-D2/report.md",
+        "reports/P1-D2/evidence.json",
+        "reports/P1-D2/schema-alignment.json",
+        "reports/P1-D2/schema-alignment.log",
+        "reports/P1-D2/schema-alignment-failure-control.json",
+        "reports/P1-D2/schema-alignment-failure-control.log",
+        "reports/P1-D2/pytest-p1d2.log",
+        "reports/P1-D2/check_schema_alignment.py",
+        "reports/P1-D2/collect_evidence.py"
+      ],
+      "inputs": {
+        "d1_doc_sha256": "73c3e88952e50f9e720ac2f80debe2915884a014f8498177e94de6c9ff039946",
+        "d1_schema_sha256": "34aba041558ecbc279ca84d2e846c76ee2334dd621433c086e9b150640b7d23c",
+        "d1_schema_unchanged": true,
+        "r1_r2_archives_unchanged": true,
+        "r2_archive_doc_sha256": "39d1743a69685408775971bbdb6633c2c6357e90aa781c1ac21a3f4678df15ff",
+        "r2_archive_schema_sha256": "c8ce4696a960294de7731d7956a7c3e373eef4b2232e909354dc30230b8bbec5"
+      },
+      "io_free_validator": true,
+      "no_dependency_installs": true,
+      "no_model_no_gpu_no_render": true,
+      "positive_controls": {
+        "registered_fixture_executable": true,
+        "three_examples_ok_not_executable": true,
+        "unbound_response_executable": false,
+        "without_executed_ranges_executable": false
+      },
+      "pytest": {
+        "command": "TMPDIR=/tmp/hub-p1-d2-vR7yCD PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/test_production_performance_contract.py -q",
+        "cwd": "code/apps/ainer-core",
+        "exit": 0,
+        "failed": 0,
+        "passed": 106,
+        "tmp_root": "/tmp/hub-p1-d2-vR7yCD",
+        "warning": "PytestConfigWarning: Unknown config option asyncio_mode"
+      },
+      "regression_pytest": {
+        "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/test_production_review_contract.py tests/test_production_chain.py tests/test_performance.py -q",
+        "exit": 0,
+        "failed": 0,
+        "passed": 135
+      },
+      "schema_alignment": {
+        "canonical_rejected": 0,
+        "cases": 26,
+        "d2_semantic_stricter": 7,
+        "failure_control_caught": 12,
+        "false_green": 0,
+        "structural_deferred_to_semantic": 5
+      },
+      "scope": [
+        "code/apps/ainer-core/app/production/performance_contract.py",
+        "code/apps/ainer-core/tests/test_production_performance_contract.py",
+        "reports/P1-D2/"
+      ],
+      "source_sha256": {
+        "check_schema_alignment.py": "101fc68bca114a73d9b99c7e68640aaf076115b1fb8d4fde7e44336471f5280d",
+        "collect_evidence.py": "6ce8b3c2720ae51c3ce710980c45b674154fdea0d6a95d06645a2247c537e931",
+        "evidence.json": "47e284e251d64ff9bad8ac9ecb89f6da54fe3014ed11dd0ad169dda9450f4000",
+        "performance_contract.py": "bbb2c2ab8b18c45f65219e5abe7f7770dbd9ce3ae0c497f71e5fadfa825acf4c",
+        "test_production_performance_contract.py": "bc643c2714bf2bdd2afb5baa13f20120f88e116cc00c22cf744a525cfe995a5b"
+      },
+      "task": "hub.P1.D2",
+      "three_canonical_takes": {
+        "comedy": {
+          "executable": false,
+          "execution_status": [
+            "unsupported"
+          ],
+          "mapping_status": [
+            "pending_D5"
+          ],
+          "ok": true
+        },
+        "dry": {
+          "executable": false,
+          "execution_status": [
+            "unsupported"
+          ],
+          "mapping_status": [
+            "pending_D5"
+          ],
+          "ok": true
+        },
+        "suspense": {
+          "executable": false,
+          "execution_status": [
+            "unsupported"
+          ],
+          "mapping_status": [
+            "pending_D5"
+          ],
+          "ok": true
+        }
+      },
+      "unverified": [
+        "全量 ainer-core 测试套件（超出文件范围；部分用例需要服务/数据库）",
+        "真实音频、真实角色包 D5 控制面、渲染、E2E",
+        "序列化消费方（谁把本校验器接到 API/执行器）尚未存在",
+        "性能：单条 600 tick 曲线的校验耗时未做基准"
+      ]
+    },
+    "callback_url": null,
+    "created_by": "codex",
+    "created_at": "2026-10-15T17:42:17+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": 1792086981.776203,
+    "beats": 4,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792112338.9663072,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "hub.P1.D1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "hub.P1.D4",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4666,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4586,
+        "at": "2026-10-16T09:24:46+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4477,
+        "at": "2026-10-16T03:58:58+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "claude",
+        "type": "rejected",
+        "message": "依 hub.P1.D3 复核（reports/V-performance-curve-contract/）补修后重交，只改原文件范围：\n1) 必修 G-02/03/04（fail-open）：executed_tick_ranges 任一元素形状非法（非二元组、非整数、逆序 [600,0]、空段 [5,5]）必须拒绝并给出明确错误码，不得静默丢弃后当作“无已执行区间”；补对应反例，确认 changed_past 保护不可绕过。\n2) 必修 E-01：errors[].path 允许空串表示根（D1 r3 已写明），去掉结构层 min_length=1 的过度拒绝，让 pointer_tokens('') 分支可达，补正反例。\n3) 必修 G-01/G-05（一级决定 2026-10-16）：锁定的 JSON Pointer 是祖先路径时（如 /curves、/binding），覆盖其下全部子路径；任何触碰被锁子树的曲线按 locked 拒绝。按 pointer token 前缀匹配，不按字符串前缀（/curves 不覆盖 /curvesX）。补反例。\n4) 建议 G-07：keyframes 少于 2 个时返回 invalid_time_curve，而非兜底 unsupported_action。\n5) 报告里的 pytest 命令改为实际可运行的解释器路径（D3 实测原命令 exit 127）。\nD1 schema 不改；原 106 项测试与 27 项反例矩阵结论不变或更严；新报告写修订 SHA。修完后由非作者新复核（不由 deepseek-q5t8 或 deepseek-flash-h4p9 复核）。",
+        "data": {
+          "requeue": true,
+          "previous_result": "# hub.P1.D2 执行报告（deepseek-q5t8，2026-10-15）\n\n角色：二级执行；负责人：deepseek-q5t8；任务状态：reported；实验状态：纯 CPU 工程完成（无模型运行）\n任务依据：hub.P1.D2 任务卡（前置 hub.P1.D1 r3 accepted、hub.P1.D4 r3 accepted）、D-011；参数 v0 照用未改。\n\n## 摘要\n- 交付 `performance_contract.py`：request / response / error 三类记录的纯函数语义校验与候选曲线检查；不写执行器、渲染、角色包。\n- 复用 D1 r3 schema 且未改一个字节（SHA 与 `D1-r3/identities.json` 一致，测试逐项断言枚举零漂移）。\n- 覆盖：120Hz↔输出 fps 精确换算、预备/到位/停留/回落严格递增且落在任务区间、keyframe 有序/无重复/全覆盖、值有限且单位·维度·值域合法、别名展开后的部位唯一写者、锁定项（含换名字绕锁）、旧版本绑定、音频时钟与未对齐口型、unknown_controller、pending:D5 必 unsupported、changed_past。\n- ones/twos/threes 只约束姿态轨并按视频帧换算（24fps twos = 10 tick），不把一拍二写成每 2 tick；口型走音频 sample 网格，不随渲染降频。\n- 控制器注册只认显式传入的 fixture 能力表：缺表即 unknown_controller；真实 D5 未完时占位永远 unsupported，能力表也不能把 `pending:D5/` 登记为 executable。\n- 测试 106 passed（exit 0，新临时根 `/tmp/hub-p1-d2-vR7yCD`）；邻近模块回归 135 passed。\n- 独立交叉核对：26 例对比 D1 JSON Schema（Draft 2020-12，jsonschema 4.26.0）→ 0 假绿、0 标准例被误拒；`--failure-control` 注入假绿后抓到 12/12（两个真实退出码见日志）。\n- 三版本例子（suspense/comedy/dry）语义通过但 `executable` 全为 False：曲线仍是 pending_D5 / unsupported，未宣称结构通过即可执行。\n- 27 项反例矩阵全部按预期码拒绝：相同部位双写、换别名/换控制器名绕锁、NaN/±Inf、负·零时长、逆序/空段阶段、24Hz 冒充 120Hz、请求-响应帧率偷换、未对齐音频写口型、占位被执行、量纲/维度/值域、旧版本、已执行区间、非法 Pointer。\n- 仅改文件范围内三个位置；未安装依赖、未渲染、未下载、未提交推送、未写生产库/RunStore/关联项目。\n- 未验证：真实音频与对齐产物、角色包 D5 控制面、渲染、E2E、全量套件、API 消费者接入、性能基准。\n- 任务卡列出的 `AGENTS.md`/`README.md` 在 AinerHub_IDEA 不存在（与 hub.P1.C2 记录一致），改读 `START_HERE_FOR_AGENTS.md`、`TASK_STATUS.md` 与前置设计文档。\n- 待一级决定：①v0 无优先级与混合权重字段，同优先级重叠一律 control_conflict，blend 仅在显式登记规则+输入时放行；若要优先级/权重需 D1 修订 schema。②错误记录自身形状缺陷只能落十码兜底 `unsupported_action`，若要有专门码需 D1 增枚举。本实现未改 schema 绕过任何失败。\n\n## 交付（文件范围内）\n- `code/apps/ainer-core/app/production/performance_contract.py`（新建，60327 B，`bbb2c2ab8b18c45f65219e5abe7f7770dbd9ce3ae0c497f71e5fadfa825acf4c`）\n- `code/apps/ainer-core/tests/test_production_performance_contract.py`（新建，51010 B，106 passed，`bc643c2714bf2bdd2afb5baa13f20120f88e116cc00c22cf744a525cfe995a5b`）\n- `reports/P1-D2/`：report.md、metrics.json、evidence.json、schema-alignment.json(+log)、schema-alignment-failure-control.json(+log)、pytest-p1d2.log、check_schema_alignment.py、collect_evidence.py\n\n## 验证（实际命令与身份）\n- `TMPDIR=/tmp/hub-p1-d2-vR7yCD PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/test_production_performance_contract.py -q` → 106 passed，exit 0（`reports/P1-D2/pytest-p1d2.log`）。\n- `PYTHONDONTWRITEBYTECODE=1 /Users/mac/AinerWorkFlow/AnimeWorldZero/.venv/bin/python reports/P1-D2/check_schema_alignment.py` → 26 例，0 假绿，RESULT: PASS，exit 0；`--failure-control` → 抓到 12/12 假绿，exit 0。\n- 回归：`pytest tests/test_production_review_contract.py tests/test_production_chain.py tests/test_performance.py -q` → 135 passed，exit 0（未改动这些模块）。\n- 输入身份（只读）：schema `34aba041…d23c`（27505 B）、文档 `73c3e889…3946`（8725 B）；r2 归档 `c8ce4696…bec5` / `39d1743a…f15ff` 字节不变，原失败与证据保留。\n- 反例矩阵与正例控制逐项见 `evidence.json`（counterexamples 27/27、positive_controls 4）；`evidence.json` SHA `47e284e251d64ff9bad8ac9ecb89f6da54fe3014ed11dd0ad169dda9450f4000`。\n\n## 未实现 / 未验证边界（fail-closed 口径）\n- `executable` 为真需同时满足：绑定可核对、已执行区间显式传入、控制器由显式能力表登记 executable、部位别名已登记、无冲突/锁/越界/时钟问题；真实 D5 未完成的数据必为 False。\n- 结构层有意把 sim_hz、intensity 范围、lock/error path 语法、pending 执行状态让给语义层，以给出精确 D1 码；12 条差异逐条记在 `schema-alignment.json → divergences`（其中 5 条 structural-deferred、7 条 D2 语义更严）。\n- 24Hz 冒充 120Hz 只能靠 sim_hz 常量与请求/响应 render_fps 一致性检出；不从曲线形状反推源 fps（无证据不猜）。\n- 未做：阈值/过门线（D1 未登记，不编造）、真实音频对齐、D5 控制面、渲染、跨仓 E2E、全量套件。\n\n## 失败与限制\n- 无测试失败；未跑全量 ainer-core 套件（超出文件范围，部分用例需要服务/数据库），仅邻近 135 项回归。\n- 未删除、未覆盖任何既有文件；未改冻结参数与门；未提交/推送。\n\n## 交回统筹\n- 请安排后接非作者复核，重点核对：别名展开的锁判定与唯一写者口径、blend 放行条件、结构层→十码映射表（尤其兜底 `unsupported_action`）。\n- 若确认需要优先级/混合权重字段或专门的记录形状错误码，请走 D1 修订；本实现不放宽、不绕过。\n",
+          "previous_data": {
+            "agent": "deepseek-q5t8",
+            "counterexamples": {
+              "any_executable": false,
+              "by_expected_code": {
+                "changed_past": 1,
+                "control_conflict": 1,
+                "invalid_time_curve": 8,
+                "lock_conflict": 4,
+                "missing_audio_alignment": 1,
+                "out_of_range": 6,
+                "stale_revision": 1,
+                "unknown_actor": 1,
+                "unknown_controller": 2,
+                "unsupported_action": 2
+              },
+              "passed": 27,
+              "total": 27
+            },
+            "cpu_only": true,
+            "date": "2026-10-15",
+            "evidence_files": [
+              "reports/P1-D2/report.md",
+              "reports/P1-D2/evidence.json",
+              "reports/P1-D2/schema-alignment.json",
+              "reports/P1-D2/schema-alignment.log",
+              "reports/P1-D2/schema-alignment-failure-control.json",
+              "reports/P1-D2/schema-alignment-failure-control.log",
+              "reports/P1-D2/pytest-p1d2.log",
+              "reports/P1-D2/check_schema_alignment.py",
+              "reports/P1-D2/collect_evidence.py"
+            ],
+            "inputs": {
+              "d1_doc_sha256": "73c3e88952e50f9e720ac2f80debe2915884a014f8498177e94de6c9ff039946",
+              "d1_schema_sha256": "34aba041558ecbc279ca84d2e846c76ee2334dd621433c086e9b150640b7d23c",
+              "d1_schema_unchanged": true,
+              "r1_r2_archives_unchanged": true,
+              "r2_archive_doc_sha256": "39d1743a69685408775971bbdb6633c2c6357e90aa781c1ac21a3f4678df15ff",
+              "r2_archive_schema_sha256": "c8ce4696a960294de7731d7956a7c3e373eef4b2232e909354dc30230b8bbec5"
+            },
+            "io_free_validator": true,
+            "no_dependency_installs": true,
+            "no_model_no_gpu_no_render": true,
+            "positive_controls": {
+              "registered_fixture_executable": true,
+              "three_examples_ok_not_executable": true,
+              "unbound_response_executable": false,
+              "without_executed_ranges_executable": false
+            },
+            "pytest": {
+              "command": "TMPDIR=/tmp/hub-p1-d2-vR7yCD PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/test_production_performance_contract.py -q",
+              "cwd": "code/apps/ainer-core",
+              "exit": 0,
+              "failed": 0,
+              "passed": 106,
+              "tmp_root": "/tmp/hub-p1-d2-vR7yCD",
+              "warning": "PytestConfigWarning: Unknown config option asyncio_mode"
+            },
+            "regression_pytest": {
+              "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest tests/test_production_review_contract.py tests/test_production_chain.py tests/test_performance.py -q",
+              "exit": 0,
+              "failed": 0,
+              "passed": 135
+            },
+            "schema_alignment": {
+              "canonical_rejected": 0,
+              "cases": 26,
+              "d2_semantic_stricter": 7,
+              "failure_control_caught": 12,
+              "false_green": 0,
+              "structural_deferred_to_semantic": 5
+            },
+            "scope": [
+              "code/apps/ainer-core/app/production/performance_contract.py",
+              "code/apps/ainer-core/tests/test_production_performance_contract.py",
+              "reports/P1-D2/"
+            ],
+            "source_sha256": {
+              "check_schema_alignment.py": "101fc68bca114a73d9b99c7e68640aaf076115b1fb8d4fde7e44336471f5280d",
+              "collect_evidence.py": "6ce8b3c2720ae51c3ce710980c45b674154fdea0d6a95d06645a2247c537e931",
+              "evidence.json": "47e284e251d64ff9bad8ac9ecb89f6da54fe3014ed11dd0ad169dda9450f4000",
+              "performance_contract.py": "bbb2c2ab8b18c45f65219e5abe7f7770dbd9ce3ae0c497f71e5fadfa825acf4c",
+              "test_production_performance_contract.py": "bc643c2714bf2bdd2afb5baa13f20120f88e116cc00c22cf744a525cfe995a5b"
+            },
+            "task": "hub.P1.D2",
+            "three_canonical_takes": {
+              "comedy": {
+                "executable": false,
+                "execution_status": [
+                  "unsupported"
+                ],
+                "mapping_status": [
+                  "pending_D5"
+                ],
+                "ok": true
+              },
+              "dry": {
+                "executable": false,
+                "execution_status": [
+                  "unsupported"
+                ],
+                "mapping_status": [
+                  "pending_D5"
+                ],
+                "ok": true
+              },
+              "suspense": {
+                "executable": false,
+                "execution_status": [
+                  "unsupported"
+                ],
+                "mapping_status": [
+                  "pending_D5"
+                ],
+                "ok": true
+              }
+            },
+            "unverified": [
+              "全量 ainer-core 测试套件（超出文件范围；部分用例需要服务/数据库）",
+              "真实音频、真实角色包 D5 控制面、渲染、E2E",
+              "序列化消费方（谁把本校验器接到 API/执行器）尚未存在",
+              "性能：单条 600 tick 曲线的校验耗时未做基准"
+            ]
+          }
+        }
+      },
+      {
+        "id": 4182,
+        "at": "2026-10-15T20:57:14+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "claude",
+        "type": "message",
+        "message": "一级答复 D2 交回两问（claude）：① v0 无优先级与混合权重字段，同优先级重叠一律 control_conflict、blend 只在显式登记规则+输入时放行——保持，这是正确的保守行为；若以后要优先级/权重，走 D1 schema 修订另开任务。② 错误记录自身形状缺陷落十码兜底 unsupported_action——保持，本轮不增枚举、不改 D1 schema。已建非作者复核任务，",
+        "data": {
+          "message_id": 115,
+          "kind": "notice",
+          "blocking": false,
+          "exec_id": null
+        }
+      },
+      {
+        "id": 4176,
+        "at": "2026-10-15T20:56:29+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "deepseek-q5t8",
+        "type": "reported",
+        "message": "# hub.P1.D2 执行报告（deepseek-q5t8，2026-10-15）",
+        "data": null
+      },
+      {
+        "id": 4172,
+        "at": "2026-10-15T20:56:21+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "deepseek-q5t8",
+        "type": "progress",
+        "message": "D2 完成：106 tests passed + 27 反例 + 26 例 schema 交叉核对；报告与证据已落 reports/P1-D2/，准备 report --next",
+        "data": null
+      },
+      {
+        "id": 4151,
+        "at": "2026-10-15T20:54:05+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "deepseek-q5t8",
+        "type": "progress",
+        "message": "合同模块+106项测试全过（106 passed）；开始做 D1 schema 独立交叉核对与证据归档",
+        "data": null
+      },
+      {
+        "id": 4137,
+        "at": "2026-10-15T20:52:12+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "deepseek-q5t8",
+        "type": "progress",
+        "message": "已读完 D1r3 文档/schema 与 D4 证据；performance_contract.py 初版通过三例与若干反例冒烟；开始写测试",
+        "data": null
+      },
+      {
+        "id": 4086,
+        "at": "2026-10-15T20:46:44+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "deepseek-q5t8",
+        "type": "progress",
+        "message": "已领取；开始读 D1r3 文档/schema 与 D4 复核证据",
+        "data": null
+      },
+      {
+        "id": 4083,
+        "at": "2026-10-15T20:46:11+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "deepseek-q5t8",
+        "type": "claimed",
+        "message": "deepseek-q5t8 领取（第 1 次）",
+        "data": {
+          "params_version": 0
+        }
+      },
+      {
+        "id": 4079,
+        "at": "2026-10-15T20:45:42+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "user",
+        "type": "reserved",
+        "message": "复制预留给 拿到这条复制的人，900 秒",
+        "data": {
+          "mode": "copy",
+          "for": "",
+          "for_kind": "",
+          "ttl": 900
+        }
+      },
+      {
+        "id": 3849,
+        "at": "2026-10-15T19:34:08+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "codex",
+        "type": "edited",
+        "message": "prompt、depends_on",
+        "data": null
+      },
+      {
+        "id": 3601,
+        "at": "2026-10-15T17:42:17+03:00",
+        "project_id": "hub",
+        "task_id": "hub.P1.D2",
+        "actor": "codex",
+        "type": "created",
+        "message": "【代码·数学】表演候选曲线v0纯CPU语义校验",
+        "data": null
+      }
+    ],
+    "attempt_log": [
+      {
+        "id": 480,
+        "task_id": "hub.P1.D2",
+        "project_id": "hub",
+        "agent": "deepseek-q5t8",
+        "claimed_at": 1792086371.077003,
+        "last_beat_at": 1792086981.776203,
+        "beats": 4,
+        "ended_at": 1792086989.402418,
+        "outcome": "reported",
+        "seconds": 618,
+        "note": ""
+      }
+    ],
+    "waiters": []
+  },
+  "ainerzero.V9.A2": {
+    "id": "ainerzero.V9.A2",
+    "project_id": "ainerzero",
+    "track_id": "ainerzero.V9.A",
+    "seq": 2,
+    "title": "【代码】基线冻结清单：D 候选、C0、GridLab 检查点与登记的只读哈希与复验脚本",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "为现有检查点、登记、RunStore 条目生成只读哈希清单与复验脚本（纯 CPU，**不加载 MLX、不做推理**），用于以后任何新结构的“基线保留”验收。不移动、不改写任何既有文件。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "清单可复验；篡改任一文件复验变红",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/spec/AinerWorkFlow_v9_RFC.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/COORDINATION.md"
+    ],
+    "file_scope": [
+      "reports/V9-baseline/",
+      "scripts/v9_baseline_manifest.py"
+    ],
+    "depends_on": [
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "az-v9-a2-baseline",
+    "max_attempts": 3,
+    "attempts": 1,
+    "assignee": null,
+    "author": "deepseek-q7m2",
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": "清单+复验脚本完成：verify 232/232 exit 0，7/7 篡改对照变红；报告与指标 JSON 已写，准备交回",
+    "result": "# ainerzero.V9.A2 执行报告：基线冻结清单与复验脚本\n角色：executor；负责人：`deepseek-q7m2`（deepseek-flash，tier 2）· 时间：2026-10-15 21:47–21:5x（+03:00）\n任务状态：reported；依据：ADR-0012、`docs/design/V9_LANDING_PLAN.md` §3（P0 门槛「基线哈希可复验」）/§4、任务卡 ainerzero.V9.A2 v0\n输入身份：AinerZero HEAD `5175259945b3`、`artifacts/control.sqlite3`（sha256 见清单）；被冻结的 232 个文件全部记录 sha256\n修改文件：**新增** `scripts/v9_baseline_manifest.py`、`reports/V9-baseline/`（清单、台账、证据、本报告）。**未改任何既有文件**（`artifacts/` 与源码零改动，见 §6 的一处如实说明）\n实际执行：`python3 scripts/v9_baseline_manifest.py build|verify|selftest|inventory`（纯 CPU，4.6 s / 4.6 s / 7.8 s）\n验证结果：**verify 232/232 全绿（exit 0）；篡改对照 7 类注入故障全部让 verify 真实非零退出；干净副本 exit 0；两次 build 除时间戳外逐字节相同**\n产物：`reports/V9-baseline/baseline_manifest.json`、`BASELINE_INVENTORY.md`、`selftest.json`、`verify_clean.json`、`scripts/v9_baseline_manifest.py`\n失败与限制：清单不覆盖源码与报告正文；`-wal/-shm` 与 test scratch 不入清单（理由见 §3）；一次只读探索曾更新 `control.sqlite3-shm`（§6）\n交回统筹：建议验收；P0「基线哈希可复验」这一条现在有可执行证据\n\n## 1. 结论摘要\n\n1. **只读清单已建立并自洽**：232 个文件 / 280.8 MB，覆盖 **41 个真实检查点（120.0 MB）**、**C0 与 GridLab2D 两套 episode 数据集（99 文件 / 13.7 MB）**、**88 份登记/预登记文档（78.9 MB）**、**4 个 RunStore 数据库文件（68.2 MB）**。\n2. **可复验**：`verify` 重新哈希全部 232 个文件 + 重算 RunStore 行级摘要，`232/232` 匹配、`problems=[]`、**exit 0**，耗时 4.6 s。\n3. **篡改必变红**：篡改对照把 7 类故障分别注入**临时符号链接副本**（真实文件从不被写）：字节翻转、基线互换、登记文档截断、数据集文件删除、偷偷塞入未登记检查点、RunStore 行被 UPDATE 伪造、清单自身被改 —— **7/7 全部让 `verify` exit 1**，干净副本 exit 0。\n4. **确定性**：连续两次 `build` 的清单除 `generated_at` 外逐字节相同，`manifest_digest` 一致；清单自带自摘要，改清单本身也会变红。\n5. **零模型加载**：脚本只 import `argparse/hashlib/json/os/pathlib/shutil/sqlite3/subprocess/sys/tempfile`；检查点按字节哈希，从不反序列化；脚本入口还有「若已导入 mlx/torch/onnxruntime 就拒绝运行」的守卫（exit 2）。\n6. **RunStore 覆盖完整性有断言支撑**：RunStore 共 79 个 run，其中 32 个在磁盘上有检查点，**全部为 `completed`**，且**全部落在这 41 个已登记检查点里**（`runs_with_checkpoints_only_in_scratch = []`，即没有任何 run 的检查点只存在于易失 scratch）。\n7. **明确的排除规则**（不是漏掉）：`artifacts/**` 下任何路径分量名为 `tmp` 或以 `tmp-` 开头的是 pytest 临时产物（**312 个 `*.safetensors`**），会被后续测试合法重写，因此**记录在清单的 `volatile_checkpoints` 里但不作为冻结对象**；`-wal`/`-shm` 同理。\n\n## 2. 清单内容\n\n| 类别 | 文件数 | 字节 | 说明 |\n|---|---|---|---|\n| `checkpoint` | 41 | 119,999,100 | `m0` 11 + `pilot` 30；含 D 候选（run `96b72328-…`，experiment `m2md-distill-20261013-r2`）与 C0/GridLab 实验运行 |\n| `dataset.c0` | 8 | 492,682 | C0 episode（`manifest.json`/`private.json`/`public.jsonl`）|\n| `dataset.gridlab2d` | 91 | 13,237,307 | GridLab2D 四个切片（s06-sample / s07-sample / s07-r2 / s07-closeout）|\n| `registration` | 88 | 78,918,526 | 80 `.json` + 8 `.md`，含 30 个 pilot `preregistration.json`、E20-d/C06/C06a/C07/S07 等登记与预登记 |\n| `runstore.file` | 4 | 68,161,536 | `control.sqlite3`(63.2 MB)、`.bak-20261011`(4.9 MB)、`m0/control.sqlite3`、`run_store.db`(0 B) |\n| **合计** | **232** | **280,809,151** | `manifest_digest = f36594143a851580…` |\n\n**RunStore 条目（行级，跨 VACUUM/WAL checkpoint 稳定）**\n\n| 库 | 打开方式 | 表行数 | entries_digest |\n|---|---|---|---|\n| `artifacts/control.sqlite3` | `immutable=1`（WAL 为空） | runs 79 / experiments 44 / run_transitions 417 / daily_budget 13 / metadata 2 | `9f2bfac5f5bb192f…` |\n| `.bak-20261011` | `immutable=1` | runs 56 / experiments 21 / run_transitions 291 / daily_budget 9 / metadata 2 | `0087b2779b44b5c8…` |\n| `artifacts/m0/control.sqlite3` | `immutable=1` | runs 4 / run_transitions 27 / daily_budget 1 / metadata 2 | `de00db1c66bf475b…` |\n| `artifacts/run_store.db` | `immutable=1` | 无表（0 字节） | `4f53cda18c2baa0c…` |\n\n汇总 `runstore.entries_digest = 18e491ef60fbb91a…`；另有 `runs_with_checkpoints`（32 个 run → 其检查点路径）与 `runs_with_checkpoints_only_in_scratch = []`。\n\n逐检查点台账（run_id → run state → experiment、大小与 sha256 前缀）在 **[BASELINE_INVENTORY.md](BASELINE_INVENTORY.md)**。\n\n## 3. 冻结口径（写入 `manifest.policy`，不写在注释里）\n\n- **pin**：`artifacts/**/*.safetensors`（排除易失 scratch）、`artifacts/**` 下名字含 `registration` 或名为 `preregistration.json` 的 `.json/.md`、`artifacts/c0/**`、`artifacts/gridlab2d/**`、四个 RunStore 文件。\n- **excluded_volatile_rule**：路径任一分量为 `tmp` 或以 `tmp-` 开头。实测排除 312 个 `*.safetensors`（`onestep-identity-tests`、`onestep-identity-tests-review`、`E29-halfproj/review/.../runs/default-cpu-run/tmp/` 等 pytest/runs 临时目录）。**它们被记入清单的 `volatile_checkpoints` 列表**，所以不是静默丢弃。\n- **excluded_transient**：`*-wal`、`*-shm`（SQLite 侧文件，读写会更新 mtime；WAL 现为 0 字节）。\n- **新增文件也算变更**：`verify` 会重新扫描受约束范围，任何未登记的新 `*.safetensors`/登记文档/数据集文件都会产生 `unexpected_new_file` 并变红（对照第 5 例）。\n- **never_loaded**：检查点只被按字节哈希。\n\n## 4. 篡改对照（`selftest`，全部在临时符号链接副本上）\n\n| # | 注入的故障 | `verify` 结果 | 退出码 | 命中的判定 |\n|---|---|---|---|---|\n| 0 | 无（干净副本） | ok | **0** | — |\n| 1 | 翻转某检查点一个字节（**长度不变**） | RED | **1** | `sha256_changed` |\n| 2 | 用另一个已登记检查点的字节覆盖当前检查点（基线互换） | RED | **1** | `size_changed` |\n| 3 | 把某登记文档截断成 `{}` | RED | **1** | `size_changed` |\n| 4 | 删除某 C0 数据集文件 | RED | **1** | `missing` |\n| 5 | 在某检查点旁塞入未登记的 `smuggled-extra.safetensors` | RED | **1** | `unexpected_new_file` |\n| 6 | 对 RunStore 副本 `UPDATE runs SET state='completed_forged'`（1 行） | RED | **1** | `runstore_entries_changed` + `sha256_changed`（DB 文件本身也变了） |\n| 7 | 手工改清单副本里 `files[0].sha256` | RED | **1** | `manifest_digest` + `sha256_changed` |\n\n原样输出：`reports/V9-baseline/selftest.json`、`selftest.stderr`；脚本在这些都通过时打印\n`selftest: clean copy green, all 7 injected faults detected` 并 **exit 0**，只要有任一故障没被抓到就 exit 1。\n\n**为什么用符号链接副本**：真实 `artifacts/` 必须保持只读，对照只能改副本；副本里除四个数据库用 APFS `cp -c` 克隆外全是符号链接，校验的仍是真实文件的内容，所以「改坏→变红」测的是同一条代码路径。\n\n## 5. 实际命令\n\n```bash\ncd /Users/mac/AinerWorkFlow/AinerZero\npython3 scripts/v9_baseline_manifest.py build      # 4.6 s，写 reports/V9-baseline/baseline_manifest.json\npython3 scripts/v9_baseline_manifest.py verify     # 4.6 s，232/232，exit 0\npython3 scripts/v9_baseline_manifest.py selftest   # 7.8 s，7/7 注入故障被抓，exit 0\npython3 scripts/v9_baseline_manifest.py inventory  # 写 BASELINE_INVENTORY.md\npython3 scripts/v9_baseline_manifest.py verify --json > reports/V9-baseline/verify_clean.json\n```\n\n二次 `build` 到临时路径与正式清单对比：除 `generated_at` 外**完全相同**（含 `manifest_digest`）。\n\n## 6. 失败与限制（含一处如实说明）\n\n1. **我的一次只读探索更新了 `artifacts/control.sqlite3-shm` 的 mtime**（32 KB 共享内存索引，21:48→21:49）。这是用 `sqlite3.connect(..., mode=ro)` 列 RunStore 表时的 SQLite 行为。主库 `control.sqlite3` mtime 仍是 Oct 14 23:00、`-wal` 仍是 Oct 14 23:17 且 0 字节，均未被写；`-shm` 是纯缓存/索引、不入清单。**此后工具改用 `immutable=1`（WAL 为空时）或临时克隆，不再触碰 artifact 树内的任何文件**。除此之外 `artifacts/` 与 `src/` 零改动（`verify` 232/232 全绿可证）。\n2. **清单不覆盖源码、报告正文、非检查点数据**（如 `spacetime/`、`locks/`、测试与日志）。本卡范围是「检查点、登记、RunStore」，如果要冻结 `src/ainerzero/**` 的源码身份，建议另开一卡（或把 `src` 加进 pin 策略后重新 build —— 注意新模块会改变「新增文件」判定，需要同时放宽该类别）。\n3. **`-wal/-shm` 不入清单**，因此若将来有进程把 WAL 里未 checkpoint 的内容写回主库，主库 sha 会变红（这是期望行为），但也说明「RunStore 文件级 sha」只在下一次写入前有效；语义身份以行级 `entries_digest` 为准。\n4. **D 候选/GridLab 的“能力”未在本卡验证**：本卡只冻结身份，不评价任何检查点的能力或是否应晋升。清单里 32 个 run 全为 `completed` 只表示运行状态，不代表能力通过。\n5. **未做**：不加载 MLX/不推理（脚本层面拒绝）、不训练、不下载、不安装、不付费、不提交推送、不删除；未改文件范围外的任何文件。\n6. **8 个检查点不在 RunStore 里**（`interrupted-*` 与被中断运行的产物、`pilot-*/probes/*-probes/tensors.safetensors`）：它们仍被冻结（同属 `pilot` 树），台账里标为 `(not in RunStore)`，不是遗漏而是如实标注。\n\n## 7. 交回统筹\n\n- **建议验收 ainerzero.V9.A2**：P0 门槛「基线哈希可复验」现在有可执行证据（`verify` exit 0 / 篡改 exit 1）。\n- **后续卡可直接复用**：`ainerzero.V9.A3`（独立复核 A2）应至少复跑 `verify` 与 `selftest`，并对清单策略本身做对抗（例如：把 scratch 里的检查点冒充基线、改动 `policy` 里的排除规则后再篡改、检查 `entries_digest` 是否真随 RunStore 行变化）。\n- **需要统筹决定**：是否把 `src/ainerzero/**`（或 `ARCHITECTURE_V9.md` 等设计文档）也纳入冻结范围；本卡按文件范围未做。\n",
+    "result_data": {
+      "task": "ainerzero.V9.A2",
+      "agent": "deepseek-q7m2",
+      "role": "executor",
+      "head": "5175259945b3f7f3a144d3b51995b20fd67f998e",
+      "deliverables": {
+        "script": "scripts/v9_baseline_manifest.py",
+        "script_sha256": "76dbc9ae78dad9a9e51d1477fb0a53f297e9d1ea880bd85ee15c047e387c5852",
+        "manifest": "reports/V9-baseline/baseline_manifest.json",
+        "manifest_digest": "f36594143a851580964806e3c510ce2c7395046a4b116ea49afc960f5e16f38c",
+        "inventory": "reports/V9-baseline/BASELINE_INVENTORY.md"
+      },
+      "coverage": {
+        "checkpoint": {
+          "bytes": 119999100,
+          "files": 41
+        },
+        "dataset.c0": {
+          "bytes": 492682,
+          "files": 8
+        },
+        "dataset.gridlab2d": {
+          "bytes": 13237307,
+          "files": 91
+        },
+        "registration": {
+          "bytes": 78918526,
+          "files": 88
+        },
+        "runstore.file": {
+          "bytes": 68161536,
+          "files": 4
+        }
+      },
+      "files_total": 232,
+      "bytes_total": 280809151,
+      "volatile_checkpoints_excluded": 312,
+      "runstore": {
+        "databases": {
+          "artifacts/control.sqlite3": {
+            "rows": {
+              "daily_budget": 13,
+              "experiments": 44,
+              "metadata": 2,
+              "run_transitions": 417,
+              "runs": 79
+            },
+            "entries_digest": "9f2bfac5f5bb192f853b03e055dd39ee6935ce53b49f42d15abc0ec185a1595e"
+          },
+          "artifacts/control.sqlite3.bak-20261011": {
+            "rows": {
+              "daily_budget": 9,
+              "experiments": 21,
+              "metadata": 2,
+              "run_transitions": 291,
+              "runs": 56
+            },
+            "entries_digest": "0087b2779b44b5c8c41f14ef65071ca85605b20878f0b323844ac6a550c70526"
+          },
+          "artifacts/m0/control.sqlite3": {
+            "rows": {
+              "daily_budget": 1,
+              "metadata": 2,
+              "run_transitions": 27,
+              "runs": 4
+            },
+            "entries_digest": "de00db1c66bf475b21d1d85cbb0311d427d1ea03bc68343edd38d9c80ad8e0d6"
+          },
+          "artifacts/run_store.db": {
+            "rows": {},
+            "entries_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+          }
+        },
+        "entries_digest": "18e491ef60fbb91a0178f448b1ed32e113f64c42deddf5c28d72ee93fe378e6c",
+        "runs_total": 79,
+        "runs_with_pinned_checkpoints": 32,
+        "runs_with_checkpoints_only_in_scratch": []
+      },
+      "verify": {
+        "verdict": "ok",
+        "files_pinned": 232,
+        "files_ok": 232,
+        "problems": [],
+        "exit": 0
+      },
+      "tamper_control": {
+        "cases": 7,
+        "detected": 7,
+        "clean_exit": 0,
+        "blind": [],
+        "exit_codes": {
+          "clean": 0,
+          "checkpoint_byte_flip": 1,
+          "checkpoint_swapped": 1,
+          "registration_truncated": 1,
+          "dataset_file_deleted": 1,
+          "checkpoint_smuggled_in": 1,
+          "runstore_row_forged": 1,
+          "manifest_self_edited": 1
+        }
+      },
+      "determinism": {
+        "two_builds_identical_excluding_generated_at": true
+      },
+      "model_runtime_loaded": false,
+      "gpu_used": false,
+      "artifacts_written": [],
+      "known_side_effect": "two exploratory read-only sqlite connects (before the tool existed) updated artifacts/control.sqlite3-shm mtime; the main DB and -wal were not written; the tool itself uses immutable=1 / temp clones and touches nothing in the artifact tree"
+    },
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T21:47:51+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": 1792090398.391314,
+    "beats": 2,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792101682.030546,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4648,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.A2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4568,
+        "at": "2026-10-16T09:24:43+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.A2",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4403,
+        "at": "2026-10-16T01:01:22+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.A2",
+        "actor": "claude",
+        "type": "rejected",
+        "message": "非作者 A3（reports/V-V9-baseline/）确认核心承诺成立（232 可复验、7 类篡改变红、确定性、零模型加载），但“基线冻结清单”的完整性有缺口，按 A3 必补：1) D 候选运行 pilot-b4e75e…/96b72328-… 的 manifest.json、metadata.json、fixed-batch.npz、training-pool.npz、training-schedule.npy、report.json、updates.jsonl 必须钉选；2) 全部检查点目录的 manifest/metadata（A3 计 78 个）与运行级数据/报告/配置（A3 计 157 个）要么钉选，要么写进 manifest.policy 的明确排除清单并逐类给理由，不得静默遗漏；3) 钉选目录内出现未登记文件（任何扩展名）必须变红，或修正注释与行为一致；4) RunStore 字节级钉选遇合法 VACUUM 会误判，登记为限制或改为“行级摘要为主、字节为辅”并说明。原 r1 清单与证据保留，r2 写 reports/V9-baseline/r2/；纯 CPU、不加载模型、真实 artifacts 零写入。交回后由新建的 ainerzero.V9.A4 非作者复核。",
+        "data": {
+          "requeue": true,
+          "previous_result": "# ainerzero.V9.A2 执行报告：基线冻结清单与复验脚本\n角色：executor；负责人：`deepseek-q7m2`（deepseek-flash，tier 2）· 时间：2026-10-15 21:47–21:5x（+03:00）\n任务状态：reported；依据：ADR-0012、`docs/design/V9_LANDING_PLAN.md` §3（P0 门槛「基线哈希可复验」）/§4、任务卡 ainerzero.V9.A2 v0\n输入身份：AinerZero HEAD `5175259945b3`、`artifacts/control.sqlite3`（sha256 见清单）；被冻结的 232 个文件全部记录 sha256\n修改文件：**新增** `scripts/v9_baseline_manifest.py`、`reports/V9-baseline/`（清单、台账、证据、本报告）。**未改任何既有文件**（`artifacts/` 与源码零改动，见 §6 的一处如实说明）\n实际执行：`python3 scripts/v9_baseline_manifest.py build|verify|selftest|inventory`（纯 CPU，4.6 s / 4.6 s / 7.8 s）\n验证结果：**verify 232/232 全绿（exit 0）；篡改对照 7 类注入故障全部让 verify 真实非零退出；干净副本 exit 0；两次 build 除时间戳外逐字节相同**\n产物：`reports/V9-baseline/baseline_manifest.json`、`BASELINE_INVENTORY.md`、`selftest.json`、`verify_clean.json`、`scripts/v9_baseline_manifest.py`\n失败与限制：清单不覆盖源码与报告正文；`-wal/-shm` 与 test scratch 不入清单（理由见 §3）；一次只读探索曾更新 `control.sqlite3-shm`（§6）\n交回统筹：建议验收；P0「基线哈希可复验」这一条现在有可执行证据\n\n## 1. 结论摘要\n\n1. **只读清单已建立并自洽**：232 个文件 / 280.8 MB，覆盖 **41 个真实检查点（120.0 MB）**、**C0 与 GridLab2D 两套 episode 数据集（99 文件 / 13.7 MB）**、**88 份登记/预登记文档（78.9 MB）**、**4 个 RunStore 数据库文件（68.2 MB）**。\n2. **可复验**：`verify` 重新哈希全部 232 个文件 + 重算 RunStore 行级摘要，`232/232` 匹配、`problems=[]`、**exit 0**，耗时 4.6 s。\n3. **篡改必变红**：篡改对照把 7 类故障分别注入**临时符号链接副本**（真实文件从不被写）：字节翻转、基线互换、登记文档截断、数据集文件删除、偷偷塞入未登记检查点、RunStore 行被 UPDATE 伪造、清单自身被改 —— **7/7 全部让 `verify` exit 1**，干净副本 exit 0。\n4. **确定性**：连续两次 `build` 的清单除 `generated_at` 外逐字节相同，`manifest_digest` 一致；清单自带自摘要，改清单本身也会变红。\n5. **零模型加载**：脚本只 import `argparse/hashlib/json/os/pathlib/shutil/sqlite3/subprocess/sys/tempfile`；检查点按字节哈希，从不反序列化；脚本入口还有「若已导入 mlx/torch/onnxruntime 就拒绝运行」的守卫（exit 2）。\n6. **RunStore 覆盖完整性有断言支撑**：RunStore 共 79 个 run，其中 32 个在磁盘上有检查点，**全部为 `completed`**，且**全部落在这 41 个已登记检查点里**（`runs_with_checkpoints_only_in_scratch = []`，即没有任何 run 的检查点只存在于易失 scratch）。\n7. **明确的排除规则**（不是漏掉）：`artifacts/**` 下任何路径分量名为 `tmp` 或以 `tmp-` 开头的是 pytest 临时产物（**312 个 `*.safetensors`**），会被后续测试合法重写，因此**记录在清单的 `volatile_checkpoints` 里但不作为冻结对象**；`-wal`/`-shm` 同理。\n\n## 2. 清单内容\n\n| 类别 | 文件数 | 字节 | 说明 |\n|---|---|---|---|\n| `checkpoint` | 41 | 119,999,100 | `m0` 11 + `pilot` 30；含 D 候选（run `96b72328-…`，experiment `m2md-distill-20261013-r2`）与 C0/GridLab 实验运行 |\n| `dataset.c0` | 8 | 492,682 | C0 episode（`manifest.json`/`private.json`/`public.jsonl`）|\n| `dataset.gridlab2d` | 91 | 13,237,307 | GridLab2D 四个切片（s06-sample / s07-sample / s07-r2 / s07-closeout）|\n| `registration` | 88 | 78,918,526 | 80 `.json` + 8 `.md`，含 30 个 pilot `preregistration.json`、E20-d/C06/C06a/C07/S07 等登记与预登记 |\n| `runstore.file` | 4 | 68,161,536 | `control.sqlite3`(63.2 MB)、`.bak-20261011`(4.9 MB)、`m0/control.sqlite3`、`run_store.db`(0 B) |\n| **合计** | **232** | **280,809,151** | `manifest_digest = f36594143a851580…` |\n\n**RunStore 条目（行级，跨 VACUUM/WAL checkpoint 稳定）**\n\n| 库 | 打开方式 | 表行数 | entries_digest |\n|---|---|---|---|\n| `artifacts/control.sqlite3` | `immutable=1`（WAL 为空） | runs 79 / experiments 44 / run_transitions 417 / daily_budget 13 / metadata 2 | `9f2bfac5f5bb192f…` |\n| `.bak-20261011` | `immutable=1` | runs 56 / experiments 21 / run_transitions 291 / daily_budget 9 / metadata 2 | `0087b2779b44b5c8…` |\n| `artifacts/m0/control.sqlite3` | `immutable=1` | runs 4 / run_transitions 27 / daily_budget 1 / metadata 2 | `de00db1c66bf475b…` |\n| `artifacts/run_store.db` | `immutable=1` | 无表（0 字节） | `4f53cda18c2baa0c…` |\n\n汇总 `runstore.entries_digest = 18e491ef60fbb91a…`；另有 `runs_with_checkpoints`（32 个 run → 其检查点路径）与 `runs_with_checkpoints_only_in_scratch = []`。\n\n逐检查点台账（run_id → run state → experiment、大小与 sha256 前缀）在 **[BASELINE_INVENTORY.md](BASELINE_INVENTORY.md)**。\n\n## 3. 冻结口径（写入 `manifest.policy`，不写在注释里）\n\n- **pin**：`artifacts/**/*.safetensors`（排除易失 scratch）、`artifacts/**` 下名字含 `registration` 或名为 `preregistration.json` 的 `.json/.md`、`artifacts/c0/**`、`artifacts/gridlab2d/**`、四个 RunStore 文件。\n- **excluded_volatile_rule**：路径任一分量为 `tmp` 或以 `tmp-` 开头。实测排除 312 个 `*.safetensors`（`onestep-identity-tests`、`onestep-identity-tests-review`、`E29-halfproj/review/.../runs/default-cpu-run/tmp/` 等 pytest/runs 临时目录）。**它们被记入清单的 `volatile_checkpoints` 列表**，所以不是静默丢弃。\n- **excluded_transient**：`*-wal`、`*-shm`（SQLite 侧文件，读写会更新 mtime；WAL 现为 0 字节）。\n- **新增文件也算变更**：`verify` 会重新扫描受约束范围，任何未登记的新 `*.safetensors`/登记文档/数据集文件都会产生 `unexpected_new_file` 并变红（对照第 5 例）。\n- **never_loaded**：检查点只被按字节哈希。\n\n## 4. 篡改对照（`selftest`，全部在临时符号链接副本上）\n\n| # | 注入的故障 | `verify` 结果 | 退出码 | 命中的判定 |\n|---|---|---|---|---|\n| 0 | 无（干净副本） | ok | **0** | — |\n| 1 | 翻转某检查点一个字节（**长度不变**） | RED | **1** | `sha256_changed` |\n| 2 | 用另一个已登记检查点的字节覆盖当前检查点（基线互换） | RED | **1** | `size_changed` |\n| 3 | 把某登记文档截断成 `{}` | RED | **1** | `size_changed` |\n| 4 | 删除某 C0 数据集文件 | RED | **1** | `missing` |\n| 5 | 在某检查点旁塞入未登记的 `smuggled-extra.safetensors` | RED | **1** | `unexpected_new_file` |\n| 6 | 对 RunStore 副本 `UPDATE runs SET state='completed_forged'`（1 行） | RED | **1** | `runstore_entries_changed` + `sha256_changed`（DB 文件本身也变了） |\n| 7 | 手工改清单副本里 `files[0].sha256` | RED | **1** | `manifest_digest` + `sha256_changed` |\n\n原样输出：`reports/V9-baseline/selftest.json`、`selftest.stderr`；脚本在这些都通过时打印\n`selftest: clean copy green, all 7 injected faults detected` 并 **exit 0**，只要有任一故障没被抓到就 exit 1。\n\n**为什么用符号链接副本**：真实 `artifacts/` 必须保持只读，对照只能改副本；副本里除四个数据库用 APFS `cp -c` 克隆外全是符号链接，校验的仍是真实文件的内容，所以「改坏→变红」测的是同一条代码路径。\n\n## 5. 实际命令\n\n```bash\ncd /Users/mac/AinerWorkFlow/AinerZero\npython3 scripts/v9_baseline_manifest.py build      # 4.6 s，写 reports/V9-baseline/baseline_manifest.json\npython3 scripts/v9_baseline_manifest.py verify     # 4.6 s，232/232，exit 0\npython3 scripts/v9_baseline_manifest.py selftest   # 7.8 s，7/7 注入故障被抓，exit 0\npython3 scripts/v9_baseline_manifest.py inventory  # 写 BASELINE_INVENTORY.md\npython3 scripts/v9_baseline_manifest.py verify --json > reports/V9-baseline/verify_clean.json\n```\n\n二次 `build` 到临时路径与正式清单对比：除 `generated_at` 外**完全相同**（含 `manifest_digest`）。\n\n## 6. 失败与限制（含一处如实说明）\n\n1. **我的一次只读探索更新了 `artifacts/control.sqlite3-shm` 的 mtime**（32 KB 共享内存索引，21:48→21:49）。这是用 `sqlite3.connect(..., mode=ro)` 列 RunStore 表时的 SQLite 行为。主库 `control.sqlite3` mtime 仍是 Oct 14 23:00、`-wal` 仍是 Oct 14 23:17 且 0 字节，均未被写；`-shm` 是纯缓存/索引、不入清单。**此后工具改用 `immutable=1`（WAL 为空时）或临时克隆，不再触碰 artifact 树内的任何文件**。除此之外 `artifacts/` 与 `src/` 零改动（`verify` 232/232 全绿可证）。\n2. **清单不覆盖源码、报告正文、非检查点数据**（如 `spacetime/`、`locks/`、测试与日志）。本卡范围是「检查点、登记、RunStore」，如果要冻结 `src/ainerzero/**` 的源码身份，建议另开一卡（或把 `src` 加进 pin 策略后重新 build —— 注意新模块会改变「新增文件」判定，需要同时放宽该类别）。\n3. **`-wal/-shm` 不入清单**，因此若将来有进程把 WAL 里未 checkpoint 的内容写回主库，主库 sha 会变红（这是期望行为），但也说明「RunStore 文件级 sha」只在下一次写入前有效；语义身份以行级 `entries_digest` 为准。\n4. **D 候选/GridLab 的“能力”未在本卡验证**：本卡只冻结身份，不评价任何检查点的能力或是否应晋升。清单里 32 个 run 全为 `completed` 只表示运行状态，不代表能力通过。\n5. **未做**：不加载 MLX/不推理（脚本层面拒绝）、不训练、不下载、不安装、不付费、不提交推送、不删除；未改文件范围外的任何文件。\n6. **8 个检查点不在 RunStore 里**（`interrupted-*` 与被中断运行的产物、`pilot-*/probes/*-probes/tensors.safetensors`）：它们仍被冻结（同属 `pilot` 树），台账里标为 `(not in RunStore)`，不是遗漏而是如实标注。\n\n## 7. 交回统筹\n\n- **建议验收 ainerzero.V9.A2**：P0 门槛「基线哈希可复验」现在有可执行证据（`verify` exit 0 / 篡改 exit 1）。\n- **后续卡可直接复用**：`ainerzero.V9.A3`（独立复核 A2）应至少复跑 `verify` 与 `selftest`，并对清单策略本身做对抗（例如：把 scratch 里的检查点冒充基线、改动 `policy` 里的排除规则后再篡改、检查 `entries_digest` 是否真随 RunStore 行变化）。\n- **需要统筹决定**：是否把 `src/ainerzero/**`（或 `ARCHITECTURE_V9.md` 等设计文档）也纳入冻结范围；本卡按文件范围未做。\n",
+          "previous_data": {
+            "task": "ainerzero.V9.A2",
+            "agent": "deepseek-q7m2",
+            "role": "executor",
+            "head": "5175259945b3f7f3a144d3b51995b20fd67f998e",
+            "deliverables": {
+              "script": "scripts/v9_baseline_manifest.py",
+              "script_sha256": "76dbc9ae78dad9a9e51d1477fb0a53f297e9d1ea880bd85ee15c047e387c5852",
+              "manifest": "reports/V9-baseline/baseline_manifest.json",
+              "manifest_digest": "f36594143a851580964806e3c510ce2c7395046a4b116ea49afc960f5e16f38c",
+              "inventory": "reports/V9-baseline/BASELINE_INVENTORY.md"
+            },
+            "coverage": {
+              "checkpoint": {
+                "bytes": 119999100,
+                "files": 41
+              },
+              "dataset.c0": {
+                "bytes": 492682,
+                "files": 8
+              },
+              "dataset.gridlab2d": {
+                "bytes": 13237307,
+                "files": 91
+              },
+              "registration": {
+                "bytes": 78918526,
+                "files": 88
+              },
+              "runstore.file": {
+                "bytes": 68161536,
+                "files": 4
+              }
+            },
+            "files_total": 232,
+            "bytes_total": 280809151,
+            "volatile_checkpoints_excluded": 312,
+            "runstore": {
+              "databases": {
+                "artifacts/control.sqlite3": {
+                  "rows": {
+                    "daily_budget": 13,
+                    "experiments": 44,
+                    "metadata": 2,
+                    "run_transitions": 417,
+                    "runs": 79
+                  },
+                  "entries_digest": "9f2bfac5f5bb192f853b03e055dd39ee6935ce53b49f42d15abc0ec185a1595e"
+                },
+                "artifacts/control.sqlite3.bak-20261011": {
+                  "rows": {
+                    "daily_budget": 9,
+                    "experiments": 21,
+                    "metadata": 2,
+                    "run_transitions": 291,
+                    "runs": 56
+                  },
+                  "entries_digest": "0087b2779b44b5c8c41f14ef65071ca85605b20878f0b323844ac6a550c70526"
+                },
+                "artifacts/m0/control.sqlite3": {
+                  "rows": {
+                    "daily_budget": 1,
+                    "metadata": 2,
+                    "run_transitions": 27,
+                    "runs": 4
+                  },
+                  "entries_digest": "de00db1c66bf475b21d1d85cbb0311d427d1ea03bc68343edd38d9c80ad8e0d6"
+                },
+                "artifacts/run_store.db": {
+                  "rows": {},
+                  "entries_digest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+                }
+              },
+              "entries_digest": "18e491ef60fbb91a0178f448b1ed32e113f64c42deddf5c28d72ee93fe378e6c",
+              "runs_total": 79,
+              "runs_with_pinned_checkpoints": 32,
+              "runs_with_checkpoints_only_in_scratch": []
+            },
+            "verify": {
+              "verdict": "ok",
+              "files_pinned": 232,
+              "files_ok": 232,
+              "problems": [],
+              "exit": 0
+            },
+            "tamper_control": {
+              "cases": 7,
+              "detected": 7,
+              "clean_exit": 0,
+              "blind": [],
+              "exit_codes": {
+                "clean": 0,
+                "checkpoint_byte_flip": 1,
+                "checkpoint_swapped": 1,
+                "registration_truncated": 1,
+                "dataset_file_deleted": 1,
+                "checkpoint_smuggled_in": 1,
+                "runstore_row_forged": 1,
+                "manifest_self_edited": 1
+              }
+            },
+            "determinism": {
+              "two_builds_identical_excluding_generated_at": true
+            },
+            "model_runtime_loaded": false,
+            "gpu_used": false,
+            "artifacts_written": [],
+            "known_side_effect": "two exploratory read-only sqlite connects (before the tool existed) updated artifacts/control.sqlite3-shm mtime; the main DB and -wal were not written; the tool itself uses immutable=1 / temp clones and touches nothing in the artifact tree"
+          }
+        }
+      },
+      {
+        "id": 4355,
+        "at": "2026-10-15T21:53:18+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.A2",
+        "actor": "deepseek-q7m2",
+        "type": "reported",
+        "message": "# ainerzero.V9.A2 执行报告：基线冻结清单与复验脚本",
+        "data": null
+      },
+      {
+        "id": 4354,
+        "at": "2026-10-15T21:53:18+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.A2",
+        "actor": "deepseek-q7m2",
+        "type": "progress",
+        "message": "清单+复验脚本完成：verify 232/232 exit 0，7/7 篡改对照变红；报告与指标 JSON 已写，准备交回",
+        "data": null
+      },
+      {
+        "id": 4335,
+        "at": "2026-10-15T21:48:01+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.A2",
+        "actor": "deepseek-q7m2",
+        "type": "progress",
+        "message": "已领任务，开始读必读文件与盘点基线",
+        "data": null
+      },
+      {
+        "id": 4323,
+        "at": "2026-10-15T21:47:51+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.A2",
+        "actor": "deepseek-q7m2",
+        "type": "claimed",
+        "message": "deepseek-q7m2 领取（第 1 次）",
+        "data": {
+          "params_version": 0
+        }
+      },
+      {
+        "id": 4314,
+        "at": "2026-10-15T21:47:51+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.A2",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】基线冻结清单：D 候选、C0、GridLab 检查点与登记的只读哈希与复验脚本",
+        "data": null
+      }
+    ],
+    "attempt_log": [
+      {
+        "id": 498,
+        "task_id": "ainerzero.V9.A2",
+        "project_id": "ainerzero",
+        "agent": "deepseek-q7m2",
+        "claimed_at": 1792090071.990798,
+        "last_beat_at": 1792090398.391314,
+        "beats": 2,
+        "ended_at": 1792090398.516478,
+        "outcome": "reported",
+        "seconds": 327,
+        "note": ""
+      }
+    ],
+    "waiters": []
+  },
+  "ainerzero.V9.T2": {
+    "id": "ainerzero.V9.T2",
+    "project_id": "ainerzero",
+    "track_id": "ainerzero.V9.T",
+    "seq": 2,
+    "title": "【代码】教师特征缓存与运行模式守卫（纯 CPU，假教师）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 T1 实现缓存读写（内容寻址、元数据完整、重跑哈希可复现）与运行模式守卫（Train Mode 下加载任何教师即拒绝；Teacher Mode 一次只常驻一个教师；模式切换卸载检查）；用假教师（确定性随机特征）测试，不下载任何模型、不导入 MLX/torch。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 以 docs/v9/TEACHERS_AND_CACHE.md r1 与 contracts/v9/teacher_cache.v1.schema.json 为准；v0 只作历史。\n- 单锁 `artifacts/locks/m0-worker.lock` 整段持有、非阻塞取锁失败即 skipped_lock_busy、崩溃由内核释放；租约说明文件只用于观察。\n- 内容块与来源条目两层写入、原子改名、读时核验、broken 标记、`cross_partition_blob` 拒绝；实现 reports/V9-T1/r1/check_teacher_cache_v1.py 的全部库级规则。\n- 用真实双进程测试复现 lock_model_check.py 的结论（在临时目录用临时锁文件，不碰真实 artifacts/locks）。\n\n【T1 r2 更新（2026-10-16）】以 TEACHERS_AND_CACHE r2 与 contracts/v9/teacher_cache.v2.schema.json 为准（v1 只作历史）：来源条目的 upstream/derivation 与训练资格交集、external_derived 默认拒训、同块多来源逐条判定、use=input 的 as_of_t_s 截止；实现 reports/V9-T1/r2/check_teacher_cache_v2.py 的 store_problems 与 train_eligible。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；未获批准不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n\n## V9-r5-20261016 定版收口要求\n必须等待T1回应T17 B1–B4的新修订及T18非作者建议通过。落实可信不可变upstream来源（AWZ固定external_derived）、当前空ADR批准集合拒训、blob真实时间与source及Observation同域绑定、derivation三项指纹匹配。原单锁/双进程/内容-来源分离与跨分区拒绝仍必测；r2候选未通过不能直接照搬。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "缓存可复现；元数据缺失拒写；模式违规必拒；改坏守卫测试变红",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/docs/research/M2Max_NoCUDA_Integration_Plan.source.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md"
+    ],
+    "file_scope": [
+      "src/ainerzero/v9/teachers/",
+      "tests/v9/teachers/",
+      "reports/V9-T2/"
+    ],
+    "depends_on": [
+      "ainerzero.V9.T1",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "az-v9-t2-cache",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T01:34:47+03:00",
+    "updated_at": "2026-10-16T11:49:01+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792103687.3951628,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "ainerzero.V9.T1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4710,
+        "at": "2026-10-16T11:49:01+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T2",
+        "actor": "codex",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4674,
+        "at": "2026-10-16T09:50:11+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4651,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4595,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files",
+        "data": null
+      },
+      {
+        "id": 4571,
+        "at": "2026-10-16T09:24:44+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T2",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4418,
+        "at": "2026-10-16T01:34:47+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T2",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】教师特征缓存与运行模式守卫（纯 CPU，假教师）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "ainerzero.V9.T4": {
+    "id": "ainerzero.V9.T4",
+    "project_id": "ainerzero",
+    "track_id": "ainerzero.V9.T",
+    "seq": 4,
+    "title": "【代码·环境·GPU基准】V9.T4 教师接入：vjepa2-mlx + V-JEPA 2.1 ViT-L + Core ML Depth Anything V2 Small，M2 Max 基准（用户已批准）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "用户 2026-10-16 批准（原话「批准 T4」，记录见 AinerZero RESEARCH_LOG `R20261016-T4`）。只做下面批准范围内的事；遇到范围外的需要（例如要装 PyTorch、要下其他文件、超预算）立即停下，在报告里写明并 report，不要自行扩大。\n\n## 1. 隔离环境\n- `uv venv envs/teachers/.venv-t4`（Python 版本按上游要求，记录）。不碰仓库主环境 `.venv*`，不装到系统 Python。开工前、收工后各存一份主环境 `uv pip freeze`，证明未变。\n- 克隆 `https://github.com/dgrauet/vjepa2-mlx` 到 `envs/teachers/src/vjepa2-mlx`，记录 commit；只 `uv pip install -e packages/vjepa2-core-mlx`。`[parity]` 额外依赖若会拉入 torch 就不装。\n- 另装 `coremltools`（运行 Core ML 必需）。\n- 全部版本存 `reports/V9-T4/env.lock.txt`。\n\n## 2. 下载（总量 ≤ 2 GB，超出即停）\n- HF `dgrauet/vjepa-2.1-vitl-mlx`（许可 mit）：encoder.safetensors、predictor.safetensors、config.json、split_model.json、README.md。\n- HF `apple/coreml-depth-anything-v2-small`（许可 apache-2.0）：只要 `DepthAnythingV2SmallF16.mlpackage`、`DepthAnythingV2SmallF32.mlpackage` 和 README.md，不下其他 6 个变体。\n- `HF_HOME=artifacts/teachers/hf-cache`；每个仓库下载到 `artifacts/teachers/<repo>/` 下一个新的空目录。\n- 记录每个仓库的 HF revision（commit）和每个文件 SHA256，存 `reports/V9-T4/downloads.json`。\n- 下载物是不受信数据：读它们的 Python 一律 `-I`；你写的脚本放 `envs/teachers/t4/`；不在下载目录里执行任何东西。\n\n## 3. 数值检查（无 PyTorch，不能对官方参考逐位对照；这一项列为未验证）\nV-JEPA 2.1：\n- 上游仓库如带参考输出或测试向量，就对照；\n- 同一输入跑两次，结果逐位一致；\n- F32 与低精度（bf16/F16）输出的余弦相似度，容差写明；\n- batch=1 与 batch=2 中同一样本的特征一致（容差写明）；\n- 输出形状与 config 一致；\n- 故意改坏（打乱一层权重，或用错输入归一化）必须让检查变红。\n\nDepth Anything V2：\n- F16 与 F32 输出的 Pearson 和 Spearman 相关；\n- 确定性；\n- 程序化合成的斜坡平面输入，深度排序方向正确；\n- 故意改坏（上下翻转输入）必须让方向检查变红。\n\n## 4. M2 Max 推理基准\n预算：\n- GPU 墙钟合计 ≤ 30 分钟，单次 ≤ 10 分钟，用计时器硬限。\n- 一次只常驻一个模型，切换前释放并记录内存回落。\n- 进程内存峰值超过 32 GB 立即停。\n- 开跑前确认 `artifacts/locks/m0-worker.lock` 无人持有，且没有其他 MLX/GPU 作业。\n\n输入：\n- 程序化生成的确定性帧（numpy，固定种子），不下载任何视频或数据集。\n- V-JEPA 用上游默认分辨率和帧数；DA2 用模型自带的输入尺寸。两者都记录。\n\n每个模型要测的指标：\n- 加载耗时；\n- 首次推理延迟（含编译/预热）；\n- 稳态吞吐（clip/s、帧/s；≥3 次重复，取中位数和范围）；\n- 每千样本推理时间（由实测外推，标明是外推）；\n- 单样本特征字节数和每千样本缓存体积；\n- 进程内存峰值，MLX `get_peak_memory` 与 RSS 两个口径都记。\n\nCore ML：\n- 分别测 `CPU_AND_NE`、`CPU_AND_GPU`、`ALL` 三种 compute units；\n- 写明哪种不和 MLX 争 GPU（供 World Mode 选用）。\n\n输出：\n- `reports/V9-T4/bench.json`；\n- `reports/V9-T4/REPORT.md`：命令、版本、SHA、电源状态（如可得）、失败与未验证项。\n\n## 5. 不做\n- 写入 T2 缓存：T2 验收后，一级另发集成卡。\n- 改 `src/`：T2 正在用 `src/ainerzero/v9/teachers/`。\n- 训练、VGGT、V-JEPA2-AC、PyTorch、从 `.pt` 自转权重、提交推送、删除。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "1. `env.lock.txt` 存在；主环境前后 freeze 无差异。\n2. `downloads.json` 里 revision 与 SHA256 齐全，只含批准的文件，总量 ≤ 2 GB。\n3. 数值检查全部断言化、真实非零退出；V-JEPA 与 DA2 各至少 1 个故意改坏对照变红。\n4. `bench.json` 每个模型都有：加载耗时、首帧延迟、稳态吞吐（中位数＋范围）、每千样本时间（标外推）、特征/缓存体积、内存峰值两口径。DA2 三种 compute units 齐全。\n5. GPU 墙钟合计 ≤ 30 分钟，有计时证据。\n6. 文件只落在 `envs/teachers/`、`artifacts/teachers/`、`reports/V9-T4/`。\n7. 报告列出未验证项，至少包括“未对照官方 PyTorch 参考”。",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/RESEARCH_LOG.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/docs/research/M2Max_NoCUDA_Integration_Plan.source.md"
+    ],
+    "file_scope": [
+      "envs/teachers/",
+      "artifacts/teachers/",
+      "reports/V9-T4/"
+    ],
+    "depends_on": [
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": true,
+    "dedupe_key": "az-v9-t4-vjepa-depth",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T01:34:47+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792104565.494349,
+    "recovery": null,
+    "gpu_level": 1,
+    "deps": [
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4652,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T4",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4572,
+        "at": "2026-10-16T09:24:44+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T4",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4431,
+        "at": "2026-10-16T01:49:25+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T4",
+        "actor": "claude",
+        "type": "status_ready",
+        "message": "用户 2026-10-16 批准「批准 T4」；范围与预算见 RESEARCH_LOG R20261016-T4",
+        "data": null
+      },
+      {
+        "id": 4429,
+        "at": "2026-10-16T01:49:17+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T4",
+        "actor": "claude",
+        "type": "edited",
+        "message": "title、prompt、acceptance、context_files、file_scope、depends_on、needs_gpu",
+        "data": null
+      },
+      {
+        "id": 4420,
+        "at": "2026-10-16T01:34:47+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T4",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】V-JEPA 2.1（vjepa2-mlx）与 Depth Anything V2 Small（Core ML）接入与 M2 Max 基准（草稿：下载与安装待批准）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "ainerzero.V9.T8": {
+    "id": "ainerzero.V9.T8",
+    "project_id": "ainerzero",
+    "track_id": "ainerzero.V9.T",
+    "seq": 8,
+    "title": "【代码】V9.T8 RLT 停帧去重 numpy 参考实现与合成停帧片段测试（纯 CPU）",
+    "kind": "code",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 ARCHITECTURE_V9 r3 §4 式 10，在 `src/ainerzero/v9/tokenization/rlt.py` 实现 RLT 停帧去重的 numpy 参考实现。\n来源：Choudhury 等，Run-Length Tokenization，arXiv 2411.05222；只读论文，不下载其代码。\n\n功能：\n- 输入视频块序列 `[T, H/p, W/p, D]`；同一位置若 `‖p_t − p_{t−1}‖_∞ < τ` 就并入上一个 token；\n- 输出保留 token、各 token 的游程长度与原位置索引，并能无损还原到每帧块网格（被并入的块用上一 token 填回）；\n- 报告 token 保留率。\n\n合成测试片段（程序化生成、固定种子，不下载任何视频）：\n- 动漫式有限动画：一拍一、一拍二、一拍三；\n- 局部动作（只有嘴/手在动）；\n- 镜头平移（几乎没有可去重的块）；\n- 全静止；\n- 带编码噪声的“伪静止”（τ 敏感性）。\n\n测试：\n- 还原误差 ≤ τ；\n- 保留率与片段的理论值一致（一拍二约 1/2，全静止约 1/T）；\n- τ = 0 时不去重；\n- 位置与游程长度编码可逆；\n- 输出确定性。\n\n故意改坏必须变红：比较方向错一帧、游程长度少计 1、忽略首帧。\n\n交付：`reports/V9-T8/REPORT.md`，写明各片段的保留率表和 τ 敏感性曲线（数值表即可）。在 V-JEPA 2.1 特征上的 GPU 实测（精度损失 vs 吞吐）不在本卡，等 T4 验收后由一级另提预算。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "还原误差 ≤ τ；各合成片段保留率与理论值一致；τ=0 不去重；3 个故意改坏对照变红；未导入 MLX/torch",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/docs/research/V9_FRONTIER_COST_SURVEY.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md"
+    ],
+    "file_scope": [
+      "src/ainerzero/v9/tokenization/",
+      "tests/v9/tokenization/",
+      "reports/V9-T8/"
+    ],
+    "depends_on": [
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "v9-r3-ainerzero.V9.T8",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T02:15:52+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792106152.5557399,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4653,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T8",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4573,
+        "at": "2026-10-16T09:24:44+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T8",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4454,
+        "at": "2026-10-16T02:16:30+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T8",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4442,
+        "at": "2026-10-16T02:15:52+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.T8",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】V9.T8 RLT 停帧去重 numpy 参考实现与合成停帧片段测试（纯 CPU）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "ainerzero.V9.G3": {
+    "id": "ainerzero.V9.G3",
+    "project_id": "ainerzero",
+    "track_id": "ainerzero.V9.G",
+    "seq": 3,
+    "title": "【代码·数学】V9.G3 解析规范化算子 canonicalize/decanonicalize 与 SE(2) 等变性质测试（纯 CPU）",
+    "kind": "code",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 ARCHITECTURE_V9 r3 §2、§3 GeometryCore 行与 §4 式 9，在 `src/ainerzero/v9/geometry/canonical.py` 实现解析规范化算子 `canonicalize(x, belief)` / `decanonicalize(y, belief)`。\n\n要求：\n- 支持的输入类型：点集、位姿、速度向量、以智能体为中心的度量网格（栅格要说明插值方式与边界处理）。\n- 只用估计位姿 `μ̂` 的重力对齐部分 `g(μ̂) ∈ SE(2)`；高度与重力方向原样保留，不做完整 SE(3) 规范化。\n- 位姿误差注入工具：按信念协方差 Σ 采样扰动，供训练时使用（本卡只实现与测试，不训练）。\n\n性质测试（numpy，纯 CPU）：\n- `decanonicalize∘canonicalize` 为恒等（误差 ≤ 1e-9，栅格另给插值误差上界）；\n- 对随机 `g ∈ SE(2)`，`canonicalize(g·x, g·belief) = canonicalize(x, belief)`；\n- 整体等变：把任意（随机初始化、非等变的）numpy 函数 f 包进规范化后，对 SE(2) 严格等变；\n- 位姿误差传播：规范化后误差的经验协方差与按 Σ 一阶传播的预测一致（容差写明）；\n- 边界：θ 近 ±π、极小平移、空点集。\n\n故意改坏必须变红：把 g 换成 g⁻¹、漏掉重力对齐（用完整 SO(3)）、栅格旋转方向取反。\n\n依赖 G1 的群运算实现（直接调用，不复制）；不改 G1 已验收的文件，只新增 `canonical.py` 与对应测试。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 只对点、对象向量、地图坐标定义 canonicalize；原始 RGB 不在范围内。\n- 等变误差按来源分列报告：栅格插值、边界、数值误差、数据关联。\n- 约定与 G1 实现一致（T_AB 方向、右扰动），若 G1 与 r4 §4 约定不一致，停下报告，不自行改 G1。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "恒等与等变性质测试全过（误差界写明）；误差传播与一阶预测一致；3 个故意改坏对照全部变红；G1 已验收文件未改",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/docs/research/V9_FRONTIER_COST_SURVEY.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md"
+    ],
+    "file_scope": [
+      "src/ainerzero/v9/geometry/canonical.py",
+      "tests/v9/geometry/test_canonical.py",
+      "reports/V9-G3/"
+    ],
+    "depends_on": [
+      "ainerzero.V9.G1",
+      "ainerzero.V9.G2",
+      "ainerzero.V9.A5",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "v9-g3-canonical",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T02:15:21+03:00",
+    "updated_at": "2026-10-16T09:46:39+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792106121.471829,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "ainerzero.V9.G1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "ainerzero.V9.G2",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "ainerzero.V9.A5",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4650,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.G3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4594,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.G3",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files、depends_on",
+        "data": null
+      },
+      {
+        "id": 4570,
+        "at": "2026-10-16T09:24:44+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.G3",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4440,
+        "at": "2026-10-16T02:15:21+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.G3",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·数学】V9.G3 解析规范化算子 canonicalize/decanonicalize 与 SE(2) 等变性质测试（纯 CPU）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "ainerzero.V9.G5": {
+    "id": "ainerzero.V9.G5",
+    "project_id": "ainerzero",
+    "track_id": "ainerzero.V9.G",
+    "seq": 5,
+    "title": "【代码·数学】V9.G5 G1 r2 小修：半正定容差、重力参考相对判定、登记输入重登记（D-019 代码门后）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "G1 r1 已按非作者 G2「有条件通过」验收（2026-10-16，一级 claude）。本卡修 G2 报告（reports/V-V9-G1/）登记的 F1/F2，并办 F3 重登记。D-019：本卡写代码，须等 awz.V9.A10 用户放行后才可领。\n\n一级裁决：\n1. F1 半正定守卫：改为对称化后按相对容差判定，最小特征值 ≥ -tol·max(1, ‖M‖₂)，tol 取 1e-12 量级并写进 README；精确 PSD 的秩亏信息矩阵（如 outer([1,2,2])、整数 JᵀJ）必须接受；真负定（如最小特征值 -1e-6·‖M‖）仍拒。pose_graph 用秩亏信息表达部分约束时，整体仍须满足现有可解性检查（缺锚/断图/全局奇异仍 fail-closed）；pose_graph.py 特征分解后落在 [-tol·‖M‖, 0] 的特征值截为 0 再开方，不得产生 NaN。守卫位置：belief.py covariance()（约第 24 行）、gravity.py（约第 27 行）、pose_graph.py（约第 57–58 行）。\n2. F2 重力水平参考：改为方向判定——先拒非有限值与精确零向量，再按归一化后与重力方向的平行度（|sin θ| < 1e-9）拒绝；与尺度无关。错误信息与判定条件一致。\n3. F3：G1 r1 登记的两份文档输入（ARCHITECTURE_V9 等）已因 r4→r5 更新而失效。不得在消费门里豁免文档哈希。新增 r2 登记：记录旧哈希→新哈希、r5 相关小节对 S0 数学是否有变化（逐节列出）；代码输入仍强制核对。r1 登记文件与证据原样保留。\n4. 不改其他 G1 接口与数值行为；r1 49 个测试必须照常通过；新增对 F1/F2 的正反例与 G2 的最小复现（reports/V-V9-G1/ 内）全部转绿。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "F1/F2 的 G2 最小复现转绿；精确 PSD 秩亏与尺度无关参考各有正例，真负定与平行参考仍拒；r1 49 测试全过；每处修复有故意改坏必须变红对照；F3 r2 登记写明旧→新哈希与小节差异；r1 证据未改",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-G1/",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-G1/",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md"
+    ],
+    "file_scope": [
+      "src/ainerzero/v9/geometry/belief.py",
+      "src/ainerzero/v9/geometry/gravity.py",
+      "src/ainerzero/v9/geometry/pose_graph.py",
+      "src/ainerzero/v9/geometry/README.md",
+      "tests/v9/geometry/test_geometry_r2.py",
+      "reports/V9-G1/r2/"
+    ],
+    "depends_on": [
+      "ainerzero.V9.G1",
+      "ainerzero.V9.G2",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "v9-g5-g1-r2-fixes",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-16T14:01:43+03:00",
+    "updated_at": "2026-10-16T14:01:43+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code",
+      "math"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": null,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "ainerzero.V9.G1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "ainerzero.V9.G2",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4911,
+        "at": "2026-10-16T14:01:43+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.G5",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码·数学】V9.G5 G1 r2 小修：半正定容差、重力参考相对判定、登记输入重登记（D-019 代码门后）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "ainerzero.V9.B2": {
+    "id": "ainerzero.V9.B2",
+    "project_id": "ainerzero",
+    "track_id": "ainerzero.V9.B",
+    "seq": 2,
+    "title": "【代码】六个可替换接口与假实现 + 合同测试（新目录 src/ainerzero/v9/）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "按 ARCHITECTURE_V9 r3 §3 实现 WorldBrainAdapter、GeometryCore、TimeScaleAdapter、SpatialMemory、PerceptionEncoder、HierarchicalPlanner 的接口与假实现，以及合同测试：只接受 ObservationPacket（遇快照或真值字段拒绝）；GeometryCore 的群运算满足结合律、逆元、exp∘log 恒等、协方差对称正定、重力方向显式；显式 dt 与层级对齐；SpatialMemory 写入不改任何网络参数、度量层随自运动等变变换、final 分区不可写；外部预训练编码器必须声明来源与许可；规划每级有预算与回退。GeometryCore 的真实实现由 ainerzero.V9.G1 负责，本卡只做接口与假实现。不改现有 learning/runtime 代码，不导入 MLX。\n\n研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。\n\nr3 增补：GeometryCore 接口加 `canonicalize(x, belief)` / `decanonicalize(y, belief)`，合同：二者复合为恒等，且 `canonicalize(g·x, g·belief) = canonicalize(x, belief)`（真实实现归 ainerzero.V9.G3，本卡只做接口与假实现）；PerceptionEncoder 接口加 `token_policy()`，声明是否启用 RLT 及阈值，启用时报告 token 保留率（实现归 ainerzero.V9.T8）。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- 按 ARCHITECTURE_V9 r4 §3 实现**七个**接口（r3 六个 + `UpdateScheduler`：mark_dirty/dirty_set/update/fallback_reason）。\n- `WorldBrainAdapter.step(payload)` 只吃 ObservationPacket/v1.1 的 payload（含 time 白名单），拒绝整个信封与快照。\n- GeometryCore 按 r4 §4 约定段：T_AB 方向、右扰动、Adjoint 协方差、规范与锚点；canonicalize 只接受点/对象向量/地图坐标。\n- SpatialMemory：每条记忆带编码器版本，版本不符拒绝解释；`promote` 到 SLOW 必须附独立测试证据。\n- TimeScaleAdapter：`macro_action(level, actions)` 按 r4 §4 式 3 的登记聚合规则。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n## V9-r5-20261016 定版收口要求\n接口依据主架构r5，不再依据旧r4/r3。UpdateScheduler只读允许观察、已执行动作、自身信念，不得读世界Event、隐藏接触、真值图/dirty/fallback；宏动作、SpatialMemory版本与G1约定按正文。不得因此开工。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "合同测试全过；每条合同有反例；改坏接口测试变红",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/spec/AinerWorkFlow_v9_RFC.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md"
+    ],
+    "file_scope": [
+      "src/ainerzero/v9/",
+      "tests/v9/",
+      "reports/V9-B2/"
+    ],
+    "depends_on": [
+      "ainerzero.V9.A1",
+      "ainerzero.V9.A5",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "az-v9-b2-interfaces",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T21:47:51+03:00",
+    "updated_at": "2026-10-16T11:49:01+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792090071.976994,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "ainerzero.V9.A1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "ainerzero.V9.A5",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4709,
+        "at": "2026-10-16T11:49:01+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.B2",
+        "actor": "codex",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4649,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.B2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4593,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.B2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files、depends_on",
+        "data": null
+      },
+      {
+        "id": 4569,
+        "at": "2026-10-16T09:24:44+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.B2",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4437,
+        "at": "2026-10-16T02:15:12+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.B2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4394,
+        "at": "2026-10-16T01:00:23+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.B2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "title、prompt",
+        "data": null
+      },
+      {
+        "id": 4317,
+        "at": "2026-10-15T21:47:51+03:00",
+        "project_id": "ainerzero",
+        "task_id": "ainerzero.V9.B2",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】五个可替换接口与假实现 + 合同测试（新目录 src/ainerzero/v9/）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  },
+  "forge.V9.A2": {
+    "id": "forge.V9.A2",
+    "project_id": "forge",
+    "track_id": "forge.V9.A",
+    "seq": 2,
+    "title": "【代码】ExperienceEpisode 校验器与 APACK 挂载集成（纯 CPU）",
+    "kind": "implement",
+    "tier": 2,
+    "status": "blocked",
+    "prompt": "实现 Episode 校验器，并接入现有十步挂载校验器：教师数据不得进 final、自观察与教师分区、哈希齐全、世界键不跨分区。不改 F1 已通过的行为，只新增。\n\n【r4 改写（D-019，2026-10-16）】本卡暂停中，放行条件见 AWZ docs/design/V9_LANDING_PLAN.md §11.1。放行后按以下 r4 要求执行，与上文冲突时以本段为准：\n- `observation` 通道除 self_observation、baseline_rollout、teacher_demo 外，接受 `external_derived`（AWZ 实时出口，ObservationPacket r1 §3.11），并在 origin_native 保留 actor；这类通道默认不准 AinerZero 训练挂载，直到登记 ADR-0005 修订。\n- 其余按 docs/EXPERIENCE_EPISODE.md（已验收）实现。\n\n【F3 / T1 r2 更新（2026-10-16）】teacher_feature 来源的包与通道，映射要保留 TEACHERS_AND_CACHE r2 的 upstream（system、origin、actor、资格）与 derivation；挂载时训练资格取“上游资格 ∧ 教师许可 ∧ 条目许可 ∧ 非 unverified ∧ train 分区”的交集；external_derived 默认拒训；同块多来源逐条判定，不继承。\n\n## 通用约束（v9，ADR-0012）\n- 纯 CPU；不训练、不导入 MLX/ORT/模型；不下载、不安装、不付费、不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。\n\n## 一级2026-10-16补齐文件范围与前置\n原卡只有episode新目录，不能实现已接受A1的完整APACK集成，本次明确扩到登记scope。必须等B3修复和B5非作者复核均通过再改core，修改前归档当前原文件及SHA。\n按docs/EXPERIENCE_EPISODE.md全部规则实现：版本化新增APACK v0.1，不覆盖v0 schema/示例；schema版本路由，v0注册/十步挂载行为保持；v0.1注册与挂载时验证no_training沿lineage传播、source/kind新增词表、consumer用途、跨包通道声明、world_key与sealed_once政策。consumer本机自报字段不是已认证账号。\n仿真真值source_type只能simulator_truth、sim_truth仅通道，partition仍四值。无来源/许可/白名单等必须拒绝；future available_at与target/input分开，内嵌/引用Observation同样不让快照进入模型；不把hashes_complete自报当作来源真实性证明。v0训练DenyAll默认不变，不能为了示例通过添加全局准入或重写已封存final。\n本卡只实现CPU合同/合成包，测试全用明确临时Registry路径，不接触生产素材、训练、RunStore或考场真实final。不得改reader.py（B3已修并冻结）；现有测试不删不放宽，新增有意义的各规则正负例+至少6变异非零。独立A3已配，报告精确哈希/新旧版本回归/未验证。超出本scope需先问一级，不自行扩写。\n\n\n## V9-r5-20261016 定版收口要求\n教师feature映射等待T1回应T17 B1–B4的新修订：保留可信upstream与actor、AWZ external_derived、拒绝伪造ADR批准、blob与来源时间一致/截止、完整derivation指纹一致，不借缓存继承其他来源资格。APACK observation来源政策照旧。\n主架构与候选状态见 /Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_BASELINE.md。本补充仅落地要求，不放行实现，不改变预算/参数/科学门或原依赖。",
+    "params": {},
+    "params_version": 0,
+    "acceptance": "每条规则有反例；原 82 项测试仍全过",
+    "context_files": [
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md",
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/spec/AinerWorkFlow_v9_RFC.md",
+      "/Users/mac/AinerWorkFlow/AinerForge/docs/EXPERIENCE_EPISODE.md",
+      "/Users/mac/AinerWorkFlow/AinerForge/reports/V-V9-B3/r1-20261016-codex/report.md",
+      "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md"
+    ],
+    "file_scope": [
+      "forge/episode/",
+      "forge/apack/schema.py",
+      "forge/registry/db.py",
+      "forge/mount/verifier.py",
+      "forge/mount/policy.py",
+      "schemas/apack_manifest.v0.1.schema.json",
+      "schemas/examples/apack_v0.1/",
+      "tests/test_episode.py",
+      "tests/test_apack_v01.py",
+      "reports/V9-A2/"
+    ],
+    "depends_on": [
+      "forge.V9.A1",
+      "forge.V9.B3",
+      "forge.V9.B5",
+      "awz.V9.A2",
+      "awz.V9.A10"
+    ],
+    "verifies": [],
+    "needs_gpu": false,
+    "dedupe_key": "forge-v9-a2-episode-validator",
+    "max_attempts": 3,
+    "attempts": 0,
+    "assignee": null,
+    "author": null,
+    "lease_until": null,
+    "lease_s": 1200,
+    "progress": null,
+    "last_message": null,
+    "result": null,
+    "result_data": null,
+    "callback_url": null,
+    "created_by": "claude",
+    "created_at": "2026-10-15T21:47:51+03:00",
+    "updated_at": "2026-10-16T11:49:01+03:00",
+    "workdirs": null,
+    "claimed_at": null,
+    "last_beat_at": null,
+    "beats": 0,
+    "stalls": 0,
+    "max_stalls": 5,
+    "needs": [
+      "code"
+    ],
+    "reserve_until": null,
+    "reserve_for": null,
+    "reserve_for_kind": null,
+    "reserve_by": null,
+    "reserve_reason": null,
+    "reserve_mode": null,
+    "ready_since": 1792113869.3729532,
+    "recovery": null,
+    "gpu_level": 0,
+    "deps": [
+      {
+        "id": "forge.V9.A1",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "forge.V9.B3",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "forge.V9.B5",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A2",
+        "status": "accepted",
+        "ok": true
+      },
+      {
+        "id": "awz.V9.A10",
+        "status": "draft",
+        "ok": false
+      }
+    ],
+    "deps_ok": false,
+    "waiting_questions": [],
+    "display_state": "blocked",
+    "display_label": "阻塞",
+    "recovery_pending": false,
+    "lease_left_s": null,
+    "elapsed_s": null,
+    "idle_s": null,
+    "health": null,
+    "reserved": false,
+    "reserve_left_s": null,
+    "reserve_label": "",
+    "events": [
+      {
+        "id": 4711,
+        "at": "2026-10-16T11:49:01+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "codex",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4683,
+        "at": "2026-10-16T09:54:35+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt",
+        "data": null
+      },
+      {
+        "id": 4665,
+        "at": "2026-10-16T09:46:39+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "depends_on",
+        "data": null
+      },
+      {
+        "id": 4600,
+        "at": "2026-10-16T09:31:34+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "claude",
+        "type": "edited",
+        "message": "prompt、context_files、depends_on",
+        "data": null
+      },
+      {
+        "id": 4585,
+        "at": "2026-10-16T09:24:46+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "claude",
+        "type": "status_blocked",
+        "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+        "data": null
+      },
+      {
+        "id": 4549,
+        "at": "2026-10-16T04:24:29+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "codex",
+        "type": "status_ready",
+        "message": "scope已补齐；B3/B5依赖保证只在读取器补修独立通过后修改core，仍是CPU范围。",
+        "data": null
+      },
+      {
+        "id": 4548,
+        "at": "2026-10-16T04:24:29+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "codex",
+        "type": "edited",
+        "message": "file_scope、depends_on、prompt、context_files",
+        "data": null
+      },
+      {
+        "id": 4540,
+        "at": "2026-10-16T04:19:57+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "codex",
+        "type": "status_blocked",
+        "message": "A1设计通过，但A2卡scope仅episode新目录，未覆盖APACK v0.1 schema与挂载consumer/政策集成；先由一级补齐精确范围。B3/B5读取器修复期间verifier.py等冻结，不并发扩写。纯CPU授权不变，不需要用户新确认。",
+        "data": null
+      },
+      {
+        "id": 4308,
+        "at": "2026-10-15T21:47:51+03:00",
+        "project_id": "forge",
+        "task_id": "forge.V9.A2",
+        "actor": "claude",
+        "type": "created",
+        "message": "【代码】ExperienceEpisode 校验器与 APACK 挂载集成（纯 CPU）",
+        "data": null
+      }
+    ],
+    "attempt_log": [],
+    "waiters": []
+  }
+}
