@@ -1,0 +1,209 @@
+--- reports/V9-P9/final/before/src/data.py	2026-10-23 14:17:14
++++ src/ainerzero/v9/experiments/s1/data.py	2026-10-28 18:03:16
+@@ -18,6 +18,12 @@
+ 
+ The ``final`` partition has no directory, no loader and no code path that could
+ create it: every public function asserts the partition is train/development.
++
++ainerzero.V9.P59 (RESEARCH_LOG R20261028-S1-phase1-final-eval) adds the one sealed
++channel: ``seal_final_dataset`` stores a separately generated final dataset under
++``artifacts/v9/s1/final-sealed/<digest>/`` read-only; ``open_sealed_final_once``
++verifies every file against SEALED.json, exclusively creates the READ_ONCE marker
++and only then issues the ``FinalReadToken`` without which no loader reads ``final``.
+ """
+ 
+ from __future__ import annotations
+@@ -64,8 +70,10 @@
+     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+ 
+ 
+-def require_partition(partition: str) -> str:
++def require_partition(partition: str, *, final_token: "FinalReadToken | None" = None) -> str:
+     if partition == "final":
++        if final_token is not None and _final_token_valid(final_token):
++            return partition
+         raise FinalPartitionSealed(
+             "final partition is sealed and must be read once through the sealed channel "
+             "only after all phase-1 training; S1 phase 1 does not read it"
+@@ -572,9 +580,13 @@
+     steps: tuple[dict, ...]
+ 
+ 
+-def load_training_episodes(dataset_dir: Path, partition: str) -> list[TrainingEpisode]:
++def load_training_episodes(
++    dataset_dir: Path, partition: str, *, final_token: "FinalReadToken | None" = None
++) -> list[TrainingEpisode]:
+     """Payload-only view used by the training path; never touches truth files."""
+-    partition = require_partition(partition)
++    partition = require_partition(partition, final_token=final_token)
++    if partition == "final" and Path(dataset_dir).resolve() != final_token.sealed_dir.resolve():
++        raise FinalPartitionSealed("the final token covers a different sealed directory")
+     path = Path(dataset_dir) / "packets" / f"{partition}.jsonl"
+     if not path.is_file():
+         raise DatasetError(f"missing packets file {path}")
+@@ -597,9 +609,13 @@
+     return episodes
+ 
+ 
+-def load_truth_view(dataset_dir: Path, partition: str) -> list[TruthEpisode]:
++def load_truth_view(
++    dataset_dir: Path, partition: str, *, final_token: "FinalReadToken | None" = None
++) -> list[TruthEpisode]:
+     """Evaluator-only view; the training path must not call this function."""
+-    partition = require_partition(partition)
++    partition = require_partition(partition, final_token=final_token)
++    if partition == "final" and Path(dataset_dir).resolve() != final_token.sealed_dir.resolve():
++        raise FinalPartitionSealed("the final token covers a different sealed directory")
+     path = Path(dataset_dir) / "truth" / f"{partition}.jsonl"
+     if not path.is_file():
+         raise DatasetError(f"missing truth file {path}")
+@@ -931,3 +947,149 @@
+             if (nx, nz) in visited and 0 <= nx < width and 0 <= nz < height and (nx, nz) not in blocked:
+                 edges.add(tuple(sorted((cell, (nx, nz)))))
+     return edges
++
++
++# --- sealed final channel (ainerzero.V9.P59) --------------------------------
++FINAL_FILES = ("packets/final.jsonl", "truth/final.jsonl", "export_meta.json")
++SEALED_SCHEMA = "ainerzero.v9.s1.final_sealed.v1"
++
++
++@dataclass(frozen=True)
++class FinalReadToken:
++    """Issued once, by ``open_sealed_final_once`` only, after the READ_ONCE marker exists."""
++
++    dataset_digest: str
++    sealed_dir: Path
++    marker_path: Path
++    nonce: str
++
++
++_ISSUED_FINAL_TOKENS: set[str] = set()
++
++
++def _final_token_valid(token: "FinalReadToken") -> bool:
++    return (
++        isinstance(token, FinalReadToken)
++        and token.nonce in _ISSUED_FINAL_TOKENS
++        and Path(token.marker_path).is_file()
++    )
++
++
++def final_inventory(directory: Path) -> dict[str, str]:
++    directory = Path(directory)
++    missing = [rel for rel in FINAL_FILES if not (directory / rel).is_file()]
++    if missing:
++        raise DatasetError(f"final dataset is missing {missing}")
++    return {rel: sha256_file(directory / rel) for rel in FINAL_FILES}
++
++
++def final_digest(inventory: Mapping[str, str]) -> str:
++    return hashlib.sha256(canonical_bytes({"schema": SEALED_SCHEMA, "files": dict(inventory)})).hexdigest()
++
++
++def final_marker_path(sealed_dir: Path) -> Path:
++    sealed_dir = Path(sealed_dir)
++    return sealed_dir.parent / f"{sealed_dir.name}.READ_ONCE.json"
++
++
++def seal_final_dataset(staging_dir: Path, *, sealed_root: Path, sealed_by: str, counts: Mapping[str, Any]) -> dict:
++    """Copy a freshly generated final dataset into ``sealed_root/<digest>/`` read-only.
++
++    Returns the SEALED.json record (digests and counts only, never content).
++    """
++    inventory = final_inventory(staging_dir)
++    digest = final_digest(inventory)
++    target = Path(sealed_root) / digest
++    if target.exists() or final_marker_path(target).exists():
++        raise DatasetError(f"refusing to overwrite an existing sealed final dataset {target}")
++    target.parent.mkdir(parents=True, exist_ok=True)
++    for rel in FINAL_FILES:
++        (target / rel).parent.mkdir(parents=True, exist_ok=True)
++        shutil.copy2(Path(staging_dir) / rel, target / rel)
++    if final_inventory(target) != inventory:
++        raise DatasetError("sealed copy differs from the staged final dataset")
++    record = {
++        "schema": SEALED_SCHEMA,
++        "dataset_digest": digest,
++        "files": inventory,
++        "counts": dict(counts),
++        "sealed_by": sealed_by,
++        "sealed_at_unix": time.time(),
++        "read_once_marker": final_marker_path(target).name,
++    }
++    (target / "SEALED.json").write_text(json.dumps(record, ensure_ascii=False, sort_keys=True, indent=1) + "\n", encoding="utf-8")
++    for path in sorted(target.rglob("*"), reverse=True):
++        os.chmod(path, 0o555 if path.is_dir() else 0o444)
++    os.chmod(target, 0o555)
++    return record
++
++
++def verify_sealed_final(sealed_dir: Path, *, expected_digest: str) -> dict:
++    """Integrity of the seal without reading any content row; reports whether it was read."""
++    sealed_dir = Path(sealed_dir)
++    record_path = sealed_dir / "SEALED.json"
++    if not record_path.is_file():
++        return {"status": "missing", "sealed_dir": str(sealed_dir)}
++    record = json.loads(record_path.read_text(encoding="utf-8"))
++    inventory = final_inventory(sealed_dir)
++    problems = []
++    if record.get("schema") != SEALED_SCHEMA:
++        problems.append("SEALED.json schema mismatch")
++    if record.get("files") != inventory:
++        problems.append("a sealed file changed after sealing")
++    if final_digest(inventory) != record.get("dataset_digest"):
++        problems.append("recorded digest does not match the files")
++    if record.get("dataset_digest") != expected_digest:
++        problems.append("sealed digest differs from the frozen document")
++    if sealed_dir.name != record.get("dataset_digest"):
++        problems.append("sealed directory is not named after its digest")
++    marker = final_marker_path(sealed_dir)
++    return {
++        "status": "passed" if not problems else "failed",
++        "problems": problems,
++        "dataset_digest": record.get("dataset_digest"),
++        "counts": record.get("counts"),
++        "already_read": marker.exists(),
++        "marker_path": str(marker),
++    }
++
++
++def open_sealed_final_once(sealed_dir: Path, *, expected_digest: str, reader: Mapping[str, Any]) -> FinalReadToken:
++    """The only way to read ``final``: verify the seal, create READ_ONCE exclusively, issue a token."""
++    state = verify_sealed_final(sealed_dir, expected_digest=expected_digest)
++    if state["status"] != "passed":
++        raise FinalPartitionSealed(f"sealed final dataset failed verification: {state.get('problems') or state['status']}")
++    marker = final_marker_path(Path(sealed_dir))
++    try:
++        fd = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o444)
++    except FileExistsError as exc:
++        raise FinalPartitionSealed(f"the sealed final dataset was already read ({marker.name} exists)") from exc
++    nonce = hashlib.sha256(f"{expected_digest}:{time.time_ns()}:{os.getpid()}".encode()).hexdigest()
++    with os.fdopen(fd, "w", encoding="utf-8") as handle:
++        handle.write(json.dumps({"dataset_digest": expected_digest, "opened_at_unix": time.time(),
++                                 "pid": os.getpid(), "reader": dict(reader), "nonce": nonce},
++                                ensure_ascii=False, sort_keys=True) + "\n")
++    _ISSUED_FINAL_TOKENS.add(nonce)
++    return FinalReadToken(expected_digest, Path(sealed_dir), marker, nonce)
++
++
++class FinalView:
++    """The three reads ``_evaluate_arm`` makes, served from the sealed final dataset."""
++
++    partition = "final"
++
++    def __init__(self, token: FinalReadToken):
++        if not _final_token_valid(token):
++            raise FinalPartitionSealed("FinalView needs a token issued by open_sealed_final_once")
++        self.token = token
++        self._episodes = load_training_episodes(token.sealed_dir, "final", final_token=token)
++        self._truth = load_truth_view(token.sealed_dir, "final", final_token=token)
++
++    def windows(self, *, sequence_steps: int = spec.TRAIN_COMMON["sequence_steps"]) -> dict:
++        return build_windows(self._episodes, sequence_steps=sequence_steps)
++
++    def truth_view(self) -> list[TruthEpisode]:
++        return list(self._truth)
++
++    def episodes(self) -> list[TrainingEpisode]:
++        return list(self._episodes)

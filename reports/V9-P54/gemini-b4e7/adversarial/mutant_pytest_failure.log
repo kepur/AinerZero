@@ -1,0 +1,25 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /Users/mac/AinerWorkFlow/AinerZero
+configfile: pyproject.toml
+collecting ... collected 15 items / 14 deselected / 1 selected
+
+tests/v9/experiments/test_s1_r15_registration.py::test_probe_slices_match_the_stored_node_widths_not_hidden FAILED [100%]
+
+=================================== FAILURES ===================================
+__________ test_probe_slices_match_the_stored_node_widths_not_hidden ___________
+
+    def test_probe_slices_match_the_stored_node_widths_not_hidden():
+        for arm_id in ("arm2", "arm3", "arm4"):
+            dims = spec.ARM_SPECS[arm_id]["dims"]
+            start, stop = spec.memory_key_slices(arm_id)["probe"]
+            node_width = int(dims["memory_channels"] if arm_id == "arm2" else dims["place_dim"])
+>           assert stop - start == node_width
+E           assert (192 - 0) == 32
+
+tests/v9/experiments/test_s1_r15_registration.py:62: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s1_r15_registration.py::test_probe_slices_match_the_stored_node_widths_not_hidden
+======================= 1 failed, 14 deselected in 0.08s =======================
+

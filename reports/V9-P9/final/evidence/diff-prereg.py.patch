@@ -1,0 +1,13 @@
+--- reports/V9-P9/final/before/src/prereg.py	2026-10-28 15:18:24
++++ src/ainerzero/v9/experiments/s1/prereg.py	2026-10-28 18:08:10
+@@ -1020,6 +1020,10 @@
+     if not document.get("stop_rules"):
+         reasons.append("stop rules are missing")
+     reasons.extend(_inheritance_reasons(document))
++    # P59: the final evaluation document carries its sealed-read section; nothing else may.
++    from . import final_eval as _final_eval
++
++    reasons.extend(_final_eval.section_reasons(document))
+     return reasons
+ 
+ 

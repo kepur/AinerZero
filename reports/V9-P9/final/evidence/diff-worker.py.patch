@@ -1,0 +1,144 @@
+--- reports/V9-P9/final/before/src/worker.py	2026-10-28 15:18:24
++++ src/ainerzero/v9/experiments/s1/worker.py	2026-10-28 18:07:46
+@@ -155,7 +155,7 @@
+ # Modes whose budget (arm x seed attempts, phase wall total, optimizer steps)
+ # is anchored to the one central RunStore under the canonical phase-1 root.
+ # Preparation modes (data/smoke/verify) keep their per-root diagnostic ledger.
+-BOUNDED_MODES = ("train", "eval")
++BOUNDED_MODES = ("train", "eval", "final-eval")  # P59: the final read is bounded too
+ LEDGER_TABLES = {"metadata", "runs", "daily_budget", "run_transitions", "experiments"}
+ 
+ 
+@@ -1093,7 +1093,7 @@
+     """Execute one prep mode inside the RunStore ledger and return its report."""
+     output_root = Path(output_root)
+     limits = _prepare_limits(limits)
+-    if mode not in ("data", "smoke", "verify", "train", "eval"):
++    if mode not in ("data", "smoke", "verify", "train", "eval", "final-eval"):
+         raise ValueError(f"unknown worker mode {mode!r}")
+     # r6 budget anchor: a bounded run (train/eval) registers in the one central
+     # RunStore under the canonical phase-1 root and only runs at that root.  A
+@@ -1422,7 +1422,70 @@
+                 reason=reason,
+                 kind="train",
+             )
++
+ 
++        if mode == "final-eval":
++            # ainerzero.V9.P59: every precondition is CPU-only and writes nothing; the
++            # first ledger write opens the one final run; only then is READ_ONCE created
++            # and the sealed final partition read, inside read_once_and_score.
++            from . import final_eval as final_module
++
++            if prereg_path is None or not Path(prereg_path).is_file():
++                raise SystemExit("final-eval mode needs the frozen final evaluation document (--prereg)")
++            verified = prereg.verify_frozen_file(prereg_path)
++            document = verified["document"]
++            pre = final_module.preconditions(
++                document=document,
++                verified=verified,
++                output_root=output_root,
++                ledger_path=ledger_path,
++                research_log=research_log,
++                wall_budget_seconds=float(wall_budget_seconds),
++            )
++            if pre.get("status") != "ok":
++                report.update(pre)
++                return report
++            report["final_preconditions"] = {k: v for k, v in pre.items() if k not in ("section", "approval")}
++            report["approval"] = pre["approval"]
++            ledger = PrepLedger(ledger_path)
++            active_run = active_run or ledger.open_aux_run(
++                mode="eval",
++                wall_budget_seconds=pre["budget"],
++                manifest=train_experiment_manifest(updates=int(document["training_protocol"]["updates"])),
++                request_id=f"{spec.FINAL_EXPERIMENT_ID}:final-eval",
++                experiment_id=spec.FINAL_EXPERIMENT_ID,
++                snapshot_extra={
++                    "arm_id": "final-suite",
++                    "seed": 0,
++                    "purpose": "s1_phase1_final_eval",
++                    "preregistration_sha256": verified["sha256"],
++                    "sealed_dataset_digest": pre["section"]["sealed_dataset_digest"],
++                },
++            )
++            report["run_id"] = active_run
++            report["experiment_id"] = spec.FINAL_EXPERIMENT_ID
++            ledger.begin_work(active_run, work_state="validating")
++            protocol = completion.CompletionProtocol(deadline_seconds=pre["budget"])
++            ledger.reserve(active_run, active_seconds=min(600.0, pre["budget"]))
++            guard.sample(force=True)
++            report["details"] = final_module.read_once_and_score(
++                document=document,
++                verified=verified,
++                output_root=output_root,
++                section=pre["section"],
++                backend=backend,
++                guard=guard,
++                run_id=active_run,
++            )
++            return _complete_run(
++                report=report,
++                ledger=ledger,
++                run_id=active_run,
++                protocol=protocol,
++                output_root=output_root,
++                reason="s1_final_eval_completed",
++                kind="final_eval",
++            )
+ 
+         if mode == "eval":
+             if prereg_path is None:
+@@ -2499,7 +2562,9 @@
+     seed: int = 0,
+     prereg_sha256: str | None = None,
+     backend=None,
++    eval_view=None,
+ ) -> dict:
++    """Score one arm x seed on development, or (P59) on ``eval_view``, a ``data.FinalView``."""
+     import numpy as np
+ 
+     from . import metrics
+@@ -2596,8 +2661,12 @@
+             "loaded parameters do not match the original receipt parameter SHA"
+         )
+ 
+-    development_windows = data.load_development_windows(dataset_dir)
+-    truth_view = data.load_truth_view(dataset_dir, "development")
++    if eval_view is None:
++        development_windows = data.load_development_windows(dataset_dir)
++        truth_view = data.load_truth_view(dataset_dir, "development")
++    else:
++        development_windows = eval_view.windows()
++        truth_view = eval_view.truth_view()
+     if not truth_view:
+         raise evaluation.EvaluationError("no development truth rows")
+ 
+@@ -2643,7 +2712,9 @@
+     if backend.parameter_sha256(model) != final["parameter_sha256"]:
+         raise EvalBindingError("final checkpoint reload changed the parameter SHA")
+ 
+-    development_episodes = data.load_training_episodes(dataset_dir, "development")
++    development_episodes = (
++        data.load_training_episodes(dataset_dir, "development") if eval_view is None else eval_view.episodes()
++    )
+     sequences = [data.build_episode_sequence(episode) for episode in development_episodes]
+     topology = evaluation.topology_report(backend, model, sequences, truth_view)
+     few_shot = evaluation.few_shot_report(
+@@ -2700,6 +2771,7 @@
+             "checkpoint_sha256": final["sha256"],
+             "parameter_sha256": final["parameter_sha256"],
+             "incomparable": list(spec.ARM_SPECS[arm_id]["incomparable"]),
++            "partition": "development" if eval_view is None else eval_view.partition,
+             "status": "completed",
+         }
+     )
+@@ -2709,7 +2781,7 @@
+ 
+ def main(argv: list[str] | None = None) -> int:
+     parser = argparse.ArgumentParser(description=__doc__)
+-    parser.add_argument("--mode", required=True, choices=("data", "smoke", "verify", "train", "eval"))
++    parser.add_argument("--mode", required=True, choices=("data", "smoke", "verify", "train", "eval", "final-eval"))
+     parser.add_argument("--output-root", type=Path, required=True)
+     parser.add_argument("--limits-json", required=True)
+     parser.add_argument("--wall-budget-seconds", type=float, required=True)

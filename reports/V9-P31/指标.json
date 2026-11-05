@@ -1,0 +1,105 @@
+{
+  "schema": "ainerzero.v9.s1.r11.p31.review.metrics.v1",
+  "task": "ainerzero.V9.P31",
+  "agent": "composer-71f7",
+  "reviews_task": "ainerzero.V9.P30",
+  "authors_excluded_ok": true,
+  "conclusion": "建议通过",
+  "review_inputs": {
+    "pin_path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/claude-20261022-e32/P30-review-inputs.json",
+    "pin_sha256": "05b8b62caed099c2741984c3dad7b0cd9338f0871d9dc88fe7b6d770f22c22af",
+    "start": {"ok": 210, "all_match": true},
+    "end": {
+      "ok": 208,
+      "all_match": false,
+      "mismatches": [
+        "artifacts/v9/s1/phase1/control.sqlite3",
+        "artifacts/v9/s1/phase1/eval_report.json"
+      ],
+      "note": "P31 CLI eval pollution; tier1 #483: not a P30 veto"
+    }
+  },
+  "frozen_values_verified": {
+    "updates": 3510,
+    "deadline_seconds": 1200,
+    "deadline_source": "user_approved R20261023-S1-phase1-r11-budget",
+    "supervision_seconds": 1250,
+    "eval_batches": 175,
+    "seeds": [0, 1, 2],
+    "arm1_deadline_seconds": 7,
+    "derived_deadline_seconds": 477,
+    "phase_wall_seconds": 10854.605202458999,
+    "phase_wall_max_seconds": 14400.0,
+    "experiment_id": "s1-phase1-20261023-r11",
+    "document_sha256": "b73b558953a06ce551c2e8613a09d0785b1c0222f8ff57f99c49da2ec812fb4e",
+    "file_sha256": "aeb8a7a800deab87bce08940489796edb0cc1949cde0f4999163f52decc1f105",
+    "r10_file_sha256_unchanged": "5fea3ca73da29658753932ff8d38c96dadd33314b1db022576caea505c20d1ff"
+  },
+  "fail_closed": {
+    "tamper_deadline_1150": true,
+    "shrink_updates_3299": true,
+    "slow_smoke_shrink_refused": true,
+    "isolated_broken_control_turns_red": true
+  },
+  "tier1_points": {
+    "T1": {
+      "result": "known_note_not_veto",
+      "arms_r10_r11_byte_equal": true,
+      "runtime_uses_ARM_SPECS": true,
+      "no_runtime_requires_doc_arm1_trust_keys": true
+    },
+    "T2": {
+      "result": "pass",
+      "train_sentinel_reached": true,
+      "approval_source_binding_dataset_deadline_1200": true,
+      "eval_and_arm1_past_approval": true
+    },
+    "T3": {
+      "result": "preexisting_unsealed_test",
+      "current_failure": "conservative 5012.10 != reserved 2214.08",
+      "before_tree_same_failure": true
+    },
+    "T4": {
+      "run_deadline_is_1200": true,
+      "derived_477_not_used_as_gate": true,
+      "phase_wall_recalc_ok": true,
+      "worst_case_9x1250": 11250,
+      "within_14400": true
+    },
+    "T5": {
+      "at_review_start": {
+        "control_sha_match": true,
+        "r11_rows": 0
+      },
+      "at_review_end_after_cli_eval": {
+        "control_sha_match": false,
+        "r11_experiment_rows": 1,
+        "r11_run_rows": 2,
+        "evidence": "reports/V9-P31/evidence/ledger_pollution_incident.json",
+        "ruling": "ask#480/answer#483 not a P30 veto"
+      }
+    }
+  },
+  "entry_checks": {
+    "verify": "completed",
+    "train": "refused preregistration_not_approved exit 3",
+    "eval_175": "passed budget gate then EvalBindingError",
+    "eval_48_control": "eval_call_budget_exceeded"
+  },
+  "leaf_diff": {
+    "leaf_count": 431,
+    "changed_leaf_count": 58,
+    "bound_files_outside_allowlist": [],
+    "non_identity_leaves_outside_allowlist": [],
+    "arms_unchanged": true,
+    "metrics_equal": true,
+    "data_identity_equal": true
+  },
+  "tests": {
+    "r11_registration": {"passed": 17, "failed": 0},
+    "experiments": {"passed": 325, "failed": 1, "failure": "test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original"},
+    "v9_other": {"passed": 378, "failed": 0},
+    "geometry_cpu_only_isolated": {"passed": 2, "failed": 0, "note": "full-suite order pollution only"}
+  },
+  "derived_probe_cost_delta_seconds": 4.421160830056579
+}

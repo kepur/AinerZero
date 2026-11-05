@@ -1,0 +1,94 @@
+{
+  "probe": "badcontrol-order",
+  "ok": true,
+  "started_at": "2026-10-24T23:14:03",
+  "elapsed_seconds": 1.391,
+  "production_ledger_before": {
+    "recorded_at": "2026-10-24T23:14:03",
+    "control.sqlite3": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44",
+    "control.sqlite3_bytes": 3059712,
+    "control.sqlite3_mtime": "2026-10-24T11:18:39",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-24T22:18:32",
+    "shm_mtime_epoch": 1792869512.6671834
+  },
+  "production_ledger_after": {
+    "recorded_at": "2026-10-24T23:14:04",
+    "control.sqlite3": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44",
+    "control.sqlite3_bytes": 3059712,
+    "control.sqlite3_mtime": "2026-10-24T11:18:39",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-24T22:18:32",
+    "shm_mtime_epoch": 1792869512.6671834
+  },
+  "production_ledger_unchanged": true,
+  "shm_mtime_changed": false,
+  "body": {
+    "purpose": "独立顺序坏控：只把 eval 的 open_aux_run/begin_work/reserve 挪回守卫之前",
+    "surgery": {
+      "guard_block_chars": 819,
+      "moved_write_block_chars": 1504,
+      "moved_write_block_first_line": "# r12: every CPU-only precondition passed; the first ledger write may",
+      "moved_write_block_last_line": "ledger.reserve(active_run, active_seconds=min(120.0, max(10.0, 0.5 * budget)))"
+    },
+    "diff_lines": 68,
+    "diff_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P39/evidence/badcontrol-worker-diff.patch",
+    "real": {
+      "worker_module": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/worker.py",
+      "status": "refused",
+      "refused_stage": "eval_binding_unavailable",
+      "run_id": null,
+      "ledger_before": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44",
+      "ledger_after": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44",
+      "unchanged": true
+    },
+    "sabotaged": {
+      "worker_module": "/tmp/p39-badcontrol/checkout/src/ainerzero/v9/experiments/s1/worker.py",
+      "status": "refused",
+      "refused_stage": "eval_binding_unavailable",
+      "error": null,
+      "run_id": "c95734550d5140e9ba2e6b20c66e9474",
+      "ledger_before": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44",
+      "ledger_after": "98acd28bad9b17ad4ccbb090cbf592e9601a062270e1950a71090de8736c5fab",
+      "unchanged": false
+    },
+    "copy_ledger_rows": {
+      "before": {
+        "experiments": 4,
+        "runs": 20,
+        "events": 83
+      },
+      "after_real_run": {
+        "experiments": 4,
+        "runs": 20,
+        "events": 83
+      },
+      "after_sabotaged_run": {
+        "experiments": 5,
+        "runs": 21,
+        "events": 86
+      }
+    },
+    "verdict": "坏控成立：同一驱动/同一 host 副本，只换源码树 —— 真实树拒绝且台账零字节变化；把写入块挪回守卫之前后，副本台账字节改变并注册了 run 行（P31 事故重现）。",
+    "checks": {
+      "real_source_module_is_repo_src": true,
+      "real_status_refused": true,
+      "real_stage_eval_binding_unavailable": true,
+      "real_ledger_unchanged": true,
+      "real_ledger_equals_seal": true,
+      "real_registered_no_run": true,
+      "sabotaged_source_module_is_checkout": true,
+      "sabotaged_ledger_bytes_changed": true,
+      "sabotaged_registered_a_run": true,
+      "sabotaged_rows_written": true,
+      "repo_worker_py_untouched": true
+    },
+    "all_checks_pass": true
+  }
+}

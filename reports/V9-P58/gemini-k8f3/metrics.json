@@ -1,0 +1,124 @@
+{
+  "task": "ainerzero.V9.P58",
+  "reviewed_task": "ainerzero.V9.P57",
+  "reviewer": "gemini-k8f3",
+  "tier": 2,
+  "role": "non-author reviewer",
+  "author": "claude",
+  "sha256_verified_files_count": 10,
+  "recomputed_summary": {
+    "nll_curve_area": {
+      "arm4": [
+        0.09,
+        0.0891,
+        0.0907
+      ],
+      "arm3": [
+        0.0929,
+        0.0908,
+        0.0953
+      ],
+      "arm2": [
+        0.1033,
+        0.0976,
+        0.108
+      ],
+      "all_pairs_disjoint": true
+    },
+    "final_nll": {
+      "arm4": [
+        0.000423,
+        0.0002891,
+        0.0006018
+      ],
+      "arm3": [
+        0.0007862,
+        0.0003753,
+        0.0013
+      ],
+      "arm2": [
+        0.0074,
+        0.0008267,
+        0.0166
+      ],
+      "disjoint_pairs": [
+        "arm4_vs_arm2"
+      ]
+    },
+    "localization_translation_mean_m": {
+      "arm2": [
+        0.3484,
+        0.3315,
+        0.3621
+      ],
+      "arm4": [
+        0.3505,
+        0.3462,
+        0.3578
+      ],
+      "arm3": [
+        0.3562,
+        0.3481,
+        0.3656
+      ],
+      "disjoint_pairs": []
+    },
+    "topology_f1_degenerate": 0.75,
+    "few_shot_k8_insufficient_data": true,
+    "m2_worst_retention_delta_overlap": true,
+    "arm1_d_candidate_completed_incomparable": true
+  },
+  "discrepancies_count": 0,
+  "preregistration_audit": {
+    "metrics_count": 6,
+    "metrics_checked": [
+      {
+        "id": "localization_error",
+        "direction": "lower_is_better",
+        "unit": "m / deg (translation, yaw)"
+      },
+      {
+        "id": "unseen_map_generalization",
+        "direction": "lower_is_better",
+        "unit": "m / nats"
+      },
+      {
+        "id": "topology_recovery",
+        "direction": "higher_is_better",
+        "unit": "precision / recall"
+      },
+      {
+        "id": "few_shot_unseen_transition",
+        "direction": "higher_is_better",
+        "unit": "accuracy / m"
+      },
+      {
+        "id": "sample_efficiency",
+        "direction": "lower_is_better",
+        "unit": "curve (metric vs updates)"
+      },
+      {
+        "id": "m2_memory_interference",
+        "direction": "lower_is_better",
+        "unit": "delta NLL / delta localization error"
+      }
+    ],
+    "reporting_notes": [
+      "k=8 is always marked insufficient_data (0/200 worlds have samples); never record as 0 or a perfect score",
+      "k curves are reported per family and never pooled",
+      "coverage facts (k=8: 0/200; k=4: 50/200 and navigation family only) are reporting notes only; coverage/FPR are not phase-1 metrics"
+    ],
+    "notes_compliance": {
+      "note1_k8_insufficient_data": true,
+      "note2_pooled_curve_gap_disclosed": true,
+      "note3_coverage_as_notes_only": true
+    },
+    "overstepping_claims": {
+      "claimed_capability_promotion": false,
+      "invented_statistical_thresholds": false,
+      "treated_topology_f1_as_conclusion": false,
+      "final_partition_not_read": true
+    }
+  },
+  "conclusion": "建议通过"
+}

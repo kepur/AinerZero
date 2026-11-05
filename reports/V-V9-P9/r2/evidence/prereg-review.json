@@ -1,0 +1,297 @@
+{
+ "harness": "reports/V-V9-P9/r2/harness/prereg_review.py",
+ "identity": {
+  "authoritative_document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+  "sidecar_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+  "sidecar_matches": true,
+  "reports_copy_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+  "reports_copy_byte_identical": true,
+  "reports_sidecar_matches": true,
+  "file_sha256": "56ac88a0646365e4833d04e4409ceaccb08aa39732e32a3dfb99d9183475f1fe",
+  "r1_document_sha256": "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6",
+  "report_claimed": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+  "claim_matches": true
+ },
+ "derivation": {
+  "rule": "updates = clamp(floor((target*duty/overhead - eval_cost) / (3*step)), min, cap)",
+  "r1_measurement": {
+   "path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P9/r1-archive/smoke_metrics.json",
+   "sha256_recorded": "b4e7d1218b29652c188425ec6d1def2fe49d8fd1a22e7192d01b705ae4b11ce8",
+   "sha256_actual": "b4e7d1218b29652c188425ec6d1def2fe49d8fd1a22e7192d01b705ae4b11ce8",
+   "max_trainable_step_seconds": 0.0069624580000891,
+   "updates": 3510,
+   "estimate_seconds": 359.9312287726061,
+   "deadline_seconds": 450,
+   "supervision_seconds": 500.0,
+   "arm1_deadline_seconds": 2,
+   "phase_wall_seconds": 4099.605202459
+  },
+  "r2_remeasurement": {
+   "path": "/Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/s1/phase1/smoke_metrics.json",
+   "max_trainable_step_seconds": 0.006527417000143032,
+   "updates_if_used": 3749,
+   "estimate_seconds": 359.9061075870864,
+   "deadline_seconds": 450,
+   "supervision_seconds": 500.0,
+   "fits_per_run_cap": true,
+   "per_run_cap_seconds": 1200.0,
+   "frozen_record_derived_updates": 3749
+  },
+  "frozen_values": {
+   "updates_protocol": 3510,
+   "updates_arms": {
+    "arm2": 3510,
+    "arm3": 3510,
+    "arm4": 3510
+   },
+   "seeds_arms": {
+    "arm2": [
+     0,
+     1,
+     2
+    ],
+    "arm3": [
+     0,
+     1,
+     2
+    ],
+    "arm4": [
+     0,
+     1,
+     2
+    ]
+   },
+   "estimate_seconds": 359.9312287726061,
+   "deadline_seconds": 450,
+   "supervision_seconds": 500.0,
+   "arm1_deadline_seconds": 2,
+   "phase_wall_seconds": 4099.605202459,
+   "measured_step_seconds": 0.0069624580000891
+  },
+  "matches_r1_derivation": true,
+  "r2_recheck_record_consistent": true,
+  "r2_recheck_still_within_caps": true,
+  "phase_recomputed": 4099.605202459
+ },
+ "diff_r1_r2": {
+  "r1_document_sha256": "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6",
+  "r2_document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+  "leaf_counts": {
+   "changed": 17,
+   "added": 20,
+   "removed": 0
+  },
+  "by_top_level_block": {
+   "approval_rule": 5,
+   "commands": 5,
+   "created_unix": 1,
+   "data_identity": 2,
+   "source_identity": 10,
+   "storage": 3,
+   "timing": 11
+  },
+  "changed": [
+   {
+    "path": "commands.freeze",
+    "r1": "ainerzero s1-phase1 --mode freeze --output-root reports/V9-P9",
+    "r2": "ainerzero s1-phase1 --mode freeze --output-root artifacts/v9/s1/phase1"
+   },
+   {
+    "path": "commands.generate_data",
+    "r1": "ainerzero s1-phase1 --mode data --output-root reports/V9-P9",
+    "r2": "ainerzero s1-phase1 --mode data --output-root artifacts/v9/s1/phase1"
+   },
+   {
+    "path": "commands.run_refused_here",
+    "r1": "ainerzero s1-phase1 --mode train --prereg reports/V9-P9/pre_registration.json (refused until the coordinator approves the frozen file)",
+    "r2": "ainerzero s1-phase1 --mode train --prereg artifacts/v9/s1/phase1/pre_registration.json (refused, exit 3, unless RESEARCH_LOG.md carries the coordinator approval line for this document SHA256)"
+   },
+   {
+    "path": "commands.smoke",
+    "r1": "ainerzero s1-phase1 --mode smoke --output-root reports/V9-P9",
+    "r2": "ainerzero s1-phase1 --mode smoke --output-root artifacts/v9/s1/phase1"
+   },
+   {
+    "path": "commands.verify",
+    "r1": "ainerzero s1-phase1 --mode verify --output-root reports/V9-P9",
+    "r2": "ainerzero s1-phase1 --mode verify --output-root artifacts/v9/s1/phase1"
+   },
+   {
+    "path": "created_unix",
+    "r1": 1792572627.863282,
+    "r2": 1792577115.876888
+   },
+   {
+    "path": "data_identity.files.export_meta.json",
+    "r1": "1a778d58d97df0d58908b1f74950d4af23ac02fa2dda2978260ecf344104aa13",
+    "r2": "600c3de61eb000a78aa39503cd62050e03135866c59de3392adc9ca4b26e9712"
+   },
+   {
+    "path": "data_identity.generation_seconds",
+    "r1": 47.605202458999884,
+    "r2": 45.739918708000005
+   },
+   {
+    "path": "source_identity.package_files.src/ainerzero/v9/experiments/s1/commands.py",
+    "r1": "f440408efbd621822a9bce99be6de9b6d2c342997fb02d8e581fe49b879851d3",
+    "r2": "78b782e10e32490ada72c7709d8fe1cacb94fb7969b5612fe1f75aaa5280f124"
+   },
+   {
+    "path": "source_identity.package_files.src/ainerzero/v9/experiments/s1/data.py",
+    "r1": "8f3d8ef04ef033ce1c0b18adefe943c0b891930662567745946ef8651d60d723",
+    "r2": "36ef7bb19b4ef61219be43ff06ea1da0c4c205ee07cd8e57487d8e85502a87fb"
+   },
+   {
+    "path": "source_identity.package_files.src/ainerzero/v9/experiments/s1/prereg.py",
+    "r1": "215fd57814c2b4e93946935f0266b201103c3954e342598153906f5e415a37fc",
+    "r2": "96c04c3dd75eca13477defbee178ed6b427f360150a94ad659adf954d6693e91"
+   },
+   {
+    "path": "source_identity.package_files.src/ainerzero/v9/experiments/s1/resource_gate.py",
+    "r1": "83aecac637c91093af72115e9937cbf041058029e982bdd3027be2d198a9293b",
+    "r2": "7171a83282abdfdb31892a3b24d82251b813f3623102148b9ddcc0710e5d578f"
+   },
+   {
+    "path": "source_identity.package_files.src/ainerzero/v9/experiments/s1/smoke.py",
+    "r1": "88eddc7ba542b2f2c6cfc7ee6fdb592f1d2732a2e651f9dab2711a2114808a50",
+    "r2": "90c71f538fbb7d4b068f595333558988e73ea76bb0f903d0c8cf9a1bea3c00b8"
+   },
+   {
+    "path": "source_identity.package_files.src/ainerzero/v9/experiments/s1/spec.py",
+    "r1": "ac8dae54444451317eb34507fac80304ba54054351f6983d8613875a5f95c3aa",
+    "r2": "beedc9482b8d9ac143168adfe78ba24bb0c18f3d777059a74777d78441e2b774"
+   },
+   {
+    "path": "source_identity.package_files.src/ainerzero/v9/experiments/s1/worker.py",
+    "r1": "a6d3cd5419e64f429747d9e36bbcca4911d2b7965c236c70072563dd571de21f",
+    "r2": "08f7589767ec44afe9957f4bd51272c3fc7cc38feaf0ad5701a58b9cf4cacd77"
+   },
+   {
+    "path": "source_identity.package_map_digest",
+    "r1": "fe909c9d1b15ea211f72e7ae0f7c87a9c2dc4eaeabe8f2f097915adcc242e6b5",
+    "r2": "0426e090f14a325e8028be15eabc03eb046ce8be898496d2e43b6cf042e43693"
+   },
+   {
+    "path": "source_identity.spec.sha256",
+    "r1": "ac8dae54444451317eb34507fac80304ba54054351f6983d8613875a5f95c3aa",
+    "r2": "beedc9482b8d9ac143168adfe78ba24bb0c18f3d777059a74777d78441e2b774"
+   }
+  ],
+  "added": [
+   {
+    "path": "approval_rule.credential",
+    "r2": "bare line in RESEARCH_LOG.md: APPROVED s1-phase1 prereg document_sha256={document_sha256}"
+   },
+   {
+    "path": "approval_rule.document_sha256_must_equal",
+    "r2": "the frozen document SHA256 (canonical JSON)"
+   },
+   {
+    "path": "approval_rule.recorded_in",
+    "r2": "RunStore run config_snapshot.approval (line text, line number, log SHA256, document SHA256)"
+   },
+   {
+    "path": "approval_rule.status_field",
+    "r2": "informational only; rewriting status and the sidecar SHA256 does not approve a run (V9.P10 F1)"
+   },
+   {
+    "path": "approval_rule.written_by",
+    "r2": "coordinator (level 1); the executor never writes approval lines"
+   },
+   {
+    "path": "source_identity.package_files.src/ainerzero/cli.py",
+    "r2": "ca393b64d64f84608d81f37f8a922fba756ddf3034692f38559b9289d3502ab7"
+   },
+   {
+    "path": "storage.datasets",
+    "r2": "artifacts/v9/s1/datasets/<dataset_digest>/"
+   },
+   {
+    "path": "storage.ledger_output_root",
+    "r2": "artifacts/v9/s1/phase1/"
+   },
+   {
+    "path": "storage.reports",
+    "r2": "reports/V9-P9/ holds only manifests and their SHA256"
+   },
+   {
+    "path": "timing.smoke_recheck.derived_deadline_if_recheck_used",
+    "r2": 450
+   },
+   {
+    "path": "timing.smoke_recheck.derived_updates_if_recheck_used",
+    "r2": 3749
+   },
+   {
+    "path": "timing.smoke_recheck.measured_step_seconds",
+    "r2": 0.006527417000143032
+   },
+   {
+    "path": "timing.smoke_recheck.note",
+    "r2": "same protocol, same arm code; the difference is measurement noise on the forward+loss step. The frozen document keeps the registered measurement of record so the update count and budget do not drift between r1 and r2."
+   },
+   {
+    "path": "timing.smoke_recheck.path",
+    "r2": "/Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/s1/phase1/smoke_metrics.json"
+   },
+   {
+    "path": "timing.smoke_recheck.sha256",
+    "r2": "75368e5e4e6a9ba50fcac355c3541a26d0ad4360b326bffc80ca010808108957"
+   },
+   {
+    "path": "timing.smoke_recheck.usable",
+    "r2": true
+   },
+   {
+    "path": "timing.smoke_source.in_run_root",
+    "r2": false
+   },
+   {
+    "path": "timing.smoke_source.path",
+    "r2": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P9/r1-archive/smoke_metrics.json"
+   },
+   {
+    "path": "timing.smoke_source.role",
+    "r2": "measurement of record: the frozen deadline/updates are derived from this file only; no command line value can replace it"
+   },
+   {
+    "path": "timing.smoke_source.sha256",
+    "r2": "b4e7d1218b29652c188425ec6d1def2fe49d8fd1a22e7192d01b705ae4b11ce8"
+   }
+  ],
+  "removed": [],
+  "parameter_leaks": [],
+  "data_plan_leaks": [],
+  "no_parameter_or_budget_change": true
+ },
+ "storage": {
+  "declared_ledger_root": "artifacts/v9/s1/phase1/",
+  "declared_datasets": "artifacts/v9/s1/datasets/<dataset_digest>/",
+  "ledger_exists": true,
+  "ledger_path": "artifacts/v9/s1/phase1/control.sqlite3",
+  "dataset_ref": {
+   "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+   "dataset_dir": "artifacts/v9/s1/datasets/8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+   "manifest_sha256": "5cbd65225c84d50b50e65f31d79b8ddeb8ca5272a085d8f8c5cc1f116b4ed594",
+   "rule": "level-1 notice #297: dataset bytes live under artifacts/v9/s1/datasets/<dataset_digest>/; reports/ keeps manifests and SHA256 only",
+   "schema": "ainerzero.v9.s1.dataset_ref.v1",
+   "spec": "s1-phase1-v1"
+  },
+  "dataset_dirs": [
+   "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26"
+  ],
+  "dataset_digest_matches_dir": true,
+  "dataset_dir": "artifacts/v9/s1/datasets/8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+  "reports_r2_has_dataset_bytes": [],
+  "doc_commands_point_at_artifacts": true,
+  "production_lock": {
+   "path": "artifacts/locks/m0-worker.lock",
+   "mtime": 1790110663.3796358
+  },
+  "production_ledger": {
+   "path": "artifacts/control.sqlite3",
+   "mtime": 1792008059.088039,
+   "sha256": "e61dd4cbc6e3aac3d145ef580ebf2e8cc9839052a9d69f01296fb3a093f5c414"
+  }
+ }
+}

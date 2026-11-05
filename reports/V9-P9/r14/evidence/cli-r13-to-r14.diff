@@ -1,0 +1,185 @@
+--- reports/V9-P9/r6/evidence/pre-work-source/src/ainerzero/cli.py	2026-10-22 00:53:44
++++ src/ainerzero/cli.py	2026-10-26 19:55:59
+@@ -1306,9 +1306,182 @@
+         type=Path,
+         help="一级批准行所在的 RESEARCH_LOG.md（verify 用它做诊断；train 只认仓库根的 "
+         "spec.RESEARCH_LOG，指向别处一律 exit 3，不会改读）",
++    )
++    teacher = commands.add_parser(
++        "teacher-benchmark",
++        help="教师基准受控入口（支持 T4 与 T6 DA3）：检查（inspect，零副作用）与受控运行（run，共享锁+RunStore+资源门）",
++    )
++    teacher.add_argument(
++        "--teacher",
++        choices=("t4", "t6", "auto"),
++        default="auto",
++        help="目标教师任务（t4 / t6 / auto，默认根据 model 自动选择）",
++    )
++    teacher.add_argument(
++        "--mode",
++        required=True,
++        choices=("inspect", "run"),
++        help="inspect=零副作用只读检查；run=受控基准运行（共享锁+中央账本+资源门）",
++    )
++    teacher.add_argument(
++        "--model",
++        choices=(
++            "vjepa",
++            "depth-anything-v2",
++            "da3-small",
++            "da3-base",
++            "all",
++            "da3-all",
++        ),
++        default="all",
++        help="目标教师模型（T4: vjepa, depth-anything-v2, all; T6: da3-small, da3-base, da3-all）",
++    )
++    teacher.add_argument(
++        "--wall-budget-seconds",
++        type=float,
++        default=None,
++        help="单次运行墙钟预算（秒；T4 默认 600.0/上限 600.0，T6 默认 1200.0/上限 1200.0，只能收紧不能放宽）",
++    )
++    teacher.add_argument(
++        "--views",
++        type=int,
++        default=None,
++        help="T6 视图数量（默认 4，上限 64）",
++    )
++    teacher.add_argument(
++        "--statistical-protocol",
++        type=Path,
++        default=None,
++        help="T6 冻结统计协议与配对输入规范 JSON",
+     )
++    teacher.add_argument(
++        "--research-log",
++        type=Path,
++        default=Path("RESEARCH_LOG.md"),
++        help="RESEARCH_LOG.md 路径（默认仓库根 RESEARCH_LOG.md）",
++    )
++    teacher.add_argument(
++        "--store-path",
++        type=Path,
++        default=Path("artifacts/v9/teachers/benchmark/runs.db"),
++        help="中央 RunStore SQLite 路径",
++    )
++    teacher.add_argument(
++        "--lock-path",
++        type=Path,
++        default=Path("artifacts/locks/m0-worker.lock"),
++        help="共享互斥锁文件路径",
++    )
++    teacher.add_argument(
++        "--weights-root",
++        type=Path,
++        default=None,
++        help="教师模型权重根目录（T4 默认 artifacts/teachers/t4-approved，T6 默认 artifacts/teachers/da3）",
++    )
++    teacher.add_argument(
++        "--test-substitute",
++        action="store_true",
++        default=False,
++        help="CPU 测试替身运行模式（仅用于独立测试，不加载真实模型）",
++    )
++    teacher.add_argument(
++        "--coordinator-release",
++        action="store_true",
++        default=False,
++        help="统筹者显式放行真实模型执行（默认关闭 fail-closed）",
++    )
++    teacher.add_argument(
++        "--allow-model-execution",
++        action="store_true",
++        default=False,
++        help="允许模型实际前向执行（需统筹放行，默认关闭 fail-closed）",
++    )
++    teacher_da3 = commands.add_parser(
++        "teacher-da3",
++        help="T6 DA3 教师专用受控入口：检查（inspect，零副作用）与受控运行（run，共享锁+RunStore+资源门）",
++    )
++    teacher_da3.add_argument(
++        "--mode",
++        required=True,
++        choices=("inspect", "run"),
++        help="inspect=零副作用只读检查；run=受控基准运行（共享锁+中央账本+资源门）",
++    )
++    teacher_da3.add_argument(
++        "--model",
++        choices=("da3-small", "da3-base", "da3-all"),
++        default="da3-all",
++        help="目标 DA3 模型（da3-small, da3-base, da3-all）",
++    )
++    teacher_da3.add_argument(
++        "--wall-budget-seconds",
++        type=float,
++        default=1200.0,
++        help="单次运行墙钟预算（秒，默认 1200.0，上限 1200.0）",
++    )
++    teacher_da3.add_argument(
++        "--views",
++        type=int,
++        default=4,
++        help="视图数量（默认 4，上限 64）",
++    )
++    teacher_da3.add_argument(
++        "--statistical-protocol",
++        type=Path,
++        default=None,
++        help="T6 冻结统计协议与配对输入规范 JSON",
++    )
++    teacher_da3.add_argument(
++        "--research-log",
++        type=Path,
++        default=Path("RESEARCH_LOG.md"),
++        help="RESEARCH_LOG.md 路径",
++    )
++    teacher_da3.add_argument(
++        "--store-path",
++        type=Path,
++        default=Path("artifacts/v9/teachers/benchmark/runs.db"),
++        help="中央 RunStore SQLite 路径",
++    )
++    teacher_da3.add_argument(
++        "--lock-path",
++        type=Path,
++        default=Path("artifacts/locks/m0-worker.lock"),
++        help="共享互斥锁文件路径",
++    )
++    teacher_da3.add_argument(
++        "--test-substitute",
++        action="store_true",
++        default=False,
++        help="CPU 测试替身运行模式（仅用于独立测试，不加载真实模型）",
++    )
++    teacher_da3.add_argument(
++        "--coordinator-release",
++        action="store_true",
++        default=False,
++        help="统筹者显式放行真实模型执行（默认关闭 fail-closed）",
++    )
++    teacher_da3.add_argument(
++        "--allow-model-execution",
++        action="store_true",
++        default=False,
++        help="允许模型实际前向执行（需统筹放行，默认关闭 fail-closed）",
++    )
++    teacher_da3.add_argument(
++        "--weights-root",
++        type=Path,
++        default=Path("artifacts/teachers/da3"),
++        help="DA3 权重根目录（默认 artifacts/teachers/da3）",
++    )
+     args = parser.parse_args(argv)
+     try:
++        if args.command in ("teacher-benchmark", "teacher-da3"):
++            from ainerzero.v9.teachers.benchmark_commands import teacher_benchmark_command
++
++            if args.command == "teacher-da3":
++                setattr(args, "teacher", "t6")
++            report, exit_code = teacher_benchmark_command(args)
++            print(json.dumps(report, ensure_ascii=False, indent=2))
++            return exit_code
+         if args.command == "s1-phase1":
+             from ainerzero.v9.experiments.s1.commands import s1_phase1_command
+ 

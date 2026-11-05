@@ -1,0 +1,162 @@
+350:         if day is None:
+351:             return run_limit, 0.0
+352:         return min(run_limit, day["limit_seconds"]), day["reserved_seconds"]
+353: 
+354:     def _remaining(
+355:         self, db: sqlite3.Connection, row: sqlite3.Row, instant: float
+356:     ) -> dict[str, Any]:
+357:         budget = _budget(json.loads(row["config_json"]))
+358:         date = datetime.fromtimestamp(instant, ZoneInfo(budget["timezone"])).date().isoformat()
+359:         daily_limit, daily_reserved = self._daily_capacity(
+360:             db, date, budget["max_daily_active_seconds"]
+361:         )
+362:         return {
+363:             "environment_steps": max(0, budget["max_environment_steps"] - row["environment_steps"]),
+364:             "optimizer_steps": max(0, budget["max_optimizer_steps"] - row["optimizer_steps"]),
+365:             "model_transitions": max(0, budget["max_model_transitions"] - row["model_transitions"]),
+366:             # Pre-work reservations can arrive faster than the wall clock
+367:             # advances. They still share one finite session allocation.
+368:             "wall_seconds": max(
+369:                 0.0,
+370:                 budget["max_wall_seconds"]
+371:                 - max(0.0, instant - row["created_at"], row["active_seconds"]),
+372:             ),
+373:             "daily_active_seconds": max(0.0, daily_limit - daily_reserved),
+374:             "daily_date": date,
+375:             "daily_limit_seconds": daily_limit,
+376:         }
+377: 
+378:     def _record(self, db: sqlite3.Connection, row: sqlite3.Row, instant: float) -> RunRecord:
+379:         return RunRecord(
+380:             run_id=row["run_id"],
+381:             request_id=row["request_id"],
+382:             state=row["state"],
+383:             resume_state=row["resume_state"],
+384:             reason=row["reason"],
+385:             config_snapshot=json.loads(row["config_json"]),
+386:             config_hash=row["config_hash"],
+387:             created_at=_iso(row["created_at"]),
+388:             updated_at=_iso(row["updated_at"]),
+389:             reserved_environment_steps=row["environment_steps"],
+390:             reserved_optimizer_steps=row["optimizer_steps"],
+391:             reserved_active_seconds=row["active_seconds"],
+392:             wall_seconds=max(0.0, instant - row["created_at"]),
+393:             remaining=self._remaining(db, row, instant),
+394:             experiment_id=row["experiment_id"],
+395:             role=row["role"],
+396:             reserved_model_transitions=row["model_transitions"],
+397:         )
+398: 
+399:     def _experiment_record(
+400:         self, db: sqlite3.Connection, experiment_id: str, instant: float
+401:     ) -> ExperimentRecord:
+402:         row = db.execute(
+403:             "SELECT * FROM experiments WHERE experiment_id=?", (experiment_id,)
+404:         ).fetchone()
+405:         if row is None:
+406:             raise KeyError(f"Unknown experiment: {experiment_id}")
+407:         manifest = json.loads(row["manifest_json"])
+408:         budget = _experiment_budget(manifest)
+409:         runs = db.execute("SELECT * FROM runs WHERE experiment_id=?", (experiment_id,)).fetchall()
+410:         totals = {
+411:             key: sum(r[key] for r in runs)
+412:             for key in (
+413:                 "environment_steps",
+414:                 "optimizer_steps",
+415:                 "model_transitions",
+416:                 "active_seconds",
+417:             )
+418:         }
+419:         calibration = sum(
+420:             max(
+421:                 r["active_seconds"],
+422:                 max(
+423:                     0,
+424:                     (r["updated_at"] if r["state"] in TERMINAL_STATES else instant)
+425:                     - r["created_at"],
+426:                 ),
+427:             )
+428:             for r in runs
+429:             if r["role"] == "calibration"
+430:         )
+431:         count = sum(r["role"] == "model" for r in runs)
+432:         remaining = {
+433:             key: max(0, budget[f"max_{key}"] - totals[key])
+434:             for key in ("environment_steps", "optimizer_steps", "model_transitions")
+435:         }
+436:         remaining.update(
+437:             wall_seconds=max(
+438:                 0.0,
+439:                 budget["max_wall_seconds"]
+440:                 - max(0.0, instant - row["created_at"], totals["active_seconds"]),
+441:             ),
+442:             calibration_seconds=max(0.0, budget["max_calibration_seconds"] - calibration),
+443:             model_runs=max(0, budget["max_model_runs"] - count),
+444:         )
+445:         return ExperimentRecord(
+446:             experiment_id,
+447:             row["request_id"],
+448:             manifest,
+449:             row["manifest_hash"],
+450:             _iso(row["created_at"]),
+451:             count,
+452:             totals["environment_steps"],
+453:             totals["optimizer_steps"],
+454:             totals["model_transitions"],
+455:             totals["active_seconds"],
+790:         environment_steps: int = 0,
+791:         optimizer_steps: int = 0,
+792:         active_seconds: float = 0,
+793:         model_transitions: int = 0,
+794:     ) -> RunRecord:
+795:         """Atomically reserve a unit before dispatch, never after performing it."""
+796:         self._validate_units(environment_steps, optimizer_steps, active_seconds, model_transitions)
+797:         record: RunRecord | None = None
+798:         with self._transaction() as db:
+799:             instant = self._effective_now(db)
+800:             row = self._row(db, run_id)
+801:             if row["state"] not in WORK_STATES:
+802:                 raise LifecycleError(f"Cannot reserve work while run is {row['state']}")
+803:             result = self._check(
+804:                 db,
+805:                 row,
+806:                 instant,
+807:                 environment_steps,
+808:                 optimizer_steps,
+809:                 active_seconds,
+810:                 model_transitions,
+811:             )
+812:             if result.allowed:
+813:                 budget = _budget(json.loads(row["config_json"]))
+814:                 date = (
+815:                     datetime.fromtimestamp(instant, ZoneInfo(budget["timezone"])).date().isoformat()
+816:                 )
+817:                 self._day(db, date, budget["max_daily_active_seconds"])
+818:                 for date, amount in self._allocations(instant, active_seconds, budget["timezone"]):
+819:                     self._day(db, date, budget["max_daily_active_seconds"])
+820:                     db.execute(
+821:                         "UPDATE daily_budget SET reserved_seconds=reserved_seconds+? WHERE local_date=?",
+822:                         (amount, date),
+823:                     )
+824:                 db.execute(
+825:                     "UPDATE runs SET environment_steps=environment_steps+?,optimizer_steps=optimizer_steps+?,active_seconds=active_seconds+?,model_transitions=model_transitions+?,updated_at=? WHERE run_id=?",
+826:                     (
+827:                         environment_steps,
+828:                         optimizer_steps,
+829:                         active_seconds,
+830:                         model_transitions,
+831:                         instant,
+832:                         run_id,
+833:                     ),
+834:                 )
+835:                 record = self._record(db, self._row(db, run_id), instant)
+836:         if not result.allowed:
+837:             raise BudgetExceeded(result.reason or "unknown", result.remaining)
+838:         assert record is not None
+839:         return record
+840: 
+841:     def transition(self, run_id: str, target_state: str, reason: str | None = None) -> RunRecord:
+842:         if target_state not in TRANSITIONS:
+843:             raise LifecycleError(f"Unknown state: {target_state}")
+844:         if reason is not None and not isinstance(reason, str):
+845:             raise LifecycleError("reason must be text or null")

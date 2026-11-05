@@ -1,0 +1,17 @@
+--- reports/V9-P9/r6/evidence/pre-work-source/src/ainerzero/v9/experiments/s1/evaluation.py	2026-10-22 00:53:43
++++ src/ainerzero/v9/experiments/s1/evaluation.py	2026-10-22 00:58:10
+@@ -328,7 +328,13 @@
+                 continue
+             memory = None
+             if support:
+-                run = backend.step_sequence(model, sequence, stop=support[-1] + 1)
++                # ``stop`` is an exclusive frame bound, so covering support
++                # transition ``support[-1]`` (which consumes frames
++                # ``support[-1]`` and ``support[-1] + 1``) needs
++                # ``support[-1] + 2``.  The r5 code used ``+ 1``: k=1 asked for
++                # a single frame (BackendError) and k=2/k=4 silently wrote one
++                # support transition fewer than frozen k.
++                run = backend.step_sequence(model, sequence, stop=support[-1] + 2)
+                 memory = run["memory"]
+             graph = backend.probe_graph(model, memory)
+             cells = relative_cell_path(episode)

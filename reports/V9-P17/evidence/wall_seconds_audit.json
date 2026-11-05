@@ -1,0 +1,122 @@
+{
+  "runs_analyzed": 3,
+  "author_reported_total_wall_seconds": 133102.0,
+  "current_dynamic_wall_seconds_sum": 211859.91487121582,
+  "real_actual_elapsed_seconds_sum": 59.52997183799744,
+  "real_active_seconds_sum": 720.2669760419994,
+  "phase_cap_seconds": 14400.0,
+  "defect_analysis": {
+    "root_cause": "RunStore._run_record() in src/ainerzero/runtime/lifecycle.py line 392 computes wall_seconds = max(0.0, instant - row['created_at']) where instant = time.time(). For runs that have already completed (state='completed'), wall_seconds continues to tick upward infinitely with real time.",
+    "verdict": "The 133,102s wall clock reported by step5-k7m2 is an engineering defect caused by dynamic wall_seconds unbounding on historical terminal runs. The actual wall-clock time elapsed during execution was only 59.53 seconds across all 3 prep runs, and total active execution time was 720.27 seconds. The phase budget (14,400s) has NOT been truly exhausted."
+  },
+  "runs": [
+    {
+      "run_id": "f3f29a16369c400bb140b0d982f80ad2",
+      "experiment_id": "s1-phase1-prereg-prep-20261021",
+      "state": "completed",
+      "created_at": 1792576573.9644,
+      "updated_at": 1792576624.302446,
+      "dynamic_wall_seconds_now": 71617.57403302193,
+      "actual_elapsed_seconds": 50.338045835494995,
+      "active_seconds": 350.57941137500075,
+      "transitions": [
+        {
+          "from": null,
+          "to": "created",
+          "time": 1792576573.9644,
+          "reason": null
+        },
+        {
+          "from": "created",
+          "to": "initializing",
+          "time": 1792576573.964851,
+          "reason": "prep_mode=data"
+        },
+        {
+          "from": "initializing",
+          "to": "collecting",
+          "time": 1792576573.965232,
+          "reason": "worker_started"
+        },
+        {
+          "from": "collecting",
+          "to": "completed",
+          "time": 1792576624.302446,
+          "reason": "data_prep_completed"
+        }
+      ]
+    },
+    {
+      "run_id": "7b21d3dfd2714afa8f68a5484c5596eb",
+      "experiment_id": "s1-phase1-prereg-prep-20261021",
+      "state": "completed",
+      "created_at": 1792576638.852673,
+      "updated_at": 1792576643.396393,
+      "dynamic_wall_seconds_now": 71552.68576002121,
+      "actual_elapsed_seconds": 4.543720006942749,
+      "active_seconds": 184.79119249999985,
+      "transitions": [
+        {
+          "from": null,
+          "to": "created",
+          "time": 1792576638.852673,
+          "reason": null
+        },
+        {
+          "from": "created",
+          "to": "initializing",
+          "time": 1792576638.853196,
+          "reason": "prep_mode=smoke"
+        },
+        {
+          "from": "initializing",
+          "to": "validating",
+          "time": 1792576638.853527,
+          "reason": "worker_started"
+        },
+        {
+          "from": "validating",
+          "to": "completed",
+          "time": 1792576643.396393,
+          "reason": "smoke_prep_completed"
+        }
+      ]
+    },
+    {
+      "run_id": "c03caffeb5304f668e711dc9d3ab9831",
+      "experiment_id": "s1-phase1-prereg-prep-20261021",
+      "state": "completed",
+      "created_at": 1792579501.883355,
+      "updated_at": 1792579506.531561,
+      "dynamic_wall_seconds_now": 68689.65507817268,
+      "actual_elapsed_seconds": 4.648205995559692,
+      "active_seconds": 184.89637216699884,
+      "transitions": [
+        {
+          "from": null,
+          "to": "created",
+          "time": 1792579501.883355,
+          "reason": null
+        },
+        {
+          "from": "created",
+          "to": "initializing",
+          "time": 1792579501.88398,
+          "reason": "prep_mode=smoke"
+        },
+        {
+          "from": "initializing",
+          "to": "validating",
+          "time": 1792579501.884529,
+          "reason": "worker_started"
+        },
+        {
+          "from": "validating",
+          "to": "completed",
+          "time": 1792579506.531561,
+          "reason": "smoke_prep_completed"
+        }
+      ]
+    }
+  ]
+}

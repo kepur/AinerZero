@@ -1,0 +1,124 @@
+{
+  "probe": "tests-reconcile",
+  "ok": true,
+  "started_at": "2026-10-23T23:20:53",
+  "elapsed_seconds": 0.038,
+  "production_ledger_before": {
+    "recorded_at": "2026-10-23T23:20:53",
+    "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "control.sqlite3_bytes": 86016,
+    "control.sqlite3_mtime": "2026-10-23T16:33:15",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-23T23:19:02",
+    "shm_mtime_epoch": 1792786742.3891869
+  },
+  "production_ledger_after": {
+    "recorded_at": "2026-10-23T23:20:53",
+    "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "control.sqlite3_bytes": 86016,
+    "control.sqlite3_mtime": "2026-10-23T16:33:15",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-23T23:19:02",
+    "shm_mtime_epoch": 1792786742.3891869
+  },
+  "production_ledger_unchanged": true,
+  "shm_mtime_changed": false,
+  "body": {
+    "purpose": "tests/v9 全量对账 + P34 的 7 个失败逐个归因",
+    "runs": {
+      "with_shim": {
+        "log": "pytest-v9-with-shim.log",
+        "summary_line": "9 failed, 711 passed in 135.65s (0:02:15)",
+        "passed": 711,
+        "failed": 9,
+        "failed_tests": [
+          "tests/v9/experiments/test_s1_approval.py::test_worker_refuses_train_without_an_approval_line",
+          "tests/v9/experiments/test_s1_approval.py::test_worker_records_the_approval_line_and_sha_in_the_runstore",
+          "tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original",
+          "tests/v9/experiments/test_s1_train_gates.py::test_worker_refuses_a_relocated_research_log",
+          "tests/v9/experiments/test_s1_train_gates.py::test_worker_refuses_when_a_bound_source_drifted",
+          "tests/v9/experiments/test_s1_train_gates.py::test_train_refuses_when_the_dataset_digest_differs",
+          "tests/v9/experiments/test_s1_train_gates.py::test_worker_refuses_when_the_dataset_digest_differs",
+          "tests/v9/geometry/test_canonical.py::test_cpu_only_imports",
+          "tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only"
+        ]
+      },
+      "no_shim": {
+        "log": "pytest-v9-no-shim.log",
+        "summary_line": "3 failed, 717 passed in 41.24s",
+        "passed": 717,
+        "failed": 3,
+        "failed_tests": [
+          "tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original",
+          "tests/v9/geometry/test_canonical.py::test_cpu_only_imports",
+          "tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only"
+        ]
+      },
+      "experiments_alone": {
+        "log": "pytest-experiments-alone.log",
+        "summary_line": "1 failed, 341 passed in 16.49s",
+        "passed": 341,
+        "failed": 1,
+        "failed_tests": [
+          "tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original"
+        ]
+      },
+      "geometry_alone": {
+        "log": "pytest-geometry-alone.log",
+        "summary_line": "149 passed in 9.19s",
+        "passed": 149,
+        "failed": 0,
+        "failed_tests": []
+      }
+    },
+    "attribution": {
+      "six_tmpdir_eexist": {
+        "tests": [
+          "tests/v9/experiments/test_s1_approval.py::test_worker_refuses_train_without_an_approval_line",
+          "tests/v9/experiments/test_s1_approval.py::test_worker_records_the_approval_line_and_sha_in_the_runstore",
+          "tests/v9/experiments/test_s1_train_gates.py::test_worker_refuses_a_relocated_research_log",
+          "tests/v9/experiments/test_s1_train_gates.py::test_worker_refuses_when_a_bound_source_drifted",
+          "tests/v9/experiments/test_s1_train_gates.py::test_train_refuses_when_the_dataset_digest_differs",
+          "tests/v9/experiments/test_s1_train_gates.py::test_worker_refuses_when_the_dataset_digest_differs"
+        ],
+        "cause": "IDE 注入的 sitecustomize shim（/Applications/WorkBuddy AI.app/.../cli/vendor/shim/sitecustomize.py:501）自己实现了 mkdir，Path.mkdir(exist_ok=True) 落在canonical_root fixture 造的 phase1 符号链接上时抛 PermissionError: EEXIST。去掉 PYTHONPATH 里的 shim 后这 6 条全部通过。",
+        "is_product_regression": false
+      },
+      "known_real_ledger": {
+        "test": "tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original",
+        "cause": "断言 conservative == reserved_based 在当前生产行上不再成立（5012.096 vs 2214.076）：生产库在 r10/r11 运行后行数/时长变了，这是旧预期失效，不是 r12 引入。该用例只用 read_bytes()+copyfile，不写生产库。",
+        "is_product_regression": false,
+        "should_be_fixed_by": "一级（改预期或改夹具），本卡不改测试"
+      },
+      "two_cpu_only_imports": {
+        "tests": [
+          "tests/v9/geometry/test_canonical.py::test_cpu_only_imports",
+          "tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only"
+        ],
+        "cause": "同进程先导入了 mlx/torch，断言 any(...) 命真；geometry 目录单跑 149 passed。",
+        "is_product_regression": false
+      }
+    },
+    "environment": {
+      "ps_available": false,
+      "ps_error": "zsh: operation not permitted: ps（本会话 shell 被沙箱禁止 exec ps）",
+      "non_sandbox_rerun_required_by_card": true,
+      "handoff": "tests/v9 全量请一级在能跑 ps 的非沙箱环境补跑；本卡已用去掉 IDE shim 的同一 venv 跑通全量。"
+    },
+    "checks": {
+      "no_shim_run_is_greener_than_with_shim": true,
+      "shim_failures_are_exactly_the_six_tmpdir_cases": true,
+      "no_shim_only_known_plus_cpu_only_fail": true,
+      "cpu_only_tests_pass_in_isolation": true,
+      "experiments_alone_only_known_failure": true,
+      "totals_add_up": true
+    },
+    "all_checks_pass": true
+  }
+}

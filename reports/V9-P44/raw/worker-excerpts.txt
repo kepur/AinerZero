@@ -1,0 +1,255 @@
+412:     return value
+413: 
+414: 
+415: def _validate_reserved(run) -> float:
+416:     """Raw ``reserved_active_seconds`` validated *before* any ``max`` (r8 F5).
+417: 
+418:     r7 normalised with ``max(0.0, float(value) or 0.0)``; ``max(0.0, nan)`` is
+419:     ``0.0`` in Python, so a NaN/inf/negative reservation was silently charged as
+420:     zero and the later ``isfinite`` guard could never fire.  Presence, numeric
+421:     type, finiteness and sign are therefore checked first.
+422:     """
+423:     run_id = getattr(run, "run_id", "?")
+424:     if not hasattr(run, "reserved_active_seconds"):
+425:         raise LedgerStateInvalid(f"run {run_id} has no reserved_active_seconds field")
+426:     value = getattr(run, "reserved_active_seconds")
+427:     if value is None:
+428:         raise LedgerStateInvalid(f"run {run_id} has a null reserved_active_seconds")
+429:     if isinstance(value, bool) or not isinstance(value, (int, float)):
+430:         raise LedgerStateInvalid(
+431:             f"run {run_id} reserved_active_seconds is not numeric: {type(value).__name__}"
+432:         )
+433:     value = float(value)
+434:     if not math.isfinite(value):
+435:         raise LedgerStateInvalid(f"run {run_id} has a non-finite reserved_active_seconds {value!r}")
+436:     if value < 0:
+437:         raise LedgerStateInvalid(f"run {run_id} has a negative reserved_active_seconds {value!r}")
+438:     return value
+439: 
+440: 
+441: def run_conservative_wall_seconds(run, *, instant: float | None = None) -> float:
+442:     """Conservative wall-clock consumption for a single run (S1 r7/r8).
+443: 
+444:     - For terminal runs (completed, stopped, failed): max(reserved_active, terminal_at - created_at)
+445:     - For every other lifecycle state: max(reserved_active, now - created_at)
+446:     - Rejects non-finite/unrepresentable/reverse timestamps and a raw
+447:       reservation that is absent, non-numeric, non-finite or negative.
+448:     """
+449:     now = time.time() if instant is None else float(instant)
+450:     if not math.isfinite(now):
+451:         raise LedgerTimestampInvalid(f"accounting instant is not finite: {now!r}")
+452:     run_id = getattr(run, "run_id", "?")
+453:     created_at = _parse_timestamp(getattr(run, "created_at", None))
+454:     updated_at = _parse_timestamp(getattr(run, "updated_at", None))
+455: 
+456:     if updated_at < created_at:
+457:         raise LedgerTimestampInvalid(
+458:             f"run {run_id} has reverse timestamps: updated {updated_at} < created {created_at}"
+459:         )
+460: 
+461:     state = getattr(run, "state", None)
+462:     if state is None:
+463:         raise LedgerStateInvalid(f"run {run_id} has no state")
+464:     if state not in KNOWN_STATES:
+465:         raise LedgerStateInvalid(
+466:             f"run {run_id} has an unknown state {state!r}; a corrupt or foreign ledger row "
+467:             "is refused instead of being charged as active or as zero"
+468:         )
+469: 
+470:     reserved_active = _validate_reserved(run)
+471: 
+472:     if state in TERMINAL_STATES:
+473:         terminal_elapsed = max(0.0, updated_at - created_at)
+474:         return max(reserved_active, terminal_elapsed)
+475:     # An active row may legitimately have a clock high-water ahead of ``now``
+476:     # (the RunStore keeps one); a negative age is a real zero, not a refusal.
+477:     active_elapsed = max(0.0, now - created_at)
+478:     return max(reserved_active, active_elapsed)
+479: 
+480: 
+481: def phase_total_wall_seconds(
+482:     runs, *, instant: float | None = None, experiment_id: str | None = None
+483: ) -> float:
+484:     """Total conservative wall-clock time consumed across the phase's runs.
+485: 
+486:     r11: ``experiment_id`` scopes the total to one registration, so the new
+487:     experiment's 9 x 1200 s budget is measured against its own runs only (the
+488:     old experiment's ~1.2 h stays recorded but is not charged to it).  ``None``
+489:     sums every row, the pre-r11 behaviour.
+490:     """
+491:     rows = runs
+492:     if experiment_id is not None:
+493:         rows = [run for run in runs if getattr(run, "experiment_id", None) == experiment_id]
+494:     return sum(run_conservative_wall_seconds(r, instant=instant) for r in rows)
+495: 
+496: 
+497: def phase_ledger_breakdown(
+498:     runs, *, instant: float | None = None, experiment_id: str | None = None
+499: ) -> dict:
+500:     """Per-row conservative accounting, for evidence and refusals (S1 r7/r8).
+501: 
+502:     Each row reports the two candidate quantities separately so a reader can see
+503:     that the terminal interval and the reserved allowance are ``max``-ed per row
+504:     and then summed -- never ``max`` of two global totals, and never the
+505:     calendar age of a terminal row.
+506: 
+507:     r11: ``experiment_id`` scopes the breakdown to one registration, matching
+508:     :func:`phase_total_wall_seconds`; ``None`` reports every row.
+509:     """
+510:     now = time.time() if instant is None else float(instant)
+511:     if experiment_id is not None:
+512:         runs = [run for run in runs if getattr(run, "experiment_id", None) == experiment_id]
+513:     rows = []
+514:     total = 0.0
+515:     for run in runs:
+516:         counted = run_conservative_wall_seconds(run, instant=now)
+517:         state = getattr(run, "state", None)
+518:         reserved = _validate_reserved(run)
+519:         created_at = _parse_timestamp(run.created_at)
+520:         updated_at = _parse_timestamp(run.updated_at)
+521:         terminal_interval = max(0.0, updated_at - created_at)
+522:         active_age = max(0.0, now - created_at)
+523:         rows.append(
+524:             {
+525:                 "run_id": getattr(run, "run_id", None),
+526:                 "state": state,
+527:                 "reserved_active_seconds": reserved,
+528:                 "terminal_interval_seconds": terminal_interval if state in TERMINAL_STATES else None,
+529:                 "active_age_seconds": active_age if state in ACTIVE_STATES else None,
+530:                 "counted_seconds": counted,
+531:                 "rule": "max(reserved, terminal_interval)" if state in TERMINAL_STATES
+532:                 else "max(reserved, now-created)",
+533:             }
+534:         )
+1780: 
+1781: def _open_train_run(
+1782:     document: Mapping[str, Any],
+1783:     ledger: PrepLedger,
+1784:     approval: Mapping[str, Any],
+1785:     *,
+1786:     arm_id: str,
+1787:     seed: int,
+1788: ) -> str:
+1789:     # r11: the run is registered under the document's experiment id; the new
+1790:     # registration gets its own experiment row (same stable manifest), and the
+1791:     # old experiment's rows, attempts and failures stay untouched.
+1792:     experiment_id = document_experiment_id(document) or TRAIN_EXPERIMENT_ID
+1793:     experiment = ensure_shared_experiment(
+1794:         ledger.store,
+1795:         # One stable manifest for the whole phase: D (0 updates, its own frozen
+1796:         # arm1 deadline) and every training run (3510 updates, the registered
+1797:         # deadline) must resolve to the same experiment, so the payload may
+1798:         # depend on neither the caller's deadline nor role.
+1799:         manifest=train_experiment_manifest(
+1800:             updates=int(document["training_protocol"]["updates"]),
+1801:         ),
+1802:         request_id=f"{experiment_id}:training",
+1803:         experiment_id=experiment_id,
+1804:     )
+1805:     run_id = uuid4().hex
+1806:     updates = int(document["training_protocol"]["updates"])
+1807:     snapshot = run_config_snapshot(
+1808:         wall_budget_seconds=float(document["timing"]["deadline_seconds"]),
+1809:         purpose=f"s1_phase1_training_run:{arm_id}:seed{seed}",
+1810:         # The run ledger must carry the *actual* frozen update count.  The old
+1811:         # default of 1 made the second optimizer reservation fail immediately;
+1812:         # the tail checkpoint reservation then failed as well because a zero
+1813:         # optimizer reserve is still rejected once the remaining count is 0.
+1814:         max_optimizer_steps=updates,
+1815:     )
+1816:     snapshot["arm_id"] = arm_id
+1817:     snapshot["seed"] = int(seed)
+1818:     snapshot["updates"] = updates
+1819:     snapshot["preregistration_sha256"] = approval.get("document_sha256")
+1820:     snapshot["dataset_digest"] = (document.get("data_identity") or {}).get("dataset_digest")
+1821:     snapshot["checkpoint_updates"] = [
+1822:         int(value) for value in document["training_protocol"].get("checkpoint_updates") or []
+1823:     ]
+1824:     # The approval credential is part of the immutable run record: the exact log
+1825:     # line, its line number, the log SHA256 and the document SHA256 it covers.
+1826:     snapshot["approval"] = {
+1827:         "line": approval.get("line"),
+1828:         "line_number": approval.get("line_number"),
+1829:         "document_sha256": approval.get("document_sha256"),
+1830:         "research_log": approval.get("research_log"),
+1831:         "research_log_sha256": approval.get("research_log_sha256"),
+1832:         "status_field": approval.get("status_field"),
+1833:         "status_field_is_authoritative": False,
+1834:     }
+1835:     ledger.store.create_run(
+1836:         snapshot,
+1837:         f"{experiment_id}:{arm_id}:{seed}:{run_id}",
+1838:         run_id,
+1839:         experiment_id=experiment.experiment_id,
+1840:         role="model",
+1841:     )
+1842:     # created -> initializing -> training is the only legal edge into a work state;
+1843:     # r1 skipped the first step, which the F3 test exposed.
+1844:     ledger.store.transition(run_id, "initializing", reason="train_prereg_approved")
+1845:     return run_id
+2480:     loaded_param_sha = backend.parameter_sha256(model)
+2481:     if loaded_param_sha != final["parameter_sha256"]:
+2482:         raise EvalBindingError(
+2483:             "loaded parameters do not match the original receipt parameter SHA"
+2484:         )
+2485: 
+2486:     development_windows = data.load_development_windows(dataset_dir)
+2487:     truth_view = data.load_truth_view(dataset_dir, "development")
+2488:     if not truth_view:
+2489:         raise evaluation.EvaluationError("no development truth rows")
+2490: 
+2491:     final_probe = backend.window_probe(model, development_windows, protocol)
+2492:     final_rows = evaluation.development_rows(final_probe, truth_view)
+2493:     localization = evaluation.localization_report(final_rows)
+2494: 
+2495:     # Dual sample-efficiency curve: every frozen checkpoint is re-loaded from its
+2496:     # bound path and scored on the same development windows with the evaluator
+2497:     # truth sidecar (NLL + localization at each checkpoint).
+2498:     sample_rows = []
+2499:     for update in sorted(binding["checkpoints"]):
+2500:         entry = binding["checkpoints"][update]
+2501:         backend.load_params(model, entry["path"])
+2502:         loaded = backend.parameter_sha256(model)
+2503:         if loaded != entry["parameter_sha256"]:
+2504:             raise EvalBindingError(
+2505:                 f"checkpoint {update} parameter SHA {loaded} does not match the "
+2506:                 f"original receipt SHA {entry['parameter_sha256']}"
+2507:             )
+2508:         if update == updates:
+2509:             probe = final_probe
+2510:             rows = final_rows
+2511:         else:
+2512:             probe = backend.window_probe(model, development_windows, protocol)
+2513:             rows = evaluation.development_rows(probe, truth_view)
+2514:         unseen = metrics.strict_unseen_map(rows)
+2515:         sample_rows.append(
+2516:             {
+2517:                 "updates": int(update),
+2518:                 "development_nll": float(
+2519:                     np.mean([float(row["prediction_nll"]) for row in rows])
+2520:                 ),
+2521:                 "localization_translation_mean_m": float(
+2522:                     unseen["translation_mean_m"]
+2523:                 ),
+2524:                 "nll_samples": len(rows),
+2525:                 "localization_samples": int(unseen["episodes"]),
+2526:             }
+2527:         )
+2528:     # Leave the model at the final checkpoint for the episodic probes.
+2529:     backend.load_params(model, final["path"])
+2530:     if backend.parameter_sha256(model) != final["parameter_sha256"]:
+2531:         raise EvalBindingError("final checkpoint reload changed the parameter SHA")
+2532: 
+2533:     development_episodes = data.load_training_episodes(dataset_dir, "development")
+2534:     sequences = [data.build_episode_sequence(episode) for episode in development_episodes]
+2535:     topology = evaluation.topology_report(backend, model, sequences, truth_view)
+2536:     few_shot = evaluation.few_shot_report(
+2537:         backend, model, sequences, truth_view, preregistration=document
+2538:     )
+2539:     if len(sequences) < 5:
+2540:         raise evaluation.EvaluationError(
+2541:             "the M2 probe needs at least five development worlds"
+2542:         )
+2543:     probe_sequences = sequences[:3]
+2544:     history_sequence = sequences[3]
+2545:     new_world_sequence = sequences[4]

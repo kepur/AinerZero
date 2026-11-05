@@ -1,0 +1,80 @@
+[
+ {
+  "id": "C1",
+  "name": "进程内存线 8 GiB：RSS 超线真实拒绝",
+  "ok": true,
+  "exit": 2,
+  "detail": "reasons=['process_memory_limit: RSS 0.05 GiB > 0.001 GiB']",
+  "evidence": {
+   "report": {
+    "status": "refused",
+    "stage": "resource_gate",
+    "mode": "data",
+    "reasons": [
+     "process_memory_limit: RSS 0.05 GiB > 0.001 GiB"
+    ],
+    "snapshot": {
+     "process_rss_gib": 0.0511627197265625,
+     "mlx_active_gib": 0.0,
+     "mlx_peak_gib": 0.0,
+     "mlx_available": true,
+     "system_available_gib": 52.57081604003906,
+     "swap_used_gib": 0.0,
+     "swap_growth_gib": 0.0,
+     "disk_free_gib": 3149.823055267334,
+     "measured_at": 1792573522.2132359
+    },
+    "spec": "s1-phase1-v1",
+    "elapsed_seconds": 0.20587033300034818
+   }
+  }
+ },
+ {
+  "id": "C2",
+  "name": "系统余量线 16 GiB：余量不足真实拒绝",
+  "ok": true,
+  "exit": 2,
+  "detail": "reasons=['system_reserve_limit: available 52.56 GiB < 10000.0 GiB']",
+  "evidence": {}
+ },
+ {
+  "id": "C3",
+  "name": "磁盘余量线：放宽被拒 + 收紧放行 + 注入低余量时真实拒绝（CLI 侧不可达）",
+  "ok": true,
+  "exit": 2,
+  "detail": "loosening=['resources.disk_min_free_gib 10000000.0 exceeds registered 50.0 (loosening refused)'] injected=['disk_free_limit: free 10.00 GiB < 50.0 GiB']",
+  "evidence": {}
+ },
+ {
+  "id": "C4",
+  "name": "占空比 0.25：放宽到 0.5 真实拒绝",
+  "ok": true,
+  "exit": 2,
+  "detail": "reasons=['resources.training_duty_cycle 0.5 exceeds registered 0.25 (loosening refused)']",
+  "evidence": {}
+ },
+ {
+  "id": "C5",
+  "name": "MLX 4 GiB 线：MLX 实占超线真实拒绝",
+  "ok": true,
+  "exit": 2,
+  "detail": "mlx_active=['MLX_ACTIVE_GIB 0.0625000037252903'] reasons=['mlx_memory_limit: active 0.06 GiB > 0.001 GiB', 'mlx_memory_limit: peak 0.06 GiB > 0.001 GiB']",
+  "evidence": {}
+ },
+ {
+  "id": "C6",
+  "name": "交换区增长 1 GiB：运行期守卫真实拒绝（启动时增长恒为 0）",
+  "ok": true,
+  "exit": 0,
+  "detail": "guard_reasons=['swap_growth_limit: growth 1.80 GiB > 1.0 GiB'] admission_growth=0.0",
+  "evidence": {}
+ },
+ {
+  "id": "C6b",
+  "name": "evaluate() 的 duty_cycle_limit 分支在 validate_limits 之后不可达",
+  "ok": true,
+  "exit": 0,
+  "detail": "reachable_duty_values=[]",
+  "evidence": {}
+ }
+]

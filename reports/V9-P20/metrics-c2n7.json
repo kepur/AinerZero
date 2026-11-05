@@ -1,0 +1,189 @@
+{
+  "schema": "ainerzero.v9.p20.metrics.v1",
+  "task": "ainerzero.V9.P20",
+  "revision": "c2n7-reclaimed",
+  "reviewer": "workbuddy-c2n7",
+  "reviewed": "ainerzero.V9.P18 r2 (deepseek-v41f-p8k2)",
+  "status": "review_complete_lease_lost",
+  "note": "lease lost to heartbeat timeout at 09:11; task re-claimed by workbuddy-q7t2; relay report not submitted",
+  "pinned_inputs_verified": {
+    "total": 38,
+    "all_match": true
+  },
+  "reproducibility": {
+    "r2_independent_truth_check_rerun_identical": true,
+    "r2_truth_check_sha256": "b8f55a8b0ea9136b22383224a1ef67a2f4b0d5ee3d86f51f77cbd784df08afea",
+    "r2_metrics_rerun_identical": true,
+    "r2_metrics_sha256": "ad32d483508af845e10927ae0a7379db5905e7a30adde0753465d1b25922b36a",
+    "scaffold_change": "OUT path only (build_r2_metrics_p20copy.py)"
+  },
+  "independent_recomputation": {
+    "method": "frozen r5 production functions (metrics.split_support_query, data.load_truth_view, data.load_development_windows) via byte-copy iso import; mlx not imported",
+    "k_coverage": {
+      "0": {
+        "worlds": 200,
+        "queries": 750,
+        "reachable_in_support_memory": 0
+      },
+      "1": {
+        "worlds": 200,
+        "queries": 550,
+        "reachable_in_support_memory": 350
+      },
+      "2": {
+        "worlds": 150,
+        "queries": 350,
+        "reachable_in_support_memory": 200
+      },
+      "4": {
+        "worlds": 50,
+        "queries": 100,
+        "reachable_in_support_memory": 50
+      },
+      "8": {
+        "worlds": 0,
+        "queries": 0,
+        "reachable_in_support_memory": 0
+      }
+    },
+    "family_stats": {
+      "navigation": {
+        "worlds": 50,
+        "steps": {
+          "7": 50
+        },
+        "transitions": 300,
+        "stay": 0,
+        "adjacent": 300,
+        "non_adjacent": 0
+      },
+      "time": {
+        "worlds": 50,
+        "steps": {
+          "4": 50
+        },
+        "transitions": 150,
+        "stay": 150,
+        "adjacent": 0,
+        "non_adjacent": 0
+      },
+      "relation": {
+        "worlds": 50,
+        "steps": {
+          "3": 50
+        },
+        "transitions": 100,
+        "stay": 100,
+        "adjacent": 0,
+        "non_adjacent": 0
+      },
+      "e3_identity": {
+        "worlds": 50,
+        "steps": {
+          "5": 50
+        },
+        "transitions": 200,
+        "stay": 200,
+        "adjacent": 0,
+        "non_adjacent": 0
+      }
+    },
+    "development_windows": {
+      "windows": 550,
+      "batch_size": 16,
+      "batches": 35,
+      "window_batches_per_eval_run": 175
+    },
+    "component_arithmetic": {
+      "repaired_step_sequence_total": 611,
+      "repaired_single_step_forwards_total": 1492,
+      "repaired_probe_graph_total": 800,
+      "repaired_encode_total": 3500,
+      "window_batches": 175,
+      "as_coded_stop_frames": 1003,
+      "repaired_few_shot_stop_frames": 1100,
+      "repaired_stop_frames_total": 2103,
+      "as_coded_transitions_total": 792,
+      "repaired_transitions_total": 1492,
+      "hybrid_1703": 1703,
+      "hybrid_1503": 1503,
+      "hybrid_1903": 1903
+    },
+    "arithmetic_matches_p19_measurement": {
+      "step_sequence": true,
+      "single_step_forwards": true,
+      "probe_graph": true,
+      "encode": true,
+      "window_batches": true,
+      "repaired_stop_frames": true,
+      "repaired_transitions": true,
+      "as_coded_stop_frames": true,
+      "as_coded_transitions": true
+    },
+    "budget_matches_frozen_registration": {
+      "updates": true,
+      "estimate": true,
+      "deadline": true,
+      "arm1_estimate": true,
+      "arm1_deadline": true,
+      "phase_wall": true,
+      "headroom": true
+    }
+  },
+  "f_verdicts": {
+    "F1": "closed_verified",
+    "F2": "closed_verified",
+    "F3": "closed_with_label_defect_D1",
+    "F4": "closed_verified",
+    "F5": "closed_verified",
+    "F6": "closed_verified",
+    "F7": "closed_verified",
+    "F8": "closed_verified",
+    "F9": "partially_overstated_no_historical_diff_for_rewrite_claim"
+  },
+  "defects": {
+    "D1": {
+      "severity": "medium",
+      "finding": "r2 labels PREP_BUDGET['eval']=300s as the per-invocation hard wall / subprocess hard timeout; the actual supervisor timeout is 350s (budget + spec.TIMING['supervision_extra_seconds']=50, commands.py:813); ledger reserve 120s",
+      "impact": "static fit check understates worst case; with 9x350=3150s: 4099.605+3150=7249.605 <= 14400 still passes; conclusion unchanged, label must be fixed",
+      "source_evidence": [
+        "commands.py:42",
+        "commands.py:813",
+        "spec.py TIMING",
+        "worker.py:440"
+      ]
+    },
+    "D2": {
+      "severity": "light",
+      "finding": "option B2 registers measured call counts (611/1492/800/3500/175) without binding them to a data summary; they are measured on the current frozen dev set (200 worlds, 750/550/350/100 queries); a B1 long-episode dataset changes queries and per-world transitions so its counts are unknown until measured",
+      "impact": "risk of carrying old-dataset counts into a new-dataset approval item",
+      "source_evidence": [
+        "r2 option_B items B1/B2",
+        "p19 independent_checks per_k_calls"
+      ]
+    },
+    "O1": {
+      "severity": "observation",
+      "finding": "P19 independent_checks.json C_repaired per_k_calls block is stale (as-coded semantics: k=1 crash shown, k=2=150/k=4=150 transitions) contradicting C's own per_run_total (611/1492); r2 cites the consistent carriers so its numbers are unaffected",
+      "impact": "evidence-chain blemish in P19 artifact, not in r2 numbers"
+    }
+  },
+  "special_review_points": {
+    "r1_metrics_history_preserved": true,
+    "generation_seconds_rewrite_claim_unsupported": true,
+    "b1_counts_must_bind_data_summary": true,
+    "eval_300_nominal_350_supervision_120_ledger": {
+      "nominal": 300.0,
+      "supervisor_timeout": 350.0,
+      "ledger_reserve": 120.0
+    }
+  },
+  "no_real_execution": {
+    "mlx_imported": false,
+    "real_training": false,
+    "real_evaluation": false,
+    "new_data_generated": false,
+    "source_modified": false,
+    "approval_line_written": false
+  }
+}

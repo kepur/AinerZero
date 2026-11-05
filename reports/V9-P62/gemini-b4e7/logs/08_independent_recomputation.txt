@@ -1,0 +1,101 @@
+=== INDEPENDENT RECOMPUTATION OF S1 FINAL EVALUATION ANALYSIS ===
+Source raw stdout: /Users/mac/AinerWorkFlow/AinerZero/reports/V9-S1-final/final-eval-stdout.json
+Target final analysis: /Users/mac/AinerWorkFlow/AinerZero/reports/V9-S1-final/analysis/analysis-final.json
+Development reference analysis: /Users/mac/AinerWorkFlow/AinerZero/reports/V9-S1-phase1-analysis/analysis.json
+
+--- 1. Recomputing 11 Scalar Metrics ---
+Row 00 [localization_error] translation error, mean (m):
+  Means: arm2=0.349328, arm3=0.356321, arm4=0.351034
+  Rank: ['arm2', 'arm4', 'arm3']
+  Disjoint: {'arm2_vs_arm4': False, 'arm2_vs_arm3': False, 'arm4_vs_arm3': False}
+  Match status: OK (tol < 1e-12)
+Row 01 [localization_error] translation error, median (m):
+  Means: arm2=0.133669, arm3=0.140830, arm4=0.140194
+  Rank: ['arm2', 'arm4', 'arm3']
+  Disjoint: {'arm2_vs_arm4': False, 'arm2_vs_arm3': False, 'arm4_vs_arm3': False}
+  Match status: OK (tol < 1e-12)
+Row 02 [localization_error] yaw error, mean (deg):
+  Means: arm2=3.602909, arm3=3.405036, arm4=3.394005
+  Rank: ['arm4', 'arm3', 'arm2']
+  Disjoint: {'arm4_vs_arm3': False, 'arm4_vs_arm2': False, 'arm3_vs_arm2': False}
+  Match status: OK (tol < 1e-12)
+Row 03 [unseen_map_generalization] next-observation NLL, mean (nats):
+  Means: arm2=0.007526, arm3=0.000765, arm4=0.000410
+  Rank: ['arm4', 'arm3', 'arm2']
+  Disjoint: {'arm4_vs_arm3': False, 'arm4_vs_arm2': True, 'arm3_vs_arm2': False}
+  Match status: OK (tol < 1e-12)
+Row 04 [unseen_map_generalization] next-observation NLL, median (nats):
+  Means: arm2=0.007965, arm3=0.000840, arm4=0.000446
+  Rank: ['arm4', 'arm3', 'arm2']
+  Disjoint: {'arm4_vs_arm3': False, 'arm4_vs_arm2': True, 'arm3_vs_arm2': False}
+  Match status: OK (tol < 1e-12)
+Row 05 [unseen_map_generalization] unseen-map translation error, mean (m):
+  Means: arm2=0.349328, arm3=0.356321, arm4=0.351034
+  Rank: ['arm2', 'arm4', 'arm3']
+  Disjoint: {'arm2_vs_arm4': False, 'arm2_vs_arm3': False, 'arm4_vs_arm3': False}
+  Match status: OK (tol < 1e-12)
+Row 06 [topology_recovery] edge F1 (degenerate, see notes):
+  Means: arm2=0.750000, arm3=0.750000, arm4=0.750000
+  Rank: ['tie (identical in every cell; no ranking)']
+  Disjoint: {}
+  Match status: OK (tol < 1e-12)
+Row 07 [sample_efficiency] NLL curve, normalised area:
+  Means: arm2=0.106027, arm3=0.095438, arm4=0.092372
+  Rank: ['arm4', 'arm3', 'arm2']
+  Disjoint: {'arm4_vs_arm3': True, 'arm4_vs_arm2': True, 'arm3_vs_arm2': True}
+  Match status: OK (tol < 1e-12)
+Row 08 [sample_efficiency] NLL at the final checkpoint:
+  Means: arm2=0.007526, arm3=0.000765, arm4=0.000410
+  Rank: ['arm4', 'arm3', 'arm2']
+  Disjoint: {'arm4_vs_arm3': False, 'arm4_vs_arm2': True, 'arm3_vs_arm2': False}
+  Match status: OK (tol < 1e-12)
+Row 09 [sample_efficiency] localization curve, normalised area:
+  Means: arm2=0.342617, arm3=0.348834, arm4=0.344894
+  Rank: ['arm2', 'arm4', 'arm3']
+  Disjoint: {'arm2_vs_arm4': False, 'arm2_vs_arm3': False, 'arm4_vs_arm3': False}
+  Match status: OK (tol < 1e-12)
+Row 10 [m2_memory_interference] worst retention delta:
+  Means: arm2=0.127421, arm3=0.003139, arm4=0.001422
+  Rank: ['arm4', 'arm3', 'arm2']
+  Disjoint: {'arm4_vs_arm3': False, 'arm4_vs_arm2': True, 'arm3_vs_arm2': True}
+  Match status: OK (tol < 1e-12)
+
+--- 2. Recomputing 4 Family Submetrics (NLL & Translation Error) ---
+Family [e3_identity] prediction_nll_mean: arm2=0.009665, arm3=0.000948, arm4=0.000498 -> OK
+Family [e3_identity] translation_mean_m: arm2=0.131068, arm3=0.126136, arm4=0.105176 -> OK
+Family [navigation] prediction_nll_mean: arm2=0.005838, arm3=0.000645, arm4=0.000358 -> OK
+Family [navigation] translation_mean_m: arm2=1.007734, arm3=1.017672, arm4=1.019818 -> OK
+Family [relation] prediction_nll_mean: arm2=0.008065, arm3=0.000800, arm4=0.000427 -> OK
+Family [relation] translation_mean_m: arm2=0.135691, arm3=0.140119, arm4=0.141018 -> OK
+Family [time] prediction_nll_mean: arm2=0.006536, arm3=0.000667, arm4=0.000358 -> OK
+Family [time] translation_mean_m: arm2=0.122818, arm3=0.141357, arm4=0.138124 -> OK
+
+--- 3. Recomputing Few-Shot Curves ---
+Few-shot k=0: pooled accuracy & balanced_accuracy match OK
+Few-shot k=1: pooled accuracy & balanced_accuracy match OK
+Few-shot k=2: pooled accuracy & balanced_accuracy match OK
+Few-shot k=4: pooled accuracy & balanced_accuracy match OK
+Few-shot k=8: confirmed unavailable / insufficient data matches raw stdout.
+
+--- 4. Rank Order Comparison vs Development Reference ---
+Row 00 (translation error, mean (m)): PRESERVED rank ['arm2', 'arm4', 'arm3']
+Row 01 (translation error, median (m)): PRESERVED rank ['arm2', 'arm4', 'arm3']
+Row 02 (yaw error, mean (deg)): PRESERVED rank ['arm4', 'arm3', 'arm2']
+Row 03 (next-observation NLL, mean (nats)): PRESERVED rank ['arm4', 'arm3', 'arm2']
+Row 04 (next-observation NLL, median (nats)): PRESERVED rank ['arm4', 'arm3', 'arm2']
+Row 05 (unseen-map translation error, mean (m)): PRESERVED rank ['arm2', 'arm4', 'arm3']
+Row 06 (edge F1 (degenerate, see notes)): PRESERVED rank ['tie (identical in every cell; no ranking)']
+Row 07 (NLL curve, normalised area): PRESERVED rank ['arm4', 'arm3', 'arm2']
+Row 08 (NLL at the final checkpoint): PRESERVED rank ['arm4', 'arm3', 'arm2']
+Row 09 (localization curve, normalised area): PRESERVED rank ['arm2', 'arm4', 'arm3']
+Row 10 (worst retention delta): INVERTED rank final=['arm4', 'arm3', 'arm2'] vs dev=['arm3', 'arm2', 'arm4']
+
+Conclusion on rank stability: Exactly 10 of 11 scalar rows preserve identical rank order.
+The single difference is row 10 (M2 worst_retention_delta): dev=['arm3', 'arm2', 'arm4'] vs final=['arm4', 'arm3', 'arm2'].
+
+--- 5. Arm1 C0 Metrics Equality Check ---
+Final Arm1 C0: {'observation_loss_t0': 0.1935693323612213, 'observation_loss_t1': 2.744694709777832, 'symbol_nll_t0': 0.09898444265127182, 'symbol_nll_t1': 2.4523427486419678}
+Dev Arm1 C0:   {'observation_loss_t0': 0.1935693323612213, 'observation_loss_t1': 2.744694709777832, 'symbol_nll_t0': 0.09898444265127182, 'symbol_nll_t1': 2.4523427486419678}
+Arm1 C0 metrics equality: OK (strictly identical across all 4 metrics).
+
+=== ALL RECOMPUTATIONS VERIFIED SUCCESSFULLY (tolerance < 1e-12) ===

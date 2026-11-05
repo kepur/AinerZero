@@ -1,0 +1,13 @@
+--- reports/V9-P9/r15/before/tests/test_s1_r10_query_limit.py	2026-10-23 14:17:14
++++ tests/v9/experiments/test_s1_r10_query_limit.py	2026-10-28 15:18:49
+@@ -122,6 +122,10 @@
+         def encode(self, model, obs_row):
+             return np.asarray(obs_row, dtype=np.float64)
+ 
++        # r15 (ainerzero.V9.P53): few-shot queries through probe_query (same space here).
++        def probe_query(self, model, obs_row):
++            return self.encode(model, obs_row)
++
+     poses = [(float(i), 0, 0, 0) for i in range(6)]
+     steps = []
+     for index, pose in enumerate(poses):

@@ -1,0 +1,120 @@
+1: """S1 dataset identity, feature/target view and strict partition guards.
+2: 
+3: Layout (level-1 notice #297): the dataset bytes live under
+4: ``artifacts/v9/s1/datasets/<dataset_digest>/`` and the run root
+5: ``artifacts/v9/s1/phase1/`` only carries a ``dataset_ref.json`` pointing at it.
+6: ``reports/`` keeps manifests and their SHA256 only.
+7: 
+8: Inside a dataset directory:
+9: 
+10: - ``packets/{train,development}.jsonl`` -- one payload-only row per observation
+11:   (episode_id + partition + seq + payload).  This is the only file the training
+12:   path may read; it never contains truth fields.
+13: - ``truth/{train,development}.jsonl`` -- evaluator-only truth (agent pose,
+14:   entities, handle map, world occupancy).  Only ``load_truth_view`` reads it.
+15: - ``dataset_manifest.json`` -- plan, counts, per-episode digests, generator
+16:   source identity (SHA-256 map; the arena code is uncommitted), byte sizes and
+17:   the dataset digest.
+18: 
+19: The ``final`` partition has no directory, no loader and no code path that could
+20: create it: every public function asserts the partition is train/development.
+21: """
+22: 
+23: from __future__ import annotations
+24: 
+25: import hashlib
+26: import json
+27: import os
+28: import shutil
+29: import subprocess
+30: import tempfile
+31: import time
+32: from dataclasses import dataclass
+33: from pathlib import Path
+34: from typing import Any, Iterable, Mapping
+35: 
+36: import numpy as np
+37: 
+38: from . import spec
+39: 
+40: # Reuse the v9 ObservationPacket/v1.1 payload gate (pure numpy/stdlib).
+41: from ainerzero.v9.interfaces.validation import validate_observation_payload
+42: 
+43: PARTITIONS = ("train", "development")
+44: ALLOWED_PARTITIONS = frozenset(PARTITIONS)
+45: K = spec.OBSERVATION["detection_slots"]
+46: FEATURE_DIM = spec.OBSERVATION["feature_dim"]
+47: TARGET_DIM = spec.OBSERVATION["target_dim"]
+48: CLASSES = tuple(spec.OBSERVATION["appearance_classes"])
+49: 
+50: 
+51: class DatasetError(RuntimeError):
+52:     """The dataset is missing, inconsistent, or a sealed partition was requested."""
+53: 
+54: 
+55: class FinalPartitionSealed(DatasetError):
+56:     """Phase 1 never materialises or reads the final partition."""
+57: 
+58: 
+59: def canonical_bytes(payload: object) -> bytes:
+60:     return spec.canonical_json(payload)
+61: 
+62: 
+63: def sha256_file(path: str | Path) -> str:
+64:     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+65: 
+66: 
+67: def require_partition(partition: str) -> str:
+68:     if partition == "final":
+69:         raise FinalPartitionSealed(
+70:             "final partition is sealed and must be read once through the sealed channel "
+71:             "only after all phase-1 training; S1 phase 1 does not read it"
+72:         )
+73:     if partition not in ALLOWED_PARTITIONS:
+74:         raise DatasetError(f"unknown partition {partition!r}; only {PARTITIONS} exist in phase 1")
+75:     return partition
+76: 
+77: 
+78: # --- plan -----------------------------------------------------------------
+79: def build_plan() -> dict:
+80:     """World/round counts frozen in the preregistration, within the caps."""
+81:     plan = {
+82:         "schema": "ainerzero.v9.s1.data_plan.v1",
+83:         "spec": spec.SPEC_NAME,
+84:         "generator": spec.DATA_PLAN["generator"],
+85:         "generator_commit": spec.DATA_PLAN["generator_commit"],
+86:         "generator_root": str(spec.AWZ_ROOT),
+87:         "generator_seed": spec.DATA_PLAN["generator_seed"],
+88:         "restricted_exit": spec.DATA_PLAN["restricted_exit"],
+89:         "families": list(spec.DATA_PLAN["families"]),
+90:         "scene_id_format": spec.DATA_PLAN["scene_id_format"],
+91:         "partitions": list(PARTITIONS),
+92:         "final_partition": "not_generated_not_read",
+93:         "train": dict(spec.DATA_PLAN["train"]),
+94:         "development": dict(spec.DATA_PLAN["development"]),
+95:         "sample_interval": spec.DATA_PLAN["sample_interval"],
+96:         "range_m": spec.DATA_PLAN["range_m"],
+97:         "fov_deg": spec.DATA_PLAN["fov_deg"],
+98:     }
+99:     validate_plan(plan)
+100:     return plan
+101: 
+102: 
+103: def validate_plan(plan: Mapping[str, Any]) -> None:
+104:     reasons = plan_problems(plan)
+105:     if reasons:
+106:         raise DatasetError("; ".join(reasons))
+107: 
+108: 
+109: def plan_problems(plan: Mapping[str, Any]) -> list[str]:
+110:     reasons: list[str] = []
+111:     caps = spec.DATA_CAPS
+112:     try:
+113:         train = plan["train"]
+114:         development = plan["development"]
+115:         train_worlds = int(train["worlds"])
+116:         development_worlds = int(development["worlds"])
+117:         rounds = int(train["rounds_per_world"])
+118:         dev_rounds = int(development["rounds_per_world"])
+119:     except (KeyError, TypeError, ValueError) as exc:
+120:         return [f"data plan is malformed: {type(exc).__name__}: {exc}"]

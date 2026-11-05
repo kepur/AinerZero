@@ -1,0 +1,28 @@
+F....................................................................... [ 19%]
+.................................F...................................... [ 38%]
+........................................................................ [ 57%]
+........................................................................ [ 76%]
+........................................................................ [ 95%]
+..................                                                       [100%]
+=================================== FAILURES ===================================
+____________________________ test_cpu_only_imports _____________________________
+
+    def test_cpu_only_imports():
+        forbidden = {"mlx", "torch", "onnxruntime", "tensorflow", "jax"}
+>       assert not any(name.split(".")[0] in forbidden for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_cpu_only_imports.<locals>.<genexpr> at 0x106c00c80>)
+
+tests/v9/geometry/test_canonical.py:116: AssertionError
+__________________________ test_imports_are_cpu_only ___________________________
+
+    def test_imports_are_cpu_only():
+>       assert not any(name.split('.')[0] in {'mlx', 'torch', 'onnxruntime', 'tensorflow'} for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_imports_are_cpu_only.<locals>.<genexpr> at 0x104ba4ee0>)
+
+tests/v9/geometry/test_geometry.py:260: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/geometry/test_canonical.py::test_cpu_only_imports - assert no...
+FAILED tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only - assert...
+2 failed, 376 passed in 23.87s

@@ -1,0 +1,13 @@
+--- reports/V9-P9/r15/before/tests/test_s1_r5_metrics.py	2026-10-23 14:17:14
++++ tests/v9/experiments/test_s1_r5_metrics.py	2026-10-28 15:18:49
+@@ -285,6 +285,10 @@
+ 
+     def encode(self, model, obs_row):
+         return np.asarray(obs_row, dtype=np.float64)
++
++    # r15 (ainerzero.V9.P53): few-shot queries through probe_query (same space here).
++    def probe_query(self, model, obs_row):
++        return self.encode(model, obs_row)
+ 
+ 
+ def test_few_shot_uses_the_per_step_cell_path_when_the_agent_stays_put():

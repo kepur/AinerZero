@@ -1,0 +1,22 @@
+--- before/tests/v9/experiments/test_s1_timing_sequence.py
++++ tests/v9/experiments/test_s1_timing_sequence.py
+@@ -307,4 +307,19 @@
+ 
+     monkeypatch.setattr(worker, "_evaluate_arm", mock_evaluate)
++    # r12 (P31-LEDGER-INCIDENT-RULING): the eval entry now decides the arm x seed
++    # binding -- the ``EvalBindingError`` precondition -- *before* the first
++    # ledger write.  This sequence test replaces the evaluator, and the fake
++    # training runs above carry no completion receipt, so the binding
++    # precondition is stubbed next to the evaluator it belongs to.  The real
++    # binding is covered by test_s1_r5_ledger.py and test_s1_r12_ordering.py.
++    monkeypatch.setattr(
++        worker,
++        "_eval_binding_precondition",
++        lambda *args, **kwargs: {
++            "status": "ok",
++            "bound_run_id": "sequence-test-mock",
++            "final_checkpoint": "sequence-test-mock",
++        },
++    )
+ 
+     for eval_arm in ("arm1", "arm2", "arm3", "arm4"):

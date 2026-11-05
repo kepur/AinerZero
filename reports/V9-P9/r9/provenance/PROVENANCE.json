@@ -1,0 +1,98 @@
+{
+ "schema": "ainerzero.v9.s1.r9.provenance.v1",
+ "cycle": "r9",
+ "task": "ainerzero.V9.P15",
+ "author": "deepseek-v41f-r9x2",
+ "tier": 2,
+ "decision": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/claude-20261022-e32/P15-R8-DECISION.md",
+ "scope": [
+  "src/ainerzero/v9/experiments/s1/worker.py",
+  "tests/v9/experiments/test_s1_r9_shared_experiment.py",
+  "tests/v9/experiments/test_s1_r9_completion_precondition.py",
+  "reports/V9-P9/r9/",
+  "artifacts/v9/s1/phase1/r9/"
+ ],
+ "prior_contributions": [
+  {
+   "agent": "ds-s1r5-1021n",
+   "cycle": "r5",
+   "role": "r5 ledger/eval implementation and the production 3510-step CPU evidence"
+  },
+  {
+   "agent": "step5-k7m2",
+   "cycle": "r6",
+   "role": "r6 central-ledger anchoring, 450 s last-step wall clock, probe_graph unwrap"
+  },
+  {
+   "agent": "gemini-b7m9",
+   "cycle": "r7",
+   "role": "r7 stalled WIP (35 files, archived by the coordinator; no delivery)"
+  },
+  {
+   "agent": "deepseek-r7xq",
+   "cycle": "r7",
+   "role": "r7 delivery (host anchor, phase accounting, arm1 re-check)"
+  },
+  {
+   "agent": "ds-s1r8-1200",
+   "cycle": "r8",
+   "role": "first r8 stall WIP (6 drifted sources, archived by the coordinator)"
+  },
+  {
+   "agent": "deepseek-v41f-w3q7",
+   "cycle": "r8",
+   "role": "r8 delivery F1-F8 (completion protocol, D budget, identity chain)"
+  },
+  {
+   "agent": "minimax-p21-1022am",
+   "cycle": "P21",
+   "role": "P21 review that found F1 (late completion) and F3 (D/train registration order)"
+  },
+  {
+   "agent": "claude",
+   "cycle": "r9",
+   "role": "tier-1 decision R1/R2 (this cycle's only two required fixes)"
+  }
+ ],
+ "this_cycle_changes": {
+  "modified": [
+   {
+    "path": "src/ainerzero/v9/experiments/s1/worker.py",
+    "what": "R1: ensure_shared_experiment() get-or-create with canonical manifest digest verification, used by open_aux_run and _open_train_run, both call sites turn a mismatch into a refused report; R2: _completion_precondition() refuses a completion attempt when an invalidation marker exists or the ledger row is terminal and not completed"
+   }
+  ],
+  "added": [
+   "tests/v9/experiments/test_s1_r9_shared_experiment.py (5 tests)",
+   "tests/v9/experiments/test_s1_r9_completion_precondition.py (4 tests)",
+   "reports/V9-P9/r9/harness/*.py (archive, refreeze, leaf diff, source identity, two evidence harnesses, collector)",
+   "artifacts/v9/s1/phase1/r9/{dataset_ref.json,draft_preregistration.json,pre_registration.json,pre_registration.json.sha256}"
+  ],
+  "not_modified": [
+   "src/ainerzero/runtime/lifecycle.py (generic RunStore untouched)",
+   "artifacts/v9/s1/phase1/r8/** and reports/V9-P9/r8/** (r8 originals, byte-identical)",
+   "reports/V9-P24/** (P24 originals)",
+   "artifacts/v9/s1/phase1/control.sqlite3 (central ledger not written)",
+   "RESEARCH_LOG.md (no approval line)"
+  ]
+ },
+ "starting_bytes": {
+  "bound_files": 21,
+  "bound_file_drift": [],
+  "r8_artifact_files": 5,
+  "r8_report_files": 17,
+  "source": "reports/V9-P9/r9/provenance/STARTING-BYTES.json"
+ },
+ "drift_during_work": [
+  {
+   "path": "src/ainerzero/v9/experiments/s1/worker.py",
+   "by": "deepseek-v41f-r9x2",
+   "reason": "the only file this card edited; every other bound file is byte-identical to the r8 delivery"
+  }
+ ],
+ "r8_originals_after_work": {
+  "artifacts_changed": [],
+  "reports_changed": []
+ },
+ "no_model_work": true,
+ "no_mlx_import_for_inference": true
+}

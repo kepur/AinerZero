@@ -1,0 +1,76 @@
+{
+ "command_experiments": ".venv/bin/python -m pytest tests/v9/experiments -q -p no:cacheprovider --junitxml=reports/V9-P9/r9/logs/tests-s1-r9.xml",
+ "command_other": ".venv/bin/python -m pytest tests/v9 -q -p no:cacheprovider --ignore=tests/v9/experiments --junitxml=reports/V9-P9/r9/logs/tests-v9-other-r9.xml",
+ "environment_note": "the WorkBuddy python shim rewrites mkdir(exist_ok=True) on a symlink into PermissionError; the suites were run with PYTHONPATH=<repo>/src so the project's own code is imported unchanged. No source or test was modified for this.",
+ "experiments_suite": {
+  "errors": 0,
+  "failures": 0,
+  "skipped": 0,
+  "tests": 300
+ },
+ "other_v9_suite": {
+  "errors": 0,
+  "failures": 0,
+  "skipped": 0,
+  "tests": 378
+ },
+ "r9_new_all_passed": true,
+ "r9_new_test_count": 9,
+ "r9_new_tests": [
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_completion_precondition",
+   "name": "test_a_second_completion_after_a_refusal_reports_the_failed_row",
+   "outcome": "passed",
+   "time": "0.011"
+  },
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_completion_precondition",
+   "name": "test_a_second_completion_on_an_invalid_completed_row_is_refused",
+   "outcome": "passed",
+   "time": "0.007"
+  },
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_completion_precondition",
+   "name": "test_a_terminal_non_completed_row_is_refused",
+   "outcome": "passed",
+   "time": "0.007"
+  },
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_completion_precondition",
+   "name": "test_removing_the_precondition_lets_the_buggy_claim_through",
+   "outcome": "passed",
+   "time": "0.007"
+  },
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_shared_experiment",
+   "name": "test_d_then_train_register_in_the_same_experiment",
+   "outcome": "passed",
+   "time": "1.451"
+  },
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_shared_experiment",
+   "name": "test_train_then_d_register_in_the_same_experiment",
+   "outcome": "passed",
+   "time": "1.402"
+  },
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_shared_experiment",
+   "name": "test_a_prebuilt_experiment_with_a_different_manifest_is_refused_by_both_paths",
+   "outcome": "passed",
+   "time": "0.064"
+  },
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_shared_experiment",
+   "name": "test_removing_only_the_manifest_comparison_lets_the_foreign_experiment_through",
+   "outcome": "passed",
+   "time": "0.083"
+  },
+  {
+   "classname": "tests.v9.experiments.test_s1_r9_shared_experiment",
+   "name": "test_ensure_shared_experiment_is_idempotent_for_the_same_manifest",
+   "outcome": "passed",
+   "time": "0.004"
+  }
+ ],
+ "schema": "ainerzero.v9.s1.r9.tests.v1"
+}

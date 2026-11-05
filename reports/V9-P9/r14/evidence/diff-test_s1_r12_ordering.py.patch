@@ -1,0 +1,13 @@
+--- reports/V9-P9/r14/before/tests/test_s1_r12_ordering.py	2026-10-23 17:10:23
++++ tests/v9/experiments/test_s1_r12_ordering.py	2026-10-28 12:41:25
+@@ -376,7 +376,10 @@
+                 prereg_sha256=verified["sha256"],
+                 updates=int(document["training_protocol"]["updates"]),
+                 ledger_path=ledger_path,
++                document=document,
+             )"""
++    # r14 (ainerzero.V9.P49): anchor synced to the call, which now also passes the
++    # document so inherited cells bind to their source run; the sabotage is unchanged.
+     assert guard in text, "the r12 ordering guard is not where this control expects it"
+     worker_py.write_text(
+         text.replace(

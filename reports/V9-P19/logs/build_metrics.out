@@ -1,0 +1,83 @@
+{
+  "train_run_accounting": {
+    "optimizer_updates": 3510,
+    "checkpoint_probes": 5,
+    "probe_window_batches": 175,
+    "probe_window_frames": 8250,
+    "forward_loss_batch_equivalents": 3685,
+    "frozen_estimate_seconds": 359.9312287726061,
+    "frozen_deadline_seconds": 450,
+    "frozen_supervision_seconds": 500.0
+  },
+  "eval_run_accounting_as_coded": {
+    "window_forward_loss_calls": 175,
+    "window_frame_slots": 8250,
+    "step_sequence_calls": 212,
+    "single_step_forwards": 792,
+    "probe_graph_calls": 400,
+    "encode_calls": 1500,
+    "terminal_error": {
+      "type": "RuntimeError",
+      "message": "a sequence probe needs at least two frames",
+      "point": "evaluation.few_shot_report k=1 (support=[0] -> step_sequence(stop=1) -> frames=1 < 2)"
+    }
+  },
+  "eval_run_accounting_if_k1_repaired": {
+    "window_forward_loss_calls": 175,
+    "window_frame_slots": 8250,
+    "step_sequence_calls": 611,
+    "single_step_forwards": 1492,
+    "probe_graph_calls": 800,
+    "encode_calls": 3500,
+    "few_shot_queries": 1750
+  },
+  "d_candidate_run_accounting": {
+    "model_loads": 1,
+    "forward_loss_calls": 1,
+    "batch": {
+      "windows": 16,
+      "timesteps": 2,
+      "c0_frame_slots": 32
+    },
+    "s1_metrics": "not_applicable (incomparable input layout)",
+    "frozen_estimate_seconds": 1.501679232227616,
+    "frozen_deadline_seconds": 2,
+    "frozen_forward_equivalents": 240
+  },
+  "phase_totals": {
+    "trainable_training_runs": 9,
+    "post_hoc_eval_runs": 9,
+    "d_candidate_runs": 1,
+    "optimizer_updates": 31590,
+    "training_probe_window_batches": 1575,
+    "eval_window_batches": 1575,
+    "eval_step_sequence_calls": 5499,
+    "eval_single_step_forwards": 13428,
+    "eval_probe_graph_calls": 7200,
+    "eval_encode_calls": 31500,
+    "frozen_phase_wall_seconds": 4099.605202459,
+    "frozen_phase_wall_cap_seconds": 14400.0,
+    "gpu_eval_wall_seconds": "unknown_not_measured"
+  },
+  "eval_batches_conflict": {
+    "eval_batches_registered": 48,
+    "actual_probe_batches": 35,
+    "cap_binding": false,
+    "cap_slack_ratio": 1.371429,
+    "frozen_eval_cost_seconds_inside_training_run": 1.670989920021384,
+    "frozen_phase_wall_seconds": 4099.605202459,
+    "recomputed_phase_wall_seconds": 4099.605202,
+    "phase_wall_delta_seconds": 0.0,
+    "post_hoc_eval_seconds_in_phase_wall": 0.0,
+    "eval_wall_budget_seconds_per_invocation": 300.0,
+    "eval_wall_budget_seconds_total": 2700.0,
+    "eval_wall_budget_is_outside_phase_wall": true,
+    "meanings_of_the_constant": [
+      "cap on window_probe batches per probe (never binding at 35 < 48)",
+      "training-run eval cost = 48 x 5 checkpoints x measured batch-16 step (1.671 s)",
+      "arm1 cost = 48 x 5 x D step (1.502 s) although arm1 performs exactly one forward"
+    ],
+    "silent_truncation_threshold_windows": 768
+  }
+}
+recomputed estimate 359.9312287726061 deadline 450 raw_updates 3510 arm1_estimate 1.501679232227616 phase_wall 4099.605202459

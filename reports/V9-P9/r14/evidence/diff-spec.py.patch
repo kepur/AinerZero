@@ -1,0 +1,73 @@
+--- reports/V9-P9/r14/before/src/spec.py	2026-10-24 22:15:46
++++ src/ainerzero/v9/experiments/s1/spec.py	2026-10-28 12:39:21
+@@ -242,12 +242,65 @@
+ # evals unrun, phase window closed). User approved r13 with identical values.
+ R13_EXPERIMENT_ID = "s1-phase1-20261024-r13"
+ 
+-# All three identities carry the one user-approved registration:
++# --- r14 re-freeze (ainerzero.V9.P49, R20261028-S1-phase1-r14-budget) ------
++# r12 and r13 both outlived the 14400 s experiment window (P45/P46).  The user
++# approved r14 with the same scientific values, a total wall cap of 2.5 h, and
++# inheritance of the three cells whose params.npz were bitwise identical across
++# r12 and r13.  Inherited cells are never retrained; eval binds them to their
++# source run, never to an r14 run (see worker.inherited_cell).
++R14_EXPERIMENT_ID = "s1-phase1-20261028-r14"
++R14_INHERITANCE = {
++    "registration": "RESEARCH_LOG R20261028-S1-phase1-r14-budget",
++    "source_experiment_id": R13_EXPERIMENT_ID,
++    "source_preregistration_path": "artifacts/v9/s1/phase1/r13/pre_registration.json",
++    "source_preregistration_file_sha256": (
++        "9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d"
++    ),
++    "source_preregistration_sha256": (
++        "1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30"
++    ),
++    "reproducibility_evidence": "params.npz bitwise identical across r12 and r13 "
++    "(reports/V9-S1-r14-budget-proposal.md section 2; ainerzero.V9.P45/P46)",
++    "cells": [
++        {
++            "arm_id": "arm2",
++            "seed": 0,
++            "source_run_id": "19f2d1eb4bf04da4909d87501348028d",
++            "params_sha256": "9d155fbf2817b75c2963c06e31053f732f08eac80446c5650673f095126a1702",
++        },
++        {
++            "arm_id": "arm2",
++            "seed": 1,
++            "source_run_id": "7d155060fecc4070a9a68e95fb3761fa",
++            "params_sha256": "c4d16f6e9a48b666a218ed41afcff607df3470dd07de8661921c237b4516f643",
++        },
++        {
++            "arm_id": "arm3",
++            "seed": 0,
++            "source_run_id": "403ae816720c4ad9b4f75ecd86e7b109",
++            "params_sha256": "577429aa3e1becabd40a5f8787f8d696c2e237982bea725a96ec1b1c8ba6f51e",
++        },
++    ],
++    # The worker's phase guard keeps the registered 14400 s; the approved r14
++    # total is stricter and is enforced before every launch by the r14 driver.
++    "approved_total_wall_seconds": 9_000,
++    "approved_total_wall_enforced_by": "r14 serial driver (ainerzero.V9.P51) before each launch",
++}
++# Only r14 inherits; every earlier identity freezes without an inheritance section.
++INHERITANCE_BY_EXPERIMENT = {R14_EXPERIMENT_ID: R14_INHERITANCE}
++
++# All four identities carry the one user-approved registration:
+ # r11 was frozen first, r12 repeated the same scientific values after P31,
+-# and r13 repeats them after the r12 phase window expired. Anything else is refused.
+-REGISTERED_EXPERIMENT_IDS = (R11_EXPERIMENT_ID, R12_EXPERIMENT_ID, R13_EXPERIMENT_ID)
+-# The identity a new freeze produces; r11 and r12 stay readable as archived history.
+-CURRENT_EXPERIMENT_ID = R13_EXPERIMENT_ID
++# r13 repeats them after the r12 phase window expired, and r14 after r13's.
++# Anything else is refused.
++REGISTERED_EXPERIMENT_IDS = (
++    R11_EXPERIMENT_ID,
++    R12_EXPERIMENT_ID,
++    R13_EXPERIMENT_ID,
++    R14_EXPERIMENT_ID,
++)
++# The identity a new freeze produces; r11-r13 stay readable as archived history.
++CURRENT_EXPERIMENT_ID = R14_EXPERIMENT_ID
+ 
+ # --- data plan (worlds/rounds frozen after the measured generation run) ----
+ DATA_PLAN = {

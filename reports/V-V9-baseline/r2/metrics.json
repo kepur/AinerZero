@@ -1,0 +1,74 @@
+{
+  "task": "ainerzero.V9.A4",
+  "reviewed_task": "ainerzero.V9.A2",
+  "reviewed_round": "r2",
+  "reviewer": "deepseek-flash-r7c4",
+  "reviewer_independence": "非作者（非 opencode-de3b）、非 r1 复核者（非 musespark-7f3q）",
+  "date": "2026-10-20",
+  "cpu_only": true,
+  "real_artifacts_zero_write": false,
+  "author_verify": {
+    "files_ok": 453,
+    "files_pinned": 453,
+    "exit": 0
+  },
+  "author_selftest_detected": 8,
+  "a3_findings": {
+    "T3_smuggled_file": "未闭合",
+    "C1_d_run_files": "已闭合",
+    "C2_checkpoint_meta_78": "已闭合",
+    "C3_run_level_files": "未闭合",
+    "exclusions": "已成立",
+    "runstore_maintenance": "部分处理（VACUUM 改变大小仍误判红）"
+  },
+  "new_adverse_counterexamples": {
+    "total": 7,
+    "real_nonzero": 7,
+    "required": 6,
+    "ids": [
+      "N1-manifest-size",
+      "N2-manifest-runstore-digest",
+      "N3-manifest-drop-entry",
+      "N4-m0-extra-checkpoint",
+      "N5-pinned-to-directory",
+      "N6-extra-preregistration",
+      "N7-extra-updates-file"
+    ]
+  },
+  "cases_total": 18,
+  "cases_blocked": 15,
+  "findings": [
+    "C3",
+    "T3a-smuggled-txt",
+    "T3b-smuggled-md",
+    "T7-runstore-vacuum"
+  ],
+  "findings_count": 4,
+  "recommend_accept": false,
+  "recommendation": "不建议按完整验收：C3 运行级覆盖仍有 46 个未钉选/未排除文件（M0 运行根 38、pilot probes 元数据 4、dataset.json 2、probe-teacher-cache 2），且 policy 明文声称钉选 M0 run report/events 但清单中 0 个；T3 未闭合（未登记 .txt/NOTES.md 仍全绿，脚本 docstring 与行为矛盾）；RunStore 合法 VACUUM 改变文件大小仍被判 RED（仅同大小 sha 变化降为 warning）。建议补修策略/扫描与 RunStore 大小豁免后再复核，或由一级把上述文件显式登记为排除并给理由。",
+  "evidence": [
+    "报告.md",
+    "review-results.json",
+    "log-author-verify.txt",
+    "log-author-selftest.txt",
+    "log-vacuum-probe.txt",
+    "log-review-run.txt"
+  ],
+  "real_artifacts_content_unchanged_final": true,
+  "incident_disclosure": "第一版复核 harness 的 T6 用例经符号链接向真实 artifacts/pilot/pilot-00c78153553a42bb88caaa02c074f63c/preregistration.json 追加 19B；发现后按清单 size/sha 截断恢复，453 个钉选文件内容重算全部一致；另 2 个文件仅 mtime 被触碰（内容不变）。harness 已改为先断开符号链接再写，并新增真实树完整性门。",
+  "runstore_vacuum_probe": {
+    "size_before": 63201280,
+    "size_after": 63180800,
+    "size_changed": true,
+    "rows_before": 79,
+    "rows_after": 79,
+    "verify_result": "exit 1 size_changed（policy 自述合法维护不应误判）"
+  },
+  "report": "报告.md",
+  "deliverable_sha256": {
+    "报告.md": "52de2a508b1ca8bf76e60eba5ed600f2b7adf485e98662df7db2c6db75b26f0c",
+    "verify_review.py": "59520a1fb671377bede24245ea5d6f14534e208f6a9cb6ac6396c06b75af2312",
+    "review-results.json": "d92ea41ea3479fbd805acce49bda8074f200153309a99ed880e2c4125cbbd0f9",
+    "log-review-run.txt": "cadf24793c0bb06d341a3b8a2c3c721614e808345eb967b42cafb672d8ea5c5f"
+  }
+}

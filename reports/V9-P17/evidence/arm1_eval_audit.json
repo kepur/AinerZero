@@ -1,0 +1,52 @@
+{
+  "arm1_kind": "frozen_candidate",
+  "arm1_identity": {
+    "frozen_manifest": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-baseline/r3/baseline_manifest.json",
+    "frozen_manifest_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "pilot_dir": "artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a",
+    "checkpoint_id": "96b72328-d9c1-4b48-b69c-1fa30ba8123c",
+    "experiment_id": "m2md-distill-20261013-r2",
+    "tensors_sha256": "cbb14d878dfda5af816dbc4903c7fb811aabbcfb17ce494f00e994ab3d6b286a",
+    "manifest_sha256": "76403018a033317c1cf4422f60318ee9a9df99d8b9e75c4c3211e444d4ba3892",
+    "metadata_sha256": "0de030a55af2f9f6d5cca6a1d0c0b5f15eac1281a9ead3bffdadda5a0f8bf58a",
+    "load_mode": "MLX CPU inference only; tensors.safetensors verified against the A2 manifest entry before load"
+  },
+  "eval_run_worker_report": {
+    "schema": "ainerzero.v9.s1.worker_report.v1",
+    "spec": "s1-phase1-v1",
+    "mode": "eval",
+    "no_update": true,
+    "control_db": "/Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/s1/phase1/control.sqlite3",
+    "status": "refused",
+    "resource_gate": {
+      "status": "passed",
+      "limits": {
+        "process_memory_gib": 8.0,
+        "mlx_memory_gib": 4.0,
+        "system_reserve_gib": 16.0,
+        "swap_growth_gib": 1.0,
+        "training_duty_cycle": 0.25,
+        "disk_min_free_gib": 50.0
+      },
+      "snapshot": {
+        "process_rss_gib": 0.0361785888671875,
+        "mlx_active_gib": 0.0,
+        "mlx_peak_gib": 0.0,
+        "mlx_available": true,
+        "system_available_gib": 57.66900634765625,
+        "swap_used_gib": 0.0,
+        "swap_growth_gib": 0.0,
+        "disk_free_gib": 3135.729118347168,
+        "measured_at": 1792648247.3250618
+      }
+    },
+    "refused_stage": "arm1_has_no_checkpoint_binding",
+    "message": "arm1 is the frozen D candidate and has no trained checkpoint bound in the central ledger; its eval entry fails closed until a checkpoint/provenance binding exists",
+    "elapsed_seconds": 0.2768442079977831
+  },
+  "refused_as_expected": true,
+  "refused_stage": "arm1_has_no_checkpoint_binding",
+  "analysis": {
+    "finding": "Arm1 is the registered frozen D candidate with an existing frozen checkpoint identity in Phase D. However, worker.py lines 639-650 unconditionally refuse Arm1 evaluation with status='refused' and refused_stage='arm1_has_no_checkpoint_binding'. Consequently, Arm1 evaluation is NOT implemented in the S1 evaluation pipeline, and the author cannot claim that all evaluation entrypoints are complete."
+  }
+}

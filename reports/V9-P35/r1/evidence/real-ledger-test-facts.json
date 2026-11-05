@@ -1,0 +1,11 @@
+{
+  "test": "test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original",
+  "opens_production_via": [
+    "Path(spec.REGISTERED_HOST_LEDGER).read_bytes() for sha",
+    "shutil.copyfile(real, copy)"
+  ],
+  "sqlite_open_target": "copy only (file:copy?mode=ro)",
+  "writes_production": false,
+  "failure_reason": "assert age_based > phase_wall_max failed numerically (Obtained conservative 5012 vs expected reserved 2214) \u2014 production ledger content evolved; test still read-only on original",
+  "note": "Failure is assertion on accounting numbers from current production copy, not evidence of a write to production"
+}

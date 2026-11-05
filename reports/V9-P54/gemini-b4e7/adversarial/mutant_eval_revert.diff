@@ -1,0 +1,13 @@
+--- evaluation.py (original r15)
++++ evaluation.py (reverted to r14 un-sliced query)
+@@ -379,8 +379,8 @@
+             for index in query:
+                 # r15 (ainerzero.V9.P53): query with the slice the memory stores
+                 # (r14 used the full encoder output and failed on every real arm).
+-                h_start = backend.probe_query(model, sequence["obs"][index])
+-                h_end = backend.probe_query(model, sequence["obs"][index + 1])
++                h_start = backend.encode(model, sequence["obs"][index])
++                h_end = backend.encode(model, sequence["obs"][index + 1])
+                 match_start = _cosine_match(
+                     np.asarray(graph["nodes"], dtype=np.float64),
+                     np.asarray(h_start, dtype=np.float64),

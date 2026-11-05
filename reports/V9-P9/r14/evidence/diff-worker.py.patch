@@ -1,0 +1,179 @@
+--- reports/V9-P9/r14/before/src/worker.py	2026-10-23 17:04:41
++++ src/ainerzero/v9/experiments/s1/worker.py	2026-10-28 12:40:58
+@@ -252,6 +252,33 @@
+     experiment_id = (document or {}).get("experiment_id")
+     if experiment_id in spec.REGISTERED_EXPERIMENT_IDS:
+         return str(experiment_id)
++    return None
++
++
++def inherited_cell(document: Mapping[str, Any], *, arm_id: str, seed: int) -> dict | None:
++    """r14 (ainerzero.V9.P49): the registered inheritance row for this arm x seed.
++
++    Only a document whose inheritance section equals the registered one in
++    ``spec.INHERITANCE_BY_EXPERIMENT`` can name an inherited cell; any other
++    section is ignored here and refused by ``prereg.validate`` at verify time,
++    so a hand-edited document cannot smuggle a cell in.
++    """
++    section = (document or {}).get("inheritance")
++    if not section:
++        return None
++    expected = spec.INHERITANCE_BY_EXPERIMENT.get((document or {}).get("experiment_id"))
++    if expected is None or json.loads(json.dumps(section)) != json.loads(json.dumps(expected)):
++        return None
++    for cell in section.get("cells") or ():
++        if cell.get("arm_id") == arm_id and int(cell.get("seed", -1)) == int(seed):
++            return {
++                "arm_id": arm_id,
++                "seed": int(seed),
++                "source_run_id": str(cell["source_run_id"]),
++                "params_sha256": str(cell["params_sha256"]),
++                "source_experiment_id": str(section["source_experiment_id"]),
++                "source_preregistration_sha256": str(section["source_preregistration_sha256"]),
++            }
+     return None
+ 
+ 
+@@ -1232,6 +1259,25 @@
+                 raise ValueError(f"train mode requires --arm in ('arm2', 'arm3', 'arm4'), got {arm!r}")
+             if seed is None or seed not in (0, 1, 2):
+                 raise ValueError(f"train mode requires --seed in (0, 1, 2), got {seed!r}")
++
++            # r14 (ainerzero.V9.P49): an inherited cell is never retrained under the
++            # new identity; eval binds it to its source run.  Decided before the
++            # first ledger write.
++            inherited = inherited_cell(document, arm_id=arm, seed=seed)
++            if inherited is not None:
++                report.update(
++                    {
++                        "status": "refused",
++                        "refused_stage": "inherited_cell_not_trainable",
++                        "arm": arm,
++                        "seed": seed,
++                        "inherited": inherited,
++                        "message": f"arm {arm} seed {seed} is inherited from "
++                        f"{inherited['source_experiment_id']} run {inherited['source_run_id']}; "
++                        "it is not retrained under this registration",
++                    }
++                )
++                return report
+ 
+             # Guard: any *started* arm x seed attempt forbids an unauthorized rerun,
+             # not only a completed one.  A pre-start resource refusal never reaches
+@@ -1619,6 +1665,7 @@
+                 prereg_sha256=verified["sha256"],
+                 updates=int(document["training_protocol"]["updates"]),
+                 ledger_path=ledger_path,
++                document=document,
+             )
+             if binding_precondition["status"] != "ok":
+                 report.update(
+@@ -2327,8 +2374,63 @@
+         "final": checkpoints[int(updates)],
+         "run_dir": run_dir,
+     }
++
++
++def _bind_for_document(
++    document: Mapping[str, Any] | None,
++    output_root: Path,
++    *,
++    arm_id: str,
++    seed: int,
++    prereg_sha256: str | None,
++    updates: int,
++    ledger_path: Path | None = None,
++) -> dict:
++    """Bind eval to this registration's run, or (r14) to an inherited source run.
+ 
++    A non-inherited cell binds exactly as before.  An inherited cell binds through
++    the same :func:`_bind_completed_run` checks under the *source* preregistration
++    SHA, and then must also be the registered source run of the registered source
++    experiment with the registered ``params.npz`` SHA; anything else refuses.
++    """
++    cell = inherited_cell(document or {}, arm_id=arm_id, seed=int(seed))
++    if cell is None:
++        return _bind_completed_run(
++            output_root,
++            arm_id=arm_id,
++            seed=int(seed),
++            prereg_sha256=prereg_sha256,
++            updates=int(updates),
++            ledger_path=ledger_path,
++        )
++    binding = _bind_completed_run(
++        output_root,
++        arm_id=arm_id,
++        seed=int(seed),
++        prereg_sha256=cell["source_preregistration_sha256"],
++        updates=int(updates),
++        ledger_path=ledger_path,
++    )
++    run = binding["run"]
++    if run.run_id != cell["source_run_id"]:
++        raise EvalBindingError(
++            f"inherited arm {arm_id} seed {seed} bound run {run.run_id}, not the "
++            f"registered source run {cell['source_run_id']}"
++        )
++    if getattr(run, "experiment_id", None) != cell["source_experiment_id"]:
++        raise EvalBindingError(
++            f"inherited run {run.run_id} belongs to experiment "
++            f"{getattr(run, 'experiment_id', None)!r}, not {cell['source_experiment_id']!r}"
++        )
++    if binding["final"]["sha256"] != cell["params_sha256"]:
++        raise EvalBindingError(
++            f"inherited run {run.run_id} params.npz SHA {binding['final']['sha256']} does not "
++            f"equal the registered {cell['params_sha256']}"
++        )
++    binding["inherited"] = cell
++    return binding
+ 
++
+ def _eval_binding_precondition(
+     output_root: Path,
+     *,
+@@ -2337,6 +2439,7 @@
+     prereg_sha256: str | None,
+     updates: int,
+     ledger_path: Path | None = None,
++    document: Mapping[str, Any] | None = None,
+ ) -> dict:
+     """CPU-only precondition: a completed training run must bind this arm x seed.
+ 
+@@ -2355,7 +2458,8 @@
+     control_db = Path(ledger_path) if ledger_path is not None else canonical_ledger_path()
+     try:
+         with ledger_read_snapshot(control_db) as snapshot:
+-            binding = _bind_completed_run(
++            binding = _bind_for_document(
++                document,
+                 output_root,
+                 arm_id=arm_id,
+                 seed=int(seed),
+@@ -2376,6 +2480,7 @@
+         "status": "ok",
+         "bound_run_id": binding["run"].run_id,
+         "final_checkpoint": str(binding["final"]["path"]),
++        "inherited": binding.get("inherited"),
+     }
+ 
+ 
+@@ -2454,7 +2559,8 @@
+             "status": "completed",
+         }
+ 
+-    binding = _bind_completed_run(
++    binding = _bind_for_document(
++        document,
+         output_root,
+         arm_id=arm_id,
+         seed=int(seed),
+@@ -2580,6 +2686,8 @@
+                 "final_parameter_sha256": final["parameter_sha256"],
+                 "expected_sha_source": "immutable completed-run reason receipt",
+                 "run_info_used_for_binding": False,
++                # r14: inherited cells name their registered source run; None otherwise.
++                "inherited": binding.get("inherited"),
+             },
+             "checkpoint_path": str(final["path"]),
+             "checkpoint_sha256": final["sha256"],

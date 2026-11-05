@@ -1,0 +1,182 @@
+--- reports/V9-P9/r6/evidence/pre-work-source/src/ainerzero/v9/experiments/s1/worker.py	2026-10-22 00:53:43
++++ src/ainerzero/v9/experiments/s1/worker.py	2026-10-22 00:58:40
+@@ -48,6 +48,72 @@
+     """A completed run/checkpoint/preregistration binding is missing or inconsistent."""
+ 
+ 
++class NonFiniteState(RuntimeError):
++    """A frozen stop rule fired: loss, a gradient leaf or an updated parameter is not finite."""
++
++
++def _flatten_leaves(value, prefix: str = "leaf", out: list | None = None) -> list:
++    """Flatten a nested mapping/list pytree into ``(name, leaf)`` pairs."""
++    if out is None:
++        out = []
++    if isinstance(value, Mapping):
++        for key in value:
++            _flatten_leaves(value[key], f"{prefix}.{key}", out)
++    elif isinstance(value, (list, tuple)):
++        for index, item in enumerate(value):
++            _flatten_leaves(item, f"{prefix}[{index}]", out)
++    elif value is not None:
++        out.append((prefix, value))
++    return out
++
++
++def _non_finite_leaves(values, label: str) -> list:
++    """Names of leaves that are not finite (the frozen STOP_RULES trigger)."""
++    import numpy as np
++
++    bad: list[str] = []
++    for name, value in _flatten_leaves(values, label):
++        array = np.asarray(value)
++        if array.dtype.kind not in "fc":
++            raise NonFiniteState(f"{name} is not a real numeric array (dtype={array.dtype})")
++        if not np.all(np.isfinite(array)):
++            bad.append(name)
++    return bad
++
++
++def _assert_finite_update(loss, grads) -> None:
++    """Frozen stop rule: non-finite loss or any gradient leaf fails the run.
++
++    This is a load-bearing check inside the training loop, not a check of the
++    final JSON: the run is aborted before any optimizer update and can never
++    write a completion receipt.
++    """
++    bad = _non_finite_leaves({"loss": loss}, "loss")
++    if not bad:
++        bad = _non_finite_leaves(grads, "grads")
++    if not bad:
++        return
++    raise NonFiniteState(
++        "non-finite training state at update boundary: " + ", ".join(sorted(bad))
++    )
++
++
++def _assert_finite_parameters(backend, model) -> None:
++    """Frozen stop rule: every updated parameter must stay finite."""
++    if hasattr(backend, "parameter_arrays"):
++        parameters = backend.parameter_arrays(model)
++    else:  # test doubles keep a plain dict
++        parameters = getattr(model, "params", None)
++        if parameters is None:
++            raise NonFiniteState("the backend exposes no parameter arrays to inspect")
++    bad = _non_finite_leaves(parameters, "params")
++    if bad:
++        raise NonFiniteState(
++            "non-finite updated parameters: " + ", ".join(sorted(bad))
++        )
++
++
++
+ TRAIN_RECEIPT_PREFIX = "s1_train_completed:"
+ CHECKPOINT_RESERVE_SECONDS = 2.0
+ FINAL_SAVE_RESERVE_SECONDS = 0.5
+@@ -551,6 +617,86 @@
+                 raise ValueError(f"eval mode requires --arm in ('arm1', 'arm2', 'arm3', 'arm4'), got {arm!r}")
+             eval_seed = 0 if seed is None else int(seed)
+             budget = float(wall_budget_seconds)
++            # r6 fail-closed evaluation gates (coordinator messages 386): the r5
++            # eval entry only verified the frozen file, then started a suite whose
++            # call volume is far beyond the registered eval_batches=48.  A real
++            # eval must verify the current source binding, refuse the arm1
++            # candidate path (it has no trained checkpoint to bind), and refuse
++            # before starting when the registered call budget cannot cover even
++            # the frozen window-probe batches.  No unaccounted suite is started.
++            source_state = prereg.source_binding_state(document)
++            if source_state.get("status") != "passed":
++                report.update(
++                    {
++                        "status": "refused",
++                        "refused_stage": "source_binding_drift",
++                        "source_binding": source_state,
++                        "message": "the frozen document no longer matches the bound "
++                        "sources; eval refuses instead of scoring drifted code",
++                    }
++                )
++                return report
++            if arm == "arm1":
++                report.update(
++                    {
++                        "status": "refused",
++                        "refused_stage": "arm1_has_no_checkpoint_binding",
++                        "message": "arm1 is the frozen D candidate and has no trained "
++                        "checkpoint bound in the central ledger; its eval entry fails "
++                        "closed until a checkpoint/provenance binding exists",
++                    }
++                )
++                return report
++            protocol = document["training_protocol"]
++            registered_batches = int(protocol.get("eval_batches", 0))
++            try:
++                windows = data.load_development_windows(
++                    data.resolve_dataset_dir(output_root)
++                )
++                window_count = int(windows["obs"].shape[0])
++            except Exception as exc:  # missing/unreadable dataset -> fail closed
++                report.update(
++                    {
++                        "status": "refused",
++                        "refused_stage": "eval_dataset_unavailable",
++                        "error": f"{type(exc).__name__}: {exc}",
++                        "message": "the development windows needed to account the "
++                        "evaluation call volume are unavailable; eval fails closed",
++                    }
++                )
++                return report
++            batch_size = max(1, int(protocol["batch_size"]))
++            checkpoints = len(
++                [int(v) for v in protocol.get("checkpoint_updates") or []]
++            ) or 1
++            window_batches = checkpoints * math.ceil(window_count / batch_size)
++            call_plan = {
++                "development_windows": window_count,
++                "window_batches_per_checkpoint": math.ceil(window_count / batch_size),
++                "checkpoints": checkpoints,
++                "window_probe_batches": window_batches,
++                "registered_eval_batches": registered_batches,
++                "suite_groups_beyond_window_probe": [
++                    "topology step_sequence/probe_graph",
++                    "few-shot support/query step_sequence + 2 encodes per query",
++                    "M2 three-condition probes",
++                    "sample-efficiency reload probes",
++                ],
++            }
++            if registered_batches <= 0 or window_batches > registered_batches:
++                report.update(
++                    {
++                        "status": "refused",
++                        "refused_stage": "eval_call_budget_exceeded",
++                        "eval_call_plan": call_plan,
++                        "message": f"the frozen eval_batches={registered_batches} cannot "
++                        f"cover the frozen window-probe batches ({window_batches}); the "
++                        "r5 disclosure said the suite exceeds this registration. Eval "
++                        "fails closed until a coordinator registers a sufficient eval "
++                        "call budget (no silent expansion).",
++                    }
++                )
++                return report
+             # r6: evaluation consumption is registered inside the same
+             # experiment as the training runs it scores, so the phase total
+             # sees it.  The r1 preparation experiment's wall window has long
+@@ -890,11 +1036,19 @@
+         tick = time.perf_counter()
+         (loss, _parts), grads = value_grad(model, batch)
+         backend.eval(loss, grads)
++        # Frozen non-finite stop rule, checked at the boundary where the state is
++        # visible: a NaN/Inf loss or any NaN/Inf gradient leaf fails the run here,
++        # before an optimizer update and before any completion receipt exists.
++        _assert_finite_update(loss, grads)
+         clipped, _norm = backend.clip_grad_norm(
+             grads, float(protocol["gradient_clip_norm"])
+         )
+         backend.optimizer_update(optimizer, model, clipped)
+         backend.sync_parameters(model, optimizer)
++        # The same rule must cover the parameters after the update; failing only
++        # when the final JSON is serialised would be too late (steps consumed,
++        # completion already claimed).
++        _assert_finite_parameters(backend, model)
+         previous = time.perf_counter() - tick
+         losses.append(backend.loss_value(loss))
+         if update in checkpoint_set:

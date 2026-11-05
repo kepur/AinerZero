@@ -1,0 +1,296 @@
+{
+  "schema": "ainerzero.v9.p2.review_metrics.v1",
+  "reviewer": "workbuddy-q7m3",
+  "reviewer_tier": 2,
+  "reviewer_model_version": "DeepSeek-V4.1-Flash",
+  "reviews_task": "ainerzero.V9.P1",
+  "p1_executor": "composer-6bf9",
+  "reviewed_at": "2026-10-23",
+  "mode": "read_only_verify",
+  "executed_any_training": false,
+  "executed_any_eval": false,
+  "used_relay_exec": false,
+  "used_mlx": false,
+  "environment_limits": [
+    "ps 被宿主沙箱禁止（operation not permitted），无法做进程组空核验",
+    "未使用 relay exec / submit-job / submit-run"
+  ],
+
+  "inputs": {
+    "review_inputs_path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/claude-20261022-e32/P1-review-inputs.json",
+    "review_inputs_sha256_expected": "1d5f89fb1b26b8d65a5f3a996cebff487365dc5de554f75fa0998cb1974b2de1",
+    "review_inputs_sha256_actual": "1d5f89fb1b26b8d65a5f3a996cebff487365dc5de554f75fa0998cb1974b2de1",
+    "review_inputs_match": true,
+    "pinned_files_checked": 13,
+    "pinned_files_match": 13,
+    "pinned_files_diff": 0
+  },
+
+  "r6_approval": {
+    "reference_notices": [447, 448],
+    "superseded_notice": 344,
+    "approval_line_number_expected": 776,
+    "document_sha256_expected": "19639d86b8f14ce0873ba367ae8d233fd371495a4c055af2b7344aa50b850718",
+    "prereg_file_sha256_expected": "5fea3ca73da29658753932ff8d38c96dadd33314b1db022576caea505c20d1ff",
+    "prereg_file_sha256_actual": "5fea3ca73da29658753932ff8d38c96dadd33314b1db022576caea505c20d1ff",
+    "document_sha256_recomputed": "19639d86b8f14ce0873ba367ae8d233fd371495a4c055af2b7344aa50b850718",
+    "document_sha256_recompute_rule": "sha256(canonical_json(document))",
+    "runs_with_approval_snapshot": 9,
+    "runs_line_text_match": 9,
+    "runs_line_number_match": 9,
+    "runs_document_sha_match": 9,
+    "strict_approval_lines_whole_file": 1,
+    "strict_approval_lines_in_section": 1,
+    "approval_section_lines": [731, 777],
+    "approval_section_sha256_expected": "a4390f13f1bcc337b1a4116cf1652bef432a3bad342bde24460f632fc9486c70",
+    "approval_section_sha256_actual": "a4390f13f1bcc337b1a4116cf1652bef432a3bad342bde24460f632fc9486c70",
+    "approval_section_sha_rule": "sha256 of lines 731-777, each rstrip('\\n'), joined with '\\n', utf-8",
+    "verdict": "pass",
+    "unauthorized_run_found": false
+  },
+
+  "r6_research_log_integrity": {
+    "current_file_sha256": "c30075d5258d7392bf84863b3b02c2ecee8d57ef152550adf804961e84e291f4",
+    "current_line_count": 1166,
+    "observed_log_sha256_values": [
+      {"sha256": "1c12f8558f30676f390852e0aee461c3dea96122a73906997d938e81ee71e22c", "source": "notice #447 (after write)", "is_prefix_of_current": true, "prefix_lines": 1116},
+      {"sha256": "19e0e45098f5332748350202a6e0a040209440910083d23e6c6e7938dda372e2", "source": "verify + arm2-seed0/1", "is_prefix_of_current": true, "prefix_lines": 1126},
+      {"sha256": "b039c67b95d1abaa5a4dfbb38420944e0eb1da0c3f18e3bea4e38be303b3a6f0", "source": "arm2-seed2", "is_prefix_of_current": true, "prefix_lines": 1134},
+      {"sha256": "66302fc3a5876d496eb8ffa5d43e5bb4b94452b2d941178d3aaa4f020bf06884", "source": "arm3x3 + arm4x3", "is_prefix_of_current": true, "prefix_lines": 1139}
+    ],
+    "whole_file_sha_stable_during_run_window": false,
+    "all_changes_are_eof_appends": true,
+    "approval_section_bytes_unchanged_across_versions": true,
+    "verdict": "pass_with_explained_drift"
+  },
+
+  "job_integrity": {
+    "job_records_total": 21,
+    "executions_total": 20,
+    "verify": {"expected": 1, "executed": 1, "job_records": 1},
+    "train": {"expected": 9, "executed": 9, "job_records": 10},
+    "eval": {"expected": 10, "executed": 10, "job_records": 10},
+    "labels_executed_once_each": true,
+    "duplicate_submissions": [
+      {
+        "label": "arm2-seed1",
+        "job_id": "job-c5d1fd1450524344b6138a6ef823486d",
+        "idempotency_key": "p1-train-arm2-seed1-r10-20261023",
+        "submitted_at": "2026-10-23T09:13:17+0300",
+        "failed_at": "2026-10-23T09:13:23+0300",
+        "reason": "ApiError('409 该任务已有 exec；不能并行启动或静默接管')",
+        "worker_launched": false,
+        "runstore_run_created": false,
+        "disclosed_in_p1_report": false
+      }
+    ],
+    "submissions_without_job_record": {
+      "count": 8,
+      "evidence": "reports/V9-S1/serial_driver.log 09:12:41-42 submit arm2s1,arm2s2,arm3s0-2,arm4s0-2; relay events/task_execs empty in 09:10-09:17",
+      "disclosed_in_p1_report": false
+    },
+    "retry_mechanism_in_code": "serial_run.py:194-201 recurses with attempt_tag='b' when status=failed and started_at is None and reason contains 409",
+    "seed_substitution_found": false,
+    "updates0_checkpoint_distinct_within_arm": {
+      "arm2": true,
+      "arm3": true,
+      "arm4": true
+    },
+    "serial_execution": {
+      "exec_records": 20,
+      "intervals_overlap": 0,
+      "window_start": "2026-10-23T09:02:56+0300",
+      "window_end": "2026-10-23T10:20:09+0300",
+      "wall_clock_seconds": 4633
+    },
+    "verdict": "pass_on_execution_fail_on_literal_no_duplicate_submission"
+  },
+
+  "deadline_and_budget": {
+    "frozen_deadline_seconds": 450,
+    "frozen_updates": 3510,
+    "per_run_cap_seconds": 1200,
+    "phase_cap_seconds": 14400,
+    "distinct_budget_configs_across_model_runs": 1,
+    "trains": [
+      {"label": "arm2-seed0", "run_id": "d7a6f202927e4d96a9f443e2f7e2856b", "wall_s": 450.13, "steps": 2309, "reserved_steps": 2309, "reserved_eq_actual": true, "terminal": "DeadlineExceeded", "checkpoints": [0, 439, 878, 1755]},
+      {"label": "arm2-seed1", "run_id": "ed21a2b584ee4f12aefb1076c47dfc4c", "wall_s": 450.03, "steps": 2322, "reserved_steps": 2322, "reserved_eq_actual": true, "terminal": "DeadlineExceeded", "checkpoints": [0, 439, 878, 1755]},
+      {"label": "arm2-seed2", "run_id": "daf758508f474f588ef3aadddd485f3d", "wall_s": 450.06, "steps": 2230, "reserved_steps": 2230, "reserved_eq_actual": true, "terminal": "DeadlineExceeded", "checkpoints": [0, 439, 878, 1755]},
+      {"label": "arm3-seed0", "run_id": "47ec9dbfadba481fbd049be7b79a497d", "wall_s": 450.18, "steps": 2676, "reserved_steps": 2676, "reserved_eq_actual": true, "terminal": "DeadlineExceeded", "checkpoints": [0, 439, 878, 1755]},
+      {"label": "arm3-seed1", "run_id": "eda781cdddf74d3fbb70aa4967ce0b36", "wall_s": 450.19, "steps": 2075, "reserved_steps": 2075, "reserved_eq_actual": true, "terminal": "DeadlineExceeded", "checkpoints": [0, 439, 878, 1755]},
+      {"label": "arm3-seed2", "run_id": "711076c74cbf4aee8592f3ee55929871", "wall_s": 450.05, "steps": 2564, "reserved_steps": 2564, "reserved_eq_actual": true, "terminal": "DeadlineExceeded", "checkpoints": [0, 439, 878, 1755]},
+      {"label": "arm4-seed0", "run_id": "0933e98717d3", "wall_s": 449.99, "steps": 2076, "reserved_steps": 2076, "reserved_eq_actual": true, "terminal": "BudgetExceeded", "run_state": "stopped", "run_reason": "budget_exhausted", "checkpoints": [0, 439, 878, 1755]},
+      {"label": "arm4-seed1", "run_id": "465cc84c766d", "wall_s": 450.11, "steps": 1889, "reserved_steps": 1889, "reserved_eq_actual": true, "terminal": "DeadlineExceeded", "checkpoints": [0, 439, 878, 1755]},
+      {"label": "arm4-seed2", "run_id": "c3fc71fedb1a", "wall_s": 450.10, "steps": 1591, "reserved_steps": 1591, "reserved_eq_actual": true, "terminal": "DeadlineExceeded", "checkpoints": [0, 439, 878]}
+    ],
+    "train_wall_total_seconds": 4050.8,
+    "accounted_total_seconds": 4060.1,
+    "within_phase_cap": true,
+    "all_trains_reached_frozen_steps": false,
+    "steps_range": [1591, 2676],
+    "verdict": "pass"
+  },
+
+  "eval_refusal": {
+    "jobs_refused": 9,
+    "jobs_completed": 1,
+    "job_returncode": 3,
+    "worker_exit_code": 2,
+    "elapsed_seconds_range": [0.92, 0.97],
+    "guard_code": "src/ainerzero/v9/experiments/s1/worker.py:1445",
+    "guard_condition": "registered_batches <= 0 or window_batches > registered_batches",
+    "registered_eval_batches": 48,
+    "window_probe_batches": 175,
+    "computation": "5 checkpoints * ceil(550 development windows / 16 batch) = 5 * 35 = 175",
+    "refused_stage": "eval_call_budget_exceeded",
+    "returns_before_model_load": true,
+    "start_gate_recorded": true,
+    "runstore_run_created": false,
+    "suite_groups_beyond_window_probe": [
+      "topology step_sequence/probe_graph",
+      "few-shot support/query step_sequence + 2 encodes per query",
+      "M2 three-condition probes",
+      "sample-efficiency reload probes"
+    ],
+    "verdict": "pass_fail_closed_not_crash"
+  },
+
+  "resource_gate": {
+    "executed_jobs": 20,
+    "gates_passed": 19,
+    "verify_gate_flat_without_status_field": 1,
+    "jobs_without_gate": 0,
+    "max_process_rss_gib": 0.05,
+    "limit_process_rss_gib": 8.0,
+    "max_mlx_active_gib": 0.0,
+    "limit_mlx_gib": 4.0,
+    "min_system_available_gib": 47.4,
+    "reserve_line_gib": 16.0,
+    "max_swap_growth_gib": 0.0,
+    "limit_swap_growth_gib": 1.0,
+    "min_disk_free_gib": 3134.0,
+    "limit_disk_free_gib": 50.0,
+    "verdict": "pass"
+  },
+
+  "final_partition": {
+    "reads_during_p1": 0,
+    "spec": "not_generated_not_read",
+    "final_dir_exists": false,
+    "final_files_in_dataset": 0,
+    "verdict": "pass"
+  },
+
+  "partition_and_leakage": {
+    "dataset_dir": "artifacts/v9/s1/datasets/8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+    "dataset_files_sha_match": "5/5",
+    "train_episodes": 2000,
+    "development_episodes": 200,
+    "train_scenes": 2000,
+    "development_scenes": 200,
+    "episode_id_intersection": 0,
+    "scene_id_intersection": 0,
+    "world_fingerprint_intersection": 0,
+    "train_scene_prefix": "s1-train-",
+    "development_scene_prefix": "s1-development-",
+    "packet_partition_labels_consistent": true,
+    "family_balance_train": {"navigation": 500, "time": 500, "relation": 500, "e3_identity": 500},
+    "family_balance_development": {"navigation": 50, "time": 50, "relation": 50, "e3_identity": 50},
+    "train_code_reads": "load_training_windows (train) + load_development_windows (checkpoint probe only)",
+    "eval_code_reads": "load_development_windows + load_truth_view('development')",
+    "verdict": "pass"
+  },
+
+  "same_budget_fairness": {
+    "budget_config_identical_across_arms": true,
+    "achieved_steps_differ": true,
+    "achieved_steps_range": [1591, 2676],
+    "common_checkpoint_available": 1755,
+    "capability_comparison_made_in_p1_report": false,
+    "verdict": "pass_on_registration_caveat_on_achieved_budget"
+  },
+
+  "standing_controls": {
+    "arm1_d_candidate": {
+      "identity_entries_verified": 9,
+      "tensors_sha256_match": true,
+      "manifest_sha256_match": true,
+      "metadata_sha256_match": true,
+      "manifest_digest_match": true,
+      "s1_metrics_status": "not_applicable",
+      "s1_metrics_reason": "incomparable input layout",
+      "c0_observation_loss_t0": 0.1935693323612213,
+      "c0_observation_loss_t1": 2.744694709777832,
+      "c0_symbol_nll_t0": 0.09898444265127182,
+      "c0_symbol_nll_t1": 2.4523427486419678,
+      "d_candidate_runs": 1,
+      "d_candidate_max_runs": 1
+    },
+    "m2_memory_interference": {"status": "not_applicable", "reason": "no S1 episodic memory in frozen D candidate"},
+    "grid_like_representation_diagnostic": {"run": false, "mentioned_in_report": false, "occurrences_of_grid_in_metrics": 0},
+    "verdict": "pass_reported_as_is"
+  },
+
+  "lost_exec_archive": {
+    "exec_records_for_p1": 20,
+    "final_state_finished": 20,
+    "execs_with_explicit_group_empty_evidence": 1,
+    "execs_with_job_level_evidence_only": 19,
+    "archive_function": "reports/V9-S1/serial_run.py:61-88 archive_blocking_execs",
+    "archive_function_checks_process_group": false,
+    "archive_detail_template": "archive <state>→finished after confirmed job end",
+    "first_archive_exec": "f3e06bf4066341a99020",
+    "first_archive_detail": "job-22457f6e... train arm2-seed0 deadline exceeded; supervision confirmed_empty; archive lost→finished so subsequent serial jobs can start",
+    "first_archive_at": "2026-10-23T09:14:46+0300",
+    "duplicate_409_at": "2026-10-23T09:13:17+0300",
+    "timeline_consistent": true,
+    "verdict": "pass_with_evidence_gap"
+  },
+
+  "sample_efficiency_recomputability": {
+    "curve_exists": false,
+    "sample_efficiency_rows_in_metrics": 0,
+    "checkpoint_probe_rows_in_train_stdout": 0,
+    "development_nll_present": false,
+    "recompute_requires_eval_run": true,
+    "recompute_performed": false,
+    "reason_not_performed": "本卡禁止跑评测；且 eval 入口在 48<175 时 fail-closed",
+    "prerequisites_present": {
+      "checkpoints_on_disk": true,
+      "frozen_checkpoint_updates": true,
+      "deterministic_probe_code": true
+    },
+    "verdict": "not_verifiable_vacuous_in_this_phase"
+  },
+
+  "report_overclaim_check": {
+    "capability_claim": "none",
+    "arm_vs_arm_comparison_in_report": false,
+    "interpretation_bounds_stated": true,
+    "held_out_semantics_stated": true,
+    "checkpoint0_untrained_stated": true,
+    "m2_selection_rule_stated": true,
+    "eval48_identity_only_stated": true,
+    "verdict": "pass"
+  },
+
+  "findings": [
+    {"id": "F1", "severity": "medium", "type": "disclosure", "summary": "21 条作业记录 vs 报告 20 条；1 次 arm2-seed1 重复提交被 409 拒绝、8 次无记录提交均未披露"},
+    {"id": "F2", "severity": "medium", "type": "record_inconsistency", "summary": "#447 与放行核定节头写「09:1x」，但 notice 发于 08:56:42、verify 起于 09:02:56 且已含该块；时间标注不实，但不构成未授权运行"},
+    {"id": "F3", "severity": "medium", "type": "evidence_gap", "summary": "archive_blocking_execs 无进程组空校验；20 条 exec 仅 1 条有 confirmed_empty 记录"},
+    {"id": "F4", "severity": "low", "type": "vacuous_acceptance", "summary": "样本效率曲线可复算在本阶段无可复算对象"},
+    {"id": "F5", "severity": "medium", "type": "artifact_degradation", "summary": "run_ledger.json trains[1..8] 为残桩，应以 metrics.json 为准"},
+    {"id": "F6", "severity": "low", "type": "unauditable", "summary": "driver.py 缺失，其提交行为不可审计"}
+  ],
+
+  "verdict_summary": {
+    "unauthorized_run": false,
+    "execution_counts_match_card": true,
+    "literal_no_duplicate_submission": false,
+    "budget_within_limits": true,
+    "partition_leakage_found": false,
+    "final_read": 0,
+    "capability_claim_made": false,
+    "recommendation": "R-6 与预算/分区/资源门/越界检查均通过；需一级裁定 F1/F2/F3 的记录更正与 eval_batches=48 口径冲突，并要求执行者补记提交数。本复核不构成 accept。"
+  }
+}

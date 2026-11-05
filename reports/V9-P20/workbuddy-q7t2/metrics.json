@@ -1,0 +1,354 @@
+{
+  "schema": "ainerzero.v9.p20.metrics.v1",
+  "task": "ainerzero.V9.P20",
+  "reviewed_task": "ainerzero.V9.P18",
+  "reviewed_revision": "r2",
+  "reviewer": "workbuddy-q7t2",
+  "date": "2026-10-22",
+  "status": "reported_negative_findings",
+  "scope": "non-author read-only audit of reports/V9-P18/r2/ and P19's measured references",
+  "verdict": {
+    "f1_f9_all_closed": false,
+    "must_fix": [
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5"
+    ],
+    "minor": [
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5"
+    ],
+    "recommendation": "Do not send the current r2 into the user-approval flow as 'F1-F9 all closed'. Issue a text/source r3 fixing D1-D5; no new training, data, GPU or real eval is required."
+  },
+  "sha_audit": {
+    "sealed_inputs_total": 38,
+    "sealed_inputs_all_match": true,
+    "r1_frozen_total": 14,
+    "r1_frozen_all_match": true
+  },
+  "reviewed_identity": {
+    "r2_report_sha256": "86a13488b1f7d0dcce06d7a4bf5240a1b3ffb58afa7dc53ee784b34addc2bd7c",
+    "r2_metrics_sha256": "ad32d483508af845e10927ae0a7379db5905e7a30adde0753465d1b25922b36a",
+    "r2_truth_check_sha256": "b8f55a8b0ea9136b22383224a1ef67a2f4b0d5ee3d86f51f77cbd784df08afea",
+    "p19_report_sha256": "f27b401bcf9ad2c79c3de47592eefd299e58d9c8c139e0c398dcd66bd7dc7334",
+    "p19_metrics_sha256": "4dd5a018b39c0cb08aa993b39fe16bd1b79f237d66fa129742a1db14e965a3b7",
+    "p19_independent_checks_sha256": "d6f741d4ec8368d655e9150cfbf3eb40434ac12b11f48f98cbc3fce0e01bb744",
+    "p19_independent_checks_log_sha256": "e9e33eaf8aaf01c786fbcc15421695a9b4b7304411b827e5d0e0b4f2a2e4c82d",
+    "prereg_sha256": "895bb3676cd3db6ad7995814ee940e23b1bff55747e8dea665f5fe426386075b",
+    "dataset_manifest_sha256": "5cbd65225c84d50b50e65f31d79b8ddeb8ca5272a085d8f8c5cc1f116b4ed594",
+    "truth_development_sha256": "76b986495229de893fb50e0740296f6414225a06b1b444fa4f20eb43911e26e6"
+  },
+  "reproduction": {
+    "truth_json_sha_original": "b8f55a8b0ea9136b22383224a1ef67a2f4b0d5ee3d86f51f77cbd784df08afea",
+    "truth_json_sha_repro": "b8f55a8b0ea9136b22383224a1ef67a2f4b0d5ee3d86f51f77cbd784df08afea",
+    "truth_byte_identical": true,
+    "metrics_json_sha_original": "ad32d483508af845e10927ae0a7379db5905e7a30adde0753465d1b25922b36a",
+    "metrics_json_sha_repro": "ad32d483508af845e10927ae0a7379db5905e7a30adde0753465d1b25922b36a",
+    "metrics_byte_identical": true,
+    "input_identity_byte_identical": true
+  },
+  "budget_recompute": {
+    "raw_updates": 3510,
+    "estimate_seconds": 359.9312287726061,
+    "deadline_seconds": 450,
+    "arm1_estimate_seconds": 1.501679232227616,
+    "arm1_deadline_seconds": 2,
+    "phase_wall_seconds": 4099.605202459,
+    "phase_cap_seconds": 14400.0,
+    "headroom_seconds": 10300.394797541001,
+    "matches_frozen": {
+      "updates": true,
+      "estimate": true,
+      "deadline": true,
+      "arm1": true,
+      "arm1_deadline": true,
+      "phase_wall": true,
+      "headroom": true
+    }
+  },
+  "k_coverage": {
+    "independent": {
+      "0": {
+        "worlds": 200,
+        "queries": 750
+      },
+      "1": {
+        "worlds": 200,
+        "queries": 550
+      },
+      "2": {
+        "worlds": 150,
+        "queries": 350
+      },
+      "4": {
+        "worlds": 50,
+        "queries": 100
+      },
+      "8": {
+        "worlds": 0,
+        "queries": 0
+      }
+    },
+    "matches_r2": true,
+    "matches_p19": true
+  },
+  "component_arithmetic": {
+    "step_sequence_total": 611,
+    "single_step_total": 1492,
+    "probe_graph_total": 800,
+    "encode_total": 3500,
+    "few_shot_step_sequence": 400,
+    "few_shot_transitions": 700,
+    "few_shot_probe_graph": 600,
+    "few_shot_encode": 3500,
+    "window_batches": 175,
+    "window_frame_slots": 8250,
+    "matches_p19_measured": {
+      "step_sequence": true,
+      "single_step": true,
+      "probe_graph": true,
+      "encode": true,
+      "window_batches": true,
+      "window_frame_slots": true
+    },
+    "p19_measured": {
+      "step_sequence_calls": 611,
+      "single_step_forwards": 1492,
+      "probe_graph_calls": 800,
+      "encode_calls": 3500,
+      "forward_loss_calls": 175,
+      "forward_loss_frames": 8250
+    }
+  },
+  "eval_wall": {
+    "PREP_BUDGET_line": [
+      42,
+      "PREP_BUDGET = {\"data\": 600.0, \"smoke\": 300.0, \"verify\": 120.0, \"eval\": 300.0}"
+    ],
+    "supervision_extra_seconds_line": [
+      77,
+      "\"supervision_extra_seconds\": 50.0,"
+    ],
+    "supervisor_timeout_line": [
+      200,
+      "supervision_seconds = budget + spec.TIMING[\"supervision_extra_seconds\"]"
+    ],
+    "ledger_reserve_line": [
+      440,
+      "ledger.reserve(active_run, active_seconds=min(120.0, max(10.0, 0.5 * budget)))"
+    ],
+    "eval_branch_has_phase_guard": false,
+    "nominal_budget_seconds": 300.0,
+    "supervision_timeout_seconds": 350.0,
+    "ledger_reserve_seconds": 120.0,
+    "phase_wall_plus_9x_supervision": 7249.605202459
+  },
+  "generation_seconds": {
+    "manifest_value": 45.739918708000005,
+    "manifest_created_unix": 1792576623.881335,
+    "prereg_created_unix": 1792614732.805581,
+    "data_identity_generation_seconds": 45.739918708000005,
+    "timing_smoke_data_generation_seconds": 47.605202458999884,
+    "timing_smoke_created_unix": 1792572559.62922,
+    "manifest_value_equals_data_identity": true,
+    "manifest_created_before_prereg": true
+  },
+  "b1_b2_binding": {
+    "b2": {
+      "id": "B2",
+      "item": "register the measured eval call counts: 175 window batches, 611 step_sequence, 1492 single-step forwards, 800 probe_graph, 3500 encode, D 1 C0 forward",
+      "provenance": "measured_non_author (P19)"
+    },
+    "b2_mentions_dataset_digest": false,
+    "b1_new_dataset": "200 worlds x >=10 packets, family-stratified with >=9 transitions per world",
+    "current_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+    "current_dataset_shape": "200 dev worlds, 950 packets, episode lengths 7/5/4/3, query_limit=8",
+    "illustrative_b1_floor_recompute": {
+      "note": "illustrative only, not a measurement or a budget estimate; assumes 200 worlds x exactly 9 transitions",
+      "step_sequence_calls": 1011,
+      "single_step_forwards": 3792,
+      "probe_graph_calls": 1200,
+      "encode_calls": 11600,
+      "window_batches": "unknown (depends on the new dataset's window count)"
+    }
+  },
+  "f_verdicts": [
+    {
+      "f": "F1",
+      "p19_issue": "612/1292 vs measured 611/1492; metrics text mixed",
+      "r2_claim": "closed; 611/1492/800/3500/175; 612/1292/600 superseded",
+      "p20_verdict": "partial",
+      "defect": "D1",
+      "evidence": "r1 metrics.json:447 and build_metrics.py:197 contain 1292; r2 REPORT.md:13,125 attributes the error to REPORT prose and says metrics.json itself is 611/1492/800"
+    },
+    {
+      "f": "F2",
+      "p19_issue": "projection mixed with measurement; no per-row provenance",
+      "r2_claim": "closed; as_coded/repaired/projection separated",
+      "p20_verdict": "pass_minor",
+      "defect": null,
+      "evidence": "call_counts/per_run have provenance; totals has only a provenance_mix string"
+    },
+    {
+      "f": "F3",
+      "p19_issue": "4h already includes eval; option B-4 is a pseudo-question",
+      "r2_claim": "closed; inclusion correct; 300 s hard wall",
+      "p20_verdict": "partial",
+      "defect": "D4",
+      "evidence": "commands.py:42 (300 nominal), spec.py:77 + commands.py:200 (350 supervision), worker.py:440 (120 ledger); eval branch has no phase guard; r2 REPORT.md:15,181,202,272 say 300 hard wall"
+    },
+    {
+      "f": "F4",
+      "p19_issue": "47.6 s is the old plan; smoke copies the manifest field",
+      "r2_claim": "closed; new data cost unknown; 9.111 packet-only lower bound",
+      "p20_verdict": "pass",
+      "defect": null,
+      "evidence": "data_cost; 47.605202459/10450*2000=9.1110435"
+    },
+    {
+      "f": "F5",
+      "p19_issue": "option A is not zero change",
+      "r2_claim": "closed; original values/n/missing retained; family/constant diagnostic",
+      "p20_verdict": "pass_minor",
+      "defect": "M2",
+      "evidence": "n and missing correct; original_accuracy_and_displacement_values_retained=true when no values exist"
+    },
+    {
+      "f": "F6",
+      "p19_issue": "1703 hybrid; 1503/1903 also hybrid",
+      "r2_claim": "closed; 1003/2103/1492 self-consistent",
+      "p20_verdict": "pass",
+      "defect": null,
+      "evidence": "P19 per_run_total: 1003/2103/1492"
+    },
+    {
+      "f": "F7",
+      "p19_issue": "M2 11/42 hand-typed despite 'nothing typed by hand'",
+      "r2_claim": "closed; read from P19, not hand-typed",
+      "p20_verdict": "fail",
+      "defect": "D5",
+      "evidence": "build_r2_metrics.py:258,262,329,330 hardcode 11/42; m2_constants.not_hand_typed_in_r2=true"
+    },
+    {
+      "f": "F8",
+      "p19_issue": "600 vs 800",
+      "r2_claim": "closed; 800 = 200 topology + 600 few-shot",
+      "p20_verdict": "pass",
+      "defect": null,
+      "evidence": "P19 measured probe_graph=800"
+    },
+    {
+      "f": "F9",
+      "p19_issue": "two generation_seconds values",
+      "r2_claim": "closed; manifest rewritten after prereg freeze",
+      "p20_verdict": "fail",
+      "defect": "D2",
+      "evidence": "current manifest=45.7399=data_identity; manifest created 12:57 < prereg 23:32; smoke 11:49=47.605; no git history"
+    }
+  ],
+  "defects": [
+    {
+      "id": "D1",
+      "severity": "medium",
+      "f": "F1",
+      "summary": "r1 metrics.json:447 and build_metrics.py:197 also carried 1292 (and 600); r2 attributes the errors to REPORT prose and says metrics.json itself is 611/1492/800, erasing part of the history.",
+      "fix": "Record the exact r1 locations and state that the structured numeric fields are correct while the text fields in metrics.json/build script also drifted."
+    },
+    {
+      "id": "D2",
+      "severity": "medium-high",
+      "f": "F9",
+      "summary": "The claim 'manifest field was rewritten after the prereg freeze' has no historical diff and contradicts current bytes: manifest generation_seconds=45.7399 (equals data_identity), manifest mtime 12:57 is before prereg 23:32; 47.605 is the 11:49 smoke record.",
+      "fix": "State only that two values coexist in the frozen document; add manifest value, manifest/prereg/smoke timestamps; do not assert a post-freeze rewrite."
+    },
+    {
+      "id": "D3",
+      "severity": "high",
+      "f": "B1/B2",
+      "summary": "B2 registers 611/1492/800/3500/175 without a dataset_digest; B1 creates a new digest with longer episodes and >=9 transitions/world, which changes these counts.",
+      "fix": "Bind B2 to digest 8234f2f3... and the current 200-world/950-packet shape; add that counts must be recomputed on any new digest; split D 1 C0 forward out of B2."
+    },
+    {
+      "id": "D4",
+      "severity": "high",
+      "f": "F3",
+      "summary": "300 s is the nominal PREP_BUDGET, not a hard wall: supervisor timeout is 350 s (budget+50), ledger reserve/charge is 120 s, and the eval branch does not recheck the phase cap.",
+      "fix": "Record nominal=300, supervision=350, ledger=120, eval_phase_guard=false; show static fit with 350 s (7249.605 s < 14400 s); keep actual MLX wall unknown."
+    },
+    {
+      "id": "D5",
+      "severity": "medium",
+      "f": "F7",
+      "summary": "F7 says M2 11/42 are no longer hand-typed, but build_r2_metrics.py hardcodes them and sets not_hand_typed_in_r2=true.",
+      "fix": "Read from P19 component_split.m2_interference, or mark them as hand-typed constants verified against P19."
+    }
+  ],
+  "minor_issues": [
+    {
+      "id": "M1",
+      "summary": "build_r2_metrics.py hardcodes OUT and ignores V9P18R2_OUT, while REPORT.md section 1 says the env var sets the output dir.",
+      "fix": "Use the env var or correct the report; the isolated repro required rebinding OUT in memory."
+    },
+    {
+      "id": "M2",
+      "summary": "original_accuracy_and_displacement_values_retained=true when no accuracy/displacement values exist yet.",
+      "fix": "Say the definition, n and missing are retained; values are pending real eval."
+    },
+    {
+      "id": "M3",
+      "summary": "repaired_byte_copy.tree points to .../iso_check_repaired/ainerzero, not the tree root.",
+      "fix": "Record the tree root explicitly."
+    },
+    {
+      "id": "M4",
+      "summary": "B2 includes 'D 1 C0 forward', which is the D candidate, not an eval call.",
+      "fix": "Split D into its own line."
+    },
+    {
+      "id": "M5",
+      "summary": "few_shot_repaired_stop_frames=1100 is hardcoded although it is derivable (200*2+150*3+50*5).",
+      "fix": "Derive it from the k coverage or label it as a checked constant."
+    }
+  ],
+  "positive_evidence": {
+    "sha_audit": "38/38 sealed inputs and 14/14 r1 frozen inputs match before and after",
+    "reproduction": "r2 truth JSON, metrics JSON and input_identity JSON reproduce byte-identically in an isolated dir",
+    "budget": "3510 / 359.9312287726061 / 450 / 1.501679232227616 / 2 / 4099.605202459 / 10300.394797541 all match",
+    "k_coverage": "200/200/150/50/0 worlds and 750/550/350/100/0 queries match P19 and the independent recomputation",
+    "component_counts": "611/1492/800/3500/175 match P19 measured",
+    "frames": "1003/2103/1492 self-consistent",
+    "negative_evidence_preserved": "k=1 crash, support underwrite, probe_graph TypeError, MLX cost unknown, new-data cost unknown, r6 ledger defect"
+  },
+  "no_real_execution": {
+    "mlx_imported": false,
+    "real_training": false,
+    "real_evaluation": false,
+    "new_data_generated": false,
+    "final_partition_read": false,
+    "downloads_or_installs": false,
+    "source_modified": false,
+    "approval_line_written": false,
+    "budget_or_scientific_parameter_changed": false,
+    "p18_p19_suite_rerun": false
+  },
+  "artifacts": {
+    "report": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/REPORT.md",
+    "metrics": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/metrics.json",
+    "verification_json": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/analysis/verification.json",
+    "verify_script": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/analysis/verify_p18r2.py",
+    "repro_script": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/analysis/repro_p18r2.py",
+    "repro_summary": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/analysis/repro/repro_summary.json",
+    "logs": [
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/logs/repro_p18r2.err",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/logs/repro_p18r2.out",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/logs/verify_p18r2.err",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P20/workbuddy-q7t2/logs/verify_p18r2.out"
+    ]
+  },
+  "note": "Read-only audit; no approval line, no parameter or budget change. P20 is not a capability result."
+}

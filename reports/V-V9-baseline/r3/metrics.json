@@ -1,0 +1,371 @@
+{
+  "task": "ainerzero.V9.A10",
+  "reviewed_task": "ainerzero.V9.A2",
+  "reviewed_round": "r3",
+  "reviewer": "deepseek-flash-a7k2",
+  "reviewed_author": "opencode-de3b",
+  "non_author": true,
+  "not_a3_a4_reviewer": true,
+  "date": "2026-10-20",
+  "params_version": "v0",
+  "params": {},
+  "scope": {
+    "cpu_only": true,
+    "read_only_real_tree": true,
+    "writes_only": [
+      "reports/V-V9-baseline/r3/"
+    ],
+    "case_sandbox": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/v9-a10-r3-cases-f11hol81",
+    "model_calls": 0,
+    "training_runs": 0,
+    "downloads": 0,
+    "installs": 0,
+    "paid_calls": 0,
+    "commits_pushed": 0
+  },
+  "verdict": "PASS",
+  "checks": {
+    "total": 25,
+    "passed": 25,
+    "failed": []
+  },
+  "self_built_cases": {
+    "total": 11,
+    "passed": 11,
+    "failed": [],
+    "detail": [
+      {
+        "name": "C0_clean_case_tree",
+        "exit": 0,
+        "problem_kinds": [],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {},
+        "failures": []
+      },
+      {
+        "name": "N1_manifest_size_tamper",
+        "exit": 1,
+        "problem_kinds": [
+          "manifest_digest",
+          "size_changed"
+        ],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "tampered": "artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/manifest.json",
+          "field": "size+1"
+        },
+        "failures": []
+      },
+      {
+        "name": "N2_manifest_runstore_digest_tamper",
+        "exit": 1,
+        "problem_kinds": [
+          "manifest_digest",
+          "runstore_entries_changed"
+        ],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "tampered": "runstore.entries_digest + databases[artifacts/control.sqlite3].entries_digest"
+        },
+        "failures": []
+      },
+      {
+        "name": "N3_manifest_hides_pinned_entry",
+        "exit": 1,
+        "problem_kinds": [
+          "manifest_digest",
+          "policy_claim_unmet",
+          "unexpected_new_file"
+        ],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "hidden": "artifacts/pilot/pilot-00c78153553a42bb88caaa02c074f63c/report.json"
+        },
+        "failures": []
+      },
+      {
+        "name": "N4_unregistered_file_in_pinned_checkpoint_dir",
+        "exit": 1,
+        "problem_kinds": [
+          "unexpected_new_file"
+        ],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "added": "artifacts/m0/m0-cpu-222513b47d0e/checkpoints/midpoint/NOTES.md"
+        },
+        "failures": []
+      },
+      {
+        "name": "N5_pinned_file_content_flip",
+        "exit": 1,
+        "problem_kinds": [
+          "sha256_changed"
+        ],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "flipped": "artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/manifest.json",
+          "size": 417
+        },
+        "failures": []
+      },
+      {
+        "name": "N6_pinned_file_replaced_by_directory",
+        "exit": 1,
+        "problem_kinds": [
+          "missing"
+        ],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "replaced_by_dir": "artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/manifest.json"
+        },
+        "failures": []
+      },
+      {
+        "name": "N7_pinned_file_deleted",
+        "exit": 1,
+        "problem_kinds": [
+          "missing"
+        ],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "deleted": "artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/manifest.json"
+        },
+        "failures": []
+      },
+      {
+        "name": "N8_runstore_row_changed",
+        "exit": 1,
+        "problem_kinds": [
+          "runstore_entries_changed"
+        ],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "runstore_file_sha_changed",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "updated_table": "runs",
+          "database": "artifacts/control.sqlite3",
+          "rows": 1
+        },
+        "failures": []
+      },
+      {
+        "name": "N9_runstore_legal_vacuum_stays_green",
+        "exit": 0,
+        "problem_kinds": [],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "runstore_file_sha_changed",
+          "runstore_file_size_changed",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "database": "artifacts/control.sqlite3",
+          "size_before": 63201280,
+          "size_after": 63180800
+        },
+        "failures": []
+      },
+      {
+        "name": "N10_excluded_file_change_stays_green",
+        "exit": 0,
+        "problem_kinds": [],
+        "warning_kinds": [
+          "excluded_file_missing",
+          "transient_file_missing"
+        ],
+        "passed": true,
+        "detail": {
+          "excluded_mutated": "artifacts/pilot/pilot-0f624762a98040a8b74a956e65844fa9/probe-teacher-cache.npz",
+          "note": "excluded files are not hashed by design (A2 r3 §8)"
+        },
+        "failures": []
+      }
+    ]
+  },
+  "c3_coverage": {
+    "a4_expected": 46,
+    "pinned": 44,
+    "excluded_with_reason": 2,
+    "residual": [],
+    "m0_run_entries": 38,
+    "probe_meta": 4,
+    "dataset_json": 2
+  },
+  "policy_consistency": {
+    "checked_globs": 26,
+    "raw_matched": 883,
+    "matched_after_volatile": 497,
+    "volatile_skipped": 386,
+    "violations": 0,
+    "uncovered_pinned": 0
+  },
+  "t3_pinned_tree_scan": {
+    "name": "N4_unregistered_file_in_pinned_checkpoint_dir",
+    "exit": 1,
+    "problem_kinds": [
+      "unexpected_new_file"
+    ],
+    "warning_kinds": [
+      "excluded_file_missing",
+      "transient_file_missing"
+    ],
+    "passed": true,
+    "detail": {
+      "added": "artifacts/m0/m0-cpu-222513b47d0e/checkpoints/midpoint/NOTES.md"
+    },
+    "failures": []
+  },
+  "runstore_row_level": {
+    "row_changed": {
+      "name": "N8_runstore_row_changed",
+      "exit": 1,
+      "problem_kinds": [
+        "runstore_entries_changed"
+      ],
+      "warning_kinds": [
+        "excluded_file_missing",
+        "runstore_file_sha_changed",
+        "transient_file_missing"
+      ],
+      "passed": true,
+      "detail": {
+        "updated_table": "runs",
+        "database": "artifacts/control.sqlite3",
+        "rows": 1
+      },
+      "failures": []
+    },
+    "legal_vacuum": {
+      "name": "N9_runstore_legal_vacuum_stays_green",
+      "exit": 0,
+      "problem_kinds": [],
+      "warning_kinds": [
+        "excluded_file_missing",
+        "runstore_file_sha_changed",
+        "runstore_file_size_changed",
+        "transient_file_missing"
+      ],
+      "passed": true,
+      "detail": {
+        "database": "artifacts/control.sqlite3",
+        "size_before": 63201280,
+        "size_after": 63180800
+      },
+      "failures": []
+    }
+  },
+  "selftest_real_copy": {
+    "exit": 0,
+    "cases_total": 22,
+    "cases_real_copy": 22,
+    "faults": [
+      17,
+      17
+    ],
+    "controls_green": 5,
+    "copy_mode": "APFS clone (cp -c) / shutil.copy2 fallback, never a symlink",
+    "real_tree_integrity": {
+      "before": {
+        "checked": 497,
+        "content_unchanged": true
+      },
+      "after": {
+        "checked": 497,
+        "content_unchanged": true
+      }
+    }
+  },
+  "author_verify_corroboration": {
+    "exit": 0,
+    "verdict": "ok",
+    "files_ok": 497,
+    "problems": [],
+    "policy_checked_globs": 26
+  },
+  "r2_preserved": {
+    "sha256": {
+      "scripts/v9_baseline_manifest_r2.py": "2709475caac0ef8f3d92ac2023d94156c11cfd63ac13eb00c454ecdb715e529c",
+      "reports/V9-baseline/r2/baseline_manifest.json": "71e99efcc1ceb652df742396d3bbbfdbc72ac7cd5e46c980171e33065a2d674a",
+      "reports/V9-baseline/r2/report.md": "d39e5c75bcfb244c25b9a7eb76f99446b5228fdbcd017318f414d6358a83bb5d"
+    },
+    "r2_manifest_digest": "ee6fc9c9bbd3177c4a2584216036e065859e111e2e96bdee1e08c6897d9b2cd3"
+  },
+  "real_tree_integrity": {
+    "before": {
+      "checked": 497,
+      "mismatches": 0,
+      "files_digest": "5560de5161ff99d946c4c72e9480434af1ed6e3a3d2c85043b62ca30429b64b0"
+    },
+    "after": {
+      "checked": 497,
+      "mismatches": 0,
+      "files_digest": "5560de5161ff99d946c4c72e9480434af1ed6e3a3d2c85043b62ca30429b64b0"
+    },
+    "before_equals_after": true
+  },
+  "source_sha256": {
+    "scripts/v9_baseline_manifest_r3.py": "f7160692854e6c659c4d17211338aa58002294324d791ba424cb1e8e0f8e3e41",
+    "reports/V9-baseline/r3/baseline_manifest.json": "2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b",
+    "reports/V9-baseline/r3/report.md": "e8cd206e41cf679ea4867f66624b0ae4e1a7d956cc5a381ff3bc486b601c5ae3",
+    "reports/V-V9-baseline/r3/review_r3.py": "17d06f8f1d6d2ee2567df61f57e4dce91ce1c7937a85ab7c93bc3b3355c37f05"
+  },
+  "observations": [
+    {
+      "id": "O-01",
+      "severity": "info",
+      "text": "真实树完整性在复核开始与结束各复算 497 钉选文件：0 mismatch 且 path+sha 指纹一致，全程未写入真实 artifacts（案例全部在 /tmp 沙盒，写入前先 unlink 符号链接）。"
+    },
+    {
+      "id": "O-02",
+      "severity": "info",
+      "text": "A4 的 46 个 C3 残留：44 个现为钉选（M0 运行根 38 + pilot probes 4 + dataset.json 2）、2 个以 derived_artifact 理由排除（probe-teacher-cache.{npz,json}），无静默遗漏。"
+    },
+    {
+      "id": "O-03",
+      "severity": "info",
+      "text": "RunStore 行级身份：改一行 -> runstore_entries_changed 红；合法 VACUUM -> 绿 + runstore_file_size_changed/runstore_file_sha_changed warning，与 policy 自述一致。"
+    },
+    {
+      "id": "O-04",
+      "severity": "info",
+      "text": "T3：钉选检查点目录内新增未登记 NOTES.md -> unexpected_new_file 红；排除项字节改动按声明不红（设计边界，非缺陷）。"
+    }
+  ],
+  "evidence_dir": "reports/V-V9-baseline/r3/evidence/"
+}

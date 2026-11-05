@@ -1,0 +1,105 @@
+{
+ "A_d_then_train": {
+  "budgets": {
+   "d": 2.0,
+   "train": 450.0
+  },
+  "d": {
+   "experiment_id": "s1-phase1-20261021",
+   "run_id": "0ac5259f4fca4c53a95f3a9d392ffa08",
+   "state": "completed",
+   "wall_budget_seconds": 2.0
+  },
+  "error": null,
+  "experiments": [
+   {
+    "experiment_id": "s1-phase1-20261021",
+    "manifest_hash": "0b9adeae24364cdf2e9345d08db2d0a02b9dced1a96d22a527762d400e7e0fd6",
+    "request_id": "s1-phase1-20261021:eval:arm1"
+   }
+  ],
+  "order": "D_first",
+  "same_experiment": true,
+  "train": {
+   "experiment_id": "s1-phase1-20261021",
+   "run_id": "265124f901e544fd9d8c097c05e4e59c",
+   "state": "completed",
+   "wall_budget_seconds": 450.0
+  }
+ },
+ "B_train_then_d": {
+  "budgets": {
+   "d": 2.0,
+   "train": 450.0
+  },
+  "d": {
+   "experiment_id": "s1-phase1-20261021",
+   "run_id": "5597c0376ca74d63a4a89f613a5698b1",
+   "state": "completed",
+   "wall_budget_seconds": 2.0
+  },
+  "error": null,
+  "experiments": [
+   {
+    "experiment_id": "s1-phase1-20261021",
+    "manifest_hash": "0b9adeae24364cdf2e9345d08db2d0a02b9dced1a96d22a527762d400e7e0fd6",
+    "request_id": "s1-phase1-20261021:training"
+   }
+  ],
+  "order": "T_first",
+  "same_experiment": true,
+  "train": {
+   "experiment_id": "s1-phase1-20261021",
+   "run_id": "cd6acc931a784a51bc17e7eb71d8fd2b",
+   "state": "completed",
+   "wall_budget_seconds": 450.0
+  }
+ },
+ "C_foreign_manifest": {
+  "d": {
+   "accepted": false,
+   "error": "ExperimentManifestMismatch: experiment s1-phase1-20261021 already exists with manifest 6ecae278b894f4a6… (request_id 'r9-foreign-request'), but this caller would register 0b9adeae24364cdf…; refusing to reuse an experiment with a different manifest"
+  },
+  "experiments": [
+   {
+    "experiment_id": "s1-phase1-20261021",
+    "manifest_hash": "6ecae278b894f4a6aeb43a9d91ad0e0d4574b92cec7dc73bfdc6354a27c7cbe1",
+    "request_id": "r9-foreign-request"
+   }
+  ],
+  "sabotage": false,
+  "train": {
+   "accepted": false,
+   "error": "ExperimentManifestMismatch: experiment s1-phase1-20261021 already exists with manifest 6ecae278b894f4a6… (request_id 'r9-foreign-request'), but this caller would register 0b9adeae24364cdf…; refusing to reuse an experiment with a different manifest"
+  }
+ },
+ "D_sabotage_control": {
+  "d": {
+   "accepted": true,
+   "experiment_id": "s1-phase1-20261021",
+   "run_id": "f7929e049d214139ab845f7edbf17af4",
+   "state": "initializing",
+   "wall_budget_seconds": 2.0
+  },
+  "experiments": [
+   {
+    "experiment_id": "s1-phase1-20261021",
+    "manifest_hash": "6ecae278b894f4a6aeb43a9d91ad0e0d4574b92cec7dc73bfdc6354a27c7cbe1",
+    "request_id": "r9-foreign-request"
+   }
+  ],
+  "sabotage": true,
+  "train": {
+   "skipped": "D run left active; experiment runs are sequential"
+  }
+ },
+ "frozen": {
+  "d_deadline_seconds": 2.0,
+  "experiment_id": "s1-phase1-20261021",
+  "train_deadline_seconds": 450.0,
+  "updates": 3510
+ },
+ "note": "temporary card-local RunStore files only; the central ledger is untouched",
+ "schema": "ainerzero.v9.s1.r9.shared_experiment_evidence.v1",
+ "scratch_root": ".tmp/r9-evidence"
+}

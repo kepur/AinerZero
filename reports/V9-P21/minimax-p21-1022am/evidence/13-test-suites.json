@@ -1,0 +1,58 @@
+{
+ "cpu_only_constraint": "no MLX import, no model forward, no training, no evaluation; a stub 'mlx' package is injected so that arms.py's module level import does not load the real MLX runtime",
+ "cpu_only_import_tests": {
+  "command": ".venv/bin/python -m pytest tests/v9/geometry/test_canonical.py::test_cpu_only_imports tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only -q -p no:cacheprovider",
+  "note": "these two tests assert that no mlx module is imported; they only fail under the review stub because the stub registers the name 'mlx' in sys.modules; the geometry/contracts/teachers/tokenization packages never import mlx, so the two tests were re-run without the stub and pass",
+  "result": "2 passed in 0.08s"
+ },
+ "experiments_suite": {
+  "author_claim": "235 passed / 0 failed",
+  "command": "PYTHONPATH=reports/V9-P21/minimax-p21-1022am/probes .venv/bin/python -m pytest tests/v9/experiments -q -p no:cacheprovider -p p21_mlx_stub_plugin",
+  "failures_are_stub_artifacts": true,
+  "result": {
+   "available": true,
+   "errors": 0,
+   "failed_tests": [
+    "tests.v9.experiments.test_s1_no_update::test_smoke_reports_an_update_when_a_parameter_really_changed",
+    "tests.v9.experiments.test_s1_no_update::test_smoke_reports_no_update_when_the_digests_match",
+    "tests.v9.experiments.test_s1_pacer_duty::test_pacer_records_the_registered_duty_cycle_only",
+    "tests.v9.experiments.test_s1_pacer_duty::test_pacer_sleeps_to_hold_the_duty_cycle[0.1-0.18]",
+    "tests.v9.experiments.test_s1_pacer_duty::test_pacer_sleeps_to_hold_the_duty_cycle[0.25-0.06]",
+    "tests.v9.experiments.test_s1_pacer_duty::test_pacer_sleeps_to_hold_the_duty_cycle[0.5-0.02]",
+    "tests.v9.experiments.test_s1_timing_sequence::test_worker_train_resets_deadline_across_sequential_runs"
+   ],
+   "failures": 7,
+   "skipped": 0,
+   "tests": 235
+  },
+  "reviewer_reverified": 228,
+  "unverified_because_they_need_the_real_mlx_runtime": [
+   "test_s1_no_update.py::test_smoke_reports_an_update_when_a_parameter_really_changed",
+   "test_s1_no_update.py::test_smoke_reports_no_update_when_the_digests_match",
+   "test_s1_pacer_duty.py::test_pacer_records_the_registered_duty_cycle_only",
+   "test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.1-0.18]",
+   "test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.25-0.06]",
+   "test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.5-0.02]",
+   "test_s1_timing_sequence.py::test_worker_train_resets_deadline_across_sequential_runs"
+  ]
+ },
+ "interpretation": "the green test suites support the engineering claims but do not prove any capability; 7 of the 235 experiments tests drive the real MLX runtime and could not be re-run under the CPU-only constraint",
+ "other_v9_suites": {
+  "author_claim": "378 passed",
+  "command": "PYTHONPATH=reports/V9-P21/minimax-p21-1022am/probes .venv/bin/python -m pytest tests/v9/geometry tests/v9/contracts tests/v9/teachers tests/v9/tokenization -q -p no:cacheprovider -p p21_mlx_stub_plugin",
+  "failures_are_stub_artifacts": true,
+  "result": {
+   "available": true,
+   "errors": 0,
+   "failed_tests": [
+    "tests.v9.geometry.test_canonical::test_cpu_only_imports",
+    "tests.v9.geometry.test_geometry::test_imports_are_cpu_only"
+   ],
+   "failures": 2,
+   "skipped": 0,
+   "tests": 378
+  },
+  "reviewer_reverified": 378
+ },
+ "schema": "ainerzero.v9.p21.probe13_test_suites.v1"
+}

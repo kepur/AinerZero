@@ -1,0 +1,21 @@
+--- reports/V9-P9/r14/before/tests/test_s1_r13_registration.py	2026-10-28 01:49:01
++++ tests/v9/experiments/test_s1_r13_registration.py	2026-10-28 12:41:58
+@@ -57,7 +57,8 @@
+ # --- identity --------------------------------------------------------------
+ def test_the_current_registration_defaults_to_r13():
+     assert R13 == "s1-phase1-20261024-r13"
+-    assert spec.CURRENT_EXPERIMENT_ID == R13
++    # r14 (ainerzero.V9.P49): the current identity moved on to r14; r13 stays registered history.
++    assert spec.CURRENT_EXPERIMENT_ID == spec.R14_EXPERIMENT_ID
+     # r11 and r12 stay registered identities: they are archived history, not errors.
+     assert R11 in spec.REGISTERED_EXPERIMENT_IDS
+     assert R12 in spec.REGISTERED_EXPERIMENT_IDS
+@@ -69,7 +70,7 @@
+         parameter_counts=FAKE_COUNTS,
+         budget_registration=spec.R11_BUDGET_REGISTRATION,
+     )
+-    assert draft["experiment_id"] == R13
++    assert draft["experiment_id"] == spec.R14_EXPERIMENT_ID
+ 
+ 
+ def test_freeze_accepts_all_three_registered_identities_and_refuses_anything_else():

@@ -1,0 +1,1258 @@
+{
+  "budget": {
+    "d_candidate_run": {
+      "active_seconds": 0.31284984004742,
+      "actual_work": "1 forward on a fixed (16,2,8) batch = 32 C0 slots",
+      "count": 1,
+      "deadline_seconds": 2,
+      "delta_estimate_seconds": 0.0,
+      "estimate_seconds": 1.501679232227616,
+      "estimate_seconds_frozen": 1.501679232227616,
+      "over_reservation_factor": 240.0,
+      "supervision_seconds": 52.0
+    },
+    "frozen_primitives": {
+      "arm1_forward_loss_step_seconds": 0.0013035410001975833,
+      "checkpoints_per_eval": 5,
+      "data_generation_seconds_used_by_phase_wall": 47.605202458999884,
+      "deadline_factor": 1.25,
+      "duty_cycle": 0.25,
+      "eval_batches": 48,
+      "eval_ledger_reserve_seconds": 120.0,
+      "eval_nominal_budget_seconds": 300.0,
+      "measured_step_seconds": 0.0069624580000891,
+      "overhead_factor": 1.2,
+      "phase_wall_max_seconds": 14400.0,
+      "supervision_extra_seconds": 50.0,
+      "target_estimate_seconds": 360.0,
+      "updates": 3510
+    },
+    "phase": {
+      "delta_headroom_seconds": 0.0,
+      "delta_phase_wall_seconds": 0.0,
+      "headroom_seconds": 10300.394797541001,
+      "headroom_seconds_frozen": 10300.394797541001,
+      "phase_cap_seconds": 14400.0,
+      "phase_wall_seconds_frozen": 4099.605202459,
+      "phase_wall_seconds_recomputed": 4099.605202459,
+      "static_checks": {
+        "all_below_cap": true,
+        "meaning": "static arithmetic only. Fitting inside the 4 h cap is not evidence that the eval suite completes, and it is not a new run authorisation.",
+        "phase_wall_plus_9x_ledger_reserve": 5179.605202459,
+        "phase_wall_plus_9x_nominal": 6799.605202459,
+        "phase_wall_plus_9x_supervision": 7249.605202459,
+        "worst_case_9x_deadline_plus_9x_supervision_plus_D": 7202.0
+      }
+    },
+    "post_hoc_eval_per_arm_seed": {
+      "count": 9,
+      "ledger_reserve_seconds_per_invocation": 120.0,
+      "nominal_seconds_per_invocation": 300.0,
+      "provenance": "derived from commands.py:42, spec.py:77, commands.py:200, worker.py:440",
+      "supervisor_timeout_seconds_per_invocation": 350.0,
+      "total_ledger_reserve_seconds": 1080.0,
+      "total_nominal_seconds": 2700.0,
+      "total_supervisor_timeout_seconds": 3150.0
+    },
+    "training_run_per_arm_seed": {
+      "count": 9,
+      "count_basis": "arms 2/3/4 x seeds 0/1/2",
+      "deadline_seconds": 450,
+      "deadline_seconds_frozen": 450,
+      "delta_deadline_seconds": 0,
+      "delta_estimate_seconds": 0.0,
+      "estimate_seconds": 359.9312287726061,
+      "estimate_seconds_frozen": 359.9312287726061,
+      "eval_cost_term_seconds": 1.670989920021384,
+      "raw_updates_formula": "floor((target*duty/overhead - eval_batches*step*checkpoints) / (3*step))",
+      "raw_updates_recomputed": 3510,
+      "supervision_seconds": 500.0,
+      "supervision_seconds_frozen": 500.0,
+      "update_cost_seconds": 0.0208873740002673,
+      "updates_frozen": 3510
+    }
+  },
+  "coverage_source": {
+    "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+    "file": "dev_coverage.json (same run family, produced by r3_dev_coverage.py)",
+    "schema": "ainerzero.v9.p18r3.dev-coverage.v1",
+    "truth_development_sha256": "76b986495229de893fb50e0740296f6414225a06b1b444fa4f20eb43911e26e6"
+  },
+  "d1_call_count_history": {
+    "correct_numbers": {
+      "applies_to_dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+      "checkpoints_per_eval": 5,
+      "d_candidate_c0_forwards": 1,
+      "encode_calls": 3500,
+      "probe_graph_calls": 800,
+      "provenance": "measured_non_author (P19, count-substitute backend + 1-line k=1 repair)",
+      "single_step_forwards": 1492,
+      "step_sequence_calls": 611,
+      "window_batches": 35,
+      "window_forward_loss_calls": 175
+    },
+    "correction": "The r1 structured counters were already 611 / 1492 / 800 / 3500. The wrong 612 / 1292 / 600 figures appear in the r1 REPORT prose (612/1292 at REPORT.md, 600 at the GPU-timing note) AND in the r1 metrics.json 'unmeasured' array AND in r1 analysis/build_metrics.py. Saying 'the metrics file itself was correct' is wrong: only its structured counter block was correct. All three old locations are kept above with their line numbers; none of them is edited.",
+    "history_sources": {
+      "r1_REPORT_md": [
+        {
+          "line": 243,
+          "text": "**GPU/MLX 耗时：未知/待测**。理由不是\"没算\"，而是口径不成立：冻结 smoke 只测 batch-16 前向，而事后评测的 611 次调用是 **batch=1 的单步 forward**（延迟受限，与 batch-16 吞吐不可换算），3500 次 `encode` 与 600 次 `probe_graph` 从未被测过。任何用 0.006962458 s 乘次数的数字都会系统性低估，故不写。"
+        },
+        {
+          "line": 275,
+          "text": "3. **评测预算登记（替代 `eval_batches=48`）**：显式登记 `窗口 batch 35×5、序列前向 612、单步 forward 1292、encode 3500、probe_graph 800、D 1`，并**先测** batch-1 单步 forward 与 encode 的 MLX 单位耗时，再换算墙钟；在此之前评测墙钟只能写\"未知\"。"
+        }
+      ],
+      "r1_build_metrics_py_line_hits": [
+        {
+          "line": 197,
+          "text": "\"MLX batch-1 single-step forward cost (611 eval calls, 1292 forwards) is not measured by the frozen smoke\","
+        },
+        {
+          "line": 199,
+          "text": "\"MLX probe_graph cost (600 calls) is not measured\","
+        }
+      ],
+      "r1_metrics_json_line_hits": [
+        {
+          "line": 447,
+          "text": "\"MLX batch-1 single-step forward cost (611 eval calls, 1292 forwards) is not measured by the frozen smoke\","
+        },
+        {
+          "line": 449,
+          "text": "\"MLX probe_graph cost (600 calls) is not measured\","
+        }
+      ],
+      "r1_metrics_json_unmeasured": [
+        {
+          "line": 447,
+          "text": "MLX batch-1 single-step forward cost (611 eval calls, 1292 forwards) is not measured by the frozen smoke"
+        },
+        {
+          "line": 448,
+          "text": "MLX encode cost (3500 calls) is not measured"
+        },
+        {
+          "line": 449,
+          "text": "MLX probe_graph cost (600 calls) is not measured"
+        },
+        {
+          "line": 450,
+          "text": "post-hoc eval wall time has no registered budget at all"
+        }
+      ],
+      "r1_structured_fields_that_were_already_right": {
+        "json_pointer": "/eval_run_accounting_if_k1_repaired",
+        "value": {
+          "encode_calls": 3500,
+          "few_shot_queries": 1750,
+          "probe_graph_calls": 800,
+          "single_step_forwards": 1492,
+          "step_sequence_calls": 611,
+          "window_forward_loss_calls": 175,
+          "window_frame_slots": 8250
+        }
+      }
+    },
+    "superseded_numbers": {
+      "delta_vs_measured": {
+        "single_step_forwards": -200,
+        "step_sequence_calls": 1
+      },
+      "status": "superseded_by_r3; retained for audit, never to be registered",
+      "values": {
+        "probe_graph_calls": 600,
+        "single_step_forwards": 1292,
+        "step_sequence_calls": 612
+      }
+    }
+  },
+  "d2_generation_seconds": {
+    "cause_and_write_times": "unknown",
+    "claims_that_are_NOT_made": [
+      "that the manifest field was rewritten after the pre-registration was frozen (no diff, no history)",
+      "that mtime or created_unix is a tamper-proof record of when a value was written",
+      "that 47.605 s is a smoke measurement of data generation (smoke.py copies the manifest field)"
+    ],
+    "correction_of_p19_and_r2": "P19 F9 and r2 both asserted a post-freeze rewrite. That assertion is withdrawn: the current manifest value is 45.739918708000005 (equal to data_identity), the manifest was created before the pre-registration was frozen, and both values already coexist inside the frozen document. What remains is a documented internal inconsistency of the frozen document (two values for one digest) plus the fact that phase_wall takes the larger, conservative one; delta on the recomputation is still 0.0.",
+    "dataset_git_note": "artifacts/ is ignored by .gitignore:15, so there is no git history for the dataset",
+    "dataset_under_git": false,
+    "fact_only": true,
+    "manifest_created_unix": 1792576623.881335,
+    "manifest_generation_seconds": 45.739918708000005,
+    "manifest_mtime_iso": "2026-10-21T12:57:04.025955",
+    "new_data_cost": {
+      "old_plan_ms_per_packet": 4.555522,
+      "old_plan_packets": 10450,
+      "old_plan_seconds": 47.605202458999884,
+      "packet_rate_lower_bound_is_not_a_cost": true,
+      "packet_rate_lower_bound_seconds_for_2000_packets": 9.111044,
+      "registered_generation_ceiling_seconds": {
+        "cli_prep_budget_data_seconds": 600.0,
+        "spec_timing_data_generation_budget_seconds": 300.0
+      },
+      "status": "unknown_not_measured",
+      "why": "47.605202459 s covers the OLD plan (2200 worlds / 10450 packets). The B1 plan changes the world count, the per-world episode length and the per-world map construction cost, none of which has ever been timed. The packet-rate lower bound is not a cost estimate."
+    },
+    "phase_wall_uses_the_larger_value": true,
+    "prereg_created_iso": "2026-10-21T23:32:12.805581",
+    "prereg_created_unix": 1792614732.805581,
+    "prereg_data_identity_generation_seconds": 45.739918708000005,
+    "prereg_mtime_iso": "2026-10-21T23:32:12.806521",
+    "prereg_smoke_data_generation_seconds": 47.605202458999884,
+    "smoke_created_iso": "2026-10-21T11:49:19.629220",
+    "smoke_created_unix": 1792572559.62922,
+    "which_value_phase_wall_uses": 47.605202458999884
+  },
+  "d3_call_counts": {
+    "binding": {
+      "applies_to": "the current development partition only",
+      "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+      "episode_shape": {
+        "max_transitions_per_world": 6,
+        "packets": 950,
+        "query_limit": 8,
+        "query_limit_registered_in_prereg": false,
+        "steps_per_family": {
+          "e3_identity": [
+            [
+              "5",
+              50
+            ]
+          ],
+          "navigation": [
+            [
+              "7",
+              50
+            ]
+          ],
+          "relation": [
+            [
+              "3",
+              50
+            ]
+          ],
+          "time": [
+            [
+              "4",
+              50
+            ]
+          ]
+        },
+        "transitions": 750,
+        "worlds": 200
+      },
+      "measurement_backend": "P19 count-substitute backend on a byte copy of the frozen r5 snapshot; the repaired column additionally applies a 1-line stop=support[-1]+2 patch to evaluation.py (sha 9d0ae913...d4ded). This is a call-boundary count, not proof that the production MlxBackend completes an eval."
+    },
+    "d_candidate": {
+      "batch_shape": "(16, 2, 8)",
+      "c0_slots": 32,
+      "forwards": 1,
+      "note": "D candidate is a single fixed-batch C0 forward; it is not an eval-suite call and is never added to the eval totals.",
+      "separate_from_eval": true
+    },
+    "migration_rule": "Any new dataset digest, new seed or new episode shape requires a fresh count. The figures above never migrate to new data and are never a budget for it.",
+    "new_data_illustration": {
+      "assumption": {
+        "family_split": "unchanged (4 x 50)",
+        "query_limit": 8,
+        "transitions_per_world": 9,
+        "worlds": 200
+      },
+      "encode_calls": 11600,
+      "few_shot_queries_per_k": {
+        "0": 1600,
+        "1": 1600,
+        "2": 1400,
+        "4": 1000,
+        "8": 200
+      },
+      "few_shot_step_sequence_calls": 800,
+      "few_shot_stop_frames_repaired": 3800,
+      "few_shot_transitions": 3000,
+      "few_shot_worlds_per_k": {
+        "0": 200,
+        "1": 200,
+        "2": 200,
+        "4": 200,
+        "8": 200
+      },
+      "measured": false,
+      "note": "P20's earlier illustration kept the OLD topology term (750) while switching the few-shot term to the new shape; that mixed two datasets. The numbers above recompute every term from the stated hypothetical shape. They exist only to show that the current figures do not transfer.",
+      "probe_graph_calls": 1200,
+      "registered_as_budget": false,
+      "registered_as_cost": false,
+      "status": "illustration_arithmetic_only",
+      "topology_step_sequence_calls": 200,
+      "topology_transitions": 1800,
+      "window_batches": "unknown (depends on the new window count; the 35x5 figure belongs to this digest)"
+    },
+    "per_arm_seed_eval": {
+      "as_coded_measured": {
+        "encode_calls": 1500,
+        "probe_graph_calls": 400,
+        "provenance": "measured (author r1 instrumentation, reproduced byte-identically by P19)",
+        "single_step_forwards": 792,
+        "step_sequence_calls": 212,
+        "terminal_error": {
+          "message": "a sequence probe needs at least two frames",
+          "type": "RuntimeError"
+        },
+        "window_forward_loss_calls": 175
+      },
+      "r3_component_arithmetic": {
+        "encode_calls": 3500,
+        "formula": {
+          "encode_calls": "2 encodes per query transition (1750 queries -> 3500)",
+          "probe_graph_calls": "topology 200 + one per world with a query over all k (600)",
+          "single_step_forwards": "topology 750 + few-shot sum_{k in 1,2,4} worlds(k)*k + m2 transitions",
+          "step_sequence_calls": "topology 200 + few-shot sum_{k in 1,2,4} worlds(k) + m2 calls"
+        },
+        "matches_p19_measurement": {
+          "encode_calls": true,
+          "probe_graph_calls": true,
+          "single_step_forwards": true,
+          "step_sequence_calls": true
+        },
+        "probe_graph_calls": 800,
+        "provenance": "arithmetic_r3 from dev coverage + P19 measured component split",
+        "single_step_forwards": 1492,
+        "step_sequence_calls": 611,
+        "window_forward_loss_calls": 175
+      },
+      "repaired_k1_measured_non_author": {
+        "encode_calls": 3500,
+        "probe_graph_calls": 800,
+        "provenance": "measured_non_author (P19)",
+        "single_step_forwards": 1492,
+        "step_sequence_calls": 611,
+        "window_forward_loss_calls": 175
+      }
+    },
+    "training_time_checkpoint_probes": {
+      "batches_per_checkpoint": 35,
+      "checkpoints": [
+        0,
+        439,
+        878,
+        1755,
+        3510
+      ],
+      "formula": "5 checkpoints x ceil(550 windows / 16) = 5 x 35 = 175 window batches",
+      "separate_from_post_hoc_eval": true,
+      "window_forward_loss_calls": 175,
+      "window_frame_slots": 8250
+    }
+  },
+  "d4_eval_wall_layers": {
+    "execution_boundaries": {
+      "cross_output_root_reset": "unresolved in r5; owned by r6 (S1-R6-DECISION.md item 1); not claimed fixed here",
+      "eval_branch_rechecks_phase_cap": false,
+      "ledger_is_card_local": true,
+      "phase_guard_runs_on_train_path_only": true,
+      "single_invocation_hard_limit_is_the_supervisor_timeout": true
+    },
+    "four_hour_cap_includes_eval": {
+      "basis": [
+        "worker.py:370-376 sums every run in the card-local ledger, with an explicit comment that the phase cap covers auxiliary eval/verify runs",
+        "commands.py:743 does the same in mode_train",
+        "the eval branch opens its aux run in the same output_root/control.sqlite3 ledger (worker.py:436)"
+      ],
+      "so_this_is_not_an_open_question": true,
+      "value": true
+    },
+    "layers": {
+      "ledger_reserve_seconds": {
+        "is_a_hard_kill": false,
+        "source": "worker.py:440 ledger.reserve(active_run, active_seconds=min(120.0, max(10.0, 0.5*budget)))",
+        "value": 120.0,
+        "what_it_is": "an accounting reservation written into the run row (active_seconds)"
+      },
+      "nominal_budget_seconds": {
+        "is_a_hard_kill": false,
+        "source": "commands.py:42 PREP_BUDGET['eval'] = 300.0",
+        "value": 300.0,
+        "what_it_is": "the declared preparation budget passed to the worker"
+      },
+      "phase_guard_visible_wall": {
+        "consequence": "9 x 120 = 1080 s is a static reservation quantity, NOT the number the phase guard sums and NOT consumed wall clock. The guard sums elapsed-since-created per run, which depends on the clock. The known now-advance defect (P17) makes that number unreliable; the fix is owned by the P15 r7 source card and is not claimed here.",
+        "source": "worker.py:370-376 / commands.py:743 sum float(r.wall_seconds) over store.list_runs()",
+        "source_semantics_verified_by_regex": {
+          "lifecycle_keeps_active_seconds_in_a_separate_field": true,
+          "lifecycle_sets_wall_seconds_from_now_minus_created": true,
+          "phase_guard_sums_run_record_wall_seconds": true
+        },
+        "value": "unknown",
+        "what_it_does_NOT_read": "the 120 s active_seconds reservation (a separate RunRecord field, line 391)",
+        "what_it_reads": "RunRecord.wall_seconds = max(0, effective_now - created_at) (lifecycle._record, line 392)"
+      },
+      "supervisor_timeout_seconds": {
+        "is_a_hard_kill": true,
+        "source": "commands.py:200 supervision_seconds = budget + spec.TIMING['supervision_extra_seconds'] (50.0); commands.py:227 subprocess.run(timeout=...)",
+        "value": 350.0,
+        "what_it_is": "the process-level hard timeout of the eval subprocess"
+      }
+    },
+    "mlx_wall_clock": {
+      "no_cpu_substitute_extrapolation": true,
+      "status": "unknown_not_measured",
+      "why": "the frozen smoke only timed batch-16 forward+loss. 611 step_sequence calls / 1492 batch-1 single-step forwards / 3500 encodes / 800 probe_graph calls have no measured unit cost. CPU substitute timings and batch-16 throughput are not convertible into MLX batch-1 latency."
+    }
+  },
+  "d5_m2_constants": {
+    "cross_check": {
+      "r1_hardcoded_the_same_values": true,
+      "r1_location": "reports/V9-P18/analysis/build_metrics.py:97 (m2_calls = {...11, 42})",
+      "same_values_in_as_coded_block": true,
+      "verdict": "The values are right and the r1 provenance claim was wrong. r3 reads them from the sealed artifact, states the pointer, and does not repeat the 'nothing is typed in by hand' claim."
+    },
+    "read_from_sealed_p19_artifact": {
+      "hand_typed_in_r3": false,
+      "json_pointers": {
+        "single_step_forwards": "C_repaired_accounting_measured.component_split.m2_interference.single_step_forward_calls",
+        "step_sequence_calls": "C_repaired_accounting_measured.component_split.m2_interference.step_sequence_calls",
+        "step_sequence_frames": "C_repaired_accounting_measured.component_split.m2_interference.step_sequence_frames",
+        "step_sequence_transitions": "C_repaired_accounting_measured.component_split.m2_interference.step_sequence_transitions"
+      },
+      "path": "reports/V9-P19/analysis/independent_checks.json",
+      "provenance": "measured_non_author (P19)",
+      "sha256": "d6f741d4ec8368d655e9150cfbf3eb40434ac12b11f48f98cbc3fce0e01bb744",
+      "values": {
+        "single_step_forwards": 42,
+        "step_sequence_calls": 11,
+        "step_sequence_frames": 53,
+        "step_sequence_transitions": 42
+      }
+    },
+    "sealed_artifact_inconsistency_found_in_r3": {
+      "action": "recorded for the coordinator and the next reviewer; not silently repaired",
+      "consequence": "per-k breakdown from the repaired column must not be quoted. The repaired per_run_total (611/1492/800/3500) and component_split (topology 200/750, m2 11/42) are internally consistent and are independently reproduced by the r3 arithmetic from the dev coverage.",
+      "does_not_change_any_number": true,
+      "field": "C_repaired_accounting_measured.per_k_calls",
+      "observation": "the per-k block inside the repaired column still shows k=1 crashing at world 1 with step_sequence_calls=1, and k=2/k=4 still show k-1 transitions per world (150/150). That is as-coded semantics, so this sub-block was not regenerated after the 1-line repair."
+    }
+  },
+  "derived_from_coverage": {
+    "derivation": {
+      "encode_calls": "2 encodes per query transition, summed over all k",
+      "probe_graph_calls": "one probe_graph per world with a query, summed over all k",
+      "repaired_stop_frames": "sum over k in {1,2,4} of worlds_with_support_and_query * (k+1)",
+      "step_sequence_calls": "sum over k in {1,2,4} of worlds_with_support_and_query",
+      "transitions": "sum over k in {1,2,4} of worlds_with_support_and_query * k"
+    },
+    "few_shot_encode_calls": 3500,
+    "few_shot_probe_graph_calls": 600,
+    "few_shot_queries_total": 1750,
+    "few_shot_repaired_stop_frames": 1100,
+    "few_shot_step_sequence_calls": 400,
+    "few_shot_transitions": 700,
+    "provenance": "arithmetic_r3 (derived from this file's k coverage, not measured)"
+  },
+  "eval_batches_48": {
+    "conclusion": "48 is a training-time probe batch cap and a cost parameter; it cannot be the approval basis for eval call volume.",
+    "places": {
+      "arm1_cost": "48*5*d_step = 0.312849840047420 s, while arm1 does 1 forward -> 240.0x over-reservation",
+      "prereg.estimate_budget": "training-time probe cost 48*5*step = 1.670989920021384 s inside the 359.93 s estimate (1.371x the real 35 batches)",
+      "real_eval_suite": "no batch count, no seconds and no quota is registered anywhere in the frozen document",
+      "runtime.window_probe": "batch cap min(35, 48) = 35, so 48 never binds"
+    },
+    "real_eval_size": {
+      "checkpoints": 5,
+      "encode_calls": 3500,
+      "probe_graph_calls": 800,
+      "single_step_forwards": 1492,
+      "step_sequence_calls": 611,
+      "window_batches": 35
+    },
+    "silent_truncation_risk": "if the development window count ever exceeded 48*16 = 768, window_probe would silently evaluate only the first 768 windows and still log batches=48. Current dev windows are 550, so the threshold is not crossed today."
+  },
+  "executor": "deepseek-v41f-r3k9",
+  "f_closures": [
+    {
+      "change": "all registered figures are 611 / 1492 / 800 / 3500 / 175; 612 / 1292 / 600 are kept with three exact historical locations (r1 REPORT, r1 metrics unmeasured, r1 build_metrics.py) and marked superseded",
+      "evidence": "d1_call_count_history",
+      "id": "F1",
+      "p19_severity": "严重",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "as_coded / repaired / projected are separated and each carries provenance; the repaired column is labelled measured_non_author (P19), not r3-measured",
+      "evidence": "d3_call_counts.per_arm_seed_eval",
+      "id": "F2",
+      "p19_severity": "严重",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "the pseudo-question 'should eval wall clock count against the 4 h cap' is deleted; 300 nominal / 350 supervisor / 120 ledger are separated and the phase guard's real input is stated",
+      "evidence": "d4_eval_wall_layers",
+      "id": "F3",
+      "p19_severity": "严重",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "new-data generation cost is unknown_not_measured; 47.605 s is the old plan's manifest field, not a smoke timing, and is never carried over",
+      "evidence": "d2_generation_seconds.new_data_cost",
+      "id": "F4",
+      "p19_severity": "严重",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "option A is explicitly not a zero change; the frozen metric keeps its definition, its n and its missing markers, and the values stay pending_real_eval",
+      "evidence": "option_A / frozen_metric_reporting",
+      "id": "F5",
+      "p19_severity": "中",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "1703 / 1503 / 1903 are labelled hybrid (no real run produces them); only 1003 and 2103 (stop_frames) and 1492 (transitions) are quoted as self-consistent",
+      "evidence": "frames",
+      "id": "F6",
+      "p19_severity": "中",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "the M2 11 / 42 are read from the sealed P19 artifact by JSON pointer; nothing is hand-typed and no 'nothing typed by hand' claim is made",
+      "evidence": "d5_m2_constants",
+      "id": "F7",
+      "p19_severity": "中",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "probe_graph is 800 (200 topology + 600 few-shot); 600 is only the few-shot half",
+      "evidence": "d3_call_counts.per_arm_seed_eval.r3_component_arithmetic",
+      "id": "F8",
+      "p19_severity": "轻",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "the 'rewritten after the freeze' claim is withdrawn; only the byte and timestamp facts plus 'cause unknown' are reported",
+      "evidence": "d2_generation_seconds",
+      "id": "F9",
+      "p19_severity": "轻",
+      "status": "closed_in_r3_with_withdrawal"
+    },
+    {
+      "change": "the three historical locations of 612/1292/600 are recorded with line numbers read from the files; the claim 'the metrics file itself was correct' is corrected",
+      "evidence": "d1_call_count_history",
+      "id": "D1",
+      "p19_severity": "中",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "no causal claim about when either generation_seconds value was written; manifest value, manifest created_unix, smoke created_unix and prereg created_unix are reported side by side",
+      "evidence": "d2_generation_seconds",
+      "id": "D2",
+      "p19_severity": "中高",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "every call count is bound to dataset digest 8234f2f3...; B1 changes the counts; the D candidate is a separate row; the new-data illustration is marked non-measured and not registered as a cost",
+      "evidence": "d3_call_counts",
+      "id": "D3",
+      "p19_severity": "高",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "300 nominal / 350 supervisor / 120 ledger are separated; the phase guard reads wall_seconds = now - created_at, so 9x120 is only a static reservation quantity",
+      "evidence": "d4_eval_wall_layers",
+      "id": "D4",
+      "p19_severity": "高",
+      "status": "closed_in_r3"
+    },
+    {
+      "change": "M2 11/42 read from the sealed P19 field; the false 'not hand typed' declaration is replaced by the pointer and a note that r1 did hardcode the same values",
+      "evidence": "d5_m2_constants",
+      "id": "D5",
+      "p19_severity": "中",
+      "status": "closed_in_r3"
+    }
+  ],
+  "family_summary": {
+    "e3_identity": {
+      "adjacent": 0,
+      "distinct_cells_max": 1,
+      "distinct_cells_mean": 1.0,
+      "distinct_cells_min": 1,
+      "distinct_cells_total": 50,
+      "non_adjacent": 0,
+      "stay": 200,
+      "steps_histogram": {
+        "5": 50
+      },
+      "transitions": 200,
+      "worlds": 50
+    },
+    "navigation": {
+      "adjacent": 300,
+      "distinct_cells_max": 6,
+      "distinct_cells_mean": 6.0,
+      "distinct_cells_min": 6,
+      "distinct_cells_total": 300,
+      "non_adjacent": 0,
+      "stay": 0,
+      "steps_histogram": {
+        "7": 50
+      },
+      "transitions": 300,
+      "worlds": 50
+    },
+    "relation": {
+      "adjacent": 0,
+      "distinct_cells_max": 1,
+      "distinct_cells_mean": 1.0,
+      "distinct_cells_min": 1,
+      "distinct_cells_total": 50,
+      "non_adjacent": 0,
+      "stay": 100,
+      "steps_histogram": {
+        "3": 50
+      },
+      "transitions": 100,
+      "worlds": 50
+    },
+    "time": {
+      "adjacent": 0,
+      "distinct_cells_max": 1,
+      "distinct_cells_mean": 1.0,
+      "distinct_cells_min": 1,
+      "distinct_cells_total": 50,
+      "non_adjacent": 0,
+      "stay": 150,
+      "steps_histogram": {
+        "4": 50
+      },
+      "transitions": 150,
+      "worlds": 50
+    }
+  },
+  "frames": {
+    "definitions": {
+      "calls": "number of step_sequence invocations",
+      "stop_frames": "sum of the frames value the method receives (len(obs) when stop is None, else stop)",
+      "transitions": "sum of (frames - 1) == number of single-step forwards"
+    },
+    "hybrid_numbers_not_a_real_run": {
+      "1503": "750 topology transitions + 700 few-shot transitions + 53 m2 stop_frames",
+      "1703": "950 topology stop_frames + 700 few-shot transitions + 53 m2 stop_frames (P15 origin)",
+      "1903": "1100 few-shot stop_frames + 750 topology transitions + 53 m2 stop_frames",
+      "status": "no single code version produces these; they mix stop_frames and transitions"
+    },
+    "p15_origin": "reports/V9-P9/r5/REPORT.md line 124: '611 次 / 1703 帧' - the 611 is right, the 1703 is a hybrid",
+    "self_consistent": {
+      "as_coded_stop_frames": 1003,
+      "as_coded_transitions": 792,
+      "repaired_stop_frames": 2103,
+      "repaired_stop_frames_matches_p19": true,
+      "repaired_transitions": 1492
+    }
+  },
+  "frozen_metric_reporting": {
+    "frozen_definition": "accuracy and displacement error vs k, after writing k support transitions without any parameter update",
+    "k_values": [
+      0,
+      1,
+      2,
+      4,
+      8
+    ],
+    "metric_id": "few_shot_unseen_transition",
+    "retained_fields": {
+      "definition": true,
+      "missing": {
+        "k=4_missing_families": "insufficient_data for e3_identity, time, relation",
+        "k=8": "insufficient_data (0 of 200 worlds can supply 8 support + 1 query)"
+      },
+      "never_zero_never_perfect": true,
+      "sample_size_n_per_k": {
+        "0": {
+          "queries": 750,
+          "worlds": 200
+        },
+        "1": {
+          "queries": 550,
+          "worlds": 200
+        },
+        "2": {
+          "queries": 350,
+          "worlds": 150
+        },
+        "4": {
+          "queries": 100,
+          "worlds": 50
+        },
+        "8": {
+          "queries": 0,
+          "worlds": 0
+        }
+      }
+    },
+    "values": "not produced",
+    "values_status": "pending_real_eval",
+    "why_no_values": "the frozen r5 eval path aborts at k=1 (BackendError, frames<2), so no accuracy or displacement number exists",
+    "wording_correction": "r2 wrote original_accuracy_and_displacement_values_retained=true, which reads as if values existed. r3 says: definition, n and the missing-data markers are retained; the values themselves do not exist yet."
+  },
+  "identity": {
+    "coord/P18-R3-DECISION.md": {
+      "bytes": 2196,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-morning/P18-R3-DECISION.md",
+      "sha256": "282cc0cd74e4a868a67286e4e060240f9420ed39ae3de7d81ec7b217c6246727"
+    },
+    "coord/P20-EVIDENCE-ADDENDUM.md": {
+      "bytes": 1138,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-morning/P20-EVIDENCE-ADDENDUM.md",
+      "sha256": "a3b66ba067466b5a911f5ce199bba86c303fe23b016846ad8bee4444c11cba63"
+    },
+    "coord/P20-result.md": {
+      "bytes": 26437,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-morning/P20-result.md",
+      "sha256": "118abfac9a5ea8b56cef55f8c91bcb1307c0e46b1baf08c342ab77bf1fbd2cc9"
+    },
+    "coord/S1-R6-DECISION.md": {
+      "bytes": 3564,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/S1-R6-DECISION.md",
+      "sha256": "64ea4929e9038ea7f7aefb6ac96302e49c7b56fd0deeeed2b9d531754736911e"
+    },
+    "current_src/runtime/lifecycle.py": {
+      "bytes": 40611,
+      "path": "src/ainerzero/runtime/lifecycle.py",
+      "sha256": "22ded55ce136b3186e48051ca1681cef5fc129e8a13fcd515261afccde196b3f"
+    },
+    "dataset/dataset_manifest.json": {
+      "bytes": 1011983,
+      "path": "artifacts/v9/s1/datasets/8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26/dataset_manifest.json",
+      "sha256": "5cbd65225c84d50b50e65f31d79b8ddeb8ca5272a085d8f8c5cc1f116b4ed594"
+    },
+    "dataset/truth/development.jsonl": {
+      "bytes": 568821,
+      "path": "artifacts/v9/s1/datasets/8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26/truth/development.jsonl",
+      "sha256": "76b986495229de893fb50e0740296f6414225a06b1b444fa4f20eb43911e26e6"
+    },
+    "frozen_r5/arms.py": {
+      "bytes": 32862,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/src/ainerzero/v9/experiments/s1/arms.py",
+      "sha256": "a88e25d8a85bbb1537d132ff4ae3d3bfa920c815c84fe7e10935dbcc48f3e080"
+    },
+    "frozen_r5/commands.py": {
+      "bytes": 33381,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/src/ainerzero/v9/experiments/s1/commands.py",
+      "sha256": "48b3fb48cf4b433c6f269b7c8ab561346af792254bea60d00c4acef8b00fd616"
+    },
+    "frozen_r5/evaluation.py": {
+      "bytes": 20706,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/src/ainerzero/v9/experiments/s1/evaluation.py",
+      "sha256": "92d8de4a6551b8538f38a54b17b550a88aa80c4135d05c0e29b8be2f8bf72aa3"
+    },
+    "frozen_r5/metrics.py": {
+      "bytes": 28153,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/src/ainerzero/v9/experiments/s1/metrics.py",
+      "sha256": "e1c36b657794d5ba3ac2c59b2994ea71c5bc66eb032d4f4b08a9f91ef5a643e1"
+    },
+    "frozen_r5/pre_registration.json": {
+      "bytes": 21947,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/artifacts/v9/s1/phase1/r5/pre_registration.json",
+      "sha256": "895bb3676cd3db6ad7995814ee940e23b1bff55747e8dea665f5fe426386075b"
+    },
+    "frozen_r5/prereg.py": {
+      "bytes": 33648,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/src/ainerzero/v9/experiments/s1/prereg.py",
+      "sha256": "d441b84e1c525428184c718deae6607bec8f06c2a8001597b35602c8429666db"
+    },
+    "frozen_r5/runtime.py": {
+      "bytes": 11784,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/src/ainerzero/v9/experiments/s1/runtime.py",
+      "sha256": "a99346522f294bf195438efb8e9af72db391abd517ab4d80533330ad6ee506c7"
+    },
+    "frozen_r5/spec.py": {
+      "bytes": 13079,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/src/ainerzero/v9/experiments/s1/spec.py",
+      "sha256": "beedc9482b8d9ac143168adfe78ba24bb0c18f3d777059a74777d78441e2b774"
+    },
+    "frozen_r5/worker.py": {
+      "bytes": 51425,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/src/ainerzero/v9/experiments/s1/worker.py",
+      "sha256": "4174187473cd2c79bd4d73a54013ae4d9a9e4a9801ddc96b68524f2221beb7ba"
+    },
+    "p15/reports/V9-P9/r5/REPORT.md": {
+      "bytes": 17008,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/reports/V9-P9/r5/REPORT.md",
+      "sha256": "53c66b9e761a3b8cb62626b09dbb5a7699f260189ca5671f11b92e2b3f167672"
+    },
+    "p16/reports/V9-P16/REPORT.md": {
+      "bytes": 11966,
+      "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261022-cycle/s1-r5-input-snapshot/reports/V9-P16/REPORT.md",
+      "sha256": "8b5d11bdd71b43c1b37b05ff7d980bbf6886651fb0e58ef4c9df026f5a87615b"
+    },
+    "p18_r1/REPORT.md": {
+      "bytes": 26321,
+      "path": "reports/V9-P18/REPORT.md",
+      "sha256": "0b33e29fbd2e5ab68f7f5338f120d596798a44f1af8c1393c3056b6ccbf09908"
+    },
+    "p18_r1/analysis/build_metrics.py": {
+      "bytes": 10570,
+      "path": "reports/V9-P18/analysis/build_metrics.py",
+      "sha256": "6157ae84f6715b3125ea29e205bff32cd297f8abb06f155bf146c928e2415670"
+    },
+    "p18_r1/metrics.json": {
+      "bytes": 12998,
+      "path": "reports/V9-P18/metrics.json",
+      "sha256": "71bc8c38eb276ea9755336817fe1ea4bebf7bdfef2fb15c842703a6f6faaf836"
+    },
+    "p18_r2/REPORT.md": {
+      "bytes": 30036,
+      "path": "reports/V9-P18/r2/REPORT.md",
+      "sha256": "86a13488b1f7d0dcce06d7a4bf5240a1b3ffb58afa7dc53ee784b34addc2bd7c"
+    },
+    "p18_r2/metrics.json": {
+      "bytes": 39023,
+      "path": "reports/V9-P18/r2/metrics.json",
+      "sha256": "ad32d483508af845e10927ae0a7379db5905e7a30adde0753465d1b25922b36a"
+    },
+    "p19/REPORT.md": {
+      "bytes": 29586,
+      "path": "reports/V9-P19/REPORT.md",
+      "sha256": "f27b401bcf9ad2c79c3de47592eefd299e58d9c8c139e0c398dcd66bd7dc7334"
+    },
+    "p19/analysis/independent_checks.json": {
+      "bytes": 16213,
+      "path": "reports/V9-P19/analysis/independent_checks.json",
+      "sha256": "d6f741d4ec8368d655e9150cfbf3eb40434ac12b11f48f98cbc3fce0e01bb744"
+    },
+    "p19/metrics.json": {
+      "bytes": 18967,
+      "path": "reports/V9-P19/metrics.json",
+      "sha256": "4dd5a018b39c0cb08aa993b39fe16bd1b79f237d66fa129742a1db14e965a3b7"
+    },
+    "p20/REPORT.md": {
+      "bytes": 26437,
+      "path": "reports/V9-P20/workbuddy-q7t2/REPORT.md",
+      "sha256": "118abfac9a5ea8b56cef55f8c91bcb1307c0e46b1baf08c342ab77bf1fbd2cc9"
+    }
+  },
+  "k_coverage": {
+    "0": {
+      "by_family": {
+        "e3_identity": {
+          "queries": 200,
+          "query_end_cell_in_support": 0,
+          "query_start_cell_in_support": 0,
+          "true_edges": 0,
+          "worlds": 50
+        },
+        "navigation": {
+          "queries": 300,
+          "query_end_cell_in_support": 0,
+          "query_start_cell_in_support": 0,
+          "true_edges": 300,
+          "worlds": 50
+        },
+        "relation": {
+          "queries": 100,
+          "query_end_cell_in_support": 0,
+          "query_start_cell_in_support": 0,
+          "true_edges": 0,
+          "worlds": 50
+        },
+        "time": {
+          "queries": 150,
+          "query_end_cell_in_support": 0,
+          "query_start_cell_in_support": 0,
+          "true_edges": 0,
+          "worlds": 50
+        }
+      },
+      "constant_predict_false_accuracy": 0.6,
+      "constant_predict_true_accuracy": 0.4,
+      "diagnostic_as_coded_short_memory_start_hit": 0,
+      "diagnostic_only": true,
+      "family_composition": [
+        "e3_identity",
+        "navigation",
+        "relation",
+        "time"
+      ],
+      "note": "constant-predictor baselines and memory-reachability counts are diagnostics; they do not replace the frozen metric few_shot_unseen_transition (accuracy and displacement error vs k).",
+      "queries": 750,
+      "query_end_cell_in_support_fraction": 0.0,
+      "query_end_cell_in_support_memory": 0,
+      "query_start_cell_in_support_fraction": 0.0,
+      "query_start_cell_in_support_memory": 0,
+      "true_edge_rate": 0.4,
+      "true_edges": 300,
+      "worlds_with_support_and_query": 200
+    },
+    "1": {
+      "by_family": {
+        "e3_identity": {
+          "queries": 150,
+          "query_end_cell_in_support": 150,
+          "query_start_cell_in_support": 150,
+          "true_edges": 0,
+          "worlds": 50
+        },
+        "navigation": {
+          "queries": 250,
+          "query_end_cell_in_support": 50,
+          "query_start_cell_in_support": 50,
+          "true_edges": 250,
+          "worlds": 50
+        },
+        "relation": {
+          "queries": 50,
+          "query_end_cell_in_support": 50,
+          "query_start_cell_in_support": 50,
+          "true_edges": 0,
+          "worlds": 50
+        },
+        "time": {
+          "queries": 100,
+          "query_end_cell_in_support": 100,
+          "query_start_cell_in_support": 100,
+          "true_edges": 0,
+          "worlds": 50
+        }
+      },
+      "constant_predict_false_accuracy": 0.545455,
+      "constant_predict_true_accuracy": 0.454545,
+      "diagnostic_as_coded_short_memory_start_hit": 300,
+      "diagnostic_only": true,
+      "family_composition": [
+        "e3_identity",
+        "navigation",
+        "relation",
+        "time"
+      ],
+      "note": "constant-predictor baselines and memory-reachability counts are diagnostics; they do not replace the frozen metric few_shot_unseen_transition (accuracy and displacement error vs k).",
+      "queries": 550,
+      "query_end_cell_in_support_fraction": 0.636364,
+      "query_end_cell_in_support_memory": 350,
+      "query_start_cell_in_support_fraction": 0.636364,
+      "query_start_cell_in_support_memory": 350,
+      "true_edge_rate": 0.454545,
+      "true_edges": 250,
+      "worlds_with_support_and_query": 200
+    },
+    "2": {
+      "by_family": {
+        "e3_identity": {
+          "queries": 100,
+          "query_end_cell_in_support": 100,
+          "query_start_cell_in_support": 100,
+          "true_edges": 0,
+          "worlds": 50
+        },
+        "navigation": {
+          "queries": 200,
+          "query_end_cell_in_support": 50,
+          "query_start_cell_in_support": 50,
+          "true_edges": 200,
+          "worlds": 50
+        },
+        "time": {
+          "queries": 50,
+          "query_end_cell_in_support": 50,
+          "query_start_cell_in_support": 50,
+          "true_edges": 0,
+          "worlds": 50
+        }
+      },
+      "constant_predict_false_accuracy": 0.428571,
+      "constant_predict_true_accuracy": 0.571429,
+      "diagnostic_as_coded_short_memory_start_hit": 150,
+      "diagnostic_only": true,
+      "family_composition": [
+        "e3_identity",
+        "navigation",
+        "time"
+      ],
+      "note": "constant-predictor baselines and memory-reachability counts are diagnostics; they do not replace the frozen metric few_shot_unseen_transition (accuracy and displacement error vs k).",
+      "queries": 350,
+      "query_end_cell_in_support_fraction": 0.571429,
+      "query_end_cell_in_support_memory": 200,
+      "query_start_cell_in_support_fraction": 0.571429,
+      "query_start_cell_in_support_memory": 200,
+      "true_edge_rate": 0.571429,
+      "true_edges": 200,
+      "worlds_with_support_and_query": 150
+    },
+    "4": {
+      "by_family": {
+        "navigation": {
+          "queries": 100,
+          "query_end_cell_in_support": 50,
+          "query_start_cell_in_support": 50,
+          "true_edges": 100,
+          "worlds": 50
+        }
+      },
+      "constant_predict_false_accuracy": 0.0,
+      "constant_predict_true_accuracy": 1.0,
+      "diagnostic_as_coded_short_memory_start_hit": 0,
+      "diagnostic_only": true,
+      "family_composition": [
+        "navigation"
+      ],
+      "note": "constant-predictor baselines and memory-reachability counts are diagnostics; they do not replace the frozen metric few_shot_unseen_transition (accuracy and displacement error vs k).",
+      "queries": 100,
+      "query_end_cell_in_support_fraction": 0.5,
+      "query_end_cell_in_support_memory": 50,
+      "query_start_cell_in_support_fraction": 0.5,
+      "query_start_cell_in_support_memory": 50,
+      "true_edge_rate": 1.0,
+      "true_edges": 100,
+      "worlds_with_support_and_query": 50
+    },
+    "8": {
+      "by_family": {},
+      "constant_predict_false_accuracy": null,
+      "constant_predict_true_accuracy": null,
+      "diagnostic_as_coded_short_memory_start_hit": 0,
+      "diagnostic_only": true,
+      "family_composition": [],
+      "note": "constant-predictor baselines and memory-reachability counts are diagnostics; they do not replace the frozen metric few_shot_unseen_transition (accuracy and displacement error vs k).",
+      "queries": 0,
+      "query_end_cell_in_support_fraction": null,
+      "query_end_cell_in_support_memory": 0,
+      "query_start_cell_in_support_fraction": null,
+      "query_start_cell_in_support_memory": 0,
+      "true_edge_rate": null,
+      "true_edges": 0,
+      "worlds_with_support_and_query": 0
+    }
+  },
+  "negative_evidence": [
+    {
+      "detail": "evaluation.py:331 step_sequence(stop=support[-1]+1) -> frames=1 < 2 -> BackendError('a sequence probe needs at least two frames'); k=0 has already run but _evaluate_arm raises, so nothing is persisted",
+      "id": "NEG1",
+      "item": "k=1 crashes the frozen eval path",
+      "status": "unfixed_in_frozen_r5; owned by the P15 r7 / P17 code card"
+    },
+    {
+      "detail": "stop is an exclusive frame bound, so k=2 writes 1 and k=4 writes 3; the fix is stop=support[-1]+2",
+      "id": "NEG2",
+      "item": "support writes one transition too few",
+      "status": "unfixed_in_frozen_r5"
+    },
+    {
+      "detail": "numpy flat index unpacked as (r, c): 'cannot unpack non-iterable numpy.int64 object' (S1-R6-DECISION.md item 3); not reproduced here, MLX not imported",
+      "id": "NEG3",
+      "item": "runtime.MlxBackend.probe_graph raises TypeError on a non-empty metric map",
+      "status": "unfixed_in_frozen_r5"
+    },
+    {
+      "detail": "611 / 1492 / 800 / 3500 are call-boundary counts on a substitute backend; they are not evidence that the production MlxBackend finishes an eval",
+      "id": "NEG4",
+      "item": "the repaired call counts come from a count-substitute backend",
+      "status": "structural limitation"
+    },
+    {
+      "detail": "see d5_m2_constants.sealed_artifact_inconsistency_found_in_r3",
+      "id": "NEG5",
+      "item": "the sealed P19 repaired column has an inconsistent per-k sub-block",
+      "status": "recorded, not repaired"
+    },
+    {
+      "detail": "a different output root gets an empty control.sqlite3; anchoring to the central RunStore is r6 work and r5 does not claim it",
+      "id": "NEG6",
+      "item": "the ledger that the phase guard reads is card-local",
+      "status": "unresolved_in_r5"
+    }
+  ],
+  "no_real_execution": {
+    "approval_line_written": false,
+    "budget_or_threshold_changes": false,
+    "cpu_scripts_run": 2,
+    "data_generated": false,
+    "downloads_or_installs": false,
+    "eval_runs": 0,
+    "final_partition_read": false,
+    "git_commit_or_push": false,
+    "mlx_imported": false,
+    "training_runs": 0
+  },
+  "option_A": {
+    "cost": {
+      "new_data": 0,
+      "new_gpu": 0,
+      "new_training": 0,
+      "note": "CPU code fix + re-freeze + non-author review"
+    },
+    "decision_needed_from_coordinator": [
+      "accept that k=8 stays insufficient_data and that the k curve is reported per family, not pooled",
+      "accept that coverage/FPR need their own registration before they are reported as a metric"
+    ],
+    "does_not_turn_missing_data_into_a_pass": true,
+    "is_zero_change": false,
+    "preconditions_before_any_value_can_exist": [
+      "k=1 stop boundary fixed (stop=support[-1]+2) and re-frozen, with a non-author review",
+      "probe_graph real-backend TypeError fixed (S1-R6-DECISION.md item 3)",
+      "query_limit=8 registered in the pre-registration or removed from the code path"
+    ],
+    "title": "Keep the frozen data, the frozen k set and the frozen partitions; report only what has samples",
+    "what_can_be_done_without_new_data": [
+      "keep the frozen metric id and its definition, and record accuracy / displacement as pending_real_eval with n and insufficient_data markers",
+      "attach, without replacing it, the per-family decomposition and the constant-predictor baselines as diagnostics",
+      "state the coverage facts: k=8 has 0/200 worlds, k=4 has 50/200 and only the navigation family"
+    ],
+    "why_not_zero_change": "replacing accuracy with coverage / false-positive rate would change the frozen metric definition (prereg metrics[3]). It can only enter as a NEW metric id or as a registered reporting note."
+  },
+  "option_B": {
+    "cost": {
+      "mlx_eval_wall_clock": "unknown_not_measured",
+      "new_data_generation": "unknown_not_measured",
+      "training_rerun": "not requested by this card; needs a separate approval"
+    },
+    "does_not_touch": [
+      "current partitions",
+      "frozen k set",
+      "training step count",
+      "existing experiments",
+      "frozen parameters"
+    ],
+    "illustration_only": "illustration_arithmetic_only",
+    "items": [
+      {
+        "cost_status": "unknown_not_measured",
+        "id": "B1",
+        "item": "new dataset batch: new plan / new seed -> new dataset_digest = new experiment identity; 200 worlds x >=10 packets; per-family stratification with >=9 transitions per world so k=8 has samples",
+        "needs_user_approval": true,
+        "registered_ceiling": "spec 300 s / CLI 600 s"
+      },
+      {
+        "applies_to": "the current development partition only",
+        "applies_to_dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+        "does_not_transfer_to_B1": true,
+        "id": "B2",
+        "item": "register the measured eval call volume: 175 window batches (35x5), 611 step_sequence calls, 1492 single-step forwards, 800 probe_graph, 3500 encode",
+        "needs_user_approval": true,
+        "provenance": "measured_non_author (P19)"
+      },
+      {
+        "cost_status": "unknown_not_measured",
+        "id": "B3",
+        "item": "measure MLX unit cost of batch-1 single-step forward / encode / probe_graph before converting calls into wall clock",
+        "needs_user_approval": true,
+        "no_cpu_substitute_extrapolation": true
+      },
+      {
+        "actual_state": "unknown; the per-invocation supervisor timeout is 350 s",
+        "id": "B4",
+        "item": "eval wall clock headroom allocation (the 4 h cap already includes eval; this is not an 'include or not' question)",
+        "needs_user_approval": true,
+        "static_state": "9x350 = 3150 s and 9x120 = 1080 s both fit inside the 10300.395 s headroom"
+      },
+      {
+        "id": "B5",
+        "item": "revise the held-out semantics: temporal continuation vs spatially unvisited cell are different scientific claims and cannot share one metric id",
+        "needs_user_approval": true
+      },
+      {
+        "id": "B6",
+        "item": "register query_limit=8 (currently code-only) and decide the status of checkpoint 0 (pre-training) in the curve",
+        "needs_user_approval": true
+      },
+      {
+        "id": "B7",
+        "item": "fix the M2 probe selection: currently the first 5 episode ids in UUID lexicographic order (time/time/navigation/relation/e3_identity, steps 4/4/7/3/5), neither random nor stratified",
+        "needs_user_approval": true
+      }
+    ],
+    "title": "A separate future evidence line: new long-episode data and a registered eval budget"
+  },
+  "revision": "r3",
+  "revision_basis": [
+    "coord/P18-R3-DECISION.md",
+    "coord/P20-EVIDENCE-ADDENDUM.md",
+    "reports/V9-P19/REPORT.md",
+    "reports/V9-P20/workbuddy-q7t2/REPORT.md"
+  ],
+  "schema": "ainerzero.v9.p18r3.metrics.v1",
+  "self_audit": {
+    "all_numbers_traceable_to_script_or_pinned_input": true,
+    "arithmetic_only": [
+      "all 9+9+1 totals",
+      "frames decomposition",
+      "new-data illustration",
+      "static phase checks"
+    ],
+    "does_not_accept_itself": true,
+    "hand_typed_constants": [],
+    "measured_by_r3": [],
+    "measured_non_author": [
+      "611 / 1492 / 800 / 3500 / 212 / 792 / 400 / 1500 (P19)",
+      "M2 11 / 42 (P19)"
+    ]
+  },
+  "shape": {
+    "episodes": 200,
+    "k8_needs_transitions": 9,
+    "manifest_development_packets": 950,
+    "max_transitions_per_world": 6,
+    "steps_per_family": {
+      "e3_identity": [
+        [
+          "5",
+          50
+        ]
+      ],
+      "navigation": [
+        [
+          "7",
+          50
+        ]
+      ],
+      "relation": [
+        [
+          "3",
+          50
+        ]
+      ],
+      "time": [
+        [
+          "4",
+          50
+        ]
+      ]
+    },
+    "steps_total": 950,
+    "steps_total_equals_manifest_packets": true,
+    "transitions_per_family": {
+      "e3_identity": 200,
+      "navigation": 300,
+      "relation": 100,
+      "time": 150
+    },
+    "transitions_total": 750,
+    "worlds_with_at_least_5_transitions": 50,
+    "worlds_with_at_least_9_transitions": 0
+  },
+  "support_query_scope": {
+    "basis": [
+      "metrics.split_support_query() returns index ranges over ONE episode's transitions",
+      "evaluation.few_shot_report() loops per sequence and builds memory only from that",
+      "  sequence (memory=None at the start of every world); nothing is carried across worlds",
+      "each episode has round_index=0 and rounds_per_world=1, so one episode == one world"
+    ],
+    "cross_episode": false,
+    "episodes": 200,
+    "held_out_semantics": "query is the temporal continuation of the support prefix inside the same episode. It is NOT a spatially unvisited cell: for k>=1 a large share of query start cells is already inside the support memory (see query_start_cell_in_support_fraction).",
+    "round_index_values": [
+      0
+    ],
+    "rounds_per_world_registered": 1,
+    "support_and_query_index_outside_single_episode": 0,
+    "unique_episode_ids": 200,
+    "unique_world_keys": 200
+  },
+  "task": "ainerzero.V9.P18",
+  "unverified": [
+    "no real MLX numeric path was executed (MLX was never imported); the call counts are not capability results",
+    "no MLX unit cost was measured for batch-1 single-step forward / encode / probe_graph, so the eval wall clock stays unknown",
+    "_evaluate_arm's RunStore binding, checkpoint reload and parameter SHA verification were not exercised",
+    "arms.py's MLX numeric path and arm1's actual C0 forward were not executed",
+    "the robustness of the M2 probe selection (multi-seed, multi-selection) was not tested",
+    "the generation cost of the new long-episode plan was not measured; the per-world map construction cost is unknown",
+    "whether query_limit=8 should be registered, and how the held-out semantics should be revised, are coordinator/user decisions",
+    "the wall-clock behaviour of the phase guard under the P17 now-advance defect was not measured; only the source semantics were read",
+    "this card does not self-accept; 'completed' and 'report accepted' do not mean the capability passed"
+  ]
+}

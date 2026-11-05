@@ -1,0 +1,173 @@
+{
+ "findings": {
+  "entry_refusal": {
+   "message": "central ledger contains invalid/corrupt timestamps: run p21-state-collecting has an unknown state 'collecting'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+   "refused_stage": "ledger_timestamp_invalid",
+   "status": "refused"
+  },
+  "product_written_states_refused": {
+   "collecting": {
+    "accounted": false,
+    "error": "ValueError: run p21-state-collecting has an unknown state 'collecting'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+    "in_lifecycle_states": true,
+    "in_worker_known_states": false
+   },
+   "stopping": {
+    "accounted": false,
+    "error": "ValueError: run p21-state-stopping has an unknown state 'stopping'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+    "in_lifecycle_states": true,
+    "in_worker_known_states": false
+   },
+   "validating": {
+    "accounted": false,
+    "error": "ValueError: run p21-state-validating has an unknown state 'validating'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+    "in_lifecycle_states": true,
+    "in_worker_known_states": false
+   }
+  },
+  "why": "worker.ACTIVE_STATES = {created, initializing, training, pausing, paused} does not contain the lifecycle's own WORK_STATES 'collecting' and 'validating' (the S1 worker moves every prep data run to 'collecting' and every prep smoke/verify and every eval run to 'validating') and does not contain the transient 'stopping'.  Such a row is refused as an 'unknown state', so the phase total raises and the train/eval entry refuses with 'ledger_timestamp_invalid' (a misleading reason: the timestamps are fine) instead of counting the row as the decision requires"
+ },
+ "mlx_imported": false,
+ "schema": "ainerzero.v9.p21.probe06_phase_scope.v1",
+ "scope": {
+  "breakdown": [
+   {
+    "active_age_seconds": null,
+    "counted_seconds": 120.0,
+    "reserved_active_seconds": 120.0,
+    "rule": "max(reserved, terminal_interval)",
+    "run_id": "p21-prep-data",
+    "state": "completed",
+    "terminal_interval_seconds": 0.0012400150299072266
+   },
+   {
+    "active_age_seconds": null,
+    "counted_seconds": 30.0,
+    "reserved_active_seconds": 30.0,
+    "rule": "max(reserved, terminal_interval)",
+    "run_id": "p21-prep-smoke",
+    "state": "failed",
+    "terminal_interval_seconds": 0.0009479522705078125
+   },
+   {
+    "active_age_seconds": null,
+    "counted_seconds": 15.0,
+    "reserved_active_seconds": 15.0,
+    "rule": "max(reserved, terminal_interval)",
+    "run_id": "p21-prep-verify",
+    "state": "stopped",
+    "terminal_interval_seconds": 0.0010671615600585938
+   },
+   {
+    "active_age_seconds": null,
+    "counted_seconds": 200.0,
+    "reserved_active_seconds": 200.0,
+    "rule": "max(reserved, terminal_interval)",
+    "run_id": "p21-train-arm2-seed0",
+    "state": "failed",
+    "terminal_interval_seconds": 0.0008740425109863281
+   },
+   {
+    "active_age_seconds": null,
+    "counted_seconds": 40.0,
+    "reserved_active_seconds": 40.0,
+    "rule": "max(reserved, terminal_interval)",
+    "run_id": "p21-eval-run",
+    "state": "completed",
+    "terminal_interval_seconds": 0.0009300708770751953
+   }
+  ],
+  "entry_refusal": {
+   "approval_passed": true,
+   "breakdown_rows": 5,
+   "deadline_seconds": 450.0,
+   "has_breakdown": true,
+   "message": "phase wall budget would be exceeded: accumulated 15205.0s + deadline 450.0s > 14400.0s",
+   "phase_wall_max_seconds": 14400.0,
+   "refused_stage": "phase_budget_exceeded",
+   "status": "refused",
+   "total_wall_seconds": 15205.0
+  },
+  "entry_seeded_rows": 5,
+  "every_phase_row_counted": true,
+  "failed_attempt_still_registered": [
+   {
+    "run_id": "p21-train-arm2-seed0",
+    "state": "failed"
+   }
+  ],
+  "prep_and_eval_rows_are_part_of_the_total": true,
+  "prep_rows_seconds": 205.0,
+  "product_written_states": {
+   "collecting": {
+    "accounted": false,
+    "error": "ValueError: run p21-state-collecting has an unknown state 'collecting'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+    "in_lifecycle_states": true,
+    "in_worker_known_states": false
+   },
+   "created": {
+    "accounted": true,
+    "counted_seconds": 0.0011720657348632812,
+    "in_worker_known_states": true
+   },
+   "entry_refusal": {
+    "message": "central ledger contains invalid/corrupt timestamps: run p21-state-collecting has an unknown state 'collecting'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+    "refused_stage": "ledger_timestamp_invalid",
+    "status": "refused"
+   },
+   "stopping": {
+    "accounted": false,
+    "error": "ValueError: run p21-state-stopping has an unknown state 'stopping'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+    "in_lifecycle_states": true,
+    "in_worker_known_states": false
+   },
+   "training": {
+    "accounted": true,
+    "counted_seconds": 0.0013699531555175781,
+    "in_worker_known_states": true
+   },
+   "validating": {
+    "accounted": false,
+    "error": "ValueError: run p21-state-validating has an unknown state 'validating'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+    "in_lifecycle_states": true,
+    "in_worker_known_states": false
+   }
+  },
+  "rows": [
+   {
+    "kind": "data",
+    "run_id": "p21-prep-data",
+    "state": "completed"
+   },
+   {
+    "kind": "smoke",
+    "run_id": "p21-prep-smoke",
+    "state": "failed"
+   },
+   {
+    "kind": "verify",
+    "run_id": "p21-prep-verify",
+    "state": "stopped"
+   },
+   {
+    "kind": "train",
+    "run_id": "p21-train-arm2-seed0",
+    "state": "failed"
+   },
+   {
+    "kind": "eval",
+    "run_id": "p21-eval-run",
+    "state": "completed"
+   }
+  ],
+  "total_seconds": 405.0,
+  "train_row_seconds": 200.0
+ },
+ "verdict": {
+  "entry_refusal_carries_breakdown": true,
+  "entry_refuses_over_cap": true,
+  "every_phase_row_counted": true,
+  "failed_attempt_not_cleared": true,
+  "prep_and_eval_rows_counted": true
+ }
+}

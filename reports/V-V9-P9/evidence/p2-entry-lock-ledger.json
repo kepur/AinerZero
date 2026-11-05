@@ -1,0 +1,96 @@
+[
+ {
+  "id": "C7",
+  "name": "CLI 不能放宽准备墙钟预算（99999 s）",
+  "ok": true,
+  "exit": 1,
+  "detail": "error=ValueError: --wall-budget-seconds 99999.0 must be in (0, 600.0]; the CLI can only tighten the registered preparation budget, never raise it",
+  "evidence": {}
+ },
+ {
+  "id": "C7b",
+  "name": "负预算被拒",
+  "ok": true,
+  "exit": 1,
+  "detail": "error=ValueError: --wall-budget-seconds -5.0 must be in (0, 600.0]; the CLI can only tighten the registered preparation budget, never raise it",
+  "evidence": {}
+ },
+ {
+  "id": "C8a",
+  "name": "环境变量不能改截止/监督/更新数（verify 仍读冻结文件）",
+  "ok": true,
+  "exit": 0,
+  "detail": "sha=32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6",
+  "evidence": {}
+ },
+ {
+  "id": "C8b",
+  "name": "S1 包内没有把环境变量读成冻结参数（唯一命中是给生产者子进程写 env）",
+  "ok": true,
+  "exit": 0,
+  "detail": "hits=['data.py:158:    env = dict(os.environ)']",
+  "evidence": {}
+ },
+ {
+  "id": "C9",
+  "name": "train 未获批准 → 拒绝（exit 3）",
+  "ok": true,
+  "exit": 3,
+  "detail": "stage=preregistration_not_approved status=awaiting_coordinator_approval",
+  "evidence": {}
+ },
+ {
+  "id": "C10a",
+  "name": "批准标志只能由文件状态伪造（改 status 重算 SHA 即通过），无独立批准凭据",
+  "ok": true,
+  "exit": 0,
+  "detail": "forged_sha=22434db923afbd32… captured_budget=450.0",
+  "evidence": {}
+ },
+ {
+  "id": "C10b",
+  "name": "CLI --wall-budget-seconds 5 不能放宽 train 的冻结截止/监督（仍为 450/500）",
+  "ok": true,
+  "exit": 0,
+  "detail": "budget=450.0 supervision=500.0",
+  "evidence": {}
+ },
+ {
+  "id": "C11",
+  "name": "两个进程同时启动只有一个能运行（第二个被拒）",
+  "ok": true,
+  "exit": 1,
+  "detail": "error=RuntimeError: A worker is already running in this project EXIT_LOCK_BUSY_constant=4",
+  "evidence": {}
+ },
+ {
+  "id": "C12a",
+  "name": "smoke 经真实入口完成（沙箱锁/沙箱 RunStore）",
+  "ok": true,
+  "exit": 0,
+  "detail": "status=completed elapsed=4.936654834000365",
+  "evidence": {}
+ },
+ {
+  "id": "C12b",
+  "name": "RunStore 记录完整：全部终态、role=auxiliary、0 optimizer steps",
+  "ok": true,
+  "exit": 0,
+  "detail": "runs=1 non_terminal=0 non_aux=0 nonzero_steps=0",
+  "evidence": {
+   "states": [
+    "completed"
+   ]
+  }
+ },
+ {
+  "id": "C12c",
+  "name": "独立重跑冒烟：参数 SHA 前后一致、无梯度、无更新",
+  "ok": true,
+  "exit": 0,
+  "detail": "unchanged=True same_sha=True step_s=0.006002542000260291",
+  "evidence": {
+   "recorded_step_s": 0.0060210829997231485
+  }
+ }
+]

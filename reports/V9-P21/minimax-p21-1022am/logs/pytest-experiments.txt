@@ -1,0 +1,185 @@
+..................................................FF..FFFF.............. [ 30%]
+........................................................................ [ 61%]
+........................................................................ [ 91%]
+.......F...........                                                      [100%]
+=================================== FAILURES ===================================
+_____________ test_smoke_reports_no_update_when_the_digests_match ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10621b200>
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-222/test_smoke_reports_no_update_w0')
+
+    def test_smoke_reports_no_update_when_the_digests_match(monkeypatch, tmp_path):
+>       created = _install_fakes(monkeypatch, perturb=False)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/experiments/test_s1_no_update.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v9/experiments/test_s1_no_update.py:108: in _install_fakes
+    monkeypatch.setattr(mx, "eval", lambda *a, **k: None)
+<frozen importlib._bootstrap>:545: in _module_repr
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+spec = namespace(origin='p21-stub')
+
+>   ???
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'name'
+
+<frozen importlib._bootstrap>:825: AttributeError
+_________ test_smoke_reports_an_update_when_a_parameter_really_changed _________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10621b950>
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-222/test_smoke_reports_an_update_w0')
+
+    def test_smoke_reports_an_update_when_a_parameter_really_changed(monkeypatch, tmp_path):
+        """A hard-coded ``parameters_unchanged = True`` must fail here (P10 M12)."""
+>       created = _install_fakes(monkeypatch, perturb=True)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/experiments/test_s1_no_update.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v9/experiments/test_s1_no_update.py:108: in _install_fakes
+    monkeypatch.setattr(mx, "eval", lambda *a, **k: None)
+<frozen importlib._bootstrap>:545: in _module_repr
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+spec = namespace(origin='p21-stub')
+
+>   ???
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'name'
+
+<frozen importlib._bootstrap>:825: AttributeError
+_____________ test_pacer_sleeps_to_hold_the_duty_cycle[0.25-0.06] ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106428260>
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-222/test_pacer_sleeps_to_hold_the_0')
+duty = 0.25, expected_sleep = 0.06
+
+    @pytest.mark.parametrize("duty,expected_sleep", [(0.25, 0.06), (0.5, 0.02), (0.1, 0.18)])
+    def test_pacer_sleeps_to_hold_the_duty_cycle(monkeypatch, tmp_path, duty, expected_sleep):
+        clock = _FakeClock(step=0.02)
+>       _install_fakes(monkeypatch, clock, tmp_path)
+
+tests/v9/experiments/test_s1_pacer_duty.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v9/experiments/test_s1_pacer_duty.py:114: in _install_fakes
+    monkeypatch.setattr(
+<frozen importlib._bootstrap>:545: in _module_repr
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+spec = namespace(origin='p21-stub')
+
+>   ???
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'name'
+
+<frozen importlib._bootstrap>:825: AttributeError
+______________ test_pacer_sleeps_to_hold_the_duty_cycle[0.5-0.02] ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1064285c0>
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-222/test_pacer_sleeps_to_hold_the_1')
+duty = 0.5, expected_sleep = 0.02
+
+    @pytest.mark.parametrize("duty,expected_sleep", [(0.25, 0.06), (0.5, 0.02), (0.1, 0.18)])
+    def test_pacer_sleeps_to_hold_the_duty_cycle(monkeypatch, tmp_path, duty, expected_sleep):
+        clock = _FakeClock(step=0.02)
+>       _install_fakes(monkeypatch, clock, tmp_path)
+
+tests/v9/experiments/test_s1_pacer_duty.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v9/experiments/test_s1_pacer_duty.py:114: in _install_fakes
+    monkeypatch.setattr(
+<frozen importlib._bootstrap>:545: in _module_repr
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+spec = namespace(origin='p21-stub')
+
+>   ???
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'name'
+
+<frozen importlib._bootstrap>:825: AttributeError
+______________ test_pacer_sleeps_to_hold_the_duty_cycle[0.1-0.18] ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1064291c0>
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-222/test_pacer_sleeps_to_hold_the_2')
+duty = 0.1, expected_sleep = 0.18
+
+    @pytest.mark.parametrize("duty,expected_sleep", [(0.25, 0.06), (0.5, 0.02), (0.1, 0.18)])
+    def test_pacer_sleeps_to_hold_the_duty_cycle(monkeypatch, tmp_path, duty, expected_sleep):
+        clock = _FakeClock(step=0.02)
+>       _install_fakes(monkeypatch, clock, tmp_path)
+
+tests/v9/experiments/test_s1_pacer_duty.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v9/experiments/test_s1_pacer_duty.py:114: in _install_fakes
+    monkeypatch.setattr(
+<frozen importlib._bootstrap>:545: in _module_repr
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+spec = namespace(origin='p21-stub')
+
+>   ???
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'name'
+
+<frozen importlib._bootstrap>:825: AttributeError
+______________ test_pacer_records_the_registered_duty_cycle_only _______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106429dc0>
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-222/test_pacer_records_the_registe0')
+
+    def test_pacer_records_the_registered_duty_cycle_only(monkeypatch, tmp_path):
+        clock = _FakeClock(step=0.02)
+>       _install_fakes(monkeypatch, clock, tmp_path)
+
+tests/v9/experiments/test_s1_pacer_duty.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v9/experiments/test_s1_pacer_duty.py:114: in _install_fakes
+    monkeypatch.setattr(
+<frozen importlib._bootstrap>:545: in _module_repr
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+spec = namespace(origin='p21-stub')
+
+>   ???
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'name'
+
+<frozen importlib._bootstrap>:825: AttributeError
+___________ test_worker_train_resets_deadline_across_sequential_runs ___________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-222/test_worker_train_resets_deadl0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1065aa900>
+
+    def test_worker_train_resets_deadline_across_sequential_runs(tmp_path, monkeypatch):
+        """Calling worker._train sequentially must reset started per run so cumulative wall time does not trip the deadline."""
+        from test_s1_pacer_duty import _FakeClock, _install_fakes, _FakeLedger, _FakeGuard, _document
+    
+        clock = _FakeClock(step=0.02)
+>       _install_fakes(monkeypatch, clock, tmp_path)
+
+tests/v9/experiments/test_s1_timing_sequence.py:386: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v9/experiments/test_s1_pacer_duty.py:114: in _install_fakes
+    monkeypatch.setattr(
+<frozen importlib._bootstrap>:545: in _module_repr
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+spec = namespace(origin='p21-stub')
+
+>   ???
+E   AttributeError: 'types.SimpleNamespace' object has no attribute 'name'
+
+<frozen importlib._bootstrap>:825: AttributeError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s1_no_update.py::test_smoke_reports_no_update_when_the_digests_match
+FAILED tests/v9/experiments/test_s1_no_update.py::test_smoke_reports_an_update_when_a_parameter_really_changed
+FAILED tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.25-0.06]
+FAILED tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.5-0.02]
+FAILED tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.1-0.18]
+FAILED tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_records_the_registered_duty_cycle_only
+FAILED tests/v9/experiments/test_s1_timing_sequence.py::test_worker_train_resets_deadline_across_sequential_runs
+7 failed, 228 passed in 7.84s

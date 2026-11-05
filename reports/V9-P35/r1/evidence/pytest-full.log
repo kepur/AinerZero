@@ -1,0 +1,86 @@
+........................................................................ [ 10%]
+........................................................................ [ 20%]
+........................................................................ [ 30%]
+........................................................................ [ 40%]
+........................................................................ [ 50%]
+................................................F....................... [ 60%]
+........................................................................ [ 70%]
+...............F........................................................ [ 80%]
+................................................F....................... [ 90%]
+.......................................................................  [100%]
+=================================== FAILURES ===================================
+_ test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original _
+
+tmp_path = PosixPath('/private/tmp/p35-basetemp/test_the_real_ledger_copy_repr0')
+
+    def test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original(
+        tmp_path,
+    ):
+        """Byte-isolated copy: the age rule blows the 4 h cap, the r7 rule does not."""
+        import hashlib
+    
+        real = Path(spec.REGISTERED_HOST_LEDGER)
+        before = hashlib.sha256(real.read_bytes()).hexdigest()
+        copy = tmp_path / "control-copy.sqlite3"
+        shutil.copyfile(real, copy)
+        before_copy = hashlib.sha256(copy.read_bytes()).hexdigest()
+    
+        connection = sqlite3.connect(f"file:{copy}?mode=ro", uri=True)
+        try:
+            raw = list(
+                connection.execute(
+                    "SELECT run_id, state, created_at, updated_at, active_seconds FROM runs"
+                )
+            )
+        finally:
+            connection.close()
+        runs = [
+            SimpleNamespace(
+                run_id=run_id,
+                state=state,
+                created_at=created_at,
+                updated_at=updated_at,
+                reserved_active_seconds=active_seconds,
+            )
+            for run_id, state, created_at, updated_at, active_seconds in raw
+        ]
+        now = time.time()
+        conservative = worker.phase_total_wall_seconds(runs, instant=now)
+        age_based = 0.0
+        reserved_based = 0.0
+        for run in runs:
+            created = worker._parse_timestamp(run.created_at)
+            age_based += max(0.0, now - created)
+            reserved_based += max(0.0, float(run.reserved_active_seconds or 0.0))
+    
+        assert age_based > spec.TIMING["phase_wall_max_seconds"], "the r6 bug must be reproducible"
+>       assert conservative == pytest.approx(reserved_based)
+E       assert 5012.096430702415 == 2214.07600000...6 ± 0.00221408
+E         
+E         comparison failed
+E         Obtained: 5012.096430702415
+E         Expected: 2214.0760000082346 ± 0.00221408
+
+tests/v9/experiments/test_s1_r7_phase_accounting.py:271: AssertionError
+____________________________ test_cpu_only_imports _____________________________
+
+    def test_cpu_only_imports():
+        forbidden = {"mlx", "torch", "onnxruntime", "tensorflow", "jax"}
+>       assert not any(name.split(".")[0] in forbidden for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_cpu_only_imports.<locals>.<genexpr> at 0x118706ea0>)
+
+tests/v9/geometry/test_canonical.py:116: AssertionError
+__________________________ test_imports_are_cpu_only ___________________________
+
+    def test_imports_are_cpu_only():
+>       assert not any(name.split('.')[0] in {'mlx', 'torch', 'onnxruntime', 'tensorflow'} for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_imports_are_cpu_only.<locals>.<genexpr> at 0x11aa89be0>)
+
+tests/v9/geometry/test_geometry.py:260: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original
+FAILED tests/v9/geometry/test_canonical.py::test_cpu_only_imports - assert no...
+FAILED tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only - assert...
+3 failed, 716 passed, 1 deselected in 41.04s

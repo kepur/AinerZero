@@ -1,0 +1,58 @@
+[
+ {
+  "id": "C13a",
+  "name": "final 分区在所有公开读路径都被封存拒绝，且数据集里没有 final 文件",
+  "ok": true,
+  "exit": 0,
+  "detail": "loaders={'require_partition': 'sealed', 'load_training_episodes': 'sealed', 'load_truth_view': 'sealed'} final_files=[] fixed_loader_final_refs=[]",
+  "evidence": {}
+ },
+ {
+  "id": "C13b",
+  "name": "S1 代码里没有任何封存通道调用（AST 级）；AWZ artifacts 下无 final 产物",
+  "ok": true,
+  "exit": 0,
+  "detail": "sealed_channel_calls=[] awz_final_artifacts=''",
+  "evidence": {}
+ },
+ {
+  "id": "C14",
+  "name": "三个训练臂更新预算与种子完全相同；单臂改动会被 validate() 打回",
+  "ok": true,
+  "exit": 0,
+  "detail": "budgets={'arm2': 3510, 'arm3': 3510, 'arm4': 3510} seeds={'arm2': [0, 1, 2], 'arm3': [0, 1, 2], 'arm4': [0, 1, 2]} tamper=['arm3 training budget differs from the shared budget']",
+  "evidence": {}
+ },
+ {
+  "id": "C15",
+  "name": "指标已知答案正确，改坏预测后变差（定位/拓扑）",
+  "ok": true,
+  "exit": 0,
+  "detail": "same=0.0 shift=3.0 good_p/r=1.0/1.0 bad_p/r=0.0/0.0",
+  "evidence": {}
+ },
+ {
+  "id": "C16",
+  "name": "预登记 document/file SHA 与 P9 报告一致，sidecar 与 document 一致",
+  "ok": true,
+  "exit": 0,
+  "detail": "file=2602e42cad7bf39e… doc=32c30f5005a438f7… sidecar_match=True",
+  "evidence": {}
+ },
+ {
+  "id": "C17",
+  "name": "单次 ≤20 min、总墙钟 ≤4 h、phase=9×deadline+arm1+数据，且 360 s 估计已含占空比",
+  "ok": true,
+  "exit": 0,
+  "detail": "deadline=450 phase=4099.6 recomputed=4099.6 est_with_duty=359.93 est_no_duty=89.98 frozen_est=359.93",
+  "evidence": {}
+ },
+ {
+  "id": "C18",
+  "name": "冻结文件与 RunStore 都声明 0 次优化步（本卡未更新参数）",
+  "ok": true,
+  "exit": 0,
+  "detail": "arm1_updates=0",
+  "evidence": {}
+ }
+]

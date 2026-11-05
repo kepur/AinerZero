@@ -1,0 +1,94 @@
+{
+  "task": "ainerzero.V9.P38",
+  "agent": "geminiflash-9a7c",
+  "model_version": "Gemini-3.8-Flash",
+  "date": "2026-10-24",
+  "experiment_id": "s1-phase1-20261024-r13",
+  "production_ledger": {
+    "path": "artifacts/v9/s1/phase1/control.sqlite3",
+    "sha256_start": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44",
+    "sha256_end": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44",
+    "matches_card": true,
+    "unchanged": true
+  },
+  "production_eval_report": {
+    "path": "artifacts/v9/s1/phase1/eval_report.json",
+    "sha256_start": "4d958d1ad59db1a897245d1acb000dda14a4db08dd0ccb069760061511e0c2cc",
+    "sha256_end": "4d958d1ad59db1a897245d1acb000dda14a4db08dd0ccb069760061511e0c2cc",
+    "matches_card": true,
+    "unchanged": true
+  },
+  "preregistration": {
+    "path": "artifacts/v9/s1/phase1/r13/pre_registration.json",
+    "document_sha256": "1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30",
+    "file_sha256": "9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d",
+    "draft_sha256": "f9bdb119459ec7fd6d22720b2a61c0532ca58664875f6088bd4f5deb04a01b33",
+    "dataset_ref_sha256": "3c9fd77953b94d87141c2ac896bd2470f46b952eee65a10e9eed34d4391c1047",
+    "status": "awaiting_coordinator_approval",
+    "reverified": true,
+    "r12_document_sha256": "044d5599ecd7c88600257488866462f666eebde25454ad4e4494f355ccd418dd",
+    "r12_file_sha256": "fe539209179e3c59405526880dc1ea8dffe5416d34e393cd86b5f0373ece9658"
+  },
+  "registered_values": {
+    "updates": 3510,
+    "deadline_seconds": 1200,
+    "deadline_source": "user_approved R20261023-S1-phase1-r11-budget",
+    "supervision_seconds": 1250,
+    "eval_batches": 175,
+    "seeds": [0, 1, 2],
+    "checkpoint_updates": [0, 439, 878, 1755, 3510],
+    "phase_wall_max_seconds": 14400,
+    "per_run_wall_max_seconds": 1200,
+    "arm1_deadline_seconds": 7,
+    "query_limit": 8,
+    "estimate_seconds": 381.1528007568777,
+    "derived_deadline_seconds": 477,
+    "phase_wall_seconds": 10854.605202458999,
+    "phase_wall_headroom_seconds": 3545.394797541001
+  },
+  "leaf_diff_r12_to_r13": {
+    "leaf_count": 431,
+    "changed_leaf_count": 5,
+    "changed_leaves": [
+      "created_unix",
+      "experiment_id",
+      "source_identity.package_files.src/ainerzero/v9/experiments/s1/spec.py",
+      "source_identity.package_map_digest",
+      "source_identity.spec.sha256"
+    ],
+    "leaves_outside_allowlist": 0,
+    "bound_files_outside_allowlist": 0,
+    "registered_values_equal": true,
+    "data_identity_equal": true,
+    "metrics_equal": true,
+    "evaluation_equal": true,
+    "stop_rules_equal": true,
+    "arms_equal": true
+  },
+  "tests": {
+    "r12_ordering": {"passed": 10, "failed": 0},
+    "r12_registration": {"passed": 6, "failed": 0},
+    "r13_registration": {"passed": 6, "failed": 0},
+    "tests_v9_experiments": {"passed": 347, "failed": 1, "known_failures": 1},
+    "tests_v9_excluding_experiments": {"passed": 378, "failed": 0},
+    "baseline_note": "only 1 known failure in tests/v9/experiments: test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original (reads live ledger with obsolete assertion); all other 725 tests pass"
+  },
+  "entry_checks": {
+    "isolation": "the whole artifacts/v9/s1/phase1 tree was copied to a temporary host; the production output root was never passed to any entry",
+    "cli_verify_on_copy": {"status": "completed", "exit_code": 0, "source_binding": "passed", "approval_approved": false},
+    "cli_train_on_copy": {"status": "refused", "refused_stage": "output_root_not_canonical", "exit_code": 3},
+    "cli_eval_on_copy": {"status": "refused", "refused_stage": "output_root_not_canonical", "exit_code": 3},
+    "copy_ledger_untouched_by_cli": true,
+    "worker_on_copy_declared_host": {
+      "train": {"status": "refused", "refused_stage": "preregistration_not_approved", "approval_approved": false},
+      "eval": {"status": "refused", "refused_stage": "eval_binding_unavailable"},
+      "copy_ledger_untouched": true
+    }
+  },
+  "not_executed": [
+    "no MLX / no training / no evaluation of a real model",
+    "no approval line written",
+    "no RunStore change (src/ainerzero/runtime untouched)",
+    "no production output-root entry"
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "probe": "release-drill",
+  "ok": true,
+  "started_at": "2026-10-23T23:21:04",
+  "elapsed_seconds": 6.873,
+  "production_ledger_before": {
+    "recorded_at": "2026-10-23T23:21:04",
+    "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "control.sqlite3_bytes": 86016,
+    "control.sqlite3_mtime": "2026-10-23T16:33:15",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-23T23:19:02",
+    "shm_mtime_epoch": 1792786742.3891869
+  },
+  "production_ledger_after": {
+    "recorded_at": "2026-10-23T23:21:10",
+    "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "control.sqlite3_bytes": 86016,
+    "control.sqlite3_mtime": "2026-10-23T16:33:15",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-23T23:19:02",
+    "shm_mtime_epoch": 1792786742.3891869
+  },
+  "production_ledger_unchanged": true,
+  "shm_mtime_changed": false,
+  "body": {
+    "purpose": "批准后放行演练：train / eval(arm2,arm4) / arm1 D 路径都必须停在 MLX 哨兵",
+    "approval_line_document_sha256": "044d5599ecd7c88600257488866462f666eebde25454ad4e4494f355ccd418dd",
+    "approval_line_written_only_in_isolated_hosts": true,
+    "sentinel_rule": "拦截 mlx / mlx.* 的导入：resource_gate 的尽力探测处抛 ImportError（该处本就 except Exception 报 unavailable，不伪造数值）；其他调用方抛 MlxSentinel，入口停在那里。mlx 从未进入 sys.modules。",
+    "cases": {
+      "control_train_without_approval": {
+        "status": "refused",
+        "refused_stage": "preregistration_not_approved",
+        "ledger_unchanged": true,
+        "sentinel_stopped": false
+      },
+      "train_arm2_seed0": {
+        "approval_approved": true,
+        "source_binding": "passed",
+        "dataset": "passed",
+        "status": "failed",
+        "error": "MlxSentinel: {\"import\": \"mlx\", \"caller_module\": \"ainerzero.v9.experiments.s1.arms\", \"caller_file\": \"/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py\", \"caller_line\": 26, \"at\": \"23:21:08\", \"action\": \"sentinel_stop\"}",
+        "run_id": "b8870e0f0fbe4d9e8d39e37d90024efa",
+        "sentinel_stopped": true,
+        "sentinel_stop_at": [
+          {
+            "import": "mlx",
+            "caller_module": "ainerzero.v9.experiments.s1.arms",
+            "caller_file": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py",
+            "caller_line": 26,
+            "at": "23:21:08",
+            "action": "sentinel_stop"
+          }
+        ],
+        "mlx_loaded": [],
+        "ledger_changed": true
+      },
+      "eval_arm2_seed0": {
+        "fabricated_run": {
+          "run_id": "641c721c3cec40559268e7ad3d198868",
+          "status": "completed",
+          "refused_stage": null,
+          "params_sha256": "066a191400a46689e6d16b589b8338cb2cbb7b68f2d706dd57935d7f3d1c1484",
+          "ledger_sha256_after": "9fc1718164554f34707e9216e9e7c86e63719504762e6ddeb704e3d17357e211"
+        },
+        "eval_binding": {
+          "status": "ok",
+          "bound_run_id": "641c721c3cec40559268e7ad3d198868",
+          "final_checkpoint": "/private/tmp/p35r2-release/eval-arm2/artifacts/v9/s1/phase1/runs/641c721c3cec40559268e7ad3d198868/params.npz"
+        },
+        "status": "failed",
+        "error": "MlxSentinel: {\"import\": \"mlx\", \"caller_module\": \"ainerzero.v9.experiments.s1.arms\", \"caller_file\": \"/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py\", \"caller_line\": 26, \"at\": \"23:21:09\", \"action\": \"sentinel_stop\"}",
+        "run_id": "8c358b3702c14a3b886b3419cb47f13e",
+        "sentinel_stopped": true,
+        "sentinel_stop_at": [
+          {
+            "import": "mlx",
+            "caller_module": "ainerzero.v9.experiments.s1.arms",
+            "caller_file": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py",
+            "caller_line": 26,
+            "at": "23:21:09",
+            "action": "sentinel_stop"
+          }
+        ],
+        "mlx_loaded": []
+      },
+      "eval_arm4_seed1": {
+        "fabricated_run": {
+          "run_id": "fa6bfe796e39432aafb3ea8c8df458e6",
+          "status": "completed",
+          "refused_stage": null,
+          "params_sha256": "0f06143d9d646d66e002ea6827d0362299f690b07557e698a5cf261dc78066a2",
+          "ledger_sha256_after": "53add63b0ca76113d04fd8188134772254bff6d03597473ec9f4c12ff50a66bb"
+        },
+        "eval_binding": {
+          "status": "ok",
+          "bound_run_id": "fa6bfe796e39432aafb3ea8c8df458e6",
+          "final_checkpoint": "/private/tmp/p35r2-release/eval-arm4/artifacts/v9/s1/phase1/runs/fa6bfe796e39432aafb3ea8c8df458e6/params.npz"
+        },
+        "status": "failed",
+        "error": "MlxSentinel: {\"import\": \"mlx\", \"caller_module\": \"ainerzero.v9.experiments.s1.arms\", \"caller_file\": \"/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py\", \"caller_line\": 26, \"at\": \"23:21:10\", \"action\": \"sentinel_stop\"}",
+        "run_id": "13f77590bdfe4f6e864438950fbd652b",
+        "sentinel_stopped": true,
+        "sentinel_stop_at": [
+          {
+            "import": "mlx",
+            "caller_module": "ainerzero.v9.experiments.s1.arms",
+            "caller_file": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py",
+            "caller_line": 26,
+            "at": "23:21:10",
+            "action": "sentinel_stop"
+          }
+        ],
+        "mlx_loaded": []
+      },
+      "eval_arm1_d_path": {
+        "d_candidate_attempts": {
+          "status": "ok",
+          "registered_max_runs": 1
+        },
+        "status": "failed",
+        "error": "MlxSentinel: {\"import\": \"mlx\", \"caller_module\": \"ainerzero.v9.experiments.s1.arms\", \"caller_file\": \"/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py\", \"caller_line\": 26, \"at\": \"23:21:10\", \"action\": \"sentinel_stop\"}",
+        "run_id": "cf52622ace3341239cb83f1d0ef3b5d2",
+        "experiment_id": "s1-phase1-20261023-r12",
+        "sentinel_stopped": true,
+        "sentinel_stop_at": [
+          {
+            "import": "mlx",
+            "caller_module": "ainerzero.v9.experiments.s1.arms",
+            "caller_file": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py",
+            "caller_line": 26,
+            "at": "23:21:10",
+            "action": "sentinel_stop"
+          }
+        ],
+        "mlx_loaded": []
+      }
+    },
+    "checks": {
+      "control_refused_without_approval": true,
+      "train_approved_and_stopped_at_sentinel": true,
+      "train_sentinel_at_arms_module_import": true,
+      "eval_arm2_binding_ok_and_sentinel": true,
+      "eval_arm4_binding_ok_and_sentinel": true,
+      "arm1_d_path_sentinel": true,
+      "arm1_d_guard_passed": true,
+      "mlx_never_loaded_anywhere": true
+    },
+    "all_checks_pass": true
+  }
+}

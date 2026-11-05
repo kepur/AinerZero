@@ -1,0 +1,273 @@
+{
+ "agreement": [
+  {
+   "equal": true,
+   "independent_counted": 350.57941137500075,
+   "ledger_reserved": 350.57941137500075,
+   "product_counted": 350.57941137500075,
+   "product_reserved": 350.57941137500075,
+   "reserved_equal": true,
+   "rule": "max(reserved, terminal_interval)",
+   "run_id": "f3f29a16369c400bb140b0d982f80ad2",
+   "state": "completed"
+  },
+  {
+   "equal": true,
+   "independent_counted": 184.79119249999985,
+   "ledger_reserved": 184.79119249999985,
+   "product_counted": 184.79119249999985,
+   "product_reserved": 184.79119249999985,
+   "reserved_equal": true,
+   "rule": "max(reserved, terminal_interval)",
+   "run_id": "7b21d3dfd2714afa8f68a5484c5596eb",
+   "state": "completed"
+  },
+  {
+   "equal": true,
+   "independent_counted": 184.89637216699884,
+   "ledger_reserved": 184.89637216699884,
+   "product_counted": 184.89637216699884,
+   "product_reserved": 184.89637216699884,
+   "reserved_equal": true,
+   "rule": "max(reserved, terminal_interval)",
+   "run_id": "c03caffeb5304f668e711dc9d3ab9831",
+   "state": "completed"
+  }
+ ],
+ "broken_guard_controls": {
+  "detector_total": 720.2669760419994,
+  "every_broken_variant_detected": true,
+  "note": "the r6 calendar-age rule, an unknown state charged as 0 or as active, a dropped reservation and a global max instead of a per-row max must all be distinguishable from the frozen rule",
+  "variants": [
+   {
+    "defect_detected": true,
+    "frozen_rule_total_seconds": 720.2669760419994,
+    "note": "the variant total differs from the frozen per-row rule",
+    "total_seconds": 236289.8155555725,
+    "variant": "r6_calendar_age"
+   },
+   {
+    "defect_detected": true,
+    "frozen_rule_total_seconds": 720.2669760419994,
+    "note": "the frozen rule refuses this dataset (unknown state); the variant charges a number",
+    "total_seconds": 720.2669760419994,
+    "variant": "unknown_state_as_zero"
+   },
+   {
+    "defect_detected": true,
+    "frozen_rule_total_seconds": 720.2669760419994,
+    "note": "the frozen rule refuses this dataset (unknown state); the variant charges a number",
+    "total_seconds": 1792656055.1056373,
+    "variant": "unknown_state_as_active"
+   },
+   {
+    "defect_detected": true,
+    "frozen_rule_total_seconds": 720.2669760419994,
+    "note": "the variant total differs from the frozen per-row rule",
+    "total_seconds": 59.52997183799744,
+    "variant": "reservation_ignored"
+   },
+   {
+    "defect_detected": true,
+    "frozen_rule_total_seconds": 720.2669760419994,
+    "note": "the two rules agree on the real rows (the reservation dominates); the synthetic case per_row_max_vs_global_max shows they are different rules",
+    "total_seconds": 720.2669760419994,
+    "variant": "global_max_instead_of_per_row_max"
+   }
+  ]
+ },
+ "corrupt_row_controls": {
+  "far_future_float_timestamp": {
+   "counted_seconds": 7.0,
+   "error": null,
+   "refused": false
+  },
+  "inf_updated_at": {
+   "error": "ValueError: run probe has non-finite timestamps",
+   "refused": true
+  },
+  "missing_created_at": {
+   "error": "ValueError: run probe has invalid timestamps: invalid timestamp value: None",
+   "refused": true
+  },
+  "nan_created_at": {
+   "error": "ValueError: run probe has non-finite timestamps",
+   "refused": true
+  },
+  "negative_infinite_reservation": {
+   "counted_seconds": 10.0,
+   "error": null,
+   "refused": false
+  },
+  "non_finite_reservation": {
+   "counted_seconds": 10.0,
+   "error": null,
+   "refused": false
+  },
+  "overflow_subtraction": {
+   "counted_seconds": Infinity,
+   "error": null,
+   "refused": false
+  },
+  "reverse_timestamps": {
+   "error": "ValueError: run probe has reverse timestamps: updated 1000.0 < created 2000.0",
+   "refused": true
+  },
+  "unknown_state": {
+   "error": "ValueError: run probe has an unknown state 'hibernating'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero",
+   "refused": true
+  },
+  "unparseable_timestamp": {
+   "error": "ValueError: run probe has invalid timestamps: Invalid isoformat string: 'not-a-timestamp'",
+   "refused": true
+  }
+ },
+ "findings": {
+  "far_future_timestamp_detail": {
+   "counted_seconds": 7.0,
+   "error": null,
+   "refused": false
+  },
+  "far_future_timestamp_not_refused": true,
+  "missing_reservation_field": {
+   "counted_seconds": 10.0,
+   "note": "a run object without reserved_active_seconds is charged 0 for the reservation; the real RunRecord always carries the field"
+  },
+  "nan_reservation_detail": {
+   "counted_seconds": 10.0,
+   "error": null,
+   "refused": false
+  },
+  "nan_reservation_not_refused": true,
+  "negative_infinite_reservation_detail": {
+   "counted_seconds": 10.0,
+   "error": null,
+   "refused": false
+  },
+  "overflow_subtraction_detail": {
+   "counted_seconds": Infinity,
+   "error": null,
+   "refused": false
+  },
+  "reachability": "SQLite stores NaN as NULL and the column is NOT NULL with CHECK(active_seconds >= 0), so the real ledger cannot hold a NaN reservation; the defect is in the code's own refusal claim, not in the live data path",
+  "report_claim": "the r7 report lists 'non_finite' and 'overflow_timestamp' among the refused states; no test in tests/v9/experiments covers either and a NaN reservation or a finite far-future timestamp is accepted, not refused",
+  "why": "run_conservative_wall_seconds normalises the reservation with max(0.0, float(value)), and Python's max(0.0, nan) is 0.0, so a NaN (or -inf) reservation silently becomes 0 and the following isfinite() guard can never fire for it; the row is then charged only its terminal interval"
+ },
+ "independent_rows": [
+  {
+   "counted_seconds": 350.57941137500075,
+   "kind": "terminal",
+   "reserved_active_seconds": 350.57941137500075,
+   "run_id": "f3f29a16369c400bb140b0d982f80ad2",
+   "state": "completed",
+   "terminal_interval_seconds": 50.338045835494995
+  },
+  {
+   "counted_seconds": 184.79119249999985,
+   "kind": "terminal",
+   "reserved_active_seconds": 184.79119249999985,
+   "run_id": "7b21d3dfd2714afa8f68a5484c5596eb",
+   "state": "completed",
+   "terminal_interval_seconds": 4.543720006942749
+  },
+  {
+   "counted_seconds": 184.89637216699884,
+   "kind": "terminal",
+   "reserved_active_seconds": 184.89637216699884,
+   "run_id": "c03caffeb5304f668e711dc9d3ab9831",
+   "state": "completed",
+   "terminal_interval_seconds": 4.648205995559692
+  }
+ ],
+ "missing_reservation_field": {
+  "counted_seconds": 10.0,
+  "note": "a run object without reserved_active_seconds is charged 0 for the reservation; the real RunRecord always carries the field"
+ },
+ "mlx_imported": false,
+ "per_row_max_vs_global_max": {
+  "differs": true,
+  "global_max_seconds": 1010.0,
+  "product_total_seconds": 1100.0,
+  "synthetic_rows": [
+   {
+    "active_seconds": 100.0,
+    "created_at": 1000.0,
+    "run_id": "synthetic-A",
+    "state": "completed",
+    "updated_at": 2000.0
+   },
+   {
+    "active_seconds": 100.0,
+    "created_at": 1000.0,
+    "run_id": "synthetic-B",
+    "state": "completed",
+    "updated_at": 1010.0
+   }
+  ]
+ },
+ "product_breakdown": {
+  "rows": [
+   {
+    "active_age_seconds": null,
+    "counted_seconds": 350.57941137500075,
+    "reserved_active_seconds": 350.57941137500075,
+    "rule": "max(reserved, terminal_interval)",
+    "run_id": "f3f29a16369c400bb140b0d982f80ad2",
+    "state": "completed",
+    "terminal_interval_seconds": 50.338045835494995
+   },
+   {
+    "active_age_seconds": null,
+    "counted_seconds": 184.79119249999985,
+    "reserved_active_seconds": 184.79119249999985,
+    "rule": "max(reserved, terminal_interval)",
+    "run_id": "7b21d3dfd2714afa8f68a5484c5596eb",
+    "state": "completed",
+    "terminal_interval_seconds": 4.543720006942749
+   },
+   {
+    "active_age_seconds": null,
+    "counted_seconds": 184.89637216699884,
+    "reserved_active_seconds": 184.89637216699884,
+    "rule": "max(reserved, terminal_interval)",
+    "run_id": "c03caffeb5304f668e711dc9d3ab9831",
+    "state": "completed",
+    "terminal_interval_seconds": 4.648205995559692
+   }
+  ],
+  "total_seconds": 720.2669760419994
+ },
+ "read_path": "byte-identical copy opened with the real RunStore (the real ledger is never opened for writing and the RunStore read interface is never called on it)",
+ "real_ledger": "/Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/s1/phase1/control.sqlite3",
+ "real_ledger_copy": {
+  "byte_identical": true,
+  "copy": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/opencode/p21-scratch/p21-phase-zyVa8i/control.sqlite3",
+  "copy_sha256": "a099c7ce2d5f465b5c05bf0c25acf83b296447cf87dcaffa5683e27fb18ad977",
+  "source": "/Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/s1/phase1/control.sqlite3",
+  "source_sha256": "a099c7ce2d5f465b5c05bf0c25acf83b296447cf87dcaffa5683e27fb18ad977"
+ },
+ "rows": 3,
+ "schema": "ainerzero.v9.p21.probe05_phase_accounting.v1",
+ "totals": {
+  "calendar_age_total_seconds": 236289.8155555725,
+  "detector_problems": [],
+  "independent_total_seconds": 720.2669760419994,
+  "new_rule_refuses": false,
+  "no_row_refunded": true,
+  "old_rule_would_refuse": true,
+  "phase_wall_max_seconds": 14400.0,
+  "product_total_seconds": 720.2669760419994,
+  "reserved_is_a_preregistered_allowance_not_a_measurement": true,
+  "reserved_total_seconds": 720.2669760419994
+ },
+ "verdict": {
+  "broken_variants_all_detected": true,
+  "decision_required_corrupt_rows_all_refused": true,
+  "new_rule_does_not_refuse": true,
+  "no_row_refunded": true,
+  "old_rule_would_have_refused": true,
+  "per_row_max_is_not_a_global_max": true,
+  "product_matches_independent_rule": true,
+  "reserved_equals_720_267": true
+ }
+}

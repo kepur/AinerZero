@@ -1,0 +1,128 @@
+{
+ "cases": {
+  "A_real_document_default_budget": {
+   "arm1_deadline_seconds": 2,
+   "error": "LifecycleError: run budget exceeds experiment run limits",
+   "eval_budget_seconds": 300.0,
+   "forward_calls": 0,
+   "refused_stage": null,
+   "run_opened": false,
+   "status": "failed"
+  },
+  "B_real_document_tightened_budget": {
+   "error": "BudgetExceeded: wall_time_budget",
+   "forward_calls": 0,
+   "refused_stage": null,
+   "run_opened": true,
+   "status": "stopped"
+  },
+  "C_synthetic_document_control": {
+   "d_candidate_identity": {
+    "checkpoint_id": "96b72328-d9c1-4b48-b69c-1fa30ba8123c",
+    "entries_verified": 9,
+    "frozen_manifest": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-baseline/r3/baseline_manifest.json",
+    "manifest_digest_hint": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "manifest_sha256": "76403018a033317c1cf4422f60318ee9a9df99d8b9e75c4c3211e444d4ba3892",
+    "metadata_sha256": "0de030a55af2f9f6d5cca6a1d0c0b5f15eac1281a9ead3bffdadda5a0f8bf58a",
+    "pilot_dir": "artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a",
+    "role": "read-only baseline freeze for ADR-0012 / V9 P0 (r3: C3 coverage, T3 pinned-tree scan, RunStore row-level ruling)",
+    "tensors_sha256": "cbb14d878dfda5af816dbc4903c7fb811aabbcfb17ce494f00e994ab3d6b286a"
+   },
+   "error": null,
+   "forward_calls": 1,
+   "forward_substitute": true,
+   "ledger_runs": [
+    {
+     "arm_id": null,
+     "purpose": "preregistration_prep:eval",
+     "request_id": "s1-phase1-20261021:eval:arm1:eval:5d9c29c391f041969249e2b9b5dbd150",
+     "run_id": "5d9c29c391f041969249e2b9b5dbd150",
+     "seed": null,
+     "state": "completed"
+    }
+   ],
+   "not_applicable_status": {
+    "few_shot_unseen_transition": "not_applicable",
+    "localization_error": "not_applicable",
+    "m2_memory_interference": "not_applicable",
+    "sample_efficiency": "not_applicable",
+    "topology_recovery": "not_applicable",
+    "unseen_map_generalization": "not_applicable"
+   },
+   "run_opened": true,
+   "status": "completed",
+   "synthetic_arm1_deadline_seconds": 15
+  },
+  "D_second_arm1_evaluation": {
+   "error": null,
+   "forward_calls": 1,
+   "ledger_runs_after": [
+    {
+     "arm_id": null,
+     "purpose": "preregistration_prep:eval",
+     "run_id": "5d9c29c391f041969249e2b9b5dbd150",
+     "state": "completed"
+    },
+    {
+     "arm_id": null,
+     "purpose": "preregistration_prep:eval",
+     "run_id": "a6c6249b3ac54c4689ced58d9b22598f",
+     "state": "completed"
+    }
+   ],
+   "refused_stage": null,
+   "run_opened": true,
+   "status": "completed"
+  },
+  "E_arm2_evaluation": {
+   "call_plan": {
+    "checkpoints": 5,
+    "development_windows": 550,
+    "registered_eval_batches": 48,
+    "suite_groups_beyond_window_probe": [
+     "topology step_sequence/probe_graph",
+     "few-shot support/query step_sequence + 2 encodes per query",
+     "M2 three-condition probes",
+     "sample-efficiency reload probes"
+    ],
+    "window_batches_per_checkpoint": 35,
+    "window_probe_batches": 175
+   },
+   "forward_calls": 0,
+   "refused_stage": "eval_call_budget_exceeded",
+   "run_opened": false,
+   "status": "refused"
+  },
+  "F_identity_control": {
+   "error": "RuntimeError: p21 control: the A2-pinned file changed",
+   "forward_calls": 0,
+   "refused_stage": "arm1_identity_verification_failed",
+   "run_opened": false,
+   "status": "refused"
+  }
+ },
+ "frozen_document_sha256": "523a5b35ca1cedef51352f286a116b3c2c798185c192bb571297eea365e3d667",
+ "mlx_imported": true,
+ "mlx_stub": {
+  "installed": true,
+  "real_mlx_loaded": false
+ },
+ "real_mlx_loaded": false,
+ "registered_d_candidate_eval_runs": 1,
+ "registered_eval_batches": 48,
+ "schema": "ainerzero.v9.p21.probe08_d_eval_path.v1",
+ "verdict": {
+  "arm2_eval_fails_closed_on_the_budget": true,
+  "arm2_eval_opened_no_run": true,
+  "arm2_eval_ran_no_forward": true,
+  "control_document_completes": true,
+  "control_used_exactly_one_forward": true,
+  "identity_failure_opened_no_run": true,
+  "identity_failure_refuses_before_any_forward": true,
+  "no_real_mlx_loaded": true,
+  "real_document_default_budget_completes": false,
+  "real_document_tightened_budget_completes": false,
+  "s1_incomparable_metrics_not_applicable": true,
+  "second_arm1_evaluation_refused": false
+ }
+}

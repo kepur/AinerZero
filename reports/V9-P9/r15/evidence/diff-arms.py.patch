@@ -1,0 +1,75 @@
+--- reports/V9-P9/r15/before/src/arms.py	2026-10-23 14:17:14
++++ src/ainerzero/v9/experiments/s1/arms.py	2026-10-28 15:18:00
+@@ -314,7 +314,19 @@
+ 
+     def memory_warp(self, memory, motions: np.ndarray) -> None:
+         return None
++
++    # r15 (ainerzero.V9.P53): memory writes and the few-shot probe query share
++    # spec.memory_key_slices, so the slice a memory stores is the slice it is probed with.
++    ARM_ID = ""
++
++    def memory_slice(self, kind: str) -> slice:
++        start, stop = spec.memory_key_slices(self.ARM_ID, self.dims)[kind]
++        return slice(start, stop)
+ 
++    def probe_key(self, h) -> np.ndarray:
++        """The part of an encoder output that lives in the space of the probed memory."""
++        return np.asarray(h)[..., self.memory_slice("probe")]
++
+     # -- fixed analytic pieces -----------------------------------------
+     @staticmethod
+     def motion_from_residual(actions: np.ndarray, residual: np.ndarray) -> np.ndarray:
+@@ -472,6 +484,7 @@
+     """Arm 2: equivariant metric map memory (warped by the estimated ego motion)."""
+ 
+     ARCHITECTURE = "s1_equivariant_metric_map_v1"
++    ARM_ID = "arm2"
+ 
+     def __init__(self, dims, *, seed):
+         channels = int(dims["memory_channels"])
+@@ -488,7 +501,7 @@
+         )
+ 
+     def memory_update(self, memory: MetricMapMemory, h_np, xy, present, pose) -> None:
+-        memory.update(h_np[:, : self.channels], xy, present)
++        memory.update(h_np[:, self.memory_slice("map")], xy, present)
+ 
+     def memory_readout(self, memory: MetricMapMemory, query_np) -> np.ndarray:
+         return memory.readout(query_np)
+@@ -501,6 +514,7 @@
+     """Arm 3: episodic topology graph memory (non-parametric place store)."""
+ 
+     ARCHITECTURE = "s1_episodic_topology_graph_v1"
++    ARM_ID = "arm3"
+ 
+     def __init__(self, dims, *, seed):
+         place_dim = int(dims["place_dim"])
+@@ -516,7 +530,7 @@
+         )
+ 
+     def memory_update(self, memory: TopologyMemory, h_np, xy, present, pose) -> None:
+-        places = h_np[:, : self.place_dim]
++        places = h_np[:, self.memory_slice("graph")]
+         memory.update(places, pose[:, [0, 2, 3]])
+ 
+     def memory_readout(self, memory: TopologyMemory, query_np) -> np.ndarray:
+@@ -527,6 +541,7 @@
+     """Arm 4: both memories, fused readout (the registered combination arm)."""
+ 
+     ARCHITECTURE = "s1_metric_plus_topology_v1"
++    ARM_ID = "arm4"
+ 
+     def __init__(self, dims, *, seed):
+         channels = int(dims["memory_channels"])
+@@ -553,8 +568,8 @@
+         }
+ 
+     def memory_update(self, memory, h_np, xy, present, pose) -> None:
+-        memory["map"].update(h_np[:, : self.channels], xy, present)
+-        memory["graph"].update(h_np[:, self.channels : self.channels + self.place_dim], pose[:, [0, 2, 3]])
++        memory["map"].update(h_np[:, self.memory_slice("map")], xy, present)
++        memory["graph"].update(h_np[:, self.memory_slice("graph")], pose[:, [0, 2, 3]])
+ 
+     def memory_readout(self, memory, query_np) -> np.ndarray:
+         map_context = memory["map"].readout(query_np[:, : self.channels])

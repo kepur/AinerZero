@@ -1,0 +1,560 @@
+{
+ "all_controls_red": true,
+ "rows": [
+  {
+   "baseline": {
+    "case": "f1",
+    "cuts": {
+     "after": {
+      "cut": "after_commit_write_returned",
+      "expired_in_flight": true,
+      "ledger_reason": "s1_train_completed",
+      "ledger_state": "completed",
+      "markers": [
+       "completion_invalid.json"
+      ],
+      "passed": true,
+      "refused_stage": "completion_deadline_exceeded",
+      "report_status": "failed",
+      "rerun": {
+       "markers_after_rerun": [
+        "completion_invalid.json"
+       ],
+       "report_status": "completed",
+       "rows_after_rerun": 1,
+       "rows_for_run": 1,
+       "state_after_rerun": "completed"
+      },
+      "rolled_back": false,
+      "rows": 1
+     },
+     "before": {
+      "cut": "before_commit",
+      "ledger_state": "failed",
+      "markers": [
+       "completion_invalid.json"
+      ],
+      "passed": true,
+      "refused_stage": "completion_deadline_exceeded",
+      "report_status": "failed",
+      "rerun": {
+       "markers_after_rerun": [
+        "completion_invalid.json"
+       ],
+       "report_status": "completed",
+       "rows_after_rerun": 1,
+       "rows_for_run": 1,
+       "state_after_rerun": "failed"
+      },
+      "rows": 1
+     },
+     "inside": {
+      "cut": "inside_commit_sql_lock",
+      "expired_in_flight": true,
+      "ledger_reason": "s1_train_completed",
+      "ledger_state": "completed",
+      "marker_ledger_state": "completed",
+      "markers": [
+       "completion_invalid.json"
+      ],
+      "passed": true,
+      "refused_stage": "completion_deadline_exceeded",
+      "report_status": "failed",
+      "rerun": {
+       "markers_after_rerun": [
+        "completion_invalid.json"
+       ],
+       "report_status": "completed",
+       "rows_after_rerun": 1,
+       "rows_for_run": 1,
+       "state_after_rerun": "completed"
+      },
+      "rolled_back": false,
+      "rows": 1
+     }
+    },
+    "passed": true,
+    "returncode": 0
+   },
+   "baseline_passed": true,
+   "case": "f1",
+   "control_is_red": true,
+   "description": "disable the completion-protocol deadline refusal",
+   "file": "src/ainerzero/v9/experiments/s1/completion.py",
+   "mutated": {
+    "case": "f1",
+    "cuts": {
+     "after": {
+      "cut": "after_commit_write_returned",
+      "expired_in_flight": true,
+      "ledger_reason": "s1_train_completed",
+      "ledger_state": "completed",
+      "markers": [],
+      "passed": false,
+      "refused_stage": null,
+      "report_status": "completed",
+      "rerun": {
+       "markers_after_rerun": [],
+       "report_status": "completed",
+       "rows_after_rerun": 1,
+       "rows_for_run": 1,
+       "state_after_rerun": "completed"
+      },
+      "rolled_back": null,
+      "rows": 1
+     },
+     "before": {
+      "cut": "before_commit",
+      "ledger_state": "completed",
+      "markers": [],
+      "passed": false,
+      "refused_stage": null,
+      "report_status": "completed",
+      "rerun": {
+       "markers_after_rerun": [],
+       "report_status": "completed",
+       "rows_after_rerun": 1,
+       "rows_for_run": 1,
+       "state_after_rerun": "completed"
+      },
+      "rows": 1
+     },
+     "inside": {
+      "cut": "inside_commit_sql_lock",
+      "expired_in_flight": true,
+      "ledger_reason": "s1_train_completed",
+      "ledger_state": "completed",
+      "marker_ledger_state": null,
+      "markers": [],
+      "passed": false,
+      "refused_stage": null,
+      "report_status": "completed",
+      "rerun": {
+       "markers_after_rerun": [],
+       "report_status": "completed",
+       "rows_after_rerun": 1,
+       "rows_for_run": 1,
+       "state_after_rerun": "completed"
+      },
+      "rolled_back": null,
+      "rows": 1
+     }
+    },
+    "passed": false,
+    "returncode": 1
+   },
+   "mutated_passed": false
+  },
+  {
+   "baseline": {
+    "active_counts": {
+     "collecting": 1000.0,
+     "created": 1000.0,
+     "initializing": 1000.0,
+     "paused": 1000.0,
+     "pausing": 1000.0,
+     "stopping": 1000.0,
+     "training": 1000.0,
+     "validating": 1000.0
+    },
+    "case": "f2",
+    "passed": true,
+    "returncode": 0,
+    "terminal_counts": {
+     "completed": 125.0,
+     "failed": 125.0,
+     "stopped": 125.0
+    },
+    "unknown_refusals": {
+     "None": "LedgerStateInvalid",
+     "quarantined": "LedgerStateInvalid"
+    }
+   },
+   "baseline_passed": true,
+   "case": "f2",
+   "control_is_red": true,
+   "description": "restore the r7 ACTIVE_STATES that omits collecting/validating/stopping",
+   "file": "src/ainerzero/v9/experiments/s1/worker.py",
+   "mutated": {
+    "case": "f2",
+    "error": "Traceback (most recent call last):\n  File \"/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P24/harness/probe_core.py\", line 1036, in main\n    result = CASES[ns.case]()\n             ^^^^^^^^^^^^^^^^\n  File \"/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P24/harness/probe_core.py\", line 261, in case_f2\n    counted = worker.run_conservative_wall_seconds(run, instant=6_000.0)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p24-mutant-za9vx7x7/src/ainerzero/v9/experiments/s1/worker.py\", line 391, in run_conservative_wall_seconds\n    raise LedgerStateInvalid(\nainerzero.v9.experiments.s1.worker.LedgerStateInvalid: run probe-collecting has an unknown state 'collecting'; a corrupt or foreign ledger row is refused instead of being charged as active or as zero\n",
+    "passed": false,
+    "returncode": 1
+   },
+   "mutated_passed": false
+  },
+  {
+   "baseline": {
+    "case": "f3",
+    "d_forward_calls": 1,
+    "error": null,
+    "experiment_manifest": {
+     "max_calibration_seconds": 60.0,
+     "max_environment_steps": 1,
+     "max_model_runs": 20,
+     "max_model_transitions": 1,
+     "max_optimizer_steps": 42120,
+     "max_wall_seconds": 14400.0
+    },
+    "passed": true,
+    "refused_stage": null,
+    "reserved_active_seconds": 1.0,
+    "reserved_optimizer_steps": 0,
+    "returncode": 0,
+    "run_snapshot_budget": {
+     "max_daily_active_seconds": 14400.0,
+     "max_environment_steps": 1,
+     "max_model_transitions": 0,
+     "max_optimizer_steps": 1,
+     "max_wall_seconds": 2.0,
+     "timezone": "Europe/Belgrade"
+    },
+    "snapshot_arm_id": "arm1",
+    "status": "completed"
+   },
+   "baseline_passed": true,
+   "case": "f3",
+   "control_is_red": true,
+   "description": "reintroduce the 5 s reservation floor that exceeds the 2 s D budget",
+   "file": "src/ainerzero/v9/experiments/s1/worker.py",
+   "mutated": {
+    "case": "f3",
+    "d_forward_calls": 0,
+    "error": null,
+    "experiment_manifest": {
+     "max_calibration_seconds": 60.0,
+     "max_environment_steps": 1,
+     "max_model_runs": 20,
+     "max_model_transitions": 1,
+     "max_optimizer_steps": 42120,
+     "max_wall_seconds": 14400.0
+    },
+    "passed": false,
+    "refused_stage": "source_binding_drift",
+    "reserved_active_seconds": null,
+    "reserved_optimizer_steps": null,
+    "returncode": 1,
+    "run_snapshot_budget": {},
+    "snapshot_arm_id": null,
+    "status": "refused"
+   },
+   "mutated_passed": false
+  },
+  {
+   "baseline": {
+    "all_rows": 1,
+    "arm1_rows_after": 1,
+    "arm1_rows_before": 1,
+    "case": "f4",
+    "first_status": "completed",
+    "legacy_state": {
+     "registered_max_runs": 1,
+     "run_ids": [
+      "run-legacy-p24"
+     ],
+     "states": [
+      "validating"
+     ],
+     "status": "unidentifiable"
+    },
+    "other_arm_state": {
+     "registered_max_runs": 1,
+     "status": "ok"
+    },
+    "passed": true,
+    "returncode": 0,
+    "second_refused_stage": "already_attempted",
+    "second_status": "refused"
+   },
+   "baseline_passed": true,
+   "case": "f4",
+   "control_is_red": true,
+   "description": "make the one-D guard ignore the arm_id row the product writes",
+   "file": "src/ainerzero/v9/experiments/s1/worker.py",
+   "mutated": {
+    "all_rows": 0,
+    "arm1_rows_after": 0,
+    "arm1_rows_before": 0,
+    "case": "f4",
+    "first_status": "refused",
+    "legacy_state": {
+     "registered_max_runs": 1,
+     "run_ids": [
+      "run-legacy-p24"
+     ],
+     "states": [
+      "validating"
+     ],
+     "status": "unidentifiable"
+    },
+    "other_arm_state": {
+     "registered_max_runs": 1,
+     "status": "ok"
+    },
+    "passed": false,
+    "returncode": 1,
+    "second_refused_stage": "source_binding_drift",
+    "second_status": "refused"
+   },
+   "mutated_passed": false
+  },
+  {
+   "baseline": {
+    "case": "f5",
+    "legitimate_future_high_water_counted": 7.0,
+    "passed": true,
+    "reserved_refusals": {
+     "'9.5'": "LedgerStateInvalid",
+     "-7.0": "LedgerStateInvalid",
+     "-inf": "LedgerStateInvalid",
+     "<missing field>": "LedgerStateInvalid",
+     "None": "LedgerStateInvalid",
+     "True": "LedgerStateInvalid",
+     "inf": "LedgerStateInvalid",
+     "nan": "LedgerStateInvalid"
+    },
+    "returncode": 0,
+    "reverse": "LedgerTimestampInvalid",
+    "timestamp_refusals": {
+     "'not-a-time'": "LedgerTimestampInvalid",
+     "-1e+308": "LedgerTimestampInvalid",
+     "1e+308": "LedgerTimestampInvalid",
+     "None": "LedgerTimestampInvalid",
+     "inf": "LedgerTimestampInvalid",
+     "nan": "LedgerTimestampInvalid"
+    }
+   },
+   "baseline_passed": true,
+   "case": "f5",
+   "control_is_red": true,
+   "description": "normalise the raw reservation with max(0.0, value or 0.0) before validation",
+   "file": "src/ainerzero/v9/experiments/s1/worker.py",
+   "mutated": {
+    "case": "f5",
+    "legitimate_future_high_water_counted": 7.0,
+    "passed": false,
+    "reserved_refusals": {
+     "'9.5'": "LedgerStateInvalid",
+     "-7.0": "ACCEPTED counted=500.0",
+     "-inf": "ACCEPTED counted=500.0",
+     "<missing field>": "LedgerStateInvalid",
+     "None": "LedgerStateInvalid",
+     "True": "LedgerStateInvalid",
+     "inf": "ACCEPTED counted=inf",
+     "nan": "ACCEPTED counted=500.0"
+    },
+    "returncode": 1,
+    "reverse": "LedgerTimestampInvalid",
+    "timestamp_refusals": {
+     "'not-a-time'": "LedgerTimestampInvalid",
+     "-1e+308": "LedgerTimestampInvalid",
+     "1e+308": "LedgerTimestampInvalid",
+     "None": "LedgerTimestampInvalid",
+     "inf": "LedgerTimestampInvalid",
+     "nan": "LedgerTimestampInvalid"
+    }
+   },
+   "mutated_passed": false
+  },
+  {
+   "baseline": {
+    "case": "f6",
+    "entries_verified": 9,
+    "identity_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "manifest_file_sha256": "2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b",
+    "negatives": {
+     "digest_mismatch": "DIdentityError: the A2 manifest self digest does not match the registered digest: 1e834fd1c130df7452a4b9dbe77cc0bff82fe8d17f4029bf51c3f4192113e877 != 3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+     "flipped_byte": "DIdentityError: A2-pinned file changed: artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/checkpoints/96b72328-d9c1-4b48-b69c-1fa30ba8123c/metadata.json",
+     "replaced_bytes": "DIdentityError: the A2 manifest bytes differ from the registered trust root: 385fd5776b5a0110f24cf1d0ed5257cef0959dafe71ae7bbdf0197d134b5ae4d != 2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b"
+    },
+    "original_r3_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "passed": true,
+    "registered_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "returncode": 0
+   },
+   "baseline_passed": true,
+   "case": "f6",
+   "control_is_red": true,
+   "description": "stop comparing the recomputed A2 manifest digest with the registered one",
+   "file": "src/ainerzero/v9/experiments/s1/identity.py",
+   "mutated": {
+    "case": "f6",
+    "entries_verified": 9,
+    "identity_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "manifest_file_sha256": "2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b",
+    "negatives": {
+     "digest_mismatch": "ACCEPTED (bad)",
+     "flipped_byte": "DIdentityError: A2-pinned file changed: artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a/checkpoints/96b72328-d9c1-4b48-b69c-1fa30ba8123c/metadata.json",
+     "replaced_bytes": "DIdentityError: the A2 manifest bytes differ from the registered trust root: 385fd5776b5a0110f24cf1d0ed5257cef0959dafe71ae7bbdf0197d134b5ae4d != 2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b"
+    },
+    "original_r3_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "passed": false,
+    "registered_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "returncode": 1
+   },
+   "mutated_passed": false
+  },
+  {
+   "baseline": {
+    "arms": false,
+    "case": "f7",
+    "entries": 9,
+    "mlx": false,
+    "mlx_imported": false,
+    "passed": true,
+    "returncode": 0,
+    "scope_note": "identity/worker/completion/prereg/data/evaluation/metrics are the CPU bookkeeping and identity entry path; smoke is the real MLX forward+loss measurement and is out of the F7 lazy-isolation scope",
+    "stderr": ""
+   },
+   "baseline_passed": true,
+   "case": "f7",
+   "control_is_red": true,
+   "description": "add a module-level arms import (which imports MLX) to the identity module",
+   "file": "src/ainerzero/v9/experiments/s1/identity.py",
+   "mutated": {
+    "arms": true,
+    "case": "f7",
+    "entries": 9,
+    "mlx": true,
+    "mlx_imported": false,
+    "passed": false,
+    "returncode": 1,
+    "scope_note": "identity/worker/completion/prereg/data/evaluation/metrics are the CPU bookkeeping and identity entry path; smoke is the real MLX forward+loss measurement and is out of the F7 lazy-isolation scope",
+    "stderr": ""
+   },
+   "mutated_passed": false
+  },
+  {
+   "baseline": {
+    "baseline": {
+     "arm2_seed0_rows": 1,
+     "arms_imported_in_process": false,
+     "completion_phase_tail": [
+      "train_loop",
+      "train:pre_terminal_commit",
+      "train:terminal_commit:before",
+      "train:terminal_commit:after"
+     ],
+     "first_error": null,
+     "first_status": "completed",
+     "gradient_calls": 3510,
+     "ledger_accounting": {
+      "checkpoint_wall_reservations_seconds": 10.0,
+      "optimizer_reservations": 3510,
+      "post_final_optimizer_reservations": 0
+     },
+     "mlx_imported_in_process": true,
+     "mlx_usable": true,
+     "reserved_optimizer_steps": 3510,
+     "rows_after_first": 1,
+     "rows_after_second": 1,
+     "run_state": "completed",
+     "saves": [
+      0,
+      439,
+      878,
+      1755,
+      3510
+     ],
+     "second_refused_stage": "already_attempted",
+     "second_status": "refused"
+    },
+    "baseline_passed": true,
+    "case": "f8",
+    "no_mlx_child": {
+     "arm2_seed0_rows": 1,
+     "arms_imported_in_process": false,
+     "case": "f8_nomlx",
+     "completion_phase_tail": [
+      "train_loop",
+      "train:pre_terminal_commit",
+      "train:terminal_commit:before",
+      "train:terminal_commit:after"
+     ],
+     "first_error": null,
+     "first_status": "completed",
+     "gradient_calls": 3510,
+     "ledger_accounting": {
+      "checkpoint_wall_reservations_seconds": 10.0,
+      "optimizer_reservations": 3510,
+      "post_final_optimizer_reservations": 0
+     },
+     "mlx_imported_in_process": false,
+     "mlx_usable": false,
+     "passed": true,
+     "reserved_optimizer_steps": 3510,
+     "rows_after_first": 1,
+     "rows_after_second": 1,
+     "run_state": "completed",
+     "saves": [
+      0,
+      439,
+      878,
+      1755,
+      3510
+     ],
+     "second_refused_stage": "already_attempted",
+     "second_status": "refused"
+    },
+    "no_mlx_child_returncode": 0,
+    "note": "in the real environment mlx is imported by resource_gate.mlx_memory_probe (a local allocator probe), never by model code (arms is absent); with mlx unimportable the same public chain still completes",
+    "passed": true,
+    "returncode": 0
+   },
+   "baseline_passed": true,
+   "case": "f8",
+   "control_is_red": true,
+   "description": "drop the public train branch's forwarding of the CPU test double",
+   "file": "src/ainerzero/v9/experiments/s1/worker.py",
+   "mutated": {
+    "baseline": {
+     "arm2_seed0_rows": 0,
+     "arms_imported_in_process": false,
+     "completion_phase_tail": [],
+     "first_error": null,
+     "first_status": "refused",
+     "gradient_calls": 0,
+     "ledger_accounting": {},
+     "mlx_imported_in_process": false,
+     "mlx_usable": false,
+     "reserved_optimizer_steps": null,
+     "rows_after_first": 0,
+     "rows_after_second": 0,
+     "run_state": null,
+     "saves": [],
+     "second_refused_stage": "source_binding_drift",
+     "second_status": "refused"
+    },
+    "baseline_passed": false,
+    "case": "f8",
+    "no_mlx_child": {
+     "arm2_seed0_rows": 0,
+     "arms_imported_in_process": false,
+     "case": "f8_nomlx",
+     "completion_phase_tail": [],
+     "first_error": null,
+     "first_status": "refused",
+     "gradient_calls": 0,
+     "ledger_accounting": {},
+     "mlx_imported_in_process": false,
+     "mlx_usable": false,
+     "passed": false,
+     "reserved_optimizer_steps": null,
+     "rows_after_first": 0,
+     "rows_after_second": 0,
+     "run_state": null,
+     "saves": [],
+     "second_refused_stage": "source_binding_drift",
+     "second_status": "refused"
+    },
+    "no_mlx_child_returncode": 1,
+    "note": "in the real environment mlx is imported by resource_gate.mlx_memory_probe (a local allocator probe), never by model code (arms is absent); with mlx unimportable the same public chain still completes",
+    "passed": false,
+    "returncode": 1
+   },
+   "mutated_passed": false
+  }
+ ],
+ "rule": "one isolated copy per case; only the named guard/condition is changed",
+ "tool": "reports/V9-P24/harness/run_mutations.py"
+}

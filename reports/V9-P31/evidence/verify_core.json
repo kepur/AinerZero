@@ -1,0 +1,276 @@
+{
+  "ok": true,
+  "checks": {
+    "r11_file_sha": {
+      "passed": true,
+      "detail": {
+        "file_sha": "aeb8a7a800deab87bce08940489796edb0cc1949cde0f4999163f52decc1f105",
+        "bytes": 24828
+      }
+    },
+    "r11_document_sha": {
+      "passed": true,
+      "detail": {
+        "document_sha": "b73b558953a06ce551c2e8613a09d0785b1c0222f8ff57f99c49da2ec812fb4e"
+      }
+    },
+    "r10_file_sha_unchanged": {
+      "passed": true,
+      "detail": {
+        "file_sha": "5fea3ca73da29658753932ff8d38c96dadd33314b1db022576caea505c20d1ff"
+      }
+    },
+    "frozen_registered_values": {
+      "passed": true,
+      "detail": {
+        "updates": 3510,
+        "eval_batches": 175,
+        "seeds": [
+          0,
+          1,
+          2
+        ],
+        "checkpoint_updates": [
+          0,
+          439,
+          878,
+          1755,
+          3510
+        ],
+        "deadline_seconds": 1200,
+        "supervision_seconds": 1250,
+        "deadline_source": "user_approved R20261023-S1-phase1-r11-budget",
+        "arm1_deadline_seconds": 7,
+        "derived_deadline_seconds": 477,
+        "phase_wall_max_seconds": 14400.0,
+        "phase_wall_seconds": 10854.605202458999,
+        "experiment_id": "s1-phase1-20261023-r11",
+        "status": "awaiting_coordinator_approval"
+      }
+    },
+    "independent_registered_budget_recalc": {
+      "passed": true,
+      "detail": {
+        "updates": 3510,
+        "deadline_seconds": 1200,
+        "supervision_seconds": 1250,
+        "derived_deadline_seconds": 477,
+        "arm1_deadline_seconds": 7,
+        "estimate_seconds": 381.1528007568777,
+        "phase_wall_seconds": 10854.605202458999,
+        "fits_phase_cap": true,
+        "fits_per_run_cap": true
+      }
+    },
+    "worst_case_phase_under_14400": {
+      "passed": true,
+      "detail": {
+        "nine_times_supervision": 11250,
+        "phase_wall_max": 14400
+      }
+    },
+    "derived_477_not_the_run_deadline": {
+      "passed": true,
+      "detail": {
+        "deadline_seconds": 1200,
+        "derived_deadline_seconds": 477,
+        "per_run_wall_max_seconds": 1200.0
+      }
+    },
+    "fail_closed_deadline_path": {
+      "passed": true,
+      "detail": {
+        "tamper_deadline_1150": {
+          "refused": true,
+          "reasons": [
+            "registered deadline 1150 is not the user-approved 1200 s",
+            "phase wall time is not 9 x deadline + 1 x arm1 deadline + data generation"
+          ]
+        },
+        "shrink_updates_3299": {
+          "refused": true,
+          "reasons": [
+            "registered updates 3299 is not the user-approved 3510; a reduced update count is refused"
+          ]
+        },
+        "slow_smoke_shrink_path": {
+          "refused": true,
+          "message": "the smoke-derived deadline at 3510 updates would be 1369 s > the 1200.0 s per-run cap, so the derivation path would shrink the update count; the registered budget refuses instead of freezing a reduced count"
+        },
+        "isolated_broken_control": {
+          "tampered_1150_accepted_by_broken": true,
+          "real_validate_refuses_1150": true,
+          "real_reasons": [
+            "registered deadline 1150 is not the user-approved 1200 s",
+            "registered supervision 1200 is not deadline + 50.0 s = 1250.0 s",
+            "phase wall time is not 9 x deadline + 1 x arm1 deadline + data generation"
+          ],
+          "turns_red": true
+        }
+      }
+    },
+    "T1_arms_and_identity": {
+      "passed": true,
+      "detail": {
+        "arms_byte_equal": {
+          "arm1": {
+            "byte_equal": true
+          },
+          "arm2": {
+            "byte_equal": true
+          },
+          "arm3": {
+            "byte_equal": true
+          },
+          "arm4": {
+            "byte_equal": true
+          }
+        },
+        "arm1_doc_missing_keys": [
+          "frozen_manifest_file_sha256",
+          "frozen_manifest_digest_rule"
+        ],
+        "_identity_uses_ARM_SPECS": true,
+        "spec_ARM_SPECS_has_trust_keys": {
+          "frozen_manifest_file_sha256": true,
+          "frozen_manifest_digest_rule": true
+        },
+        "verify_d_reads_document_arms": false,
+        "other_runtime_hits_requiring_doc_arm1_keys": [],
+        "validate_mentions_manifest_file_sha": false,
+        "known_note": "arm1 doc identity missing trust-root keys since r8-r10; runtime uses ARM_SPECS"
+      }
+    },
+    "leaf_diff_and_science": {
+      "passed": true,
+      "detail": {
+        "leaf_count": 431,
+        "changed_leaf_count": 58,
+        "bound_files_outside_allowlist": [],
+        "non_identity_leaves_outside_allowlist": [],
+        "arm_leaf_changes": [],
+        "metrics_equal": true,
+        "data_identity_equal": true,
+        "evaluation_equal": true,
+        "changed_bound_files": [
+          "src/ainerzero/v9/experiments/s1/commands.py",
+          "src/ainerzero/v9/experiments/s1/prereg.py",
+          "src/ainerzero/v9/experiments/s1/spec.py",
+          "src/ainerzero/v9/experiments/s1/worker.py"
+        ],
+        "changed_paths": [
+          "budget_estimate.arm1_deadline_seconds",
+          "budget_estimate.arm1_estimate_seconds",
+          "budget_estimate.arm1_supervision_seconds",
+          "budget_estimate.deadline_seconds",
+          "budget_estimate.deadline_source",
+          "budget_estimate.derived_deadline_seconds",
+          "budget_estimate.estimate_seconds",
+          "budget_estimate.estimated_eval_cost_seconds",
+          "budget_estimate.measured_throughput.deadline_over_slowest_ratio",
+          "budget_estimate.measured_throughput.derivation",
+          "budget_estimate.measured_throughput.note",
+          "budget_estimate.measured_throughput.per_step_seconds.median",
+          "budget_estimate.measured_throughput.per_step_seconds.slowest",
+          "budget_estimate.measured_throughput.registered_deadline_seconds",
+          "budget_estimate.measured_throughput.slowest_wall_seconds",
+          "budget_estimate.measured_throughput.source",
+          "budget_estimate.measured_throughput.source_sha256",
+          "budget_estimate.measured_throughput.steps",
+          "budget_estimate.phase_wall_headroom_seconds",
+          "budget_estimate.phase_wall_seconds",
+          "budget_estimate.registered_deadline_seconds",
+          "budget_estimate.registered_supervision_seconds",
+          "budget_estimate.supervision_seconds",
+          "budget_registration",
+          "created_unix",
+          "experiment_id",
+          "source_identity.package_files.src/ainerzero/v9/experiments/s1/commands.py",
+          "source_identity.package_files.src/ainerzero/v9/experiments/s1/prereg.py",
+          "source_identity.package_files.src/ainerzero/v9/experiments/s1/spec.py",
+          "source_identity.package_files.src/ainerzero/v9/experiments/s1/worker.py",
+          "source_identity.package_map_digest",
+          "source_identity.spec.sha256",
+          "timing.arm1_deadline_seconds",
+          "timing.arm1_estimate_seconds",
+          "timing.arm1_supervision_seconds",
+          "timing.deadline_seconds",
+          "timing.deadline_source",
+          "timing.derived_deadline_seconds",
+          "timing.estimate_seconds",
+          "timing.measured_throughput.deadline_over_slowest_ratio",
+          "timing.measured_throughput.derivation",
+          "timing.measured_throughput.note",
+          "timing.measured_throughput.per_step_seconds.median",
+          "timing.measured_throughput.per_step_seconds.slowest",
+          "timing.measured_throughput.registered_deadline_seconds",
+          "timing.measured_throughput.slowest_wall_seconds",
+          "timing.measured_throughput.source",
+          "timing.measured_throughput.source_sha256",
+          "timing.measured_throughput.steps",
+          "timing.phase_wall_headroom_seconds",
+          "timing.phase_wall_seconds",
+          "timing.registered_deadline_seconds",
+          "timing.registered_supervision_seconds",
+          "timing.registered_updates",
+          "timing.rule",
+          "timing.supervision_seconds",
+          "training_protocol.eval_batches",
+          "training_protocol.update_rule"
+        ]
+      }
+    },
+    "T5_control_sqlite_no_r11": {
+      "passed": true,
+      "detail": {
+        "sha256": "a5fd11ffd0c41e20456cedd6c6ed7e1b38dc62b479f8ccb65132683aab4163c3",
+        "pin_match": true,
+        "r11_hits": {
+          "metadata": {
+            "row_count": 2,
+            "r11_mentions": 0
+          },
+          "runs": {
+            "row_count": 13,
+            "r11_mentions": 0
+          },
+          "daily_budget": {
+            "row_count": 2,
+            "r11_mentions": 0
+          },
+          "run_transitions": {
+            "row_count": 53,
+            "r11_mentions": 0
+          },
+          "experiments": {
+            "row_count": 2,
+            "r11_mentions": 0
+          }
+        }
+      }
+    },
+    "new_experiment_attempts_start_at_zero": {
+      "passed": true,
+      "detail": {
+        "new_attempts": [],
+        "old_attempt_ids": [
+          "old-arm2-seed0"
+        ],
+        "phase_new": 0,
+        "phase_old": 0.0021779537200927734,
+        "R11": "s1-phase1-20261023-r11",
+        "OLD": "s1-phase1-20261021"
+      }
+    },
+    "runstore_unmodified_vs_pin": {
+      "passed": true,
+      "detail": {}
+    },
+    "v9_s1_metrics_unchanged": {
+      "passed": true,
+      "detail": {
+        "sha": "8b5017c24fb710a3bf55508a8ac917d17cb41e29ba464c32b092e37b14db6ce4"
+      }
+    }
+  }
+}

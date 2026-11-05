@@ -1,0 +1,69 @@
+{
+  "task_id": "ainerzero.V9.P47",
+  "agent": "composer-a7k2",
+  "zero_run": true,
+  "verdict": "inconsistent_prefer_reword_before_r14_freeze",
+  "recommend_fix_before_r14_freeze": true,
+  "recommended_fix": "reword_prereg_effective_metadata_equivariant_source",
+  "not_recommended": "wire_G3_into_S1_arms_as_minimal_fix",
+  "items": {
+    "1_pose_source_is_g3_canonicalize": {
+      "answer": false,
+      "actual": "self_written_yaw_integration_and_metric_map_warp",
+      "evidence": [
+        "src/ainerzero/v9/experiments/s1/prereg.py:393-394",
+        "src/ainerzero/v9/experiments/s1/arms.py:30",
+        "src/ainerzero/v9/experiments/s1/arms.py:320-338",
+        "src/ainerzero/v9/experiments/s1/arms.py:126-163",
+        "src/ainerzero/v9/geometry/canonical.py:460-481"
+      ]
+    },
+    "2_covariance_injected_error_in_s1_path": {
+      "g3_inject_pose_error": false,
+      "awz_sensor_gaussian_on_observations": true,
+      "ego_motion_sigma_m": 0.005,
+      "ego_motion_sigma_deg": 0.25,
+      "relative_objects_sigma_m": 0.02,
+      "relative_objects_sigma_deg": 0.5,
+      "pose_sensor_in_student_stream": false,
+      "evidence": [
+        "src/ainerzero/v9/geometry/canonical.py:537-540",
+        "AnimeWorldZero/python/animeworld/sensing/noise.py:19-76",
+        "AnimeWorldZero/python/animeworld/sensing/config.py:76-80",
+        "AnimeWorldZero/python/animeworld/sensing/exit.py:642-655",
+        "src/ainerzero/v9/experiments/s1/awz_export.py:47-49"
+      ]
+    },
+    "3_truth_pose_normalisation_on_scoring_path": {
+      "truth_as_model_input": false,
+      "truth_as_evaluator_anchor_and_score_target": true,
+      "separate_truth_pose_normalisation_diagnostic_arm": false,
+      "evidence": [
+        "src/ainerzero/v9/experiments/s1/data.py:575-576",
+        "src/ainerzero/v9/experiments/s1/arms.py:394-396",
+        "src/ainerzero/v9/experiments/s1/evaluation.py:23-29",
+        "src/ainerzero/v9/experiments/s1/evaluation.py:153-155",
+        "src/ainerzero/v9/experiments/s1/metrics.py:490-491"
+      ]
+    },
+    "4_r13_and_r14_same_wording": {
+      "r13_pre_registration_same_string": true,
+      "r14_budget_proposal_waits_on_p47": true,
+      "evidence": [
+        "artifacts/v9/s1/phase1/r13/pre_registration.json:effective_metadata.equivariant_source",
+        "reports/V9-S1-r14-budget-proposal.md:91-96"
+      ]
+    },
+    "5_phase1_conclusions_depending_on_claim": [
+      "prereg_effective_metadata_identity_r1_through_r13",
+      "frontier-integration-20261027/REPORT.md:120",
+      "r14_freeze_document_metadata_via_build_draft",
+      "interpretation_of_arm2_arm4_as_G3_equivariance"
+    ],
+    "6_minimal_fix": {
+      "prefer": "reword",
+      "avoid_changing_frozen_numeric_values": true,
+      "draft_replacement": "analytic ego-motion integration (logged AWZ ego_motion with sensor Gaussian noise + bounded learned residual); metric-map warp by that estimate; not G3 CanonicalBelief/inject_pose_error; truth pose is evaluator-only (alignment/scoring), never a model input"
+    }
+  }
+}

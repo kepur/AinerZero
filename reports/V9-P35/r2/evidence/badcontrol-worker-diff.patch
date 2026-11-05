@@ -1,0 +1,68 @@
+--- worker.py (real)
++++ worker.py (order restored, isolated copy only)
+@@ -1612,6 +1612,30 @@
+             # review wrote three production ledger rows for an eval that could
+             # never run.  Same check, earlier position; the refusal writes
+             # nothing.
++            # P35 r2 bad control（只在隔离副本里）：把这一处顺序还原成 r5–r11 的
++            # 样子 —— 先注册实验/run、begin_work、reserve，再判 _eval_binding_precondition。
++            # 守卫本身一行没删，只把它的位置挪回写台账之后。
++            ledger = PrepLedger(ledger_path)
++            if active_run is None:
++                active_run = ledger.open_aux_run(
++                    mode="eval",
++                    wall_budget_seconds=budget,
++                    manifest=train_experiment_manifest(
++                        updates=int(document["training_protocol"]["updates"])
++                    ),
++                    request_id=f"{eval_experiment_id}:training",
++                    experiment_id=eval_experiment_id,
++                    snapshot_extra={
++                        "arm_id": arm,
++                        "seed": int(eval_seed),
++                        "purpose": f"s1_phase1_eval:{arm}",
++                        "preregistration_sha256": verified["sha256"],
++                    },
++                )
++            report["run_id"] = active_run
++            report["experiment_id"] = eval_experiment_id
++            ledger.begin_work(active_run, work_state="validating")
++            ledger.reserve(active_run, active_seconds=min(120.0, max(10.0, 0.5 * budget)))
+             binding_precondition = _eval_binding_precondition(
+                 output_root,
+                 arm_id=arm,
+@@ -1631,34 +1655,7 @@
+                 )
+                 return report
+             report["eval_binding"] = binding_precondition
+-            # r12: every CPU-only precondition passed; the first ledger write may
+-            # now happen.
+-            ledger = PrepLedger(ledger_path)
+-            # r6: evaluation consumption is registered inside the same
+-            # experiment as the training runs it scores, so the phase total
+-            # sees it.  The r1 preparation experiment's wall window has long
+-            # closed, so reusing it would refuse every eval at the canonical
+-            # root with an expired experiment wall budget.
+-            active_run = active_run or ledger.open_aux_run(
+-                mode="eval",
+-                wall_budget_seconds=budget,
+-                manifest=train_experiment_manifest(
+-                    updates=int(document["training_protocol"]["updates"])
+-                ),
+-                request_id=f"{eval_experiment_id}:training",
+-                experiment_id=eval_experiment_id,
+-                snapshot_extra={
+-                    "arm_id": arm,
+-                    "seed": int(eval_seed),
+-                    "purpose": f"s1_phase1_eval:{arm}",
+-                    "preregistration_sha256": verified["sha256"],
+-                },
+-            )
+-            report["run_id"] = active_run
+-            report["experiment_id"] = eval_experiment_id
+-            ledger.begin_work(active_run, work_state="validating")
+             protocol = completion.CompletionProtocol(deadline_seconds=budget)
+-            ledger.reserve(active_run, active_seconds=min(120.0, max(10.0, 0.5 * budget)))
+             guard.sample(force=True)
+             eval_details = _evaluate_arm(
+                 document,

@@ -1,0 +1,312 @@
+{
+ "harness": "reports/V-V9-P9/r2/harness/f1_approval.py",
+ "real_tree": "/Users/mac/AinerWorkFlow/AinerZero",
+ "sandbox": "/private/tmp/v9p11/train_stub",
+ "frozen_document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+ "r1_document_sha256": "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6",
+ "train_stub": true,
+ "note": "worker._train replaced by a stub in the sandbox copy only; no optimizer step runs",
+ "cases": [
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C1_forged_status/phase1 --prereg /private/tmp/v9p11/f1/C1_forged_status/phase1/pre_registration.json --research-log /private/tmp/v9p11/f1/C1_forged_status/logs/RESEARCH_LOG.md",
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "a36d4b15fe4db2fbebcfd55b46fb311712e8cc070d50178ebbecdaa1ad7541e8",
+   "preregistration_status": "approved",
+   "approval": {
+    "approved": false,
+    "reasons": [
+     "no coordinator approval line in /private/tmp/v9p11/f1/C1_forged_status/logs/RESEARCH_LOG.md; expected a bare line 'APPROVED s1-phase1 prereg document_sha256=a36d4b15fe4db2fbebcfd55b46fb311712e8cc070d50178ebbecdaa1ad7541e8'"
+    ],
+    "detail": {
+     "research_log": "/private/tmp/v9p11/f1/C1_forged_status/logs/RESEARCH_LOG.md",
+     "frozen_document_sha256": "a36d4b15fe4db2fbebcfd55b46fb311712e8cc070d50178ebbecdaa1ad7541e8",
+     "log_approval_sha256": [],
+     "status_field": "approved",
+     "status_field_is_authoritative": false,
+     "expected_line": "APPROVED s1-phase1 prereg document_sha256=a36d4b15fe4db2fbebcfd55b46fb311712e8cc070d50178ebbecdaa1ad7541e8"
+    },
+    "status_field_is_authoritative": false
+   },
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C1",
+   "label": "只改预登记 status=approved 并重算 SHA/侧车，日志无批准行",
+   "expectation": "refused exit 3",
+   "forged_document_sha256": "a36d4b15fe4db2fbebcfd55b46fb311712e8cc070d50178ebbecdaa1ad7541e8",
+   "self_consistent": true
+  },
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C2_no_line/phase1 --prereg /private/tmp/v9p11/f1/C2_no_line/phase1/pre_registration.json --research-log /private/tmp/v9p11/f1/C2_no_line/logs/RESEARCH_LOG.md",
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+   "preregistration_status": "awaiting_coordinator_approval",
+   "approval": {
+    "approved": false,
+    "reasons": [
+     "no coordinator approval line in /private/tmp/v9p11/f1/C2_no_line/logs/RESEARCH_LOG.md; expected a bare line 'APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07'"
+    ],
+    "detail": {
+     "research_log": "/private/tmp/v9p11/f1/C2_no_line/logs/RESEARCH_LOG.md",
+     "frozen_document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+     "log_approval_sha256": [],
+     "status_field": "awaiting_coordinator_approval",
+     "status_field_is_authoritative": false,
+     "expected_line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07"
+    },
+    "status_field_is_authoritative": false
+   },
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C2",
+   "label": "批准行缺失（只有说明性文字）",
+   "expectation": "refused exit 3"
+  },
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C3_one_digit_off/phase1 --prereg /private/tmp/v9p11/f1/C3_one_digit_off/phase1/pre_registration.json --research-log /private/tmp/v9p11/f1/C3_one_digit_off/logs/RESEARCH_LOG.md",
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+   "preregistration_status": "awaiting_coordinator_approval",
+   "approval": {
+    "approved": false,
+    "reasons": [
+     "coordinator approval line does not cover this frozen document: 1 approval line(s) point at another document SHA256, frozen document is 0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07"
+    ],
+    "detail": {
+     "research_log": "/private/tmp/v9p11/f1/C3_one_digit_off/logs/RESEARCH_LOG.md",
+     "frozen_document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+     "log_approval_sha256": [
+      "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c00"
+     ],
+     "status_field": "awaiting_coordinator_approval",
+     "status_field_is_authoritative": false,
+     "expected_line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07"
+    },
+    "status_field_is_authoritative": false
+   },
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C3",
+   "label": "批准行 SHA 差一位",
+   "expectation": "refused exit 3",
+   "line_sha": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c00",
+   "log_approval_sha256": [
+    "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c00"
+   ]
+  },
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C4_old_document/phase1 --prereg /private/tmp/v9p11/f1/C4_old_document/phase1/pre_registration.json --research-log /private/tmp/v9p11/f1/C4_old_document/logs/RESEARCH_LOG.md",
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+   "preregistration_status": "awaiting_coordinator_approval",
+   "approval": {
+    "approved": false,
+    "reasons": [
+     "coordinator approval line does not cover this frozen document: 1 approval line(s) point at another document SHA256, frozen document is 0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07"
+    ],
+    "detail": {
+     "research_log": "/private/tmp/v9p11/f1/C4_old_document/logs/RESEARCH_LOG.md",
+     "frozen_document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+     "log_approval_sha256": [
+      "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6"
+     ],
+     "status_field": "awaiting_coordinator_approval",
+     "status_field_is_authoritative": false,
+     "expected_line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07"
+    },
+    "status_field_is_authoritative": false
+   },
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C4",
+   "label": "批准行指向 r1 旧文档",
+   "expectation": "refused exit 3",
+   "old_document_sha256": "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6"
+  },
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C5a_relocated_log/phase1 --prereg /private/tmp/v9p11/f1/C5a_relocated_log/phase1/pre_registration.json --research-log /private/tmp/v9p11/f1/forged/RESEARCH_LOG.md",
+   "exit_code": 0,
+   "stage": "completed",
+   "status": "completed",
+   "preregistration_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+   "preregistration_status": null,
+   "approval": {
+    "line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+    "line_number": 4,
+    "document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+    "research_log": "/private/tmp/v9p11/f1/forged/RESEARCH_LOG.md",
+    "research_log_sha256": "8fafe012ae719647cac127feb2bc8c103b2fe6dca6bec2e7c5a5a5102a801302",
+    "approved": true,
+    "status_field": "awaiting_coordinator_approval",
+    "status_field_is_authoritative": false
+   },
+   "run_id": "adf14639b92345fea8568092d6aa4302",
+   "error": null,
+   "stderr_tail": "",
+   "id": "C5a",
+   "label": "执行层可写位置伪造批准文件（--research-log 指向自己的日志）",
+   "expectation": "refused exit 3",
+   "forged_log": "/private/tmp/v9p11/f1/forged/RESEARCH_LOG.md",
+   "runstore": {
+    "available": true,
+    "state": "completed",
+    "role": "model",
+    "approval": {
+     "document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+     "line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+     "line_number": 4,
+     "research_log": "/private/tmp/v9p11/f1/forged/RESEARCH_LOG.md",
+     "research_log_sha256": "8fafe012ae719647cac127feb2bc8c103b2fe6dca6bec2e7c5a5a5102a801302",
+     "status_field": "awaiting_coordinator_approval",
+     "status_field_is_authoritative": false
+    },
+    "transitions": [
+     "created",
+     "initializing",
+     "training",
+     "completed"
+    ],
+    "optimizer_steps": 0
+   }
+  },
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C5b_side_files/phase1 --prereg /private/tmp/v9p11/f1/C5b_side_files/phase1/pre_registration.json --research-log /private/tmp/v9p11/f1/C5b_side_files/logs/RESEARCH_LOG.md",
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+   "preregistration_status": "awaiting_coordinator_approval",
+   "approval": {
+    "approved": false,
+    "reasons": [
+     "no coordinator approval line in /private/tmp/v9p11/f1/C5b_side_files/logs/RESEARCH_LOG.md; expected a bare line 'APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07'"
+    ],
+    "detail": {
+     "research_log": "/private/tmp/v9p11/f1/C5b_side_files/logs/RESEARCH_LOG.md",
+     "frozen_document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+     "log_approval_sha256": [],
+     "status_field": "awaiting_coordinator_approval",
+     "status_field_is_authoritative": false,
+     "expected_line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07"
+    },
+    "status_field_is_authoritative": false
+   },
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C5b",
+   "label": "预登记旁伪造 APPROVAL.json / .approved 侧车",
+   "expectation": "refused exit 3"
+  },
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C5c_default_log/phase1 --prereg /private/tmp/v9p11/f1/C5c_default_log/phase1/pre_registration.json",
+   "exit_code": 0,
+   "stage": "completed",
+   "status": "completed",
+   "preregistration_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+   "preregistration_status": null,
+   "approval": {
+    "line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+    "line_number": 4,
+    "document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+    "research_log": "/private/tmp/v9p11/train_stub/RESEARCH_LOG.md",
+    "research_log_sha256": "8fafe012ae719647cac127feb2bc8c103b2fe6dca6bec2e7c5a5a5102a801302",
+    "approved": true,
+    "status_field": "awaiting_coordinator_approval",
+    "status_field_is_authoritative": false
+   },
+   "run_id": "35d6e4213353483aaa13f0b6afa4c721",
+   "error": null,
+   "stderr_tail": "",
+   "id": "C5c",
+   "label": "默认 RESEARCH_LOG.md（可写副本）被写入批准行，不传 --research-log",
+   "expectation": "released if the log is written by someone allowed to write it (design)",
+   "default_log": "/private/tmp/v9p11/train_stub/RESEARCH_LOG.md"
+  },
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C6_exact_line/phase1 --prereg /private/tmp/v9p11/f1/C6_exact_line/phase1/pre_registration.json --research-log /private/tmp/v9p11/f1/C6_exact_line/logs/RESEARCH_LOG.md",
+   "exit_code": 0,
+   "stage": "completed",
+   "status": "completed",
+   "preregistration_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+   "preregistration_status": null,
+   "approval": {
+    "line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+    "line_number": 4,
+    "document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+    "research_log": "/private/tmp/v9p11/f1/C6_exact_line/logs/RESEARCH_LOG.md",
+    "research_log_sha256": "8fafe012ae719647cac127feb2bc8c103b2fe6dca6bec2e7c5a5a5102a801302",
+    "approved": true,
+    "status_field": "awaiting_coordinator_approval",
+    "status_field_is_authoritative": false
+   },
+   "run_id": "4f37d70c3c054403b07e92f95ce10198",
+   "error": null,
+   "stderr_tail": "",
+   "id": "C6",
+   "label": "批准行与 document SHA 完全一致",
+   "expectation": "released (exit 0) + RunStore 记录",
+   "runstore": {
+    "available": true,
+    "state": "completed",
+    "role": "model",
+    "approval": {
+     "document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+     "line": "APPROVED s1-phase1 prereg document_sha256=0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+     "line_number": 4,
+     "research_log": "/private/tmp/v9p11/f1/C6_exact_line/logs/RESEARCH_LOG.md",
+     "research_log_sha256": "8fafe012ae719647cac127feb2bc8c103b2fe6dca6bec2e7c5a5a5102a801302",
+     "status_field": "awaiting_coordinator_approval",
+     "status_field_is_authoritative": false
+    },
+    "transitions": [
+     "created",
+     "initializing",
+     "training",
+     "completed"
+    ],
+    "optimizer_steps": 0
+   },
+   "line_points_at_approval": true,
+   "recorded_line_matches": true,
+   "recorded_document_sha_matches": true,
+   "recorded_log_sha_matches": true
+  },
+  {
+   "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ainerzero.cli s1-phase1 --mode train --output-root /private/tmp/v9p11/f1/C7_swapped_digest/phase1 --prereg /private/tmp/v9p11/f1/C7_swapped_digest/phase1/pre_registration.json --research-log /private/tmp/v9p11/f1/C7_swapped_digest/logs/RESEARCH_LOG.md",
+   "exit_code": 0,
+   "stage": "completed",
+   "status": "completed",
+   "preregistration_sha256": "70fb5de7ee7b2771a1930a5f17fa82b5ade2e0e05e5f797e180389e77326b5f4",
+   "preregistration_status": null,
+   "approval": {
+    "line": "APPROVED s1-phase1 prereg document_sha256=70fb5de7ee7b2771a1930a5f17fa82b5ade2e0e05e5f797e180389e77326b5f4",
+    "line_number": 4,
+    "document_sha256": "70fb5de7ee7b2771a1930a5f17fa82b5ade2e0e05e5f797e180389e77326b5f4",
+    "research_log": "/private/tmp/v9p11/f1/C7_swapped_digest/logs/RESEARCH_LOG.md",
+    "research_log_sha256": "ec19d6d044859c47c7824076065b5035eba02a4aee0bd53f355ead5cecbb9bfb",
+    "approved": true,
+    "status_field": "awaiting_coordinator_approval",
+    "status_field_is_authoritative": false
+   },
+   "run_id": "4bb6b113011f447c96949048df651bbd",
+   "error": null,
+   "stderr_tail": "",
+   "id": "C7",
+   "label": "同一个伪造日志+换掉 dataset_digest 的文档（看凭据到底钉住什么）",
+   "expectation": "released -> 凭证只钉文档 SHA，不钉数据/参数来源",
+   "swapped_digest": "70fb5de7ee7b2771a1930a5f17fa82b5ade2e0e05e5f797e180389e77326b5f4"
+  }
+ ]
+}

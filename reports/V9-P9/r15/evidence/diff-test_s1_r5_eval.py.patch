@@ -1,0 +1,15 @@
+--- reports/V9-P9/r15/before/tests/test_s1_r5_eval.py	2026-10-23 14:17:14
++++ tests/v9/experiments/test_s1_r5_eval.py	2026-10-28 15:18:49
+@@ -143,7 +143,12 @@
+     def encode(self, model, obs_row):
+         return np.asarray(obs_row, dtype=np.float32)
+ 
++    # r15 (ainerzero.V9.P53): few-shot queries through probe_query; this fake's
++    # encoding already lives in its node space, so the query is the encoding.
++    def probe_query(self, model, obs_row):
++        return self.encode(model, obs_row)
+ 
++
+ def _document(manifest, *, updates=2):
+     return {
+         "training_protocol": {

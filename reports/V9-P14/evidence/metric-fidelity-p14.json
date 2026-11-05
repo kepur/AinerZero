@@ -1,0 +1,283 @@
+{
+ "schema": "ainerzero.v9.p14.metric-fidelity.v1",
+ "harness": "reports/V9-P14/harness/metric_fidelity_probe.py",
+ "frozen_worker_sha256": "177ec63e3431c9c073c46a92c38041590e9a4dc2b939d7e4b28fbd7933be02b0",
+ "mlx_imported": false,
+ "source_edited": false,
+ "static": {
+  "S1_few_shot_all_literal": {
+   "call_found": true,
+   "inputs": {
+    "predicted_exists": [
+     true,
+     true,
+     false,
+     false
+    ],
+    "true_exists": [
+     true,
+     true,
+     false,
+     false
+    ],
+    "predicted_displacement_m": [
+     0.5,
+     0.5,
+     0.0,
+     0.0
+    ],
+    "true_displacement_m": [
+     0.5,
+     0.5,
+     0.0,
+     0.0
+    ]
+   },
+   "all_inputs_literal": true,
+   "predictions_equal_labels": true
+  },
+  "S2_m2_no_write_between": {
+   "before_after_nll_assigns": [
+    {
+     "lineno": 746,
+     "target": "before_nll"
+    },
+    {
+     "lineno": 825,
+     "target": "after_nll"
+    }
+   ],
+   "writes_between": [],
+   "no_write_between": true
+  },
+  "S3_localization_min_truncation": {
+   "has_min_of_lengths": true,
+   "slices_both_prefixes": true,
+   "pairs_by_index_not_episode_id": true
+  },
+  "S4_unseen_single_row": {
+   "single_row_call": true,
+   "family_from_truth_view_first": true
+  },
+  "S5_duplicate_guard_completed_only": {
+   "guard_only_completed": true,
+   "states_not_guarded": [
+    "failed",
+    "aborted",
+    "stopped"
+   ]
+  },
+  "S6_checkpoint_binding": {
+   "run_info_json_trusted_by_arm_seed_only": true,
+   "load_has_no_sha_check": true,
+   "runstore_path_recomputes_sha_at_load": true
+  }
+ },
+ "behaviour": {
+  "few_shot_shipped": {
+   "transitions": 4,
+   "accuracy": 1.0,
+   "balanced_accuracy": 1.0,
+   "positive_recall": 1.0,
+   "positive_precision": 1.0,
+   "displacement_mae_m": 0.0
+  },
+  "few_shot_negative_control": {
+   "transitions": 4,
+   "accuracy": 0.5,
+   "balanced_accuracy": 0.5,
+   "positive_recall": 1.0,
+   "positive_precision": 0.5,
+   "displacement_mae_m": 1.0
+  },
+  "localization_shipped_index_pairing": {
+   "steps": 2,
+   "translation_mean_m": 10.0,
+   "translation_median_m": 10.0,
+   "translation_rmse_m": 10.0,
+   "translation_max_m": 10.0,
+   "yaw_mean_deg": 0.0,
+   "yaw_median_deg": 0.0,
+   "yaw_max_deg": 0.0
+  },
+  "localization_aligned_per_episode": {
+   "steps": 2,
+   "translation_mean_m": 0.0,
+   "translation_median_m": 0.0,
+   "translation_rmse_m": 0.0,
+   "translation_max_m": 0.0,
+   "yaw_mean_deg": 0.0,
+   "yaw_median_deg": 0.0,
+   "yaw_max_deg": 0.0
+  },
+  "m2_identical_before_after": {
+   "retention_delta": {
+    "development_nll": 0.0
+   },
+   "worst_retention_delta": 0.0,
+   "keys": [
+    "development_nll"
+   ]
+  },
+  "m2_negative_control": {
+   "retention_delta": {
+    "development_nll": 0.20000000000000018
+   },
+   "worst_retention_delta": 0.20000000000000018,
+   "keys": [
+    "development_nll"
+   ]
+  }
+ },
+ "verdict": "fidelity_defects_confirmed",
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "blocker",
+   "claim": "few_shot_unseen_transition 指标在真实 arm 上是写死的完美夹具，与模型/检查点/episode 无关",
+   "static_support": {
+    "call_found": true,
+    "inputs": {
+     "predicted_exists": [
+      true,
+      true,
+      false,
+      false
+     ],
+     "true_exists": [
+      true,
+      true,
+      false,
+      false
+     ],
+     "predicted_displacement_m": [
+      0.5,
+      0.5,
+      0.0,
+      0.0
+     ],
+     "true_displacement_m": [
+      0.5,
+      0.5,
+      0.0,
+      0.0
+     ]
+    },
+    "all_inputs_literal": true,
+    "predictions_equal_labels": true
+   },
+   "behaviour_support": {
+    "shipped": {
+     "transitions": 4,
+     "accuracy": 1.0,
+     "balanced_accuracy": 1.0,
+     "positive_recall": 1.0,
+     "positive_precision": 1.0,
+     "displacement_mae_m": 0.0
+    },
+    "control": {
+     "transitions": 4,
+     "accuracy": 0.5,
+     "balanced_accuracy": 0.5,
+     "positive_recall": 1.0,
+     "positive_precision": 0.5,
+     "displacement_mae_m": 1.0
+    }
+   }
+  },
+  {
+   "id": "F2",
+   "severity": "blocker",
+   "claim": "M2 干扰的 before/after 是同模型对同一 dev 数据的两次前向，必然为 0，不是预登记的干扰诊断",
+   "static_support": {
+    "before_after_nll_assigns": [
+     {
+      "lineno": 746,
+      "target": "before_nll"
+     },
+     {
+      "lineno": 825,
+      "target": "after_nll"
+     }
+    ],
+    "writes_between": [],
+    "no_write_between": true
+   },
+   "behaviour_support": {
+    "same": {
+     "retention_delta": {
+      "development_nll": 0.0
+     },
+     "worst_retention_delta": 0.0,
+     "keys": [
+      "development_nll"
+     ]
+    }
+   }
+  },
+  {
+   "id": "F3",
+   "severity": "blocker",
+   "claim": "localization 用 min(估计数, 真值数) 前缀配对，跨 episode/world/tick 错配",
+   "static_support": {
+    "has_min_of_lengths": true,
+    "slices_both_prefixes": true,
+    "pairs_by_index_not_episode_id": true
+   },
+   "behaviour_support": {
+    "shipped": {
+     "steps": 2,
+     "translation_mean_m": 10.0,
+     "translation_median_m": 10.0,
+     "translation_rmse_m": 10.0,
+     "translation_max_m": 10.0,
+     "yaw_mean_deg": 0.0,
+     "yaw_median_deg": 0.0,
+     "yaw_max_deg": 0.0
+    },
+    "aligned": {
+     "steps": 2,
+     "translation_mean_m": 0.0,
+     "translation_median_m": 0.0,
+     "translation_rmse_m": 0.0,
+     "translation_max_m": 0.0,
+     "yaw_mean_deg": 0.0,
+     "yaw_median_deg": 0.0,
+     "yaw_max_deg": 0.0
+    }
+   }
+  },
+  {
+   "id": "F4",
+   "severity": "major",
+   "claim": "重复运行守卫只查 completed，failed/aborted/stopped 的同 arm×seed 可重跑（违反冻结规则 6）",
+   "static_support": {
+    "guard_only_completed": true,
+    "states_not_guarded": [
+     "failed",
+     "aborted",
+     "stopped"
+    ]
+   }
+  },
+  {
+   "id": "F5",
+   "severity": "major",
+   "claim": "eval 信任可自填的 run_info.json 且加载参数不核 SHA（违反冻结规则 7）",
+   "static_support": {
+    "run_info_json_trusted_by_arm_seed_only": true,
+    "load_has_no_sha_check": true,
+    "runstore_path_recomputes_sha_at_load": true
+   }
+  },
+  {
+   "id": "F6",
+   "severity": "major",
+   "claim": "unseen_map 用单行 + 第一个世界的 family 汇总整库（违反冻结规则 3）",
+   "static_support": {
+    "single_row_call": true,
+    "family_from_truth_view_first": true
+   }
+  }
+ ]
+}

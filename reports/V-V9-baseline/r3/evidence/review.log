@@ -1,0 +1,67 @@
+# ainerzero.V9.A10 独立复核（非 A2 作者）：真实树=/Users/mac/AinerWorkFlow/AinerZero；案例沙盒=/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/v9-a10-r3-cases-f11hol81
+
+## 0) 真实树完整性（开始）
+[PASS] 开始：真实树 497 钉选文件复算 0 mismatch：checked=497 mismatches=0
+[PASS] 钉选字节数 = 清单登记 584,888,364 B（= 报告）：584888364
+
+## 1) C3 覆盖
+[PASS] A4 列出的 C3 残留 = 46 个：46 个
+[PASS] C3 46 个文件在真实树全部存在：缺失 0
+[PASS] C3 46 个文件全部有唯一处置（钉选或带理由排除）：残留 0: []
+[PASS] C3 处置分布 = 44 钉选 + 2 排除：pinned=44 excluded=2
+[PASS] policy 声称钉选的 M0 report.json/events.jsonl 清单实际 >0：24 个
+[PASS] pilot probes manifest/metadata 4 个已钉选
+[PASS] pilot 运行根 dataset.json 2 个已钉选
+
+## 2) policy↔清单↔真实树
+[PASS] 真实 artifacts 文件枚举数 = 51706：51706
+[PASS] policy 声称钉选的每条 glob 的每个真实匹配都在 files[] 且类别一致：0 违规
+[PASS] policy pinned glob 数与作者清单一致（26）：26
+[PASS] policy 声称匹配数 = 作者报告 883 次（原始 glob 命中，含 volatile）：raw=883
+[PASS] policy 过滤 volatile/排除后真实要求钉选的匹配 = 497（= files[] 全量）：matched=497 volatile_skipped=386
+[PASS] files[] 497 条全部能被 policy 规则解释：未覆盖 0: []
+
+## 3) 自建案例（10 个：8 红 + 2 对照）
+[CASE PASS] C0_clean_case_tree：exit=0 problems=[]
+[CASE PASS] N1_manifest_size_tamper：exit=1 problems=['manifest_digest', 'size_changed']
+[CASE PASS] N2_manifest_runstore_digest_tamper：exit=1 problems=['manifest_digest', 'runstore_entries_changed']
+[CASE PASS] N3_manifest_hides_pinned_entry：exit=1 problems=['manifest_digest', 'policy_claim_unmet', 'unexpected_new_file']
+[CASE PASS] N4_unregistered_file_in_pinned_checkpoint_dir：exit=1 problems=['unexpected_new_file']
+[CASE PASS] N5_pinned_file_content_flip：exit=1 problems=['sha256_changed']
+[CASE PASS] N6_pinned_file_replaced_by_directory：exit=1 problems=['missing']
+[CASE PASS] N7_pinned_file_deleted：exit=1 problems=['missing']
+[CASE PASS] N8_runstore_row_changed：exit=1 problems=['runstore_entries_changed']
+[CASE PASS] N9_runstore_legal_vacuum_stays_green：exit=0 problems=[]
+[CASE PASS] N10_excluded_file_change_stays_green：exit=0 problems=[]
+
+## 4) selftest 真实拷贝与作者复跑
+[PASS] 作者 selftest 复跑 exit 0
+[PASS] selftest 真实拷贝：22/22 real_copy、copy_mode 明示 never a symlink：cases=22 real_copy=22 mode=APFS clone (cp -c) / shutil.copy2 fallback, never a symlink
+[PASS] selftest 注入故障 17/17 变红、对照 5/5 保持绿：injected=17/17 controls=5/5
+[PASS] selftest 内含真实树完整性 before/after 均 0 mismatch：{"before": 497, "after": 497}
+[PASS] 作者 verify 复跑 exit 0、497/497 ok、policy 26 globs：verdict=ok files_ok=497
+
+## 5) RunStore 行级裁定（见案例 N8/N9）
+
+## 6) r2 产物保全
+[PASS] r2 三个身份 SHA 与 A4 记录一致（r2 产物原样保留）：{"scripts/v9_baseline_manifest_r2.py": "2709475caac0ef8f3d92ac2023d94156c11cfd63ac13eb00c454ecdb715e529c", "reports/V9-baseline/r2/baseline_manifest.json": "71e99efcc1ceb652df742396d3bbbfdbc72ac7cd5e46c980171e33065a2d674a", "reports/V9-baseline/r2/report.md": "d39e5c75bcfb244c25b9a7eb76f99446b5228fd
+[PASS] r2 manifest_digest 仍为 ee6fc9c9…b2cd3（无基线漂移）
+
+## 7) 真实树完整性（结束，与开始对比）
+[PASS] 结束：真实树 497 钉选文件复算 0 mismatch：mismatches=0
+[PASS] 真实树开始=结束（钉选文件 path+sha 指纹一致、全程零写入）：digest_start=5560de5161ff99d9… digest_end=5560de5161ff99d9…
+[PASS] 自建不利反例 ≥6 全部真实非零退出；对照（干净树/VACUUM/排除项）保持绿：red=8 green_controls=3 failed=[]
+
+=== 复核汇总 ===
+{
+  "verdict": "PASS",
+  "total": 25,
+  "passed": 25,
+  "failed": [],
+  "cases": {
+    "total": 11,
+    "passed": 11,
+    "failed": []
+  },
+  "real_tree_before_after_equal": true
+}

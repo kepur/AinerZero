@@ -1,0 +1,136 @@
+{
+ "F1_completion": {
+  "case": "write-lock wait inside ledger.finish",
+  "consumer_would_refuse": true,
+  "deadline_seconds": 0.3,
+  "elapsed_at_refusal_seconds": 0.712,
+  "expired_in_flight": true,
+  "invalid_marker": "completion_invalid.json",
+  "ledger_reason_rewritten": false,
+  "ledger_state": "completed",
+  "lock_held_seconds": 0.6,
+  "note": "the terminal row had already landed, so it is left as committed; the marker invalidates it for every consumer instead of pretending a rollback",
+  "refused_stage": "completion_deadline_exceeded",
+  "report_status": "failed",
+  "rolled_back": false
+ },
+ "F2_states": {
+  "product_written_states_accepted": {
+   "collecting": 200.0,
+   "created": 200.0,
+   "initializing": 200.0,
+   "paused": 200.0,
+   "pausing": 200.0,
+   "stopping": 200.0,
+   "training": 200.0,
+   "validating": 200.0
+  },
+  "terminal_interval_rule": "max(reserved, updated-created) per row, summed",
+  "unknown_states_refused_as_state_errors": {
+   "None": {
+    "message": "run x has no state",
+    "type": "LedgerStateInvalid"
+   },
+   "archived": {
+    "message": "run x has an unknown state 'archived'; a corrupt or foreign ledger row is refused instead ",
+    "type": "LedgerStateInvalid"
+   },
+   "quarantined": {
+    "message": "run x has an unknown state 'quarantined'; a corrupt or foreign ledger row is refused inste",
+    "type": "LedgerStateInvalid"
+   }
+  }
+ },
+ "F3_d_budget": {
+  "d_run_budget_rule": "the run snapshot uses timing.arm1_deadline_seconds (2 s), never the generic eval entry budget (300 s)",
+  "experiment_optimizer_ceiling": 42120,
+  "experiment_wall_ceiling_seconds": 14400.0,
+  "frozen_arm1_deadline_seconds": 2,
+  "frozen_arm1_supervision_seconds": 52.0,
+  "frozen_updates": 3510,
+  "manifest_is_caller_independent": true,
+  "registered_d_eval_runs": 1,
+  "reservation_rule": "one pre-work reservation of min(0.5*budget, remaining) = 1.0 s for a 2 s run; no 5 s floor"
+ },
+ "F4_guard": {
+  "legacy_row_without_arm_id": {
+   "registered_max_runs": 1,
+   "run_ids": [
+    "run-legacy"
+   ],
+   "states": [
+    "validating"
+   ],
+   "status": "unidentifiable"
+  },
+  "product_row_with_arm_id": {
+   "registered_max_runs": 1,
+   "run_ids": [
+    "run-d"
+   ],
+   "states": [
+    "validating"
+   ],
+   "status": "already_attempted"
+  },
+  "rule": "a started arm1 row is already_attempted; a started row that only *looks* like a D attempt (no arm_id) is unidentifiable and fails closed; nothing is deleted, rewritten or auto-repaired"
+ },
+ "F5_field_contract": {
+  "far_future_created": {
+   "message": "unrepresentable timestamp 1e+308: timestamp out of range for platform time_t",
+   "outcome": "refused",
+   "type": "LedgerTimestampInvalid"
+  },
+  "inf_reserved": {
+   "message": "run inf_reserved has a non-finite reserved_active_seconds inf",
+   "outcome": "refused",
+   "type": "LedgerStateInvalid"
+  },
+  "legitimate_future_high_water": {
+   "counted": 7.0,
+   "outcome": "accepted"
+  },
+  "nan_reserved": {
+   "message": "run nan_reserved has a non-finite reserved_active_seconds nan",
+   "outcome": "refused",
+   "type": "LedgerStateInvalid"
+  },
+  "negative_reserved": {
+   "message": "run negative_reserved has a negative reserved_active_seconds -5.0",
+   "outcome": "refused",
+   "type": "LedgerStateInvalid"
+  },
+  "reverse_timestamps": {
+   "message": "run reverse_timestamps has reverse timestamps: updated 1000.0 < created 2000.0",
+   "outcome": "refused",
+   "type": "LedgerTimestampInvalid"
+  }
+ },
+ "F6_identity": {
+  "bound_implementation_sources": [
+   "src/ainerzero/runtime/lifecycle.py",
+   "src/ainerzero/core/pilot.py",
+   "src/ainerzero/learning/pilot_model.py",
+   "src/ainerzero/runtime/checkpoints.py",
+   "reports/V9-baseline/r3/baseline_manifest.json"
+  ],
+  "digest_compared": true,
+  "entries_verified": 9,
+  "frozen_manifest": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-baseline/r3/baseline_manifest.json",
+  "frozen_manifest_file_sha256": "2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b",
+  "mlx_imported": false,
+  "recomputed_manifest_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+  "registered_field_matches": {
+   "manifest_sha256": true,
+   "metadata_sha256": true,
+   "tensors_sha256": true
+  },
+  "registered_manifest_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9"
+ },
+ "approval_line_written": false,
+ "frozen_document_sha256": "2082e2a3c36cd648fb1608727a7f8ea0fc9afcc38e29af527c48d62f5d477175",
+ "model_work_run": false,
+ "real_ledger_touched": false,
+ "schema": "ainerzero.v9.s1.r8.decision_evidence.v1",
+ "spec": "s1-phase1-v1"
+}

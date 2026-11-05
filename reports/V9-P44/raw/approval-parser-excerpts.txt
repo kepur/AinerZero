@@ -1,0 +1,186 @@
+70: # same section must not be able to decide the gate.
+71: APPROVAL_SECTION = "R20261021-P1-stageA-budget"
+72: 
+73: # r8 (S1-R8-DECISION F6): implementation files the frozen document must carry in
+74: # its source identity.  They are read-only additions to the identity list (the
+75: # generic lifecycle, the D candidate loaders and the A2 trust-root manifest);
+76: # adding a file's digest does not modify it and does not change any scientific
+77: # value.  The real ones are bound at freeze time and re-hashed at train/verify.
+78: IMPLEMENTATION_SOURCES = (
+79:     "src/ainerzero/runtime/lifecycle.py",
+80:     "src/ainerzero/core/pilot.py",
+81:     "src/ainerzero/learning/pilot_model.py",
+82:     "src/ainerzero/runtime/checkpoints.py",
+83:     "reports/V9-baseline/r3/baseline_manifest.json",
+84: )
+85: _SECTION_HEADING_RE = re.compile(
+86:     r"^##\s+" + re.escape(APPROVAL_SECTION) + r"(?=$|[\s：:（(])"
+87: )
+88: _ANY_H2_RE = re.compile(r"^##\s")
+89: _FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+90: 
+91: 
+92: class ApprovalRefused(RuntimeError):
+93:     """No coordinator approval line for this exact frozen document."""
+94: 
+95:     def __init__(self, reasons: list[str], *, detail: Mapping[str, Any] | None = None):
+96:         self.reasons = list(reasons)
+97:         self.detail = dict(detail or {})
+98:         super().__init__("; ".join(self.reasons))
+99: 
+100: 
+101: def scan_approval_log(log_path: Path | str | None = None) -> dict:
+102:     """Read the log and return only the approval lines inside the frozen section.
+103: 
+104:     Rules (V9.P9 r3, P-4):
+105: 
+106:     * the section starts at a level-2 heading whose text is
+107:       ``R20261021-P1-stageA-budget`` and ends at the next level-2 heading;
+108:     * lines inside a fenced code block (``` / ~~~) never count;
+109:     * lines inside a blockquote (``>``) never count;
+110:     * a line indented by four spaces (Markdown indented code) never counts;
+111:     * more than one qualifying line inside the section refuses the gate;
+112:     * more than one section with that heading refuses the gate (ambiguous).
+113:     """
+114:     path = Path(log_path) if log_path is not None else spec.RESEARCH_LOG
+115:     if not path.is_file():
+116:         raise ApprovalRefused(
+117:             [f"research log is missing: {path}"], detail={"research_log": str(path)}
+118:         )
+119:     text = path.read_text(encoding="utf-8")
+120:     log_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
+121:     rows: list[dict] = []
+122:     spans: list[list[int | None]] = []
+123:     skipped: dict[str, list[int]] = {"fenced_code": [], "blockquote": [], "indented_code": []}
+124:     in_fence = False
+125:     in_section = False
+126:     for number, raw in enumerate(text.splitlines(), start=1):
+127:         stripped = raw.strip()
+128:         if _FENCE_RE.match(raw):
+129:             in_fence = not in_fence
+130:             continue
+131:         if in_fence:
+132:             if in_section:
+133:                 skipped["fenced_code"].append(number)
+134:             continue
+135:         if _ANY_H2_RE.match(stripped):
+136:             if _SECTION_HEADING_RE.match(stripped):
+137:                 if in_section and spans:
+138:                     spans[-1][1] = number - 1
+139:                 spans.append([number, None])
+140:                 in_section = True
+141:             else:
+142:                 if in_section and spans:
+143:                     spans[-1][1] = number - 1
+144:                 in_section = False
+145:             continue
+146:         if not in_section:
+147:             continue
+148:         if stripped.startswith(">"):
+149:             skipped["blockquote"].append(number)
+150:             continue
+151:         if raw.startswith("    ") or raw.startswith("\t"):
+152:             skipped["indented_code"].append(number)
+153:             continue
+154:         match = _APPROVAL_RE.match(stripped)
+155:         if not match:
+156:             continue
+157:         rows.append(
+158:             {
+159:                 "line": stripped,
+160:                 "line_number": number,
+161:                 "document_sha256": match.group(1),
+162:                 "research_log": str(path),
+163:                 "research_log_sha256": log_sha256,
+164:             }
+165:         )
+166:     if spans and spans[-1][1] is None:
+167:         spans[-1][1] = len(text.splitlines())
+168:     problems: list[str] = []
+169:     if not spans:
+170:         problems.append(
+171:             f"no '## {APPROVAL_SECTION}' section in {path}; approval lines are only read "
+172:             "inside that section"
+173:         )
+174:     elif len(spans) > 1:
+175:         problems.append(
+176:             f"the '## {APPROVAL_SECTION}' heading appears {len(spans)} times in {path}; "
+177:             "an ambiguous section cannot approve a run"
+178:         )
+179:     if len(rows) > 1:
+180:         problems.append(
+181:             f"{len(rows)} qualifying approval lines inside the '## {APPROVAL_SECTION}' "
+182:             f"section of {path} (lines {[row['line_number'] for row in rows]}); exactly one "
+183:             "is allowed"
+184:         )
+185:     return {
+186:         "research_log": str(path),
+187:         "research_log_sha256": log_sha256,
+188:         "approval_section": APPROVAL_SECTION,
+189:         "section_spans": spans,
+190:         "section_count": len(spans),
+191:         "rows": rows,
+192:         "skipped": skipped,
+193:         "problems": problems,
+194:     }
+195: 
+196: 
+197: def read_approval_lines(log_path: Path | str | None = None) -> list[dict]:
+198:     """Every qualifying approval line inside the section, in file order."""
+199:     return scan_approval_log(log_path)["rows"]
+200: 
+201: 
+202: def require_coordinator_approval(
+203:     document: Mapping[str, Any],
+204:     document_sha256: str,
+205:     *,
+206:     log_path: Path | str | None = None,
+207: ) -> dict:
+208:     """Return the approval record, or raise ``ApprovalRefused``.
+209: 
+210:     ``document["status"]`` is recorded for the audit trail but never decides:
+211:     only a single log line, inside the registered section, whose SHA equals the
+212:     frozen document SHA approves a run.
+213:     """
+214:     path = Path(log_path) if log_path is not None else spec.RESEARCH_LOG
+215:     scan = scan_approval_log(path)
+216:     rows = scan["rows"]
+217:     detail = {
+218:         "research_log": str(path),
+219:         "research_log_sha256": scan["research_log_sha256"],
+220:         "approval_section": APPROVAL_SECTION,
+221:         "section_spans": scan["section_spans"],
+222:         "frozen_document_sha256": document_sha256,
+223:         "log_approval_sha256": [row["document_sha256"] for row in rows],
+224:         "log_approval_line_numbers": [row["line_number"] for row in rows],
+225:         "skipped_lines": scan["skipped"],
+226:         "status_field": document.get("status"),
+227:         "status_field_is_authoritative": False,
+228:         "expected_line": APPROVAL_TEMPLATE.format(document_sha256=document_sha256),
+229:     }
+230:     if scan["problems"]:
+231:         raise ApprovalRefused(scan["problems"], detail=detail)
+232:     if not rows:
+233:         raise ApprovalRefused(
+234:             [
+235:                 f"no coordinator approval line inside the '## {APPROVAL_SECTION}' section of "
+236:                 f"{path}; expected a bare line "
+237:                 f"'{APPROVAL_TEMPLATE.format(document_sha256=document_sha256)}'"
+238:             ],
+239:             detail=detail,
+240:         )
+241:     matching = [row for row in rows if row["document_sha256"] == document_sha256]
+242:     if not matching:
+243:         raise ApprovalRefused(
+244:             [
+245:                 "coordinator approval line does not cover this frozen document: "
+246:                 f"{len(rows)} approval line(s) point at another document SHA256, frozen "
+247:                 f"document is {document_sha256}"
+248:             ],
+249:             detail=detail,
+250:         )
+251:     record = dict(matching[0])
+252:     record["approved"] = True
+253:     record["status_field"] = document.get("status")
+254:     record["status_field_is_authoritative"] = False
+255:     return record

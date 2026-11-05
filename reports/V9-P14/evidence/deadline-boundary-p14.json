@@ -1,0 +1,74 @@
+{
+ "schema": "ainerzero.v9.p14.deadline-boundary.v1",
+ "sandbox": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p14-boundary-3ob65pyc",
+ "frozen_updates_per_run": 2420,
+ "fake_clock_step_seconds_base": 0.01,
+ "ledger_waiver": {
+  "applied": true,
+  "what": "max_optimizer_steps headroom (run + experiment-per-run)",
+  "why": "same as full-flow; see evidence/train-ledger-probe.json",
+  "not_waived": "deadline, supervision, phase wall cap, updates, seeds, checkpoint policy"
+ },
+ "calls": [
+  {
+   "label": "A_short_calibration",
+   "arm": "arm2",
+   "seed": 0,
+   "clock_step_seconds": 0.01,
+   "own_window_seconds": 145.23,
+   "phase_clock_before": 0.0,
+   "phase_clock_after": 145.25,
+   "cumulative_phase_seconds_since_first_call": 0.0,
+   "status": "completed",
+   "error": "",
+   "exit_code": 0,
+   "run_id": "75cf0c5376c0451c95c66c64b53d466a"
+  },
+  {
+   "label": "B_second_call_near_450s",
+   "arm": "arm2",
+   "seed": 1,
+   "clock_step_seconds": 0.030916477311850172,
+   "own_window_seconds": 449.0,
+   "phase_clock_before": 545.25,
+   "phase_clock_after": 994.311833,
+   "cumulative_phase_seconds_since_first_call": 994.311833,
+   "status": "completed",
+   "error": "",
+   "exit_code": 0,
+   "run_id": "163526a72320480b87b12884395132d8"
+  },
+  {
+   "label": "C_second_call_over_450s",
+   "arm": "arm3",
+   "seed": 0,
+   "clock_step_seconds": 0.031054189905666874,
+   "own_window_seconds": 450.068374,
+   "phase_clock_before": 994.311833,
+   "phase_clock_after": 1444.442316,
+   "cumulative_phase_seconds_since_first_call": 1444.442316,
+   "status": "failed",
+   "error": "TimeoutError: frozen per-run deadline exceeded",
+   "exit_code": 1,
+   "run_id": "d17acce000ab494a9b7ded81216619e4"
+  }
+ ],
+ "calibration": {
+  "own_window_seconds": 145.23,
+  "seconds_per_update_at_step_0.01": 0.0600124,
+  "predicted_linear_seconds_per_update_per_step": 6.0
+ },
+ "checks": {
+  "A_short_run_completed": true,
+  "B_own_window_near_but_under_450": true,
+  "B_completed_despite_cumulative_over_450": true,
+  "C_refused_with_deadline_timeout": true,
+  "C_negative_control_proves_deadline_live": true
+ },
+ "counterfactual": {
+  "shared_started_would_refuse_B": true,
+  "cumulative_phase_seconds_at_B": 994.311833,
+  "note": "a module/phase-level `started` would see >450 s at B's first update and raise TimeoutError; B completing shows the timer restarts per call."
+ },
+ "verdict": "boundary_pass"
+}

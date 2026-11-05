@@ -1,0 +1,12 @@
+--- reports/V9-P9/final/before/tests/test_s1_r15_registration.py	2026-10-28 15:22:52
++++ tests/v9/experiments/test_s1_r15_registration.py	2026-10-28 18:09:16
+@@ -132,7 +132,8 @@
+ def test_r15_is_current_and_r11_to_r14_stay_registered_history():
+     assert R15 == "s1-phase1-20261028-r15"
+     assert spec.CURRENT_EXPERIMENT_ID == R15
+-    assert spec.REGISTERED_EXPERIMENT_IDS[-2:] == (R14, R15)
++    # P59 appended the eval-only final identity after r15
++    assert spec.REGISTERED_EXPERIMENT_IDS[-3:] == (R14, R15, spec.FINAL_EXPERIMENT_ID)
+     assert worker.document_experiment_scope({"experiment_id": R15}) == R15
+ 
+ 

@@ -1,0 +1,135 @@
+{
+ "schema": "ainerzero.v9.s1.r11.p30.metrics.v1",
+ "task": "ainerzero.V9.P30",
+ "agent": "composer-m7k2",
+ "prior_agent": "step5-ub8z",
+ "experiment_id": "s1-phase1-20261023-r11",
+ "budget_registration": "RESEARCH_LOG R20261023-S1-phase1-r11-budget",
+ "document_sha256": "b73b558953a06ce551c2e8613a09d0785b1c0222f8ff57f99c49da2ec812fb4e",
+ "file_sha256": "aeb8a7a800deab87bce08940489796edb0cc1949cde0f4999163f52decc1f105",
+ "r10_document_sha256": "19639d86b8f14ce0873ba367ae8d233fd371495a4c055af2b7344aa50b850718",
+ "r10_file_sha256": "5fea3ca73da29658753932ff8d38c96dadd33314b1db022576caea505c20d1ff",
+ "r10_file_sha256_recheck": "5fea3ca73da29658753932ff8d38c96dadd33314b1db022576caea505c20d1ff",
+ "frozen_values": {
+  "arm1_deadline_seconds": 7,
+  "budget_registration": "RESEARCH_LOG R20261023-S1-phase1-r11-budget",
+  "checkpoint_updates": [
+   0,
+   439,
+   878,
+   1755,
+   3510
+  ],
+  "deadline_seconds": 1200,
+  "deadline_source": "user_approved R20261023-S1-phase1-r11-budget",
+  "eval_batches": 175,
+  "experiment_id": "s1-phase1-20261023-r11",
+  "measured_throughput": {
+   "deadline_over_slowest_ratio": 1.2085,
+   "derivation": "per-step = wall_seconds / (3510 - remaining_optimizer_steps) over the 9 r10 training rows of the source file",
+   "note": "3510 steps at the slowest measured throughput need about 993 s; the registered 1200 s deadline carries about 21% headroom",
+   "per_step_seconds": {
+    "median": 0.20182,
+    "slowest": 0.2829
+   },
+   "registered_deadline_seconds": 1200,
+   "slowest_wall_seconds": 992.98,
+   "source": "reports/V9-S1/metrics.json",
+   "source_sha256": "8b5017c24fb710a3bf55508a8ac917d17cb41e29ba464c32b092e37b14db6ce4",
+   "steps": 3510
+  },
+  "per_run_wall_max_seconds": 1200.0,
+  "phase_wall_max_seconds": 14400.0,
+  "query_limit": 8,
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "supervision_seconds": 1250,
+  "updates": 3510
+ },
+ "freeze_status": "completed",
+ "leaf_diff": {
+  "leaf_count": 431,
+  "changed_leaf_count": 58,
+  "bound_files_outside_allowlist": [],
+  "non_identity_leaves_outside_allowlist": [],
+  "changed_bound_files": [
+   "src/ainerzero/v9/experiments/s1/commands.py",
+   "src/ainerzero/v9/experiments/s1/prereg.py",
+   "src/ainerzero/v9/experiments/s1/spec.py",
+   "src/ainerzero/v9/experiments/s1/worker.py"
+  ]
+ },
+ "entry_checks": {
+  "verify": {
+   "status": "completed",
+   "approval_approved": false,
+   "document_sha256": "b73b558953a06ce551c2e8613a09d0785b1c0222f8ff57f99c49da2ec812fb4e"
+  },
+  "train": {
+   "status": "refused",
+   "refused_stage": "preregistration_not_approved",
+   "exit_code": 3
+  },
+  "eval_175": {
+   "passed_budget_gate": true,
+   "error": "EvalBindingError: no completed run binds arm=arm2 seed=0 updates=3510 preregistration=b73b558953a06ce551c2e8613a09d0785b1c0222f8ff57f99c49da2ec812fb4e",
+   "experiment_id": "s1-phase1-20261023-r11"
+  },
+  "eval_48_control": {
+   "refused_stage": "eval_call_budget_exceeded",
+   "window_probe_batches": 175,
+   "registered_eval_batches": 48
+  }
+ },
+ "tests": {
+  "r11_registration": {
+   "tests": 17,
+   "failures": 0,
+   "errors": 0,
+   "skipped": 0,
+   "passed": 17
+  },
+  "experiments": {
+   "tests": 326,
+   "failures": 1,
+   "errors": 0,
+   "skipped": 0,
+   "passed": 325
+  },
+  "v9_other": {
+   "tests": 378,
+   "failures": 0,
+   "errors": 0,
+   "skipped": 0,
+   "passed": 378
+  },
+  "note": "experiments 1 failure is pre-existing (real ledger copy after r10 run); same as prior agent before archive"
+ },
+ "sha256sums": [
+  "c42413c8d872e0e1554dad3c242926559c14de208b8ec4f4e47e26ac5190becb  src/ainerzero/v9/experiments/s1/spec.py",
+  "d3a6029157721c2bd82df101d26c98e2ddc8d9076042fbc61e7a49625f6b4580  src/ainerzero/v9/experiments/s1/prereg.py",
+  "237680260e3d57338015168525e24cb11f38f7f9d190865b1ed89933d2894505  src/ainerzero/v9/experiments/s1/worker.py",
+  "c66e02c383a13ae30ad7ea509e2ad8f991200cdee1d528b7d58903d420cfb91a  src/ainerzero/v9/experiments/s1/commands.py",
+  "290d88de728fa06087c146dfb0bf63eb4608b9c639baad8e8939fb807b818519  tests/v9/experiments/test_s1_r11_registration.py",
+  "abb7a672642e4585a8afeb0e3a1d4401b7c8af217193d176c70f83d34ffc752d  tests/v9/experiments/test_s1_prereg.py",
+  "27b7d6215ded6a074b707dc2747b8a1862d8796a91d092679bbd592f6ba21d85  tests/v9/experiments/test_s1_r8_completion.py",
+  "6940c17f86a47bbd7f2cfb79ded97886e1f6ace35b4f6898c2dd5c18defafd24  tests/v9/experiments/test_s1_r8_d_budget.py",
+  "05cf4503b1d9928603e74be9adb6cf18cb8c2ad2b8aa8031a0557998c1a857c2  artifacts/v9/s1/phase1/r11/draft_preregistration.json",
+  "aeb8a7a800deab87bce08940489796edb0cc1949cde0f4999163f52decc1f105  artifacts/v9/s1/phase1/r11/pre_registration.json",
+  "c297870d60e1dd30abc281616772d06ba578bfd563d09b63b81aef73b4e4d765  artifacts/v9/s1/phase1/r11/pre_registration.json.sha256",
+  "3c9fd77953b94d87141c2ac896bd2470f46b952eee65a10e9eed34d4391c1047  artifacts/v9/s1/phase1/r11/dataset_ref.json",
+  "5fea3ca73da29658753932ff8d38c96dadd33314b1db022576caea505c20d1ff  artifacts/v9/s1/phase1/r10/pre_registration.json",
+  "8b5017c24fb710a3bf55508a8ac917d17cb41e29ba464c32b092e37b14db6ce4  reports/V9-S1/metrics.json",
+  "b4e7d1218b29652c188425ec6d1def2fe49d8fd1a22e7192d01b705ae4b11ce8  reports/V9-P9/r1-archive/smoke_metrics.json",
+  "b73b558953a06ce551c2e8613a09d0785b1c0222f8ff57f99c49da2ec812fb4e  DOCUMENT_SHA256(artifacts/v9/s1/phase1/r11/pre_registration.json)"
+ ],
+ "this_agent_changes": [
+  "Completed remaining freeze/entry/report after step5-ub8z lease expiry",
+  "refreeze_draft preserves r10 arm rows (no arm1 identity key drift)",
+  "entry_eval_check: 175→EvalBindingError; 48-control→eval_call_budget_exceeded",
+  "Added r11 harness collectors under reports/V9-P9/r11/harness/"
+ ]
+}

@@ -1,0 +1,91 @@
+Repo root: /Users/mac/AinerWorkFlow/AinerZero
+Production DB path: /Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/s1/phase1/control.sqlite3
+Production control.sqlite3 SHA256: fe31fee6c47b47b70b42fd04c5ddabbcca26483cc191deaa7a65b00a8ef2ed60
+WAL exists: False, SHM exists: False
+Temporary DB copy path: /tmp/ainerzero_p42_audit_copy/control.sqlite3
+Temporary DB SHA256 before read: fe31fee6c47b47b70b42fd04c5ddabbcca26483cc191deaa7a65b00a8ef2ed60
+Found 5 experiments in control.sqlite3:
+  - exp_id=s1-phase1-prereg-prep-20261021, req_id=s1-phase1-prereg-prep, created_at=2026-10-21T12:56:13.963836+03:00 (1792576573.964), manifest_hash=85d4e154342e29158355df137b080f2c118b5de7eae840d95a1fb05c7d8fb86b
+  - exp_id=s1-phase1-20261021, req_id=s1-phase1-20261021:training, created_at=2026-10-23T09:04:21.434514+03:00 (1792735461.435), manifest_hash=0b9adeae24364cdf2e9345d08db2d0a02b9dced1a96d22a527762d400e7e0fd6
+  - exp_id=s1-phase1-20261023-r11, req_id=s1-phase1-20261023-r11:training, created_at=2026-10-23T16:32:18.870239+03:00 (1792762338.870), manifest_hash=0b9adeae24364cdf2e9345d08db2d0a02b9dced1a96d22a527762d400e7e0fd6
+  - exp_id=s1-phase1-20261023-r12, req_id=s1-phase1-20261023-r12:training, created_at=2026-10-24T08:50:31.316144+03:00 (1792821031.316), manifest_hash=0b9adeae24364cdf2e9345d08db2d0a02b9dced1a96d22a527762d400e7e0fd6
+  - exp_id=s1-phase1-20261024-r13, req_id=s1-phase1-20261024-r13:training, created_at=2026-10-25T14:42:26.279864+03:00 (1792928546.280), manifest_hash=0b9adeae24364cdf2e9345d08db2d0a02b9dced1a96d22a527762d400e7e0fd6
+Found 5 runs for experiment s1-phase1-20261024-r13:
+  - run_id=19f2d1eb4bf04da4909d87501348028d, req_id=s1-phase1-20261024-r13:arm2:0:19f2d1eb4bf04da4909d87501348028d, state=completed, opt_steps=3510, active_s=267.34, created_at=2026-10-25T14:42:26.280532+03:00 (1792928546.281), updated_at=2026-10-25T14:57:07.492489+03:00 (1792929427.492), elapsed=881.21s
+  - run_id=7d155060fecc4070a9a68e95fb3761fa, req_id=s1-phase1-20261024-r13:arm2:1:7d155060fecc4070a9a68e95fb3761fa, state=completed, opt_steps=3510, active_s=236.45, created_at=2026-10-25T14:57:16.262667+03:00 (1792929436.263), updated_at=2026-10-25T15:12:08.301032+03:00 (1792930328.301), elapsed=892.04s
+  - run_id=1678cc1cc5d1468dabb3e86a16a45e97, req_id=s1-phase1-20261024-r13:arm2:2:1678cc1cc5d1468dabb3e86a16a45e97, state=completed, opt_steps=3510, active_s=227.46, created_at=2026-10-25T15:12:17.577780+03:00 (1792930337.578), updated_at=2026-10-25T15:26:37.098647+03:00 (1792931197.099), elapsed=859.52s
+  - run_id=403ae816720c4ad9b4f75ecd86e7b109, req_id=s1-phase1-20261024-r13:arm3:0:403ae816720c4ad9b4f75ecd86e7b109, state=completed, opt_steps=3510, active_s=187.17, created_at=2026-10-25T15:26:46.545540+03:00 (1792931206.546), updated_at=2026-10-25T15:38:53.314879+03:00 (1792931933.315), elapsed=726.77s
+  - run_id=92b694d35a324af083fc27183bb08f8c, req_id=s1-phase1-20261024-r13:arm3:1:92b694d35a324af083fc27183bb08f8c, state=failed, opt_steps=2566, active_s=138.91, created_at=2026-10-25T15:39:02.337035+03:00 (1792931942.337), updated_at=2026-10-25T15:46:42.107156+03:00 (1792932402.107), elapsed=459.77s
+Temporary DB SHA256 after read: fe31fee6c47b47b70b42fd04c5ddabbcca26483cc191deaa7a65b00a8ef2ed60
+Production control.sqlite3 SHA256 after audit: fe31fee6c47b47b70b42fd04c5ddabbcca26483cc191deaa7a65b00a8ef2ed60
+
+=== GATE 1: RunStore Experiment Calendar Window ===
+Formula: deadline = experiment.created_at + 14400.0s
+Experiment Created At: 2026-10-25T14:42:26.279864+03:00 (1792928546.280)
+Gate 1 Deadline:       2026-10-25T18:42:26.279864+03:00 (1792942946.280)
+Audit Time (Now):      2026-10-25T22:41:56.938991+03:00 (1792957316.939)
+Gate 1 Elapsed:        28770.66 s (7.99 h)
+Gate 1 Balance:        0.00 s
+Gate 1 Expired:        True (overdue by 14370.66 s / 3.99 h)
+
+=== GATE 2: S1 Conservative Run-by-Run Wall-Clock Accounting ===
+Formula: sum(max(reserved_active, terminal_elapsed)) for all runs in experiment
+  - run 19f2d1eb4bf04da4909d87501348028d: state=completed, terminal_elapsed=881.21s, reserved=267.34s, counted=881.21s
+  - run 7d155060fecc4070a9a68e95fb3761fa: state=completed, terminal_elapsed=892.04s, reserved=236.45s, counted=892.04s
+  - run 1678cc1cc5d1468dabb3e86a16a45e97: state=completed, terminal_elapsed=859.52s, reserved=227.46s, counted=859.52s
+  - run 403ae816720c4ad9b4f75ecd86e7b109: state=completed, terminal_elapsed=726.77s, reserved=187.17s, counted=726.77s
+  - run 92b694d35a324af083fc27183bb08f8c: state=failed, terminal_elapsed=459.77s, reserved=138.91s, counted=459.77s
+Gate 2 Total Consumed: 3819.31 s (1.06 h)
+Gate 2 Balance:        10580.69 s (2.94 h)
+
+=== DUAL GATE SYNTHESIS ===
+Gate 1 (Calendar Hard Window): EXPIRED (Balance: 0.00 s, Closed at: 2026-10-25T18:42:26.279864+03:00 (1792942946.280))
+Gate 2 (Run-by-Run Conservative): PASS (Balance: 10580.69 s)
+CONCLUSION: Both gates MUST pass for any subsequent run to be admitted.
+Because Gate 1 is hard-expired, no further runs can be launched under this experiment ID.
+A new registration (e.g. r14) with newly approved window is strictly required.
+
+=== PREREG & IDENTITY VERIFICATION ===
+Prereg File SHA256:     9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d
+Prereg Document SHA256: 1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30
+Prereg file SHA and document SHA match expected values exactly.
+RESEARCH_LOG approval line present: True
+
+=== RUN DIRECTORIES & CHECKPOINTS AUDIT ===
+Run 19f2d1eb4bf04da4909d87501348028d (s1-phase1-20261024-r13:arm2:0:19f2d1eb4bf04da4909d87501348028d):
+  state: completed, optimizer_steps: 3510
+  has_completion: True, has_params: True
+  params SHA: 9d155fbf2817b75c2963c06e31053f732f08eac80446c5650673f095126a1702 (matches recorded: True)
+  checkpoints: ['updates-0.npz', 'updates-1755.npz', 'updates-439.npz', 'updates-878.npz']
+Run 7d155060fecc4070a9a68e95fb3761fa (s1-phase1-20261024-r13:arm2:1:7d155060fecc4070a9a68e95fb3761fa):
+  state: completed, optimizer_steps: 3510
+  has_completion: True, has_params: True
+  params SHA: c4d16f6e9a48b666a218ed41afcff607df3470dd07de8661921c237b4516f643 (matches recorded: True)
+  checkpoints: ['updates-0.npz', 'updates-1755.npz', 'updates-439.npz', 'updates-878.npz']
+Run 1678cc1cc5d1468dabb3e86a16a45e97 (s1-phase1-20261024-r13:arm2:2:1678cc1cc5d1468dabb3e86a16a45e97):
+  state: completed, optimizer_steps: 3510
+  has_completion: True, has_params: True
+  params SHA: f7f9a661f24140404005325aec714bba85970f323333940ba934458821accf01 (matches recorded: True)
+  checkpoints: ['updates-0.npz', 'updates-1755.npz', 'updates-439.npz', 'updates-878.npz']
+Run 403ae816720c4ad9b4f75ecd86e7b109 (s1-phase1-20261024-r13:arm3:0:403ae816720c4ad9b4f75ecd86e7b109):
+  state: completed, optimizer_steps: 3510
+  has_completion: True, has_params: True
+  params SHA: 577429aa3e1becabd40a5f8787f8d696c2e237982bea725a96ec1b1c8ba6f51e (matches recorded: True)
+  checkpoints: ['updates-0.npz', 'updates-1755.npz', 'updates-439.npz', 'updates-878.npz']
+Run 92b694d35a324af083fc27183bb08f8c (s1-phase1-20261024-r13:arm3:1:92b694d35a324af083fc27183bb08f8c):
+  state: failed, optimizer_steps: 2566
+  has_completion: False, has_params: False
+  params SHA: None (matches recorded: True)
+  checkpoints: ['updates-0.npz', 'updates-1755.npz', 'updates-439.npz', 'updates-878.npz']
+Final partition artifacts found in phase1: []
+Final partition confirmed: neither generated nor read.
+
+=== CAPABILITY & LOSS INTERPRETATION ===
+Note: 4 runs achieved low training loss (0.019, 0.00048, 0.0013, 0.00079).
+However, training loss/development NLL is purely internal training telemetry.
+Phase 1 capability acceptance strictly requires full 9 runs + evaluation on AWZ benchmark.
+Since evaluation was not executed, capability acceptance CANNOT be claimed.
+
+=== P36 RECOVERY STATUS ===
+P36 orphan recovery remains FROZEN. No recovery operations attempted.
+Wrote metrics to /Users/mac/AinerWorkFlow/AinerZero/reports/V9-P42/P42-metrics.json

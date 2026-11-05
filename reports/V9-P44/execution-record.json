@@ -1,0 +1,74 @@
+{
+  "entrypoint_runs": [
+    {
+      "argv": [
+        "python3",
+        "reports/V9-P44/collect_evidence.py"
+      ],
+      "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+      "returncode": 0,
+      "stdout_summary": {
+        "jobs_count": 6,
+        "clone": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/ainerzero-p44-rf604yfe/control.sqlite3",
+        "production_unchanged": true,
+        "conservative_sum": 3819.310649394989,
+        "reserved_sum": 1057.3214704760499,
+        "deadline": "2026-10-25T18:42:26.279864+03:00",
+        "approval": true,
+        "source_matches": 21,
+        "data_matches": 5,
+        "params": 4,
+        "intermediate_checkpoints": 20
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "python3",
+        "reports/V9-P44/interpret_evidence.py"
+      ],
+      "invocation": 1,
+      "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+      "returncode": 0,
+      "stdout": "{\"checkpoint_comparisons\":25,\"matched_recorded_hashes\":20,\"unverified\":5,\"dataset_projection_match\":false,\"current_generator_drift\":2}",
+      "stderr": "",
+      "note": "projection included extra spec field; corrected before final report; retained raw input unchanged"
+    },
+    {
+      "argv": [
+        "python3",
+        "reports/V9-P44/interpret_evidence.py"
+      ],
+      "invocation": 2,
+      "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+      "returncode": 0,
+      "stdout": "{\"checkpoint_comparisons\":25,\"matched_recorded_hashes\":20,\"unverified\":5,\"dataset_projection_match\":true,\"current_generator_drift\":2}",
+      "stderr": "",
+      "note": "uses existing raw responses; no DB open or second snapshot"
+    },
+    {
+      "argv": [
+        "python3",
+        "reports/V9-P44/finalize_report.py"
+      ],
+      "invocation": 1,
+      "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "AssertionError: clone_still_unchanged was false because SQLite read-only clone created WAL/SHM; raw traceback retained in raw/finalize-initial.stderr"
+    },
+    {
+      "argv": [
+        "python3",
+        "reports/V9-P44/finalize_report.py"
+      ],
+      "invocation": 2,
+      "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+      "returncode": 0,
+      "stdout": "P44 report and final evidence index prepared",
+      "stderr": "",
+      "note": "Corrected safety assertion checks DB body and separately discloses newly created clone sidecars; no new DB query"
+    }
+  ],
+  "scope": "Audit command subprocesses have raw separate stdout/stderr. Interactive preliminary file reads and initial show/claim are in tool transcript; final conclusions use independently saved raw evidence."
+}

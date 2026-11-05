@@ -1,0 +1,40 @@
+{
+ "checks": {
+  "binding_ok": true,
+  "control_ok": true,
+  "control_plan_ok": true,
+  "passed_budget": true
+ },
+ "control_48_refused": true,
+ "passed_budget_gate_175": true,
+ "results": {
+  "eval_batches_175": {
+   "error": "EvalBindingError: no completed run binds arm=arm2 seed=0 updates=3510 preregistration=b73b558953a06ce551c2e8613a09d0785b1c0222f8ff57f99c49da2ec812fb4e",
+   "eval_call_plan": null,
+   "experiment_id": "s1-phase1-20261023-r11",
+   "message": null,
+   "refused_stage": null,
+   "status": "failed"
+  },
+  "eval_batches_48_control": {
+   "error": null,
+   "eval_call_plan": {
+    "checkpoints": 5,
+    "development_windows": 550,
+    "registered_eval_batches": 48,
+    "suite_groups_beyond_window_probe": [
+     "topology step_sequence/probe_graph",
+     "few-shot support/query step_sequence + 2 encodes per query",
+     "M2 three-condition probes",
+     "sample-efficiency reload probes"
+    ],
+    "window_batches_per_checkpoint": 35,
+    "window_probe_batches": 175
+   },
+   "message": "the frozen eval_batches=48 cannot cover the frozen window-probe batches (175); the r5 disclosure said the suite exceeds this registration. Eval fails closed until a coordinator registers a sufficient eval call budget (no silent expansion).",
+   "refused_stage": "eval_call_budget_exceeded",
+   "status": "refused"
+  }
+ },
+ "status": "completed"
+}

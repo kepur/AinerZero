@@ -1,0 +1,153 @@
+{
+  "reviewer": "glm-p23b-1200",
+  "review_task": "ainerzero.V9.P23",
+  "reviewed_task": "ainerzero.V9.P18",
+  "reviewed_revision": "r4 (author step5-9f2k)",
+  "review_date": "2026-10-22",
+  "review_nature": "non-author read-only material review, CPU stdlib only, no MLX/train/eval/data/final/budget/download/approval",
+  "verdict": "material_pass_no_blocking_defects",
+  "d1_d7": {
+    "D1_time_causality_removed": true,
+    "D2_illustration_totals_removed_components_labelled": true,
+    "D3_two_stage_metadata_no_clobber": true,
+    "D4_full_snapshot_paths_and_source_manifest_basis": true,
+    "D5_stale_card_numbers_cleared_next_review_P23": true,
+    "D6_350_worker_subprocess_timeout_only": true,
+    "D7_conditional_byte_identity_scope_correct": true
+  },
+  "input_identity": {
+    "pinned_review_inputs_total": 67,
+    "pinned_review_inputs_match_sha256": 67,
+    "delivery_manifest_entries": 33,
+    "delivery_manifest_match": 33,
+    "r4_dir_files_scanned": 34,
+    "uncovered_files": [],
+    "r4_dir_modified_by_reviewer": false,
+    "r4_dir_files_unchanged_pre_post": 34
+  },
+  "r3_r4_leaf_diff": {
+    "metrics_leaves_r3": 628,
+    "metrics_leaves_r4": 664,
+    "author_claim": "664 leaves, 45 differ",
+    "author_claim_reproduced": true,
+    "reproduction_basis": "arrays-as-atomic-leaves enumeration",
+    "common_leaves": 628,
+    "in_place_changed_strings": 9,
+    "added_leaves": 36,
+    "removed_leaves": 0,
+    "numeric_in_place_changes": 0,
+    "science_blocks_identical": ["k_coverage", "shape", "budget.frozen_primitives", "budget.training_run_per_arm_seed", "budget.d_candidate_run", "budget.post_hoc_eval_per_arm_seed", "budget.phase"],
+    "dev_coverage_changed_leaves": 7,
+    "dev_coverage_change_types": ["executor", "revision", "schema", "revision_basis entries (4)"]
+  },
+  "byte_reproduction": {
+    "independent_copy_a": "reports/V9-P23/glm-p23b-1200/analysis/copyA_{dev_coverage,build_metrics}.py (sha pinned-identical)",
+    "independent_copy_b": "reports/V9-P23/glm-p23b-1200/analysis/copyB_{...}.py",
+    "output_roots": ["reports/V9-P23/glm-p23b-1200/out1", "reports/V9-P23/glm-p23b-1200/out2"],
+    "stage_rc": {"out1.stage1": 0, "out1.stage2": 0, "out2.stage1": 0, "out2.stage2": 0},
+    "stderr_bytes": {"out1.stage1": 0, "out1.stage2": 0, "out2.stage1": 0, "out2.stage2": 0},
+    "dev_coverage_sha256": "e8018818dacf70b87ac6150c3332c773c4dec4be9606ff3737c800969f5f7331",
+    "metrics_sha256": "ef53e69af5d4c2b47dfe3196504d8b27c88d2819566ba0fcf4c0bf07850ce9b4",
+    "three_way_byte_identical_with_author_products": true,
+    "stage_metadata_differ_per_root": true,
+    "dev_coverage_contains_timestamps_or_abs_paths": false,
+    "metrics_embeds_input_mtimes_and_abs_paths": true
+  },
+  "normal_rejection_negatives_5of5": {
+    "stage1_non_empty_dir": "refusing to run: output directory is not empty ... out1 (rc=1)",
+    "stage2_metrics_exists": "refusing to run: metrics.json already exists in ... out1 (rc=1)",
+    "stage2_foreign_files": "refusing to run: output directory holds foreign files ['reviewer_note.txt'] (rc=1)",
+    "stage1_no_output_root": "refusing to run: pass --out DIR or set V9P18R4_OUT (rc=1)",
+    "stage2_no_coverage_input": "need --coverage PATH (rc=1)",
+    "products_sha_after_refusals_unchanged": true
+  },
+  "broken_guard_load_bearing_control": {
+    "method": "isolated emasculated copies with ONLY guard conditions altered; run against reviewer-created pre-populated product dirs",
+    "stage1": {
+      "emasculator": "sed: 'if path.exists() and any(path.iterdir())' -> 'if path.exists() and False'",
+      "prepop": "reports/V9-P23/glm-p23b-1200/guardoff_prepop1/dev_coverage.json (marker c9c4a0468c2a0a00...)",
+      "result": "rc=0, marker destroyed, file silently overwritten with real product e8018818...",
+      "proves": "non-empty-dir no-clobber guard is load-bearing"
+    },
+    "stage2": {
+      "emasculators_required": ["metrics-exists branch disabled", "foreign-files branch disabled", "metrics.json added to allowed-from-previous-stage set"],
+      "note": "metrics.json is caught by TWO independent branches (explicit exists check + foreign check); single-line emasculation insufficient",
+      "prepop": "reports/V9-P23/glm-p23b-1200/guardoff_prepop2/metrics.json (marker 233dfde0f25b458a...)",
+      "result": "rc=0, marker destroyed, silently overwritten with real product ef53e69a...",
+      "proves": "stage2 no-clobber guard is load-bearing and layered"
+    }
+  },
+  "d6_source_anchors_verified_from_frozen_snapshot": {
+    "commands_py_42_PREP_BUDGET_eval": 300.0,
+    "spec_py_77_supervision_extra_seconds": 50.0,
+    "commands_py_200_supervision_formula": "budget + spec.TIMING[supervision_extra_seconds] -> 350",
+    "commands_py_227_subprocess_run_timeout": true,
+    "worker_py_440_ledger_reserve": "min(120, max(10, 0.5*300)) = 120",
+    "scope_statement_matches_source": true
+  },
+  "d4_live_drift_observation": {
+    "author_claim": "live s1 drift 5/7 files differ from frozen",
+    "reviewer_measurement_among_named_7": "6/7 drifted (evaluation/runtime/commands/spec/prereg/worker), metrics.py still matches frozen",
+    "classification": "stale live-state observation, not material-bound (material correctly binds to frozen snapshot)",
+    "snapshot_source_manifest_verified": true,
+    "frozen_7_files_match_source_manifest": true,
+    "lifecycle_gap_retained": true,
+    "lifecycle_current_sha_pinned": "22ded55ce136b3186e48051ca1681cef5fc129e8a13fcd515261afccde196b3f"
+  },
+  "defects_non_blocking": [
+    {
+      "id": "F-A",
+      "severity": "medium",
+      "claim": "REPORT §3 states guard negatives 5/5 archived in logs/guard_*.err",
+      "actuality": "only 2 archived refusal logs (stage1 non-empty, stage2 metrics-exists); foreign-file and no-output-root negatives have no archived log entries",
+      "mitigation": "guard behaviour independently verified 5/5 by reviewer with own copies; product SHAs pinned consistent",
+      "recommended_action": "tier-1 acceptance note; no re-run needed"
+    },
+    {
+      "id": "F-B",
+      "severity": "low",
+      "claim": "REPORT states live drift 5/7",
+      "actuality": "reviewer measures 6/7 at review time (metrics.py still matches frozen)",
+      "classification": "stale live observation; no material binding",
+      "recommended_action": "note only"
+    },
+    {
+      "id": "F-C",
+      "severity": "cosmetic",
+      "claim": "stage2 refusal help text says 'r3_dev_coverage.py'",
+      "actuality": "leftover name; harmless",
+      "recommended_action": "optional wording fix in a future revision"
+    }
+  ],
+  "retained_negatives_confirmed": [
+    "k=1 crash (evaluation.py:331 frames<2 BackendError)",
+    "support writes one transition too few",
+    "probe_graph real-backend TypeError (S1-R6 item 3)",
+    "repaired counts from count-substitute backend",
+    "P19 per-k sub-block inconsistency preserved (NEG5)",
+    "card-local ledger (control.sqlite3 per output root)",
+    "lifecycle.py not in r5 snapshot (identity gap)",
+    "k=8 insufficient_data; eval_batches=48 not an approval basis"
+  ],
+  "unverified_by_this_review": [
+    "any real MLX numeric path or eval completion",
+    "A/B options scientific approval status",
+    "k=1 repair effectiveness",
+    "new-data generation cost",
+    "M2 probe selection robustness"
+  ],
+  "cpu_only": {
+    "mlx_imported": false,
+    "train_or_eval_or_data_or_final_or_download": false,
+    "budget_lines_written": false,
+    "production_relay_or_runner_touched": false,
+    "author_material_writes": 0
+  },
+  "evidence_paths": {
+    "verification_json": "reports/V9-P23/glm-p23b-1200/output/step1_verification.json",
+    "repro_roots": ["reports/V9-P23/glm-p23b-1200/out1", "reports/V9-P23/glm-p23b-1200/out2"],
+    "negatives": "reports/V9-P23/glm-p23b-1200/neg1..neg5.{out,err}",
+    "guard_off": "reports/V9-P23/glm-p23b-1200/{analysis/guardoff_*.py, guardoff_prepop1/, guardoff_prepop2/, guardoff1.out, guardoff2b.out}",
+    "reviewer_report": "reports/V9-P23/glm-p23b-1200/REPORT.md"
+  }
+}

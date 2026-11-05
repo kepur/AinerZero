@@ -1,0 +1,14 @@
+--- reports/V9-P9/r15/before/src/runtime.py	2026-10-23 14:17:14
++++ src/ainerzero/v9/experiments/s1/runtime.py	2026-10-28 15:18:00
+@@ -120,6 +120,11 @@
+ 
+         return np.asarray(model.encode(mx.array(np.asarray(obs_row, dtype=np.float32)[None, :])))[0]
+ 
++    def probe_query(self, model, obs_row) -> np.ndarray:
++        """r15 (ainerzero.V9.P53): the few-shot query in the space of the nodes that
++        :meth:`probe_graph` exposes (``model.probe_key`` of the encoder output)."""
++        return np.asarray(model.probe_key(self.encode(model, obs_row)))
++
+     # -- bounded sequence execution ---------------------------------------
+     def step_sequence(
+         self,

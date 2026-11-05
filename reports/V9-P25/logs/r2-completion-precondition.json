@@ -1,0 +1,114 @@
+{
+ "schema": "ainerzero.v9.s1.p25.r2_probe.v1",
+ "probe_by": "step5p-9q4t (P25 非作者复核)",
+ "note": "temporary card-local RunStore files under reports/V9-P25/.tmp-r2; central ledger untouched; no model work",
+ "frozen": {
+  "updates": 3510,
+  "deadline_seconds": 450.0
+ },
+ "before_truncation": {
+  "truncation_point": "before the terminal commit (deadline already crossed)",
+  "first_call": {
+   "status": "failed",
+   "refused_stage": "completion_deadline_exceeded",
+   "ledger_state": null,
+   "ledger_state_is_completed": null,
+   "completion_invalid_markers": null,
+   "rolled_back": false,
+   "message": "the frozen per-run deadline/completion protocol refused this run; the run is not completed and no consumer may accept it. A terminal row that was already committed is left untouched (append-only)."
+  },
+  "ledger_state_after_first": "failed",
+  "markers_after_first": [
+   "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/before/runs/69aab8d4d30a46169e7d3cf952b96000/completion_invalid.json"
+  ],
+  "second_call": {
+   "status": "refused",
+   "refused_stage": "completion_already_invalid",
+   "ledger_state": "failed",
+   "ledger_state_is_completed": false,
+   "completion_invalid_markers": [
+    "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/before/runs/69aab8d4d30a46169e7d3cf952b96000/completion_invalid.json"
+   ],
+   "rolled_back": false,
+   "message": "1 invalidation marker(s) already exist for this run; it was refused earlier and may not be reported as completed. The marker and the terminal row are left untouched; this adapter neither rewrites a terminal state nor refunds a budget."
+  },
+  "ledger_state_after_second": "failed",
+  "markers_after_second": [
+   "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/before/runs/69aab8d4d30a46169e7d3cf952b96000/completion_invalid.json"
+  ],
+  "second_call_claims_completed": false,
+  "verdict": "PASS"
+ },
+ "after_truncation": {
+  "truncation_point": "inside/after the terminal commit (row already completed)",
+  "second_call": {
+   "status": "refused",
+   "refused_stage": "completion_already_invalid",
+   "ledger_state": "completed",
+   "ledger_state_is_completed": true,
+   "completion_invalid_markers": [
+    "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/after/runs/0471d67581ce4b2cbd51aabc50a0f16c/completion_invalid.json"
+   ],
+   "rolled_back": false,
+   "message": "1 invalidation marker(s) already exist for this run; it was refused earlier and may not be reported as completed. The marker and the terminal row are left untouched; this adapter neither rewrites a terminal state nor refunds a budget."
+  },
+  "ledger_state_after_second": "completed",
+  "markers_after_second": [
+   "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/after/runs/0471d67581ce4b2cbd51aabc50a0f16c/completion_invalid.json"
+  ],
+  "second_call_claims_completed": false,
+  "verdict": "PASS"
+ },
+ "terminal_without_marker": {
+  "truncation_point": "no marker; ledger row already failed",
+  "second_call": {
+   "status": "refused",
+   "refused_stage": "ledger_terminal_not_completed",
+   "ledger_state": "failed",
+   "ledger_state_is_completed": false,
+   "completion_invalid_markers": [],
+   "rolled_back": false,
+   "message": "the ledger already holds terminal state 'failed'; a completion claim on a terminal row that is not 'completed' is not a completion. The marker and the terminal row are left untouched; this adapter neither rewrites a terminal state nor refunds a budget."
+  },
+  "ledger_state_after_second": "failed",
+  "second_call_claims_completed": false,
+  "verdict": "PASS"
+ },
+ "sabotage_control": {
+  "method": "isolated source copy; only _completion_precondition neutered (returns None immediately)",
+  "diff": "--- /Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/worker.py\t2026-10-22 15:36:39\n+++ /Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/sabotage-src/ainerzero/v9/experiments/s1/worker.py\t2026-10-22 20:51:39\n@@ -754,6 +754,7 @@\n     terminal row are left exactly as they are, and no new marker is invented.\n     Returns the refusal report, or ``None`` when the attempt may proceed.\n     \"\"\"\n+    return None  # P25 sabotage: the completion precondition guard is removed\n     run_dir = _run_dir_for(output_root, run_id)\n     markers = completion.invalid_markers(run_dir)\n     try:\n\n# whole-tree check (diff -r): exactly one file differs\ndiff -r /Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/worker.py /Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/sabotage-src/ainerzero/v9/experiments/s1/worker.py\n756a757\n>     return None  # P25 sabotage: the completion precondition guard is removed\n",
+  "child": {
+   "truncation_point": "before the terminal commit (deadline already crossed)",
+   "first_call": {
+    "status": "failed",
+    "refused_stage": "completion_deadline_exceeded",
+    "ledger_state": null,
+    "ledger_state_is_completed": null,
+    "completion_invalid_markers": null,
+    "rolled_back": false,
+    "message": "the frozen per-run deadline/completion protocol refused this run; the run is not completed and no consumer may accept it. A terminal row that was already committed is left untouched (append-only)."
+   },
+   "ledger_state_after_first": "failed",
+   "markers_after_first": [
+    "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/before/runs/31c4bcb7ab5f4071837b0e5a93d9ebb0/completion_invalid.json"
+   ],
+   "second_call": {
+    "status": "completed",
+    "refused_stage": null,
+    "ledger_state": null,
+    "ledger_state_is_completed": null,
+    "completion_invalid_markers": null,
+    "rolled_back": null,
+    "message": null
+   },
+   "ledger_state_after_second": "failed",
+   "markers_after_second": [
+    "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/before/runs/31c4bcb7ab5f4071837b0e5a93d9ebb0/completion_invalid.json"
+   ],
+   "second_call_claims_completed": true,
+   "verdict": "FAIL",
+   "imported_worker_from": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P25/.tmp-r2/sabotage-src/ainerzero/v9/experiments/s1/worker.py",
+   "bug_reproduced": true
+  }
+ }
+}

@@ -1,0 +1,138 @@
+{
+ "deadline_controls": [
+  {
+   "checkpoint_saves": 1,
+   "duty_sleeps": 1,
+   "error": "TimeoutError: frozen per-run deadline exceeded",
+   "gradient_calls": 3510,
+   "kind": "last-gradient",
+   "receipt_written": false,
+   "status": "aborted"
+  },
+  {
+   "checkpoint_saves": 1,
+   "duty_sleeps": 1,
+   "error": "TimeoutError: frozen per-run deadline exceeded",
+   "gradient_calls": 3510,
+   "kind": "duty-sleep",
+   "receipt_written": false,
+   "status": "aborted"
+  },
+  {
+   "checkpoint_saves": 3,
+   "duty_sleeps": 0,
+   "error": "TimeoutError: frozen per-run deadline exceeded",
+   "gradient_calls": 3510,
+   "kind": "checkpoint-io",
+   "receipt_written": false,
+   "status": "aborted"
+  },
+  {
+   "checkpoint_saves": 1,
+   "duty_sleeps": 0,
+   "error": "TimeoutError: frozen per-run deadline exceeded",
+   "gradient_calls": 3510,
+   "kind": "metadata-io",
+   "receipt_written": true,
+   "status": "aborted"
+  },
+  {
+   "checkpoint_saves": 1,
+   "duty_sleeps": 1,
+   "gradient_calls": 3510,
+   "kind": "exact-boundary",
+   "ledger_state_after_finish": "completed",
+   "receipt_written": true,
+   "status": "completed",
+   "wall_seconds": 450.0
+  }
+ ],
+ "elapsed_seconds": 79.24284045799868,
+ "findings": {
+  "decision_requirement": "S1-R7-DECISION item 5: 'the last-step IO / ledger.finish commit taking more than 450 s must also not be completed'",
+  "finish_hole": {
+   "deadline_seconds": 20.0,
+   "exceeded_the_deadline": true,
+   "ledger_state": "completed",
+   "note": "worker._train's last deadline check happens before it returns; worker.run_worker then calls ledger.finish(...) with no further time check and RunStore.transition does not check the wall budget for a terminal state",
+   "real_sleep_before_the_final_commit_seconds": 21.0,
+   "reported_completed": true,
+   "run_wall_seconds_at_completion": 24.813148021697998,
+   "train_status": "completed"
+  },
+  "gradient_control": {
+   "error": "TimeoutError: frozen per-run deadline exceeded",
+   "receipt_written": false,
+   "status": "aborted"
+  },
+  "why": "the last deadline check lives at the end of worker._train; worker.run_worker then calls ledger.finish(active_run, 'completed', reason) with no further time check, and RunStore.transition performs no wall-budget check for a terminal state, so a run whose final commit crosses the frozen per-run deadline is still recorded as completed"
+ },
+ "finish_hole": {
+  "deadline_seconds": 20.0,
+  "exceeded_the_deadline": true,
+  "ledger_state": "completed",
+  "note": "worker._train's last deadline check happens before it returns; worker.run_worker then calls ledger.finish(...) with no further time check and RunStore.transition does not check the wall budget for a terminal state",
+  "real_sleep_before_the_final_commit_seconds": 21.0,
+  "reported_completed": true,
+  "run_wall_seconds_at_completion": 24.813148021697998,
+  "train_status": "completed"
+ },
+ "frozen_document": "/Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/s1/phase1/r7/pre_registration.json",
+ "frozen_preregistration_sha256": "523a5b35ca1cedef51352f286a116b3c2c798185c192bb571297eea365e3d667",
+ "gradient_control": {
+  "error": "TimeoutError: frozen per-run deadline exceeded",
+  "receipt_written": false,
+  "status": "aborted"
+ },
+ "mlx_imported": false,
+ "real_mlx_loaded": false,
+ "schema": "ainerzero.v9.p21.probe09_train_control_flow.v1",
+ "train": {
+  "checkpoint_updates": [
+   0,
+   439,
+   878,
+   1755,
+   3510
+  ],
+  "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+  "final_checkpoint_entries": 1,
+  "final_checkpoint_file": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/opencode/p21-scratch/p21-train-3510--UEqlS9/runs/b8c004b3f5b74fec92208f00fc1bf116/params.npz",
+  "final_checkpoint_file_sha256": "b13b9288d2cc567192971ae88a095d235d554a64dd4368f51112c1a10bcfb17c",
+  "final_checkpoint_sha256": "b13b9288d2cc567192971ae88a095d235d554a64dd4368f51112c1a10bcfb17c",
+  "ledger_state": "completed",
+  "optimizer_reservations": 3510,
+  "post_final_optimizer_reservations": 0,
+  "reservations_total": 3511,
+  "run_dir_files": [
+   "checkpoints/updates-0.npz",
+   "checkpoints/updates-1755.npz",
+   "checkpoints/updates-439.npz",
+   "checkpoints/updates-878.npz",
+   "completion.json",
+   "params.npz",
+   "params.npz.sha256",
+   "run_info.json"
+  ],
+  "run_id": "b8c004b3f5b74fec92208f00fc1bf116",
+  "save_calls": 5,
+  "seconds": 4.853814957998111,
+  "updates": 3510,
+  "value_and_grad_calls": 3510,
+  "wall_only_reservations": 1,
+  "window_probe_calls": 5
+ },
+ "verdict": {
+  "deadline_controls_abort": true,
+  "exact_boundary_completes": true,
+  "exactly_one_final_checkpoint": true,
+  "final_checkpoint_file_matches_the_receipt": true,
+  "frozen_checkpoint_set": true,
+  "no_mlx_loaded": true,
+  "no_reservation_after_the_final_optimizer_step": true,
+  "one_reservation_per_update_plus_the_wall_only_ones": true,
+  "reservations_total_3511": true,
+  "run_completed": true,
+  "value_and_grad_calls_equal_updates": true
+ }
+}

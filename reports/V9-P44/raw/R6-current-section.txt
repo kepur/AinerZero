@@ -1,0 +1,69 @@
+731: ## R20261021-P1-stageA-budget：S1 第一阶段训练预算登记（Claude）
+732: 
+733: 用户原话（2026-10-21 10:22，答复交换区保护与 P1 安排）：「我稍后自己重启机器，重启后你把 C13 恢复为可领取，并在 B19 通过后登记 P1 预算。」awz.V9.B19 已于 10:45 由一级亲核验收，考场前置齐备（B2、G1、A2、T2、G3、awz.V9.B3 r2、awz.V9.B19）。本条登记 ainerzero.V9.P1 的**第一阶段**预算；超出本登记的运行须用户另行批准。
+734: 
+735: - **阶段范围**：只开结构化受限观察臂。数据来自 awz.V9.B3 考场生成器（train/development 分区世界），经 awz.V9.B1 r3 受限出口生成 ObservationPacket/v1.1 流。final 分区只在全部训练结束后经封存通道读一次，做最终评测。世界数与回合数由前置卡 V9.P9 实测后冻结，上限为 train ≤2,000 个世界、每个世界 ≤4 个回合，development ≤200 个世界。
+736: - **对照臂**（同数据、同观测、同更新预算）：
+737:   - ① D 候选只复验，按 A2 冻结清单身份，只评测、不训练，不可比项显式标注；
+738:   - ② 等变度量地图记忆；
+739:   - ③ 情景拓扑图；
+740:   - ④ ②与③组合。
+741: - **固定项**：等变来源固定为解析规范化（G3，估计位姿并按协方差注入误差）；真值位姿规范化只作上界诊断，不计成绩。优化器固定 AdamW，单步预测训练。多步滚动、Muon、等变网络/无等变对照、物理先验 E1 四组留到第二阶段。
+742: - **规模与种子**：每臂学生 0.1M–2M 参数，具体值由 P9 冻结。②③④ 各 3 个训练种子，共 9 次训练；① 复验 1 次。
+743: - **资源**（沿用现有本机保护配置，不改）：每次运行进程 ≤8 GiB，MLX ≤4 GiB，系统余量线 16 GiB，训练占空比 0.25。串行执行，走本仓库 CLI、共享锁、RunStore 和预算守卫，并通过 relay-runner 登记 exec。资源门（同次开机交换区增长 ≤1 GiB）不过就不启动。
+744: - **时间**：每次训练墙钟 ≤20 分钟（含占空比）。截止时间按 P9 实测估计的 1.25 倍冻结，监督超时再加 50 秒。第一阶段总墙钟 ≤4 小时，含 9 次训练、复验和评测。
+745: - **停止规则**：损失非有限、超过单次截止、超过进程或 MLX 上限，任一情况都中止该次运行并记失败。不重跑，不挪用其他种子的额度。扩预算须一级另行登记；超出本登记范围须用户批准。
+746: - **指标**（由 P9 预登记定义与计算脚本）：定位误差；未见地图泛化（development 与 final）；混淆观察下拓扑恢复的边精度与召回；少经验预测未见转移；样本效率曲线。M2 记忆干扰诊断与 D 候选放在同一张表；网格样表示只作诊断。
+747: - **结论口径**：第一阶段只回答四个臂在结构化受限观察下的相对优劣，不宣称能力晋升。冻结视觉教师特征臂等 T4 实测缓存，E0 批量数据臂等 awz.V9.B11 批量另批，两者都不在本阶段。
+748: - **发布顺序**：V9.P9 实现 S1 第一阶段的 CLI 入口与预登记（纯 CPU，只做不更新参数的冒烟）→ V9.P10 非作者对抗复核（属于运行监督代码）→ 一级核定预登记 → 发布 V9.P1 实跑 → V9.P2 复核。
+749: - **批准机制（2026-10-21 12:20 补，依据 V9.P10 发现 F1）**：预登记文件里的 status 字段不再算批准。V9.P1 的 train 模式只认本节由一级写入的一行，格式固定为「APPROVED s1-phase1 prereg document_sha256=<64位>」，SHA 必须与当时冻结文件的 document SHA 完全一致。执行层不得写这类行。V9.P9 r2 修完 F1–F4 并重新冻结（参数、预算、种子、步数不变），再经 V9.P11 复核通过后，一级才在此追加批准行。
+750: 
+751: - **一级核定（Claude，2026-10-21）**：V9.P9 r3 经 V9.P12 非作者对抗复核，建议通过。15 个变异全部抓到；P-1 到 P-4 共 16 个反例全部按预期拒绝；源绑定 12/12 无漂移，已由一级复算。步数仍按 r1 测量记录（b4e7d121…）冻结为每臂 3510 步，r3 的复测只记账。参数、预算、种子都和本节登记的一致。下面一行是唯一有效的批准行。
+752: 
+753: - （已作废，2026-10-21，一级 Claude。P1 执行者在开跑前发现，冻结的 _train 把 9 次训练放在同一个进程里，截止时间、监督时限和预算都按单次 450 秒从第一次训练开始累计，第 2 次就会超时。见 relay #349。原批准行为『APPROVED s1-phase1 prereg document_sha256=ed39c97c…5c94』，现已失效；新批准行等 P9 r4 重新冻结后另写。）
+754: - **更正与后续（2026-10-21，一级 Claude）**：本节前面说 final 『在全部训练结束后经封存通道读一次』，现以预登记为准更正：P1 全程不读 final，final 由之后单独的评测卡经封存通道读一次。修复交给 V9.P13（P9 r4），改动有三项：每次 arm×seed 独立运行，截止、监督时限和预算都按单次计算；保存检查点；增加 eval 模式，在 development 分区上计算预登记的全部指标。复核由 V9.P14 负责。参数、预算、种子和步数都不变。
+755: 
+756: 
+757: - **一级放行核定（2026-10-23 09:1x，claude，relay.P2.E32）——P1 改用 r10 冻结文件**
+758:   - **冻结文件**：`artifacts/v9/s1/phase1/r10/pre_registration.json`，文件 SHA `5fea3ca7…d1ff`，document SHA `19639d86b8f14ce0873ba367ae8d233fd371495a4c055af2b7344aa50b850718`。
+759:   - **工程闸门全部通过**：P15 r9 与 P25 通过（R1/R2）；P26 与 P27 通过（`query_limit=8` 已登记、选项 A 报告注记）；P28 与 P29 通过（B3 单位耗时实测，用户批准，只执行一次）。裁决见 `AinerRelay/reports/coordination/claude-20261022-e32/`。
+760:   - **与本节已登记预算逐项核对**：
+761:     - 学生规模 207,519 / 159,455 / 274,031 参数，在 0.1M–2M 之内；
+762:     - arm2/3/4 各跑种子 0/1/2，共 9 次训练；
+763:     - 单次截止 450 s，单次上限 ≤1200 s；阶段合计 ≤14400 s；
+764:     - 资源线：进程 8 GiB、MLX 4 GiB、系统余量 16 GiB、本次开机交换区增长 ≤1 GiB，均由代码守卫；
+765:     - 串行执行，经 CLI、共享锁与中央 RunStore；
+766:     - 冻结值 3510 / [0,1,2] / 450 / 2 / 48 / 14400 不变；
+767:     - 本阶段不生成也不读取 final 分区（spec：`final: not_generated_not_read`）。
+768:   - **评测墙钟（B4）**：B3 实测的评测原语每臂每种子约 6 s（中位）/ 8 s（p90），9 次合计约 52–65 s，在 4 小时已登记余量（10300 s）内。175 个 window 批、D 前向、I/O、训练后 memory 均未实测；即使放大 10–100 倍，仍在余量之内。**不新增预算**。
+769:   - **held-out 语义（B5）**：`few_shot_unseen_transition`（metrics[3]）的 query 是**同一 episode 内对 support 前缀的时间续段**，不是空间上未访问过的 cell（k=1 时有 63.6% 的 query 起点已经在 support 记忆里）。报告时只能称为「时间续段预测」，必须同时列出各 k 的 `query_start_cell_in_support_fraction` 与 `query_end_cell_in_support`；**不得据此主张空间泛化**。空间或地图层面的泛化只能用「未见地图泛化」指标来说。
+770:   - **checkpoint 0（B6 后半）**：训练前的 checkpoint 0 只作为未训练基线点画在样本效率曲线上，标注为 untrained，不参与任何「训练有效」判定。
+771:   - **M2 探针选点（B7）**：维持冻结，即按 episode_id 字典序取前 5 个（time/time/navigation/relation/e3_identity）。报告中如实写明「既非随机也非分层」，不主张选点稳健性。
+772:   - **eval_batches=48**：作为冻结身份字段保留。它只约束训练期探针，不代表真实评测调用量，也不能作为评测预算依据；真实调用量以 P19 实测为准。当前 dev 窗口为 550，小于 768，所以不存在静默截断。若将来窗口数 ≥768，必须先重新登记。
+773:   - **仍未实测，如实保留**：D 的 C0 前向（arm1 截止 2 s；参照新进程首次前向约 108 ms，大概率足够，但**未测**；若超截止，arm1 记失败、不重跑）、window 批、训练后的 memory 规模、其他 family。
+774:   - **执行要求**：每次都显式传 `--prereg artifacts/v9/s1/phase1/r10/pre_registration.json --output-root artifacts/v9/s1/phase1`，**不得**用默认的规范根旧文件。经 relay-runner 用 `submit-job` 串行执行，不用 `relay exec`。训练 9 次后再评测；arm1 只做一次 D 复验。任何一次失败都不重跑、不挪用额度。
+775: 
+776: - （已作废，2026-10-24 08:4x，一级 Claude，relay.P2.E37。r10 阶段运行已结束且结果为 failed；按 `## R20261023-S1-phase1-r11-budget` 第 6 条，本节只允许一条有效批准行，方案 A 改由 r12 重跑。原批准行为『APPROVED s1-phase1 prereg document_sha256=19639d86b8f14ce0873ba367ae8d233fd371495a4c055af2b7344aa50b850718』，现已失效。）
+777: 
+778: - **一级放行核定（2026-10-24 08:4x，claude，relay.P2.E37）——方案 A 重跑改用 r12 冻结文件**
+779:   - **用户确认（2026-10-24，本会话，逐字）**：「Approved: write the r12 approval line in the stageA section (mark the r10 line void) and release P32 under the scheme A budget.」
+780:   - **依据**：用户 10-23 批准方案 A（`## R20261023-S1-phase1-r11-budget`，含 13:3x 对截止 1200 s / 强杀 1250 s 的逐字答复）；r11 因台账事故不采用，改用 r12，科学值与登记值全部不变、不新增预算（`P31-LEDGER-INCIDENT-RULING.md`）。
+781:   - **冻结文件**：`artifacts/v9/s1/phase1/r12/pre_registration.json`，文件 SHA `fe539209179e3c59405526880dc1ea8dffe5416d34e393cd86b5f0373ece9658`，document SHA `044d5599ecd7c88600257488866462f666eebde25454ad4e4494f355ccd418dd`，实验 ID `s1-phase1-20261023-r12`。
+782:   - **闸门**：P34（r12 重冻结、入口先判后写）与 P35 r2（非作者复核：独立顺序坏控、副本上 train/eval/D 演练到 MLX 哨兵、D 身份运行时双向证明）均已验收；一级在非沙箱补跑 tests/v9：717 passed / 3 failed，3 个均为既有失败（排除 P34 新测试后依旧）。
+783:   - **登记值逐项核对**：3510 步、种子 0/1/2、单次截止 1200 s（登记值，fail-closed）、监督强杀 1250 s、eval_batches 175、arm2/3/4 共 9 次训练、阶段墙钟 ≤14400 s、资源线（进程 8 GiB、MLX 4 GiB、系统余量 16 GiB、交换区增长 ≤1 GiB、占空比 0.25）不变；final 分区不生成、不读取。
+784:   - **三种模式放行核验（第 6 条）**：按事故裁定第 4 条全部在 output-root 的隔离副本上做。P35 r2 已在副本上把 train、eval（arm2/arm4）和 arm1 的 D 路径走到 MLX 导入前的哨兵；一级 10-23 23:4x 与 10-24 08:4x 两次在新副本上用真实 CLI 跑 verify：status=completed，source_binding=passed，dataset 8234f2f3… 解析通过，生产台账 `36426891…b67d` 与 0 字节 WAL 前后不变。
+785:   - **r12 实验窗口**：生产台账里还没有 r12 实验行，4 小时窗口从第一次训练登记实验时起算。
+786:   - **执行要求**：每次显式传 `--prereg artifacts/v9/s1/phase1/r12/pre_registration.json --output-root artifacts/v9/s1/phase1`；经 relay-runner 用 `submit-job` 串行执行，不用 `relay exec`；先训练 9 次再评测，arm1 只做一次 D 复验；任何一次失败都不重跑、不挪用额度；生产 output-root 只给 P32 正式运行用，其它检查一律在副本上做。
+787: 
+788: - （已作废，2026-10-24 23:2x，一级 Claude，relay.P2.E39。r12 阶段未完成且窗口已关闭（3/9 训练完成，2 次主机睡眠失败，评测未跑）；按 `## R20261024-S1-phase1-r13-budget` 第 3 条，本节只允许一条有效批准行，方案 A 改由 r13 运行。原批准行为『APPROVED s1-phase1 prereg document_sha256=044d5599ecd7c88600257488866462f666eebde25454ad4e4494f355ccd418dd』，现已失效。）
+789: 
+790: - **一级放行核定（2026-10-24 23:2x，claude，relay.P2.E39）——方案 A 第三次运行改用 r13 冻结文件**
+791:   - **用户批准（2026-10-24 22:1x，本会话，逐字）**：「Approved: register a new r13 with the same scheme A values (3510 steps, 1200 s deadline, eval_batches 175, 9 trainings ≤1200 s each, phase ≤4 h), refreeze and review it, then run all 9 trainings plus evals. I'll keep the Mac open, on AC, and not put it to sleep during the run.」
+792:   - **冻结文件**：`artifacts/v9/s1/phase1/r13/pre_registration.json`，文件 SHA `9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d`，document SHA `1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30`，实验 ID `s1-phase1-20261024-r13`。
+793:   - **闸门**：P38（r13 重冻结，源码只改 spec.py 的身份登记）与 P39（非作者复核：最小改动、叶差异 5 变且白名单外 0、9 个拒绝分支零写入、独立顺序坏控、副本上 train/eval/D 演练到 MLX 哨兵、D 身份运行时双向证明、tests/v9 723/3 均为既有失败）均已验收。一级独立复算 r12→r13 逐叶差异一致。
+794:   - **登记值**：与 r12 完全相同——3510 步、种子 0/1/2、单次截止 1200 s（登记值，fail-closed）、监督强杀 1250 s、eval_batches 175、arm2/3/4 共 9 次训练、阶段墙钟 ≤14400 s、资源线不变、数据集 `8234f2f3…`；final 分区不生成、不读取。
+795:   - **放行核验**：一级 23:2x 在新副本上用真实 CLI 跑 r13 verify：completed、source_binding=passed、dataset 解析通过；生产台账 `6b604983…3f44` 前后不变。
+796:   - **执行要求**：每次显式传 `--prereg artifacts/v9/s1/phase1/r13/pre_registration.json --output-root artifacts/v9/s1/phase1`；经 relay-runner 用 `submit-job` 串行执行；先训练 9 次再评测，arm1 只做一次 D 复验；运行期间持有进程级防空闲睡眠断言并确认接交流电；启动类拒绝立即停；失败不重跑、不挪用额度；生产 output-root 只给正式运行用。
+797: 
+798: APPROVED s1-phase1 prereg document_sha256=1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30
+799: 

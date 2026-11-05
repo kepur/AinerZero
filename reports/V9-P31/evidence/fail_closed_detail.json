@@ -1,0 +1,29 @@
+{
+  "tamper_deadline_1150": {
+    "refused": true,
+    "reasons": [
+      "registered deadline 1150 is not the user-approved 1200 s",
+      "phase wall time is not 9 x deadline + 1 x arm1 deadline + data generation"
+    ]
+  },
+  "shrink_updates_3299": {
+    "refused": true,
+    "reasons": [
+      "registered updates 3299 is not the user-approved 3510; a reduced update count is refused"
+    ]
+  },
+  "slow_smoke_shrink_path": {
+    "refused": true,
+    "message": "the smoke-derived deadline at 3510 updates would be 1369 s > the 1200.0 s per-run cap, so the derivation path would shrink the update count; the registered budget refuses instead of freezing a reduced count"
+  },
+  "isolated_broken_control": {
+    "tampered_1150_accepted_by_broken": true,
+    "real_validate_refuses_1150": true,
+    "real_reasons": [
+      "registered deadline 1150 is not the user-approved 1200 s",
+      "registered supervision 1200 is not deadline + 50.0 s = 1250.0 s",
+      "phase wall time is not 9 x deadline + 1 x arm1 deadline + data generation"
+    ],
+    "turns_red": true
+  }
+}

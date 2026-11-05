@@ -1,0 +1,274 @@
+{
+  "conclusion": "不依赖模型（评测指标退化与真值空图回退构成的常量）",
+  "detailed_reasons": [
+    "1. 静态子族（e3_identity, relation, time 共 150 个 episode，占 75%）：智能体位置不变，visited_cells=1，true_edges=0。metrics.py 中当 truth_edges 为空且 predicted_edges 为空时回退为 precision=1.0, recall=1.0, f1=1.0。因此 75% 的样本 F1 恒为 1.0。",
+    "2. 移动子族（navigation 共 50 个 episode，占 25%）：true_edges=7。Arm2 因 navigation 序列中 det_present 恒为 0，地图零写入（norm=0），导出 0 边；Arm3/Arm4 虽有前向转移（forward transitions），但 runtime.py:195 要求双向往返 (adjacency[i,j]>0 且 adjacency[j,i]>0)，单向轨迹无双向边，导出 0 边。0 条预测边对比 7 条真值边，f1 恒为 0.0。",
+    "3. 宏平均公式：Macro F1 = 0.75 * 1.0 + 0.25 * 0.0 = 0.7500。任何模型（无论未训练、不同种子、还是训练后的各臂各 seed）在当前评测实现下均必然输出 0.7500。"
+  ],
+  "family_summary": {
+    "time": {
+      "episodes": 50,
+      "min_cells": 1,
+      "max_cells": 1,
+      "min_true_edges": 0,
+      "max_true_edges": 0,
+      "min_det_present": 4.0,
+      "max_det_present": 4.0
+    },
+    "navigation": {
+      "episodes": 50,
+      "min_cells": 7,
+      "max_cells": 7,
+      "min_true_edges": 7,
+      "max_true_edges": 7,
+      "min_det_present": 0.0,
+      "max_det_present": 0.0
+    },
+    "relation": {
+      "episodes": 50,
+      "min_cells": 1,
+      "max_cells": 1,
+      "min_true_edges": 0,
+      "max_true_edges": 0,
+      "min_det_present": 9.0,
+      "max_det_present": 9.0
+    },
+    "e3_identity": {
+      "episodes": 50,
+      "min_cells": 1,
+      "max_cells": 1,
+      "min_true_edges": 0,
+      "max_true_edges": 0,
+      "min_det_present": 3.0,
+      "max_det_present": 3.0
+    }
+  },
+  "model_eval_results": {
+    "untrained_arm2_seed0": {
+      "f1": 0.75,
+      "precision": 0.75,
+      "recall": 0.75,
+      "by_family": {
+        "e3_identity": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "navigation": {
+          "episodes": 50,
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "relation": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "time": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      }
+    },
+    "untrained_arm3_seed0": {
+      "f1": 0.75,
+      "precision": 0.75,
+      "recall": 0.75,
+      "by_family": {
+        "e3_identity": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "navigation": {
+          "episodes": 50,
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "relation": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "time": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      }
+    },
+    "untrained_arm4_seed0": {
+      "f1": 0.75,
+      "precision": 0.75,
+      "recall": 0.75,
+      "by_family": {
+        "e3_identity": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "navigation": {
+          "episodes": 50,
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "relation": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "time": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      }
+    },
+    "untrained_arm3_seed99": {
+      "f1": 0.75,
+      "precision": 0.75,
+      "recall": 0.75,
+      "by_family": {
+        "e3_identity": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "navigation": {
+          "episodes": 50,
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "relation": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "time": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      }
+    },
+    "trained_arm4_seed0": {
+      "f1": 0.75,
+      "precision": 0.75,
+      "recall": 0.75,
+      "by_family": {
+        "e3_identity": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "navigation": {
+          "episodes": 50,
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "relation": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "time": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      }
+    },
+    "trained_arm2_seed0": {
+      "f1": 0.75,
+      "precision": 0.75,
+      "recall": 0.75,
+      "by_family": {
+        "e3_identity": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "navigation": {
+          "episodes": 50,
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "relation": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "time": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      }
+    },
+    "trained_arm3_seed0": {
+      "f1": 0.75,
+      "precision": 0.75,
+      "recall": 0.75,
+      "by_family": {
+        "e3_identity": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "navigation": {
+          "episodes": 50,
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0
+        },
+        "relation": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        },
+        "time": {
+          "episodes": 50,
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0
+        }
+      }
+    }
+  },
+  "micro_investigation": {
+    "arm2_nav_map_norm": 0.0,
+    "arm2_nav_graph_positions": 0,
+    "arm2_nav_graph_edges": 0,
+    "arm3_nav_nodes_filled": 5,
+    "arm3_nav_forward_edges": 8,
+    "arm3_nav_bidirectional_edges": 2,
+    "arm3_nav_probe_graph_edges": 0
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "task": "ainerzero.V9.P24",
+  "agent": "deepseek-flash-0hyx",
+  "role": "independent_non_author_review",
+  "target": "reports/V9-P9/r8 (S1 r8)",
+  "verdict": "not_passed_blocking_F3_order",
+  "frozen_r8": {
+    "frozen_document": "artifacts/v9/s1/phase1/r8/pre_registration.json",
+    "document_sha256": "2082e2a3c36cd648fb1608727a7f8ea0fc9afcc38e29af527c48d62f5d477175",
+    "file_sha256": "e8cfa2390624fdf6e82829a658942e11bc012043ae8fba5602d76d9189c8114a",
+    "status": "awaiting_coordinator_approval",
+    "status_unchanged": true,
+    "cli_verify_status": "completed",
+    "cli_verify_source_binding": "passed",
+    "cli_verify_approval": false
+  },
+  "identity": {
+    "pinned_files_declared": 72,
+    "pinned_files_matched": 72,
+    "pinned_files_mismatched": 0,
+    "bound_files_declared": 21,
+    "bound_files_matched": 21,
+    "bound_files_mismatched": 0,
+    "r7_leaves": 391,
+    "r8_leaves": 398,
+    "changed_leaves": 15,
+    "outside_allowlist": 0,
+    "scientific_fields_equal": true,
+    "spec_sha_matches": true
+  },
+  "items": {
+    "F1_completion_transaction": {
+      "passed": true,
+      "cut_points": 3,
+      "cuts": ["before_commit", "inside_commit_sql_lock", "after_commit_write_returned"],
+      "rows_after_each_cut": 1,
+      "rows_after_rerun": 1,
+      "rows_for_run_after_rerun": 1,
+      "invalid_marker_present_after_rerun": true,
+      "rolled_back": false,
+      "caveat": "internal _complete_run retry after the before-commit cut reports status=completed while the committed row stays failed and the marker stays present; public run_worker reaches the attempt guard first (already_attempted), so this is an internal-seam honesty caveat, not an accepted completion",
+      "control_red": true
+    },
+    "F2_legal_state_table": {
+      "passed": true,
+      "active_states_accepted": 8,
+      "terminal_states_accepted": 3,
+      "terminal_counted_seconds": {"completed": 125.0, "failed": 125.0, "stopped": 125.0},
+      "active_counted_seconds": 1000.0,
+      "unknown_state_refusals": {"null": "LedgerStateInvalid", "quarantined": "LedgerStateInvalid"},
+      "control_red": true
+    },
+    "F3_d_budget": {
+      "passed": true,
+      "wall_budget_seconds": 2.0,
+      "reserved_active_seconds": 1.0,
+      "reserved_optimizer_steps": 0,
+      "d_forward_calls": 1,
+      "snapshot_max_wall_seconds": 2.0,
+      "snapshot_arm_id": "arm1",
+      "control_red": true
+    },
+    "F3_registration_order": {
+      "passed": false,
+      "blocking": true,
+      "train_then_d": "passed",
+      "d_then_train": "LifecycleError: experiment_id already exists: s1-phase1-20261021",
+      "decision_requirement": "S1-R8-DECISION F3: shared TRAIN manifest must coexist with both orders (D first and train first)",
+      "root_cause": "PrepLedger.open_aux_run auto-creates experiment s1-phase1-20261021 when it is absent, while _open_train_run unconditionally calls store.create_experiment for the same id and therefore raises LifecycleError",
+      "location": "src/ainerzero/v9/experiments/s1/worker.py:567-573 (open_aux_run), :1391-1397 (_open_train_run)"
+    },
+    "F4_single_d_guard": {
+      "passed": true,
+      "first_status": "completed",
+      "second_status": "refused",
+      "second_refused_stage": "already_attempted",
+      "arm1_rows_before": 1,
+      "arm1_rows_after": 1,
+      "all_rows": 1,
+      "legacy_unidentifiable_status": "unidentifiable",
+      "other_arm_status": "ok",
+      "control_red": true
+    },
+    "F5_field_contract": {
+      "passed": true,
+      "reserved_refusals": ["missing", "null", "nan", "inf", "-inf", "negative", "bool", "string"],
+      "timestamp_refusals": ["null", "nan", "inf", "1e308", "-1e308", "non-time string"],
+      "legitimate_future_high_water_seconds": 7.0,
+      "reverse_clock": "LedgerTimestampInvalid",
+      "control_red": true
+    },
+    "F6_frozen_trust_root": {
+      "passed": true,
+      "manifest_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+      "manifest_file_sha256": "2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b",
+      "entries_verified": 9,
+      "negative_controls": ["digest_mismatch", "flipped_byte"],
+      "control_red": true
+    },
+    "F7_mlx_lazy_isolation": {
+      "passed": true,
+      "child_returncode": 0,
+      "mlx_imported": false,
+      "arms_imported": false,
+      "entries_verified": 9,
+      "scope_note": "identity/worker/completion/prereg/data/evaluation/metrics enter without MLX; smoke is the real forward+loss measurement and is outside this read-only identity scope",
+      "control_red": true
+    },
+    "F8_honest_cpu_chain": {
+      "passed": true,
+      "gradient_calls": 3510,
+      "saves": [0, 439, 878, 1755, 3510],
+      "run_state": "completed",
+      "reserved_optimizer_steps": 3510,
+      "optimizer_reservations": 3510,
+      "post_final_optimizer_reservations": 0,
+      "second_status": "refused",
+      "second_refused_stage": "already_attempted",
+      "rows_after_first": 1,
+      "rows_after_second": 1,
+      "arm2_seed0_rows": 1,
+      "no_mlx_child": {
+        "passed": true,
+        "mlx_imported_in_process": false,
+        "mlx_usable": false,
+        "gradient_calls": 3510,
+        "run_state": "completed"
+      },
+      "control_red": true
+    }
+  },
+  "guard_broken_controls": {
+    "cases": 8,
+    "all_red": true,
+    "rule": "one throw-away source copy per case; only the named guard/condition changed",
+    "evidence": "reports/V9-P24/evidence/guard-broken-controls.json"
+  },
+  "baseline_tests_read_only": {
+    "tests/v9/experiments": "291 passed",
+    "tests/v9/{geometry,contracts,teachers,tokenization}": "378 passed"
+  },
+  "constraints_respected": {
+    "source_modified": false,
+    "central_ledger_written": false,
+    "approval_row_written": false,
+    "real_mlx_forward_run": false,
+    "training_or_eval_run": false,
+    "downloads_or_installs": false,
+    "r4_r7_p21_originals_touched": false,
+    "updates_seeds_budgets_changed": false,
+    "writes_only_under": "reports/V9-P24/"
+  },
+  "evidence": [
+    "reports/V9-P24/evidence/pinned-sha-recompute.json",
+    "reports/V9-P24/evidence/prereg-leaf-diff.json",
+    "reports/V9-P24/evidence/guard-broken-controls.json",
+    "reports/V9-P24/logs/verify-r8.json",
+    "reports/V9-P24/logs/pinned-sha-recompute.txt",
+    "reports/V9-P24/logs/author-tests-experiments.txt",
+    "reports/V9-P24/logs/probe-f1.json",
+    "reports/V9-P24/logs/probe-f2.json",
+    "reports/V9-P24/logs/probe-f3.json",
+    "reports/V9-P24/logs/probe-f4.json",
+    "reports/V9-P24/logs/probe-f5.json",
+    "reports/V9-P24/logs/probe-f6.json",
+    "reports/V9-P24/logs/probe-f7.json",
+    "reports/V9-P24/logs/probe-f8.json",
+    "reports/V9-P24/logs/probe-f8_nomlx.json",
+    "reports/V9-P24/logs/probe-order.json"
+  ],
+  "environment": {
+    "python": "3.12.2 (.venv)",
+    "git_head": "2de6cae",
+    "worktree": "dirty before and during review; identity is byte-level against the r8 manifests, not a clean-git claim"
+  }
+}

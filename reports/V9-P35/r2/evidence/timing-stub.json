@@ -1,0 +1,73 @@
+{
+  "probe": "timing-stub",
+  "ok": true,
+  "started_at": "2026-10-23T23:20:20",
+  "elapsed_seconds": 2.068,
+  "production_ledger_before": {
+    "recorded_at": "2026-10-23T23:20:20",
+    "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "control.sqlite3_bytes": 86016,
+    "control.sqlite3_mtime": "2026-10-23T16:33:15",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-23T23:19:02",
+    "shm_mtime_epoch": 1792786742.3891869
+  },
+  "production_ledger_after": {
+    "recorded_at": "2026-10-23T23:20:22",
+    "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "control.sqlite3_bytes": 86016,
+    "control.sqlite3_mtime": "2026-10-23T16:33:15",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-23T23:19:02",
+    "shm_mtime_epoch": 1792786742.3891869
+  },
+  "production_ledger_unchanged": true,
+  "shm_mtime_changed": false,
+  "body": {
+    "purpose": "timing 用例的 stub 是否掩盖回归",
+    "diff_lines_added": 15,
+    "diff_lines_removed": 0,
+    "diff_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P35/r2/evidence/timing-stub-diff.patch",
+    "coverage_tests": {
+      "tests/v9/experiments/test_s1_r5_eval.py": [
+        "tests/v9/experiments/test_s1_r5_eval.py::test_evaluate_arm_binds_run_and_computes_all_six_groups"
+      ],
+      "tests/v9/experiments/test_s1_r5_ledger.py": [
+        "tests/v9/experiments/test_s1_r5_ledger.py::test_eval_binding_rejects_tampered_missing_and_duplicate_evidence"
+      ],
+      "tests/v9/experiments/test_s1_r8_completion.py": [
+        "tests/v9/experiments/test_s1_r8_completion.py::test_a_consumer_refuses_a_receipt_without_the_completion_protocol",
+        "tests/v9/experiments/test_s1_r8_completion.py::test_a_consumer_refuses_a_run_carrying_an_invalid_marker"
+      ],
+      "tests/v9/experiments/test_s1_r12_ordering.py": [
+        "tests/v9/experiments/test_s1_r12_ordering.py::test_eval_refusal_without_a_completed_training_run_leaves_the_ledger_untouched",
+        "tests/v9/experiments/test_s1_r12_ordering.py::test_the_ordering_guard_is_load_bearing_bad_control"
+      ]
+    },
+    "coverage_run": {
+      "returncode": 0,
+      "tail": [
+        "......                                                                   [100%]",
+        "6 passed in 1.71s"
+      ]
+    },
+    "findings": {
+      "refusal_branch": "被 stub 掉的是入口的**接受**分支（binding ok → 继续）。拒绝分支（eval_binding_unavailable + 台账字节不变）由 test_s1_r12_ordering.py::test_eval_refusal_without_a_completed_training_run_leaves_the_ledger_untouched 与它的坏控覆盖，没有被 stub 影响。",
+      "real_bind_completed_run": "真实 _bind_completed_run 的正向路径由 test_s1_r5_eval.py::test_evaluate_arm_binds_run_and_computes_all_six_groups 覆盖，篡改/缺失/重复三类拒绝由 test_s1_r5_ledger.py::test_eval_binding_rejects_tampered_missing_and_duplicate_evidence 覆盖，completion 协议与失效标记由 test_s1_r8_completion.py 的两个用例覆盖。",
+      "gap_that_remains": "在 r12 之前，『入口层 binding 通过 → 继续往下走』这一条没有被任何测试覆盖；stub 让它继续不被覆盖。本 r2 的 release drill 用真实 _bind_completed_run + 伪造的完成记录把这条路径走通到 MLX 哨兵，补上了这个缺口（见 release-drill.json）。"
+    },
+    "checks": {
+      "stub_change_is_additive_only": true,
+      "stub_is_a_single_setattr_of_the_binding_precondition": true,
+      "real_binding_covered_by_named_tests": true,
+      "those_tests_pass": true
+    },
+    "all_checks_pass": true
+  }
+}

@@ -1,0 +1,22 @@
+--- reports/V9-P9/r14/before/tests/test_s1_r12_registration.py	2026-10-28 01:49:01
++++ tests/v9/experiments/test_s1_r12_registration.py	2026-10-28 12:41:58
+@@ -58,8 +58,8 @@
+ # --- identity --------------------------------------------------------------
+ def test_the_current_registration_defaults_to_r12():
+     assert R12 == "s1-phase1-20261023-r12"
+-    # Note: updated for r13 per task P38 rule: current identity is r13
+-    assert spec.CURRENT_EXPERIMENT_ID == spec.R13_EXPERIMENT_ID
++    # Note: updated for r13 per task P38 rule, then r14 per P49: current identity is r14
++    assert spec.CURRENT_EXPERIMENT_ID == spec.R14_EXPERIMENT_ID
+     # r11 stays a registered identity: it is archived history, not an error.
+     assert R11 in spec.REGISTERED_EXPERIMENT_IDS
+     assert R12 in spec.REGISTERED_EXPERIMENT_IDS
+@@ -70,7 +70,7 @@
+         parameter_counts=FAKE_COUNTS,
+         budget_registration=spec.R11_BUDGET_REGISTRATION,
+     )
+-    assert draft["experiment_id"] == spec.R13_EXPERIMENT_ID
++    assert draft["experiment_id"] == spec.R14_EXPERIMENT_ID
+ 
+ 
+ def test_freeze_accepts_both_registered_identities_and_refuses_anything_else():

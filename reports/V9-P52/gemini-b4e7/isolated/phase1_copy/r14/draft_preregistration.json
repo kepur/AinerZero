@@ -1,0 +1,386 @@
+{
+ "approval_rule": {
+  "credential": "one bare line inside the '## R20261021-P1-stageA-budget' section of RESEARCH_LOG.md: APPROVED s1-phase1 prereg document_sha256={document_sha256}",
+  "document_sha256_must_equal": "the frozen document SHA256 (canonical JSON)",
+  "log_location": "the repository RESEARCH_LOG.md only (spec.RESEARCH_LOG); a command-line path that resolves elsewhere is refused with exit 3",
+  "recorded_in": "RunStore run config_snapshot.approval (line text, line number, log SHA256, document SHA256); level 1 also sends a relay notice with the same document SHA and line number, and the reviewer compares the two (R-6)",
+  "section_scope": "only lines between the '## R20261021-P1-stageA-budget' heading and the next level-2 heading count; fenced code, blockquotes and indented code never count; two qualifying lines in that section, or two such sections, refuse the gate",
+  "status_field": "informational only; rewriting status and the sidecar SHA256 does not approve a run (V9.P10 F1)",
+  "written_by": "coordinator (level 1); the executor never writes approval lines"
+ },
+ "arms": {
+  "arm1": {
+   "architecture": "pilot_shared_symbol_v1",
+   "arm_id": "arm1",
+   "identity": {
+    "checkpoint_id": "96b72328-d9c1-4b48-b69c-1fa30ba8123c",
+    "experiment_id": "m2md-distill-20261013-r2",
+    "frozen_manifest": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-baseline/r3/baseline_manifest.json",
+    "frozen_manifest_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "load_mode": "MLX CPU inference only; tensors.safetensors verified against the A2 manifest entry before load",
+    "manifest_sha256": "76403018a033317c1cf4422f60318ee9a9df99d8b9e75c4c3211e444d4ba3892",
+    "metadata_sha256": "0de030a55af2f9f6d5cca6a1d0c0b5f15eac1281a9ead3bffdadda5a0f8bf58a",
+    "pilot_dir": "artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a",
+    "tensors_sha256": "cbb14d878dfda5af816dbc4903c7fb811aabbcfb17ce494f00e994ab3d6b286a"
+   },
+   "incomparable": [
+    "C0 8-cell symbol observations only; the S1 arena payloads (relative_objects/ego_motion) are not its registered input",
+    "no metric map, no episodic topology memory, no pose estimate head",
+    "S1 metrics are reported as not_applicable; its own C0 M2 diagnostics are the only comparable row and are flagged incomparable"
+   ],
+   "kind": "frozen_candidate",
+   "name": "D candidate re-verification (evaluate only)",
+   "parameter_count": 393232,
+   "seeds": [],
+   "training_updates": 0
+  },
+  "arm2": {
+   "architecture": "s1_equivariant_metric_map_v1",
+   "arm_id": "arm2",
+   "dims": {
+    "decay": 0.9,
+    "extent_m": 6.5,
+    "grid": 8,
+    "hidden": 224,
+    "memory_channels": 32
+   },
+   "incomparable": [],
+   "kind": "trainable",
+   "name": "equivariant metric map memory",
+   "parameter_count": 207519,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "training_updates": null
+  },
+  "arm3": {
+   "architecture": "s1_episodic_topology_graph_v1",
+   "arm_id": "arm3",
+   "dims": {
+    "hidden": 192,
+    "match_threshold": 0.9,
+    "max_nodes": 32,
+    "place_dim": 32
+   },
+   "incomparable": [],
+   "kind": "trainable",
+   "name": "episodic topology graph",
+   "parameter_count": 159455,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "training_updates": null
+  },
+  "arm4": {
+   "architecture": "s1_metric_plus_topology_v1",
+   "arm_id": "arm4",
+   "dims": {
+    "decay": 0.9,
+    "extent_m": 6.5,
+    "grid": 8,
+    "hidden": 256,
+    "match_threshold": 0.9,
+    "max_nodes": 32,
+    "memory_channels": 24,
+    "place_dim": 24
+   },
+   "incomparable": [],
+   "kind": "trainable",
+   "name": "equivariant metric map + episodic topology graph",
+   "parameter_count": 274031,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "training_updates": null
+  }
+ },
+ "budget_registration": "RESEARCH_LOG R20261023-S1-phase1-r11-budget",
+ "commands": {
+  "eval": "ainerzero s1-phase1 --mode eval --arm {arm1,arm2,arm3,arm4} [--seed {0,1,2}] --output-root artifacts/v9/s1/phase1",
+  "freeze": "ainerzero s1-phase1 --mode freeze --output-root artifacts/v9/s1/phase1",
+  "generate_data": "ainerzero s1-phase1 --mode data --output-root artifacts/v9/s1/phase1",
+  "run_refused_here": "ainerzero s1-phase1 --mode train --arm <arm2|arm3|arm4> --seed <0|1|2> --prereg artifacts/v9/s1/phase1/pre_registration.json (refused, exit 3, unless the single approval line inside the registered RESEARCH_LOG.md section covers this document SHA256, the bound sources still match, and the dataset digest equals data_identity.dataset_digest)",
+  "smoke": "ainerzero s1-phase1 --mode smoke --output-root artifacts/v9/s1/phase1",
+  "verify": "ainerzero s1-phase1 --mode verify --output-root artifacts/v9/s1/phase1"
+ },
+ "created_unix": 1793180772.469315,
+ "data_identity": {
+  "counts": {
+   "development_episodes": 200,
+   "development_packets": 950,
+   "development_worlds": 200,
+   "rounds_per_world": 1,
+   "train_episodes": 2000,
+   "train_packets": 9500,
+   "train_worlds": 2000
+  },
+  "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+  "episode_count": 2200,
+  "files": {
+   "export_meta.json": "600c3de61eb000a78aa39503cd62050e03135866c59de3392adc9ca4b26e9712",
+   "packets/development.jsonl": "b9420ef5e26a00a29f022f75390cf39ffd36fac1be8b723767fa71250d7a4aa7",
+   "packets/train.jsonl": "28bedf0e592488ae9d5d533fd519b031491319c61914da7cc9e5ca14f8592178",
+   "truth/development.jsonl": "76b986495229de893fb50e0740296f6414225a06b1b444fa4f20eb43911e26e6",
+   "truth/train.jsonl": "8fa91cfe4b7366bd9cab3e921b0a307d98426af3ca44934edbf0449c9d1e52e5"
+  },
+  "generation_seconds": 45.739918708000005,
+  "plan": {
+   "development": {
+    "rounds_per_world": 1,
+    "worlds": 200
+   },
+   "families": [
+    "navigation",
+    "time",
+    "relation",
+    "e3_identity"
+   ],
+   "final_partition": "not_generated_not_read",
+   "fov_deg": 90.0,
+   "generator": "awz.V9.B3 r2 (including awz.V9.B19 staging fix)",
+   "generator_commit": "2b0d4f2834298c18b237f7611451d1ec7625bf36",
+   "generator_root": "/Users/mac/AinerWorkFlow/AnimeWorldZero",
+   "generator_seed": "awz-v9-b3-v0",
+   "partitions": [
+    "train",
+    "development"
+   ],
+   "range_m": 6.5,
+   "restricted_exit": "awz.V9.B1 r3 conventions (HandleAllocator + CounterNoise + A3 validator)",
+   "sample_interval": 12,
+   "scene_id_format": "s1-{partition}-{family}-{index:05d}",
+   "schema": "ainerzero.v9.s1.data_plan.v1",
+   "spec": "s1-phase1-v1",
+   "train": {
+    "rounds_per_world": 1,
+    "worlds": 2000
+   }
+  },
+  "schema": "ainerzero.v9.s1.dataset_manifest.v1",
+  "source_identity": {
+   "file_count": 24,
+   "git_head": "2b0d4f2834298c18b237f7611451d1ec7625bf36",
+   "root": "/Users/mac/AinerWorkFlow/AnimeWorldZero",
+   "source_map_digest": "35c529b9d77d2b8485a0a8927bdd9929cab9089abd135987d9c792bb9f1f3310"
+  },
+  "total_bytes": 16392467
+ },
+ "effective_metadata": {
+  "equivariant_source": "analytic ego-motion integration (logged AWZ ego_motion with its sensor Gaussian noise, plus a bounded learned residual); the metric-map warp follows that estimate; not G3 CanonicalBelief and not inject_pose_error; truth pose is evaluator-only (frame alignment and localization scoring) and is never a model input",
+  "final_partition": "sealed; P1 全程不读 final；final 由之后单独的评测卡经封存通道读一次",
+  "forbidden": "multi-step rollout, Muon, equivariant-network/no-equivariance arms, E1 physics prior: all reserved for phase 2",
+  "optimizer": "AdamW",
+  "single_step_prediction": true
+ },
+ "evaluation": {
+  "query_limit": 8,
+  "reporting_notes": [
+   "k=8 is always marked insufficient_data (0/200 worlds have samples); never record as 0 or a perfect score",
+   "k curves are reported per family and never pooled",
+   "coverage facts (k=8: 0/200; k=4: 50/200 and navigation family only) are reporting notes only; coverage/FPR are not phase-1 metrics"
+  ]
+ },
+ "experiment_id": "s1-phase1-20261028-r14",
+ "inheritance": {
+  "approved_total_wall_enforced_by": "r14 serial driver (ainerzero.V9.P51) before each launch",
+  "approved_total_wall_seconds": 9000,
+  "cells": [
+   {
+    "arm_id": "arm2",
+    "params_sha256": "9d155fbf2817b75c2963c06e31053f732f08eac80446c5650673f095126a1702",
+    "seed": 0,
+    "source_run_id": "19f2d1eb4bf04da4909d87501348028d"
+   },
+   {
+    "arm_id": "arm2",
+    "params_sha256": "c4d16f6e9a48b666a218ed41afcff607df3470dd07de8661921c237b4516f643",
+    "seed": 1,
+    "source_run_id": "7d155060fecc4070a9a68e95fb3761fa"
+   },
+   {
+    "arm_id": "arm3",
+    "params_sha256": "577429aa3e1becabd40a5f8787f8d696c2e237982bea725a96ec1b1c8ba6f51e",
+    "seed": 0,
+    "source_run_id": "403ae816720c4ad9b4f75ecd86e7b109"
+   }
+  ],
+  "registration": "RESEARCH_LOG R20261028-S1-phase1-r14-budget",
+  "reproducibility_evidence": "params.npz bitwise identical across r12 and r13 (reports/V9-S1-r14-budget-proposal.md section 2; ainerzero.V9.P45/P46)",
+  "source_experiment_id": "s1-phase1-20261024-r13",
+  "source_preregistration_file_sha256": "9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d",
+  "source_preregistration_path": "artifacts/v9/s1/phase1/r13/pre_registration.json",
+  "source_preregistration_sha256": "1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30"
+ },
+ "metrics": [
+  {
+   "definition": "per-step agent pose estimate error against evaluator truth pose; mean and median translation error (m) and yaw error (deg); loop-closure segment reported separately",
+   "direction": "lower_is_better",
+   "frame": "task frame",
+   "id": "localization_error",
+   "unit": "m / deg (translation, yaw)"
+  },
+  {
+   "definition": "localization error and next-observation NLL on development worlds (never seen in training); final partition is read-once only after all training and is out of scope for this card",
+   "direction": "lower_is_better",
+   "frame": "task frame / agent frame",
+   "id": "unseen_map_generalization",
+   "unit": "m / nats"
+  },
+  {
+   "definition": "edge precision/recall of the arm's place graph against the true free-space adjacency graph restricted to visited cells; reported for confounded observations (shared appearance classes, handle reissue after occlusion)",
+   "direction": "higher_is_better",
+   "frame": "world occupancy graph (evaluator truth)",
+   "id": "topology_recovery",
+   "unit": "precision / recall"
+  },
+  {
+   "definition": "write k in {0,1,2,4,8} support transitions of a development world into memory without parameter updates, then predict held-out transitions (edge existence and destination displacement); accuracy and displacement error vs k",
+   "direction": "higher_is_better",
+   "frame": "world occupancy graph (evaluator truth)",
+   "id": "few_shot_unseen_transition",
+   "unit": "accuracy / m"
+  },
+  {
+   "definition": "development localization error and next-observation NLL at the frozen update checkpoints; one curve per arm x seed",
+   "direction": "lower_is_better",
+   "frame": "development worlds",
+   "id": "sample_efficiency",
+   "unit": "curve (metric vs updates)"
+  },
+  {
+   "definition": "zero-state vs history-paired probe and retention delta after writing a new world's memories without parameter updates; report with the D candidate row, incomparable items flagged",
+   "direction": "lower_is_better",
+   "frame": "development worlds",
+   "id": "m2_memory_interference",
+   "unit": "delta NLL / delta localization error"
+  }
+ ],
+ "phase": "S1 phase 1 (structured restricted observation arms; no visual-teacher arm)",
+ "resource_limit_sources": {
+  "disk_min_free_gib": "pilot storage protection",
+  "mlx_memory_gib": "pilot resource profile / registered run protection",
+  "process_memory_gib": "pilot resource profile / registered run protection",
+  "swap_growth_gib": "same-boot swap growth line (registered)",
+  "system_reserve_gib": "system reserve line (R20261021-P1-stageA-budget)",
+  "training_duty_cycle": "registered duty cycle for S1 phase 1"
+ },
+ "resource_limits": {
+  "disk_min_free_gib": 50.0,
+  "mlx_memory_gib": 4.0,
+  "process_memory_gib": 8.0,
+  "swap_growth_gib": 1.0,
+  "system_reserve_gib": 16.0,
+  "training_duty_cycle": 0.25
+ },
+ "schema": "ainerzero.v9.s1.preregistration.v1",
+ "source_identity": {
+  "package_files": {
+   "reports/V9-baseline/r3/baseline_manifest.json": "2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b",
+   "src/ainerzero/cli.py": "19765ba486d016b1794cf3b45429817da901d56f9ca6b66bcd03bf3d73321c0e",
+   "src/ainerzero/core/pilot.py": "181d3a4bde5fd17ae16a0ab4f24ff98a0d0bd29732f4f1f6f812b3242a804d44",
+   "src/ainerzero/learning/pilot_model.py": "6e7bc8def57fdf26297f00a0a4d38a740f1ef5308a5a6f1ce8e41b8554417f82",
+   "src/ainerzero/runtime/checkpoints.py": "9fb0fb3ea57fe82dbfe13de01dfa003ce78f0cff1e16aeb7761ff659da6ac9a8",
+   "src/ainerzero/runtime/lifecycle.py": "22ded55ce136b3186e48051ca1681cef5fc129e8a13fcd515261afccde196b3f",
+   "src/ainerzero/v9/experiments/s1/__init__.py": "b406eb96528e5e2bd40cc2c66004cc67ad7ab18c7fe718b7b9ac8acb5aa3d273",
+   "src/ainerzero/v9/experiments/s1/arms.py": "dfee798e41143857be811e7d9b1e70839f4c44c026890740da4a79d204cca62d",
+   "src/ainerzero/v9/experiments/s1/awz_export.py": "9870af961551ef35357688ee52e35fa5bbd672863764458c85519c7404563492",
+   "src/ainerzero/v9/experiments/s1/commands.py": "c66e02c383a13ae30ad7ea509e2ad8f991200cdee1d528b7d58903d420cfb91a",
+   "src/ainerzero/v9/experiments/s1/completion.py": "3dee3291a99a26484acd2ec3a05cf23902bf9eb404c0a4916f361313025333c2",
+   "src/ainerzero/v9/experiments/s1/data.py": "c354fdd5bacf054f02cc601c9362c334d7a732e6ba4aa1c8b1a310aff13958fc",
+   "src/ainerzero/v9/experiments/s1/evaluation.py": "90e174c0a739a106d1e2137e14fc27bb4a95516513762a4a34deadd34738fb92",
+   "src/ainerzero/v9/experiments/s1/identity.py": "5673103449ffcabc6666baf6e7e8a869a10d29c3a7ba5fc1a00553b04c816903",
+   "src/ainerzero/v9/experiments/s1/metrics.py": "577210abaacca6559e30bf1c901e906d774ab68ea9a97524424ddeb3aa9f58d4",
+   "src/ainerzero/v9/experiments/s1/prereg.py": "9461e7f36a11a9c75b4fd58a6e44ebac0d0d04c2b1e2a888ca4b743202813295",
+   "src/ainerzero/v9/experiments/s1/resource_gate.py": "7171a83282abdfdb31892a3b24d82251b813f3623102148b9ddcc0710e5d578f",
+   "src/ainerzero/v9/experiments/s1/runtime.py": "d5417b188126754e73e9b43c579235b062926b765e3be584759f8e5b1f0e60df",
+   "src/ainerzero/v9/experiments/s1/smoke.py": "90c71f538fbb7d4b068f595333558988e73ea76bb0f903d0c8cf9a1bea3c00b8",
+   "src/ainerzero/v9/experiments/s1/spec.py": "73f0eb5d5dcbcec4b6d89a06ecac27c67ffabd4dc8d7eea8e40b266856c0c3b1",
+   "src/ainerzero/v9/experiments/s1/worker.py": "4f4d2b39c6d23373ec6ffc582d24cd13fc2e41bf57f67d17da56013e09d9134d"
+  },
+  "package_map_digest": "813917c28787f2a83b3ad1df66178731dcf3280c25a5b2761176cb857adffb2e",
+  "repo_worktree_note": "working tree may carry other cards' changes; the prereg binds the files above, the data source map and the A2 baseline manifest, not the whole tree",
+  "spec": {
+   "path": "src/ainerzero/v9/experiments/s1/spec.py",
+   "sha256": "73f0eb5d5dcbcec4b6d89a06ecac27c67ffabd4dc8d7eea8e40b266856c0c3b1"
+  }
+ },
+ "spec": "s1-phase1-v1",
+ "status": "draft_awaiting_smoke",
+ "stop_rules": [
+  "non-finite loss, gradient or parameter aborts this run as failed",
+  "exceeding the frozen per-run deadline aborts this run as failed",
+  "exceeding the process memory line (8 GiB, RSS) aborts this run as failed",
+  "exceeding the MLX memory line (4 GiB) aborts this run as failed",
+  "exceeding the 16 GiB system reserve line aborts and marks the run failed",
+  "same-boot swap growth above 1 GiB aborts this run as failed",
+  "no rerun and no borrowing across seeds; a failed run stays failed",
+  "any run outside the frozen preregistration needs a new coordinator registration"
+ ],
+ "storage": {
+  "datasets": "artifacts/v9/s1/datasets/<dataset_digest>/",
+  "ledger_output_root": "artifacts/v9/s1/phase1/",
+  "reports": "reports/V9-P9/ holds only manifests and their SHA256"
+ },
+ "task": "ainerzero.V9.P9",
+ "timing": {
+  "arm1_deadline_seconds": null,
+  "arm1_estimate_seconds": null,
+  "arm1_supervision_seconds": null,
+  "deadline_factor": 1.25,
+  "deadline_seconds": null,
+  "deadline_source": "user_approved R20261023-S1-phase1-r11-budget",
+  "estimate_seconds": null,
+  "per_run_wall_max_seconds": 1200.0,
+  "phase_wall_headroom_seconds": null,
+  "phase_wall_max_seconds": 14400.0,
+  "phase_wall_seconds": null,
+  "registered_deadline_seconds": 1200,
+  "registered_supervision_seconds": 1250,
+  "registered_updates": 3510,
+  "rule": "deadline is the user-approved registered value 1200 s (RESEARCH_LOG R20261023-S1-phase1-r11-budget), not ceil(1.25 x estimate); supervision = deadline + 50 s; per-run wall <= 20 min; phase-1 total wall <= 4 h",
+  "smoke": null,
+  "supervision_extra_seconds": 50.0,
+  "supervision_seconds": null
+ },
+ "training_protocol": {
+  "adam_betas": [
+   0.9,
+   0.999
+  ],
+  "adam_epsilon": 1e-08,
+  "batch_size": 16,
+  "burn_in_steps": 1,
+  "checkpoint_fractions": [
+   0.0,
+   0.125,
+   0.25,
+   0.5,
+   1.0
+  ],
+  "data_seed_namespace": "S1_PHASE1_TRAIN_V1",
+  "duty_cycle": 0.25,
+  "eval_batches": 175,
+  "gradient_clip_norm": 1.0,
+  "learning_rate": 0.0003,
+  "objective": "one-step observation prediction (self-supervised) + geometric pose consistency",
+  "optimizer": "adamw",
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "sequence_steps": 2,
+  "target_estimate_seconds": 360.0,
+  "update_rule": "updates = 3510 (user-approved registered value, RESEARCH_LOG R20261023-S1-phase1-r11-budget); the derivation rule and its shrink loop do not apply to this registration",
+  "updates": null,
+  "updates_cap": 5000,
+  "updates_min": 100,
+  "weight_decay": 0.01
+ }
+}

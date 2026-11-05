@@ -1,0 +1,59 @@
+{
+ "harness": "reports/V-V9-P9/r2/harness/drift_check.py",
+ "worker_drift": {
+  "bound_worker_sha256": "08f7589767ec44afe9957f4bd51272c3fc7cc38feaf0ad5701a58b9cf4cacd77",
+  "tree_worker_sha256": "3c33b3dfc8266a77ff02ef828171d26e97a6ae47a84572de62d68ca73bad02e8",
+  "worker_drifted": true
+ },
+ "D1_train_with_drifted_bound_file": {
+  "exit_code": 0,
+  "status": "completed",
+  "stage": null,
+  "error": null,
+  "source_binding_status": null,
+  "approval_approved": true,
+  "run_id": "6485c2260d044c9bbfabd5ccbaf43832"
+ },
+ "D2_verify_same_tree": {
+  "exit_code": 1,
+  "status": "failed",
+  "stage": "source_binding_drift",
+  "error": null,
+  "source_binding_status": "failed",
+  "approval_approved": null,
+  "run_id": null
+ },
+ "D3_static_facts": {
+  "mode_train_calls_source_binding": false,
+  "worker_train_mentions_data_identity": false,
+  "worker_train_reads_dataset_digest": false,
+  "verify_calls_source_binding": true,
+  "worker_train_calls": [
+   "AdamW",
+   "append",
+   "asarray",
+   "build_trainable_arm",
+   "clip_grad_norm",
+   "eval",
+   "init",
+   "iter_batches",
+   "load_development_windows",
+   "load_training_windows",
+   "parameter_sha256",
+   "parameters",
+   "perf_counter",
+   "reserve",
+   "resolve_dataset_dir",
+   "sample",
+   "set_default_device",
+   "sleep",
+   "trainable_parameters",
+   "update",
+   "value_and_grad"
+  ],
+  "resolve_dataset_dir_returns": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+  "document_dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+  "resolve_compares_document": false
+ },
+ "note": "D1 uses the stubbed train body; it proves the gate releases and the run opens, not that an optimizer step ran (no training was performed)"
+}

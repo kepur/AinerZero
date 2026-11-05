@@ -1,0 +1,291 @@
+{
+ "schema": "ainerzero.v9.p14.mutations.v1",
+ "baseline": {
+  "command": "pytest tests/v9/experiments -q",
+  "summary": "129 passed in 3.21s",
+  "returncode": 0
+ },
+ "carry_over_source": "reports/V9-P9/r4/harness/mutation.py (M1-M15)",
+ "reviewer_written": [
+  "V1",
+  "V2",
+  "V3"
+ ],
+ "total": 18,
+ "caught": 18,
+ "missed": [],
+ "not_applied": [],
+ "results": [
+  {
+   "id": "M1",
+   "label": "pacer 占空比睡眠整段删除",
+   "file": "worker.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "5 failed, 124 passed in 2.61s",
+   "failed_test_count": 5,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.25-0.06]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.5-0.02]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.1-0.18]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_records_the_registered_duty_cycle_only",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M2",
+   "label": "evaluate() 的 duty 检查禁用",
+   "file": "resource_gate.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "7 failed, 122 passed in 2.66s",
+   "failed_test_count": 7,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_loosened_duty_cycle[0.5]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_loosened_duty_cycle[1.0]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_loosened_duty_cycle[0.2500001]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_nonpositive_duty_cycle[0.0]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_nonpositive_duty_cycle[-0.25]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_runtime_guard_refuses_a_loosened_duty_cycle"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M3",
+   "label": "交换区增长线删除",
+   "file": "resource_gate.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.68s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides4-swap_growth_limit]",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M4",
+   "label": "系统余量线删除",
+   "file": "resource_gate.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.67s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides3-system_reserve_limit]",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M5",
+   "label": "进程内存线删除",
+   "file": "resource_gate.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "5 failed, 124 passed in 54.96s",
+   "failed_test_count": 5,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides0-process_memory_limit]",
+    "tests/v9/experiments/test_s1_resource_gate.py::test_assert_start_with_injected_probes",
+    "tests/v9/experiments/test_s1_resource_gate.py::test_runtime_guard_stops_on_a_violation",
+    "tests/v9/experiments/test_s1_resource_gate.py::test_cli_refuses_to_start_on_an_unmet_protection_line",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M6",
+   "label": "MLX 峰值线删除",
+   "file": "resource_gate.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.91s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides2-mlx_memory_limit:",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M7",
+   "label": "定位误差恒为 0",
+   "file": "metrics.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.91s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_metrics.py::test_localization_known_answer_and_broken_control",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M8",
+   "label": "arm3 更新预算被单独 +1",
+   "file": "prereg.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "45 failed, 84 passed in 3.47s",
+   "failed_test_count": 45,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_approval.py::test_forged_status_with_recomputed_sha_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_cli_exit_code_is_three_when_the_approval_line_is_missing",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_with_one_hex_digit_off_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_for_an_older_document_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_the_documented_format_inside_a_paragraph_is_not_an_approval",
+    "tests/v9/experiments/test_s1_approval.py::test_matching_approval_line_approves_and_uses_the_frozen_budget"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M9",
+   "label": "final 分区不再抛 FinalPartitionSealed",
+   "file": "data.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.70s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_data.py::test_final_partition_is_sealed_everywhere",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M10",
+   "label": "CLI 的 train 批准检查禁用（监督侧）",
+   "file": "commands.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "14 failed, 115 passed in 2.70s",
+   "failed_test_count": 14,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_approval.py::test_forged_status_with_recomputed_sha_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_cli_exit_code_is_three_when_the_approval_line_is_missing",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_with_one_hex_digit_off_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_for_an_older_document_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_the_documented_format_inside_a_paragraph_is_not_an_approval",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_inside_a_fenced_code_block_is_not_an_approval"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M11",
+   "label": "worker 的 train 批准检查禁用（纵深防御侧）",
+   "file": "worker.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "3 failed, 126 passed in 2.63s",
+   "failed_test_count": 3,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_approval.py::test_worker_refuses_train_without_an_approval_line",
+    "tests/v9/experiments/test_s1_approval.py::test_worker_records_the_approval_line_and_sha_in_the_runstore",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M12",
+   "label": "无更新断言恒为真（伪造 parameters_unchanged）",
+   "file": "smoke.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.64s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_no_update.py::test_smoke_reports_an_update_when_a_parameter_really_changed",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M13",
+   "label": "train 的规范日志检查禁用（P-1）",
+   "file": "commands.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.67s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals",
+    "tests/v9/experiments/test_s1_train_gates.py::test_a_relocated_research_log_is_refused_even_with_the_right_line"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M14",
+   "label": "train 的源绑定检查禁用（P-2）",
+   "file": "commands.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.66s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals",
+    "tests/v9/experiments/test_s1_train_gates.py::test_train_refuses_when_a_bound_source_drifted"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "M15",
+   "label": "train 的数据集摘要检查禁用（P-3）",
+   "file": "commands.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.71s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals",
+    "tests/v9/experiments/test_s1_train_gates.py::test_train_refuses_when_the_dataset_digest_differs"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "V1",
+   "label": "started 移回循环外（阶段共享，跨 run 累积）",
+   "file": "worker.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "2 failed, 127 passed in 2.63s",
+   "failed_test_count": 2,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_worker_train_resets_deadline_across_sequential_runs"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "V2",
+   "label": "监督时限按整个阶段算（9 x 500 s）",
+   "file": "commands.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "3 failed, 126 passed in 2.66s",
+   "failed_test_count": 3,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_approval.py::test_matching_approval_line_approves_and_uses_the_frozen_budget",
+    "tests/v9/experiments/test_s1_approval.py::test_a_cli_wall_budget_cannot_shorten_or_extend_the_frozen_deadline",
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  },
+  {
+   "id": "V3",
+   "label": "重复调用没有被拒（already_completed 守卫移除）",
+   "file": "commands.py",
+   "applied": true,
+   "returncode": 1,
+   "summary": "1 failed, 128 passed in 2.68s",
+   "failed_test_count": 1,
+   "failed_tests_sample": [
+    "tests/v9/experiments/test_s1_timing_sequence.py::test_full_sequence_9_trains_and_4_evals"
+   ],
+   "verdict": "CAUGHT"
+  }
+ ]
+}

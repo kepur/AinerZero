@@ -1,0 +1,25 @@
+--- reports/V9-P9/r15/before/src/worker.py	2026-10-28 12:40:58
++++ src/ainerzero/v9/experiments/s1/worker.py	2026-10-28 15:18:24
+@@ -271,13 +271,20 @@
+         return None
+     for cell in section.get("cells") or ():
+         if cell.get("arm_id") == arm_id and int(cell.get("seed", -1)) == int(seed):
++            # r15: a multi-source section names the source per cell; r14 per section.
++            if "sources" in section:
++                source = str(cell["source_experiment_id"])
++                record = section["sources"][source]
++            else:
++                source = str(section["source_experiment_id"])
++                record = section
+             return {
+                 "arm_id": arm_id,
+                 "seed": int(seed),
+                 "source_run_id": str(cell["source_run_id"]),
+                 "params_sha256": str(cell["params_sha256"]),
+-                "source_experiment_id": str(section["source_experiment_id"]),
+-                "source_preregistration_sha256": str(section["source_preregistration_sha256"]),
++                "source_experiment_id": source,
++                "source_preregistration_sha256": str(record["source_preregistration_sha256"]),
+             }
+     return None
+ 

@@ -1,0 +1,1195 @@
+{
+  "id": "ainerzero.V9.P40",
+  "project_id": "ainerzero",
+  "track_id": "ainerzero.V9.P",
+  "seq": 40,
+  "title": "【代码·数学·MLX】S1 第一阶段方案 A 第三次运行（r13：3510步/截止1200s/eval175）",
+  "kind": "implement",
+  "tier": 2,
+  "status": "blocked",
+  "prompt": "【草稿：P38、P39 通过、一级写好 r13 批准行后才发布】\n\n# S1 第一阶段按方案 A 第三次运行（r13）\n\n授权：用户 10-24 批准 r13（AinerZero/RESEARCH_LOG.md `## R20261024-S1-phase1-r13-budget`）；一级放行核定与唯一有效批准行在 `## R20261021-P1-stageA-budget` 节。运行协议见参数，照用不改。\n\n要点（吸取 r12 的教训）：\n1. **开工核对**：复算 r13 预登记文件 SHA 与生产台账 SHA；在副本上跑一次 verify，必须 completed、source_binding=passed、approval.approved=true。确认主机接交流电源（`pmset -g batt` 显示 AC Power）。任一不符先停手上报。\n2. **防睡眠**：开跑前在后台启动进程级防空闲睡眠断言并绑定到运行驱动（例如 `caffeinate -i -s -w <驱动 PID>`），整个阶段保持；结束即释放；不改任何系统设置。报告里贴出断言的启动命令与 `pmset -g assertions` 摘要。\n3. **生产 output-root 只给正式作业用**；其它检查、演练、读台账都在副本上做；读生产台账只许 shasum。\n4. **串行执行**：经 relay-runner 用 `relay submit-job` 发起，不用 `relay exec`。先 9 次训练（arm2/3/4 × 种子 0/1/2），全部结束后评测：arm1 一次 D 复验，arm2/3/4 逐个评测，只在 development 分区。每个作业 `--max-attempts 1`。\n5. **启动类拒绝立即停**：任一作业若在启动前就被拒（无 started_at，例如 409），立刻停下上报，不要接着提交下一个。\n6. **一次性**：失败不重跑、不挪用额度；不改源码、参数、种子、步数或预算；不生成数据，不读 final；不写批准行。运行中若主机睡眠导致失败，照实记为环境失败。\n7. **心跳**：整个阶段每 ≤10 分钟 heartbeat（建议由运行驱动自动发）；失租会让任务进入回收，回收期间 runner 拒绝本卡一切新作业。\n8. **报告**写到 `reports/V9-S1-r13/`：每次训练的实际步数、墙钟、单调时钟、是否在 1200 s 内完成 3510 步；评测各组指标与 arm1 D 复验；按冻结注记解读；失败与不利结果如实写，不做能力宣称。非作者复核为运行复核卡。\n",
+  "params": {
+    "release": "一级放行核定见 AinerZero/RESEARCH_LOG.md 的 R20261021-P1-stageA-budget 节（2026-10-24 23:2x 条目）；本节唯一有效批准行指向 r13 document SHA",
+    "prereg": "artifacts/v9/s1/phase1/r13/pre_registration.json",
+    "prereg_file_sha256": "9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d",
+    "prereg_document_sha256": "1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30",
+    "experiment_id": "s1-phase1-20261024-r13",
+    "output_root": "artifacts/v9/s1/phase1",
+    "runs": {
+      "train": [
+        "arm2 seed0",
+        "arm2 seed1",
+        "arm2 seed2",
+        "arm3 seed0",
+        "arm3 seed1",
+        "arm3 seed2",
+        "arm4 seed0",
+        "arm4 seed1",
+        "arm4 seed2"
+      ],
+      "eval": "训练全部结束后，arm1 做一次 D 复验，arm2/3/4 对已训练的 checkpoint 逐个评测；只在 development 分区"
+    },
+    "argv_template_train": ".venv/bin/python -m ainerzero.cli s1-phase1 --mode train --arm <arm2|arm3|arm4> --seed <0|1|2> --prereg artifacts/v9/s1/phase1/r13/pre_registration.json --output-root artifacts/v9/s1/phase1",
+    "argv_template_eval": ".venv/bin/python -m ainerzero.cli s1-phase1 --mode eval --arm <arm1..arm4> [--seed <0|1|2>] --prereg artifacts/v9/s1/phase1/r13/pre_registration.json --output-root artifacts/v9/s1/phase1",
+    "launch": {
+      "command": "relay submit-job --agent <你的ID> --project ainerzero --task ainerzero.V9.P40 --type <train|eval> --cwd /Users/mac/AinerWorkFlow/AinerZero --authorization-ref ainerzero:registration/1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30 --idempotency-key <唯一键> --gpu-class 0 --peak-mem 8 --ttl <train 1800 | eval 900> --max-attempts 1 --json -- <argv>",
+      "idempotency_key_format": "s1-r13-<train|eval>-<arm>-s<seed>（arm1 D 复验：s1-r13-eval-arm1）",
+      "serial": "一次只提交一个作业，前一个结束（含组空确认）后再提交下一个",
+      "not": "不用 relay exec"
+    },
+    "never": [
+      "不传 --prereg 时会落到规范根下的旧 pre_registration.json，必须显式传 r12 路径",
+      "生产 output-root 只给正式作业；其它检查一律在副本上做，读生产台账只许 shasum",
+      "不改任何源码（绑定源漂移会被入口拒绝）",
+      "不现场改参数、种子、步数或预算",
+      "失败不重跑、不挪用额度",
+      "不生成数据，不读取 final 分区",
+      "不写批准行"
+    ],
+    "budget": {
+      "updates": 3510,
+      "per_run_deadline_s": 1200,
+      "supervision_kill_s": 1250,
+      "per_run_wall_max_s": 1200,
+      "eval_batches": 175,
+      "phase_wall_max_s": 14400,
+      "process_rss_gib": 8,
+      "mlx_gib": 4,
+      "system_headroom_gib": 16,
+      "same_boot_swap_growth_gib": 1,
+      "duty_cycle": 0.25
+    },
+    "report_dir": "reports/V9-S1-r13/",
+    "interpretation_bound": "held-out=时间续段，checkpoint0=未训练基线，M2 选点=字典序前 5，k=8 记 insufficient_data（详见 RESEARCH_LOG 放行核定条目）",
+    "unmeasured": "D 的 C0 前向（截止约 6 s，按冻结公式随 eval_batches 推导）、window 批、训练后 memory 规模——如实报告，不扩预算",
+    "precondition": "开跑前确认交流电源（pmset -g batt 显示 AC Power）与副本 verify approved=true；用户已承诺运行期间不合盖、不拔电、不手动睡眠",
+    "heartbeat_discipline": "作业运行期间每≤10分钟 heartbeat 一次；长作业走 runner 并持续心跳",
+    "excluded_agents_semantics": "按 agent ID 精确匹配；claude、codex 是一级统筹的身份 ID",
+    "user_approval": "2026-10-24 22:1x 用户逐字批准 r13（见 R20261024-S1-phase1-r13-budget）",
+    "production_ledger_at_release": {
+      "control.sqlite3": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44"
+    },
+    "executor": "一级 claude 托管（卡面建议执行者）；运行驱动由 caffeinate -i -s 包裹并以 nohup 脱离会话",
+    "anti_sleep": "运行驱动以 `caffeinate -i -s <驱动>` 启动，断言与驱动同生命周期，结束即释放；不改系统设置",
+    "launch_refusal_rule": "任一作业在启动前就被拒（无 started_at），驱动立即整体停止，不提交下一个",
+    "continuation": {
+      "attempt": 2,
+      "reason": "r1 partial stop: arm3-seed1 resource_gate rc=2 mid-run; arm3-seed2 launch denied swap>1GiB; driver followed launch_refusal_rule",
+      "preserve_failures": [
+        "arm3-seed1"
+      ],
+      "do_not_rerun_completed": [
+        "arm2-seed0",
+        "arm2-seed1",
+        "arm2-seed2",
+        "arm3-seed0"
+      ],
+      "resume_train_order": [
+        "arm3-seed2",
+        "arm4-seed0",
+        "arm4-seed1",
+        "arm4-seed2"
+      ],
+      "eval_rule": "only after all nine train slots resolved (completed or preserved-failed); no eval until then",
+      "idempotency": "reuse existing keys; do not mint new keys for completed/failed arms",
+      "budget": "no expansion; no param/prereg/threshold changes; wait for heavy-GPU arbiter free (swap growth <=1GiB)",
+      "reports_dir": "reports/V9-S1-r13/",
+      "prior_report": "keep r1 report/metrics; append r2 section; do not overwrite r1 evidence",
+      "p36": "frozen orphan recovery — do not touch"
+    },
+    "current_control": "Continue r13 only. Skip completed arms. Do NOT retry arm3-seed1 (preserve rc=2 resource_gate). When relay gpu is free, submit arm3-seed2 then arm4 seeds in order; then eval per prereg. If launch refused again, stop and report — do not burn next keys."
+  },
+  "params_version": 2,
+  "acceptance": "",
+  "context_files": [
+    "/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md",
+    "/Users/mac/AinerWorkFlow/AinerZero/README.md"
+  ],
+  "file_scope": [
+    "reports/V9-S1-r13/",
+    "artifacts/v9/s1/phase1/"
+  ],
+  "depends_on": [
+    "ainerzero.V9.P38",
+    "ainerzero.V9.P39"
+  ],
+  "verifies": [],
+  "needs_gpu": true,
+  "dedupe_key": "ainerzero-s1-r13-run",
+  "max_attempts": 3,
+  "attempts": 1,
+  "assignee": null,
+  "author": "antigravity-v7k2",
+  "lease_until": null,
+  "lease_s": 1200,
+  "progress": null,
+  "last_message": "arm3-seed2 未启动即被拒，驱动停止：resource lease not granted",
+  "result": "# ainerzero.V9.P40 执行报告\n角色：executor；负责人：antigravity-v7k2；时间：2026-10-25 15:55 +0300\n任务状态：reported（failed）；实验状态：部分完成 / 资源门禁越线与启动拒止后按冻结规则停手\n任务依据：ainerzero.V9.P40 参数 v1；授权见 RESEARCH_LOG `R20261021-P1-stageA-budget` 批准行 document SHA `1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30`\n输入身份：prereg 文件 SHA `9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d`；document SHA `1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30`；领取时生产台账 SHA `6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44`（停手后为 `fe31fee6c47b47b70b42fd04c5ddabbcca26483cc191deaa7a65b00a8ef2ed60`，WAL 0）；数据集 `8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26`\n修改文件：仅 `reports/V9-S1-r13/`（本报告、指标、账本、运行驱动与日志）以及由 runner 正式执行产出的 `artifacts/v9/s1/phase1/`；未改源码/参数/批准行；生产台账只由正式 runner 作业写入，核对均在副本上进行。\n\n---\n\n## 运行环境与前置核查实测\n\n1. **电源**：`pmset -g batt` 实测 `Now drawing from 'AC Power'` (94% charging)。\n2. **预登记与台账 SHA**：\n   - `artifacts/v9/s1/phase1/r13/pre_registration.json` 文件 SHA `9868b913…`，规范计算 document SHA `1cb98a21…`，与参数完全一致；\n   - 生产台账 `artifacts/v9/s1/phase1/control.sqlite3` 初始 SHA `6b604983…`，与放行登记完全一致。\n3. **副本 verify**：\n   - 在副本目录 `/tmp/phase1_copy` 上执行 `s1-phase1 --mode verify`：`status=completed`、`source_binding=passed`、`approval.approved=true`（见 `preflight-verify-copy.json`）。\n4. **防休眠断言（caffeinate）**：\n   - 启动命令：`nohup caffeinate -i -s -w 11584 >/dev/null 2>&1 &`（PID 11585，绑定驱动 PID 11584）。\n   - 实测断言状态（`pmset -g assertions`）：\n     ```text\n     pid 11585(caffeinate): [0x00000dfb0001a0e6] PreventUserIdleSystemSleep named: \"caffeinate command-line tool\"\n     pid 11585(caffeinate): [0x00000dfb0007a0e7] PreventSystemSleep named: \"caffeinate command-line tool\"\n     Details: caffeinate asserting on behalf of Process ID 11584\n     ```\n   - 驱动进程退出后，该断言已随进程生命周期结束自动安全释放。\n\n---\n\n## 训练作业盘点\n\n全部作业严格通过 `relay submit-job` 提交至 relay runner 串行执行（`max_attempts=1`），并自动维护组空归档与心跳：\n\n| label | idempotency key | relay job id | 状态 | rc | 实际更新步数 | 墙钟耗时 | 1200s 内满 3510？ | 最终 loss / NLL | 产物 run_id / Checkpoint SHA | 组空状态 |\n|---|---|---|---|---|---|---|---|---|---|---|\n| **arm2-seed0** | `s1-r13-train-arm2-s0` | `job-b7ecc70f…` | **completed** | 0 | 3510 / 3510 | 877.28 s | **是** (877s) | loss: 0.0193<br>NLL: 0.800→0.063 | `19f2d1eb…`<br>`9d155fbf…1702` | `confirmed_empty=true` |\n| **arm2-seed1** | `s1-r13-train-arm2-s1` | `job-31a550d8…` | **completed** | 0 | 3510 / 3510 | 889.08 s | **是** (889s) | loss: 0.0005<br>NLL: 0.817→0.001 | `7d155060…`<br>`c4d16f6e…f643` | `confirmed_empty=true` |\n| **arm2-seed2** | `s1-r13-train-arm2-s2` | `job-fb2c4adc…` | **completed** | 0 | 3510 / 3510 | 856.78 s | **是** (857s) | loss: 0.0013<br>NLL: 0.774→0.002 | `1678cc1c…`<br>`f7f9a661…cf01` | `confirmed_empty=true` |\n| **arm3-seed0** | `s1-r13-train-arm3-s0` | `job-f3a2b32b…` | **completed** | 0 | 3510 / 3510 | 723.98 s | **是** (724s) | loss: 0.0008<br>NLL: 0.827→0.0009 | `403ae816…`<br>`577429aa…f51e` | `confirmed_empty=true` |\n| **arm3-seed1** | `s1-r13-train-arm3-s1` | `job-53bec0ed…` | **failed** | 2 | 2566 / 3510 | 459.77 s | 否 (运行中越线) | 中途终止 | `92b694d3…`<br>(无 completion.json) | `confirmed_empty=true` |\n| **arm3-seed2** | `s1-r13-train-arm3-s2` | `job-c35dfe45…` | **canceled** | — | 0 / 3510 | 0.0 s | 否 (未启动即被拒) | 未运行 | 无 | `confirmed_empty=true` |\n| **arm4-seed0/1/2** | — | — | **未提交** | — | — | — | — | — | — | — |\n\n---\n\n## 资源门禁越线与启动拒止根因诊断\n\n### 1. `arm3-seed1` 中途终止（内部资源门禁越线）\n- 15:39:01 作业成功启动，平稳运行 459.8 s 完成 2566 步更新；\n- 训练过程触发 `s1-phase1/resource_gate.py` 采样检查：\n  ```text\n  \"error\": \"resource_gate: system_reserve_limit: available 15.98 GiB < 16.0 GiB; swap_growth_limit: growth 1.01 GiB > 1.0 GiB\"\n  ```\n- 宿主机系统可用物理内存降低至 15.98 GiB（突破 16.0 GiB 保留线），且 swap 增长量达到 1.01 GiB（突破 1.0 GiB 增长线），进程内部执行 fail-closed 退出（worker exit 3, CLI returncode 2）；\n- 依据规约，不重跑、不挪用额度，如实记录环境限制。\n\n### 2. `arm3-seed2` 启动类拒绝（Relay 仲裁器拒止）\n- 15:46:47 驱动提交 `arm3-seed2`（`job-c35dfe45…`）；\n- Relay 资源仲裁器（`arbiter.py`）监测到宿主机当前物理环境总 swap 使用量达 2507 MB，相对于 boot baseline 增长量达 2.45 GiB（`swap_delta_gib = 2.45 > 1.0 GiB`）；\n- 仲裁器判定 `lease_observation: status=denied, reason=swap 增长 >1 GiB`，拒绝签发 GPU 租约，作业始终处于 `queued` 状态无法启动（`started_at = null`）；\n- 按照任务说明第 5 条与参数规约 **启动类拒绝立即停**（`launch_refusal_rule`）：\n  > “任一作业若在启动前就被拒（无 started_at，例如 409），立刻停下上报，不要接着提交下一个。”\n- 驱动执行整体停止，中止提交后续作业，未烧掉后续作业的唯一幂等键。\n\n---\n\n## 评测\n\n未执行（按冻结协议，训练未全部完成且遭遇启动拒止时，评测阶段不予开启；arm1 D 复验与 arm2/3/4 development 评测均未提交）。\n\n---\n\n## 解读边界与诚实结论\n\n- **完成度**：方案 A 9 次训练完成 4 次（`arm2` 全部 3 个种子均满 3510 步高精度收敛，`arm3-seed0` 满 3510 步收敛）；\n- **门禁守卫完备**：进程级 `resource_gate` 与平台级 `relay arbiter` 守卫均严格生效，在内存/swap 告警时坚决拦截，有效保护了宿主机环境；\n- **防休眠与心跳合规**：全过程心跳连续发送 427 次无丢失，进程级 `caffeinate` 断言全程护航；\n- **后续处理**：剩余 `arm3-seed2`、`arm4` 3 个种子及评测待统筹者（一级）重新核定资源环境或在重启/释放 swap 后另行授权窗口。\n",
+  "result_data": {
+    "task": "ainerzero.V9.P40",
+    "agent": "antigravity-v7k2",
+    "reported_at": "2026-10-25T15:53:00+03:00",
+    "experiment_id": "s1-phase1-20261024-r13",
+    "prereg_file_sha256": "9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d",
+    "prereg_document_sha256": "1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30",
+    "production_ledger_sha256_at_claim": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44",
+    "production_ledger_sha256_at_stop": "fe31fee6c47b47b70b42fd04c5ddabbcca26483cc191deaa7a65b00a8ef2ed60",
+    "preflight": {
+      "ac_power": true,
+      "power_source": "Now drawing from 'AC Power' (94% charging)",
+      "prereg_sha256_verified": true,
+      "ledger_sha256_verified": true,
+      "verify_copy": {
+        "status": "completed",
+        "source_binding": "passed",
+        "approval_approved": true,
+        "approval_line": "APPROVED s1-phase1 prereg document_sha256=1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30",
+        "document_sha256": "1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30"
+      }
+    },
+    "anti_sleep": {
+      "driver_pid": 11584,
+      "caffeinate_pid": 11585,
+      "command": "caffeinate -i -s -w 11584",
+      "assertions": "PreventSystemSleep 1, PreventUserIdleSystemSleep 1",
+      "released_on_exit": true
+    },
+    "trains": [
+      {
+        "label": "arm2-seed0",
+        "idempotency_key": "s1-r13-train-arm2-s0",
+        "job_id": "job-b7ecc70f9dbe4a0882ede4a66234c258",
+        "status": "completed",
+        "returncode": 0,
+        "run_id": "19f2d1eb4bf04da4909d87501348028d",
+        "updates": 3510,
+        "wall_seconds": 877.28,
+        "within_1200_full_3510": true,
+        "final_training_loss": 0.019298,
+        "checkpoint_sha256": "9d155fbf2817b75c2963c06e31053f732f08eac80446c5650673f095126a1702",
+        "sample_efficiency_curve": [
+          {
+            "updates": 0,
+            "development_nll": 0.80041
+          },
+          {
+            "updates": 439,
+            "development_nll": 0.09741
+          },
+          {
+            "updates": 878,
+            "development_nll": 0.08853
+          },
+          {
+            "updates": 1755,
+            "development_nll": 0.07949
+          },
+          {
+            "updates": 3510,
+            "development_nll": 0.06303
+          }
+        ],
+        "confirmed_empty": true,
+        "started_at": "2026-10-25T14:42:23+0300",
+        "ended_at": "2026-10-25T14:57:09+0300"
+      },
+      {
+        "label": "arm2-seed1",
+        "idempotency_key": "s1-r13-train-arm2-s1",
+        "job_id": "job-31a550d855ff4940b23bdee9846eea1f",
+        "status": "completed",
+        "returncode": 0,
+        "run_id": "7d155060fecc4070a9a68e95fb3761fa",
+        "updates": 3510,
+        "wall_seconds": 889.08,
+        "within_1200_full_3510": true,
+        "final_training_loss": 0.000484,
+        "checkpoint_sha256": "c4d16f6e9a48b666a218ed41afcff607df3470dd07de8661921c237b4516f643",
+        "sample_efficiency_curve": [
+          {
+            "updates": 0,
+            "development_nll": 0.81749
+          },
+          {
+            "updates": 439,
+            "development_nll": 0.04555
+          },
+          {
+            "updates": 878,
+            "development_nll": 0.04518
+          },
+          {
+            "updates": 1755,
+            "development_nll": 0.00162
+          },
+          {
+            "updates": 3510,
+            "development_nll": 0.00106
+          }
+        ],
+        "confirmed_empty": true,
+        "started_at": "2026-10-25T14:57:15+0300",
+        "ended_at": "2026-10-25T15:12:10+0300"
+      },
+      {
+        "label": "arm2-seed2",
+        "idempotency_key": "s1-r13-train-arm2-s2",
+        "job_id": "job-fb2c4adcc4cc4679b39a03702c16a972",
+        "status": "completed",
+        "returncode": 0,
+        "run_id": "1678cc1cc5d1468dabb3e86a16a45e97",
+        "updates": 3510,
+        "wall_seconds": 856.78,
+        "within_1200_full_3510": true,
+        "final_training_loss": 0.001294,
+        "checkpoint_sha256": "f7f9a661f24140404005325aec714bba85970f323333940ba934458821accf01",
+        "sample_efficiency_curve": [
+          {
+            "updates": 0,
+            "development_nll": 0.7743
+          },
+          {
+            "updates": 439,
+            "development_nll": 0.11183
+          },
+          {
+            "updates": 878,
+            "development_nll": 0.08198
+          },
+          {
+            "updates": 1755,
+            "development_nll": 0.03545
+          },
+          {
+            "updates": 3510,
+            "development_nll": 0.00222
+          }
+        ],
+        "confirmed_empty": true,
+        "started_at": "2026-10-25T15:12:16+0300",
+        "ended_at": "2026-10-25T15:26:39+0300"
+      },
+      {
+        "label": "arm3-seed0",
+        "idempotency_key": "s1-r13-train-arm3-s0",
+        "job_id": "job-f3a2b32b41364407ad35a09142b08ea3",
+        "status": "completed",
+        "returncode": 0,
+        "run_id": "403ae816720c4ad9b4f75ecd86e7b109",
+        "updates": 3510,
+        "wall_seconds": 723.98,
+        "within_1200_full_3510": true,
+        "final_training_loss": 0.000793,
+        "checkpoint_sha256": "577429aa3e1becabd40a5f8787f8d696c2e237982bea725a96ec1b1c8ba6f51e",
+        "sample_efficiency_curve": [
+          {
+            "updates": 0,
+            "development_nll": 0.82691
+          },
+          {
+            "updates": 439,
+            "development_nll": 0.00371
+          },
+          {
+            "updates": 878,
+            "development_nll": 0.0022
+          },
+          {
+            "updates": 1755,
+            "development_nll": 0.0011
+          },
+          {
+            "updates": 3510,
+            "development_nll": 0.00086
+          }
+        ],
+        "confirmed_empty": true,
+        "started_at": "2026-10-25T15:26:45+0300",
+        "ended_at": "2026-10-25T15:38:55+0300"
+      },
+      {
+        "label": "arm3-seed1",
+        "idempotency_key": "s1-r13-train-arm3-s1",
+        "job_id": "job-53bec0edbd484eac8ea3128a1a24dde1",
+        "status": "failed",
+        "returncode": 2,
+        "run_id": "92b694d35a324af083fc27183bb08f8c",
+        "updates": 2566,
+        "wall_seconds": 459.77,
+        "within_1200_full_3510": false,
+        "failure_reason": "resource_gate: system_reserve_limit: available 15.98 GiB < 16.0 GiB; swap_growth_limit: growth 1.01 GiB > 1.0 GiB",
+        "confirmed_empty": true,
+        "started_at": "2026-10-25T15:39:01+0300",
+        "ended_at": "2026-10-25T15:46:44+0300"
+      },
+      {
+        "label": "arm3-seed2",
+        "idempotency_key": "s1-r13-train-arm3-s2",
+        "job_id": "job-c35dfe45eb30437bb1fb0aad856e1fc6",
+        "status": "canceled",
+        "returncode": null,
+        "updates": 0,
+        "wall_seconds": 0.0,
+        "within_1200_full_3510": false,
+        "failure_reason": "launch refused: relay arbiter denied lease (swap 增长 2.45 GiB > 1.0 GiB)",
+        "started_at": null,
+        "ended_at": "2026-10-25T15:51:48+0300",
+        "confirmed_empty": true
+      }
+    ],
+    "evals": [],
+    "stopped_reason": "launch refused for arm3-seed2: resource lease not granted (swap 增长 >1 GiB); driver stopped per launch_refusal_rule",
+    "all_attempted_jobs_group_empty": true
+  },
+  "callback_url": null,
+  "created_by": "claude",
+  "created_at": "2026-10-24T22:12:51+03:00",
+  "updated_at": "2026-10-25T22:30:49+03:00",
+  "workdirs": null,
+  "claimed_at": null,
+  "last_beat_at": 1792932710.072973,
+  "beats": 427,
+  "stalls": 1,
+  "max_stalls": 5,
+  "needs": [
+    "code",
+    "math",
+    "longrun"
+  ],
+  "reserve_until": null,
+  "reserve_for": null,
+  "reserve_for_kind": null,
+  "reserve_by": null,
+  "reserve_reason": null,
+  "reserve_mode": null,
+  "ready_since": 1792932955.0377002,
+  "recovery": null,
+  "module": null,
+  "report_revision_id": null,
+  "gpu_level": 1,
+  "deps": [
+    {
+      "id": "ainerzero.V9.P38",
+      "status": "accepted",
+      "ok": true
+    },
+    {
+      "id": "ainerzero.V9.P39",
+      "status": "accepted",
+      "ok": true
+    }
+  ],
+  "deps_ok": true,
+  "waiting_questions": [],
+  "display_state": "blocked",
+  "display_label": "阻塞",
+  "recovery_pending": false,
+  "lease_left_s": null,
+  "elapsed_s": null,
+  "idle_s": null,
+  "health": null,
+  "reserved": false,
+  "reserve_left_s": null,
+  "reserve_label": "",
+  "events": [
+    {
+      "id": 17551,
+      "at": "2026-10-25T22:30:49+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "codex",
+      "type": "status_blocked",
+      "message": "用户已确认Claude额度耗尽，由Codex接管G1。r13首训练14:42已启动，当前22:xx超过RunStore自experiment.created_at起14400s硬窗口；剩余运行不能仅等swap恢复续跑。原成功/失败/未启动记录全部保留；零新增train/eval/verify生产调用，先做非作者零运行审计，再报具体新登记授权。",
+      "data": null
+    },
+    {
+      "id": 17339,
+      "at": "2026-10-25T15:55:55+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "claude",
+      "type": "status_ready",
+      "message": "r2 续跑：跳过已完成臂；保留 arm3-seed1 rc=2；GPU/swap 闸门转闲后从 arm3-seed2→arm4→eval；不扩预算不改冻结",
+      "data": null
+    },
+    {
+      "id": 17338,
+      "at": "2026-10-25T15:55:54+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "claude",
+      "type": "params_changed",
+      "message": "参数改到 v2",
+      "data": {
+        "old": {
+          "release": "一级放行核定见 AinerZero/RESEARCH_LOG.md 的 R20261021-P1-stageA-budget 节（2026-10-24 23:2x 条目）；本节唯一有效批准行指向 r13 document SHA",
+          "prereg": "artifacts/v9/s1/phase1/r13/pre_registration.json",
+          "prereg_file_sha256": "9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d",
+          "prereg_document_sha256": "1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30",
+          "experiment_id": "s1-phase1-20261024-r13",
+          "output_root": "artifacts/v9/s1/phase1",
+          "runs": {
+            "train": [
+              "arm2 seed0",
+              "arm2 seed1",
+              "arm2 seed2",
+              "arm3 seed0",
+              "arm3 seed1",
+              "arm3 seed2",
+              "arm4 seed0",
+              "arm4 seed1",
+              "arm4 seed2"
+            ],
+            "eval": "训练全部结束后，arm1 做一次 D 复验，arm2/3/4 对已训练的 checkpoint 逐个评测；只在 development 分区"
+          },
+          "argv_template_train": ".venv/bin/python -m ainerzero.cli s1-phase1 --mode train --arm <arm2|arm3|arm4> --seed <0|1|2> --prereg artifacts/v9/s1/phase1/r13/pre_registration.json --output-root artifacts/v9/s1/phase1",
+          "argv_template_eval": ".venv/bin/python -m ainerzero.cli s1-phase1 --mode eval --arm <arm1..arm4> [--seed <0|1|2>] --prereg artifacts/v9/s1/phase1/r13/pre_registration.json --output-root artifacts/v9/s1/phase1",
+          "launch": {
+            "command": "relay submit-job --agent <你的ID> --project ainerzero --task ainerzero.V9.P40 --type <train|eval> --cwd /Users/mac/AinerWorkFlow/AinerZero --authorization-ref ainerzero:registration/1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30 --idempotency-key <唯一键> --gpu-class 0 --peak-mem 8 --ttl <train 1800 | eval 900> --max-attempts 1 --json -- <argv>",
+            "idempotency_key_format": "s1-r13-<train|eval>-<arm>-s<seed>（arm1 D 复验：s1-r13-eval-arm1）",
+            "serial": "一次只提交一个作业，前一个结束（含组空确认）后再提交下一个",
+            "not": "不用 relay exec"
+          },
+          "never": [
+            "不传 --prereg 时会落到规范根下的旧 pre_registration.json，必须显式传 r12 路径",
+            "生产 output-root 只给正式作业；其它检查一律在副本上做，读生产台账只许 shasum",
+            "不改任何源码（绑定源漂移会被入口拒绝）",
+            "不现场改参数、种子、步数或预算",
+            "失败不重跑、不挪用额度",
+            "不生成数据，不读取 final 分区",
+            "不写批准行"
+          ],
+          "budget": {
+            "updates": 3510,
+            "per_run_deadline_s": 1200,
+            "supervision_kill_s": 1250,
+            "per_run_wall_max_s": 1200,
+            "eval_batches": 175,
+            "phase_wall_max_s": 14400,
+            "process_rss_gib": 8,
+            "mlx_gib": 4,
+            "system_headroom_gib": 16,
+            "same_boot_swap_growth_gib": 1,
+            "duty_cycle": 0.25
+          },
+          "report_dir": "reports/V9-S1-r13/",
+          "interpretation_bound": "held-out=时间续段，checkpoint0=未训练基线，M2 选点=字典序前 5，k=8 记 insufficient_data（详见 RESEARCH_LOG 放行核定条目）",
+          "unmeasured": "D 的 C0 前向（截止约 6 s，按冻结公式随 eval_batches 推导）、window 批、训练后 memory 规模——如实报告，不扩预算",
+          "precondition": "开跑前确认交流电源（pmset -g batt 显示 AC Power）与副本 verify approved=true；用户已承诺运行期间不合盖、不拔电、不手动睡眠",
+          "heartbeat_discipline": "作业运行期间每≤10分钟 heartbeat 一次；长作业走 runner 并持续心跳",
+          "excluded_agents_semantics": "按 agent ID 精确匹配；claude、codex 是一级统筹的身份 ID",
+          "user_approval": "2026-10-24 22:1x 用户逐字批准 r13（见 R20261024-S1-phase1-r13-budget）",
+          "production_ledger_at_release": {
+            "control.sqlite3": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44"
+          },
+          "executor": "一级 claude 托管（卡面建议执行者）；运行驱动由 caffeinate -i -s 包裹并以 nohup 脱离会话",
+          "anti_sleep": "运行驱动以 `caffeinate -i -s <驱动>` 启动，断言与驱动同生命周期，结束即释放；不改系统设置",
+          "launch_refusal_rule": "任一作业在启动前就被拒（无 started_at），驱动立即整体停止，不提交下一个"
+        },
+        "new": {
+          "release": "一级放行核定见 AinerZero/RESEARCH_LOG.md 的 R20261021-P1-stageA-budget 节（2026-10-24 23:2x 条目）；本节唯一有效批准行指向 r13 document SHA",
+          "prereg": "artifacts/v9/s1/phase1/r13/pre_registration.json",
+          "prereg_file_sha256": "9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d",
+          "prereg_document_sha256": "1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30",
+          "experiment_id": "s1-phase1-20261024-r13",
+          "output_root": "artifacts/v9/s1/phase1",
+          "runs": {
+            "train": [
+              "arm2 seed0",
+              "arm2 seed1",
+              "arm2 seed2",
+              "arm3 seed0",
+              "arm3 seed1",
+              "arm3 seed2",
+              "arm4 seed0",
+              "arm4 seed1",
+              "arm4 seed2"
+            ],
+            "eval": "训练全部结束后，arm1 做一次 D 复验，arm2/3/4 对已训练的 checkpoint 逐个评测；只在 development 分区"
+          },
+          "argv_template_train": ".venv/bin/python -m ainerzero.cli s1-phase1 --mode train --arm <arm2|arm3|arm4> --seed <0|1|2> --prereg artifacts/v9/s1/phase1/r13/pre_registration.json --output-root artifacts/v9/s1/phase1",
+          "argv_template_eval": ".venv/bin/python -m ainerzero.cli s1-phase1 --mode eval --arm <arm1..arm4> [--seed <0|1|2>] --prereg artifacts/v9/s1/phase1/r13/pre_registration.json --output-root artifacts/v9/s1/phase1",
+          "launch": {
+            "command": "relay submit-job --agent <你的ID> --project ainerzero --task ainerzero.V9.P40 --type <train|eval> --cwd /Users/mac/AinerWorkFlow/AinerZero --authorization-ref ainerzero:registration/1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30 --idempotency-key <唯一键> --gpu-class 0 --peak-mem 8 --ttl <train 1800 | eval 900> --max-attempts 1 --json -- <argv>",
+            "idempotency_key_format": "s1-r13-<train|eval>-<arm>-s<seed>（arm1 D 复验：s1-r13-eval-arm1）",
+            "serial": "一次只提交一个作业，前一个结束（含组空确认）后再提交下一个",
+            "not": "不用 relay exec"
+          },
+          "never": [
+            "不传 --prereg 时会落到规范根下的旧 pre_registration.json，必须显式传 r12 路径",
+            "生产 output-root 只给正式作业；其它检查一律在副本上做，读生产台账只许 shasum",
+            "不改任何源码（绑定源漂移会被入口拒绝）",
+            "不现场改参数、种子、步数或预算",
+            "失败不重跑、不挪用额度",
+            "不生成数据，不读取 final 分区",
+            "不写批准行"
+          ],
+          "budget": {
+            "updates": 3510,
+            "per_run_deadline_s": 1200,
+            "supervision_kill_s": 1250,
+            "per_run_wall_max_s": 1200,
+            "eval_batches": 175,
+            "phase_wall_max_s": 14400,
+            "process_rss_gib": 8,
+            "mlx_gib": 4,
+            "system_headroom_gib": 16,
+            "same_boot_swap_growth_gib": 1,
+            "duty_cycle": 0.25
+          },
+          "report_dir": "reports/V9-S1-r13/",
+          "interpretation_bound": "held-out=时间续段，checkpoint0=未训练基线，M2 选点=字典序前 5，k=8 记 insufficient_data（详见 RESEARCH_LOG 放行核定条目）",
+          "unmeasured": "D 的 C0 前向（截止约 6 s，按冻结公式随 eval_batches 推导）、window 批、训练后 memory 规模——如实报告，不扩预算",
+          "precondition": "开跑前确认交流电源（pmset -g batt 显示 AC Power）与副本 verify approved=true；用户已承诺运行期间不合盖、不拔电、不手动睡眠",
+          "heartbeat_discipline": "作业运行期间每≤10分钟 heartbeat 一次；长作业走 runner 并持续心跳",
+          "excluded_agents_semantics": "按 agent ID 精确匹配；claude、codex 是一级统筹的身份 ID",
+          "user_approval": "2026-10-24 22:1x 用户逐字批准 r13（见 R20261024-S1-phase1-r13-budget）",
+          "production_ledger_at_release": {
+            "control.sqlite3": "6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44"
+          },
+          "executor": "一级 claude 托管（卡面建议执行者）；运行驱动由 caffeinate -i -s 包裹并以 nohup 脱离会话",
+          "anti_sleep": "运行驱动以 `caffeinate -i -s <驱动>` 启动，断言与驱动同生命周期，结束即释放；不改系统设置",
+          "launch_refusal_rule": "任一作业在启动前就被拒（无 started_at），驱动立即整体停止，不提交下一个",
+          "continuation": {
+            "attempt": 2,
+            "reason": "r1 partial stop: arm3-seed1 resource_gate rc=2 mid-run; arm3-seed2 launch denied swap>1GiB; driver followed launch_refusal_rule",
+            "preserve_failures": [
+              "arm3-seed1"
+            ],
+            "do_not_rerun_completed": [
+              "arm2-seed0",
+              "arm2-seed1",
+              "arm2-seed2",
+              "arm3-seed0"
+            ],
+            "resume_train_order": [
+              "arm3-seed2",
+              "arm4-seed0",
+              "arm4-seed1",
+              "arm4-seed2"
+            ],
+            "eval_rule": "only after all nine train slots resolved (completed or preserved-failed); no eval until then",
+            "idempotency": "reuse existing keys; do not mint new keys for completed/failed arms",
+            "budget": "no expansion; no param/prereg/threshold changes; wait for heavy-GPU arbiter free (swap growth <=1GiB)",
+            "reports_dir": "reports/V9-S1-r13/",
+            "prior_report": "keep r1 report/metrics; append r2 section; do not overwrite r1 evidence",
+            "p36": "frozen orphan recovery — do not touch"
+          },
+          "current_control": "Continue r13 only. Skip completed arms. Do NOT retry arm3-seed1 (preserve rc=2 resource_gate). When relay gpu is free, submit arm3-seed2 then arm4 seeds in order; then eval per prereg. If launch refused again, stop and report — do not burn next keys."
+        }
+      }
+    },
+    {
+      "id": 17337,
+      "at": "2026-10-25T15:54:58+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "requeued",
+      "message": "# ainerzero.V9.P40 执行报告",
+      "data": {
+        "result": "# ainerzero.V9.P40 执行报告\n角色：executor；负责人：antigravity-v7k2；时间：2026-10-25 15:55 +0300\n任务状态：reported（failed）；实验状态：部分完成 / 资源门禁越线与启动拒止后按冻结规则停手\n任务依据：ainerzero.V9.P40 参数 v1；授权见 RESEARCH_LOG `R20261021-P1-stageA-budget` 批准行 document SHA `1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30`\n输入身份：prereg 文件 SHA `9868b913d3cea59acc860e17b6362afcbbb746990e0ddb4962bc6b78123e0f0d`；document SHA `1cb98a21052c6db9b8ce4d8ff0ddcaecd996407e26d00143a62bd1e522ff5b30`；领取时生产台账 SHA `6b604983b5d1c944bdfe814fd0d72cb7b768c8b8a23f422607f946ce341b3f44`（停手后为 `fe31fee6c47b47b70b42fd04c5ddabbcca26483cc191deaa7a65b00a8ef2ed60`，WAL 0）；数据集 `8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26`\n修改文件：仅 `reports/V9-S1-r13/`（本报告、指标、账本、运行驱动与日志）以及由 runner 正式执行产出的 `artifacts/v9/s1/phase1/`；未改源码/参数/批准行；生产台账只由正式 runner 作业写入，核对均在副本上进行。\n\n---\n\n## 运行环境与前置核查实测\n\n1. **电源**：`pmset -g batt` 实测 `Now drawing from 'AC Power'` (94% charging)。\n2. **预登记与台账 SHA**：\n   - `artifacts/v9/s1/phase1/r13/pre_registration.json` 文件 SHA `9868b913…`，规范计算 document SHA `1cb98a21…`，与参数完全一致；\n   - 生产台账 `artifacts/v9/s1/phase1/control.sqlite3` 初始 SHA `6b604983…`，与放行登记完全一致。\n3. **副本 verify**：\n   - 在副本目录 `/tmp/phase1_copy` 上执行 `s1-phase1 --mode verify`：`status=completed`、`source_binding=passed`、`approval.approved=true`（见 `preflight-verify-copy.json`）。\n4. **防休眠断言（caffeinate）**：\n   - 启动命令：`nohup caffeinate -i -s -w 11584 >/dev/null 2>&1 &`（PID 11585，绑定驱动 PID 11584）。\n   - 实测断言状态（`pmset -g assertions`）：\n     ```text\n     pid 11585(caffeinate): [0x00000dfb0001a0e6] PreventUserIdleSystemSleep named: \"caffeinate command-line tool\"\n     pid 11585(caffeinate): [0x00000dfb0007a0e7] PreventSystemSleep named: \"caffeinate command-line tool\"\n     Details: caffeinate asserting on behalf of Process ID 11584\n     ```\n   - 驱动进程退出后，该断言已随进程生命周期结束自动安全释放。\n\n---\n\n## 训练作业盘点\n\n全部作业严格通过 `relay submit-job` 提交至 relay runner 串行执行（`max_attempts=1`），并自动维护组空归档与心跳：\n\n| label | idempotency key | relay job id | 状态 | rc | 实际更新步数 | 墙钟耗时 | 1200s 内满 3510？ | 最终 loss / NLL | 产物 run_id / Checkpoint SHA | 组空状态 |\n|---|---|---|---|---|---|---|---|---|---|---|\n| **arm2-seed0** | `s1-r13-train-arm2-s0` | `job-b7ecc70f…` | **completed** | 0 | 3510 / 3510 | 877.28 s | **是** (877s) | loss: 0.0193<br>NLL: 0.800→0.063 | `19f2d1eb…`<br>`9d155fbf…1702` | `confirmed_empty=true` |\n| **arm2-seed1** | `s1-r13-train-arm2-s1` | `job-31a550d8…` | **completed** | 0 | 3510 / 3510 | 889.08 s | **是** (889s) | loss: 0.0005<br>NLL: 0.817→0.001 | `7d155060…`<br>`c4d16f6e…f643` | `confirmed_empty=true` |\n| **arm2-seed2** | `s1-r13-train-arm2-s2` | `job-fb2c4adc…` | **completed** | 0 | 3510 / 3510 | 856.78 s | **是** (857s) | loss: 0.0013<br>NLL: 0.774→0.002 | `1678cc1c…`<br>`f7f9a661…cf01` | `confirmed_empty=true` |\n| **arm3-seed0** | `s1-r13-train-arm3-s0` | `job-f3a2b32b…` | **completed** | 0 | 3510 / 3510 | 723.98 s | **是** (724s) | loss: 0.0008<br>NLL: 0.827→0.0009 | `403ae816…`<br>`577429aa…f51e` | `confirmed_empty=true` |\n| **arm3-seed1** | `s1-r13-train-arm3-s1` | `job-53bec0ed…` | **failed** | 2 | 2566 / 3510 | 459.77 s | 否 (运行中越线) | 中途终止 | `92b694d3…`<br>(无 completion.json) | `confirmed_empty=true` |\n| **arm3-seed2** | `s1-r13-train-arm3-s2` | `job-c35dfe45…` | **canceled** | — | 0 / 3510 | 0.0 s | 否 (未启动即被拒) | 未运行 | 无 | `confirmed_empty=true` |\n| **arm4-seed0/1/2** | — | — | **未提交** | — | — | — | — | — | — | — |\n\n---\n\n## 资源门禁越线与启动拒止根因诊断\n\n### 1. `arm3-seed1` 中途终止（内部资源门禁越线）\n- 15:39:01 作业成功启动，平稳运行 459.8 s 完成 2566 步更新；\n- 训练过程触发 `s1-phase1/resource_gate.py` 采样检查：\n  ```text\n  \"error\": \"resource_gate: system_reserve_limit: available 15.98 GiB < 16.0 GiB; swap_growth_limit: growth 1.01 GiB > 1.0 GiB\"\n  ```\n- 宿主机系统可用物理内存降低至 15.98 GiB（突破 16.0 GiB 保留线），且 swap 增长量达到 1.01 GiB（突破 1.0 GiB 增长线），进程内部执行 fail-closed 退出（worker exit 3, CLI returncode 2）；\n- 依据规约，不重跑、不挪用额度，如实记录环境限制。\n\n### 2. `arm3-seed2` 启动类拒绝（Relay 仲裁器拒止）\n- 15:46:47 驱动提交 `arm3-seed2`（`job-c35dfe45…`）；\n- Relay 资源仲裁器（`arbiter.py`）监测到宿主机当前物理环境总 swap 使用量达 2507 MB，相对于 boot baseline 增长量达 2.45 GiB（`swap_delta_gib = 2.45 > 1.0 GiB`）；\n- 仲裁器判定 `lease_observation: status=denied, reason=swap 增长 >1 GiB`，拒绝签发 GPU 租约，作业始终处于 `queued` 状态无法启动（`started_at = null`）；\n- 按照任务说明第 5 条与参数规约 **启动类拒绝立即停**（`launch_refusal_rule`）：\n  > “任一作业若在启动前就被拒（无 started_at，例如 409），立刻停下上报，不要接着提交下一个。”\n- 驱动执行整体停止，中止提交后续作业，未烧掉后续作业的唯一幂等键。\n\n---\n\n## 评测\n\n未执行（按冻结协议，训练未全部完成且遭遇启动拒止时，评测阶段不予开启；arm1 D 复验与 arm2/3/4 development 评测均未提交）。\n\n---\n\n## 解读边界与诚实结论\n\n- **完成度**：方案 A 9 次训练完成 4 次（`arm2` 全部 3 个种子均满 3510 步高精度收敛，`arm3-seed0` 满 3510 步收敛）；\n- **门禁守卫完备**：进程级 `resource_gate` 与平台级 `relay arbiter` 守卫均严格生效，在内存/swap 告警时坚决拦截，有效保护了宿主机环境；\n- **防休眠与心跳合规**：全过程心跳连续发送 427 次无丢失，进程级 `caffeinate` 断言全程护航；\n- **后续处理**：剩余 `arm3-seed2`、`arm4` 3 个种子及评测待统筹者（一级）重新核定资源环境或在重启/释放 swap 后另行授权窗口。\n"
+      }
+    },
+    {
+      "id": 17336,
+      "at": "2026-10-25T15:52:55+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "claude",
+      "type": "message",
+      "message": "一级 E39：A5/A6 已限范围通过，重型 GPU 闸门现因 swap 增长>1GiB 忙。请 (1) 保持任务 claimed 并 heartbeat；(2) 勿扩预算、勿改冻结参数；(3) GPU 闸门转闲后按原登记顺序续跑未完成臂（arm3-seed2 起），保留 arm3-seed1 rc=2 原失败；(4) 若长时间闸门不放行，先把已完成/失败臂与账本 SHA 写入报告草稿，ask 一",
+      "data": {
+        "message_id": 531,
+        "kind": "notice",
+        "blocking": false,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 17331,
+      "at": "2026-10-25T15:51:50+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "arm3-seed2 未启动即被拒，驱动停止：resource lease not granted",
+      "data": null
+    },
+    {
+      "id": 17330,
+      "at": "2026-10-25T15:51:49+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-c35dfe45eb30437bb1fb0aad856e1fc6 结束: canceled rc=None",
+      "data": null
+    },
+    {
+      "id": 17273,
+      "at": "2026-10-25T15:49:50+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "等待 job job-c35dfe45eb30437bb1fb0aad856e1fc6 (已等 183s)",
+      "data": null
+    },
+    {
+      "id": 17181,
+      "at": "2026-10-25T15:46:47+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "等待 job job-c35dfe45eb30437bb1fb0aad856e1fc6",
+      "data": null
+    },
+    {
+      "id": 17180,
+      "at": "2026-10-25T15:46:47+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "提交 arm3-seed2",
+      "data": null
+    },
+    {
+      "id": 17179,
+      "at": "2026-10-25T15:46:47+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "arm3-seed1 → failed rc=2",
+      "data": null
+    },
+    {
+      "id": 17178,
+      "at": "2026-10-25T15:46:47+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "exec_end",
+      "message": "archive lost→finished after confirmed job end; prior=computation job job-53bec0edbd484eac8ea3128a1a24dde1",
+      "data": {
+        "exec_id": "2ec212f89b0f435d8e7fd5cc035cff49",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 17177,
+      "at": "2026-10-25T15:46:47+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 结束: failed rc=2",
+      "data": null
+    },
+    {
+      "id": 17174,
+      "at": "2026-10-25T15:46:44+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "exec_end",
+      "message": "computation job job-53bec0edbd484eac8ea3128a1a24dde1",
+      "data": {
+        "exec_id": "2ec212f89b0f435d8e7fd5cc035cff49",
+        "state": "lost"
+      }
+    },
+    {
+      "id": 17171,
+      "at": "2026-10-25T15:46:35+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17170,
+      "at": "2026-10-25T15:46:26+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17169,
+      "at": "2026-10-25T15:46:15+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17168,
+      "at": "2026-10-25T15:46:05+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17167,
+      "at": "2026-10-25T15:45:56+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17164,
+      "at": "2026-10-25T15:45:45+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17163,
+      "at": "2026-10-25T15:45:35+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17162,
+      "at": "2026-10-25T15:45:25+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17160,
+      "at": "2026-10-25T15:45:15+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17159,
+      "at": "2026-10-25T15:45:05+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17158,
+      "at": "2026-10-25T15:45:01+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "等待 job job-53bec0edbd484eac8ea3128a1a24dde1 (已等 362s)",
+      "data": null
+    },
+    {
+      "id": 17156,
+      "at": "2026-10-25T15:44:55+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17155,
+      "at": "2026-10-25T15:44:45+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17154,
+      "at": "2026-10-25T15:44:35+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17152,
+      "at": "2026-10-25T15:44:25+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17151,
+      "at": "2026-10-25T15:44:15+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17150,
+      "at": "2026-10-25T15:44:05+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17149,
+      "at": "2026-10-25T15:43:55+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17147,
+      "at": "2026-10-25T15:43:45+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17146,
+      "at": "2026-10-25T15:43:34+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17145,
+      "at": "2026-10-25T15:43:24+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17144,
+      "at": "2026-10-25T15:43:14+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17143,
+      "at": "2026-10-25T15:43:04+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17142,
+      "at": "2026-10-25T15:42:54+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17141,
+      "at": "2026-10-25T15:42:44+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17140,
+      "at": "2026-10-25T15:42:34+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17139,
+      "at": "2026-10-25T15:42:24+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17138,
+      "at": "2026-10-25T15:42:14+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17137,
+      "at": "2026-10-25T15:42:03+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17136,
+      "at": "2026-10-25T15:41:59+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "等待 job job-53bec0edbd484eac8ea3128a1a24dde1 (已等 180s)",
+      "data": null
+    },
+    {
+      "id": 17135,
+      "at": "2026-10-25T15:41:53+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17134,
+      "at": "2026-10-25T15:41:43+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17133,
+      "at": "2026-10-25T15:41:33+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17132,
+      "at": "2026-10-25T15:41:23+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17131,
+      "at": "2026-10-25T15:41:13+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17130,
+      "at": "2026-10-25T15:41:03+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17129,
+      "at": "2026-10-25T15:40:53+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17128,
+      "at": "2026-10-25T15:40:43+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17127,
+      "at": "2026-10-25T15:40:32+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17126,
+      "at": "2026-10-25T15:40:22+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17125,
+      "at": "2026-10-25T15:40:12+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17124,
+      "at": "2026-10-25T15:40:02+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17123,
+      "at": "2026-10-25T15:39:52+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17122,
+      "at": "2026-10-25T15:39:42+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17121,
+      "at": "2026-10-25T15:39:32+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    },
+    {
+      "id": 17120,
+      "at": "2026-10-25T15:39:22+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P40",
+      "actor": "antigravity-v7k2",
+      "type": "progress",
+      "message": "job job-53bec0edbd484eac8ea3128a1a24dde1 attempt 1 running",
+      "data": null
+    }
+  ],
+  "attempt_log": [
+    {
+      "id": 1241,
+      "task_id": "ainerzero.V9.P40",
+      "project_id": "ainerzero",
+      "agent": "claude",
+      "claimed_at": 1792873239.152276,
+      "last_beat_at": 1792874796.773953,
+      "beats": 8,
+      "ended_at": 1792876147.503562,
+      "outcome": "stalled",
+      "seconds": 2908,
+      "note": "23 分钟没有心跳"
+    },
+    {
+      "id": 1248,
+      "task_id": "ainerzero.V9.P40",
+      "project_id": "ainerzero",
+      "agent": "antigravity-v7k2",
+      "claimed_at": 1792928209.73548,
+      "last_beat_at": 1792932710.072973,
+      "beats": 427,
+      "ended_at": 1792932898.673911,
+      "outcome": "failed_retryable",
+      "seconds": 4689,
+      "note": ""
+    }
+  ],
+  "waiters": []
+}

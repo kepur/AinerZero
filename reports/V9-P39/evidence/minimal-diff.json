@@ -1,0 +1,30 @@
+{
+  "compared": 51,
+  "same": 48,
+  "changed": [
+    {
+      "rel": "src/ainerzero/v9/experiments/s1/spec.py",
+      "status": "DIFF",
+      "sha_before": "33f750174f27848b8e806dee5b257fca2479e0f78ff2c0f438edb1028ff1b053",
+      "sha_after": "8d89c1f83c142f02a6703b3b8ec66dbdeb2b150eea7bb20531a6b1e24453ef31",
+      "added_lines": 13,
+      "removed_lines": 7,
+      "diff_preview": "--- before/src/ainerzero/v9/experiments/s1/spec.py\n+++ src/ainerzero/v9/experiments/s1/spec.py\n@@ -234,14 +234,20 @@\n # the incident record and re-freezes the *same* registration under a new\n # identity, so the phase-1 attempt guards, the phase wall clock and the D guard\n # start from zero again.  The r11 constants above stay as history; r12 is the\n-# identity that may still be run.\n+# identity that was run.\n R12_EXPERIMENT_ID = \"s1-phase1-20261023-r12\"\n-# Both identities carry the one user-approved registration\n-# (R20261023-S1-phase1-r11-budget): r11 was frozen first, r12 repeats the same\n-# scientific values under a fresh identity.  Anything else is refused.\n-REGISTERED_EXPERIMENT_IDS = (R11_EXPERIMENT_ID, R12_EXPERIMENT_ID)\n-# The identity a new freeze produces; r11 stays readable as archived history.\n-CURRENT_EXPERIMENT_ID = R12_EXPERIMENT_ID\n+\n+# --- r13 re-freeze (ainerzero.V9.P38, R20261024-S1-phase1-r13-budget) ------\n+# S1 r12 phase was incomplete due to two host sleep events (3/9 completed, 2 failed,\n+# evals unrun, phase window closed). User approved r13 with identical values.\n+R13_EXPERIMENT_ID = \"s1-phase1-20261024-r13\"\n+\n+# All three identities carry the one user-approved registration:\n+# r11 was frozen first, r12 repeated the same scientific values after P31,\n+# and r13 repeats them after the r12 phase window expired. Anything else is refused.\n+REGISTERED_EXPERIMENT_IDS = (R11_EXPERIMENT_ID, R12_EXPERIMENT_ID, R13_EXPERIMENT_ID)\n+# The identity a new freeze produces; r11 and r12 stay readable as archived history.\n+CURRENT_EXPERIMENT_ID = R13_EXPERIMENT_ID\n \n # --- data plan (worlds/rounds frozen after the measured generation run) ----\n DATA_PLAN = {\n"
+    },
+    {
+      "rel": "tests/v9/experiments/test_s1_r12_registration.py",
+      "status": "DIFF",
+      "sha_before": "ec792023593f1a408865737f1af3357397244d3895e06f4153bc69cdb7b2bfb2",
+      "sha_after": "3cb244f59b982e49ab259dfe6ccf4b5f7e48ddd05ff016d7c276786a746919ae",
+      "added_lines": 3,
+      "removed_lines": 2,
+      "diff_preview": "--- before/tests/v9/experiments/test_s1_r12_registration.py\n+++ tests/v9/experiments/test_s1_r12_registration.py\n@@ -58,7 +58,8 @@\n # --- identity --------------------------------------------------------------\n def test_the_current_registration_defaults_to_r12():\n     assert R12 == \"s1-phase1-20261023-r12\"\n-    assert spec.CURRENT_EXPERIMENT_ID == R12\n+    # Note: updated for r13 per task P38 rule: current identity is r13\n+    assert spec.CURRENT_EXPERIMENT_ID == spec.R13_EXPERIMENT_ID\n     # r11 stays a registered identity: it is archived history, not an error.\n     assert R11 in spec.REGISTERED_EXPERIMENT_IDS\n     assert R12 in spec.REGISTERED_EXPERIMENT_IDS\n@@ -69,7 +70,7 @@\n         parameter_counts=FAKE_COUNTS,\n         budget_registration=spec.R11_BUDGET_REGISTRATION,\n     )\n-    assert draft[\"experiment_id\"] == R12\n+    assert draft[\"experiment_id\"] == spec.R13_EXPERIMENT_ID\n \n \n def test_freeze_accepts_both_registered_identities_and_refuses_anything_else():\n"
+    },
+    {
+      "rel": "tests/v9/experiments/test_s1_r13_registration.py",
+      "status": "NEW",
+      "sha256": "7834ec97451e3448a7c3a4418ab6f54c77f6cdbc27771f1b819b70435e50c9da",
+      "exists": true
+    }
+  ]
+}

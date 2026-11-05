@@ -1,0 +1,11 @@
+--- spec.py (original r15)
++++ spec.py (tampered mutant: arm3 probe uses hidden)
+@@ -387,7 +387,7 @@
+         return {"map": (0, channels), "probe": (0, channels)}
+     if arm_id == "arm3":
+         place = int(d["place_dim"])
+-        return {"graph": (0, place), "probe": (0, place)}
++        return {"graph": (0, place), "probe": (0, int(d["hidden"]))}
+     channels, place = int(d["memory_channels"]), int(d["place_dim"])
+     return {"map": (0, channels), "graph": (channels, channels + place), "probe": (channels, channels + place)}
+ 

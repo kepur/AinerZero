@@ -1,0 +1,150 @@
+{
+  "schema": "ainerzero.v9.s1.p12.review.metrics.v1",
+  "task": "ainerzero.V9.P12",
+  "round": "r1",
+  "agent": "step5-3cfe",
+  "reviewed": "ainerzero.V9.P9 r3 (reported by deepseek-v41-p7k2)",
+  "reviewer_is_not_p9_author": true,
+  "verdict": "pass",
+  "frozen_identity": {
+    "r3_document_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+    "r3_document_sha256_reproduced": true,
+    "r3_file_sha256": "f33d79ecb1010af0ce9324499c8b257c9538da5e38a9474ff4ff2339eac6623a",
+    "r3_sidecar_sha256": "8292aeb386df01106e1e9cb2be9b23d146704fb6dabd504eadf2c5e14c5edaa4",
+    "reports_copy_identical_to_authoritative": true,
+    "r2_document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+    "r2_document_sha256_reproduced": true,
+    "r2_r3_changed_leaves": 15,
+    "r2_r3_changed_groups": {
+      "approval_rule": 4,
+      "commands": 1,
+      "created_unix": 1,
+      "source_identity": 6,
+      "timing.smoke_recheck": 3
+    },
+    "unchanged_blocks": {
+      "arms": true,
+      "training_protocol": true,
+      "data_identity": true,
+      "resource_limits": true,
+      "metrics": true,
+      "stop_rules": true,
+      "budget_estimate": true
+    },
+    "key_frozen_values_identical_r2_r3": {
+      "updates": 3510,
+      "seeds": [0, 1, 2],
+      "deadline_seconds": 450,
+      "supervision_seconds": 500,
+      "arm1_deadline_seconds": 2,
+      "phase_wall_seconds": 4099.605202459,
+      "estimate_seconds": 359.9312287726061,
+      "arms_parameter_counts": {"arm1": 393232, "arm2": 207519, "arm3": 159455, "arm4": 274031},
+      "arms_training_updates": {"arm1": 0, "arm2": 3510, "arm3": 3510, "arm4": 3510},
+      "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+      "resource_limits_identical": true,
+      "optimizer": "adamw",
+      "batch_size": 16,
+      "sequence_steps": 2,
+      "learning_rate": 0.0003
+    },
+    "measurement_records": {
+      "r1_smoke_metrics_sha256": "b4e7d1218b29652c188425ec6d1def2fe49d8fd1a22e7192d01b705ae4b11ce8",
+      "r1_smoke_metrics_sha256_matches": true,
+      "r3_recheck_smoke_metrics_sha256": "68160d5626c72d76dd7e3212273e983d60c249e864a0369e5611d500cc7d92ef",
+      "r3_recheck_smoke_metrics_sha256_matches": true
+    },
+    "real_tree_source_binding": {"status": "passed", "files": 12, "drifted": []},
+    "real_research_log_scan": {"section_count": 1, "approval_rows": 0, "problems": []}
+  },
+  "tests": {
+    "baseline_sandbox": {"passed": 126, "failed": 0, "skipped": 0, "seconds": 2.44,
+                          "xml": "reports/V9-P12/tests-s1-baseline.xml"}
+  },
+  "mutation_matrix": {
+    "total": 15,
+    "caught": 15,
+    "original_12": {"caught": 12, "total": 12},
+    "new_in_r3": {"caught": 3, "total": 3, "ids": ["M13", "M14", "M15"]},
+    "failed_counts_match_r3_report": true,
+    "results_json": "reports/V9-P12/harness/mutations-p12.json",
+    "per_mutation_failed": {"M1": 4, "M2": 6, "M3": 1, "M4": 1, "M5": 4, "M6": 1, "M7": 1,
+                             "M8": 43, "M9": 1, "M10": 13, "M11": 2, "M12": 1, "M13": 1,
+                             "M14": 1, "M15": 1}
+  },
+  "p11_f1_cases": {
+    "total": 13,
+    "all_as_expected": true,
+    "c5a_exit_3_required": true,
+    "c5a_exit": 3,
+    "c5a_stage": "research_log_not_canonical",
+    "c6_exit": 0,
+    "c6_stage": "completed",
+    "c6_runstore": {
+      "state": "completed",
+      "transitions": ["created", "initializing", "training", "completed"],
+      "optimizer_steps": 0,
+      "recorded_line_matches": true,
+      "recorded_document_sha_matches": true,
+      "recorded_log_sha_matches": true,
+      "line_number": 6
+    },
+    "refused_cases_registered_no_run": ["C5a", "C7", "C12"],
+    "c5c_note": "r3 merged C5c into C6 (post-P-1 the default log is the only accepted location); verified C6 is exactly that case",
+    "results_json": "reports/V9-P12/harness/f1-approval-p12.json"
+  },
+  "p1_p4_counterexamples": {
+    "total": 16,
+    "all_as_expected": true,
+    "P-1": [
+      {"id": "P1-a", "label": "--research-log 指向可写位置伪造日志（内含完全一致批准行）", "exit": 3, "stage": "research_log_not_canonical", "ok": true},
+      {"id": "P1-b", "label": "--research-log 符号链接指向 spec.RESEARCH_LOG 的副本", "exit": 3, "stage": "research_log_not_canonical", "ok": true},
+      {"id": "P1-c", "label": "control: 符号链接指向规范日志本体（resolve 同文件）", "exit": 0, "stage": "completed", "ok": true, "note": "控制组，预期放行"},
+      {"id": "P1-d", "label": "worker 侧直调 + 伪造日志", "exit": 2, "stage": "research_log_not_canonical", "ok": true}
+    ],
+    "P-2": [
+      {"id": "P2-a", "label": "漂移 data.py 后跑 train", "exit": 3, "stage": "source_binding_drift", "drifted": ["src/ainerzero/v9/experiments/s1/data.py"], "ok": true},
+      {"id": "P2-b", "label": "漂移 cli.py 后跑 train", "exit": 3, "stage": "source_binding_drift", "drifted": ["src/ainerzero/cli.py"], "ok": true},
+      {"id": "P2-c", "label": "worker 侧直调（data.py 已漂移）", "exit": 2, "stage": "source_binding_drift", "ok": true}
+    ],
+    "P-3": [
+      {"id": "P3-a", "label": "改 manifest counts 并改写 ref 的 manifest_sha256", "exit": 3, "stage": "dataset_identity_mismatch", "ok": true},
+      {"id": "P3-b", "label": "改数据文件 packets/train.jsonl（manifest 未动）", "exit": 3, "stage": "dataset_identity_mismatch", "ok": true},
+      {"id": "P3-c", "label": "worker 侧直调（数据文件已改）", "exit": 2, "stage": "dataset_identity_mismatch", "ok": true}
+    ],
+    "P-4": [
+      {"id": "P4-a", "label": "批准行写在另一个小节", "exit": 3, "stage": "preregistration_not_approved", "ok": true},
+      {"id": "P4-b", "label": "批准行写在围栏代码块里", "exit": 3, "stage": "preregistration_not_approved", "ok": true},
+      {"id": "P4-c", "label": "批准行写在引用块里", "exit": 3, "stage": "preregistration_not_approved", "ok": true},
+      {"id": "P4-d", "label": "节内两条合格行", "exit": 3, "stage": "preregistration_not_approved", "reason": "2 qualifying approval lines ... exactly one is allowed", "ok": true},
+      {"id": "P4-e", "label": "注册节标题被改名", "exit": 3, "stage": "preregistration_not_approved", "reason": "no '## R20261021-P1-stageA-budget' section", "ok": true}
+    ],
+    "results_json": "reports/V9-P12/harness/p1-p4-counterexamples-p12.json"
+  },
+  "scanner_probes": {
+    "indented_code_skipped": true,
+    "tilde_fence_skipped": true,
+    "uppercase_sha_refused": true,
+    "trailing_text_refused": true,
+    "two_leading_spaces_accepted": true,
+    "tab_indent_skipped": true,
+    "wrong_case_heading_not_matched": true,
+    "h3_heading_does_not_end_section": true,
+    "fenced_fake_heading_ignored": true
+  },
+  "real_files_untouched": {
+    "before": "reports/V9-P12/real-files-before.txt",
+    "after": "reports/V9-P12/real-files-after.txt",
+    "identical": true,
+    "files": [
+      "RESEARCH_LOG.md",
+      "artifacts/control.sqlite3",
+      "artifacts/locks/m0-worker.lock",
+      "artifacts/v9/s1/phase1/pre_registration.json",
+      "artifacts/v9/s1/phase1/control.sqlite3",
+      "artifacts/v9/s1/phase1/pre_registration.json.sha256"
+    ]
+  },
+  "sandbox": "/private/tmp/v9p12 (src/tests/log 副本；数据集符号链接 + 两份私有数据集副本)",
+  "no_training": {"parameters_updated": false, "optimizer_steps": 0, "real_tree_writes": false}
+}

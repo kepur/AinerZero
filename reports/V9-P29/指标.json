@@ -1,0 +1,143 @@
+{
+  "schema": "ainerzero.v9.p29.static_review.v1",
+  "task": "ainerzero.V9.P29",
+  "agent": "composer-d2e6",
+  "verifies": "ainerzero.V9.P28",
+  "author_of_verified": "codex-0fqn",
+  "excluded_agents": ["claude", "codex", "codex-0fqn"],
+  "self_not_excluded": true,
+  "self_not_author": true,
+  "no_mlx_rerun": true,
+  "verdict": "建议通过",
+  "review_inputs": {
+    "path": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/claude-20261022-e32/P28-review-inputs.json",
+    "sha256_start": "ccefd61294799687d40db243662d4048b32dcacd2f5ebe05b2e198b9a17c239f",
+    "sha256_end": "ccefd61294799687d40db243662d4048b32dcacd2f5ebe05b2e198b9a17c239f",
+    "expected_sha256": "ccefd61294799687d40db243662d4048b32dcacd2f5ebe05b2e198b9a17c239f",
+    "sha_match_start": true,
+    "sha_match_end": true,
+    "pinned_file_count": 186,
+    "pinned_mismatches_start": 0,
+    "pinned_mismatches_end": 0,
+    "bytes": 34846
+  },
+  "freeze": {
+    "message_id": 433,
+    "script_sha256": "bf5dad13687e1515a99cb1c487e5da6ddabffb22a97f96770c249883792666f9",
+    "script_sha_matches_disk": true,
+    "source_files_mismatches": 0,
+    "source_file_count": 23,
+    "argv_matches_real_exec_result": true
+  },
+  "real_attempt": {
+    "once_hardlink_same_inode": true,
+    "once_nlink": 2,
+    "freeze_message_id": 433,
+    "real_dirs": ["real-001"],
+    "outer_wall_seconds": 3.3303827500021725,
+    "supervision_elapsed_s": 3.151,
+    "supervision_pgid": 48856,
+    "wall_le_600": true,
+    "relay_execs_total": 9,
+    "relay_execs_real_timeout600": 1,
+    "retries": 0
+  },
+  "resources_before_start": {
+    "resources_before_mlx_reasons_empty": true,
+    "resources_after_lock_reasons_empty": true,
+    "system_available_gib_before_mlx": 50.071990966796875,
+    "swap_growth_gib_before_mlx": 0.0
+  },
+  "code_boundaries": {
+    "forbidden_ast_calls": [],
+    "readonly_backend_whitelist": ["eval", "encode", "probe_graph", "step_sequence"],
+    "final_path_guard": true,
+    "runstore_sqlite_guard": true,
+    "development_only": true,
+    "arm1_identity_before_mlx": true,
+    "arm1_manifest_digest_match": true,
+    "arm1_registered_fields_match": true,
+    "materialization_in_timer": true,
+    "memory_leaf_eval_in_timer": true,
+    "warmup": 3,
+    "min_samples": 30
+  },
+  "timing_recompute": {
+    "all_match_report": true,
+    "arm2": {
+      "forward": {"samples": 48, "median_seconds": 0.0025771039981918875, "p90_seconds": 0.0036916286004270663, "max_seconds": 0.0095937909973145},
+      "encode": {"samples": 60, "median_seconds": 0.0006044580004527234, "p90_seconds": 0.0006896747003338532, "max_seconds": 0.001604958000825718},
+      "probe_graph": {"samples": 36, "median_seconds": 7.668750004086178e-05, "p90_seconds": 0.00010295850188413169, "max_seconds": 0.00014320800255518407},
+      "step_sequence_ratio_vs_step_median": 0.9447317131228612
+    },
+    "arm3": {
+      "forward": {"samples": 48, "median_seconds": 0.0024951040013547754, "p90_seconds": 0.003280487699521473, "max_seconds": 0.01160416699713096},
+      "encode": {"samples": 60, "median_seconds": 0.0005433125006675255, "p90_seconds": 0.0005761374988651369, "max_seconds": 0.00086070799807203},
+      "probe_graph": {"samples": 36, "median_seconds": 1.1812498996732756e-05, "p90_seconds": 1.727050039335154e-05, "max_seconds": 2.9000002541579306e-05},
+      "step_sequence_ratio_vs_step_median": 0.7372834958005051
+    },
+    "arm4": {
+      "forward": {"samples": 48, "median_seconds": 0.0025138959990727017, "p90_seconds": 0.0028017793982144214, "max_seconds": 0.0031757079996168613},
+      "encode": {"samples": 60, "median_seconds": 0.0005619589974230621, "p90_seconds": 0.0006794788001570851, "max_seconds": 0.00173170799826039},
+      "probe_graph": {"samples": 36, "median_seconds": 1.260450153495185e-05, "p90_seconds": 1.6312500520143658e-05, "max_seconds": 1.9791998056462035e-05},
+      "step_sequence_ratio_vs_step_median": 1.0215178456961127
+    }
+  },
+  "arm3_ratio_hypothesis": {
+    "verified": false,
+    "possible_explanations": [
+      "stepwise timer includes memory_mlx_leaves walk+eval required by #431; product step_sequence does not",
+      "EpisodicTopologyArm nested Python memory may make the walk relatively costly vs forward",
+      "aggregation differs: median of 48 steps vs median of 12 episode-mean-per-transition values"
+    ],
+    "did_not_replace_raw_data": true
+  },
+  "p18_extrapolation_recompute": {
+    "calls": {
+      "encode_calls": 3500,
+      "probe_graph_calls": 800,
+      "single_step_forwards": 1492,
+      "step_sequence_calls": 611,
+      "window_forward_loss_calls": 175
+    },
+    "no_double_count_of_611_inside_1492": true,
+    "avg_forwards_per_step_sequence": 2.44189852700491,
+    "per_arm_seed": {
+      "arm2": {"median_seconds": 6.021992166919517, "p90_seconds": 8.004138124512973},
+      "arm3": {"median_seconds": 5.63373892155505, "p90_seconds": 6.924785294028698},
+      "arm4": {"median_seconds": 5.72767292282515, "p90_seconds": 6.57148066310183}
+    },
+    "nine_eval_invocations_arithmetic": {
+      "median_seconds": 52.15021203389915,
+      "p90_seconds": 64.50121224493051
+    },
+    "matches_author_report": true,
+    "assumptions_accepted": [
+      "1492 forwards already include the 611 sequence calls; no double multiplication"
+    ],
+    "assumptions_flagged_unverified_empirically": [
+      "per-arm seed0 untrained structures reused arithmetically for three seeds",
+      "only first 12 sorted development scenes, all e3_identity",
+      "median-to-p90 weighted sums are scenario arithmetic, not confidence bounds"
+    ]
+  },
+  "verified": [
+    "review_inputs sha and 186 pins",
+    "freeze #433 script/argv/source identity",
+    "single real timeout-600 exec",
+    "ONCE hardlink and freeze_message_id=433",
+    "resource reasons empty before MLX",
+    "no optimizer/value_and_grad/RunStore/final write path in measure script",
+    "arm1 identity-first",
+    "timing sync/materialization/warmup/sample counts",
+    "raw jsonl median/p90/max",
+    "P18 arithmetic without double-counting 611"
+  ],
+  "unverified": [
+    "no MLX rerun",
+    "CPU pytest not re-executed this review",
+    "arm3 ratio root cause",
+    "end-to-end P1 wall-clock fit",
+    "resource_gate numeric threshold re-derivation"
+  ]
+}

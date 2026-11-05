@@ -1,0 +1,96 @@
+{
+  "schema": "ainerzero.v9.s1.p10.review_metrics.v1",
+  "task": "ainerzero.V9.P10",
+  "verifies": "ainerzero.V9.P9",
+  "reviewer": "workbuddy-t7m2",
+  "reviewer_is_author": false,
+  "source_modified": false,
+  "scope_written": ["reports/V-V9-P9/"],
+  "real_lock_touched": false,
+  "central_runstore_touched": false,
+  "isolation": {
+    "method": "byte-identical copy of src/ under /tmp/vp9rev/sandbox so spec.REPO_ROOT resolves to the sandbox",
+    "sandbox_repo_root": "/private/tmp/vp9rev/sandbox",
+    "sandbox_lock": "/private/tmp/vp9rev/sandbox/artifacts/locks/m0-worker.lock",
+    "production_lock_mtime": "2026-09-22T23:57:43",
+    "production_control_sqlite_mtime": "2026-10-14T23:00:59"
+  },
+  "author_suite": {
+    "command": "PYTHONPATH=src .venv-ainerzero/bin/python -m pytest tests/v9/experiments -q",
+    "passed": 67,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 1.4
+  },
+  "adversarial_cases": {
+    "total": 25,
+    "passed": 25,
+    "failed": 0,
+    "adverse_with_nonzero_exit": 11,
+    "exit_codes_observed": {
+      "resource_gate_refused": 2,
+      "cli_budget_raise_refused": 1,
+      "lock_busy": 1,
+      "train_not_approved": 3,
+      "missing_input_also_2": 2
+    }
+  },
+  "mutation_matrix": {
+    "total": 12,
+    "caught": 8,
+    "missed": 4,
+    "missed_ids": ["M1_pacer_removed", "M2_evaluate_duty_disabled", "M11_worker_approval_disabled", "M12_smoke_no_update_forced_true"]
+  },
+  "frozen_identity": {
+    "prereg_file_sha256": "2602e42cad7bf39e5b6ac788d19e393dc22f9d0b07cca6c4ef525e0fcb0d76a0",
+    "prereg_document_sha256": "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6",
+    "matches_p9_report": true,
+    "sidecar_matches_document": true,
+    "status": "awaiting_coordinator_approval"
+  },
+  "budget": {
+    "updates": 3510,
+    "arm_budgets": {"arm1": 0, "arm2": 3510, "arm3": 3510, "arm4": 3510},
+    "seeds": [0, 1, 2],
+    "estimate_seconds": 359.9312287726061,
+    "estimate_includes_duty_cycle": true,
+    "estimate_without_duty_seconds": 89.98,
+    "deadline_seconds": 450,
+    "supervision_seconds": 500,
+    "arm1_deadline_seconds": 2,
+    "per_run_cap_seconds": 1200,
+    "phase_wall_seconds": 4099.605202459,
+    "phase_wall_recomputed": 4099.605202459,
+    "phase_cap_seconds": 14400,
+    "worst_case_if_all_supervisions_fire_seconds": 4599.605202459,
+    "trainable_runs": 9
+  },
+  "independent_smoke_rerun": {
+    "mode": "smoke via real CLI in sandbox",
+    "status": "completed",
+    "elapsed_seconds": 4.94,
+    "parameters_unchanged": true,
+    "gradients_computed": false,
+    "updated_parameters": false,
+    "parameter_sha_equal_before_after": true,
+    "arm2_step_seconds": 0.006002542000260291,
+    "recorded_arm2_step_seconds": 0.0069624580000891
+  },
+  "runstore": {
+    "sandbox_runs": 1,
+    "all_terminal": true,
+    "all_auxiliary": true,
+    "optimizer_steps_nonzero": 0
+  },
+  "findings": {
+    "high": ["F1_approval_flag_is_self_asserted"],
+    "medium": ["F2_duty_pacer_untested", "F3_worker_approval_gate_untested", "F4_smoke_no_update_assertion_untested"],
+    "low": ["F5_dead_constants", "F6_exit_code_conflation", "F7_two_lines_unreachable_at_admission"],
+    "info": ["F8_phase_uses_deadline_not_supervision", "F9_pacer_cap_and_eval_time", "F10_single_output_root", "F11_ps_denied_in_sandbox", "F12_real_lock_evidence_runs"]
+  },
+  "verdict": {
+    "six_card_items": "all pass",
+    "recommendation": "approve_preregistration_with_pre_p1_hardening",
+    "must_fix_before_p1": ["F1", "F2", "F3", "F4"]
+  }
+}

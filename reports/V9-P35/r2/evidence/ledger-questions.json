@@ -1,0 +1,239 @@
+{
+  "probe": "ledger-questions",
+  "ok": true,
+  "started_at": "2026-10-23T23:19:02",
+  "elapsed_seconds": 0.717,
+  "production_ledger_before": {
+    "recorded_at": "2026-10-23T23:19:02",
+    "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "control.sqlite3_bytes": 86016,
+    "control.sqlite3_mtime": "2026-10-23T16:33:15",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-23T23:18:17",
+    "shm_mtime_epoch": 1792786697.6783845
+  },
+  "production_ledger_after": {
+    "recorded_at": "2026-10-23T23:19:02",
+    "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "control.sqlite3_bytes": 86016,
+    "control.sqlite3_mtime": "2026-10-23T16:33:15",
+    "wal_bytes": 0,
+    "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shm_exists": true,
+    "shm_bytes": 32768,
+    "shm_mtime": "2026-10-23T23:19:02",
+    "shm_mtime_epoch": 1792786742.3891869
+  },
+  "production_ledger_unchanged": true,
+  "shm_mtime_changed": true,
+  "body": {
+    "purpose": "-shm 归因 / 真实台账用例事实 / WIP 探针是否打开生产库",
+    "A_read_paths": {
+      "before": {
+        "recorded_at": "2026-10-23T23:19:02",
+        "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+        "control.sqlite3_bytes": 86016,
+        "control.sqlite3_mtime": "2026-10-23T16:33:15",
+        "wal_bytes": 0,
+        "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "shm_exists": true,
+        "shm_bytes": 32768,
+        "shm_mtime": "2026-10-23T23:18:17",
+        "shm_mtime_epoch": 1792786697.6783845
+      },
+      "after_byte_read": {
+        "recorded_at": "2026-10-23T23:19:02",
+        "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+        "control.sqlite3_bytes": 86016,
+        "control.sqlite3_mtime": "2026-10-23T16:33:15",
+        "wal_bytes": 0,
+        "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "shm_exists": true,
+        "shm_bytes": 32768,
+        "shm_mtime": "2026-10-23T23:18:17",
+        "shm_mtime_epoch": 1792786697.6783845
+      },
+      "after_read_only_sqlite_open": {
+        "recorded_at": "2026-10-23T23:19:02",
+        "control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+        "control.sqlite3_bytes": 86016,
+        "control.sqlite3_mtime": "2026-10-23T16:33:15",
+        "wal_bytes": 0,
+        "wal_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "shm_exists": true,
+        "shm_bytes": 32768,
+        "shm_mtime": "2026-10-23T23:19:02",
+        "shm_mtime_epoch": 1792786742.3891869
+      },
+      "read_only_open_event": "tests/v9/experiments/test_s1_r7_host_anchor.py::test_the_real_ledger_is_untouched_by_the_anchor_checks",
+      "conclusion": "hashlib 字节读不碰 -shm；一次 sqlite3.connect(mode=ro)（这里是真实用例自己做的）就会刷新 -shm 的 mtime，而主文件 SHA 与 WAL 字节完全不变。本会话 23:11:09 我也误开过一次生产库（已如实记录），同样只刷新 -shm、主文件与 WAL 未变。所以 -shm 的 mtime 只能说明『有人用 SQLite 打开过这个库（读或写）』，不能说明写过。"
+    },
+    "B_real_ledger_tests": {
+      "anchor_test": {
+        "test": "tests/v9/experiments/test_s1_r7_host_anchor.py::test_the_real_ledger_is_untouched_by_the_anchor_checks",
+        "returncode": 0,
+        "tail": [
+          ".                                                                        [100%]",
+          "1 passed in 0.04s"
+        ]
+      },
+      "copy_test": {
+        "test": "tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original",
+        "returncode": 1,
+        "tail": [
+          "=========================== short test summary info ============================",
+          "FAILED tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original",
+          "1 failed in 0.04s"
+        ]
+      },
+      "shm_mtime_after_anchor_test": "2026-10-23T23:19:02",
+      "shm_mtime_after_copy_test": "2026-10-23T23:19:02",
+      "facts": {
+        "anchor_test_opens_production": true,
+        "anchor_test_open_mode": "sqlite3.connect(file:...?mode=ro)",
+        "anchor_test_can_write": false,
+        "copy_test_opens_production": false,
+        "copy_test_only_reads_bytes_and_copies_the_file": true,
+        "copy_test_failure_reason": "断言 conservative == reserved_based 在**当前**生产行上不再成立（5012.096 vs 2214.076）：这是随 r10/r11 运行累积而失效的旧预期，不是 r12 引入的回归；该用例仍只用 read_bytes()+copyfile，不写生产库。"
+      }
+    },
+    "C_wip_probe_inspection": {
+      "file": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P35/r1/evidence/p35_probes.py",
+      "spec_patches": [
+        {
+          "line": 73,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 74,
+          "text": "spec.PHASE1_ROOT = host / \"artifacts\" / \"v9\" / \"s1\" / \"phase1\""
+        },
+        {
+          "line": 75,
+          "text": "spec.RESEARCH_LOG = host / \"RESEARCH_LOG.md\""
+        },
+        {
+          "line": 263,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 264,
+          "text": "spec.PHASE1_ROOT = host / \"artifacts\" / \"v9\" / \"s1\" / \"phase1\""
+        },
+        {
+          "line": 265,
+          "text": "spec.RESEARCH_LOG = host / \"RESEARCH_LOG.md\""
+        },
+        {
+          "line": 303,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 304,
+          "text": "spec.PHASE1_ROOT = host / \"artifacts\" / \"v9\" / \"s1\" / \"phase1\""
+        },
+        {
+          "line": 305,
+          "text": "spec.RESEARCH_LOG = host / \"RESEARCH_LOG.md\""
+        },
+        {
+          "line": 334,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 335,
+          "text": "spec.PHASE1_ROOT = host / \"artifacts\" / \"v9\" / \"s1\" / \"phase1\""
+        },
+        {
+          "line": 336,
+          "text": "spec.RESEARCH_LOG = host / \"RESEARCH_LOG.md\""
+        },
+        {
+          "line": 373,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 374,
+          "text": "spec.PHASE1_ROOT = host / \"artifacts\" / \"v9\" / \"s1\" / \"phase1\""
+        },
+        {
+          "line": 375,
+          "text": "spec.RESEARCH_LOG = host / \"RESEARCH_LOG.md\""
+        },
+        {
+          "line": 409,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 410,
+          "text": "spec.PHASE1_ROOT = host / \"artifacts\" / \"v9\" / \"s1\" / \"phase1\""
+        },
+        {
+          "line": 411,
+          "text": "spec.RESEARCH_LOG = host / \"RESEARCH_LOG.md\""
+        }
+      ],
+      "ledger_opens": [
+        {
+          "line": 103,
+          "text": "ledger = worker.PrepLedger(host / \"artifacts\" / \"v9\" / \"s1\" / \"phase1\" / \"control.sqlite3\")"
+        },
+        {
+          "line": 201,
+          "text": "conn = sqlite3.connect(\"{h['ledger']}\")"
+        }
+      ],
+      "production_references": [
+        {
+          "line": 18,
+          "text": "PROD = REPO / \"artifacts\" / \"v9\" / \"s1\" / \"phase1\""
+        },
+        {
+          "line": 33,
+          "text": "shutil.copytree(PROD, copy_root, dirs_exist_ok=True)"
+        },
+        {
+          "line": 73,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 254,
+          "text": "r11_doc = json.loads((PROD / \"r11\" / \"pre_registration.json\").read_text(encoding=\"utf-8\"))"
+        },
+        {
+          "line": 263,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 303,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 334,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 373,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        },
+        {
+          "line": 409,
+          "text": "spec.REGISTERED_HOST_ROOT = host"
+        }
+      ],
+      "conclusion": "on-disk 版本（18:16:57）在每个探针函数里都先把 REGISTERED_HOST_ROOT / PHASE1_ROOT / RESEARCH_LOG 指到临时 host，PrepLedger 也建在副本路径上，因此**没有**经 spec.PHASE1_ROOT 打开生产 control.sqlite3 的代码路径；它只对生产库做 copytree/copyfile 字节拷贝。18:15:21 的 -shm 刷新无法由这份代码复现，也无法由 -shm mtime 本身证明发生过写入 —— 主文件 SHA 与 WAL=0 才是内容不变量，两者在封源时与现在都成立。"
+    },
+    "environment_note": "本会话的 shell 禁止 exec ps（operation not permitted: ps），无法在能跑 ps 的非沙箱环境重跑 tests/v9；已在同一台机器上换用『去掉 IDE shim 的 PYTHONPATH』跑通全量，结果见 pytest-v9-no-shim.log，ps 相关差异请一级在非沙箱环境补跑。",
+    "checks": {
+      "byte_read_does_not_refresh_shm": true,
+      "read_only_sqlite_open_refreshes_shm": true,
+      "main_file_sha_never_changes": true,
+      "wal_stays_zero_bytes": true,
+      "copy_test_does_not_refresh_shm": true
+    },
+    "all_checks_pass": true
+  }
+}

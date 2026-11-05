@@ -1,0 +1,64 @@
+........................................................................ [ 22%]
+........................................................................ [ 44%]
+.......................................................................F [ 66%]
+........................................................................ [ 88%]
+......................................                                   [100%]
+=================================== FAILURES ===================================
+_ test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original _
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-95/test_the_real_ledger_copy_repr0')
+
+    def test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original(
+        tmp_path,
+    ):
+        """Byte-isolated copy: the age rule blows the 4 h cap, the r7 rule does not."""
+        import hashlib
+    
+        real = Path(spec.REGISTERED_HOST_LEDGER)
+        before = hashlib.sha256(real.read_bytes()).hexdigest()
+        copy = tmp_path / "control-copy.sqlite3"
+        shutil.copyfile(real, copy)
+        before_copy = hashlib.sha256(copy.read_bytes()).hexdigest()
+    
+        connection = sqlite3.connect(f"file:{copy}?mode=ro", uri=True)
+        try:
+            raw = list(
+                connection.execute(
+                    "SELECT run_id, state, created_at, updated_at, active_seconds FROM runs"
+                )
+            )
+        finally:
+            connection.close()
+        runs = [
+            SimpleNamespace(
+                run_id=run_id,
+                state=state,
+                created_at=created_at,
+                updated_at=updated_at,
+                reserved_active_seconds=active_seconds,
+            )
+            for run_id, state, created_at, updated_at, active_seconds in raw
+        ]
+        now = time.time()
+        conservative = worker.phase_total_wall_seconds(runs, instant=now)
+        age_based = 0.0
+        reserved_based = 0.0
+        for run in runs:
+            created = worker._parse_timestamp(run.created_at)
+            age_based += max(0.0, now - created)
+            reserved_based += max(0.0, float(run.reserved_active_seconds or 0.0))
+    
+        assert age_based > spec.TIMING["phase_wall_max_seconds"], "the r6 bug must be reproducible"
+>       assert conservative == pytest.approx(reserved_based)
+E       assert 4772.096430702415 == 1974.07600000...8 ± 0.00197408
+E         
+E         comparison failed
+E         Obtained: 4772.096430702415
+E         Expected: 1974.0760000082348 ± 0.00197408
+
+tests/v9/experiments/test_s1_r7_phase_accounting.py:271: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original
+1 failed, 325 passed in 16.20s
+[relay exec] 墙钟监督证据：{"wall_s": null, "cap_s": null, "pgid": 13394, "timeout": false, "elapsed_s": 16.517, "kind": "exited", "confirmed_empty": true, "members_left": [], "leader_returncode": 1, "confirmed_at_s": 16.5174}
+[relay exec] 归档耗时：{"archive_s": 0.014}

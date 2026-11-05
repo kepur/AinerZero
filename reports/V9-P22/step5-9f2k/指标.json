@@ -1,0 +1,128 @@
+{
+  "task": "ainerzero.V9.P22",
+  "reviewed_task": "ainerzero.V9.P18",
+  "r3_author": "deepseek-v41f-r3k9",
+  "reviewer": "step5-9f2k",
+  "reviewer_model": "Step-5-Preview",
+  "date": "2026-10-22",
+  "review_kind": "non_author_independent_cpu_review",
+  "author_exclusion": "reviewer is not a P18 author or same-session agent (P18 authors: deepseek-v41f-p8k2, deepseek-v41f-r3k9 and prior sessions; reviewer ID step5-9f2k is new)",
+  "input_identity": {
+    "review_input_entries": 67,
+    "mismatches": 0,
+    "missing": 0,
+    "inherited_frozen_entries_present": true,
+    "frozen_r5_source_sha_claimed": 7,
+    "frozen_r5_source_sha_matched_in_relay_snapshot": 7,
+    "frozen_r5_source_sha_matched_in_p20_iso_copy": 7,
+    "live_worktree_drifted_files": 5,
+    "live_worktree_drifted_list": ["evaluation.py", "runtime.py", "worker.py", "commands.py", "spec.py"],
+    "source_manifest_json_confirms": true
+  },
+  "reproduction_two_new_dirs": {
+    "dirs": ["reports/V9-P22/step5-9f2k/work/repro_a", "reports/V9-P22/step5-9f2k/work/repro_b"],
+    "dev_coverage_sha256": "551d9b95473651d4a8e17a4d2452210581c0b90d37fcbcfc4c1239a3de34c5a5",
+    "metrics_sha256": "0ba67a8e9d9a22b09d70d7aa558e9613d8359f3081ad6647104c3c2b5df46bea",
+    "byte_identical_to_delivered_products": true,
+    "isolation": "env -i with private HOME/TMPDIR, PYTHONDONTWRITEBYTECODE=1, explicit V9P18R3_OUT, no r3 product overwritten"
+  },
+  "independent_recount": {
+    "implementation": "own pure-stdlib script (work/independent_check.py), does not import ainerzero package or r3 scripts",
+    "checks_total": 61,
+    "passed": 60,
+    "failed": 1,
+    "failed_item": "B1 illustration stop_frames total: report says 5653, own frames-convention value is 5853 (see defect D2)"
+  },
+  "guard_negative_tests": {
+    "total": 5,
+    "rejected_as_designed": 5,
+    "cases": [
+      "coverage script -> delivered products dir (non-empty) refused",
+      "metrics script -> delivered products dir (metrics.json exists) refused",
+      "metrics script -> repro_a again (metrics.json exists) refused",
+      "metrics script -> dir with foreign file refused",
+      "no --out / no V9P18R3_OUT refused (no implicit output root)"
+    ],
+    "delivered_products_sha_unchanged_after_tests": true,
+    "repro_outputs_unchanged_after_tests": true
+  },
+  "key_numbers_independently_reproduced": {
+    "k_worlds": [200, 200, 150, 50, 0],
+    "k_queries": [750, 550, 350, 100, 0],
+    "k1_start_in_support": 350,
+    "k1_start_in_support_fraction": 0.6364,
+    "k1_end_in_support": 350,
+    "k2_start_end_in_support": 200,
+    "k4_start_end_in_support": 50,
+    "as_coded_short_memory_hits_k1_k2_k4": [300, 150, 0],
+    "constant_baselines_true": [0.4, 0.454545, 0.571429, 1.0],
+    "shape": {"episodes": 200, "steps_total": 950, "transitions_total": 750, "max_transitions_per_world": 6, "steps_total_equals_manifest_packets": true},
+    "call_counts": {"step_sequence": 611, "single_step_forwards": 1492, "probe_graph": 800, "encode": 3500, "window_forward_loss": 175, "window_batches": 35, "dev_windows": 550},
+    "as_coded_counts": {"step_sequence": 212, "single_step_forwards": 792, "probe_graph": 400, "encode": 1500},
+    "frames": {"as_coded_stop_frames": 1003, "repaired_stop_frames": 2103, "hybrid_1703_1503_1903_decomposition_verified": true},
+    "budget": {
+      "updates": 3510,
+      "estimate_seconds": 359.9312287726061,
+      "deadline_seconds": 450,
+      "supervision_seconds": 500,
+      "arm1_active_seconds": 0.31284984004742,
+      "arm1_estimate_seconds": 1.501679232227616,
+      "arm1_deadline_seconds": 2,
+      "arm1_supervision_seconds": 52,
+      "phase_wall_seconds": 4099.605202459,
+      "headroom_seconds": 10300.394797541,
+      "eval_layers": {"nominal": 300, "supervisor_timeout": 350, "ledger_reserve": 120},
+      "static_checks": {"9x300": 6799.605202459, "9x350": 7249.605202459, "9x120": 5179.605202459, "worst_case": 7202, "all_below_cap": true},
+      "deltas_vs_frozen_all_zero": true,
+      "eval_batches_48_ratios": {"training_probe_over_reservation": 1.371, "arm1_over_reservation": 240.0}
+    },
+    "d2_facts": {
+      "manifest_generation_seconds": 45.739918708000005,
+      "prereg_data_identity_generation_seconds": 45.739918708000005,
+      "prereg_smoke_data_generation_seconds": 47.605202458999884,
+      "created_unix_order": "smoke 1792572559.63 < manifest 1792576623.88 < prereg 1792614732.81",
+      "phase_wall_uses_larger_value": true
+    },
+    "p19_per_k_subblock_inconsistency_confirmed": true,
+    "r1_history_line_numbers_verified": {"REPORT.md": [243, 275], "metrics.json": [447, 449], "build_metrics.py": [97, 197, 199]},
+    "d4_source_lines_verified": {"lifecycle.py": [391, 392], "worker.py": ["367-376", 440], "commands.py": [42, 200, 227, 743], "spec.py": 77, "evaluation.py": 331},
+    "p16_cross_reference_substantively_verified": "k8 0/200 and k4 50/200 present in reports/V9-P16/P16-METRICS.json disclosed_limitations_corroborated"
+  },
+  "defects": [
+    {"id": "D1", "severity": "medium", "blocking_sealing": true, "item": "REPORT section 0.2 and section 4 D2 assert 'the two values already coexisted before the freeze'; that is a time-causality claim derived from created_unix/mtime field contents, which the card itself disclaims as proof of write times (decision D2 and the card's own claims_that_are_NOT_made). Defensible wording: the current frozen document contains both values; the created_unix fields are recorded as field content only. metrics.json d2 block is disciplined (fact_only, cause_and_write_times=unknown); only the report prose overreaches."},
+    {"id": "D2", "severity": "medium_low", "blocking_sealing": true, "item": "REPORT section 4 D3 B1 illustration line: stop_frames total 5,653 mixes conventions. The card's own frames convention is frames = transitions + 1 per call (current digest 950 = 750 + 200), so the new-shape topology term is 1800 + 200 = 2000 and the total must be 5,853 (2000 + 3800 + 53). 5,653 = 1800 + 3800 + 53 uses the transitions count as the topology frames term. The figure exists only in REPORT prose (0 occurrences in metrics.json and dev_coverage.json) and the illustration is labelled non-measured, but the number itself is wrong."},
+    {"id": "D3", "severity": "low", "blocking_sealing": false, "item": "M1 serial pipeline: build_r3_metrics.py writes run_meta.json into the same output directory, overwriting the coverage stage's run_meta.json. The delivered products/run_meta.json is the build stage's (contains coverage_input, finished 2026-10-22T10:15:50); the coverage stage's argv/start/finish metadata no longer exists in the delivered directory. r3 section 3 does not disclose this; logs/*.out preserve partial evidence."},
+    {"id": "D4", "severity": "low", "blocking_sealing": false, "item": "Section 2 source-SHA table has no paths and calls the files 'frozen r5'; 5 of 7 live worktree files have drifted (other runs are editing src). The parenthetical '(snapshot contains only experiments/s1/** and cli.py)' is inaccurate on both candidate locations: the relay snapshot s1-r5-input-snapshot also holds prereg, P9/P16 reports, SOURCE_MANIFEST.json and 14 s1 source files, while artifacts/v9/s1 holds no source at all. The identities themselves are reproducible (snapshot SOURCE_MANIFEST.json and P20 iso copy both confirm 7/7), but the wording can mislead a reviewer into checking the live tree."},
+    {"id": "D5", "severity": "low", "blocking_sealing": false, "item": "Sections 0.14 / 12.7 say 'the P20 independent review can only turn ready after tier-1 seals the r3 REPORT.md SHA'. P20 is already accepted (relay status: passed, executor workbuddy-q7t2); the current non-author review is P22. Stale card number."},
+    {"id": "D6", "severity": "low", "blocking_sealing": false, "item": "Option B4 label 'hard constraint 350 s per invocation' is factually correct (commands.py:200 supervision = budget + 50; commands.py:227 subprocess.run(timeout=...)), but per the P20 addendum it should state the supervision scope explicitly: 350 s covers the worker subprocess only, excludes lock wait and post-run ledger reconciliation, and unknown cleanup time is not inside it."},
+    {"id": "D7", "severity": "low", "blocking_sealing": false, "item": "Section 3 claims 'dev_coverage.json and metrics.json are byte-deterministic (no timestamps, no output-root path)'. True for dev_coverage.json; metrics.json embeds two input mtimes (manifest_mtime_iso, prereg_mtime_iso) and 11 absolute snapshot paths, so its byte-identity holds only while those frozen inputs are untouched (it did hold across the author's runs and this review's two new directories)."}
+  ],
+  "negative_evidence_preserved": [
+    "k=1 crash verified at frozen evaluation.py:331 (stop=support[-1]+1 -> frames=1 < 2 -> BackendError); few_shot_report rebuilds memory=None per sequence (line 329)",
+    "support short-write (as-coded stop=k) verified via split semantics and as-coded counts 212/792/400/1500",
+    "probe_graph real-backend TypeError: not reproduced here (MLX not imported), carried as r6-ruling item 3 unverified",
+    "repaired counts come from P19 count-substitute backend: declared, structurally confirmed",
+    "P19 sealed per-k sub-block inconsistency: independently confirmed (k=1 crashed_at_world=1 step_sequence_calls=1; k=2 150 calls; k=4 50 calls, as-coded semantics inside the repaired column)",
+    "ledger card-local: declared, unresolved in r5, owned by r6"
+  ],
+  "unverified_items": [
+    "no real MLX numeric path executed by the reviewer or required by this card; call counts are not capability results",
+    "MLX unit costs for batch-1 forward / encode / probe_graph remain unmeasured; eval wall clock unknown",
+    "wall_seconds semantics read from live lifecycle.py (sha 22ded55ce136...), which is NOT inside the r5 snapshot; r3 declares this gap and the reviewer confirms the declaration is accurate",
+    "P17 now-advance defect fix status (P15 r7) owned by another run; not verified here, not claimed fixed",
+    "the author's run_1/2/4/5 isolated directories were in a private temp root and no longer exist; only the delivered products and this review's two new directories were byte-compared"
+  ],
+  "budget": {
+    "real_blender_or_mlx_runs": 0,
+    "training_runs": 0,
+    "eval_runs": 0,
+    "data_generated": 0,
+    "downloads_or_installs": 0,
+    "cpu_scripts_run_by_reviewer": 4,
+    "frozen_or_budget_changes": 0,
+    "approval_lines_written": 0,
+    "git_writes": 0
+  },
+  "verdict": "substantive_pass_with_mandatory_wording_corrections",
+  "verdict_detail": "All D1-D5/M1-M5 substance independently reproduced with zero numeric defects; negative evidence and unverified items preserved. Two blocking-before-sealing corrections required (D1 time-causality wording, D2 B1 stop_frames 5,653 -> 5,853) plus four should-fix notes (D3-D7). No Reject-level defect (no wrong registered number, no false provenance, no undetected drift in sealed inputs, no unverified item presented as verified). Material acceptance does not constitute run approval or scientific option approval."
+}

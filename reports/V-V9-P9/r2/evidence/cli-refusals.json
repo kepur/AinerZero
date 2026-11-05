@@ -1,0 +1,115 @@
+{
+ "harness": "reports/V-V9-P9/r2/harness/refusals.py",
+ "sandbox": "/private/tmp/v9p11/sandbox",
+ "lock_path": "/private/tmp/v9p11/sandbox/artifacts/locks/m0-worker.lock",
+ "cases": [
+  {
+   "args": [
+    "--mode",
+    "smoke",
+    "--output-root",
+    "/private/tmp/v9p11/sandbox/artifacts/v9/s1/phase1",
+    "--limits-file",
+    "/private/tmp/v9p11/refusals/tight-mem.json"
+   ],
+   "exit_code": 2,
+   "status": "refused",
+   "stage": "resource_gate",
+   "error": null,
+   "reasons": [
+    "process_memory_limit: RSS 0.05 GiB > 0.01 GiB"
+   ],
+   "id": "R1 收紧进程内存 0.01 GiB",
+   "expect": "exit 2 process_memory_limit"
+  },
+  {
+   "args": [
+    "--mode",
+    "smoke",
+    "--output-root",
+    "/private/tmp/v9p11/sandbox/artifacts/v9/s1/phase1",
+    "--limits-file",
+    "/private/tmp/v9p11/refusals/loose-mem.json"
+   ],
+   "exit_code": 2,
+   "status": "refused",
+   "stage": "resource_gate",
+   "error": null,
+   "reasons": [
+    "resources.process_memory_gib 16.0 exceeds registered 8.0 (loosening refused)"
+   ],
+   "id": "R2 放宽进程内存 16 GiB",
+   "expect": "exit 2 loosening refused"
+  },
+  {
+   "args": [
+    "--mode",
+    "smoke",
+    "--output-root",
+    "/private/tmp/v9p11/sandbox/artifacts/v9/s1/phase1",
+    "--limits-file",
+    "/private/tmp/v9p11/refusals/loose-duty.json"
+   ],
+   "exit_code": 2,
+   "status": "refused",
+   "stage": "resource_gate",
+   "error": null,
+   "reasons": [
+    "resources.training_duty_cycle 1.0 exceeds registered 0.25 (loosening refused)"
+   ],
+   "id": "R3 放宽占空比 1.0",
+   "expect": "exit 2 duty loosening refused"
+  },
+  {
+   "args": [
+    "--mode",
+    "smoke",
+    "--output-root",
+    "/private/tmp/v9p11/sandbox/artifacts/v9/s1/phase1",
+    "--wall-budget-seconds",
+    "99999"
+   ],
+   "exit_code": 1,
+   "status": "failed",
+   "stage": null,
+   "error": "ValueError: --wall-budget-seconds 99999.0 must be in (0, 300.0]; the CLI can only tighten the registered preparation budget, never raise it",
+   "reasons": null,
+   "id": "R4 墙钟预算 99999（只能收紧）",
+   "expect": "exit 1 tighten-only"
+  },
+  {
+   "args": [
+    "--mode",
+    "smoke",
+    "--output-root",
+    "/private/tmp/v9p11/sandbox/artifacts/v9/s1/phase1"
+   ],
+   "exit_code": 4,
+   "status": "refused",
+   "stage": "lock_busy",
+   "error": "A worker is already running in this project",
+   "reasons": null,
+   "id": "R5 另一进程持沙箱共享锁",
+   "expect": "exit 4 lock_busy"
+  },
+  {
+   "args": [
+    "--mode",
+    "train",
+    "--output-root",
+    "/private/tmp/v9p11/sandbox/artifacts/v9/s1/phase1",
+    "--prereg",
+    "/private/tmp/v9p11/sandbox/artifacts/v9/s1/phase1/pre_registration.json",
+    "--research-log",
+    "/private/tmp/v9p11/sandbox/RESEARCH_LOG.md"
+   ],
+   "exit_code": 3,
+   "status": "refused",
+   "stage": "preregistration_not_approved",
+   "error": null,
+   "reasons": null,
+   "id": "R6 未批准 train（sandbox 日志无批准行）",
+   "expect": "exit 3 preregistration_not_approved"
+  }
+ ]
+}

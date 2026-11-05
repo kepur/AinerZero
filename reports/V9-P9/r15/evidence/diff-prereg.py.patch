@@ -1,0 +1,63 @@
+--- reports/V9-P9/r15/before/src/prereg.py	2026-10-28 12:39:50
++++ src/ainerzero/v9/experiments/s1/prereg.py	2026-10-28 15:18:24
+@@ -1034,16 +1034,36 @@
+ def inheritance_structure_reasons(
+     section: Mapping[str, Any], *, own_experiment_id: str | None
+ ) -> list[str]:
+-    """r14: structural checks on an inheritance section (also applied to the spec)."""
++    """r14: structural checks on an inheritance section (also applied to the spec).
++
++    r15: two forms.  Single-source (r14): the section names one
++    ``source_experiment_id`` and its preregistration SHAs.  Multi-source (r15):
++    ``sources`` maps each source experiment to its preregistration SHAs and every
++    cell names its own ``source_experiment_id``, which must be one of them.
++    """
+     reasons: list[str] = []
+-    source = section.get("source_experiment_id")
+-    if source not in spec.REGISTERED_EXPERIMENT_IDS or source == own_experiment_id:
+-        reasons.append(
+-            f"inheritance source experiment {source!r} must be another registered identity"
+-        )
+-    for key in ("source_preregistration_sha256", "source_preregistration_file_sha256"):
+-        if not _is_hex(section.get(key), 64):
+-            reasons.append(f"inheritance {key} must be a 64-hex SHA256")
++
++    def _source_reasons(source, record, label: str) -> None:
++        if source not in spec.REGISTERED_EXPERIMENT_IDS or source == own_experiment_id:
++            reasons.append(
++                f"inheritance source experiment {source!r} must be another registered identity"
++            )
++        for key in ("source_preregistration_sha256", "source_preregistration_file_sha256"):
++            if not _is_hex((record or {}).get(key), 64):
++                reasons.append(f"inheritance {label}{key} must be a 64-hex SHA256")
++
++    multi = "sources" in section
++    sources = section.get("sources") if multi else None
++    if multi:
++        if not isinstance(sources, Mapping) or not sources:
++            reasons.append("inheritance lists no sources")
++            sources = {}
++        for source, record in sources.items():
++            _source_reasons(source, record if isinstance(record, Mapping) else {}, f"{source} ")
++        if "source_experiment_id" in section:
++            reasons.append("a multi-source inheritance section must not also name one source")
++    else:
++        _source_reasons(section.get("source_experiment_id"), section, "")
+     cells = section.get("cells")
+     if not isinstance(cells, list) or not cells:
+         reasons.append("inheritance lists no cells")
+@@ -1063,6 +1083,14 @@
+             reasons.append(f"inheritance cell {arm_id} seed {seed} source_run_id is not a run id")
+         if not _is_hex(cell.get("params_sha256"), 64):
+             reasons.append(f"inheritance cell {arm_id} seed {seed} params_sha256 is not a SHA256")
++        if multi and cell.get("source_experiment_id") not in (sources or {}):
++            reasons.append(
++                f"inheritance cell {arm_id} seed {seed} names no listed source experiment"
++            )
++        if not multi and "source_experiment_id" in cell:
++            reasons.append(
++                f"inheritance cell {arm_id} seed {seed} names a source in a single-source section"
++            )
+     return reasons
+ 
+ 

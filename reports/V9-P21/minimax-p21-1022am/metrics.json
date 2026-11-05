@@ -1,0 +1,184 @@
+{
+  "agent": "minimax-p21-1022am",
+  "role": "tier-2 independent reviewer (non-author)",
+  "task": "ainerzero.V9.P21",
+  "reviewed_task": "ainerzero.V9.P15",
+  "reviewed_authors": ["gemini-b7m9", "deepseek-r7xq"],
+  "model": "opencode/minimax-m3.1-flash-free",
+  "reviewed_at": "2026-10-22T10:51+03:00/2026-10-22T11:45+03:00",
+  "verdict": "reject",
+  "verdict_reason": "4 reproducible mandatory counterexamples (F1-F4); the r7 frozen parameters themselves are inside the allow list and the scientific values did not move, the defects are in the code control flow",
+  "cpu_only": true,
+  "real_mlx_loaded": false,
+  "mlx_stub_used": true,
+  "source_files_modified": [],
+  "files_written": [
+    "reports/V9-P21/minimax-p21-1022am/",
+    "reports/V9-P21/minimax-p21-1022am/probes/",
+    "reports/V9-P21/minimax-p21-1022am/evidence/",
+    "reports/V9-P21/minimax-p21-1022am/logs/"
+  ],
+  "frozen_identity": {
+    "files_checked": 51,
+    "mismatches_before": 0,
+    "mismatches_after": 0,
+    "r7_document_sha256": "523a5b35ca1cedef51352f286a116b3c2c798185c192bb571297eea365e3d667",
+    "r7_file_sha256": "14c435ed860f1817e90fff218261bbe1ff4c4732e7f950561a3a4d84a2acb2ed",
+    "real_ledger_sha256_before": "a099c7ce2d5f465b5c05bf0c25acf83b296447cf87dcaffa5683e27fb18ad977",
+    "real_ledger_sha256_after": "a099c7ce2d5f465b5c05bf0c25acf83b296447cf87dcaffa5683e27fb18ad977",
+    "real_ledger_unchanged": true,
+    "real_wal_unchanged": true,
+    "shared_lock_unchanged": true,
+    "shm_note": "the -shm index file mtime advanced (a read-only attachment to a WAL database does that, demonstrated); its sha256 did not change, no zero-write claim is made",
+    "approval_written": false,
+    "research_log_modified": false
+  },
+  "mandatory_findings": [
+    {
+      "id": "F1",
+      "title": "the final 'completed' commit is not covered by the 450 s per-run deadline",
+      "evidence": "evidence/09-train-control-flow.json#/findings/finish_hole",
+      "counterexample": "real wall clock: deadline 20 s, the final commit took 21 s more -> run recorded 'completed', wall_seconds 24.81 > 20; the same overrun inside the last gradient aborts (control)",
+      "decision_requirement": "S1-R7-DECISION item 5: the last-step IO / ledger.finish commit taking more than 450 s must also not be completed",
+      "author_gap": "the r7 deadline controls cover last-gradient / duty-sleep / checkpoint-io / metadata-io / exact-boundary but not ledger.finish"
+    },
+    {
+      "id": "F2",
+      "title": "the r7 phase accounting refuses three states the S1 product itself writes",
+      "evidence": "evidence/06-phase-scope.json#/findings/product_written_states_refused",
+      "counterexample": "a legitimate 'collecting' / 'validating' / 'stopping' row is refused as an unknown state -> phase_total_wall_seconds raises -> the train/eval entry refuses with the misleading stage 'ledger_timestamp_invalid' instead of counting the row",
+      "decision_requirement": "every phase-related prep/train/eval/verify row must be counted",
+      "author_gap": "the r7 phase-accounting test only uses 'completed' and a made-up 'quarantined' state"
+    },
+    {
+      "id": "F3",
+      "title": "the arm1 (D candidate) evaluation entry cannot complete with the real frozen r7 document",
+      "evidence": "evidence/08-d-eval-path.json#/cases/A_real_document_default_budget and B_real_document_tightened_budget",
+      "counterexample": "the arm1 experiment is registered with arm1_deadline_seconds=2 while the run is registered with the entry's 300 s eval budget -> 'run budget exceeds experiment run limits' (status failed, no run, no forward); with a budget <= 2 s the pre-reservation (>= 5 s) exceeds the run wall -> 'BudgetExceeded: wall_time_budget' (status stopped, an arm1 ledger row is burned without any evaluation)",
+      "decision_requirement": "the registered single C0 re-verification path must work for the frozen D candidate",
+      "author_gap": "the r7 D test never runs run_worker(eval, arm1) to completion with the real document; its fixture document has arm1_deadline_seconds=15"
+    },
+    {
+      "id": "F4",
+      "title": "the 'one D evaluation run' limit is not enforced",
+      "evidence": "evidence/08-d-eval-path.json#/cases/D_second_arm1_evaluation",
+      "counterexample": "the arm1 evaluation run is opened without arm_id in its config snapshot while the guard filters on config_snapshot['arm_id']=='arm1' -> the second arm1 evaluation was not refused and the central ledger holds two completed arm1 evaluation rows",
+      "decision_requirement": "the D candidate may be re-verified exactly once (d_candidate_eval_runs=1)",
+      "author_gap": "the r7 test fabricates an arm_id='arm1' row that the product never creates"
+    }
+  ],
+  "disclosed_findings": [
+    {
+      "id": "F5",
+      "title": "the report's refused_states list is wider than the implementation",
+      "detail": "max(0.0, float(value)) normalises a NaN (or -inf) reservation to 0 (Python's max(0.0, nan) is 0.0) so the following isfinite guard can never fire; a finite far-future timestamp is accepted with the elapsed part charged as 0; not reachable from the real ledger (SQLite stores NaN as NULL, NOT NULL + CHECK reject it), but the card requires that unknown/non-compliant fields are never treated as 0",
+      "evidence": "evidence/05-phase-accounting.json#/findings"
+    },
+    {
+      "id": "F6",
+      "title": "unfrozen identity of the trust root and of the ledger implementation",
+      "detail": "the preregistration binds 14 source files; src/ainerzero/runtime/lifecycle.py (unchanged by the authors, sha 22ded55c...), the A2 baseline manifest (the D candidate trust root), src/ainerzero/learning/pilot_model.py and src/ainerzero/runtime/checkpoints.py are not bound; verify_d_candidate_identity computes a 'digest' that is never read (AST checked) and only reports the registered 3481b6ad... as a hint",
+      "evidence": "evidence/07-d-candidate-identity.json#/trust_root, evidence/10-leaf-diff.json#/identity_gap"
+    },
+    {
+      "id": "F7",
+      "title": "the r7 D-candidate test states 'No MLX is imported here' but arms.py imports mlx.core at module level",
+      "detail": "the review therefore injected a stub mlx package; the 7 failing tests are stub artefacts and were reported as unverified, not as failures",
+      "evidence": "evidence/13-test-suites.json"
+    },
+    {
+      "id": "F8",
+      "title": "run_worker's train branch does not forward a CPU substitute to _train",
+      "detail": "the production train path always uses runtime.MlxBackend, so the CPU evidence (the author's and the reviewer's) is at the _train level only; the real run_worker train path is not verifiable under the CPU-only constraint"
+    }
+  ],
+  "verified_pass": {
+    "host_anchor_unique_across_two_real_checkouts": true,
+    "anchor_not_movable_by_cwd_or_env": true,
+    "entry_path_cases": {
+      "valid_approval_plus_existing_completed_failed_stopped_attempts": "already_attempted",
+      "clone_root_with_own_legal_ledger_and_own_approval_log": "output_root_not_canonical (clone ledger stays empty)",
+      "control_without_approval": "preregistration_not_approved",
+      "real_host_canonical_root": "preregistration_not_approved (real ledger unchanged)",
+      "second_real_checkout_foreign_root": "output_root_not_canonical"
+    },
+    "shared_lock_is_one_lock_for_all_checkouts": true,
+    "phase_accounting_matches_independent_recomputation": true,
+    "phase_total_seconds": 720.2669760419994,
+    "reserved_total_seconds": 720.2669760419994,
+    "calendar_age_total_seconds": 236205.09538388252,
+    "old_rule_would_refuse": true,
+    "no_row_refunded": true,
+    "broken_guard_variants_detected": 5,
+    "corrupt_rows_refused": ["unknown_state", "reverse_timestamps", "nan", "inf", "missing", "unparseable"],
+    "per_row_max_differs_from_global_max": true,
+    "phase_rows_counted": ["prep data", "prep smoke", "prep verify", "train attempt", "eval run"],
+    "failed_attempt_never_cleared": true,
+    "entry_refuses_over_cap_with_breakdown": true,
+    "d_candidate_entries_verified": 9,
+    "d_candidate_digests_match_registered_identity": true,
+    "checkpoint_id_and_tensors_sha_are_distinct_fields": true,
+    "d_tamper_missing_wrong_digest_unpinned_refused": true,
+    "d_path_not_blocked_by_the_eval48_gate": true,
+    "d_control_document_completed_with_exactly_one_cpu_forward": true,
+    "s1_incomparable_metrics_not_applicable": true,
+    "arm2_eval_fails_closed_on_the_48_batch_budget": true,
+    "identity_failure_refuses_before_any_forward_and_before_a_run": true,
+    "train_3510_value_and_grad_calls": 3510,
+    "train_3510_reservations_total": 3511,
+    "train_final_checkpoint_entries": 1,
+    "train_post_final_optimizer_reservations": 0,
+    "train_run_completed": true,
+    "deadline_controls_abort": ["last-gradient", "duty-sleep", "checkpoint-io", "metadata-io"],
+    "exact_boundary_completes": true,
+    "non_finite_stop_rule_holds_at_first_and_last_update": true,
+    "leaf_diff_changed_leaves": 7,
+    "leaf_diff_outside_allowlist": 0,
+    "scientific_values_unchanged": true
+  },
+  "test_suites": {
+    "tests/v9/experiments": {
+      "author_claim": "235 passed",
+      "reviewer_passed": 228,
+      "unverified_needing_real_mlx": 7,
+      "note": "the 7 failures are stub artefacts (no_update x2, pacer_duty x4, timing_sequence x1); they drive the real MLX runtime and were not re-run under the CPU-only constraint"
+    },
+    "tests/v9/geometry+contracts+teachers+tokenization": {
+      "author_claim": "378 passed",
+      "reviewer_passed": 378,
+      "note": "2 of them assert that no mlx module is imported and were re-run without the stub"
+    }
+  },
+  "not_run_not_authorized": [
+    "real MLX D candidate forward",
+    "real training / evaluation / final partition / new data generation",
+    "downloads / installs / paid services",
+    "git commit or push",
+    "production Relay data, port 8790 or deploy",
+    "the 7 MLX-dependent tests",
+    "the real run_worker train path end to end"
+  ],
+  "unverified": [
+    "the real central ledger has only 3 prep 'completed' rows: the 'existing completed/failed/stopped attempt' positive case was built in an isolated host with a real RunStore, the same shape on the real ledger was not verified",
+    "the approval parser was verified against a real-format approval line in an isolated host; the real RESEARCH_LOG.md carries no r7 approval line (the old one is revoked text and does not match the bare-line format)",
+    "the r5/r6/P17 reports, the A2 baseline manifest construction and the AWZ evaluation package were not reviewed"
+  ],
+  "evidence_files": [
+    "reports/V9-P21/minimax-p21-1022am/evidence/01-frozen-identity-before.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/02-anchor-uniqueness.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/03-entry-path.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/04-shared-lock.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/05-phase-accounting.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/06-phase-scope.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/07-d-candidate-identity.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/08-d-eval-path.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/09-train-control-flow.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/10-leaf-diff.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/11-nonfinite-stop-rule.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/12-frozen-identity-after.json",
+    "reports/V9-P21/minimax-p21-1022am/evidence/13-test-suites.json"
+  ],
+  "report_file": "reports/V9-P21/minimax-p21-1022am/REPORT.md",
+  "summary_file": "reports/V9-P21/minimax-p21-1022am/SUMMARY.md",
+  "run_authorization": "none: no approval line was written, P1 stays blocked, this review is not a run authorization"
+}

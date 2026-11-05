@@ -1,0 +1,47 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /Users/mac/AinerWorkFlow/AinerZero
+configfile: pyproject.toml
+collecting ... collected 15 items / 14 deselected / 1 selected
+
+tests/v9/experiments/test_s1_r15_registration.py::test_few_shot_with_a_sliced_memory_completes_through_probe_query FAILED [100%]
+
+=================================== FAILURES ===================================
+_______ test_few_shot_with_a_sliced_memory_completes_through_probe_query _______
+
+    def test_few_shot_with_a_sliced_memory_completes_through_probe_query():
+>       report = _few_shot(_SlicedBackend())
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/experiments/test_s1_r15_registration.py:118: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/v9/experiments/test_s1_r15_registration.py:114: in _few_shot
+    return evaluation.few_shot_report(backend, object(), [sequence], [episode], k_values=(2,), query_limit=8)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+reports/V9-P54/gemini-b4e7/adversarial/mutant_eval_src/ainerzero/v9/experiments/s1/evaluation.py:384: in few_shot_report
+    match_start = _cosine_match(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+nodes = array([[ 0.12573022, -0.13210486],
+       [ 0.36159506,  1.30400002],
+       [-0.62327445,  0.04132598]])
+query = array([-0.62327445,  0.04132598, -2.3250308 , -0.21879166, -1.245911  ])
+threshold = 0.0
+
+    def _cosine_match(nodes: np.ndarray, query: np.ndarray, threshold: float) -> int | None:
+        if len(nodes) == 0:
+            return None
+        if nodes.shape[-1] != query.shape[-1]:
+            # r15: fail with the real cause instead of numpy's gufunc message.
+>           raise ValueError(
+                f"few-shot query width {query.shape[-1]} does not match the probed memory node "
+                f"width {nodes.shape[-1]}; the query must use the slice the memory stores"
+            )
+E           ValueError: few-shot query width 5 does not match the probed memory node width 2; the query must use the slice the memory stores
+
+reports/V9-P54/gemini-b4e7/adversarial/mutant_eval_src/ainerzero/v9/experiments/s1/evaluation.py:290: ValueError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s1_r15_registration.py::test_few_shot_with_a_sliced_memory_completes_through_probe_query
+======================= 1 failed, 14 deselected in 0.09s =======================
+

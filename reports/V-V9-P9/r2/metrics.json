@@ -1,0 +1,115 @@
+{
+ "task": "ainerzero.V9.P11",
+ "reviewer": "deepseek-4m9t",
+ "reviewed": "ainerzero.V9.P9 r2",
+ "verdict": "reject_f1_class5",
+ "card_items": {
+  "mutations_12_of_12_caught": true,
+  "f1_five_forgery_classes_all_exit_3": false,
+  "f1_positive_released_and_recorded_in_runstore": true,
+  "prereg_diff_only_binding_and_paths": true,
+  "ledger_and_dataset_paths_under_artifacts": true,
+  "real_lock_and_central_ledger_untouched": true
+ },
+ "tests": {
+  "baseline": "106 passed",
+  "baseline_failed": 0,
+  "baseline_seconds": 2.21,
+  "p10_harness_faithful_copy": {"caught": 10, "not_applied": ["M10", "M11"], "runtime_seconds": 84},
+  "r2_harness_anchor_moved": {"caught": 12, "total": 12, "runtime_seconds": 99},
+  "reviewer_probes_caught": {"X1": 1, "X2": 1, "X3": 1, "X5": 1, "total": 4, "of": 4},
+  "failed_test_attribution": "recorded per mutation in results/mutations-v9p11.json"
+ },
+ "mutation_failed_counts": {
+  "M1": 4, "M2": 6, "M3": 1, "M4": 1, "M5": 4, "M6": 1, "M7": 1,
+  "M8": 27, "M9": 1, "M10": 3, "M11": 2, "M12": 1,
+  "X1": 3, "X2": 1, "X3": 2, "X5": 1
+ },
+ "f1_forgeries": {
+  "C1_forged_status_selfconsistent": {"exit": 3, "expected": 3, "ok": true},
+  "C2_no_approval_line": {"exit": 3, "expected": 3, "ok": true},
+  "C3_sha_one_hex_off": {"exit": 3, "expected": 3, "ok": true},
+  "C4_line_for_r1_document": {"exit": 3, "expected": 3, "ok": true},
+  "C5a_forged_log_in_writable_location": {"exit": 0, "expected": 3, "ok": false},
+  "C5b_side_files_next_to_prereg": {"exit": 3, "expected": 3, "ok": true},
+  "C5c_default_log_written_by_writer": {"exit": 0, "expected": "design", "ok": null},
+  "C6_exact_line_positive": {"exit": 0, "expected": 0, "ok": true},
+  "C7_swapped_dataset_digest_same_forged_log": {"exit": 0, "expected": "informational", "ok": null}
+ },
+ "runstore_approval_record": {
+  "document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+  "line_number": 4,
+  "line_text_matches": true,
+  "log_sha256_recorded_matches": true,
+  "transitions": ["created", "initializing", "training", "completed"],
+  "optimizer_steps": 0,
+  "role": "model"
+ },
+ "preregistration": {
+  "document_sha256": "0547744fc142adae198b6d2fcfe6a6ac273fa092857649361bbf2dd157a14c07",
+  "file_sha256": "56ac88a0646365e4833d04e4409ceaccb08aa39732e32a3dfb99d9183475f1fe",
+  "sidecar_matches": true,
+  "reports_copy_byte_identical": true,
+  "r1_document_sha256": "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6",
+  "diff_leaves": {"changed": 17, "added": 20, "removed": 0, "total": 37},
+  "diff_by_block": {
+   "approval_rule": 5, "commands": 5, "created_unix": 1, "data_identity": 2,
+   "source_identity": 10, "storage": 3, "timing": 11
+  },
+  "parameter_budget_seed_step_leaks": 0,
+  "data_plan_leaks": 0
+ },
+ "budget_derivation": {
+  "r1_measurement": {"max_step_seconds": 0.006962458, "updates": 3510, "estimate_seconds": 359.93,
+                      "deadline_seconds": 450, "supervision_seconds": 500, "arm1_deadline_seconds": 450,
+                      "phase_wall_seconds": 4099.605},
+  "r2_remeasurement": {"max_step_seconds": 0.006527417, "updates": 3749, "estimate_seconds": 359.91,
+                        "deadline_seconds": 450, "fits_per_run_cap": true},
+  "matches_frozen": true,
+  "per_run_cap_seconds": 1200,
+  "phase_cap_seconds": 14400
+ },
+ "storage_layout": {
+  "ledger": "artifacts/v9/s1/phase1/control.sqlite3",
+  "dataset": "artifacts/v9/s1/datasets/8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+  "dataset_dir_named_after_digest": true,
+  "reports_tree_has_dataset_bytes": false,
+  "s1_ledger_runs": 2,
+  "s1_ledger_optimizer_steps": 0,
+  "s1_ledger_train_runs": 0,
+  "daily_budget_reserved_seconds": 535.37,
+  "daily_budget_limit_seconds": 14400
+ },
+ "cli_exit_codes": {
+  "tighten_process_memory_0p01GiB": 2,
+  "loosen_process_memory_16GiB": 2,
+  "loosen_duty_1p0": 2,
+  "wall_budget_99999": 1,
+  "lock_busy": 4,
+  "train_without_approval": 3
+ },
+ "verify_sandbox": {
+  "status": "completed",
+  "source_binding": "passed 12/12",
+  "dataset_digest_matches": true,
+  "independent_parameter_check": "passed (4 arms: recomputed == smoke before == after)",
+  "approval": "not approved (no line)",
+  "final_partition": "not_generated_not_read",
+  "elapsed_seconds": 0.31
+ },
+ "binding_gap": {
+  "train_with_drifted_bound_worker": {"exit": 0, "status": "completed"},
+  "verify_same_tree": {"exit": 1, "stage": "source_binding_drift"},
+  "mode_train_calls_source_binding": false,
+  "worker_train_reads_data_identity": false
+ },
+ "real_tree_fingerprint": {
+  "lock_mtime": 1790110663,
+  "central_ledger_mtime": 1792008059,
+  "central_ledger_sha256_prefix": "e61dd4cbc6e3aac3d145",
+  "unchanged_vs_baseline": true,
+  "source_files_modified_by_reviewer": false
+ },
+ "p9_dossier_integrity": {"sha256sums_entries": 37, "verified_ok": 37},
+ "wall_clock_seconds": {"mutations_faithful": 84, "mutations_rerun": 99, "f1": 25, "verify": 3}
+}

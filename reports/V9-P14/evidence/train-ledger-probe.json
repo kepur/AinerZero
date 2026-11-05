@@ -1,0 +1,80 @@
+{
+ "checks": {
+  "A_stops_before_second_update": true,
+  "B_consumes_all_updates_but_never_checkpoints": true,
+  "C_run_budget_above_experiment_ceiling_refused": true
+ },
+ "conclusion": "No registered r4 train run can reach its checkpoint: the run budget admits 1 optimizer step, the experiment ceiling forbids a larger run budget than `updates`, and an exact-equality budget is consumed by the last update so the trailing zero-step checkpoint reservation is still refused.",
+ "experiment_ceiling_rule": "create_run refuses any run budget field larger than the experiment manifest's budget block; train_experiment_manifest pins the experiment optimizer ceiling at exactly `updates`, so the run budget can be at most `updates`",
+ "frozen_checkpoint_updates": [
+  0,
+  302,
+  605,
+  1210,
+  2420
+ ],
+ "frozen_updates_per_run": 2420,
+ "scenarios": {
+  "A_as_shipped": {
+   "checkpoint_written": false,
+   "cli_exit_code": 1,
+   "db_optimizer_steps": 1,
+   "db_state": "stopped",
+   "error": "BudgetExceeded: optimizer_step_budget",
+   "optimizer_step_reserves": 2,
+   "refused_stage": null,
+   "reserve_calls": 2,
+   "run_config_budget": {
+    "max_daily_active_seconds": 14400.0,
+    "max_environment_steps": 1,
+    "max_model_transitions": 0,
+    "max_optimizer_steps": 1,
+    "max_wall_seconds": 450.0,
+    "timezone": "Europe/Belgrade"
+   },
+   "run_id": "8132e13c7cda42f6a2a7695a5ff18489",
+   "run_info_written": false,
+   "status": "stopped",
+   "worker_exit_code": 3,
+   "zero_step_reserves": 0
+  },
+  "B_budget_equals_updates": {
+   "checkpoint_written": false,
+   "cli_exit_code": 1,
+   "db_optimizer_steps": 2420,
+   "db_state": "stopped",
+   "error": "BudgetExceeded: optimizer_step_budget",
+   "optimizer_step_reserves": 2420,
+   "refused_stage": null,
+   "reserve_calls": 2424,
+   "run_config_budget": {
+    "max_daily_active_seconds": 14400.0,
+    "max_environment_steps": 1,
+    "max_model_transitions": 0,
+    "max_optimizer_steps": 2420,
+    "max_wall_seconds": 450.0,
+    "timezone": "Europe/Belgrade"
+   },
+   "run_id": "5ff4a2da2c5a46b089f4f025a06011d8",
+   "run_info_written": false,
+   "status": "stopped",
+   "worker_exit_code": 3,
+   "zero_step_reserves": 4
+  },
+  "C_budget_updates_plus_one": {
+   "checkpoint_written": false,
+   "cli_exit_code": 1,
+   "error": "LifecycleError: run budget exceeds experiment run limits",
+   "optimizer_step_reserves": 0,
+   "refused_stage": null,
+   "reserve_calls": 0,
+   "run_id": null,
+   "run_info_written": false,
+   "status": "failed",
+   "worker_exit_code": 3,
+   "zero_step_reserves": 0
+  }
+ },
+ "schema": "ainerzero.v9.p14.train-ledger-probe.v1",
+ "verdict": "blocker_confirmed"
+}

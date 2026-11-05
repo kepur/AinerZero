@@ -1,0 +1,104 @@
+{
+ "schema": "ainerzero.v9.s1.r5.relay_data.v1",
+ "agent": "ds-s1r5-1021n",
+ "task": "ainerzero.V9.P15",
+ "mode": "CPU engineering only; no real training or evaluation",
+ "r4_document_sha256": "6cbe7eada77d760860cae44490998e2b0a7ac223006471df411e7a9943c39842",
+ "r5_document_sha256": "c2f56b5ac79706417bcf0a810fcabd984c57b21c06143df45e00cf2917a7c98d",
+ "r5_file_sha256": "895bb3676cd3db6ad7995814ee940e23b1bff55747e8dea665f5fe426386075b",
+ "prereg_leaf_diff": {
+  "leaves": 398,
+  "changed": 16,
+  "outside_allowlist": 0,
+  "changed_fields": [
+   "created_unix",
+   "source_identity.package_files.arms.py",
+   "source_identity.package_files.commands.py",
+   "source_identity.package_files.data.py",
+   "source_identity.package_files.evaluation.py (added)",
+   "source_identity.package_files.metrics.py",
+   "source_identity.package_files.runtime.py (added)",
+   "source_identity.package_files.worker.py",
+   "source_identity.package_map_digest",
+   "timing.smoke_recheck.* (removed; no local re-measurement in the r5 root)"
+  ]
+ },
+ "verify": {
+  "status": "completed",
+  "source_binding": "passed",
+  "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+  "smoke_source_match": true,
+  "approval_approved": false
+ },
+ "production_train_evidence": {
+  "backend": "cpu-evidence-substitute",
+  "mlx_imported": false,
+  "updates": 3510,
+  "optimizer_reservations": 3510,
+  "wall_only_reservations": 1,
+  "last_reservation": [1, 2.05],
+  "checkpoint_updates_written": [0, 439, 878, 1755, 3510],
+  "final_checkpoint_writes": 1,
+  "post_final_optimizer_reservations": 0,
+  "run_state": "completed",
+  "reserved_optimizer_steps": 3510,
+  "remaining_optimizer_steps": 0,
+  "boundary_3511_refusal": "BudgetStop: optimizer_step_budget",
+  "rerun_denied": true,
+  "binding_negatives": {
+   "tampered_checkpoint": "rejected",
+   "missing_checkpoint": "rejected",
+   "wrong_preregistration_sha": "rejected",
+   "duplicate_completed_run": "rejected"
+  }
+ },
+ "eval_evidence_real_development_split": {
+  "backend": "cpu-evidence-substitute",
+  "run_binding": "passed",
+  "groups": 6,
+  "unseen_map": {"episodes": 200, "worlds": 200},
+  "topology": {"episodes": 200, "worlds": 200, "families": 4},
+  "few_shot_worlds_by_k": {"0": 200, "1": 200, "2": 150, "4": 50, "8": 0},
+  "few_shot_k8_status": "insufficient_data",
+  "sample_efficiency_checkpoints": [0, 439, 878, 1755, 3510],
+  "m2_conditions": ["zero_state", "history_paired", "after_new_world"],
+  "model_calls": {
+   "window_probe_calls": 5,
+   "window_probe_batches": 175,
+   "step_sequence_calls": 611,
+   "step_frames": 1703,
+   "probe_graph_calls": 800,
+   "encode_calls": 3500,
+   "load_params_calls": 7
+  },
+  "registered_eval_batches": 48,
+  "budget_discrepancy": "the frozen eval_batches=48 registration does not cover the r5 suite; not expanded, escalated"
+ },
+ "tests": {
+  "command": ".venv/bin/python -m pytest tests/v9/experiments -q -p no:cacheprovider",
+  "result": "146 passed",
+  "r5_tests": 17,
+  "isolated_geometry": "149 passed",
+  "isolated_other_v9": "229 passed",
+  "known_process_contamination": "tests/v9 in one process makes 2 geometry no-MLX checks fail because the pre-existing test_s1_pacer_duty.py imports arms (which imports MLX at module level); geometry alone passes"
+ },
+ "limitations": [
+  "no real MLX forward/gradient/optimizer or real training/evaluation",
+  "numeric substitute; no capability or scientific claim",
+  "few-shot k=8 unavailable on all 200 development worlds; k=4 only 50 worlds",
+  "evaluation call volume exceeds the old eval_batches=48 registration",
+  "no approval line written; the 9 real runs remain refused",
+  "author cannot accept own work; P16 non-author review required"
+ ],
+ "artifacts": {
+  "report": "reports/V9-P9/r5/REPORT.md",
+  "prereg": "artifacts/v9/s1/phase1/r5/pre_registration.json",
+  "leaf_diff": "reports/V9-P9/r5/prereg-leaf-diff.json",
+  "ledger_eval_evidence": "reports/V9-P9/r5/evidence/ledger-and-eval.json",
+  "source_deltas": "reports/V9-P9/r5/evidence/source-deltas.json",
+  "test_map": "reports/V9-P9/r5/evidence/test-map.json",
+  "tests_junit": "reports/V9-P9/r5/logs/tests-s1-r5.xml",
+  "sha256sums": "reports/V9-P9/r5/SHA256SUMS.txt",
+  "r4_archive": "reports/V9-P9/r5/archive-r4/"
+ }
+}

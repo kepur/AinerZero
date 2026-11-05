@@ -1,0 +1,20 @@
+--- reports/V9-P9/r6/evidence/pre-work-source/src/ainerzero/v9/experiments/s1/runtime.py	2026-10-22 00:53:43
++++ src/ainerzero/v9/experiments/s1/runtime.py	2026-10-22 00:58:10
+@@ -80,7 +80,17 @@
+         from . import arms
+ 
+         return arms.parameter_sha256(model)
++
++    def parameter_arrays(self, model) -> dict:
++        """Named trainable parameter arrays (no MLX leaves).
++
++        The worker's frozen non-finite stop rule has to inspect every updated
++        parameter, not just the final JSON serialisation.
++        """
++        from . import arms
+ 
++        return {name: np.asarray(value) for name, value in arms._params(model)}
++
+     def save_params(self, model, path: Path, *, exclusive: bool = False) -> None:
+         from . import arms
+ 

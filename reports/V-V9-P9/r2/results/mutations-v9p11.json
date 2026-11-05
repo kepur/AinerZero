@@ -1,0 +1,265 @@
+{
+ "harness": "reports/V-V9-P9/r2/harness/mutation_rerun.py",
+ "sandbox": "/private/tmp/v9p11/sandbox",
+ "baseline": {
+  "summary": "106 passed in 2.21s",
+  "returncode": 0,
+  "failed_tests": [],
+  "failed_count": 0
+ },
+ "matrix": [
+  {
+   "id": "M1",
+   "label": "pacer 占空比睡眠整段删除",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/worker.py",
+   "verdict": "CAUGHT",
+   "summary": "4 failed, 102 passed in 2.15s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.25-0.06]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.5-0.02]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_sleeps_to_hold_the_duty_cycle[0.1-0.18]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_pacer_records_the_registered_duty_cycle_only"
+   ],
+   "failed_count": 4
+  },
+  {
+   "id": "M2",
+   "label": "evaluate() 的 duty 检查禁用",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/resource_gate.py",
+   "verdict": "CAUGHT",
+   "summary": "6 failed, 100 passed in 2.17s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_loosened_duty_cycle[0.5]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_loosened_duty_cycle[1.0]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_loosened_duty_cycle[0.2500001]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_nonpositive_duty_cycle[0.0]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_evaluate_refuses_a_nonpositive_duty_cycle[-0.25]",
+    "tests/v9/experiments/test_s1_pacer_duty.py::test_runtime_guard_refuses_a_loosened_duty_cycle"
+   ],
+   "failed_count": 6
+  },
+  {
+   "id": "M3",
+   "label": "交换区增长线删除",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/resource_gate.py",
+   "verdict": "CAUGHT",
+   "summary": "1 failed, 105 passed in 2.18s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides4-swap_growth_limit]"
+   ],
+   "failed_count": 1
+  },
+  {
+   "id": "M4",
+   "label": "系统余量线删除",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/resource_gate.py",
+   "verdict": "CAUGHT",
+   "summary": "1 failed, 105 passed in 2.13s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides3-system_reserve_limit]"
+   ],
+   "failed_count": 1
+  },
+  {
+   "id": "M5",
+   "label": "进程内存线删除",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/resource_gate.py",
+   "verdict": "CAUGHT",
+   "summary": "4 failed, 102 passed in 53.67s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides0-process_memory_limit]",
+    "tests/v9/experiments/test_s1_resource_gate.py::test_assert_start_with_injected_probes",
+    "tests/v9/experiments/test_s1_resource_gate.py::test_runtime_guard_stops_on_a_violation",
+    "tests/v9/experiments/test_s1_resource_gate.py::test_cli_refuses_to_start_on_an_unmet_protection_line"
+   ],
+   "failed_count": 4
+  },
+  {
+   "id": "M6",
+   "label": "MLX 峰值线删除",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/resource_gate.py",
+   "verdict": "CAUGHT",
+   "summary": "1 failed, 105 passed in 2.15s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides2-mlx_memory_limit: peak]"
+   ],
+   "failed_count": 1
+  },
+  {
+   "id": "M7",
+   "label": "定位误差恒为 0",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/metrics.py",
+   "verdict": "CAUGHT",
+   "summary": "1 failed, 105 passed in 2.18s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_metrics.py::test_localization_known_answer_and_broken_control"
+   ],
+   "failed_count": 1
+  },
+  {
+   "id": "M8",
+   "label": "arm3 更新预算被单独 +1",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/prereg.py",
+   "verdict": "CAUGHT",
+   "summary": "27 failed, 79 passed in 2.54s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_approval.py::test_forged_status_with_recomputed_sha_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_cli_exit_code_is_three_when_the_approval_line_is_missing",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_with_one_hex_digit_off_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_for_an_older_document_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_the_documented_format_inside_a_paragraph_is_not_an_approval",
+    "tests/v9/experiments/test_s1_approval.py::test_matching_approval_line_approves_and_uses_the_frozen_budget",
+    "tests/v9/experiments/test_s1_approval.py::test_a_cli_wall_budget_cannot_shorten_or_extend_the_frozen_deadline",
+    "tests/v9/experiments/test_s1_approval.py::test_worker_refuses_train_without_an_approval_line",
+    "tests/v9/experiments/test_s1_approval.py::test_worker_records_the_approval_line_and_sha_in_the_runstore",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_requires_the_exact_document_sha",
+    "tests/v9/experiments/test_s1_prereg.py::test_frozen_file_passes_validation_and_records_equal_budgets",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-deadline]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-supervision]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-training budget]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-0.1M-2M]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-arm1]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-resource limit]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-train world count]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-final]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-updates]",
+    "tests/v9/experiments/test_s1_prereg.py::test_validation_catches_tampering[<lambda>-unchanged]",
+    "tests/v9/experiments/test_s1_prereg.py::test_frozen_file_sha_roundtrip_and_tamper",
+    "tests/v9/experiments/test_s1_prereg.py::test_freeze_file_is_deterministic_for_fixed_created_unix",
+    "tests/v9/experiments/test_s1_prereg.py::test_train_mode_is_refused_without_coordinator_approval",
+    "tests/v9/experiments/test_s1_prereg.py::test_freeze_records_the_measurement_of_record_and_the_recheck",
+    "tests/v9/experiments/test_s1_prereg.py::test_freeze_keeps_the_budget_when_the_recheck_is_the_same_file",
+    "tests/v9/experiments/test_s1_storage_layout.py::test_source_binding_is_rehashed_and_drift_is_fatal"
+   ],
+   "failed_count": 27
+  },
+  {
+   "id": "M9",
+   "label": "final 分区不再抛 FinalPartitionSealed",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/data.py",
+   "verdict": "CAUGHT",
+   "summary": "1 failed, 105 passed in 2.19s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_data.py::test_final_partition_is_sealed_everywhere"
+   ],
+   "failed_count": 1
+  },
+  {
+   "id": "M10",
+   "label": "CLI 的 train 批准检查禁用（监督侧，anchor 移到新批准门）",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/commands.py",
+   "verdict": "CAUGHT",
+   "summary": "3 failed, 103 passed in 4.13s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_approval.py::test_forged_status_with_recomputed_sha_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_cli_exit_code_is_three_when_the_approval_line_is_missing",
+    "tests/v9/experiments/test_s1_prereg.py::test_train_mode_is_refused_without_coordinator_approval"
+   ],
+   "failed_count": 3
+  },
+  {
+   "id": "M11",
+   "label": "worker 的 train 批准检查禁用（纵深防御侧，anchor 移到新批准门）",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/worker.py",
+   "verdict": "CAUGHT",
+   "summary": "2 failed, 104 passed in 2.14s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_approval.py::test_worker_refuses_train_without_an_approval_line",
+    "tests/v9/experiments/test_s1_approval.py::test_worker_records_the_approval_line_and_sha_in_the_runstore"
+   ],
+   "failed_count": 2
+  },
+  {
+   "id": "M12",
+   "label": "无更新断言恒为真（伪造 parameters_unchanged）",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/smoke.py",
+   "verdict": "CAUGHT",
+   "summary": "1 failed, 105 passed in 2.12s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_no_update.py::test_smoke_reports_an_update_when_a_parameter_really_changed"
+   ],
+   "failed_count": 1
+  },
+  {
+   "id": "X1",
+   "label": "批准行不再比对 document SHA（任何批准行都放行）",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/prereg.py",
+   "verdict": "CAUGHT",
+   "summary": "3 failed, 103 passed in 2.97s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_with_one_hex_digit_off_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_line_for_an_older_document_is_refused",
+    "tests/v9/experiments/test_s1_approval.py::test_approval_requires_the_exact_document_sha"
+   ],
+   "failed_count": 3
+  },
+  {
+   "id": "X2",
+   "label": "verify 源绑定恒报 passed",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/commands.py",
+   "verdict": "CAUGHT",
+   "summary": "1 failed, 105 passed in 2.13s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_storage_layout.py::test_source_binding_is_rehashed_and_drift_is_fatal"
+   ],
+   "failed_count": 1
+  },
+  {
+   "id": "X3",
+   "label": "verify 独立参数重算恒报 passed",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/commands.py",
+   "verdict": "CAUGHT",
+   "summary": "2 failed, 104 passed in 2.10s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_no_update.py::test_verify_recomputes_parameters_instead_of_trusting_the_flag",
+    "tests/v9/experiments/test_s1_no_update.py::test_verify_flags_a_smoke_report_that_claims_an_update"
+   ],
+   "failed_count": 2
+  },
+  {
+   "id": "X5",
+   "label": "RunStore 快照不记批准行原文",
+   "expectation": "RED",
+   "applied": true,
+   "file": "src/ainerzero/v9/experiments/s1/worker.py",
+   "verdict": "CAUGHT",
+   "summary": "1 failed, 105 passed in 2.17s",
+   "failed_tests": [
+    "tests/v9/experiments/test_s1_approval.py::test_worker_records_the_approval_line_and_sha_in_the_runstore"
+   ],
+   "failed_count": 1
+  }
+ ],
+ "inherited_12_caught": "12/12",
+ "reviewer_probes_caught": 4
+}

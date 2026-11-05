@@ -1,0 +1,63 @@
+import hashlib, json, os, sys, time
+
+ROOT = "/Users/mac/AinerWorkFlow/AinerZero"
+FILES = {
+ "src/ainerzero/v9/experiments/s1/spec.py": "33f750174f27848b8e806dee5b257fca2479e0f78ff2c0f438edb1028ff1b053",
+ "src/ainerzero/v9/experiments/s1/prereg.py": "018f33d4beb1a12645b476f03aa4bbe73a115c82ff95fdd1c85170bd93170755",
+ "src/ainerzero/v9/experiments/s1/worker.py": "873fc3760dc38ad41136aeffdf940f4859a7e5d90c857ac2117645fe548f8fc4",
+ "src/ainerzero/v9/experiments/s1/commands.py": "c66e02c383a13ae30ad7ea509e2ad8f991200cdee1d528b7d58903d420cfb91a",
+ "tests/v9/experiments/test_s1_r12_ordering.py": "0af2a4bab1ec58c1648aedd2fa996b4463459d3210b323fba5ccce98c127f44f",
+ "tests/v9/experiments/test_s1_r12_registration.py": "ec792023593f1a408865737f1af3357397244d3895e06f4153bc69cdb7b2bfb2",
+ "tests/v9/experiments/test_s1_timing_sequence.py": "a0e6dd0c5705c9de686a73f0f53bdeceb8e45e101cb0c799980fab94ae3e9a98",
+ "tests/v9/experiments/s1_testkit.py": "ca4186c02b5f93e58aebb882929dc9901546cb41e493cb558ff94be27a113acc",
+ "artifacts/v9/s1/phase1/r12/draft_preregistration.json": "edbe050eb3ef41a11dc427061b9b3e072f587602e3ebb03ec68f2b8d68f1ace0",
+ "artifacts/v9/s1/phase1/r12/pre_registration.json": "fe539209179e3c59405526880dc1ea8dffe5416d34e393cd86b5f0373ece9658",
+ "artifacts/v9/s1/phase1/r12/pre_registration.json.sha256": "65f325b97b4a231207227659640ba7faa181fe24b9366e074f86364486d0ad23",
+ "artifacts/v9/s1/phase1/r12/dataset_ref.json": "3c9fd77953b94d87141c2ac896bd2470f46b952eee65a10e9eed34d4391c1047",
+ "artifacts/v9/s1/phase1/r11/pre_registration.json": "aeb8a7a800deab87bce08940489796edb0cc1949cde0f4999163f52decc1f105",
+ "artifacts/v9/s1/phase1/control.sqlite3": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+ "artifacts/v9/s1/phase1/eval_report.json": "4d958d1ad59db1a897245d1acb000dda14a4db08dd0ccb069760061511e0c2cc",
+ "reports/V9-P9/r1-archive/smoke_metrics.json": "b4e7d1218b29652c188425ec6d1def2fe49d8fd1a22e7192d01b705ae4b11ce8",
+ "reports/V9-P9/r12/harness/refreeze_draft.py": "364e7410df64305bca45034bd9a02dd5fe9087c9733dbed4c5b1bd300d86eb10",
+ "reports/V9-P9/r12/harness/prereg_leaf_diff.py": "2feabcc8f21d6fa8bf271d0c7c078f04551ef0f33730d74e7fdb60c32c17f229",
+ "reports/V9-P9/r12/harness/entry_checks.py": "2e6535da4a24c1731dceb8b72a5126cc24bcf349345e1beecbad484146fdbdd8",
+ "reports/V9-P9/r12/logs/entry-checks.json": "0bd9fe77d63d7b02d62a74eae5581f40387b67001629b18e392417e5da68eae8",
+ "reports/V9-P9/r12/logs/freeze-r12.json": "7f61e6d170f2473e2e60e8fd647e6c6eeaa71cd0ea322a9265e68b1265f8f644",
+ "reports/V9-P9/r12/prereg-leaf-diff.json": "99d68129f826fbd64a4382b3355261bb92255be55d630fc856cdf74dee6f10e7",
+ "reports/V9-P9/r12/REPORT.md": "f239255813d96af8c062cb9a15743c665a0a48a9d2253a5bb2a0437317e3210a",
+ "reports/V9-P9/r12/指标.json": "7701f718a701fbaf18ef07538f38fbb6de0cbfa68fd4ec7b4445e69d578b41fc",
+ "reports/V9-P9/r12/evidence/sha256sums.txt": "682cba2e4721ba44d8edd39f85e91971e30dd4ec2e6c6b6687b65c7d54a82577",
+}
+
+def sha(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+out = {"when": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "phase": sys.argv[1] if len(sys.argv) > 1 else "start", "files": {}, "mismatch": []}
+for rel, want in FILES.items():
+    p = os.path.join(ROOT, rel)
+    if not os.path.exists(p):
+        out["files"][rel] = {"exists": False, "want": want}
+        out["mismatch"].append(rel)
+        continue
+    got = sha(p)
+    st = os.stat(p)
+    out["files"][rel] = {"sha256": got, "want": want, "ok": got == want, "size": st.st_size, "mtime": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st.st_mtime))}
+    if got != want:
+        out["mismatch"].append(rel)
+
+led = os.path.join(ROOT, "artifacts/v9/s1/phase1/control.sqlite3")
+for suffix in ("-wal", "-shm"):
+    p = led + suffix
+    if os.path.exists(p):
+        st = os.stat(p)
+        out.setdefault("ledger_sidecars", {})[suffix] = {"size": st.st_size, "sha256": sha(p), "mtime": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(st.st_mtime))}
+    else:
+        out.setdefault("ledger_sidecars", {})[suffix] = None
+
+out["ledger_sha"] = out["files"]["artifacts/v9/s1/phase1/control.sqlite3"].get("sha256")
+out["all_ok"] = not out["mismatch"]
+print(json.dumps(out, indent=2, ensure_ascii=False))

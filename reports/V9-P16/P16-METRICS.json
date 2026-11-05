@@ -1,0 +1,82 @@
+{
+ "schema": "ainerzero.v9.p16.metrics.v1",
+ "agent": "workbuddy-c4k8",
+ "verified_task": "ainerzero.V9.P15",
+ "review_kind": "non_author_cpu_engineering_review",
+ "frozen_prereg_sha256": "c2f56b5ac79706417bcf0a810fcabd984c57b21c06143df45e00cf2917a7c98d",
+ "verdict": "P15 r5 engineering fixes independently reproduced; six metrics conform to frozen defs; budget/checkpoint/rerun/binding fixed; P1 still not approved, no real training, k=8 limitation & eval-budget gap disclosed.",
+ "checks": {
+  "A_3510_ledger_and_one_final_checkpoint": {
+   "pass": true,
+   "updates_frozen": 3510,
+   "optimizer_reservations_actual": 3510,
+   "final_checkpoint_count": 1,
+   "final_sha_matches_receipt": true,
+   "run_state": "completed",
+   "ledger_optimizer_reserved": 3510,
+   "post_final_optimizer_reservations": 0
+  },
+  "A2_3511_refusal": {
+   "pass": true,
+   "refusal": "BudgetStop: optimizer_step_budget",
+   "direct_consume_refused": "BudgetExceeded: Budget exhausted: optimizer_step_budget",
+   "document_updates": 3511,
+   "run_budget_optimizer_steps": 3510
+  },
+  "B_eval_binding_negatives": {
+   "pass": true,
+   "clean": true,
+   "tampered_refused": true,
+   "missing_refused": true,
+   "wrong_prereg_refused": true
+  },
+  "C_metrics_independent_recompute": {
+   "pass": true,
+   "localization_changes_with_pred": true,
+   "localization_empty_rejected": true,
+   "few_shot_changes_with_pred": true,
+   "topology_changes_with_pred": true,
+   "unseen_rejects_missing_nll": true,
+   "unseen_rejects_duplicate_episode": true,
+   "unseen_rejects_missing_identity": true,
+   "few_shot_k8_insufficient_reported": true,
+   "memory_interference_rejects_no_shared_keys": true
+  },
+  "D_kernel_leaf_diff_and_identity": {
+   "pass": true,
+   "leaf_within_allowlist": true,
+   "leaf_changed_count": 10,
+   "source_identity_all_match": true,
+   "source_identity_matched": "14/14",
+   "unbound_package_py": []
+  },
+  "E_budget_identity_directory_boundary": {
+   "pass": true,
+   "fresh_root_ledger_reset_but_approval_refused": true,
+   "train_entry_refusal_stage": "preregistration_not_approved",
+   "noncanonical_log_refusal_stage": "research_log_not_canonical",
+   "prereg_switch_refused": true
+  },
+  "F_deadline_450_rejection": {
+   "pass": true,
+   "raised": "TimeoutError: frozen per-run deadline exceeded",
+   "frozen_deadline_seconds": 450,
+   "supervision_seconds": 500.0
+  }
+ },
+ "disclosed_limitations_corroborated": {
+  "k8_worlds_available": 0,
+  "k8_worlds_total": 200,
+  "k4_worlds_available": 50,
+  "dev_worlds_total": 200,
+  "median_transitions_per_world": 3.5,
+  "eval_batches_registered": 48,
+  "note": "k=8 globally insufficient_data on real dev split; eval call volume exceeds frozen eval_batches=48 (not expanded, escalated)."
+ },
+ "scope_not_covered": [
+  "no real MLX training/eval (CPU substitute only)",
+  "no approval line written; 9 real runs remain refused",
+  "did not re-verify all P14 systemic issues outside P15's stated scope",
+  "cross-directory ledger reset prevention is NOT at the ledger layer; authoritative gate is approval+source/dataset binding (stated, not overclaimed)"
+ ]
+}

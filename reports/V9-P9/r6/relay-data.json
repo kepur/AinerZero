@@ -1,0 +1,161 @@
+{
+ "schema": "ainerzero.v9.s1.r6.relay_data.v1",
+ "agent": "step5-k7m2",
+ "task": "ainerzero.V9.P15",
+ "mode": "CPU engineering only; no real training or evaluation; no approval line written",
+ "r5_document_sha256": "c2f56b5ac79706417bcf0a810fcabd984c57b21c06143df45e00cf2917a7c98d",
+ "r6_document_sha256": "deaa7bc92cac0c7b8d7b33d9580c64c33f75aff9d22af32207d56c78538d2794",
+ "r6_file_sha256": "58b1276730e87a4409c079594e0eadfd19899abd1ee3a4fe9d843d39b21ca318",
+ "prereg_leaf_diff": {
+  "leaves": 391,
+  "changed": 7,
+  "outside_allowlist": 0,
+  "changed_fields": [
+   "created_unix",
+   "source_identity.package_files.src/ainerzero/cli.py",
+   "source_identity.package_files.src/ainerzero/v9/experiments/s1/commands.py",
+   "source_identity.package_files.src/ainerzero/v9/experiments/s1/evaluation.py",
+   "source_identity.package_files.src/ainerzero/v9/experiments/s1/runtime.py",
+   "source_identity.package_files.src/ainerzero/v9/experiments/s1/worker.py",
+   "source_identity.package_map_digest"
+  ],
+  "unchanged_scientific_fields": [
+   "updates=3510",
+   "checkpoint_updates=[0,439,878,1755,3510]",
+   "deadline_seconds=450 / supervision_seconds=500",
+   "arms/parameter counts/seeds/k values/worlds/partitions/metrics/stop rules",
+   "dataset_digest",
+   "smoke measurement of record"
+  ]
+ },
+ "verify": {
+  "status": "completed",
+  "source_binding": "passed",
+  "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+  "smoke_source_match": true,
+  "approval_approved": false
+ },
+ "central_ledger_anchoring": {
+  "canonical_ledger": "artifacts/v9/s1/phase1/control.sqlite3 (spec.PHASE1_ROOT/control.sqlite3)",
+  "fail_closed_states": ["central_ledger_missing", "central_ledger_unreadable", "central_ledger_unrecognized"],
+  "new_ledger_ever_created": false,
+  "dual_validation": "commands entry (_canonical_run_root + _central_ledger_refusal) and worker (run_worker) both refuse",
+  "refusal_stages": [
+   "output_root_not_canonical",
+   "central_ledger_missing",
+   "central_ledger_unreadable",
+   "central_ledger_unrecognized",
+   "already_attempted",
+   "phase_budget_exceeded"
+  ],
+  "prep_modes_unchanged": "data/smoke/verify keep their per-root diagnostic ledger"
+ },
+ "final_deadline_controls": {
+  "deadline_seconds": 450.0,
+  "checks": ["loop top", "after the loop, before any receipt write", "after run_info.json, before return"],
+  "real_3510_step_controls": {
+   "last_gradient_crosses": "TimeoutError, no receipt, 3510 gradients",
+   "duty_sleep_crosses": "TimeoutError, no receipt, 3510 duty sleeps",
+   "checkpoint_io_crosses": "TimeoutError, no receipt, 3 checkpoint saves",
+   "metadata_io_crosses": "TimeoutError; receipt already on disk, run still not legal-completed",
+   "exactly_450_0s": "completed, wall_seconds == 450.0",
+   "just_inside_449_9s": "completed"
+  },
+  "no_3511_steps": true
+ },
+ "probe_graph_fix": {
+  "defect": "TypeError: cannot unpack non-iterable numpy.int64 on a non-empty metric map (flat index unpacked as (row, col))",
+  "fix": "cell identity is the (row, col) pair; the flat index is remapped through it",
+  "tests": 17,
+  "real_backend_method": true,
+  "audited_algorithm_substituted": false
+ },
+ "few_shot_support_fix": {
+  "defect": "evaluation.few_shot used an inclusive stop bound (support[-1] + 1); step_sequence stop is exclusive, so k=1 asked for one frame and k=2/k=4 wrote one support transition fewer than frozen k",
+  "fix": "stop = support[-1] + 2",
+  "evidence": "step_frames 1703 -> 2103 (+400 = one missing support frame per covered world)"
+ },
+ "eval_entry_fail_closed": {
+  "source_binding_drift": "refused",
+  "arm1_has_no_checkpoint_binding": "refused",
+  "eval_call_budget_exceeded": "refused before any suite starts (registered eval_batches=48 cannot cover the window probes)",
+  "eval_experiment": "aux eval runs join the train/eval experiment; the r1 prep experiment wall window has expired"
+ },
+ "production_train_evidence": {
+  "backend": "cpu-evidence-substitute",
+  "mlx_imported": false,
+  "updates": 3510,
+  "optimizer_reservations": 3510,
+  "wall_only_reservations": 1,
+  "checkpoint_updates_written": [0, 439, 878, 1755, 3510],
+  "final_checkpoint_writes": 1,
+  "post_final_optimizer_reservations": 0,
+  "run_state": "completed",
+  "reserved_optimizer_steps": 3510,
+  "boundary_3511_refusal": "BudgetStop: optimizer_step_budget",
+  "rerun_denied": true,
+  "binding_negatives": {
+   "tampered_checkpoint": "rejected",
+   "missing_checkpoint": "rejected",
+   "wrong_preregistration_sha": "rejected"
+  }
+ },
+ "isolated_approval_simulation": {
+  "copy": "CPU-isolated repo copy (src + r6 prereg + dataset + central RunStore + simulated approval line)",
+  "real_research_log_written": false,
+  "budget_or_attempt_queries_mocked": false,
+  "checks_passed": 12,
+  "checks_total": 12,
+  "checks": {
+   "approval_effective_and_run_completed": true,
+   "registered_updates_match_frozen": true,
+   "cross_root_refused": true,
+   "cwd_change_rerun_refused": true,
+   "prereg_copy_refused_without_new_ledger": true,
+   "failed_attempt_then_rerun_refused": true,
+   "stopped_attempt_then_rerun_refused": true,
+   "deleted_ledger_fails_closed": true,
+   "replaced_ledger_fails_closed": true,
+   "foreign_ledger_fails_closed": true,
+   "second_arm_seed_still_allowed": true,
+   "real_ledger_phase_cap_finding": true
+  },
+  "real_central_ledger_untouched": true
+ },
+ "tests": {
+  "command": ".venv/bin/python -m pytest tests/v9/experiments -q -p no:cacheprovider",
+  "result": "198 passed",
+  "r6_new_tests": 52,
+  "r6_test_files": {
+   "test_s1_r6_probe_graph.py": 17,
+   "test_s1_r6_deadline.py": 9,
+   "test_s1_r6_ledger_anchor.py": 13,
+   "test_s1_r6_entry_guards.py": 13
+  },
+  "isolated_geometry": "149 passed",
+  "isolated_other_v9": "229 passed",
+  "known_process_contamination": "tests/v9 in one process makes 2 geometry no-MLX checks fail because a pre-existing test module imports MLX at module level; each suite alone passes"
+ },
+ "findings_for_tier1": [
+  "the real central ledger's phase wall total is already 133102 s against the 14400 s cap, because RunRecord.wall_seconds is elapsed-since-creation and the three r1 auxiliary rows keep accruing; every train run at the canonical root is therefore refused with phase_budget_exceeded until the accounting or those rows are reconciled (S1-adapter change proposed, not applied)",
+  "the evaluation suite's model-call volume (5 window probes of 175 batches, 611 step_sequence, 800 probe_graph, 3500 encode) still exceeds the registered eval_batches=48; eval fails closed instead of expanding the registration",
+  "few-shot k=8 is insufficient_data on all 200 development worlds; k=4 covers 50 worlds",
+  "arm1 (frozen D candidate) has no trained checkpoint to bind, so its eval entry fails closed",
+  "the r1 preparation experiment's 3600 s wall window has expired, so new prep-mode runs (data/smoke) at the canonical root are refused with an expired experiment budget"
+ ],
+ "limitations": [
+  "no real MLX forward/gradient/optimizer or real training/evaluation",
+  "numeric substitute; no capability or scientific claim",
+  "no approval line written anywhere in the real tree; the 9 real runs remain refused",
+  "author cannot accept own work; non-author review required"
+ ],
+ "artifacts": {
+  "report": "reports/V9-P9/r6/REPORT.md",
+  "prereg": "artifacts/v9/s1/phase1/r6/pre_registration.json",
+  "leaf_diff": "reports/V9-P9/r6/prereg-leaf-diff.json",
+  "ledger_eval_evidence": "reports/V9-P9/r6/evidence/ledger-and-eval.json",
+  "isolated_approval_sim": "reports/V9-P9/r6/evidence/isolated-approval-sim.json",
+  "tests_junit": "reports/V9-P9/r6/logs/tests-s1-r6.xml",
+  "sha256sums": "reports/V9-P9/r6/SHA256SUMS.txt"
+ }
+}

@@ -1,0 +1,267 @@
+{
+ "harness": "reports/V9-P12/harness/f1_approval_p12.py",
+ "reviewer": "p12 independent re-run of the P11 F1 case set",
+ "real_tree": "/Users/mac/AinerWorkFlow/AinerZero",
+ "sandbox": "/private/tmp/v9p12/sandbox",
+ "drift_sandbox": "/private/tmp/v9p12/f1_drift",
+ "frozen_document_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+ "r1_document_sha256": "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6",
+ "train_stub": "sitecustomize replaces worker._train; no bound file is edited",
+ "note": "worker._train is replaced at interpreter start-up in the sandbox only; no optimizer step runs and no real log/preregistration is written",
+ "cases": [
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "d71b437eaa58aeefe94ddc1f47cf90f72aea5863de625332af2efd68b8755488",
+   "approval_reasons": [
+    "no coordinator approval line inside the '## R20261021-P1-stageA-budget' section of /private/tmp/v9p12/sandbox/RESEARCH_LOG.md; expected a bare line 'APPROVED s1-phase1 prereg document_sha256=d71b437eaa58aeefe94ddc1f47cf90f72aea5863de625332af2efd68b8755488'"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C1",
+   "label": "只改预登记 status=approved 并重算 SHA/侧车，日志无批准行",
+   "expectation": "refused exit 3",
+   "forged_document_sha256": "d71b437eaa58aeefe94ddc1f47cf90f72aea5863de625332af2efd68b8755488",
+   "self_consistent": true
+  },
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": [
+    "no coordinator approval line inside the '## R20261021-P1-stageA-budget' section of /private/tmp/v9p12/sandbox/RESEARCH_LOG.md; expected a bare line 'APPROVED s1-phase1 prereg document_sha256=ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94'"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C2",
+   "label": "批准行缺失（只有说明性文字）",
+   "expectation": "refused exit 3"
+  },
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": [
+    "coordinator approval line does not cover this frozen document: 1 approval line(s) point at another document SHA256, frozen document is ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C3",
+   "label": "批准行 SHA 差一位",
+   "expectation": "refused exit 3",
+   "line_sha": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c90"
+  },
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": [
+    "coordinator approval line does not cover this frozen document: 1 approval line(s) point at another document SHA256, frozen document is ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C4",
+   "label": "批准行指向 r1 旧文档",
+   "expectation": "refused exit 3",
+   "old_document_sha256": "32c30f5005a438f759e14641f5ea77b635eb4020af7fa9ba823b7ad05bb74de6"
+  },
+  {
+   "exit_code": 3,
+   "stage": "research_log_not_canonical",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": null,
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C5a",
+   "label": "执行层可写位置伪造批准文件（--research-log 指向自己的日志）",
+   "expectation": "refused exit 3 (research_log_not_canonical)",
+   "forged_log": "/private/tmp/v9p12/f1/forged/RESEARCH_LOG.md",
+   "runstore": {
+    "available": false
+   }
+  },
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": [
+    "no coordinator approval line inside the '## R20261021-P1-stageA-budget' section of /private/tmp/v9p12/sandbox/RESEARCH_LOG.md; expected a bare line 'APPROVED s1-phase1 prereg document_sha256=ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94'"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C5b",
+   "label": "预登记旁伪造 APPROVAL.json / .approved 侧车",
+   "expectation": "refused exit 3"
+  },
+  {
+   "exit_code": 0,
+   "stage": "completed",
+   "status": "completed",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": null,
+   "dataset_status": "passed",
+   "source_binding_status": "passed",
+   "run_id": "24a7a4985dc041a4b3024c8062386201",
+   "error": null,
+   "stderr_tail": "",
+   "id": "C6",
+   "label": "批准行与 document SHA 完全一致（写在 spec.RESEARCH_LOG 的注册节内）",
+   "expectation": "released (exit 0) + RunStore 记录",
+   "canonical_log": "/private/tmp/v9p12/sandbox/RESEARCH_LOG.md",
+   "runstore": {
+    "available": true,
+    "state": "completed",
+    "approval": {
+     "document_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+     "line": "APPROVED s1-phase1 prereg document_sha256=ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+     "line_number": 6,
+     "research_log": "/private/tmp/v9p12/sandbox/RESEARCH_LOG.md",
+     "research_log_sha256": "d74059893403ac15860677a0dc83a59b6d57e5cf863e91dd1034b531422843f0",
+     "status_field": "awaiting_coordinator_approval",
+     "status_field_is_authoritative": false
+    },
+    "transitions": [
+     "created",
+     "initializing",
+     "training",
+     "completed"
+    ],
+    "optimizer_steps": 0
+   },
+   "line_points_at_approval": true,
+   "recorded_line_matches": true,
+   "recorded_document_sha_matches": true,
+   "recorded_log_sha_matches": true
+  },
+  {
+   "exit_code": 3,
+   "stage": "dataset_identity_mismatch",
+   "status": "refused",
+   "preregistration_sha256": "56022fdba04d9c8b617c51a79b8a554eaba0b0fb5ae79085570201ab030520b8",
+   "approval_reasons": null,
+   "dataset_status": "failed",
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C7",
+   "label": "批准行匹配、但文档里的 dataset_digest 被换成别的（P-3 数据集绑定）",
+   "expectation": "refused exit 3 (dataset_identity_mismatch)",
+   "swapped_digest": "56022fdba04d9c8b617c51a79b8a554eaba0b0fb5ae79085570201ab030520b8",
+   "runstore": {
+    "available": false
+   }
+  },
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": [
+    "no coordinator approval line inside the '## R20261021-P1-stageA-budget' section of /private/tmp/v9p12/sandbox/RESEARCH_LOG.md; expected a bare line 'APPROVED s1-phase1 prereg document_sha256=ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94'"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C8",
+   "label": "批准行写在注册节的围栏代码块里",
+   "expectation": "refused exit 3 (P-4)"
+  },
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": [
+    "no coordinator approval line inside the '## R20261021-P1-stageA-budget' section of /private/tmp/v9p12/sandbox/RESEARCH_LOG.md; expected a bare line 'APPROVED s1-phase1 prereg document_sha256=ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94'"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C9",
+   "label": "批准行写在注册节的引用块里",
+   "expectation": "refused exit 3 (P-4)"
+  },
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": [
+    "2 qualifying approval lines inside the '## R20261021-P1-stageA-budget' section of /private/tmp/v9p12/sandbox/RESEARCH_LOG.md (lines [6, 8]); exactly one is allowed"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C10",
+   "label": "注册节里同时有两条合格批准行",
+   "expectation": "refused exit 3 (P-4)"
+  },
+  {
+   "exit_code": 3,
+   "stage": "preregistration_not_approved",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": [
+    "no '## R20261021-P1-stageA-budget' section in /private/tmp/v9p12/sandbox/RESEARCH_LOG.md; approval lines are only read inside that section"
+   ],
+   "dataset_status": null,
+   "source_binding_status": null,
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C11",
+   "label": "批准行写在另一个条目的小节里",
+   "expectation": "refused exit 3 (P-4)"
+  },
+  {
+   "exit_code": 3,
+   "stage": "source_binding_drift",
+   "status": "refused",
+   "preregistration_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+   "approval_reasons": null,
+   "dataset_status": null,
+   "source_binding_status": "failed",
+   "run_id": null,
+   "error": null,
+   "stderr_tail": "",
+   "id": "C12",
+   "label": "绑定源文件被改（arms.py 多一行注释）",
+   "expectation": "refused exit 3 (source_binding_drift)",
+   "tree": "/private/tmp/v9p12/f1_drift",
+   "runstore": {
+    "available": false
+   }
+  }
+ ]
+}

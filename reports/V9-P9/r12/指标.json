@@ -1,0 +1,113 @@
+{
+  "task": "ainerzero.V9.P34",
+  "agent": "deepseek-p34x",
+  "model_version": "DeepSeek-V4.1-Flash",
+  "date": "2026-10-23",
+  "experiment_id": "s1-phase1-20261023-r12",
+  "production_ledger": {
+    "path": "artifacts/v9/s1/phase1/control.sqlite3",
+    "sha256_start": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "sha256_end": "36426891021c9bfcdb9cb25a3adef30f1d2dbfb3d84b3c124b908bd7aeadb67d",
+    "matches_card": true,
+    "unchanged": true
+  },
+  "production_eval_report": {
+    "path": "artifacts/v9/s1/phase1/eval_report.json",
+    "sha256_start": "4d958d1ad59db1a897245d1acb000dda14a4db08dd0ccb069760061511e0c2cc",
+    "sha256_end": "4d958d1ad59db1a897245d1acb000dda14a4db08dd0ccb069760061511e0c2cc",
+    "matches_card": true,
+    "unchanged": true
+  },
+  "preregistration": {
+    "path": "artifacts/v9/s1/phase1/r12/pre_registration.json",
+    "document_sha256": "044d5599ecd7c88600257488866462f666eebde25454ad4e4494f355ccd418dd",
+    "file_sha256": "fe539209179e3c59405526880dc1ea8dffe5416d34e393cd86b5f0373ece9658",
+    "draft_sha256": "edbe050eb3ef41a11dc427061b9b3e072f587602e3ebb03ec68f2b8d68f1ace0",
+    "dataset_ref_sha256": "3c9fd77953b94d87141c2ac896bd2470f46b952eee65a10e9eed34d4391c1047",
+    "status": "awaiting_coordinator_approval",
+    "reverified": true,
+    "r11_document_sha256": "b73b558953a06ce551c2e8613a09d0785b1c0222f8ff57f99c49da2ec812fb4e",
+    "r11_file_sha256": "aeb8a7a800deab87bce08940489796edb0cc1949cde0f4999163f52decc1f105"
+  },
+  "registered_values": {
+    "updates": 3510,
+    "deadline_seconds": 1200,
+    "deadline_source": "user_approved R20261023-S1-phase1-r11-budget",
+    "supervision_seconds": 1250,
+    "eval_batches": 175,
+    "seeds": [0, 1, 2],
+    "checkpoint_updates": [0, 439, 878, 1755, 3510],
+    "phase_wall_max_seconds": 14400,
+    "per_run_wall_max_seconds": 1200,
+    "arm1_deadline_seconds": 7,
+    "query_limit": 8,
+    "estimate_seconds": 381.1528007568777,
+    "derived_deadline_seconds": 477,
+    "phase_wall_seconds": 10854.605202458999,
+    "phase_wall_headroom_seconds": 3545.394797541001
+  },
+  "leaf_diff_r11_to_r12": {
+    "leaf_count": 431,
+    "changed_leaf_count": 7,
+    "changed_leaves": [
+      "created_unix",
+      "experiment_id",
+      "source_identity.package_files.src/ainerzero/v9/experiments/s1/prereg.py",
+      "source_identity.package_files.src/ainerzero/v9/experiments/s1/spec.py",
+      "source_identity.package_files.src/ainerzero/v9/experiments/s1/worker.py",
+      "source_identity.package_map_digest",
+      "source_identity.spec.sha256"
+    ],
+    "leaves_outside_allowlist": 0,
+    "bound_files_outside_allowlist": 0,
+    "registered_values_equal": true,
+    "data_identity_equal": true,
+    "metrics_equal": true,
+    "evaluation_equal": true,
+    "stop_rules_equal": true,
+    "arms_equal": true
+  },
+  "tests": {
+    "r12_ordering": {"passed": 10, "failed": 0},
+    "r12_registration": {"passed": 6, "failed": 0},
+    "tests_v9_experiments": {"passed": 335, "failed": 7, "known_failures": 7},
+    "tests_v9_excluding_experiments": {"passed": 378, "failed": 0},
+    "before_tree_tests_v9_experiments": {"passed": 319, "failed": 7},
+    "baseline_note": "the same 7 failures fail on the unmodified before tree in this shell (6 x sandbox mkdir EEXIST in the pytest tmpdir shim + the known live-ledger test); the r12 change adds 16 tests and turns none of them red"
+  },
+  "entry_checks": {
+    "isolation": "the whole artifacts/v9/s1/phase1 tree was copied to a temporary host; the production output root was never passed to any entry",
+    "cli_verify_on_copy": {"status": "completed", "exit_code": 0, "source_binding": "passed", "approval_approved": false},
+    "cli_train_on_copy": {"status": "refused", "refused_stage": "output_root_not_canonical", "exit_code": 3},
+    "cli_eval_on_copy": {"status": "refused", "refused_stage": "output_root_not_canonical", "exit_code": 3},
+    "copy_ledger_untouched_by_cli": true,
+    "worker_on_copy_declared_host": {
+      "train": {"status": "refused", "refused_stage": "preregistration_not_approved", "approval_approved": false},
+      "eval": {"status": "refused", "refused_stage": "eval_binding_unavailable"},
+      "copy_ledger_untouched": true
+    }
+  },
+  "zero_write_refusal_branches": [
+    "train: preregistration_not_approved",
+    "train: source_binding_drift",
+    "train: dataset_identity_mismatch",
+    "train: already_attempted",
+    "train: phase_budget_exceeded",
+    "eval: source_binding_drift",
+    "eval: eval_call_budget_exceeded (190 window-probe batches vs registered 175)",
+    "eval: already_attempted (D guard)",
+    "eval: eval_binding_unavailable (no completed training run)"
+  ],
+  "bad_control": {
+    "scenario": "same frozen host, same driver, two source trees",
+    "real_source": {"refused_stage": "eval_binding_unavailable", "ledger_unchanged": true},
+    "sabotaged_checkout": {"status": "failed", "error_contains": "EvalBindingError", "ledger_unchanged": false},
+    "product_switch": false
+  },
+  "not_executed": [
+    "no MLX / no training / no evaluation of a real model",
+    "no approval line written",
+    "no RunStore change (src/ainerzero/runtime untouched)",
+    "no production output-root entry"
+  ]
+}

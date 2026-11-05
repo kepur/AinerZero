@@ -1,0 +1,66 @@
+--- reports/V9-P9/final/before/src/commands.py	2026-10-23 14:28:09
++++ src/ainerzero/v9/experiments/s1/commands.py	2026-10-28 18:08:10
+@@ -264,10 +264,10 @@
+     """Run the worker under the shared lock; reconcile the ledger afterwards."""
+     from ainerzero.cli import worker_lock
+ 
+-    if mode in ("data", "smoke", "verify", "eval") and supervision_seconds <= 0:
++    if mode in ("data", "smoke", "verify", "eval", "final-eval") and supervision_seconds <= 0:
+         supervision_seconds = budget + spec.TIMING["supervision_extra_seconds"]
+     # r6: bounded modes reconcile the one central ledger, not a per-root copy.
+-    if mode in ("train", "eval"):
++    if mode in ("train", "eval", "final-eval"):
+         from . import worker as worker_module
+ 
+         control_db = worker_module.canonical_ledger_path()
+@@ -950,7 +950,42 @@
+         arm=arm,
+         seed=seed,
+     )
++
++    report["start_gate"] = snapshot.to_dict()
++    return report
++
++
++def mode_final_eval(args) -> dict:
++    """ainerzero.V9.P59: the one read of the sealed final partition (no arm/seed; all cells)."""
++    _canonical, root_refusal = _canonical_run_root(args, "final-eval")
++    if root_refusal is not None:
++        return root_refusal
++    output_root = _output_root(args)
++    limits = _load_limits(args)
++    path = Path(getattr(args, "prereg", None) or "")
++    if not path.is_file():
++        return {"status": "refused", "stage": "prereg_missing", "mode": "final-eval", "path": str(path)}
++    from . import worker as worker_module
+ 
++    ledger_state = worker_module.canonical_ledger_state()
++    if ledger_state["status"] != "ok":
++        return _central_ledger_refusal("final-eval", ledger_state)
++    snapshot = resource_gate.assert_start(limits, root=output_root)
++    budget = float(spec.FINAL_EVAL_WALL_SECONDS)
++    requested = getattr(args, "wall_budget_seconds", None)
++    if requested is not None:
++        if not 0 < float(requested) <= budget:
++            raise ValueError(f"--wall-budget-seconds {requested} must be in (0, {budget}]; it can only tighten")
++        budget = float(requested)
++    report = _supervised_worker(
++        "final-eval",
++        output_root=output_root,
++        limits=limits,
++        budget=budget,
++        supervision_seconds=budget + spec.TIMING["supervision_extra_seconds"],
++        prereg_path=path,
++        research_log=getattr(args, "research_log", None),
++    )
+     report["start_gate"] = snapshot.to_dict()
+     return report
+ 
+@@ -963,6 +998,7 @@
+     "verify": mode_verify,
+     "train": mode_train,
+     "eval": mode_eval,
++    "final-eval": mode_final_eval,
+ }
+ 
+ 

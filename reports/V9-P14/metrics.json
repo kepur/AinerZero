@@ -1,0 +1,191 @@
+{
+ "schema": "ainerzero.v9.p14.review.metrics.v1",
+ "task": "ainerzero.V9.P14",
+ "reviewed_task": "ainerzero.V9.P13",
+ "round": "r4",
+ "agent": "deepseek-p14a",
+ "tier": 2,
+ "role": "independent_reviewer",
+ "reviewer_is_p9_or_p13_author": false,
+ "date": "2026-10-21",
+ "recommendation": "打回",
+ "recommendation_code": "reject",
+ "blocking_defects": [
+  {
+   "id": "P14-B1",
+   "title": "任何登记的 r4 训练 run 都无法写出检查点（训练台账）",
+   "evidence": "reports/V9-P14/evidence/train-ledger-probe.json",
+   "verdict": "blocker_confirmed",
+   "scenarios": {
+    "A_as_shipped": "run 预算 max_optimizer_steps=1 -> 第 2 步 BudgetExceeded: optimizer_step_budget，state=stopped，无检查点",
+    "B_budget_equals_updates": "预算=2420 步耗尽后零步检查点预留仍被拒（zero_step_reserves=4），无检查点",
+    "C_budget_updates_plus_one": "LifecycleError: run budget exceeds experiment run limits"
+   },
+   "source_locations": [
+    "src/ainerzero/v9/experiments/s1/worker.py:run_config_snapshot",
+    "src/ainerzero/v9/experiments/s1/worker.py:train_experiment_manifest",
+    "src/ainerzero/runtime/lifecycle.py:RunStore._check"
+   ]
+  },
+  {
+   "id": "P14-B2",
+   "title": "few_shot_unseen_transition 是写死的完美夹具（与模型/检查点/episode 无关）",
+   "evidence": "reports/V9-P14/evidence/metric-fidelity-p14.json",
+   "verdict": "confirmed",
+   "source_location": "src/ainerzero/v9/experiments/s1/worker.py:809-814",
+   "observed": "四个参数全为字面量且 predicted==true -> accuracy 1.0 / balanced 1.0 / recall 1.0 / precision 1.0 / displacement_mae_m 0.0",
+   "negative_control": "同函数喂入不一致预测 -> accuracy 0.5 / precision 0.5 / displacement_mae_m 1.0（函数本可区分）"
+  },
+  {
+   "id": "P14-B3",
+   "title": "localization 用 min(估计数,真值数) 前缀按索引配对，跨 episode/world/tick 错配",
+   "evidence": "reports/V9-P14/evidence/metric-fidelity-p14.json",
+   "verdict": "confirmed",
+   "source_location": "src/ainerzero/v9/experiments/s1/worker.py:773-775",
+   "negative_control": "对 episode B 的完美估计 -> 索引配对 translation_mean_m 10.0 vs 按 episode 对齐 0.0"
+  },
+  {
+   "id": "P14-B4",
+   "title": "M2 干扰 before/after 为同模型对同一 dev 数据的两次前向，恒为 0，非预登记干扰诊断",
+   "evidence": "reports/V9-P14/evidence/metric-fidelity-p14.json",
+   "verdict": "confirmed",
+   "source_location": "src/ainerzero/v9/experiments/s1/worker.py:746,825",
+   "negative_control": "人为改动 after -> delta 0.2"
+  }
+ ],
+ "major_findings": [
+  {
+   "id": "P14-M1",
+   "title": "重复运行守卫只查 completed，failed/aborted/stopped 的同 arm×seed 可重跑",
+   "evidence": "reports/V9-P14/evidence/metric-fidelity-p14.json",
+   "source_location": "src/ainerzero/v9/experiments/s1/worker.py:309-323",
+   "rule_violated": "冻结规则-6"
+  },
+  {
+   "id": "P14-M2",
+   "title": "eval 信任可自填的 run_info.json 且加载参数不核 SHA",
+   "evidence": "reports/V9-P14/evidence/metric-fidelity-p14.json",
+   "source_location": "src/ainerzero/v9/experiments/s1/worker.py:645-687",
+   "rule_violated": "冻结规则-7"
+  },
+  {
+   "id": "P14-M3",
+   "title": "unseen_map_generalization 仅喂单行 + truth_view[0] 的 family 汇总整库",
+   "evidence": "reports/V9-P14/evidence/metric-fidelity-p14.json",
+   "source_location": "src/ainerzero/v9/experiments/s1/worker.py:776-784",
+   "rule_violated": "冻结规则-3"
+  }
+ ],
+ "secondary_findings": [
+  {
+   "id": "P14-S1",
+   "title": "P13 报告 changed_groups 计数不准",
+   "claimed": {"commands": 2, "source_identity": 4, "total": 8},
+   "observed": {"commands": 1, "source_identity": 5, "total": 8},
+   "impact": "不影响结论（总数与叶集合正确）",
+   "evidence": "reports/V9-P14/frozen-diff.json"
+  }
+ ],
+ "frozen_identity": {
+  "verdict": "zero_substantive_difference",
+  "r4_document_sha256": "6cbe7eada77d760860cae44490998e2b0a7ac223006471df411e7a9943c39842",
+  "r4_file_sha256": "e9f0844afef787d0e75eb12f5365660c7c8a3a99e918ca10962b60ec5aae64d9",
+  "r3_document_sha256": "ed39c97c5747daeb3f810658882dd5f9510b854e4f95048dad801205b1f55c94",
+  "r3_sha_matches_claim": true,
+  "r4_sha_matches_claim": true,
+  "changed_leaf_count": 8,
+  "changed_groups_observed": {"commands": 1, "created_unix": 1, "effective_metadata": 1, "source_identity": 5},
+  "all_immutable_blocks_byte_identical": true,
+  "evidence": "reports/V9-P14/frozen-diff.json"
+ },
+ "full_flow": {
+  "verdict": "pass_with_ledger_waiver",
+  "evidence": "reports/V9-P14/evidence/full-flow.json",
+  "train_calls_completed": 9,
+  "eval_calls_completed": 4,
+  "per_train_own_window_seconds": 145.23,
+  "per_train_wall_budget_seconds": 450,
+  "per_train_supervision_seconds": 500,
+  "phase_span_seconds": 4507.25,
+  "no_train_call_inherits_earlier_time": true,
+  "duplicate_call": {"exit_code": 3, "refused_stage": "already_completed", "supervisor_invoked": false},
+  "phase_guard": {"exit_code": 3, "refused_stage": "phase_budget_exceeded", "injected_gap_seconds": 400},
+  "checkpoint_mode_0444": true,
+  "checkpoint_sha_matches_sidecar": true,
+  "eval_steps_optimizer": 0,
+  "eval_reports_all_six_metrics": true,
+  "eval_never_reads_final": true,
+  "dataset_has_final_file": false,
+  "ledger_waiver": {
+   "applied": true,
+   "what": "run 与 experiment-per-run 的 max_optimizer_steps 各 +1000",
+   "not_waived": "deadline, supervision, phase wall cap, experiment budget, update count, seeds, checkpoint policy"
+  }
+ },
+ "metric_recompute": {
+  "evidence": "reports/V9-P14/evidence/full-flow.json",
+  "metrics": ["localization_error", "sample_efficiency", "m2_memory_interference"],
+  "abs_diff": 0.0,
+  "limitations": "共用同一份观测与模型前向；仅以复核者自写算术重算，未独立重实现模型前向"
+ },
+ "metric_fidelity_probe": {
+  "evidence": "reports/V9-P14/evidence/metric-fidelity-p14.json",
+  "mlx_imported": false,
+  "source_edited": false,
+  "findings": ["F1", "F2", "F3", "F4", "F5", "F6"],
+  "verdict": "fidelity_defects_confirmed"
+ },
+ "deadline_boundary": {
+  "evidence": "reports/V9-P14/evidence/deadline-boundary-p14.json",
+  "verdict": "boundary_pass",
+  "calls": [
+   {"label": "A_short_calibration", "own_window_seconds": 145.23, "status": "completed", "exit_code": 0},
+   {"label": "B_second_call_near_450s", "own_window_seconds": 449.0, "cumulative_phase_seconds": 994.311833, "status": "completed", "exit_code": 0},
+   {"label": "C_second_call_over_450s", "own_window_seconds": 450.068374, "status": "failed", "exit_code": 1, "error": "TimeoutError: frozen per-run deadline exceeded"}
+  ],
+  "meaning": "#349 修复在边界成立：第 2 次调用自持 449 s 完成（累计已 >450 s，共享计时必误超时），第 3 次自持 450.07 s 被截止拒绝（截止仍生效）"
+ },
+ "mutations": {
+  "evidence": "reports/V9-P14/evidence/mutations-p14.json",
+  "baseline": "129 passed",
+  "total": 18,
+  "caught": 18,
+  "missed": 0,
+  "carried_over": "M1-M15 (来自 V9-P9 r4 变异脚本)",
+  "reviewer_written": ["V1", "V2", "V3"]
+ },
+ "case_reruns": {
+  "evidence": [
+   "reports/V9-P14/evidence/p1-p4-counterexamples-rerun-p14.json",
+   "reports/V9-P14/evidence/f1-approval-r4-rerun-p14.json",
+   "reports/V9-P14/evidence/case-verdicts-p14.json"
+  ],
+  "p1_p4_matched": "15/15",
+  "f1_matched": "9/9",
+  "verdict": "all_matched"
+ },
+ "real_files_untouched": {
+  "evidence": ["reports/V9-P14/evidence/real-files-before.txt", "reports/V9-P14/evidence/real-files-after.txt"],
+  "diff": "empty",
+  "files": [
+   "RESEARCH_LOG.md",
+   "artifacts/locks/m0-worker.lock",
+   "artifacts/v9/s1/phase1/control.sqlite3",
+   "artifacts/v9/s1/phase1/pre_registration.json",
+   "src/ainerzero/v9/experiments/s1/commands.py",
+   "src/ainerzero/v9/experiments/s1/worker.py"
+  ]
+ },
+ "unverified": [
+  "真实 MLX 训练（未执行；阻断项使真实检查点路径不可达）",
+  "生产多进程路径（本复核为单进程假时钟）",
+  "final 分区封存通道的唯一一次读取实现",
+  "checkpoint_save_and_sha 仅在 stub _train 路径被观察"
+ ],
+ "scope": {
+  "writes": "reports/V9-P14/ 之内",
+  "source_modified": false,
+  "real_lock_or_ledger_touched": false,
+  "committed_or_pushed": false
+ }
+}

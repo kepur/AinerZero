@@ -1,0 +1,85 @@
+--- reports/V9-P9/r14/before/src/prereg.py	2026-10-28 01:47:55
++++ src/ainerzero/v9/experiments/s1/prereg.py	2026-10-28 12:39:50
+@@ -485,6 +485,12 @@
+             "R20261023-S1-phase1-r11-budget); the derivation rule and its "
+             "shrink loop do not apply to this registration"
+         )
++    # r14 (ainerzero.V9.P49): only an identity registered in
++    # spec.INHERITANCE_BY_EXPERIMENT carries an inheritance section; r11-r13 freeze
++    # exactly as before.
++    inheritance = spec.INHERITANCE_BY_EXPERIMENT.get(draft["experiment_id"])
++    if inheritance is not None:
++        draft["inheritance"] = json.loads(json.dumps(inheritance))
+     return draft
+ 
+ 
+@@ -1013,9 +1019,69 @@
+             reasons.append("evaluation.reporting_notes differ from the registered option-A notes")
+     if not document.get("stop_rules"):
+         reasons.append("stop rules are missing")
++    reasons.extend(_inheritance_reasons(document))
++    return reasons
++
++
++def _is_hex(value: Any, length: int) -> bool:
++    return (
++        isinstance(value, str)
++        and len(value) == length
++        and all(char in "0123456789abcdef" for char in value)
++    )
++
++
++def inheritance_structure_reasons(
++    section: Mapping[str, Any], *, own_experiment_id: str | None
++) -> list[str]:
++    """r14: structural checks on an inheritance section (also applied to the spec)."""
++    reasons: list[str] = []
++    source = section.get("source_experiment_id")
++    if source not in spec.REGISTERED_EXPERIMENT_IDS or source == own_experiment_id:
++        reasons.append(
++            f"inheritance source experiment {source!r} must be another registered identity"
++        )
++    for key in ("source_preregistration_sha256", "source_preregistration_file_sha256"):
++        if not _is_hex(section.get(key), 64):
++            reasons.append(f"inheritance {key} must be a 64-hex SHA256")
++    cells = section.get("cells")
++    if not isinstance(cells, list) or not cells:
++        reasons.append("inheritance lists no cells")
++        return reasons
++    seeds = set(int(seed) for seed in spec.TRAIN_COMMON["seeds"])
++    seen: set[tuple[str, int]] = set()
++    for cell in cells:
++        arm_id = cell.get("arm_id") if isinstance(cell, Mapping) else None
++        seed = cell.get("seed") if isinstance(cell, Mapping) else None
++        if arm_id not in TRAINABLE_ARMS or not isinstance(seed, int) or seed not in seeds:
++            reasons.append(f"inheritance cell {cell!r} is not a trainable arm x seed")
++            continue
++        if (arm_id, seed) in seen:
++            reasons.append(f"inheritance cell {arm_id} seed {seed} appears twice")
++        seen.add((arm_id, seed))
++        if not _is_hex(cell.get("source_run_id"), 32):
++            reasons.append(f"inheritance cell {arm_id} seed {seed} source_run_id is not a run id")
++        if not _is_hex(cell.get("params_sha256"), 64):
++            reasons.append(f"inheritance cell {arm_id} seed {seed} params_sha256 is not a SHA256")
+     return reasons
+ 
+ 
++def _inheritance_reasons(document: Mapping[str, Any]) -> list[str]:
++    """Fail closed: the section equals the registered one exactly, or is absent."""
++    experiment_id = document.get("experiment_id")
++    expected = spec.INHERITANCE_BY_EXPERIMENT.get(experiment_id)
++    actual = document.get("inheritance")
++    if expected is None:
++        if actual is None:
++            return []
++        return [f"experiment {experiment_id!r} has no registered inheritance section"]
++    if actual is None:
++        return [f"experiment {experiment_id!r} must carry its registered inheritance section"]
++    if json.loads(json.dumps(actual)) != json.loads(json.dumps(expected)):
++        return ["the inheritance section differs from the registered one in spec"]
++    return inheritance_structure_reasons(actual, own_experiment_id=experiment_id)
++
++
+ def verify_frozen_file(path: Path) -> dict:
+     """Load a frozen file, verify its companion SHA256 and re-run validation."""
+     path = Path(path)
