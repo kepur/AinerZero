@@ -1,0 +1,62 @@
+{
+  "suite": "V9.G6 独立复核故意改坏变红对照套件",
+  "sandbox": "/tmp/ainerzero-v9g6-verify-mutation-20261020T160103",
+  "control": {
+    "exit_code": 0,
+    "passed": true,
+    "stdout_tail": "lly_blocked: exit_code=1\n[PASS] C6_F4_STATUS_AND_LARGE_ANGLE: F4 超大角状态保留与安全角数值精度核实\n       - se2_exp_1e3_safe: True\n       - f4_behavior_preserved: OverflowError 保留: (34, 'Result too large')\n       - f4_predict_preserved: predict dt=1e300 OverflowError 保留: (34, 'Result too large')\n[PASS] C7_EKF_FILTER_NUMERICAL_STABILITY: 李群 EKF 在近秩亏过程噪声下的闭环稳定性\n       - iterations: 100\n       - max_cov_norm: 0.007106953240012573\n       - min_eig_recorded: 9.910400018766305e-05\n       - stability_maintained: True\n"
+  },
+  "mutations": [
+    {
+      "name": "m1_psd_revert_to_zero_tol",
+      "target": "src/ainerzero/v9/geometry/belief.py",
+      "mutation": "if smallest < -psd_tolerance(p): -> if smallest < 0:",
+      "exit_code": 1,
+      "red": true,
+      "log": "evidence/mutation_m1_psd_revert_to_zero_tol.log"
+    },
+    {
+      "name": "m2_psd_excessive_loose_tol",
+      "target": "src/ainerzero/v9/geometry/belief.py",
+      "mutation": "PSD_RELATIVE_TOL = 1e-12 -> PSD_RELATIVE_TOL = 1e-3",
+      "exit_code": 1,
+      "red": true,
+      "log": "evidence/mutation_m2_psd_excessive_loose_tol.log"
+    },
+    {
+      "name": "m3_pose_graph_remove_clamp",
+      "target": "src/ainerzero/v9/geometry/pose_graph.py",
+      "mutation": "eig = np.where(negative, 0.0, eig) -> eig = eig  # mutated: no clamp",
+      "exit_code": 1,
+      "red": true,
+      "log": "evidence/mutation_m3_pose_graph_remove_clamp.log"
+    },
+    {
+      "name": "m4_pose_graph_bypass_observability",
+      "target": "src/ainerzero/v9/geometry/pose_graph.py",
+      "mutation": "if rank != len(columns):\n            raise ObservabilityError(f\"remaining unobserved directions: rank {rank}/{len(columns)}\") -> if False:\n            pass  # mutated: bypass check",
+      "exit_code": 1,
+      "red": true,
+      "log": "evidence/mutation_m4_pose_graph_bypass_observability.log"
+    },
+    {
+      "name": "m5_gravity_revert_absolute_norm",
+      "target": "src/ainerzero/v9/geometry/gravity.py",
+      "mutation": "if sin_theta < HORIZONTAL_SIN_TOL: -> if np.linalg.norm(x) < 1e-12:",
+      "exit_code": 1,
+      "red": true,
+      "log": "evidence/mutation_m5_gravity_revert_absolute_norm.log"
+    },
+    {
+      "name": "m6_gravity_skip_nonzero_check",
+      "target": "src/ainerzero/v9/geometry/gravity.py",
+      "mutation": "if h_norm == 0: -> if False:",
+      "exit_code": 1,
+      "red": true,
+      "log": "evidence/mutation_m6_gravity_skip_nonzero_check.log"
+    }
+  ],
+  "all_controls_green": true,
+  "all_mutations_red": true,
+  "ok": true
+}

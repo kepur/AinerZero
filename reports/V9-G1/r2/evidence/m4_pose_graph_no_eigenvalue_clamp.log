@@ -1,0 +1,157 @@
+$ pytest /Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py
+..............F..FF.......................F                              [100%]
+=================================== FAILURES ===================================
+_______ test_f1_pose_graph_accepts_rank_deficient_information_and_solves _______
+
+    def test_f1_pose_graph_accepts_rank_deficient_information_and_solves():
+        poses = [SE2.identity(), SE2.exp([1.0, 0.5, 0.2])]
+        measurement = SE2.compose(SE2.inverse(poses[0]), poses[1])
+        factors = [RelativeFactor(0, 1, measurement, info) for info in SE2_PARTIAL_INFORMATION]
+        for info in SE2_PARTIAL_INFORMATION:
+            assert np.linalg.eigvalsh(info)[0] < 0, "整数 PSD 输入必须复现 float64 负特征值"
+>       fit = solve_pose_graph(SE2, poses, factors, anchor=0)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:194: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:99: in solve_pose_graph
+    jac, rank, singular = linearize(poses)
+                          ^^^^^^^^^^^^^^^^
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:90: in linearize
+    singular = np.linalg.svd(jac, compute_uv=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv-ainerzero/lib/python3.12/site-packages/numpy/linalg/_linalg.py:1850: in svd
+    s = _umath_linalg.svd(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+err = 'invalid value', flag = 8
+
+    def _raise_linalgerror_svd_nonconvergence(err, flag):
+>       raise LinAlgError("SVD did not converge")
+E       numpy.linalg.LinAlgError: SVD did not converge
+
+.venv-ainerzero/lib/python3.12/site-packages/numpy/linalg/_linalg.py:153: LinAlgError
+_____ test_f1_pose_graph_clamps_tolerated_negative_information_without_nan _____
+
+    def test_f1_pose_graph_clamps_tolerated_negative_information_without_nan():
+        poses = [planar_pose(0, 0), planar_pose(1, 0), planar_pose(1, 1)]
+        tiny_negative_information = np.diag([-5e-13, 1.0, 0.0])
+        assert -psd_tol(tiny_negative_information) <= -5e-13 < 0
+        factors = [
+            RelativeFactor(0, 1, SE2.exp([1, 0, 0]), np.diag([1.0, 0.0, 0.0])),
+            RelativeFactor(0, 1, SE2.exp([1, 0, 0]), np.diag([0.0, 1.0, 0.0])),
+            RelativeFactor(1, 2, SE2.exp([0, 1, 0]), np.diag([1.0, 0.0, 0.0])),
+            RelativeFactor(1, 2, SE2.exp([0, 1, 0]), tiny_negative_information),
+        ]
+>       fit = solve_pose_graph(SE2, poses, factors, anchor=0, fixed_rotations=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:99: in solve_pose_graph
+    jac, rank, singular = linearize(poses)
+                          ^^^^^^^^^^^^^^^^
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:90: in linearize
+    singular = np.linalg.svd(jac, compute_uv=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv-ainerzero/lib/python3.12/site-packages/numpy/linalg/_linalg.py:1850: in svd
+    s = _umath_linalg.svd(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+err = 'invalid value', flag = 8
+
+    def _raise_linalgerror_svd_nonconvergence(err, flag):
+>       raise LinAlgError("SVD did not converge")
+E       numpy.linalg.LinAlgError: SVD did not converge
+
+.venv-ainerzero/lib/python3.12/site-packages/numpy/linalg/_linalg.py:153: LinAlgError
+_______ test_f1_pose_graph_partial_information_keeps_fail_closed_checks ________
+
+    def test_f1_pose_graph_partial_information_keeps_fail_closed_checks():
+        # G2 最小复现的下游：2 个位姿 + 1 条 rank-1 PSD information 仍不可观。
+        rank_one = rank1([1.0, 2.0, 2.0])
+        with pytest.raises(ObservabilityError, match="unobserved"):
+>           solve_pose_graph(
+                SE2,
+                [SE2.identity(), SE2.exp([1.0, 0.0, 0.0])],
+                [RelativeFactor(0, 1, SE2.exp([1.0, 0.0, 0.0]), rank_one)],
+                anchor=0,
+            )
+
+tests/v9/geometry/test_geometry_r2.py:253: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:99: in solve_pose_graph
+    jac, rank, singular = linearize(poses)
+                          ^^^^^^^^^^^^^^^^
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:90: in linearize
+    singular = np.linalg.svd(jac, compute_uv=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv-ainerzero/lib/python3.12/site-packages/numpy/linalg/_linalg.py:1850: in svd
+    s = _umath_linalg.svd(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+err = 'invalid value', flag = 8
+
+    def _raise_linalgerror_svd_nonconvergence(err, flag):
+>       raise LinAlgError("SVD did not converge")
+E       numpy.linalg.LinAlgError: SVD did not converge
+
+.venv-ainerzero/lib/python3.12/site-packages/numpy/linalg/_linalg.py:153: LinAlgError
+_________________ test_g2_minimal_reproduction_f1_f2_is_green __________________
+
+    def test_g2_minimal_reproduction_f1_f2_is_green():
+        # --- F1：G2 的精确整数 PSD 输入必须被接受 ---
+        int_rank1 = rank1([1.0, 2.0, 2.0])
+        j = np.array([[1.0, 2.0, 0.0], [0.0, 1.0, 1.0]])
+        int_jtj = j.T @ j
+        for matrix in (int_rank1, int_jtj):
+            assert np.array_equal(matrix, np.round(matrix))
+            covariance(matrix, 3, semidefinite=True)  # 修复前：ValueError
+        # G2 的下游检查：rank-deficient PSD information 不再被协方差守卫拒绝，
+        # 而是进入既有可解性检查并 fail-closed 为 ObservabilityError。
+        with pytest.raises(ObservabilityError) as excinfo:
+>           solve_pose_graph(
+                SE2,
+                [SE2.identity(), SE2.exp([1.0, 0.0, 0.0])],
+                [RelativeFactor(0, 1, SE2.exp([1.0, 0.0, 0.0]), int_rank1)],
+                anchor=0,
+            )
+
+tests/v9/geometry/test_geometry_r2.py:388: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:99: in solve_pose_graph
+    jac, rank, singular = linearize(poses)
+                          ^^^^^^^^^^^^^^^^
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:90: in linearize
+    singular = np.linalg.svd(jac, compute_uv=False)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv-ainerzero/lib/python3.12/site-packages/numpy/linalg/_linalg.py:1850: in svd
+    s = _umath_linalg.svd(a, signature=signature)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+err = 'invalid value', flag = 8
+
+    def _raise_linalgerror_svd_nonconvergence(err, flag):
+>       raise LinAlgError("SVD did not converge")
+E       numpy.linalg.LinAlgError: SVD did not converge
+
+.venv-ainerzero/lib/python3.12/site-packages/numpy/linalg/_linalg.py:153: LinAlgError
+=============================== warnings summary ===============================
+tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_accepts_rank_deficient_information_and_solves
+tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_clamps_tolerated_negative_information_without_nan
+tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_partial_information_keeps_fail_closed_checks
+tests/v9/geometry/test_geometry_r2.py::test_g2_minimal_reproduction_f1_f2_is_green
+  /tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:66: RuntimeWarning: invalid value encountered in sqrt
+    root = np.diag(np.sqrt(eig)) @ basis.T
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_accepts_rank_deficient_information_and_solves
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_clamps_tolerated_negative_information_without_nan
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_partial_information_keeps_fail_closed_checks
+FAILED tests/v9/geometry/test_geometry_r2.py::test_g2_minimal_reproduction_f1_f2_is_green
+4 failed, 39 passed, 4 warnings in 0.34s

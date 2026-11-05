@@ -1,0 +1,41 @@
+{
+  "task": "ainerzero.V9.G5",
+  "source": "reports/V-V9-G1/findings_minimal_repro.py",
+  "semantics": "exit 0 = F1/F2 已修复（转绿）；exit 1 = 仍有发现复现",
+  "checks": [
+    {
+      "name": "F1 outer([1,2,2])",
+      "green": true,
+      "detail": "被接受；G2 记录的 float64 最小特征值 -5.551e-16（精确矩阵 PSD）"
+    },
+    {
+      "name": "F1 J^T J 整数",
+      "green": true,
+      "detail": "被接受；G2 记录的 float64 最小特征值 -1.139e-16（精确矩阵 PSD）"
+    },
+    {
+      "name": "F1 下游 solve_pose_graph",
+      "green": true,
+      "detail": "进入可观测性检查并 fail-closed：ObservabilityError(remaining unobserved directions: rank 1/3)"
+    },
+    {
+      "name": "F2 同方向不同尺度结论一致",
+      "green": true,
+      "detail": "恰好垂直的重力水平参考在 1e-20…1e8 全部被接受"
+    },
+    {
+      "name": "F2 平行参考仍拒绝",
+      "green": true,
+      "detail": "{1e-20: 'rejected', 1.0: 'rejected', 100000000.0: 'rejected'}"
+    }
+  ],
+  "f4_out_of_scope": {
+    "se2_exp": {
+      "1e+102": "ok",
+      "1e+103": "OverflowError",
+      "6.283185307179586": "ok"
+    },
+    "predict_dt_1e300": "OverflowError"
+  },
+  "green": true
+}

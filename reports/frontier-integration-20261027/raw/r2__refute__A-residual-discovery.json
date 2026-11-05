@@ -1,0 +1,79 @@
+{
+ "group": "A-residual-discovery",
+ "verdicts": [
+  {
+   "key": "EMPIRIC",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2609.35047 的 abs 页元数据与原记录一致：标题、16 位作者（Liang…Silver, Ellis）、v1 提交于 2026-09-28 且只有这一版、cs.RO、CC BY-SA 4.0。comments 写明最后两位为共同导师。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "机制描述逐条有原文支撑：子类化 PyBullet 基座；x_res 只读净化后的观测和动作，“no engine access or privileged state”；广义后验（Bissiri 2016），λ=max(1,E_min/N)；网格起点的 LM 求点估计后，逐坐标线求条件分布作均值场近似；BOCPD 最多看 8 帧；K 个联合抽样上算成功概率并取最大；对谓词二值读数计算 BALD 式互信息。复核没有发现夸大。",
+    "补充原文自带的限制，how_to_borrow(2) 应写明：回放损失把同一段内的误差当作独立；λ 只校正误差的量级，不校正段内相关性。“RMS 标准化误差大于 2 的段被剔除并上报”只是本文启发式判据，没有理论保证。",
+    "补充：所有候选方案都在同一组抽样上比较。论文明确说，对同一组抽样反复修改过的方案，成功概率估计偏乐观；K 个抽样下标准误上界为 1/(2√K)，真实机器人实验用 K=24。",
+    "how_to_borrow(3) 所说“BALD 在 CPU 上开销低”需要限定。熵公式本身便宜，但每个候选实验都要跑 K 次模拟器 rollout，开销由模拟决定。谓词互信息只是完整观测信息量的下界。",
+    "消融的增益随领域而变：两个消融在 Boil 和 Fan 都 5/5 成功，而且步数更少（Boil 988 对 1,331；Fan 1,851 对 2,475）。所以“拟合加显式不确定性”的优势不是所有领域都成立。",
+    "代码许可：BasisResearch/predicators 是 fork（上游为 Learning-and-Intelligent-Systems/predicators），仓库级 LICENSE 为 MIT（Copyright 2022 Rohan Chitnis and Tom Silver）。code_sim_learning 是后来新增的目录，没有核到单独的文件头许可，应视为受仓库级 MIT 覆盖。是否包含全部实验脚本仍未核实。"
+   ],
+   "evidence": [
+    "https://arxiv.org/abs/2609.35047：标题、作者和 2026-09-28 v1 一致，许可链接为 creativecommons.org/licenses/by-sa/4.0，摘要写 ‘than all three baselines’",
+    "https://arxiv.org/html/2609.35047v1 §4.1：‘EMPIRIC solves all 25 runs, compared with 16 for Direct agent, 14 for Direct + scene, and 16 for Standalone sim.’；Fisher 检验 p≤0.002；两个消融为 20/25 和 21/25；Oracle 为 25/25；七个代理都用 Claude Opus 5 high effort",
+    "同页附录 B.3：λ=max(1,E_min/N)、Huber 损失、RMS>2 剔除段、grid-seeded Levenberg–Marquardt、均值场线条件分布（‘understates the spread of correlated ones’）、BOCPD（Adams & MacKay 2007）",
+    "同页 §6：中位数 424 次 rollout、162 轮 LM 交互、107 分钟（Direct agent 为 115 轮、64 分钟）；附录 C：预测滑移 10.1±2.3 cm，实测 9.9 cm，K=24 个后验抽样",
+    "GitHub API：BasisResearch/predicators 的 license 为 MIT、fork=True；目录 predicators/code_sim_learning 含 fitting.py、parameter_belief.py、active_experiment.py、identifiability.py 等。BasisResearch/empiric 的 license 为 None，描述为 ‘Project page for EMPIRIC…’"
+   ]
+  },
+  {
+   "key": "MDA",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2608.09696 的标题和单作者 Kevin Murphy 一致。v5 的 HTML 署名单位为 Dept. Computer Science, Univ. British Columbia。版本史为 v1 08-10、v2 08-11、v3 08-13、v4 08-25、v5 09-27，与记录一致；cs.AI；CC BY 4.0。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "“θ 用 SMC（128 粒子）”不能当作通用配置。128 个参数粒子加 128 个 PF 粒子只出现在 NeuronBench 的 SDE 臂（图4 图注）；方法汇总表中的 HH SDE+PF 臂是 N_p=64 的调温 SMC 再接递归更新。ChemBench 主实验用有界多起点非线性最小二乘加 BIC，预测只用最高权重模型的点估计。v5 图7（ChemBench，12 个世界 × 3 个种子）中 SMC 臂用 100 粒子，反而是 BIC 配置预测更好，作者也承认这几种配置没有把证据近似单独隔离出来。",
+    "“LLM 只在 M-open 失配之后才使用”不准确。ChemBench 初始化时，候选池就由 9 个经典机制加最多 12 个 LLM 提案组成；之后每次触发再要 6 个候选，活跃池上限 24。实际运行的 ChemBench 代理用前一次拟合缓存的残差决定首次扩展，不是前序预测检查。“唯一用 LLM 的步骤是假设扩展”这句原文本身成立，但扩展包括初始化。",
+    "compute_notes 中“退化为 9 个经典机制的固定池，可完全本地运行”是推断，论文没有测过这种配置。而且 ChemBench 的 57 个世界本身就是 9 个经典机制加 48 个复合机制，固定池在这 9 个世界里直接包含真机制，不能拿它评估无 LLM 的发现能力。",
+    "VoI 证据要分版本说明：v1 中“VoI and LLM design strategies perform similarly”出自 NeuronBench（Opus 4.7）的图注和正文；v5 图7 只比较了 EIG 与随机设计，并且和推理配置混在一起。v5 中 VoI 与 LLM 选实验的对照证据仍然薄弱。",
+    "93%/31% 核实成立：v1 正文、表8、图9 和 v4 表7 都写 ForceBench 上 MDA 93% 对 Opus 4.7 纯 LLM 代理 31%（B=8，每轮一个实验）；v1 C.8 中 Fable 5 代理为 81%，同条件 MDA 为 94%。v5 已删除 ForceBench，只在相关工作中提到 DiscoverPhysics。",
+    "代码：MDA 代理没有发布。neuronbench 仓库的 neuronbench/agent.py 自述为 ‘The reference baseline: a pure-LLM agent’（经 OpenRouter 调用），不是 MDA。glucosebench 为 MIT，内含带 LICENSE 与 PROVENANCE 的 simglucose vendored 代码。"
+   ],
+   "evidence": [
+    "https://arxiv.org/abs/2608.09696：五个版本的时间与记录一致；v5 comments 写 ‘added experiments with BIC … de-emphasized SCMC3 narrative’；v4 comments 写 ‘Fixed a leak in the prompts for physics and chemistry benchmarks’；CC BY 4.0",
+    "https://arxiv.org/html/2608.09696v5 §3：‘this hypothesis expansion step is the only part of MDA that uses an LLM’；‘never by the LLM’；EIG 用模型分歧替代量，ChemBench 用 CMA-ES，Glucose/Neuron 枚举动作",
+    "v5 附录 B：‘nine canonical mechanisms plus up to 12 valid, nonduplicate LLM proposals … live-pool cap of 24 … bounded, multistart nonlinear least squares … BIC’；B.4 的 115/171 个格、54 个世界",
+    "v5 脚注：‘model fitting uses CPUs … locally on a laptop or sometimes on Modal’，并说明重点是 sample efficiency，不是 compute efficiency；主文用 GPT-5.6-Luna medium，BoxingGym 用 Opus 4.7",
+    "https://arxiv.org/html/2608.09696v1 与 v4：表8/表7 的 grand mean 为 MDA 93、LLM 31；v1 C.8 为 Fable 81% 对 MDA 94%",
+    "GitHub：murphyk/glucosebench 与 murphyk/neuronbench 均为 MIT；用户仓库列表中没有 MDA 仓库；neuronbench/agent.py 只是纯 LLM 基线"
+   ]
+  },
+  {
+   "key": "T2-z",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2610.22364 的标题和 12 位作者（Zhou … Choi）一致，v1 提交于 2026-10-15，cs.RO，CC BY 4.0。论文首页给出代码仓库 github.com/T2-z-latent-optimization/T2-z 和数据集 huggingface.co/datasets/huagailuowen/T2-z-datasets。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "机制核实成立：训练先做 300 次世界模型更新，再按 200/200 交替；学习率分别为 1e-5 和 0.03；z 从 U(0,1) 初始化，训练更新后截断到 [0,1]。测试时冻结全部共享权重，用 3.0/1.5/0.5/0.15 各 10 步、共 40 步优化 32 维 z，‘Query outcomes never enter this update’。z 是点估计，没有不确定性，“环境信念”的说法确属夸大。",
+    "适应轨迹数需要细化：主评测中 Friction、Gravity、Mass Collision、Mass×Friction、Ball Friction、Soft Pull 用 1 条，Light Switch、Mass Balance、Door Close、Stick Balance 用 2 条；K=4 只出现在消融里。",
+    "摘要中 15.20→7.00 的拆解已复算成立：(7×12.86+4×19.30)/11=15.20，(7×4.80+4×10.85)/11=7.00；动作成功率 33.73%→72.96% 也是同样按任务数加权，混合了像素、灯分数、角度等不同单位。",
+    "需要补充数据与权重情况：数据集确有发布（HF huagailuowen/T2-z-datasets，论文首页给了链接），但 HF 卡没有声明许可，并写明 ‘Only the released training environments and episodes are included’。held-out 测试环境似乎不在发布范围内，用公开数据无法完整复现测试时结果。README 推理示例要用户自备训练好的 checkpoint，没有提供 T2-z 训练权重。BLM-Lab/Boundless-World-Model 的卡片也没有 license 字段。",
+    "E.2 维度消融的数字核实成立（8/16/32/64/128 维对应 44/64/72/64/64%，ADE 分别为 8.92/7.63/3.85/6.86/7.08）。但只测了 Friction 一个任务，K=1，10 个 held-out 环境、90 条查询视频、25 次决策，没有报告种子数或方差。",
+    "how_to_borrow 中“改为对显式带量纲的 φ_hat 做测试时拟合”是本项目自己的设计改写。T2-z 没有提供这方面的证据，它的增益来自 5B 视频模型内的无监督潜变量，借用时不能引用 T2-z 的数字作为依据。"
+   ],
+   "evidence": [
+    "https://arxiv.org/abs/2610.22364：标题、作者、2026-10-15 v1、CC BY 4.0；摘要写 ‘Across 7 simulated settings and 4 real-world robotic tasks … 15.20 to 7.00 … 33.73% to 72.96%’",
+    "https://arxiv.org/html/2610.22364v1 §4：‘We adapt BWM … built on Wan2.2-TI2V-5B. The environment latent has a dimension of 32’；40 步由粗到细；正文 12.86→4.80（仿真）、19.30→10.85 像素（真实）",
+    "同页附录：表5/表6 的训练预算为每种方法 2×24 H200 小时（各任务不同）；E.4 中 K=1 时 18.09 s（LoRA TTA 32.73 s，TTT-KQV 37.57 s）；表12 为维度消融",
+    "https://raw.githubusercontent.com/T2-z-latent-optimization/T2-z/main/LICENSE 为 Apache 2.0；README 要求 CUDA 12.8，写明 ‘Datasets and weights are not included in the code archive’，并给出数据集与 Wan2.2 / BWM 权重的下载命令",
+    "HF API：Wan-AI/Wan2.2-TI2V-5B 为 license:apache-2.0；BLM-Lab/Boundless-World-Model 与 datasets/huagailuowen/T2-z-datasets 都没有 license 字段，数据卡写 ‘Only the released training environments and episodes are included’",
+    "真实任务因子：球（钢珠质量）、门锁弹簧刚度、两端挂不同质量的棒、不同刚度和弯曲度的软管；弹性恢复系数和阻尼没有被单独测试"
+   ]
+  }
+ ]
+}

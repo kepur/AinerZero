@@ -1,0 +1,177 @@
+{
+ "group": "GI-recursion-control-misc",
+ "verdicts": [
+  {
+   "key": "1a-TRM",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2510.04871v1，标题一致，单作者 Alexia Jolicoeur-Martineau（Samsung SAIL Montréal），published 2025-10-06，无 comment/journal_ref，仍只有 v1。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "how_to_borrow 所依赖的性质有误：TRM 的 ACT/停机头只在训练时用于提前换样本（提高数据效率），测试时固定跑满 N_sup=16 步，并不按样本难度分配推理迭代次数。原文：'It is only used during training, while the full N_sup=16 supervision steps are done at test time'；PTRM 论文 §2 也写明 'During inference, the Q head is not used'。若要按难度分配算力，应引用 GAR（2610.16427）的停机头门控重启；它只在 Sudoku-Extreme 和 PPBench 上验证过，在 Maze-Hard 上该头对齐很差。",
+    "TRM 的停机头已去掉 HRM 的 Q-learning continue loss，改为对“答案是否全对”做 BCE（§4.6）。称其为“Q 头”沿用代码命名，但它不是 Q-learning。",
+    "Table 1 核对：最优 87.4% 为 T=3、n=6、2 层、5M（MLP 版）；4 层 n=3 为 79.5%/10M，有效深度 48 对 42；self-attention 版在 Sudoku 上为 74.7%/7M。原记录的 5M/7M 区分正确。",
+    "§4.4 作者自己说“可能是数据太少”，没有理论支持；“少即是多”只是 1K 样本加重度增强下的经验结论（Sudoku 每例 1000 次打乱增强，Maze 8 次二面体变换，ARC 1000 次增强，测试时投票），不能外推为一般规律。",
+    "README 另注：Sudoku 最小实验用 1×L40S 约 18 小时；论文附录写的是不到 36 小时。两者并不矛盾。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2510.04871：标题、作者、日期一致",
+    "https://arxiv.org/html/2510.04871v1 §2 ACT 段：ACT 'only used during training... full N_sup=16 supervision steps are done at test time'；§4.4 原文：'decreasing the number of layers while scaling the number of recursions (n) proportionally (to keep the amount of compute and emulated depth approximately the same)'；§4.6 改为 BCE 停机；附录：1×L40S 不到 36h，4×L40S 不到 24h，4×H100 约 3 天",
+    "https://arxiv.org/html/2605.19943v1 §2：'During inference, the Q head is not used, and the model performs N_sup supervision steps'",
+    "https://api.github.com/repos/SamsungSAILMontreal/TinyRecursiveModels：archived=true，license=MIT；LICENSE 为 Copyright (c) 2025 Samsung Electronics；README 第 1 行为临时归档说明，并要求 CUDA 12.6"
+   ]
+  },
+  {
+   "key": "1b-PTRM",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2605.19943v1，2026-05-19。作者 Amin Sghaier（Mila；ILLS & ETS Montreal）、Ali Parviz（Mila）、Alexia Jolicoeur-Martineau（论文标注 Independent，不是 Mila）。论文许可 CC BY 4.0。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "参数量：Sudoku-Extreme 用的是 TRM-MLP 5M，Maze-Hard、ARC-AGI-2 和 PPBench 用的是 TRM-Att 7M（Table 3 脚注）。“模型仍为 7M”只对 PPBench 等成立。",
+    "Sudoku 的 98.75% 用 K=100 条 rollout，每条 D=64 个监督步（标准为 16 步），推理算力约为标准单次的 400 倍；Sudoku 的确定性基线复现为 87.28%。",
+    "Q 头作选择器并非处处可靠：Maze-Hard 上 best-Q@K 只有 85.17%，低于众数投票的 86.73%（pass@K 为 95.63%），作者承认 'the existing Q head is not able to identify them'。",
+    "“不做任务特定增强”只对 Sudoku、Maze 和 PPBench 成立。ARC-AGI-2 仍在增强加投票流程内运行，pass@1 只从 7.36% 升到 8.47%，pass@2 没有变化。",
+    "GAR 对比需更正：PTRM 的 checkpoint 未公开，GAR 是在自己训练的 checkpoint 上重跑 PTRM，并非 PTRM 原 checkpoint。197 倍（Sudoku）和 42 倍（PPBench）是按 PTRM 自身协议计算的；在共享 harness 下只有 4.3 倍和 6.0 倍。GAR 的 Sudoku 只评测了 1000 题子集，且是 2026-10 的单作者预印本。",
+    "许可补充：GAR 仓库 MaximeILL/GAR（MIT，2026-10-26 创建）带有 PTRM 复现 notebook（*_continue_and_PTRM.ipynb），所以“唯一公开实现是 GPL-3.0”的说法已过时；MIT 的 PTRM 协议复现可从 GAR 仓库取得。",
+    "“在 M2 Max 上可行”是外推，没有一手依据；论文的训练和评测都在单张 H100 80GB 上完成。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2605.19943,2610.16427：标题、作者、日期",
+    "https://arxiv.org/html/2605.19943v1 Table 3 及 §5.3、§5.4：K=100、D=64、σ=0.3；Maze best-Q 85.17 对 mode 86.73；ARC-AGI-2 有增强投票；附录：'train and evaluate all models on a single NVIDIA H100 80GB GPU'；正文无代码链接",
+    "https://arxiv.org/html/2610.16427v2：'Since PTRM's checkpoints were not publicly available, all methods, PTRM included, run on our checkpoints'；'197 and 42 times as much compute under its own protocol, and 4.3 and 6.0 times as much under the shared harness'",
+    "https://api.github.com/repos/JerMa88/PTRM：GPL-3.0，自述为社区实现",
+    "https://api.github.com/repos/MaximeILL/GAR：MIT，文件含 SudokuExtreme_continue_and_PTRM.ipynb 和 PPBench_continue_and_PTRM.ipynb"
+   ]
+  },
+  {
+   "key": "2-InPlaceTTT",
+   "identity_confirmed": true,
+   "identity_note": "只顺带核对了 arXiv API 元数据：2604.06169v1，标题和 7 位作者一致，comment 为 'ICLR 2026 Oral Presentation; Code is released at https://github.com/ByteDance-Seed/In-Place-TTT'。",
+   "mechanism_claim_holds": "unclear",
+   "compute_claim_holds": "unclear",
+   "license_status": "unknown",
+   "refuted": true,
+   "corrections": [
+    "未进入复核：fit_gaps 全为 none，不在本组复核范围内。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2604.06169"
+   ]
+  },
+  {
+   "key": "3-LeWM",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2603.19312，v1 2026-03-13，v3 2026-06-03，5 位作者一致；HTML v3 的许可为 CC BY 4.0。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "SIGReg 不是 LeWM 原创，出自 LeJEPA（Balestriero & LeCun，arXiv 2511.08544）。形式是把嵌入投影到 M=1024 个随机单位方向，对每个方向算一维 Epps–Pulley 统计量再取平均，理论依据是 Cramér–Wold 定理；正则权重 λ=0.1。引用时应同时注明 LeJEPA。",
+    "LeWM 把 SIGReg 当训练正则项用，不是诊断工具；把它当“潜空间健康诊断”是我方外推。论文还指出，在低内在维度、低多样性的环境（Two-Room）中 SIGReg 效果变弱，LeWM 也表现较差。",
+    "VoE 惊奇评测的范围要收窄：惊奇等于潜空间预测与实际观测的差异。只有“瞬移”这类物理扰动在 3 个仿真环境中显著（配对 t 检验 p<0.01）；颜色突变这类视觉扰动不显著。所以它只证明能检测物理连续性被破坏，不是通用的越界或异常检测器。",
+    "G9 低功耗控制的契合度弱：48 倍是相对 DINO-WM 而言，完整规划耗时“不到 1 秒”（CEM，每轮 300 条采样），作者只说 'narrowing the gap toward real-time control'，而且没有给出规划硬件。",
+    "代码依赖 galilai-group 的 stable-worldmodel 和 stable-pretraining，两者都是 MIT。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2603.19312",
+    "https://arxiv.org/html/2603.19312v3 §3：'we adopt the Sketched-Isotropic-Gaussian Regularizer (SIGReg) [6]'，[6] 即 LeJEPA 2511.08544；M=1024，λ=0.1；附录 A 为 Epps–Pulley 加 Cramér–Wold；ViT-tiny 约 5M；规划用 CEM，每轮 300 条采样",
+    "同页 Fig. 8：'significant for teleportation across all environments (p<0.01) but weaker and non-significant for color changes'；局限性一节：低数据多样性会削弱 SIGReg",
+    "https://api.github.com/repos/lucas-maes/le-wm：MIT，Copyright (c) 2026 Lucas Maes；stable-worldmodel 和 stable-pretraining 均为 MIT"
+   ]
+  },
+  {
+   "key": "4-RefFreeSamplingMPC",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2511.19204，v1 2025-11-24，v3 2026-04-16，4 位作者一致；comment 自报 ICRA 2026 Vienna。HTML 许可为 CC BY-NC-SA 4.0。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "采样数需更正：实时控制只用了 30 条采样（四足，各项行为均实时）。人形实验要把采样增到 70 条，原文明确说这 'prevents real-time execution'。所以“30–70 条即可实时”以及“与 M2 Max 条件非常接近”都夸大了：只有 30 条那一档有实时证据。",
+    "Table I 中本文方法一栏的采样数为 30–70；30 那一栏是对比方法 MPPI [14]（Alvarez-Padilla 等）。原记录写“Table I 采样数为 30”是看错了列。",
+    "噪声退火并非原创，沿用 DIAL-MPC 的扩散式退火设计；本文的贡献是 Hermite 样条（位置加速度控制点，并按到关节界的距离钳制节点导数）、无参考代价和最优轨迹跟踪。",
+    "rollout 模型是 Simple 物理仿真器（含非线性互补接触），一次 MPPI 更新（3 轮迭代×30 条采样）约 20–30 ms。改用 GeometryCore 加残差作 rollout 模型能否保持实时和接触涌现，原文没有证据，属于外推。",
+    "硬件按原文是 'Mac Studio M3 equipped with 16 efficient cores'，放在机外；机载 PD 为 12 kHz，全局状态来自 300 Hz 动捕，这一点原记录正确。方法代码未见公开（作者主页和 GitHub 均未找到），Simple 为 BSD-3-Clause（Copyright 2025 INRIA）。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2511.19204",
+    "https://arxiv.org/html/2511.19204v3 §IV-B5：'the humanoid experiment requires an increase from 30 to 70 parallel sample trajectories... which prevents real-time execution'",
+    "同页 Table I：Samples 列为 2048–4096 / 30 / 30–70（本文）；§III-B 退火沿用 DIAL-MPC [16]；§III-D：3 轮迭代×30 条采样约 20–30 ms；§IV：Mac Studio M3、16 个效率核、50 Hz、PD 12 kHz、动捕 300 Hz",
+    "https://fabinsch.github.io/ 与 https://api.github.com/users/fabinsch/repos：无对应代码仓库",
+    "https://api.github.com/repos/Simple-Robotics/Simple：BSD-3-Clause"
+   ]
+  },
+  {
+   "key": "5-DWC",
+   "identity_confirmed": true,
+   "identity_note": "PMLR 页面：citation_title 一致，conference 为 International Conference on Machine Learning，PMLR 306:61119–61137，发布日期 2026/09/29。arXiv 2512.01467：v1 2025-12-01，v2 2026-06-08，comment 为 ICML 已录用，许可 CC BY 4.0。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "能耗数字引错了配置：论文主配置每层 1024 个 LUT（Table 1 的回报就来自它），每动作约 2.06–2.28 nJ，正文写 'in the range of 2 nanojoule per action'。1.02–1.16 nJ 是更小的每层 256 LUT 配置，它的回报更低（例如 Ant 为 4.54k，主配置为 5.68k）。",
+    "能耗是 Vivado 2022.2 OOC 实现后的功耗报告估计，原记录这点正确。补充：主体结果不计 I/O、输入归一化和逐动作查表（作者另在附录 B 给出包含这些的版本），引用时必须一并注明。",
+    "编码细节：先做 running mean/std 归一化并裁剪到 ±10，再在“拉伸高斯分位点”上放温度计阈值（每维 63 个），不是按数据经验分位数分箱。主实验用 SAC，DDPG 和 PPO 结果在附录。",
+    "WNN 训练依赖 DWN 库（alanbacellar/DWN，MIT）的 CUDA 扩展，README 明确 'wnn requires a CUDA-enabled device'。作者自述训练只能在仿真中进行，不能在设备上交互训练。"
+   ],
+   "evidence": [
+    "https://proceedings.mlr.press/v306/kresse26a.html：citation_firstpage 61119，lastpage 61137，publication_date 2026/09/29",
+    "https://arxiv.org/html/2512.01467v2 Table 2：D=256 为 1.02–1.16e-9 J，D=1024 为 2.06–2.28e-9 J；§4：OOC 实现，'we assume that all observation normalization steps and the final per-action lookups take place outside the synthesized core'；§3 为拉伸高斯分位阈值；结论：'training is currently only feasible in simulated environments, not interactively on-device'",
+    "https://raw.githubusercontent.com/FKresse/differentiable_weightless_controllers/main/LICENSE：MIT（Copyright 2026 Fabian Kresse）加 CleanRL、TD3 的 MIT 第三方声明；GitHub API 识别为 NOASSERTION",
+    "https://api.github.com/repos/alanbacellar/DWN：MIT"
+   ]
+  },
+  {
+   "key": "6-ActiveInference-ValueProfiles",
+   "identity_confirmed": true,
+   "identity_note": "Crossref：DOI 10.1007/s00422-026-01066-0，Biological Cybernetics 120(5-6)，文章号 40，2026-10-09，CC BY 4.0，单作者 Jacob Poschl。另从 PMC 读到全文（PMC13649937）：作者单位 UC Santa Cruz，由 Karl Friston 推荐（communicated），2025-12-28 收稿，2026-09-11 接收。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "partially",
+   "license_status": "differs",
+   "refuted": false,
+   "corrections": [
+    "可辨识性要降级表述：模型恢复是不对称的。只有 M3（profile 模型）生成的数据能被正确识别；M1 与 M2 生成的数据都被 M1 拟合得最好（Table 3：M2 生成数据在 M1 下 AIC_CV 为 12.10，在 M2 下为 18.37），也就是说 M2 与 M1 无法区分。",
+    "参数恢复只报告了一次代表性运行的 5 折交叉验证结果，采用 5,184 个候选点的离散网格搜索，可辨识性依赖人为加的结构约束（如 logits 均值中心化）。作者的结论是“保留了 profile 间偏好分化这一结构性质”，不是精确恢复参数值。",
+    "实验规模：每个生成器 5 次独立运行，每次 400 试次，每 40 试次反转一次；只有两个离散情境（volatile 和 stable），纯模拟，没有人类或真实数据。作者在局限性一节也承认情境结构是刻意简化的。",
+    "代码并非“未知”：Data Availability 指向 https://github.com/jacobposchl/active-inference-reusable-profiles，但该仓库没有 LICENSE（API license=null，默认保留所有权利），不能复制，只能借鉴协议。",
+    "借用的“模型恢复混淆矩阵加参数恢复”是计算建模领域的通用协议，不是本文首创。引用本文时应写明 M1 与 M2 不可区分这一反例，它本身正好可作 G4 的警示样例。"
+   ],
+   "evidence": [
+    "https://api.crossref.org/works/10.1007/s00422-026-01066-0：标题、期刊、卷期、日期、CC BY 4.0",
+    "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC13649937/fullTextXML：'recovery is asymmetric: M3-generated data are correctly identified..., whereas data generated by M1 and M2 are preferentially captured by M1'；Table 3 为 AIC_CV 混淆矩阵；'5 independent runs of 400 trials with context reversals every 40 trials'；Table 5 为代表性运行；M3 网格 5,184 个候选",
+    "同一全文 Data Availability：github.com/jacobposchl/active-inference-reusable-profiles",
+    "https://api.github.com/repos/jacobposchl/active-inference-reusable-profiles：license=null",
+    "https://link.springer.com/article/10.1007/s00422-026-01066-0：返回机器人校验页，未绕过，改读 PMC 开放全文"
+   ]
+  },
+  {
+   "key": "7-LeanQEC-PRXIntelligence",
+   "identity_confirmed": true,
+   "identity_note": "APS 录用列表（journals.aps.org/prxintelligence/accepted）确有 'Lean-verified discovery of exact nonadditive quantum codes with AI assistants — Xi He, Sirui Lu, and Bei Zeng — Accepted 6 October, 2026'。arXiv 2510.20728（v3 2026-04-06）作者相同、内容吻合，但题名不同且无 journal_ref，两者对应仍是推断。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "约 10 小时只指“最难的那一个”no-go 证明（w=(0,1,1,2,3,3,5)，含 19 个方程的矛盾论证），不是每个 no-go 证明都要 10 小时。",
+    "这是 human-guided 流程：研究者在大规模计算前审阅代理提案，并通过 latexdiff 审改动，不是全自主发现。论文所说的 Verification Agent 本身也是 GPT-5 驱动的代理，所谓“验证独立”是指它不受先前推理影响；真正的二值硬门是 Lean 编译（零错误、零警告、无 sorry）。",
+    "可信基比论文措辞大：大量有限证书用 native_decide 完成，论文称之为 'kernel-checked proof'。按 Lean 4 语义，native_decide 依赖编译器求值和 Lean.ofReduceBool 公理，并不经内核逐步检查，Mathlib 也禁用它。（这一点依据 Lean 语言常识，论文没有讨论。）借作硬门设计时应写明“编译器也在可信基内”，或要求禁用 native_decide 等公理。",
+    "代码与数据：论文的 Code/Data availability 指向 LionSR/lean-qec，现已重定向到 LionSR/lean-qec-sslp，没有 LICENSE。Lean 构建规模为 3,092 个 job、约 4,300 行、约 30 个模块，SSLP 搜索为 Python。"
+   ],
+   "evidence": [
+    "https://journals.aps.org/prxintelligence/accepted：条目和日期已核实",
+    "https://export.arxiv.org/api/query?id_list=2510.20728：作者 Xi He、Sirui Lu、Bei Zeng，v3 2026-04-06，comment 为 '33 pages, 4 figures'，无 journal_ref",
+    "https://arxiv.org/html/2510.20728v3：'TeXRA, driven here by GPT-5'；'The most difficult proof... took roughly 10 hours in the agent loop. A proof is accepted only when it compiles with no errors, no warnings, and no sorry placeholders'；'Lean's native_decide tactic compiles the predicate into native machine code... accepts the result as a kernel-checked proof'；human-guided 工作流（Fig. 1）",
+    "https://api.github.com/repos/LionSR/lean-qec 返回 Moved Permanently；https://api.github.com/repos/LionSR/lean-qec-sslp：license=null"
+   ]
+  }
+ ]
+}

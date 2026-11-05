@@ -1,0 +1,381 @@
+{
+ "group": "Z-gap-sweep",
+ "items": [
+  {
+   "key": "ALDER",
+   "arxiv_id": "2609.33728",
+   "title": "ALDER: Discovering the Laws of a World by Acting in It",
+   "authors": "Teng Cao, Yu Deng, Quentin Delfosse, Kristian Kersting (TU Darmstadt corresponding emails)",
+   "date": "2026-09-27 (v1)",
+   "venue": "arXiv preprint cs.LG，未列会议",
+   "claimed_ref": "本组自行检索发现（不在已覆盖清单内）",
+   "primary_url": "https://arxiv.org/abs/2609.33728",
+   "exists": "verified",
+   "mechanism": "系统维护一份证据账本。LLM 在文法与类型约束下提出或修订参数化方程结构，再由程序用岭回归拟合系数。若多个候选都能解释现有数据，主动选择器（ARS）在安全可行的实验池里挑候选预测分歧最大的实验；论文明说分歧只是信息增益的代理，不是精确互信息。是否接纳由受保护的准入验证器用代理看不到的留出数据决定，文法、预算和准入阈值都在发现前冻结，预算内没有模型通过就不返回任何模型。",
+   "claims_checked": [
+    {
+     "claim": "ARS 用比随机查询更少的交互区分候选机制",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/html/2609.33728v1 §4.2：182 个初始有歧义的案例，候选固定，每例 8 次查询预算。平均惩罚辨识成本 ARS 1.16、随机 3.53、几何覆盖 1.91、参数不确定性 1.35，附录 A.3 给了配对统计。"
+    },
+    {
+     "claim": "由独立验证器用留出数据决定是否准入",
+     "verdict": "supported",
+     "evidence": "§3.3 Protected Admission Verifier 使用代理不可见的留出数据，Algorithm 1 前冻结阈值。§4.4/Table 3：缺光滑项（Missing smooth）的模型准入率 0%，完整模型 100%。"
+    },
+    {
+     "claim": "能发现初始公式集之外的规律，并在 ODEBench/ODEBase 上优于 LLM-ACES",
+     "verdict": "overstated",
+     "evidence": "按严格功能测试，ODEBench 恢复 60/63、ODEBase 恢复 49/59（附录 A.6.1）。但符号准确率用 GPT-4o mini 当裁判，非 ALDER 的基线数字直接抄自 LLM-ACES 的表格、没有复跑（论文原话 'were not rerun locally'），自建基准 NovelLaw 由作者生成。"
+    },
+    {
+     "claim": "核心环可以不靠云端大模型运行",
+     "verdict": "unverifiable",
+     "evidence": "主结果的提议后端是 gpt-5.6-sol（附录 A.7.2）。骨干鲁棒性表测了 GPT-OSS-20B、Qwen3 系列等本地开源模型，但没有 Apple Silicon/MLX 的测量。"
+    }
+   ],
+   "fit_gaps": [
+    "G4_identifiability_active_experiment",
+    "G5_promotion_verification",
+    "G8_failure_counterexample",
+    "G7_mechanism_sufficiency"
+   ],
+   "red_flags": [
+    "主结果依赖闭源 LLM gpt-5.6-sol 提议结构：60 个 NovelLaw 案例约 34.1M 输入 token，RoboCasa 每个世界 32–41 万 token",
+    "符号准确率由 GPT-4o mini 裁判，LLM-ACES 基线数字抄录、未复跑",
+    "论文 v1 没有给代码仓库 URL，GitHub 搜索也没有结果",
+    "NovelLaw 是作者自建基准",
+    "ARS 的分歧只是信息增益代理，不是最优实验设计"
+   ],
+   "code_status": "unknown",
+   "code_repo": "未找到（论文 v1 HTML 中没有仓库链接）",
+   "code_license": "无",
+   "paper_license": "arXiv.org perpetual non-exclusive license",
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "系数用岭回归拟合。ARS 与准入验证器是纯数值计算，CPU 上可行。结构提议环需要 LLM（论文用云端 gpt-5.6-sol，也试过 20B 以上的开源模型）。机器人实验跑在 RoboCasa 仿真里。",
+   "how_to_borrow": "只借三样协议：一是 ARS 的判别实验规则（候选预测分歧最大，并受安全和成本约束），作为 SkillProposal 选实验的打分依据；二是“受保护留出数据准入、发现前冻结阈值、失败提案不删、证据账本只追加”，作为 MID→SLOW 证据格式的参照；三是 RQ4 的负对照设计：缺项或缺状态时准入率应为 0。不借 LLM 结构提议环（不能让 LLM 进高频回路，也不能让它直接写 SLOW），也不借它用 LLM 裁判的符号准确率指标。",
+   "access_log": [
+    "WebSearch 与 WebFetch 均返回模型错误（deepseek-v4-pro 不可用），改用 curl 读 arXiv API、arXiv HTML 和 GitHub API，只输出到 stdout，没有写文件",
+    "curl export.arxiv.org/api/query?id_list=2609.33728",
+    "curl https://arxiv.org/html/2609.33728v1（逐段抽取 §3–§4、附录 A.6/A.7）",
+    "curl api.github.com/search/repositories?q=ALDER+law+discovery → 0 条"
+   ]
+  },
+  {
+   "key": "EvidenceGatedResearch",
+   "arxiv_id": "2610.01751",
+   "title": "Evidence-Gated Research: Statistically Controlled Model Adoption in Adaptive Search",
+   "authors": "Yifan Guo (Stony Brook University, Applied Mathematics and Statistics)",
+   "date": "2026-10-01 (v1)",
+   "venue": "arXiv preprint cs.LG，未经同行评审",
+   "claimed_ref": "本组自行检索发现",
+   "primary_url": "https://arxiv.org/abs/2610.01751",
+   "exists": "verified",
+   "mechanism": "这是一个给“移动在位者”式搜索加的统计采纳层：一旦采纳挑战者，它就成为后续候选的生成基准。挑战者必须在决策证据揭示前冻结。之后在预先声明的多个环境上各建一个随时有效的 e-process，用可预测路由把证据导向尚未判定的分量，再用交并检验（IUT）合成持久候选 e-value。这个 e-value 交给在线 FDR 控制器（例如 e-LOND：α_t=αγ_t(R_{t-1}+1)，E≥1/α_t 才采纳）；Stagewise 变体会跳过已判定的分量，省下证据。",
+   "claims_checked": [
+    {
+     "claim": "只用开发集的 e-LOND 持久 FDR 高达 0.621",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/html/2610.01751v1 §5.1：M=16、5,000 条轨迹、δ=0.01、B=120 时持久 FDR 为 0.621。另外，不做流校正而复用两环境检验，到 T=500 时 FDR 为 0.999。"
+    },
+    {
+     "claim": "EGR 不产生持久错误采纳",
+     "verdict": "overstated",
+     "evidence": "这只是有限次运行里的观测：5000 次中 0 次，单侧 95% 二项上界约 6×10^-4；三环境研究 800 次中 0 次，Wilson 上界 .00478。它不是保证，论文自己的措辞也是 'in that finite run'。"
+    },
+    {
+     "claim": "Stagewise EGR 省 56.1% 决策证据",
+     "verdict": "supported",
+     "evidence": "§5.5：平均证据从 1600.0 降到 702.4，功效同为 .6477（两者的穿越事件按构造相同），配对节省 897.6，95% CI 878.1–917.3。"
+    },
+    {
+     "claim": "在条件有效性与可预测性条件下端到端控制 FDR",
+     "verdict": "supported",
+     "evidence": "Theorem 2 有明确的假设 (i)–(iii)，证明在附录 A；本次没有独立核验证明。功效强烈依赖控制器：同一 e-value 流下 e-LOND .619，e-LORD .890。"
+    },
+    {
+     "claim": "附带可运行代码与 SHA-256 清单",
+     "verdict": "unverifiable",
+     "evidence": "Reproducibility Statement 声称补充材料包含 runnable code、run manifests 和 SHA-256，但没有公开 URL，GitHub 搜索也没有命中。"
+    }
+   ],
+   "fit_gaps": [
+    "G5_promotion_verification",
+    "G4_identifiability_active_experiment"
+   ],
+   "red_flags": [
+    "单作者，未经同行评审，AI Use Statement 说明生成式 AI 参与了假设、证明草稿和代码",
+    "没有找到公开代码，只有对补充材料的描述",
+    "0/5000 是有限样本观测，不是保证",
+    "实验以合成闭环和小型神经基准为主，没有动力学或物理场景",
+    "每个环境都要构造有效 e-process；轨迹数据的证据单元独立性需要使用方自己保证"
+   ],
+   "code_status": "announced",
+   "code_repo": "未公开（论文称有 supplementary experiment bundle）",
+   "code_license": "无",
+   "paper_license": "CC BY 4.0",
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "核心是 e-value 累乘和在线阈值，计算很轻。论文最大的实验是 40,000 样本的受控神经基准，硬件未说明。纯 NumPy 即可复现这一层。",
+   "how_to_borrow": "借数学形式与协议。第一，晋升候选在看到决策证据前冻结，对应 PromotionEvidence 的 test_id 必须预先登记。第二，在预声明的多个环境或场景上分别建 e-process，用 IUT 合成。第三，用在线 e-LOND/e-LORD 控制持续晋升序列的错误接受率。第四，采用它的路径依赖分析：晋升改变了在位者，会影响尚未提出的候选。不借其神经基准与未公开代码，也不把 0/5000 当作保证。",
+   "access_log": [
+    "curl export.arxiv.org/api/query（e-values 检索命中 2610.01751）",
+    "curl https://arxiv.org/html/2610.01751v1（抽取 §4.3、§5.1–5.5、Reproducibility 和 AI Use Statement）",
+    "curl api.github.com/search/repositories?q=evidence-gated+research → 没有相关仓库"
+   ]
+  },
+  {
+   "key": "PSI-SINDy",
+   "arxiv_id": "2610.11486",
+   "title": "PSI-SINDy: Post-Selection Inference for Sparse Identification of Nonlinear Dynamics",
+   "authors": "Ashraful Islam, Shuichi Nishino, Tomohiro Shiraishi, Ichiro Takeuchi",
+   "date": "2026-10-08 (v1)",
+   "venue": "arXiv preprint stat.ML（47 页）",
+   "claimed_ref": "本组自行检索发现",
+   "primary_url": "https://arxiv.org/abs/2610.11486",
+   "exists": "verified",
+   "mechanism": "用高斯 data thinning 把一条带噪轨迹拆成四个相互独立的视图：V1 用于 SINDy 选项，V2 构造检验响应，V3 构造校正后的设计矩阵，V4 构造工具变量。对辅助目标“实现的 IV 系数”，用多面体条件推断给出有限样本精确的检验和区间；对选中模型的最佳线性逼近（BLA）系数，给出渐近推断。这样同时校正选择偏差、库项中的量测误差，以及响应与设计矩阵共享的噪声。",
+   "claims_checked": [
+    {
+     "claim": "在所述条件下理论有效",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/html/2610.11486v1 §3 与附录 B。条件较窄：噪声 iid N(0,σ_X²) 且 σ_X² 视为已知（实践中需从独立数据估计）。只有 IV 辅助目标是有限样本精确的，BLA 目标只是渐近成立。"
+    },
+    {
+     "claim": "在仿真与实验数据上验证",
+     "verdict": "supported",
+     "evidence": "仿真系统为 Van der Pol、Lotka–Volterra、Lorenz、pendulum；实验数据是附录 H 的放电测量，还做了协方差错设的敏感性分析。"
+    },
+    {
+     "claim": "BLA 区间在各系统上校准良好",
+     "verdict": "overstated",
+     "evidence": "论文自己的诊断显示，pendulum 等系统上一阶近似出现欠覆盖，作者也承认 'identify limitations of the first-order approximation'。"
+    },
+    {
+     "claim": "仅用 CPU 即可运行",
+     "verdict": "supported",
+     "evidence": "附录 I：Apple M4 Pro，只用 CPU，单线程；Table 16 中每个数据集的推断中位耗时 0.009–0.27 s（M=200–3200）。"
+    },
+    {
+     "claim": "有公开代码",
+     "verdict": "unverifiable",
+     "evidence": "文中提到 'code supplement provides a standalone benchmark'，但没有给 URL，GitHub 搜索 PSI-SINDy 为 0 条。"
+    }
+   ],
+   "fit_gaps": [
+    "G5_promotion_verification",
+    "G3_low_compute_law_distillation"
+   ],
+   "red_flags": [
+    "依赖 iid 高斯噪声且方差已知；碰撞、接触事件造成的非高斯残差不在保证范围内",
+    "BLA 渐近推断出现欠覆盖（作者自述）",
+    "四份拆分会降低每份的信噪比，功效下降",
+    "没有公开代码",
+    "有 AI 辅助写作与审稿声明"
+   ],
+   "code_status": "announced",
+   "code_repo": "未公开（论文提到 code supplement）",
+   "code_license": "无",
+   "paper_license": "arXiv.org perpetual non-exclusive license",
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "作者在 Apple M4 Pro 上实测，只用 CPU、单线程，单数据集亚秒级完成。依赖 NumPy/SciPy 级别的线性代数，M2 Max 上应当同样可行。",
+   "how_to_borrow": "借它的四视图拆分协议：同一批观测拆成“选结构、检验、校正设计、工具变量”四份独立数据，防止用同一数据既挑残差公式项、又宣布它显著。借“不可识别时不报告区间”（d_j,S=0 时不出推断）作为弃权规则。不借它在高斯已知方差下的结论，不能套到事件型残差上；代码公开前不依赖其实现。",
+   "access_log": [
+    "curl export.arxiv.org/api/query?search_query=abs:SINDy（命中 2610.11486）",
+    "curl https://arxiv.org/html/2610.11486v1（抽取 §3、附录 G/H/I、Table 16）",
+    "curl api.github.com/search/repositories?q=PSI-SINDy → 0 条"
+   ]
+  },
+  {
+   "key": "py-ARGOS",
+   "arxiv_id": "2610.34458",
+   "title": "py-ARGOS: A Python package for automatic, statistically principled discovery of ordinary differential equations from data",
+   "authors": "Yuzheng Zhang, Rui Carvalho (Durham University)",
+   "date": "2026-10-25 (v1)",
+   "venue": "arXiv preprint cs.MS（软件论文格式，含 Code metadata 表）",
+   "claimed_ref": "本组自行检索发现",
+   "primary_url": "https://arxiv.org/abs/2610.34458",
+   "exists": "verified",
+   "mechanism": "把 bootstrap ARGOS 和 Bayesian-ARGOS 封装在统一接口下。流程是：平滑求导，构建多项式库，用 adelie 做频率派筛选缩小库，再对每一项给出 bootstrap 置信区间或 Bayesian（bambi/NUTS）可信区间，区间不含零才保留。另带三类失败诊断：VIF>10 提示共线，PSIS-LOO Pareto-k>0.7 提示强影响点，后验预测残差提示错设。",
+   "claims_checked": [
+    {
+     "claim": "代码以 MIT 许可发布",
+     "verdict": "unverifiable",
+     "evidence": "论文 Code metadata 表写的是 MIT、发行名 pyargos-equation-discovery、仓库 https://github.com/yuzhengv/py-ARGOS。但 2026-10-28 访问该仓库返回 404，raw LICENSE 也是 404，PyPI 上没有这个包。前作仓库 yuzhengv/Bayesian-ARGOS 有 MIT LICENSE（Copyright 2025）。"
+    },
+    {
+     "claim": "在混沌基准上优于 SINDy 系列",
+     "verdict": "overstated",
+     "evidence": "本文没有做新的基准实验，这条结论引用自前作 [25]，而前作原文是 'more data-efficient and more noise-robust than SINDy across most of seven chaotic systems'，以及“several scenarios”。"
+    },
+    {
+     "claim": "内置诊断能标记不可靠拟合",
+     "verdict": "supported",
+     "evidence": "§2.2.4 有 compute_vif、compute_pareto_k、compute_residuals。其中 Pareto-k 与残差诊断只配 Bayesian 估计器。"
+    },
+    {
+     "claim": "选择是“无阈值、有统计原则”的正式决策",
+     "verdict": "overstated",
+     "evidence": "“区间排除零”仍然是逐项规则：筛选和区间用的是同一份数据，也没有多重性或选择后推断的校正（正是 PSI-SINDy 指出的选择偏差）。论文局限节还承认真实项必须在库中，近零噪声会破坏同方差。"
+    }
+   ],
+   "fit_gaps": [
+    "G3_low_compute_law_distillation",
+    "G7_mechanism_sufficiency",
+    "G5_promotion_verification"
+   ],
+   "red_flags": [
+    "声明的仓库 404，PyPI 上也没有包，目前无法核对 LICENSE",
+    "优于 SINDy 的结论来自前作，不是本文的新实验",
+    "逐项选择没有多重性控制，存在选择偏差",
+    "候选库必须包含真实项"
+   ],
+   "code_status": "announced",
+   "code_repo": "https://github.com/yuzhengv/py-ARGOS（2026-10-28 返回 404）；前作 https://github.com/yuzhengv/Bayesian-ARGOS（MIT）",
+   "code_license": "论文声明 MIT，未能核验；前作 Bayesian-ARGOS 的 LICENSE 文件为 MIT",
+   "paper_license": "CC BY 4.0",
+   "needs_llm": "no",
+   "needs_gpu_training": "optional",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "依赖 NumPy、SciPy、scikit-learn、adelie、bambi、ArviZ、statsmodels，nutpie 可选 numba（CPU）后端。JAX GPU 后端只在库很大时有用，而且 NUTS 的树构建本来就跑在 CPU 上。adelie 在 macOS arm64 上的可用性没有核验。",
+   "how_to_borrow": "借晋升判据：残差公式的每一项都必须带区间，并且区间不含零才保留。借 VIF、Pareto-k、后验预测残差这三件诊断，作为 MID 公式的充分性检查清单。仓库公开并核过 LICENSE 后，可以在隔离环境里当离线 CPU 工具用。不借“区间排除零即显著”直接作为 SLOW 门，它应当和数据拆分或单侧门组合使用；仓库公开前不安装。",
+   "access_log": [
+    "curl export.arxiv.org/api/query（SINDy 检索命中 2610.34458）",
+    "curl https://arxiv.org/html/2610.34458v1（读 Code metadata、§2.2.4、§2.3、§4）",
+    "curl github.com/yuzhengv/py-ARGOS → 404；curl raw.githubusercontent.com/yuzhengv/py-ARGOS/main/LICENSE → 404",
+    "curl pypi.org/pypi/pyargos-equation-discovery/json → 不存在；pypi.org/pypi/pyargos 是一个无关项目（GPLv3 的 Argos 接口库）",
+    "curl api.github.com/users/yuzhengv/repos → Bayesian-ARGOS 为 MIT；curl raw LICENSE 确认是 MIT 文本"
+   ]
+  },
+  {
+   "key": "MOS-discrepancy",
+   "arxiv_id": "2610.09261",
+   "title": "A Sensitivity-based Framework for Calibrating Coupled Ordinary Differential Equations under Model Discrepancy",
+   "authors": "Mitchel J. Colebank, William Consagra (University of South Carolina)",
+   "date": "2026-10-07 (v1)",
+   "venue": "arXiv preprint stat.AP（33 页）",
+   "claimed_ref": "本组自行检索发现",
+   "primary_url": "https://arxiv.org/abs/2610.09261",
+   "exists": "verified",
+   "mechanism": "校准耦合多输出 ODE 时，给模型差异项 δ 一个多元高斯过程先验，并约束它与前向模型对参数的灵敏度正交（multivariate orthogonal sensitivity，MOS），这是把 Plumlee 2017 的单变量正交 GP 推广到多输出。灵敏度方程与 ODE 联立积分得到梯度，后验用自适应 Metropolis-within-Gibbs 采样。目的是不让柔性差异项吞掉参数效应，恢复参数可辨识性。",
+   "claims_checked": [
+    {
+     "claim": "比标准（多元 KOH）校准参数推断和预测都更好",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/html/2610.09261v1 §4：基线是多元 KOH（RBF Kronecker GP）。结论只在合成数据上成立（§4.1.1 数据生成）。"
+    },
+    {
+     "claim": "在三个模型系统上验证",
+     "verdict": "wrong",
+     "evidence": "摘要说三个（mass-spring、disease、neuron），但正文有四个：Mass-Spring-Damper、Four-Mass Oscillator、FitzHugh-Nagumo、SIRV（§4.2–4.5）。属于摘要与正文不一致。"
+    },
+    {
+     "claim": "代码公开",
+     "verdict": "supported",
+     "evidence": "https://github.com/mjcolebank/Discrepancy_USC 存在，2026-10-01 有推送，内容是 SciPy odeint（LSODA）、PyTorch、GPyTorch 脚本。但 GitHub API 显示 license=null，根目录没有 LICENSE 文件，且有多个 .pkl 结果文件。"
+    },
+    {
+     "claim": "不需要应用特定的差异先验",
+     "verdict": "supported",
+     "evidence": "正交约束由灵敏度自动构造。局限节承认方法依赖解析灵敏度，参数或状态维度高时推导和计算都会很重。"
+    }
+   ],
+   "fit_gaps": [
+    "G1_residual_structure",
+    "G4_identifiability_active_experiment"
+   ],
+   "red_flags": [
+    "论文许可 CC BY-NC-SA 4.0（非商用、相同方式共享）",
+    "仓库没有 LICENSE，默认保留所有权利",
+    "仓库含 .pkl 文件，加载有反序列化风险",
+    "摘要与正文的模型数量不一致",
+    "只用合成数据",
+    "接触、碰撞等非光滑动力学的灵敏度不连续，正交约束在这类系统上的适用性没有验证"
+   ],
+   "code_status": "released",
+   "code_repo": "https://github.com/mjcolebank/Discrepancy_USC",
+   "code_license": "无 LICENSE 文件（默认保留所有权利）",
+   "paper_license": "CC BY-NC-SA 4.0",
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "SciPy LSODA 积分联立灵敏度方程，再跑 GP 似然加 MCMC，属于低维 ODE 的 CPU 规模。论文没有报告运行时间。",
+   "how_to_borrow": "只借数学形式：式8 中的 r_θ 应约束在 ∂F_prior/∂φ 张成子空间的正交补里（或者先投影掉这部分），使残差不能吸收 φ_hat 的误差。GeometryCore 是确定性 NumPy 实现，可以用有限差分或前向灵敏度拿到雅可比来做投影。评测设计借“有/无正交约束时 φ 的后验覆盖与预测误差”这组对照。不借代码（仓库无许可证，论文为 NC 许可），不把 GP+MCMC 放进在线回路，也不加载仓库里的 pickle。",
+   "access_log": [
+    "curl export.arxiv.org/api/query（model discrepancy 检索命中 2610.09261）",
+    "curl https://arxiv.org/html/2610.09261v1（读摘要、§2–§4 标题、局限节，并找到 GitHub 链接）",
+    "curl api.github.com/repos/mjcolebank/Discrepancy_USC → license null；列 contents 时未见 LICENSE"
+   ]
+  },
+  {
+   "key": "SLICE",
+   "arxiv_id": "2610.13855",
+   "title": "SLICE: Sequential Likelihood-Free Inference via Conformal E-Values",
+   "authors": "Stefano Cortinovis, Laura Battaglia, François Caron",
+   "date": "2026-10-09 (v1)；2026-10-13 (v2)",
+   "venue": "arXiv preprint stat.ME",
+   "claimed_ref": "本组自行检索发现",
+   "primary_url": "https://arxiv.org/abs/2610.13855",
+   "exists": "verified",
+   "mechanism": "针对能模拟但似然算不出来的模型：每来一个新观测，就为参数网格上的每个候选 θ 新抽 K 个模拟参考样本，把一个正的可预测分数共形化成条件 e-value，逐步连乘得到检验鞅。依据 Ville 不等式，只保留 M<1/α 的候选 θ，并对历史取交集，得到嵌套的随时有效置信序列。分数换成什么都不影响有效性，只影响效率；似然比分数的期望对数增长最大，因此作者用摊销神经比率估计器去逼近它。",
+   "claims_checked": [
+    {
+     "claim": "精确的随时有效置信序列，对任意正的可预测分数都有效",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/html/2610.13855v2 §3.1/§4.1：test (super)martingale 加 Ville 不等式。前提是模拟器设定正确、候选网格有限，作者在局限节写明了这两点。"
+    },
+    {
+     "claim": "持续监测下仍有效，而固定样本方法会失效",
+     "verdict": "supported",
+     "evidence": "§5：合成基准、半合成的 LLM 路由审计、OGLE-IV 微透镜真实数据。设置为 n=100、1000 次重复、α=0.1、K=15。"
+    },
+    {
+     "claim": "神经分数接近精确似然比",
+     "verdict": "supported",
+     "evidence": "§5 与结论有这一结论，但作者同时承认 'conformalization has a visible cost'。"
+    },
+    {
+     "claim": "能在 Apple Silicon 上运行",
+     "verdict": "supported",
+     "evidence": "论文写明所有实验在 Apple Silicon M4 Pro 24GB 上运行，使用 PyTorch MPS 后端。"
+    },
+    {
+     "claim": "有公开代码",
+     "verdict": "unverifiable",
+     "evidence": "HTML 中没有仓库链接；第一作者 GitHub（stefanocortinovis）近期仓库里没有 SLICE；GitHub 搜索为 0 条。"
+    }
+   ],
+   "fit_gaps": [
+    "G4_identifiability_active_experiment",
+    "G5_promotion_verification",
+    "G7_mechanism_sufficiency"
+   ],
+   "red_flags": [
+    "保证依赖模拟器设定正确；把“置信集为空”当作错设信号是本次的推断，论文没有证明",
+    "依赖有限参数网格，参数维度高时代价随网格增长",
+    "参考样本的抽取让置信序列本身带随机性",
+    "没有找到代码"
+   ],
+   "code_status": "unknown",
+   "code_repo": "未找到",
+   "code_license": "无",
+   "paper_license": "arXiv.org perpetual non-exclusive license",
+   "needs_llm": "no",
+   "needs_gpu_training": "optional",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "作者实测在 Apple M4 Pro 24GB 上用 MPS 运行。每步需要对每个候选 θ 跑 K 次模拟，GeometryCore 这种纯 NumPy 模拟器很便宜。神经比率估计器可以换成手工分数，就不需要训练。",
+   "how_to_borrow": "GeometryCore 本身就是确定性模拟器，可以直接借这套协议：每步用模拟参考样本共形化得到 e-value，连乘，凡是超过 1/α 的 φ 候选就排除，从而给 φ_hat 维持一个随时有效的置信集。这个集合可以用作 SLOW 写入时对参数的单侧检验；集合变空可以作为“已有机制不足”的触发信号，但这一用法需要另行验证。分数可以用残差范数这类手工分数。不借神经比率估计器的训练流程，也不借 LLM 路由审计这个应用。",
+   "access_log": [
+    "curl export.arxiv.org/api/query（e-values 检索命中 2610.13855）",
+    "curl https://arxiv.org/html/2610.13855v2（读 §3–§5、局限节和硬件说明）",
+    "curl api.github.com/users/stefanocortinovis/repos → 没有 SLICE 仓库；curl api.github.com/search/repositories?q=SLICE+conformal+e-values → 0 条",
+    "说明：X 和官方博客没能检索（WebSearch 不可用）；GitHub 只用未认证的 search API 覆盖了 MLX 物理、方程发现、符号回归、anytime-valid 等关键词，没有高于本表的候选"
+   ]
+  }
+ ]
+}

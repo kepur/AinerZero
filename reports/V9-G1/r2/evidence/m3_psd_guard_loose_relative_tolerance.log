@@ -1,0 +1,80 @@
+$ pytest /Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py
+....FFFF...................................                              [100%]
+=================================== FAILURES ===================================
+______ test_f1_guard_boundary_matches_registered_relative_formula[0.001] _______
+
+scale = 0.001
+
+    @pytest.mark.parametrize("scale", [1e-3, 1.0, 1e6])
+    def test_f1_guard_boundary_matches_registered_relative_formula(scale):
+        # 矩阵谱范数 ~ scale；登记容差 = 1e-12 * max(1, ||M||_2)。
+        tolerance = PSD_RTOL * max(1.0, scale)
+    
+        accepted = np.diag([scale, scale, -0.5 * tolerance])
+        out = covariance(accepted, 3, semidefinite=True)
+        assert np.linalg.eigvalsh(out)[0] >= -psd_tol(accepted)
+    
+        rejected = np.diag([scale, scale, -2.0 * tolerance])
+>       with pytest.raises(ValueError, match="positive semidefinite"):
+E       Failed: DID NOT RAISE ValueError
+
+tests/v9/geometry/test_geometry_r2.py:120: Failed
+_______ test_f1_guard_boundary_matches_registered_relative_formula[1.0] ________
+
+scale = 1.0
+
+    @pytest.mark.parametrize("scale", [1e-3, 1.0, 1e6])
+    def test_f1_guard_boundary_matches_registered_relative_formula(scale):
+        # 矩阵谱范数 ~ scale；登记容差 = 1e-12 * max(1, ||M||_2)。
+        tolerance = PSD_RTOL * max(1.0, scale)
+    
+        accepted = np.diag([scale, scale, -0.5 * tolerance])
+        out = covariance(accepted, 3, semidefinite=True)
+        assert np.linalg.eigvalsh(out)[0] >= -psd_tol(accepted)
+    
+        rejected = np.diag([scale, scale, -2.0 * tolerance])
+>       with pytest.raises(ValueError, match="positive semidefinite"):
+E       Failed: DID NOT RAISE ValueError
+
+tests/v9/geometry/test_geometry_r2.py:120: Failed
+____ test_f1_guard_boundary_matches_registered_relative_formula[1000000.0] _____
+
+scale = 1000000.0
+
+    @pytest.mark.parametrize("scale", [1e-3, 1.0, 1e6])
+    def test_f1_guard_boundary_matches_registered_relative_formula(scale):
+        # 矩阵谱范数 ~ scale；登记容差 = 1e-12 * max(1, ||M||_2)。
+        tolerance = PSD_RTOL * max(1.0, scale)
+    
+        accepted = np.diag([scale, scale, -0.5 * tolerance])
+        out = covariance(accepted, 3, semidefinite=True)
+        assert np.linalg.eigvalsh(out)[0] >= -psd_tol(accepted)
+    
+        rejected = np.diag([scale, scale, -2.0 * tolerance])
+>       with pytest.raises(ValueError, match="positive semidefinite"):
+E       Failed: DID NOT RAISE ValueError
+
+tests/v9/geometry/test_geometry_r2.py:120: Failed
+_________________ test_f1_guard_rejects_true_negative_definite _________________
+
+    def test_f1_guard_rejects_true_negative_definite():
+        cases = {
+            "min eig = -1e-6*||M||": np.diag([1.0, 1.0, -1e-6]),
+            "min eig = -1e-6*||M|| (scaled)": np.diag([10.0, 10.0, -1e-5]),
+            "negative semidefinite": -rank1([1.0, 2.0, 2.0]),
+            "rotated negative direction": np.array(
+                [[0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+            )
+            - 1e-6 * rank1([1.0, 0.0, 0.0]),
+        }
+        for tag, matrix in cases.items():
+>           with pytest.raises(ValueError, match="positive semidefinite"):
+E           Failed: DID NOT RAISE ValueError
+
+tests/v9/geometry/test_geometry_r2.py:135: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_boundary_matches_registered_relative_formula[0.001]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_boundary_matches_registered_relative_formula[1.0]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_boundary_matches_registered_relative_formula[1000000.0]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_rejects_true_negative_definite
+4 failed, 39 passed in 0.26s

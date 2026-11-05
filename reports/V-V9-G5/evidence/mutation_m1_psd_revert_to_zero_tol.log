@@ -1,0 +1,69 @@
+Command: python /Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-G5/independent_verification.py
+
+STDOUT:
+[FAIL] C1_PSD_BOUNDARY: 近 PSD 与真负定边界对抗扫描
+       - near_psd_fail_d2_s1e-06_r1: covariance must be positive semidefinite
+       - near_psd_fail_d2_s0.001_r1: covariance must be positive semidefinite
+       - near_psd_fail_d2_s1_r1: covariance must be positive semidefinite
+       - near_psd_fail_d2_s1000_r1: covariance must be positive semidefinite
+       - near_psd_fail_d2_s1e+06_r1: covariance must be positive semidefinite
+       - near_psd_fail_d3_s1e-06_r1: covariance must be positive semidefinite
+       - near_psd_fail_d3_s1e-06_r2: covariance must be positive semidefinite
+       - near_psd_fail_d3_s0.001_r1: covariance must be positive semidefinite
+       - near_psd_fail_d3_s0.001_r2: covariance must be positive semidefinite
+       - near_psd_fail_d3_s1_r1: covariance must be positive semidefinite
+       - near_psd_fail_d3_s1_r2: covariance must be positive semidefinite
+       - near_psd_fail_d3_s1000_r1: covariance must be positive semidefinite
+       - near_psd_fail_d3_s1000_r2: covariance must be positive semidefinite
+       - near_psd_fail_d3_s1e+06_r1: covariance must be positive semidefinite
+       - near_psd_fail_d3_s1e+06_r2: covariance must be positive semidefinite
+       - near_psd_fail_d6_s1e-06_r1: covariance must be positive semidefinite
+       - near_psd_fail_d6_s1e-06_r2: covariance must be positive semidefinite
+       - near_psd_fail_d6_s0.001_r1: covariance must be positive semidefinite
+       - near_psd_fail_d6_s0.001_r2: covariance must be positive semidefinite
+       - near_psd_fail_d6_s1_r1: covariance must be positive semidefinite
+       - near_psd_fail_d6_s1_r2: covariance must be positive semidefinite
+       - near_psd_fail_d6_s1000_r1: covariance must be positive semidefinite
+       - near_psd_fail_d6_s1000_r2: covariance must be positive semidefinite
+       - near_psd_fail_d6_s1e+06_r1: covariance must be positive semidefinite
+       - near_psd_fail_d6_s1e+06_r2: covariance must be positive semidefinite
+       - tested_configurations: 25
+       - near_psd_accepted: 0
+       - true_negatives_rejected: 50
+       - asymmetric_rejected: 25
+       - tolerance_scales_tested: [1e-06, 0.001, 1.0, 1000.0, 1000000.0]
+[FAIL] C2_POSE_GRAPH_OBSERVABILITY: pose_graph 秩亏负舍入截断与不可观 fail-closed
+       - rank_deficient_sol_error: covariance must be positive semidefinite
+       - disconnected_graph_unexpected_exc: ValueError: covariance must be positive semidefinite
+       - missing_anchor_fail_closed: no anchor: global translation and rotation gauge is unobservable
+       - unobservable_graph_unexpected_exc: ValueError: covariance must be positive semidefinite
+[PASS] C3_GRAVITY_SCALE_INVARIANCE: GravityFrame 水平参考向量尺度无关性与临界/退化对抗
+       - scale_range_basis_max_diff: 0.0
+       - all_scales_invariant: True
+[PASS] C4_DOCUMENT_SECTIONS_AUDIT: 逐节差异与 S0 数学稳定性核验
+       - sections_inspected: 26
+       - s0_math_unchanged_verified: True
+       - survey_prefix_verified: True
+[PASS] C5_CONSUMER_GATE_NO_EXEMPTION: 消费门未豁免文档逻辑与防篡改拦截核实
+       - normal_verify_passed: True
+       - tamper_successfully_blocked: exit_code=1
+[PASS] C6_F4_STATUS_AND_LARGE_ANGLE: F4 超大角状态保留与安全角数值精度核实
+       - se2_exp_1e3_safe: True
+       - f4_behavior_preserved: OverflowError 保留: (34, 'Result too large')
+       - f4_predict_preserved: predict dt=1e300 OverflowError 保留: (34, 'Result too large')
+
+
+STDERR:
+Traceback (most recent call last):
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-G5/independent_verification.py", line 536, in <module>
+    suite_res = run_counterexamples()
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-G5/independent_verification.py", line 504, in run_counterexamples
+    filter_state = filter_state.predict(np.array([0.1, 0.0, 0.02]), 0.1, proc_cov)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/ainerzero-v9g6-verify-mutation-20261020T160103/src/ainerzero/v9/geometry/belief.py", line 77, in predict
+    q = covariance(process_covariance_rate, g.dof, semidefinite=True) * dt
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/ainerzero-v9g6-verify-mutation-20261020T160103/src/ainerzero/v9/geometry/belief.py", line 39, in covariance
+    raise ValueError("covariance must be positive semidefinite")
+ValueError: covariance must be positive semidefinite

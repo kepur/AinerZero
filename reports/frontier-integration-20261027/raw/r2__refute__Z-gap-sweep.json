@@ -1,0 +1,172 @@
+{
+ "group": "Z-gap-sweep",
+ "verdicts": [
+  {
+   "key": "ALDER",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API 与 abs 页一致：2609.33728v1，标题完全一致，作者 Teng Cao, Yu Deng, Quentin Delfosse, Kristian Kersting，2026-09-27 提交，cs.LG，许可 arXiv nonexclusive-distrib 1.0。HTML 中通讯邮箱为 tu-darmstadt.de，机构还包括 Intrinsic、DFKI、hessian.AI。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "系数拟合不全是岭回归：只有平方误差且对系数线性的模型才用 ridge；非线性参数用 sigmoid 有界重参数化加梯度优化（反向传播、多次重启），事件目标用类别平衡的 logistic loss（§3.1、A.1.2）。",
+    "ARS 打分不只看分歧，而是复合目标：候选预测分歧，乘以'合理模型对'的权重，加上'与已观测输入不同'的新颖性奖励，再减去交互成本，并受安全可行约束。候选按公开验证似然、误差或 BIC 加权（式 5–6）。借用时不能只写成'分歧最大'。",
+    "RQ2 的辨识成本是事后测得的持续辨识时间，论文原话是 'not online stopping times'，而且候选集固定。ARS 均值 1.16，参数不确定性基线 1.35，oracle 参考 1.18，相对强基线的优势不大。",
+    "局限节自认 'reusing validation data may lead to overfitting'，候选也可能共享预测误差：受保护的准入数据在多轮之间反复使用，不是一次性留出集，也没有理论保证。照搬'受保护留出准入'时，必须自己限定验证反馈次数。",
+    "compute_notes 中'也试过 20B 以上的开源模型'有误：A.6.3/Table 20 的开放权重骨干包括 Qwen3.5-9B（准入 100%，term support 66.7%），只在 12 个 RoboCasa 世界 × 3 个种子的子集上测试。token 数为 'API-reported'，没有证据表明在本地或 Apple Silicon 上运行过。",
+    "与 LLM-ACES 的比较，论文 §4.1 自述 'not matched for model backbone or interaction budget'，比原记录所述更弱。",
+    "'失败提案不删'有出处：A.1.4 审计称 'no failed proposal is removed'，§3 说 Evidence Ledger 保存 previous failures。摘要里的 'incompatible laws are discarded' 指的是从候选集中剔除。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2609.33728：标题、四位作者、published 2026-09-27T16:30:08Z、cs.LG 均一致",
+    "https://arxiv.org/abs/2609.33728：许可链接为 arxiv.org/licenses/nonexclusive-distrib/1.0",
+    "https://arxiv.org/html/2609.33728v1 §3.2：'Prediction disagreement serves as a proxy for information gain, not an exact mutual-information calculation'；式 6 含新颖性项与成本项",
+    "同页 Table 11：ARS 1.16、Random 3.53、Geometric 1.91、Param-uncertainty 1.35、Oracle 1.18；注明 'retrospective sustained identification, not online stopping times'",
+    "同页 Algorithm 1：grammar、budgets、admission thresholds 在发现前冻结；输出 'A validated model, or refusal'",
+    "同页 Table 3/RQ4：Missing smooth、Missing local、Hidden local 的准入率均为 0%",
+    "同页 A.6.1：非 ALDER 条目 'taken from its Tables 2–3 and were not rerun locally'，用 GPT-4o mini 当裁判；60/63 ODEBench、49/59 ODEBase",
+    "同页 A.7.2/Table 21：gpt-5.6-sol，RQ1 共 34.1M 输入 token；RoboCasa Drawer 413,528、Door 323,520 token",
+    "同页 Table 20：开放权重骨干 Qwen3.5-9B 到 Qwen3-235B-A22B，准入 58.3–100%",
+    "同页 §5 Limitations：'reusing validation data may lead to overfitting'",
+    "HTML 中除 LaTeXML 和资助方外没有外部代码链接；GitHub search 'ALDER law discovery'、'action-guided law discovery' 均为 0",
+    "说明：WebFetch 返回模型错误（deepseek-v4-pro 不可用），以上全部改用 curl 读取，只输出到 stdout"
+   ]
+  },
+  {
+   "key": "EvidenceGatedResearch",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2610.01751v1，标题一致，单作者 Yifan Guo，2026-10-01，cs.LG，注释 '17 pages, 4 figures. Preprint'。HTML 列出机构为 Stony Brook University 应用数学与统计系。abs 页许可为 CC BY 4.0。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "'IUT 合成'的具体形式是 E_pers = min_e E^e（Lemma 1）。这种合成不需要跨环境独立，但论文承认，当某个环境证据积累慢时会偏保守。",
+    "Stagewise EGR 的准确做法是：按预先声明的固定顺序访问各环境，当前分量越过候选阈值后才开启下一个分量。EGR-ALLOC 则在每阶段上限内回收已完成阶段省下的预算；另有 Evidence balancing，把下一个单元送给证据最弱、尚未判定的分量。",
+    "每个分量的 e-process 是预先承诺 λ_k 的 betting 乘积混合，要求更新有界（用 B_e 缩放到 [-1,1]），并在联合历史上满足 Assumption 1。相关的原始行必须聚成 block 或 cluster 作为证据单元，否则失效（§5.3 的聚类压力测试）。",
+    "原记录漏掉了功效代价：Table 3 中持久备择功效，Fixed IUT 为 .188、Stagewise 为 .196、EGR-ALLOC 为 .251，而只用开发集均值的方法是 .907。FDR 受控的代价是功效大幅下降。",
+    "Theorem 2 对 e-LOND 的 FDR 控制写的是 'under the dependence conditions of Xu and Ramdas (2024)'。论文明说有限次运行的误差估计只是描述性的（'Finite-run error estimates below are descriptive'）。",
+    "公开数据研究的序贯结论只相对于 'induced finite empirical distributions, not to an unknown deployment population'。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2610.01751：单作者 Yifan Guo，published 2026-10-01T14:17:55Z",
+    "https://arxiv.org/abs/2610.01751：许可链接为 creativecommons.org/licenses/by/4.0",
+    "https://arxiv.org/html/2610.01751v1 §4.1：式 6 为 betting 混合 e-process，式 7 为 min 合成，'No independence across environments is required'",
+    "同页 §4.3：式 9 为 α_t=αγ_t(R_{t-1}+1)、q_t=α_t^{-1}，E_pers≥q_t 才采纳；Theorem 2 列出假设 (i)–(iii)",
+    "同页 §5.1：M=16、5,000 条轨迹、δ=0.01、B=120 时持久 FDR 0.621；无流校正时 T=500 的 FDR 为 0.999；0/5000 对应约 6×10^-4 的上界；Table 3 功效 .188/.196/.251 对 .907",
+    "同页 §5.2：同一 e-value 流下 e-LOND .619、e-LORD .890、e-SAFFRON .888、e-FWER .415",
+    "同页 §5.5/Table 7：证据 1600.0→702.4（56.1%），功效同为 .6477，配对节省 897.6，CI 878.1–917.3",
+    "同页 C.2：E30 三环境 0/800，Wilson 上界 .00478；E32 0/500，上界 .00762",
+    "同页 Reproducibility Statement：supplementary bundle 'includes runnable code ... SHA-256 checksums'，没有 URL；AI Use Statement 涵盖证明草稿与代码",
+    "GitHub search 'e-LOND adoption' 为 0；'evidence-gated research' 的命中都是无关仓库"
+   ]
+  },
+  {
+   "key": "PSI-SINDy",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2610.11486v1，标题一致，作者 Ashraful Islam, Shuichi Nishino, Tomohiro Shiraishi, Ichiro Takeuchi，2026-10-08，stat.ML/cs.LG，'47 pages, 3 figures, 16 tables'，许可 arXiv nonexclusive。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "'用多面体条件推断给出有限样本精确的检验和区间'有误。数据拆分已使选项视图与检验响应独立，给定 H 时检验响应服从独立高斯分布（式 10），所以 IV 目标的精确推断就是普通的 z 区间和 p 值（Theorem 1），不需要 Lee et al. 式的多面体或截断高斯条件化。选项步骤可以用任意稀疏回归（lasso、STLSQ），只要只用 V1。",
+    "理论适用范围比原记录写的更窄：标量轨迹 ẋ=f(x)（f:R→R）、弱形式 SINDy、固定多项式库、iid 高斯噪声且方差已知；BLA 结论只是渐近成立。主仿真是标量 ODE（式 17）。Van der Pol、Lotka–Volterra、Lorenz、pendulum 属于多状态扩展实验，论文原话是 'extend beyond the scalar BLA theorem'，且 'nominal coverage is not uniformly attained'。",
+    "实验数据是 Hanschek et al. 2026 公开的 8 条超级电容放电曲线。论文明说 'Estimated noise variance and unresolved temporal dependence place this application outside the theoretical guarantees'；相关噪声仿真中 BLA 覆盖率为 81.86%（独立噪声时为 95.23%）。",
+    "BLA 目标是对无噪弱响应的最小二乘近似，论文明说它 'need not equal a governing-equation coefficient'。借作晋升门时，被检验的不是真实规律系数。",
+    "d_{j,S}=0 时 'no IV test or interval is reported'，这一点核实无误，可以作为弃权规则的出处。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2610.11486：作者、日期、分类一致",
+    "https://arxiv.org/abs/2610.11486：许可为 arxiv.org/licenses/nonexclusive-distrib/1.0",
+    "https://arxiv.org/html/2610.11486v1 §2.1：标量观测 x_m=x*_m+ε_m，ε iid N(0,σ_X²)，'we treat σ_X² as known'",
+    "同页 §3.2 Theorem 1：给定 H，(ĉ−c*)/e ~ N(0,1)，区间为 ĉ±z e；d_{j,S}=0 时不报告",
+    "同页 §4.3：多状态实验 'extend beyond the scalar BLA theorem ... nominal coverage is not uniformly attained'",
+    "同页 §4.4：超级电容数据 'outside the theoretical guarantees'；覆盖率 95.23% 对 81.86%",
+    "同页 §5 Conclusion：保证 'asymptotic and currently established for scalar trajectories, fixed polynomial libraries, and independent Gaussian noise of known variance'",
+    "同页 Appendix I/Table 16：MacBook Pro M4 Pro，'CPU only'，单线程；推断中位耗时 0.0088–0.2701 s（M=200–3200）；完整研究在 Linux x86_64、8 个 worker 上运行",
+    "HTML 只提到 'code supplement'，没有 URL；GitHub search 'PSI-SINDy'、'post-selection SINDy' 均为 0"
+   ]
+  },
+  {
+   "key": "py-ARGOS",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2610.34458v1，标题一致，作者 Yuzheng Zhang, Rui Carvalho（Durham University 工程系），2026-10-25，cs.MS，'17 pages, 4 figures'，abs 页许可为 CC BY 4.0。Code metadata 表写 v0.1.0、MIT、仓库 https://github.com/yuzhengv/py-ARGOS。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "流程细节补充：平滑求导用自适应 Savitzky–Golay 滤波，窗口按重构误差自动选择；筛选阶段先用 adelie 做交叉验证的 lasso/ridge，再用 statsmodels 做 OLS 重拟合和 BIC 选择，之后才进入 bootstrap 或 Bambi（PyMC）的区间判定。",
+    "代码许可仍然无法核验：2026-10-28 复查时，github.com/yuzhengv/py-ARGOS、对应的 raw LICENSE 和 GitHub API 都返回 404，PyPI 的 pyargos-equation-discovery 也是 404。",
+    "原记录把前作 yuzhengv/Bayesian-ARGOS（MIT，Copyright (c) 2025 YZhang）列为参照，但它是 R 包加实验脚本的仓库（含 DESCRIPTION、NAMESPACE、R/，没有 pyproject）。论文自己说 'Bayesian-ARGOS's Python implementation has not yet been packaged'，所以它不能替代 py-ARGOS 的 Python 实现。",
+    "needs_gpu_training=optional 的措辞不准：这里没有训练环节，GPU 只是 nutpie/JAX 采样梯度的可选加速。论文写明 NUTS 的树构建控制流仍在 CPU 上。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2610.34458：作者、日期 2026-10-25T17:25:43Z、cs.MS 一致",
+    "https://arxiv.org/abs/2610.34458：许可链接为 creativecommons.org/licenses/by/4.0",
+    "https://arxiv.org/html/2610.34458v1 Table 1：C2 为 github.com/yuzhengv/py-ARGOS，C3 为 MIT；§2 写发行名 pyargos-equation-discovery",
+    "同页 §2.2.4：VIF>10、Pareto-k̂>0.7、后验预测残差；后两者只配 Bayesian 估计器",
+    "同页 §4/Table 2 注：优势结论 'which we cite rather than reproduce'，原文为 'most of seven chaotic systems'",
+    "同页 §2.3：真实项必须在库中；近零噪声会破坏同方差；混沌吸引子上的密集采样会放大共线",
+    "curl 2026-10-28：py-ARGOS 仓库页、raw LICENSE、api.github.com/repos、PyPI JSON 均为 404",
+    "api.github.com/users/yuzhengv/repos：Bayesian-ARGOS 为 MIT（2026-10-25 有推送）；pyargos_with_sindy_shred 无许可；Bayesian-ARGOS 的 contents 为 R 包结构"
+   ]
+  },
+  {
+   "key": "MOS-discrepancy",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2610.09261v1，标题一致，作者 Mitchel J. Colebank, William Consagra（University of South Carolina，同等贡献），2026-10-07，stat.AP/math.OC，'33 pages, 13 figures'，abs 页许可为 CC BY-NC-SA 4.0。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "推断目标 θ 被定义为 L² 意义下的最佳拟合参数（式 9）。Lemma 1 的正交约束 ∫_Ω S(t,θ)ᵀAᵀδ_θ(t)dt=0，来自 θ 在 Θ 内部时的一阶最优条件。因此'恢复参数可辨识性'指的是 L² 投影参数可辨识，而不是物理真值可恢复：真实差异中沿灵敏度方向的分量，按定义会被并入 θ。借到 GeometryCore 时应写成'φ_hat 定义为投影参数'。",
+    "合成数据中的差异项本身就由 MOS 先验生成（结论原话 'We generated data for our study from the models and MOS approach'，§4.2–4.5 都写 'we generate a signal using the MOS framework'）。所以这组比较对 MOS 是正确设定，对 KOH 是错设，'优于 KOH'不能当作对任意真实差异稳健的证据。",
+    "引言的原话是 'performs as well or better'。FitzHugh–Nagumo 上 'empirical coverage is similar for both methods, and severely undercover for the parameter b'，结论也只说区间 'largely' 校准良好。",
+    "原记录把'三个还是四个模型'判为 wrong，说得过重：正文有 4 节，但 Mass-Spring-Damper 和 Four-Mass Oscillator 都是质量-弹簧系统，摘要按系统族计为 3 个。这只是归类方式不同，不是事实矛盾。",
+    "前提补充：§3.1 假设灵敏度系统光滑连续，测量噪声同方差高斯。约束是连续时间的 L² 积分，实现时要在观测网格上离散化。仓库复核结果：license=null，没有 LICENSE 或 README 文件，含 15 个 .pkl、9 个 .py、8 个 .ipynb。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2610.09261：作者、日期 2026-10-07T00:51:15Z、stat.AP/math.OC 一致",
+    "https://arxiv.org/abs/2610.09261：许可链接为 creativecommons.org/licenses/by-nc-sa/4.0",
+    "https://arxiv.org/html/2610.09261v1 §3.1 式 9：θ 为 L² 校准最小化参数；§3.2 Lemma 1 式 12 为正交约束；Theorem 1 是 Plumlee 2017 Theorem 3 的多元推广",
+    "同页 §4.1.2：SciPy odeint（LSODA）、PyTorch、GPyTorch，仓库为 github.com/mjcolebank/Discrepancy_USC；§4.1.3 的基线是多元 KOH（RBF Kronecker）",
+    "同页 §4.2.1–4.5.1：各例差异信号 'generate ... using the MOS framework'；§4.4.1 中参数 b 严重欠覆盖",
+    "同页 §5：'We generated data for our study from the models and MOS approach'；局限包括依赖解析灵敏度、高维代价大",
+    "api.github.com/repos/mjcolebank/Discrepancy_USC：license null，pushed 2026-10-01；git tree 共 32 项，没有 LICENSE 或 README，15 个 pkl"
+   ]
+  },
+  {
+   "key": "SLICE",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2610.13855，v1 发布于 2026-10-09T17:04:51Z，v2 更新于 2026-10-13；作者 Stefano Cortinovis, Laura Battaglia, François Caron（Oxford 统计系）；stat.ME/stat.ML；许可 arXiv nonexclusive。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "how_to_borrow 中'GeometryCore 本身就是确定性模拟器，可以直接借'不成立。Proposition 4.1 的有效性要求在 H_θ 下，观测值与 K 个伪观测条件可交换，也就是要有一个包含观测噪声、设定正确的随机模拟器。确定性模拟器给出的参考样本是退化的，必须先套上设定正确的噪声或观测模型；噪声模型设错，有效性随之失效。",
+    "基础理论假设观测 iid。按 C.1.1，对 Markov 或状态空间的轨迹数据，伪观测必须在同一段已观测历史（或潜状态滤波信息）上条件模拟。GeometryCore 的逐步轨迹属于这一情形，不能照搬 iid 版本。",
+    "有限网格是默认实现，不是方法固有的限制：网格上的覆盖保证只对落在网格上的真参数成立；附录 C.2.2 另给了 certified outer approximation，可以得到连续参数覆盖。",
+    "代价为 O(nGK) 次模拟器调用，内存 O(GK)。实验设置：n=100、1000 次重复、K=15，位置模型 81 个候选，微透镜应用 G=2,048。神经比率网络在监测前训练一次。",
+    "硬件确实是 M4 Pro 24GB，用 PyTorch MPS（GPU）加速。只用 CPU 加手工分数在理论上仍然有效（任意正的可预测分数都行），但论文没有测过其效率；分数选错时功效可能严重下降（如 g-and-k 上的 NRE-A）。",
+    "'置信集为空即机制不足'不在原文中，原记录已标注，此处确认。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2610.13855：v2，published 2026-10-09，updated 2026-10-13，三位作者一致",
+    "https://arxiv.org/abs/2610.13855：许可为 arxiv.org/licenses/nonexclusive-distrib/1.0",
+    "https://arxiv.org/html/2610.13855v2 §4.1 Proposition 4.1：'For every θ ... every sequence of positive predictable scores ... test martingale'，证明依赖批内条件可交换",
+    "同页 Algorithm 1：running intersection {θ∈Θ_eval: M_i^(θ)<α^{-1}}；§3.1 式 3 为 Ville 不等式",
+    "同页 C.1.1：'For Markov or state-space simulators, this requires simulating pseudo-observations conditionally on the same observed history'",
+    "同页 C.2.2：'Evaluating it on a finite grid gives the stated coverage guarantee only for true parameters on that grid'，另给连续参数的 certified 版本",
+    "同页 §6：局限为网格、参考样本带来的随机性、需要好的可预测备择，以及 'a correctly specified simulator'",
+    "同页 Appendix D：'Apple Silicon M4 Pro with 24 GB ... PyTorch's Metal (MPS) backend for GPU acceleration'；Cost 为 O(nGK)",
+    "同页 §5：'conformalization has a visible cost'；n=100、1000 次重复、K=15、α=0.1",
+    "HTML 中没有代码链接；api.github.com/users/stefanocortinovis/repos 最近的仓库（robustcs、relaxedgp 等）里没有 SLICE；GitHub search 'SLICE likelihood-free conformal' 为 0"
+   ]
+  }
+ ]
+}

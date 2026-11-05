@@ -1,0 +1,184 @@
+...................F........FFFFFFFFF...                                 [100%]
+=================================== FAILURES ===================================
+______________ test_mutant_reintroducing_r1_defect_is_caught[f4] _______________
+
+key = 'f4'
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-159/test_mutant_reintroducing_r1_d4')
+
+    @pytest.mark.parametrize("key", sorted(MUTANTS))
+    def test_mutant_reintroducing_r1_defect_is_caught(key: str, tmp_path: Path) -> None:
+        before = {p.name: p.read_bytes() for p in MECH_DIR.glob("*.py")}
+        mutant = _build_mutant(tmp_path, key)
+        try:
+            holds = SCENARIOS[key](mutant)
+        except AssertionError:
+            holds = False  # the mutant broke the guard loudly (e.g. contraction assertion) - also a catch
+        finally:
+            sys.modules.pop(mutant.__name__, None)
+            for sub in [m for m in sys.modules if m.startswith(mutant.__name__ + ".")]:
+                sys.modules.pop(sub, None)
+>       assert holds is False, f"mutant {key} was not caught by its scenario"
+E       AssertionError: mutant f4 was not caught by its scenario
+E       assert True is False
+
+tests/v9/mechanism/test_cmfl_r2_adversarial.py:275: AssertionError
+__ test_family_labels_undeclared_or_empty_family_rejected_and_e_values_differ __
+
+    def test_family_labels_undeclared_or_empty_family_rejected_and_e_values_differ() -> None:
+        rng = np.random.default_rng(3128)
+        d, c = _worlds(base_pkg, rng, "D", 6), _worlds(base_pkg, rng, "C", 20)
+        cand = _discover_true(base_pkg, d, rng, "lab")
+        reg = base_pkg.default_cmfl_registration()
+    
+        t_ok = _worlds(base_pkg, rng, "Tok", 45)
+        dec_ok = _promote(base_pkg, cand, d, c, t_ok, tag="lab_ok")
+>       assert dec_ok.admitted, dec_ok.rejection_reasons
+E       AssertionError: ('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)
+E       assert False
+E        +  where False = PromotionDecision(step_t=1, candidate_id='cand_lab', test_id='test_lab_ok', admitted=False, alpha_t=0.0303963550927013...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).admitted
+
+tests/v9/mechanism/test_cmfl_r2_adversarial.py:451: AssertionError
+____________ test_facttest_needs_enough_nulls_and_records_threshold ____________
+
+    def test_facttest_needs_enough_nulls_and_records_threshold() -> None:
+        rng = np.random.default_rng(4128)
+        d, c, t = _worlds(base_pkg, rng, "D", 6), _worlds(base_pkg, rng, "C", 20), _worlds(base_pkg, rng, "T", 45)
+        cand = _discover_true(base_pkg, d, rng, "ft")
+        prior = _prior(base_pkg)
+        reg = base_pkg.default_cmfl_registration()
+        assert base_pkg.facttest_required_null_count(reg.tau_cal, reg.delta_cal) == 29
+        nulls = base_pkg.build_facttest_null_controls(cand, d, prior, _valid_lib(base_pkg))
+        assert len(nulls) >= 29
+        for n_null, expect in ((0, False), (28, False), (len(nulls), True)):
+            gate = base_pkg.OneSidedPromotionGate(reg)
+            dec = gate.evaluate_and_promote(
+                cand, prior, discovery_contexts=d, calibration_contexts=c, test_contexts=t,
+                discovery_data_id="D_ft", calibration_data_id="C_ft", test_data_id=f"T_ft_{n_null}", test_id="ft",
+                producer="isolated_sim_verifier_v1", trusted_context=TRUSTED,
+                facttest_null_candidates=nulls[:n_null],
+            )
+>           assert dec.facttest_passed is expect and dec.admitted is expect, (n_null, dec.rejection_reasons)
+E           AssertionError: (32, ('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',))
+E           assert (False is True)
+E            +  where False = PromotionDecision(step_t=1, candidate_id='cand_ft', test_id='ft', admitted=False, alpha_t=0.030396355092701333, alpha_...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).facttest_passed
+
+tests/v9/mechanism/test_cmfl_r2_adversarial.py:481: AssertionError
+_____________ test_frozen_recipe_rejects_content_attacks[same_id] ______________
+
+attack = 'same_id'
+
+    @pytest.mark.parametrize("attack", ["same_id", "different_id", "one_coeff", "missing", "changed_D"])
+    def test_frozen_recipe_rejects_content_attacks(attack):
+        d, c, t, cand = fixture()
+        nulls = pkg.build_facttest_null_controls(cand, d, _prior(pkg), _valid_lib(pkg))
+        good = evaluate(pkg.OneSidedPromotionGate(pkg.default_cmfl_registration()), d, c, t, cand, nulls)
+>       assert good.admitted, good.rejection_reasons
+E       AssertionError: ('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)
+E       assert False
+E        +  where False = PromotionDecision(step_t=1, candidate_id='r3', test_id='T', admitted=False, alpha_t=0.030396355092701333, alpha_per_ca...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).admitted
+
+tests/v9/mechanism/test_cmfl_r3_integrity.py:31: AssertionError
+___________ test_frozen_recipe_rejects_content_attacks[different_id] ___________
+
+attack = 'different_id'
+
+    @pytest.mark.parametrize("attack", ["same_id", "different_id", "one_coeff", "missing", "changed_D"])
+    def test_frozen_recipe_rejects_content_attacks(attack):
+        d, c, t, cand = fixture()
+        nulls = pkg.build_facttest_null_controls(cand, d, _prior(pkg), _valid_lib(pkg))
+        good = evaluate(pkg.OneSidedPromotionGate(pkg.default_cmfl_registration()), d, c, t, cand, nulls)
+>       assert good.admitted, good.rejection_reasons
+E       AssertionError: ('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)
+E       assert False
+E        +  where False = PromotionDecision(step_t=1, candidate_id='r3', test_id='T', admitted=False, alpha_t=0.030396355092701333, alpha_per_ca...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).admitted
+
+tests/v9/mechanism/test_cmfl_r3_integrity.py:31: AssertionError
+____________ test_frozen_recipe_rejects_content_attacks[one_coeff] _____________
+
+attack = 'one_coeff'
+
+    @pytest.mark.parametrize("attack", ["same_id", "different_id", "one_coeff", "missing", "changed_D"])
+    def test_frozen_recipe_rejects_content_attacks(attack):
+        d, c, t, cand = fixture()
+        nulls = pkg.build_facttest_null_controls(cand, d, _prior(pkg), _valid_lib(pkg))
+        good = evaluate(pkg.OneSidedPromotionGate(pkg.default_cmfl_registration()), d, c, t, cand, nulls)
+>       assert good.admitted, good.rejection_reasons
+E       AssertionError: ('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)
+E       assert False
+E        +  where False = PromotionDecision(step_t=1, candidate_id='r3', test_id='T', admitted=False, alpha_t=0.030396355092701333, alpha_per_ca...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).admitted
+
+tests/v9/mechanism/test_cmfl_r3_integrity.py:31: AssertionError
+_____________ test_frozen_recipe_rejects_content_attacks[missing] ______________
+
+attack = 'missing'
+
+    @pytest.mark.parametrize("attack", ["same_id", "different_id", "one_coeff", "missing", "changed_D"])
+    def test_frozen_recipe_rejects_content_attacks(attack):
+        d, c, t, cand = fixture()
+        nulls = pkg.build_facttest_null_controls(cand, d, _prior(pkg), _valid_lib(pkg))
+        good = evaluate(pkg.OneSidedPromotionGate(pkg.default_cmfl_registration()), d, c, t, cand, nulls)
+>       assert good.admitted, good.rejection_reasons
+E       AssertionError: ('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)
+E       assert False
+E        +  where False = PromotionDecision(step_t=1, candidate_id='r3', test_id='T', admitted=False, alpha_t=0.030396355092701333, alpha_per_ca...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).admitted
+
+tests/v9/mechanism/test_cmfl_r3_integrity.py:31: AssertionError
+____________ test_frozen_recipe_rejects_content_attacks[changed_D] _____________
+
+attack = 'changed_D'
+
+    @pytest.mark.parametrize("attack", ["same_id", "different_id", "one_coeff", "missing", "changed_D"])
+    def test_frozen_recipe_rejects_content_attacks(attack):
+        d, c, t, cand = fixture()
+        nulls = pkg.build_facttest_null_controls(cand, d, _prior(pkg), _valid_lib(pkg))
+        good = evaluate(pkg.OneSidedPromotionGate(pkg.default_cmfl_registration()), d, c, t, cand, nulls)
+>       assert good.admitted, good.rejection_reasons
+E       AssertionError: ('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)
+E       assert False
+E        +  where False = PromotionDecision(step_t=1, candidate_id='r3', test_id='T', admitted=False, alpha_t=0.030396355092701333, alpha_per_ca...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).admitted
+
+tests/v9/mechanism/test_cmfl_r3_integrity.py:31: AssertionError
+___________ test_historical_world_and_content_replay_rejected[False] ___________
+
+relabel = False
+
+    @pytest.mark.parametrize("relabel", [False, True])
+    def test_historical_world_and_content_replay_rejected(relabel):
+        d, c, t, cand = fixture()
+        nulls = pkg.build_facttest_null_controls(cand, d, _prior(pkg), _valid_lib(pkg))
+        gate = pkg.OneSidedPromotionGate(pkg.default_cmfl_registration())
+        first = evaluate(gate, d, c, t, cand, nulls)
+>       assert first.admitted
+E       AssertionError: assert False
+E        +  where False = PromotionDecision(step_t=1, candidate_id='r3', test_id='T', admitted=False, alpha_t=0.030396355092701333, alpha_per_ca...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).admitted
+
+tests/v9/mechanism/test_cmfl_r3_integrity.py:52: AssertionError
+___________ test_historical_world_and_content_replay_rejected[True] ____________
+
+relabel = True
+
+    @pytest.mark.parametrize("relabel", [False, True])
+    def test_historical_world_and_content_replay_rejected(relabel):
+        d, c, t, cand = fixture()
+        nulls = pkg.build_facttest_null_controls(cand, d, _prior(pkg), _valid_lib(pkg))
+        gate = pkg.OneSidedPromotionGate(pkg.default_cmfl_registration())
+        first = evaluate(gate, d, c, t, cand, nulls)
+>       assert first.admitted
+E       AssertionError: assert False
+E        +  where False = PromotionDecision(step_t=1, candidate_id='r3', test_id='T', admitted=False, alpha_t=0.030396355092701333, alpha_per_ca...1', rejection_reasons=('FactTest D3-8: frozen recipe/content mismatch or duplicate semantic null laws (fail-closed)',)).admitted
+
+tests/v9/mechanism/test_cmfl_r3_integrity.py:52: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/mechanism/test_cmfl_r2_adversarial.py::test_mutant_reintroducing_r1_defect_is_caught[f4]
+FAILED tests/v9/mechanism/test_cmfl_r2_adversarial.py::test_family_labels_undeclared_or_empty_family_rejected_and_e_values_differ
+FAILED tests/v9/mechanism/test_cmfl_r2_adversarial.py::test_facttest_needs_enough_nulls_and_records_threshold
+FAILED tests/v9/mechanism/test_cmfl_r3_integrity.py::test_frozen_recipe_rejects_content_attacks[same_id]
+FAILED tests/v9/mechanism/test_cmfl_r3_integrity.py::test_frozen_recipe_rejects_content_attacks[different_id]
+FAILED tests/v9/mechanism/test_cmfl_r3_integrity.py::test_frozen_recipe_rejects_content_attacks[one_coeff]
+FAILED tests/v9/mechanism/test_cmfl_r3_integrity.py::test_frozen_recipe_rejects_content_attacks[missing]
+FAILED tests/v9/mechanism/test_cmfl_r3_integrity.py::test_frozen_recipe_rejects_content_attacks[changed_D]
+FAILED tests/v9/mechanism/test_cmfl_r3_integrity.py::test_historical_world_and_content_replay_rejected[False]
+FAILED tests/v9/mechanism/test_cmfl_r3_integrity.py::test_historical_world_and_content_replay_rejected[True]
+10 failed, 30 passed in 5.94s
+[relay exec] 墙钟监督证据：{"wall_s": null, "cap_s": null, "pgid": 91478, "timeout": false, "elapsed_s": 6.111, "kind": "exited", "confirmed_empty": true, "members_left": [], "confirmed_by": "ps", "attempts": [{"method": "ps", "outcome": "empty", "reason": "enumerated"}], "leader_returncode": 1, "confirmed_at_s": 6.1109}
+[relay exec] 归档耗时：{"archive_s": 0.009}

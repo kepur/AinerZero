@@ -1,0 +1,210 @@
+{
+ "group": "D-symbolic-regression",
+ "items": [
+  {
+   "key": "CoSR",
+   "claimed_ref": "arXiv 2603.13727；Phys. Rev. Research 2026-10-06 接收（journals.aps.org/prresearch/accepted/10.1103/f2kp-pp4q）；仓库 Alexia369/Chain-of-Symbolic-Regression",
+   "exists": "verified",
+   "title": "Data-driven Progressive Discovery of Physical Laws（方法名 Chain of Symbolic Regression, CoSR）",
+   "authors": "Mingkun Xia, Weiwei Zhang（西北工业大学航空学院）",
+   "arxiv_id": "2603.13727（v1 2026-03-14；v2 2026-05-29 已撤回）",
+   "date": "arXiv v1 2026-03-14；PRR 接收 2026-10-06",
+   "venue": "Physical Review Research（已接收，未正式发表；DOI 10.1103/f2kp-pp4q）；arXiv cs.LG / physics.data-an",
+   "primary_url": "https://journals.aps.org/prresearch/accepted/10.1103/f2kp-pp4q",
+   "mechanism": "把符号回归拆成一条逐层生长的“知识链”。第一步按 Buckingham Π 定理无量纲化，再用隐式符号回归找守恒或约束关系（方差最小、敏感度、量纲齐次、正则四项损失）。第二步做层级符号回归：用 PySR 多分支树并行提取中间变量，用 1–5 阶多项式拟合损失筛选，变量数逐层收缩（3→2→1）。第三步做变换式符号回归（化曲为直、多线合一）来降低表达式复杂度。底层不是新的符号回归算法，而是在 PySR 上编排的发现流程。",
+   "claims_checked": [
+    {
+     "claim": "arXiv 2603.13727 即该论文，且 PRR 于 2026-10-06 接收",
+     "verdict": "supported",
+     "evidence": "arxiv.org/abs/2603.13727 的 citation_title、作者与 APS 接收页一致，APS 页写明“Accepted 6 October, 2026，DOI 10.1103/f2kp-pp4q”。但 arXiv v2（2026-05-29）已撤回，撤回注释写明因 RBC 算例的方法缺陷需撤稿，见红旗。"
+    },
+    {
+     "claim": "逐步发现有物理意义的知识单元，再组合成完整定律",
+     "verdict": "supported",
+     "evidence": "摘要与 Methods 写明三种模式：invariance learning、multi-layered compression（hierarchical SR）、scaling transformation，各层发现作为下一层的扩充特征。作者在 Discussion 中承认，候选选择“有时仍依赖研究者物理直觉”，三种模式的协调“依赖经验策略”，所以链条是半人工编排，不是全自动发现。"
+    },
+    {
+     "claim": "应用于流体、湍流、激光金属相互作用、航空气动系数",
+     "verdict": "supported",
+     "evidence": "摘要与正文含以下算例：湍流 Rayleigh-Bénard 对流、Nikuradse 粗糙管湍流、激光-金属 keyhole（发现材料特征数与修正 keyhole 数）、尖锥与钝体气动系数标度，另有万有引力演示。仓库 case/ 下有对应 5 个 notebook。注意 RBC 正是被作者自己判为有方法缺陷的算例。"
+    },
+    {
+     "claim": "计算开销",
+     "verdict": "unverifiable",
+     "evidence": "v1 正文未报告运行时间或硬件（CPU、GPU、hour、runtime 等词均无匹配），参数只写“见 SI 2.2”，SI 未取得。仓库 notebook 用 PySRRegressor(parallelism=\"serial\", deterministic=True)，niterations 等取默认，数据集 CSV 只有 2–57KB。据此推断 CPU 上为分钟级，但论文没有给出。"
+    },
+    {
+     "claim": "仓库代码有明确开源许可",
+     "verdict": "wrong",
+     "evidence": "GitHub API 返回 license=null，raw.githubusercontent.com/.../main/LICENSE 返回 404，按默认即保留所有权利。依赖的 PySR 为 Apache-2.0（已读其 LICENSE 文件头）。arXiv v1 为 arXiv perpetual non-exclusive license，不是 CC。PRR 正式版许可要待发表后再核。"
+    }
+   ],
+   "code_repo": "https://github.com/Alexia369/Chain-of-Symbolic-Regression",
+   "code_status": "released",
+   "code_license": "无 LICENSE 文件（GitHub license=null，默认保留所有权利）；底层依赖 PySR 为 Apache-2.0",
+   "paper_license": "arXiv v1：arXiv.org perpetual non-exclusive license（非 CC）；PRR 正式版尚未发表，许可未核",
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "纯进化式符号回归（PySR，Julia 后端），串行、确定性运行，数据量为几十到几百行的表格，不依赖 LLM 或 GPU。M2 Max 上 PySR 可原生运行，但要装 Julia 运行时，本任务不安装。论文未给耗时。",
+   "fit_gaps": [
+    "G3_low_compute_law_distillation",
+    "G7_mechanism_sufficiency"
+   ],
+   "how_to_borrow": "只借协议与数学形式，用于式8残差的提炼：(1) 先按 Buckingham Π 用量纲矩阵零空间无量纲化，再做符号回归，强制量纲齐次；(2) 把复杂残差拆成若干“知识单元”逐层提炼，每个单元单独作为 MID 候选，带出处链（哪层、哪些输入）进入 Pareto 档案，每个单元必须单独过独立测试才能晋升 SLOW；(3) 借隐式发现的“方差最小＋逐变量扰动敏感度”损失，用来找守恒量或不变量（可与 G1 守恒约束对接）；(4) 借“变换降复杂度，若不降则跳过”的规则作为复杂度门。不借：仓库代码与 notebook（无许可）；RBC 算例的结论（作者自述有方法缺陷）；论文中依赖人工直觉挑候选的环节，应改为自动门禁与独立验证集；仓库中的 checkpoint.pkl（不可信 pickle，不加载）。",
+   "red_flags": [
+    "arXiv v2（2026-05-29）已撤回，注释原文意为该文因 RBC 算例的方法缺陷需撤稿；但 2026-10-06 PRR 接收页摘要仍含 RBC。接收版正文未公开，无法核实缺陷是否修正。仓库 RBC notebook 于 2026-06-09 删除后重传（605→607 行）",
+    "待核清单把方法名 CoSR 当作论文名，实际标题为 'Data-driven Progressive Discovery of Physical Laws'",
+    "仓库无 LICENSE，不能复制代码",
+    "计算开销未在正文报告",
+    "作者自述局限：候选选择有时依赖研究者直觉，模式切换依赖经验",
+    "万有引力 notebook Step 1.1 的目标 F 由约化质量向心力公式 F=μR·4π²/T² 直接合成后再去“发现”，存在循环论证",
+    "仓库含 Windows 路径与 checkpoint.pkl（pickle 不可信，勿加载）"
+   ],
+   "access_log": [
+    "curl https://arxiv.org/abs/2603.13727 → 200：元数据、摘要、撤回注释、提交历史",
+    "curl https://journals.aps.org/prresearch/accepted/10.1103/f2kp-pp4q → 200：接收日期 2026-10-06，标题与作者一致",
+    "curl https://arxiv.org/html/2603.13727v1 → 200：读 Introduction、Results 概述、Discussion、Methods、Data/Code Availability",
+    "GitHub API repos/Alexia369/Chain-of-Symbolic-Regression → license=null，创建 2026-02-26，最后推送 2026-06-09；目录树与提交历史",
+    "raw.githubusercontent.com/.../README.md 与 3 个 notebook（作为 JSON 只读解析，未执行）；/LICENSE → 404",
+    "raw.githubusercontent.com/MilesCranmer/PySR/master/LICENSE → Apache 2.0",
+    "WebFetch/WebSearch 工具因模型配置错误不可用，改用 curl 读取一手页面"
+   ]
+  },
+  {
+   "key": "PG-SR",
+   "claimed_ref": "arXiv 2602.13021",
+   "exists": "verified",
+   "title": "Prior-Guided Symbolic Regression: Towards Scientific Consistency in Equation Discovery",
+   "authors": "Jing Xiao, Xinhai Chen, Jiaming Peng, Qinglin Wang, Menghan Jia, Zhiquan Lai, Guangping Yu, Dongsheng Li, Tiejun Li, Jie Liu（国防科技大学计算机学院）",
+   "arxiv_id": "2602.13021（v1 2026-02-13，v2 2026-02-16）",
+   "date": "2026-02-13",
+   "venue": "arXiv 预印本（cs.LG / cs.AI），未标注会议或期刊",
+   "primary_url": "https://arxiv.org/abs/2602.13021",
+   "mechanism": "以 LLM 为生成引擎的符号回归（LLM-SR 系列），分三阶段：warm-up、evolution、refinement，配岛屿式经验池与 insight 池，参数用 L-BFGS-B 拟合。核心是布尔先验约束检查器 V(f,C)：领域先验由 LLM 提取，人类专家结合训练数据统计筛选，再由 LLM 写成可执行约束程序。PACE 机制对违约候选的分数做随采样进度 t 指数收紧的缩放与下移（σ(t)=[1-ηφ(t)]+，δ(t)=αφ(t)，φ(t)=(B^t-1)/(B-1)），早期允许违约，后期强制满足。",
+   "claims_checked": [
+    {
+     "claim": "arXiv 2602.13021 即 PG-SR",
+     "verdict": "supported",
+     "evidence": "arxiv.org/abs/2602.13021 标题、10 位作者、2026-02-13 提交日期均一致。"
+    },
+    {
+     "claim": "提出“伪方程陷阱（Pseudo-Equation Trap）”",
+     "verdict": "supported",
+     "evidence": "摘要与 §1 Fig.1 引入该概念，§3.2 Corollary 3.3 形式化为经验风险约等于 0、期望风险远大于 0 的函数。"
+    },
+    {
+     "claim": "可执行先验约束检查器",
+     "verdict": "supported",
+     "evidence": "§3.1 式(3) 定义布尔 V(f,C)，§3.3.1 写明先验被编码为可执行约束程序。但约束由 LLM 起草、人类筛选、再由 LLM 转成程序，参考了训练数据统计（附录 D）。"
+    },
+    {
+     "claim": "约束涵盖量纲一致、对称性、单调性、渐近边界",
+     "verdict": "overstated",
+     "evidence": "附录 D 表 3 实际列出：零点因果（b=0 时 db=0）、致死条件边界、单峰响应、非对称温度响应、单调增长、有界或无 NaN、平衡一致性与全局稳定、非负性、阻尼方向与速度相反、强制非线性。全文“dimension”只在综述 PhyE2E 时出现一次，没有量纲一致约束；没有显式对称性约束（只有“非对称回复力”）；没有“渐近”约束。单调性有依据。"
+    },
+    {
+     "claim": "证明降低 Rademacher 泛化复杂度",
+     "verdict": "overstated",
+     "evidence": "Prop. 3.5 与附录 A.3 只证明 R_N(H_C) ≤ R_N(H)，依据是 H_C⊆H 时上确界单调，属平凡性质。Remark 自认在无更强假设时不等式非严格，严格下降只是“预期”。前提 f_true∈H_C 要求先验正确。实际 PACE 是软惩罚，搜索并未限制在 H_C 内，所以“防伪方程的理论保证”言过其实。"
+    }
+   ],
+   "code_repo": "未找到（论文无代码链接；GitHub 搜索 'Prior-Guided Symbolic Regression'、'PG-SR symbolic'、'pseudo-equation trap' 无对应仓库）",
+   "code_status": "unknown",
+   "code_license": "不适用（未找到代码）",
+   "paper_license": "CC BY 4.0（arXiv HTML 页标注）",
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "附录 I：骨干为 gpt-4o-mini，每次运行全局预算 10,000 个样本，在 i9-14900HX + RTX 4090 工作站上单个基准（Oscillator1）约 10 小时，约 1336 万输入 token 加 449 万输出 token（共约 1785 万），约 4.70 美元。另测了 Llama-3.3-70B 作骨干。无模型训练。约束检查器与 PACE 本身在 CPU 上开销极小，但完整方法依赖 LLM 高频生成，本地 70B 推理在 M2 Max 上仅理论可行且很慢。",
+   "fit_gaps": [
+    "G6_teacher_boundary",
+    "G5_promotion_verification"
+   ],
+   "how_to_borrow": "只借两样数学形式和协议：(1) 布尔可执行约束检查器 V(f,C) 作为 MID 候选的单侧门禁。约束分类可直接映射到 AinerZero：零点因果、符号或非负、单调、有界或无 NaN、平衡与稳定、阻尼方向与速度相反（即耗散或无源性，对接 G1）。(2) PACE 退火计分式（式 8–9）用作 FAST→MID 探索期的软到硬约束日程，后期 t→1 等价于硬门。教师边界方面借鉴“LLM 只起草先验，人类或独立证据筛选后才成为约束”的分工，与“教师与 LLM 不能直接写 SLOW”一致。不借：LLM 进入候选生成高频回路（约 1800 万 token、10 小时/次）；其 Rademacher“保证”不能作为晋升依据；用训练数据统计反推先验的做法（与验证数据同源，会削弱独立性）。约束程序本身也必须先过独立测试才能进 SLOW。",
+   "red_flags": [
+    "无同行评审会议或期刊信息（arXiv comments 为空）",
+    "未找到代码仓库",
+    "重度依赖 LLM：每次约 1785 万 token、约 10 小时",
+    "理论结果是平凡的子集单调性（非严格 ≤），且依赖“先验包含真解”的假设，PACE 软约束下前提并不成立",
+    "先验由 LLM 提出、参考训练数据统计、经人工筛选，存在数据泄漏与人为调参风险",
+    "待核清单所列约束类型（量纲一致、对称性、渐近边界）在论文中找不到",
+    "§4.2 写明所有方法报告“多次运行中的最佳结果”"
+   ],
+   "access_log": [
+    "curl https://arxiv.org/abs/2602.13021 → 200：元数据、摘要、v1/v2 提交历史",
+    "curl https://arxiv.org/html/2602.13021v2 → 200：读 §1、§3（含 Prop.3.5）、附录 A.3 证明、附录 D 表 3、附录 F 配置、附录 I 算力",
+    "GitHub API search/repositories（3 个查询）→ 未找到 PG-SR 仓库",
+    "WebSearch 工具因模型配置错误不可用"
+   ]
+  },
+  {
+   "key": "PI-ADoK",
+   "claimed_ref": "Computers & Chemical Engineering 2026-10（sciencedirect.com/science/article/pii/S0098135426003704）",
+   "exists": "verified",
+   "title": "Physics-informed symbolic regression for data-efficient kinetic model discovery（期刊版）；arXiv 预印本标题：Constraint-Guided Symbolic Regression for Data-Efficient Kinetic Model Discovery；框架名 PI-ADoK",
+   "authors": "期刊版：Miguel Ángel de Carvalho Servia, Ammar Ali, Ilya Orson Sandoval, King Kuok (Mimi) Hii, Klaus Hellgardt, Dongda Zhang, Mehmet Mercangöz, Ehecatl Antonio del Rio Chanona；arXiv 版无 Ammar Ali 与 Mehmet Mercangöz",
+   "arxiv_id": "2507.02730（v1 2025-07-03）",
+   "date": "期刊在线 2026-10-17/18；卷期 216（2027-01）；预印本 2025-07-03",
+   "venue": "Computers & Chemical Engineering, vol. 216, article 109918, DOI 10.1016/j.compchemeng.2026.109918",
+   "primary_url": "https://doi.org/10.1016/j.compchemeng.2026.109918",
+   "mechanism": "在作者此前的 ADoK-S（强形式符号回归）基础上分三步：先用遗传编程拟合各物种浓度曲线，再数值微分得到速率，最后对速率做第二轮遗传编程得到速率式。两轮的适应度都是拟合误差加上按违约程度计的惩罚项 Σλ_j P_j(m)，约束可逐项开关：精确满足初值、终态收敛到平衡、输出符号正确、单调。按复杂度分组后用 L-BFGS 精修参数，用 AIC 选模型。若不满意，就用 Hunter–Reiner 模型判别式 MBDoE 选出让前两名模型预测差异最大的初值，追加一次实验后闭环迭代。最终模型的参数后验用 Metropolis–Hastings 采样，并传播为预测可信区间。",
+   "claims_checked": [
+    {
+     "claim": "发表于 Computers & Chemical Engineering 2026-10，PII S0098135426003704",
+     "verdict": "supported",
+     "evidence": "Crossref 按 alternative-id 查得：DOI 10.1016/j.compchemeng.2026.109918，vol 216，art. 109918，issued 2027-01。OpenAlex 显示 publication_date 2026-10-17，VOR 许可 CC BY 4.0 起始于 2026-10-18。OpenAlex 摘要明确写出 PI-ADoK 框架名。“2026-10”对应在线日期。注意论文标题并非“PI-ADoK…”，ScienceDirect 页面对 curl/WebFetch 返回 403。"
+    },
+    {
+     "claim": "把物理约束引入符号回归",
+     "verdict": "supported",
+     "evidence": "arXiv 2507.02730 §2 式(1)–(2) 用惩罚项实现约束，§2.4 列出 4 类约束（初值、平衡、符号、单调），各约束可独立开关。惩罚超参数为人工调定（原文自述）。"
+    },
+    {
+     "claim": "减少实验次数",
+     "verdict": "supported",
+     "evidence": "表 1：PI-ADoK 与 ADoK-S 恢复出与生成模型结构一致的速率式所需实验数分别为 5 vs 16、6 vs 18、7 vs 16（降幅 68.75%、66.67%、56.25%）。但三例均为 in-silico 数据（已知生成模型，噪声 σ=0.2，每例 5 个初始实验×15 点），只与自家 ADoK-S 比较，未见多种子方差，数字的外推性有限。"
+    },
+    {
+     "claim": "用概率方法量化参数不确定性",
+     "verdict": "supported",
+     "evidence": "§2.5 用 Metropolis–Hastings 采样动力学参数后验（含 burn-in），并传播为浓度预测可信区间。只针对最终选定的模型结构，不量化结构不确定性。"
+    }
+   ],
+   "code_repo": "未找到（arXiv 版无代码链接；GitHub 搜索 PI-ADoK、ADoK 无结果；期刊全文 403 未能核对代码可用性声明）",
+   "code_status": "unknown",
+   "code_license": "不适用（未找到代码）",
+   "paper_license": "许可分裂：arXiv 预印本为 CC BY-NC-ND 4.0；期刊 VOR 为 CC BY 4.0（Crossref 与 OpenAlex 显示 hybrid OA）",
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "遗传编程、L-BFGS、Hunter–Reiner 判别优化与 Metropolis–Hastings 都是经典 CPU 算法，每例数据约 75 点，不涉及 LLM 或 GPU。论文未报告耗时。无公开代码，需要按文中公式自行实现。",
+   "fit_gaps": [
+    "G4_identifiability_active_experiment",
+    "G3_low_compute_law_distillation",
+    "G1_residual_structure"
+   ],
+   "how_to_borrow": "借闭环协议与数学形式：(1) 惩罚式约束符号回归（式1），约束项可开关，映射为残差 r_θ 或提炼公式的结构约束：符号、单调、终态平衡（对应耗散）、初值精确（对接 G1/G3）；(2) 数据稀缺时用 AIC 而不切分数据做模型选择，作为 MID 候选排序（SLOW 仍须独立测试）；(3) Hunter–Reiner MBDoE：在 SkillProposal 门禁内选择让前两名候选机制预测差异最大的受限实验，正对应“反馈驱动的受限实验”（G4）；(4) Metropolis–Hastings 参数后验与预测可信区间，作为晋升证据中的不确定性字段。不借：68.75% 等实验节省数字（单次 in-silico、只对比自家基线）；人工调定的静态惩罚超参数；arXiv 版文本（CC BY-NC-ND，非商用、禁演绎），引用以期刊 CC BY 版为准。",
+   "red_flags": [
+    "待核清单把框架名 PI-ADoK 当作标题，实际期刊标题为 'Physics-informed symbolic regression for data-efficient kinetic model discovery'，arXiv 标题又不同（'Constraint-Guided Symbolic Regression…'）",
+    "作者列表不一致：期刊版 8 人，arXiv 版 7 人（期刊新增 Ammar Ali、Mehmet Mercangöz）",
+    "许可分裂：arXiv 为 CC BY-NC-ND 4.0（非商用），期刊 VOR 为 CC BY 4.0",
+    "未找到代码仓库",
+    "三个案例均为已知生成模型的模拟数据，未见真实实验数据与多种子统计；实验节省数字只与作者自家 ADoK-S 比较",
+    "约束惩罚超参数人工调定（作者自述）",
+    "卷期为 2027-01，“2026-10”只是在线日期",
+    "ScienceDirect 全文访问 403，期刊版相对 arXiv 的改动无法核实"
+   ],
+   "access_log": [
+    "WebFetch/curl https://www.sciencedirect.com/science/article/pii/S0098135426003704 → 403",
+    "Crossref api.crossref.org/works?filter=alternative-id:S0098135426003704 → DOI、标题、卷、文章号、作者、许可",
+    "Semantic Scholar graph API DOI:10.1016/j.compchemeng.2026.109918 → 标题与作者，摘要为空",
+    "OpenAlex works/doi:10.1016/j.compchemeng.2026.109918 → 摘要（含 PI-ADoK）、日期 2026-10-17、cc-by",
+    "arXiv API 搜索 → 2507.02730；curl https://arxiv.org/abs/2507.02730 → 摘要、许可 CC BY-NC-ND 4.0",
+    "curl https://arxiv.org/html/2507.02730v1 → 读 §1、§2（式1–2、2.3 MBDoE、2.4 约束、2.5 MH）、§3 案例、§4 结果、表 1",
+    "arXiv 2301.11356（前作 ADoK）PDF 检索 → 无代码链接",
+    "GitHub API 搜索 PI-ADoK、ADoK → 无相关仓库；api.elsevier.com → 429"
+   ]
+  }
+ ]
+}

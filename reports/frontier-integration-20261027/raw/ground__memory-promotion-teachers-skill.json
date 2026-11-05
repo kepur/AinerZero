@@ -1,0 +1,279 @@
+{
+ "area": "memory-promotion-teachers-skill（FAST/MID/SLOW 晋升、教师网关/教师缓存、SkillProposal、能力登记）",
+ "facts": [
+  {
+   "claim": "1a. SpatialMemory.promote 已强制要求独立测试证据 PromotionEvidence",
+   "verdict": "partial",
+   "evidence": "src/ainerzero/v9/interfaces/types.py:458-477 `kind: str; report_ref: str; producer: str; test_id: str = \"\"` … `if self.kind != \"independent_test\": raise`；spatial_memory.py:74-82 require_evidence 只做 isinstance",
+   "note": "强制的只有四件事：类型是 PromotionEvidence、kind 字面等于 independent_test、report_ref/test_id 非空、producer 通过硬编码登记表。“独立”本身没有核验：report_ref 不解析也不校哈希，test_id 不对照任何登记，producer 是调用方自报的字符串。只有 ABC、fake 和合同测试（tests/v9/contracts/test_spatial_memory.py:209-243），没有真实实现。"
+  },
+  {
+   "claim": "1b. 禁止教师或 LLM 直接写 SLOW",
+   "verdict": "partial",
+   "evidence": "validation.py:268-299 PRODUCER_REGISTRY {student:self, …, teacher/distilled-teacher-v1/v2:teacher, LLM-gpt/llm-gpt/llm-claude:llm, human_reviewed:human}；`if category in {\"teacher\",\"llm\",\"assistant\",\"human_unreviewed\"}: raise`",
+   "note": "拦的是“证据出具者”这个标签，不是知识的来源。producer=\"student\"（类别 self）可以通过，等于学生自证也算独立测试。assistant/human_unreviewed 不在登记表里，这两项是死代码。Fragment 没有来源字段，所以 LLM 起源的条目只要换一个合法 producer 字符串就能晋升。回归测试见 test_regression_b3.py:92-113（distilled-teacher-v2、LLM-gpt 被拒）。"
+  },
+  {
+   "claim": "1c. PromotionEvidence 含错误接受率/假阳性预算、适用域、反例、出处链",
+   "verdict": "refuted",
+   "evidence": "types.py:459-465 字段只有 kind、report_ref、producer、test_id；同文件无 domain/far/budget/counterexample/provenance 字段",
+   "note": "也没有：被晋升条目的摘要、编码器版本、式 6 学习保护（旧技能保留）结果、回滚句柄。fake 的 promote 不检查条目分区和编码器版本（fakes/spatial_memory.py:167-181）。接口里没有撤销/降级方法，但 §5 S3 写了“回滚可复现”，S6 写了“晋升与撤销”。"
+  },
+  {
+   "claim": "架构层：FAST/MID/SLOW 是晋升等级，与 L1/L2/L3 正交，教师/LLM 永不直接写 SLOW",
+   "verdict": "confirmed",
+   "evidence": "ARCHITECTURE_V9.md:46 “FAST = 当前信念与工作状态；MID = 情景库与待验证假设；SLOW = 通过独立测试、版本晋升的技能与规律。教师与 LLM 永远不能直接写 SLOW”",
+   "note": "§6:211 和 §8.5:347 复述了这条，但 §8.5 的措辞是“不允许教师未经验证直接修改长期知识（SLOW）”，比 §1 弱。MID 的“待验证假设”在代码里没有任何类型或接口。"
+  },
+  {
+   "claim": "情景库条目按 地点·时间·对象·动作·来源·编码器版本 为键",
+   "verdict": "partial",
+   "evidence": "ARCHITECTURE_V9.md:82 “情景库（MID）：地点·时间·对象·动作·来源·编码器版本 键”；types.py:416-425 Fragment 只有 fragment_id,t_ticks,place,partition,encoder_version,metric,topology",
+   "note": "Fragment 缺 来源/对象/动作 三个键。缺来源这一项，导致晋升链路追不到 LLM 或教师起源。"
+  },
+  {
+   "claim": "2a. WorldBrainAdapter.propose 产出的 SkillProposal 已有 expected_outcomes[]（可观察量预测 + sigma > 0）",
+   "verdict": "partial",
+   "evidence": "skill_proposal.v1.schema.json:443-480 expected_outcome required [channel,quantity,predicted_value,uncertainty,window]；:329-339 sigma exclusiveMinimum 0；types.py:317-318 只检查 len>=1",
+   "note": "只有 schema 层（contract_schema，参考核对器 reports/V9-B1/check_skill_proposal.py 有测试）要求 sigma>0。接口 dataclass 不校验条目结构，fake 返回的是 expected_outcomes=(\"executed-within-ttl\",) 这样一个字符串（fakes/world_brain.py:162），不合 schema。真实适配器与 AWZ 门禁都未实现（SKILL_PROPOSAL.md §13 矩阵）。"
+  },
+  {
+   "claim": "2b. SkillProposal 能表达“区分两个候选机制的探针实验”，有预期信息增益/预算/允许变量白名单",
+   "verdict": "refuted",
+   "evidence": "skill_proposal.v1.schema.json:7 \"additionalProperties\": false；properties 仅 schema_version…expected_outcomes,confidence,calibration；action_budget 仅 max_actions,max_duration_ticks（:405-423）",
+   "note": "没有 hypothesis/mechanism 引用、预期信息增益、实验预算或干预变量白名单。已有的白名单只管“预测量”：quantity 是 50 项封闭枚举（:104-157），还要与能力条目 observable_names 求交；params 受登记条目的封闭 param_schema 约束。一份提案只能给一组没有假设标签的预测，加字段必须升 schema 版本。信息增益只出现在架构 §4 式 7（ARCHITECTURE_V9.md:142）和 §2 结构图（:89），属 doc_only。"
+  },
+  {
+   "claim": "2c. TTL 与门禁回复白名单",
+   "verdict": "confirmed",
+   "evidence": "skill_proposal.v1.schema.json:75-78 “有效窗为 [basis.t_ticks, basis.t_ticks + ttl_ticks]（含两端）；上限由能力登记条目 max_ttl_ticks 给出”；skill_gate_reply.v1.schema.json:97-112 visible_reason_code 12 值",
+   "note": "白名单是 accepted、schema_invalid、ability_unknown、params_invalid、budget_exceeded、proposal_expired、time_domain_mismatch、evidence_mismatch、handle_unknown、effect_class_not_registered、duplicate_proposal、rejected_other。current_tick > basis.t_ticks+ttl_ticks 才算过期（SKILL_PROPOSAL.md:111-115）。回执不带执行结果。confidence 不进门禁（:88-92）。"
+  },
+  {
+   "claim": "SkillProposal v1 只开运行路线，编辑类能力集合为空",
+   "verdict": "confirmed",
+   "evidence": "docs/v9/SKILL_PROPOSAL.md:32-34 “v1 已登记的编辑类能力集合为空… registered_edit_abilities 必须为空数组… 一律 effect_class_not_registered”",
+   "note": "路由由能力条目的 effect_class 推导，提案本身不能声明路由。"
+  },
+  {
+   "claim": "3a. 教师缓存只收冻结教师推理输出；LLM 只作为上游 actor.kind 出现",
+   "verdict": "confirmed",
+   "evidence": "teacher_cache.v2_1.schema.json:127-131 teacher_kind enum [feature, geometry]；:878-879 source_type const teacher_feature；:914-921 actor.kind enum [student,baseline,system,human_teacher,llm_teacher]",
+   "note": "教师 = 冻结的外部预训练模型，只做推理（TEACHERS_AND_CACHE.md:23）。LLM 不是缓存输出类别，只能作为“输入由谁决定”的 actor。缓存实现 cache.py 里没有任何 llm 字样。"
+  },
+  {
+   "claim": "3b. 训练资格取五项交集，external_derived 默认拒训",
+   "verdict": "confirmed",
+   "evidence": "TEACHERS_AND_CACHE.md:165 “上游资格 ∧ 教师许可含 train ∧ 条目许可含 train ∧ 可复现等级不是 unverified ∧ 分区是 train”；:166-169 external_derived 默认拒训；cache.py:767-773",
+   "note": "实现：src/ainerzero/v9/teachers/cache.py:733-775 train_eligible。v2.1 起许可和可复现等级只认可信上下文里的 admission_bindings，缺失就拒训（:755-765，F11/F12）。schema 用 allOf 强制非 adr_0005_revision 时 train=false（v2_1:1017-1054）。参考核对把任何 adr_0005_revision 都判为 unapproved_adr_revision（cache.py:707-709），因为当前批准集合为空。train_eligible 不看 actor.kind，llm_teacher 在这里没有额外限制。T2 已 accepted，tests/v9/teachers/test_cache.py 17 passed（B11 报告）。"
+  },
+  {
+   "claim": "3c. LLM 写的物理补丁代码按现有规则应进哪里",
+   "verdict": "not_found",
+   "evidence": "AinerForge/docs/EXPERIENCE_EPISODE.md:66 “teacher_claim | teacher_claim | 教师断言 | train、development、quarantine”；:101 “只有辅助白名单允许（AinerZero TrainingPolicy.allowed_assistance）”",
+   "note": "没有直接规定。现有规则只能排除三个去处：①不是教师缓存对象（不是对内容哈希输入的推理输出）；②不能经 SkillProposal 提交（params 只收封闭 schema，编辑路线为空）；③不能直接进 SLOW。最近的去处有两个：作为 LLM 断言进 Forge 的 teacher_claim/teacher_hint 通道，默认不可训，需辅助白名单；或作为对不训练数学核心/F_prior 的工程改动，走代码卡加非作者复核。后者还要按式 8 登记先验偏差来源，虚构规律要带机制 ID 与作用域（ARCHITECTURE_V9.md:143-146）。agent_trajectory 通道 AinerZero 一律拒绝（EXPERIENCE_EPISODE.md:135）。"
+  },
+  {
+   "claim": "4. 已有“适用域/有效域/弃权/OOD 拒绝/共形校准”的表述或字段",
+   "verdict": "partial",
+   "evidence": "ARCHITECTURE_V9.md:145 “虚构世界规律带机制 ID 与作用域”；TEACHERS_AND_CACHE.md:256-257 “uncalibrated_layer… 马氏距离超过 χ² 99% 分位：拒绝这次观测，记 gated_out”",
+   "note": "conformal/共形、abstain/弃权、OOD 全仓库零命中。只有零散片段：①式 8 的作用域（doc_only，无契约）；②教师噪声的 gated_out、无登记层膨胀×4、NEES 覆盖率 [0.90,0.99] 验收（TEACHERS:231-232，doc_only，v9 geometry 里没有门控代码，da3_calibration_runner.py:413 写明 no NEES）；③SkillProposal 的 confidence+calibration，不进门禁（contract_schema）；④编码器版本不符就拒绝解释，这是唯一已实现、已测试的“域”检查（fakes/spatial_memory.py:128-131）。PromotionEvidence、能力登记、SkillProposal 都没有适用域或弃权字段。"
+  },
+  {
+   "claim": "5a. ability_registry_entry.v0 的字段",
+   "verdict": "confirmed",
+   "evidence": "contracts/v9/ability_registry_entry.v0.schema.json:8-20 required [schema_version,ability_id,ability_version,effect_class,param_schema,target_kinds,max_actions,max_duration_ticks,max_ttl_ticks,preconditions,observable_names]",
+   "note": "effect_class 取 run/edit。param_schema 必须是封闭对象，并拒绝动态分支。preconditions 只有 exists/compare/handle_present 三种，observable 是封闭枚举。observable_names 约束 expected_outcomes.quantity。"
+  },
+  {
+   "claim": "5b. ability_registry_entry.v0 是谁写的、用途",
+   "verdict": "confirmed",
+   "evidence": "docs/v9/SKILL_PROPOSAL.md:120 “ability_registry_entry.v0 是 AinerZero 侧写出的最小条目形状草案，正式登记表归 AWZ，本轮不实现”；schema:5 “不是登记表本身，也不构成任何能力授权”",
+   "note": "由 B1 裁决 5 授权、二级 B4 起草（reports/V9-B1/COORDINATOR_DECISIONS.md:22-31、57），B5/B6 复核，Relay 状态 accepted。唯一消费者是报告目录里的参考核对器（合成上下文），AWZ 或 AinerZero 产品代码都不读它。"
+  },
+  {
+   "claim": "5c. ability_registry_entry.v0 与 SLOW 有关系",
+   "verdict": "refuted",
+   "evidence": "ability_registry_entry.v0.schema.json:7 additionalProperties false，无 evidence/promotion/skill_ref/slow 字段；SKILL_PROPOSAL.md:19-21 提案“用 ability_id 引用一条 AWZ 登记的能力”",
+   "note": "能力登记是 AWZ 侧的“允许提议什么”的授权表，SLOW 是学生学到的技能与规律，两者之间没有任何字段或流程相连。RFC 提到“技能晋升/撤销”和“Capability Registry”（AinerWorkFlow_v9_RFC.md:152、226），但没有定义映射。"
+  },
+  {
+   "claim": "教师作带噪传感器，几何教师接入信念更新，特征教师不进信念",
+   "verdict": "confirmed",
+   "evidence": "ARCHITECTURE_V9.md:232-238 “几何教师…不是真值：作为观测接入 GeometryCore 的信念更新”；TEACHERS_AND_CACHE.md:258 “特征教师…没有噪声模型…不进信念更新”",
+   "note": "状态是 doc_only。noise_calibration 登记没有实现，DA3 标定 runner 明确不登记。"
+  },
+  {
+   "claim": "Teacher Gateway 分通道，关掉 LLM 学生仍能运行",
+   "verdict": "partial",
+   "evidence": "ARCHITECTURE_V9.md:101 “教师断言、示范与自身经历分通道…关掉所有 LLM，学生仍能运行”；RFC:92 teacher_claim/teacher_demo、self_observation、模拟器真值必须分区",
+   "note": "分通道落在 Forge ExperienceEpisode（设计 v1）。AinerZero v9 里没有 Teacher Gateway 代码模块，只有 teachers/（缓存、模式守卫、DA3）。"
+  }
+ ],
+ "existing_mechanisms": [
+  {
+   "name": "PromotionEvidence + SpatialMemory.promote",
+   "location": "src/ainerzero/v9/interfaces/types.py:458-477; interfaces/spatial_memory.py:53-82; interfaces/validation.py:267-300; fakes/spatial_memory.py:167-181",
+   "status": "tested",
+   "what_it_does": "进 SLOW 之前做结构检查：kind=independent_test，report_ref/test_id 非空，producer 必须在硬编码登记表里且类别不是 teacher/llm",
+   "gaps": "不核验独立性（report_ref/test_id 不解析），producer=student 可以通过；没有适用域、错误接受预算、反例、出处链、条目摘要、式 6 回归结果和回滚句柄；没有真实实现，代码未提交 git"
+  },
+  {
+   "name": "Fragment / 情景库分区封存与编码器版本检查",
+   "location": "types.py:415-447; fakes/spatial_memory.py:63-148",
+   "status": "tested",
+   "what_it_does": "只允许写 train/development，final 封存；查询时把异编码器版本的条目排除并报告",
+   "gaps": "缺 来源/对象/动作 三个键；没有 MID 假设类型"
+  },
+  {
+   "name": "SkillProposal/v1 schema",
+   "location": "contracts/v9/skill_proposal.v1.schema.json",
+   "status": "contract_schema",
+   "what_it_does": "提案结构：basis 的 JCS 证据版本、句柄或自身坐标系目标、tick 计的 TTL、expected_outcomes（封闭可观察量、sigma>0、时间窗）、不进门禁的 confidence+calibration",
+   "gaps": "不能表达实验假设、信息增益或实验预算；所有对象都是 additionalProperties:false，加任何字段都要升版"
+  },
+  {
+   "name": "SkillGateReply/v1",
+   "location": "contracts/v9/skill_gate_reply.v1.schema.json",
+   "status": "contract_schema",
+   "what_it_does": "回给世界脑的 12 值白名单原因码，decision 与 reason 一致，带 valid_until_tick",
+   "gaps": "真实 AWZ 门禁未实现"
+  },
+  {
+   "name": "SkillProposal 参考核对器",
+   "location": "reports/V9-B1/check_skill_proposal.py（另有 r5-candidate、r6-candidate 副本）",
+   "status": "tested",
+   "what_it_does": "在合成冻结上下文里按裁决 1–10 做门禁判定，含 1131 条探针、破坏对照和置信度扫描",
+   "gaps": "只是报告目录里的参考实现，不是生产门禁；值级隐写不能证明不存在"
+  },
+  {
+   "name": "SkillProposal 接口 dataclass + FakeWorldBrain.propose",
+   "location": "types.py:284-323; fakes/world_brain.py:143-164",
+   "status": "fake_impl",
+   "what_it_does": "检查 proposal_id/ability_id 正则、ttl>=1、evidence_version 为 64 位十六进制、basis 含 t_ticks、params 无世界 ID",
+   "gaps": "不合 v1 schema：actor 是字符串 student，schema 要求对象且 kind=world_brain；expected_outcomes 是字符串；basis 缺 packet_ref 等且多出 episodes；action_budget 缺 max_duration_ticks；没有 schema_version；摘要是 sort_keys JSON，不是 RFC 8785"
+  },
+  {
+   "name": "AbilityRegistryEntry/v0",
+   "location": "contracts/v9/ability_registry_entry.v0.schema.json",
+   "status": "contract_schema",
+   "what_it_does": "门禁所需的最小能力条目形状：effect_class、封闭 param_schema、目标种类、上限、可观察量前置条件、observable_names",
+   "gaps": "正式登记表归 AWZ，未实现；与 SLOW 无关联"
+  },
+  {
+   "name": "教师缓存两层身份 + 训练准入",
+   "location": "src/ainerzero/v9/teachers/cache.py:572-775; contracts/v9/teacher_cache.v2_1.schema.json; docs/v9/TEACHERS_AND_CACHE.md §2.5、§10; TEACHERS_AND_CACHE_V2_1.md",
+   "status": "tested",
+   "what_it_does": "store_problems 核对来源、时间、指纹、跨分区和 admission_bindings；train_eligible 做五项交集；external_derived 默认拒训，批准集合为空",
+   "gaps": "不看 actor.kind（llm_teacher）；没有 LLM 输出或代码类条目；v2 在 BASELINE 中仍记为未采用候选"
+  },
+  {
+   "name": "Forge ExperienceEpisode 通道与消费矩阵",
+   "location": "AinerForge/docs/EXPERIENCE_EPISODE.md:58-107",
+   "status": "doc_only",
+   "what_it_does": "teacher_claim/demo/hint/verified_supervision 各自独立通道，AinerZero 训练只走辅助白名单；agent_trajectory 一律拒绝",
+   "gaps": "设计 v1 状态写着待审议；AinerZero 侧的 TrainingPolicy.allowed_assistance 消费没有在本次范围内核实"
+  },
+  {
+   "name": "教师观测门控（gated_out、uncalibrated_layer、NEES 验收）",
+   "location": "docs/v9/TEACHERS_AND_CACHE.md:229-257",
+   "status": "doc_only",
+   "what_it_does": "噪声模型覆盖率不合格就不登记；没有登记层时协方差膨胀×4；马氏距离超过 χ² 99% 就拒绝这次观测",
+   "gaps": "v9 geometry 和 teachers 代码里都没有实现"
+  },
+  {
+   "name": "机制 ID 与作用域（虚构世界规律）",
+   "location": "ARCHITECTURE_V9.md:143-146",
+   "status": "doc_only",
+   "what_it_does": "混合物理中虚构规律要带机制 ID 和作用域，先验要登记与真实世界的偏差来源",
+   "gaps": "没有契约、字段或代码"
+  }
+ ],
+ "frozen_constraints": [
+  "教师与 LLM 永远不能直接写 SLOW；SLOW 必须经独立测试、版本晋升（ARCHITECTURE_V9.md:46、:211、:347）",
+  "世界真值与世界脑信念分开：置信度、证据引用、推断量只放在 AinerZero 信念里，不进 WorldSnapshot（ARCHITECTURE_V9.md:44、:314）",
+  "学习侧信息边界 §8.6：不读 Event/v1、世界 ID、隐藏接触和世界 dirty/fallback；UpdateScheduler 信号只有 observation_change/executed_action/belief_uncertainty 三类（types.py:85）",
+  "final 分区封存不可写，final 的提案与结果不得训练；分区固定四值（types.py:78-79；SKILL_PROPOSAL.md:231-232）",
+  "记忆条目必须带编码器版本，版本不符拒绝解释；参数化记忆候选必须过式 6 学习保护并报告 M2 干扰诊断（ARCHITECTURE_V9.md:35、:100、:141）",
+  "教师缓存训练资格五项交集；盘上许可和可复现等级是不可信提示，只认可信上下文 admission_bindings；external_derived 默认拒训，ADR-0005 批准集合为空，要可训必须修订 ADR-0005 并经用户决定（TEACHERS_AND_CACHE.md:165-169、:346；ARCHITECTURE_BASELINE.md:45）",
+  "SkillProposal v1 冻结裁决 1–11：只开运行路线、编辑集合为空；目标只能是句柄或自身相对位姿；evidence_version 为 basis 的 JCS 摘要；TTL 是 tick 闭区间且受 max_ttl_ticks 封顶；回执 12 值白名单；confidence 不进门禁；不静默改写；同 ID 不同摘要判 duplicate（reports/V9-B1/COORDINATOR_DECISIONS.md）",
+  "quantity 必须属于 50 项封闭枚举并与能力条目 observable_names 求交，学生自填不构成授权（SKILL_PROPOSAL.md:150-167）",
+  "学生模型规模从 0.1M–2M 起步（ARCHITECTURE_V9.md:47、:267）",
+  "变更流程：凡改职责/权威写者、公共接口语义、来源与训练资格、观察可见性、已有科学门或预算，先登记 ADR、迁移与回滚方案，经非作者复核后发布新修订；一张实现卡配一张非作者验证卡（ARCHITECTURE_BASELINE.md:88、:90）",
+  "子契约在基线边界内升版可以不改主架构；勘误不得掩盖接口变化（ARCHITECTURE_BASELINE.md:89）",
+  "复跑不得改写已交付证据（COORDINATION 规则 8）；改冻结参数或门槛、CC-BY 素材进训练、超预算运行，须用户逐项批准（CLAUDE.md）"
+ ],
+ "integration_hooks": [
+  {
+   "hook": "扩展 PromotionEvidence（适用域、错误接受率预算与置信界、反例引用、出处链/知识起源、条目摘要、编码器版本、式 6 回归结果、回滚引用）",
+   "location": "src/ainerzero/v9/interfaces/types.py:458-477；validation.py:267-300",
+   "attach_how": "给 frozen dataclass 加字段，并把 producer 自报字符串换成“调用方固定 SHA 的可信上下文”，照搬 teacher_cache 的 trusted_context 和 SkillProposal 冻结上下文的做法；promote 校验条目摘要与 report_ref 的哈希",
+   "conflicts_or_risks": "属于公共接口语义变化，按 BASELINE §5.2 需要 ADR 加非作者复核；会打破 test_spatial_memory.py 的 evidence 夹具和 test_regression_b3.py；接口代码尚未提交 git，改之前应先固化当前字节"
+  },
+  {
+   "hook": "Fragment 增加来源、对象、动作键",
+   "location": "types.py:415-438",
+   "attach_how": "按 ARCHITECTURE_V9.md:82 的键补齐，来源取 Forge 通道词表（self_observation/teacher_claim/…），让晋升链路能追溯 LLM 或教师起源",
+   "conflicts_or_risks": "这是补齐与架构的一致性，不是新语义，但仍要实现卡加非作者验证；要与 Forge 的 source_type 词表一致"
+  },
+  {
+   "hook": "MID 假设登记与 SLOW 撤销/降级接口",
+   "location": "interfaces/spatial_memory.py:26-59（目前只有 write/transform/query/consolidate/promote）",
+   "attach_how": "新增候选登记方法（可复用 ConsolidationReport.promoted_candidates，types.py:450-455）和 revoke/demote，满足 S3 的“回滚可复现”和 S6 的“晋升与撤销”",
+   "conflicts_or_risks": "接口面变化需 ADR；test_interface_surface.py 会断言方法集合"
+  },
+  {
+   "hook": "SkillProposal 探针实验（假设引用、按假设分组的预测、预期信息增益、实验预算）",
+   "location": "contracts/v9/skill_proposal.v1.schema.json（全对象 additionalProperties:false）；reports/V9-B1/check_skill_proposal.py",
+   "attach_how": "必须升到 skill_proposal.v1.1 或 v2，同步改参考核对器、EXPECTATIONS、破坏对照，并做 B5/B6 式非作者复核。不升版的折中：在 v1 内登记一个 effect_class=run 的探针类能力，用 param_schema 和 observable_names 限定可干预量与可观察量，但预测无法带假设标签",
+   "conflicts_or_risks": "信息增益、预算之类自报量不能成为门禁依据（裁决 6 同理），否则可被刷分；effect_class 是封闭枚举 run/edit，正式登记表归 AWZ，加新类别要 AWZ 侧改动；AWZ 真实门禁尚未实现"
+  },
+  {
+   "hook": "能力登记与 SLOW 的映射",
+   "location": "contracts/v9/ability_registry_entry.v0.schema.json",
+   "attach_how": "若希望“晋升技能 → 可提议能力”，需在 AWZ 正式登记表里另设登记流程，并引用 SLOW 晋升证据，不能由学生自写",
+   "conflicts_or_risks": "登记是世界侧授权，归 AWZ；把学习侧证据当成授权依据会越过 D-012/ADR-0012 的权威边界"
+  },
+  {
+   "hook": "LLM/教师断言与代码类产物的去处",
+   "location": "AinerForge/docs/EXPERIENCE_EPISODE.md:58-74、§6（APACK 词表）；teacher_cache.v2_1 actor.kind",
+   "attach_how": "LLM 断言走 teacher_claim/teacher_hint 通道，默认不可训、需辅助白名单。若要新增“代码补丁/机制提案”类 source_type，需 Forge APACK 词表升版（forge.V9.A2）加 ADR",
+   "conflicts_or_risks": "教师缓存的语义是冻结模型对内容哈希输入的推理，不应塞代码；新来源类型涉及训练资格，按 BASELINE §5.2 必须 ADR"
+  },
+  {
+   "hook": "观测侧 OOD/弃权（gated_out、uncalibrated_layer）",
+   "location": "docs/v9/TEACHERS_AND_CACHE.md:255-257；GeometryCore.update（interfaces/geometry_core.py）",
+   "attach_how": "在信念更新入口实现马氏门控，并登记噪声模型的 noise_calibration 记录",
+   "conflicts_or_risks": "χ² 99% 分位、膨胀系数 4、NEES 区间 [0.90,0.99] 已写在规范里，改动等于改门槛，须走登记流程"
+  },
+  {
+   "hook": "机制 ID 与作用域契约化",
+   "location": "ARCHITECTURE_V9.md:143-146（式 8）",
+   "attach_how": "给混合物理先验和残差的登记加 mechanism_id、scope 和偏差来源字段，可作为 SLOW 规律的适用域载体",
+   "conflicts_or_risks": "目前只是 doc_only，没有任何契约；E1 训练属于需批准的运行"
+  }
+ ],
+ "open_tasks": [
+  "统筹裁决：PromotionEvidence 是否把 producer=student（self）排除在“独立测试”之外，并把 producer 改为可信上下文绑定而非自报字符串",
+  "修 FakeWorldBrain.propose 与 SkillProposal dataclass，使其产出合 skill_proposal.v1 schema 的记录（actor 对象、basis 五字段、expected_outcome 对象、action_budget 两字段、schema_version、RFC 8785 摘要），或在文档里明确 dataclass 只是视图、不保证合 schema",
+  "Fragment 补齐 来源/对象/动作 键（ARCHITECTURE_V9 §2）",
+  "设计 MID 假设登记与 SLOW 撤销/回滚接口（S3/S6），走 ADR",
+  "若要支持探针实验提案：起草 skill_proposal v1.1/v2 的 ADR（假设引用、按假设预测、信息增益只作参考不进门禁）",
+  "把 interfaces/、fakes/、teachers/、tests/v9/、contracts/v9 的 SkillProposal/ability/teacher_cache v2_1 和 SKILL_PROPOSAL.md 等已 accepted 交付物提交 git（目前都未跟踪）",
+  "更新陈旧状态头：SKILL_PROPOSAL.md:3（仍写待 B6 复核）、TEACHERS_AND_CACHE.md:3（仍写待 T18 复核），并核对 ARCHITECTURE_BASELINE §3 的 teacher_cache 状态",
+  "核对 types.py/validation.py 注释所引的“D-021 §3.4”出处"
+ ],
+ "surprises": [
+  "多数已 accepted 的交付物没有进 git：src/ainerzero/v9/interfaces/、fakes/、teachers/、tests/v9/contracts、contracts/v9/skill_proposal.v1、skill_gate_reply.v1、ability_registry_entry.v0、teacher_cache.v2_1、docs/v9/SKILL_PROPOSAL*.md 都是 untracked；TEACHERS_AND_CACHE.md 里 F11/F12 那段（+2 行）未提交。Relay 显示 B2/B4/B6/T2/T19 均 accepted。",
+  "SLOW 晋升的“独立性”没有核验：producer=\"student\" 属类别 self，能通过；producer 只是自报字符串，任何调用方写 \"independent_test\" 就能过。拦截集合里的 assistant/human_unreviewed 不在登记表里，是死代码。",
+  "调研说“禁止教师或 LLM 直接写 SLOW 已强制”，实际只拦证据出具者标签，不追溯知识起源。Fragment 没有来源字段，LLM 起源的条目只要换个合法 producer 就能晋升。",
+  "FakeWorldBrain.propose 的输出不合 skill_proposal.v1 schema：actor 是字符串 \"student\"，schema 要求 kind=world_brain 的对象；expected_outcomes=(\"executed-within-ttl\",)；basis 缺必填字段且多出 episodes；action_budget 缺 max_duration_ticks。所以“propose 产出 expected_outcomes（sigma>0）”只在 schema 层成立。",
+  "evidence_digest 是 sort_keys 的 json.dumps，注释写“JCS-style”；SKILL_PROPOSAL.md:106 承认仓库的 canon 与 RFC 8785 不等价（8 处差异），接口层摘要可能与门禁重算对不上。",
+  "RFC 把 FAST/MID/SLOW 画成动力学时间尺度（Fast/Mid/Slow Dynamics，SLOW=H-JEPA 高层 latent，RFC:99-108），主架构 r5 里却是与 L1–L3 正交的记忆晋升等级。外部调研文本容易混淆两者。",
+  "§1 写“教师与 LLM 永远不能直接写 SLOW”，§8.5 写“不允许教师未经验证直接修改”，两处措辞强弱不同。",
+  "教师缓存的 train_eligible 完全不看 actor.kind=llm_teacher；对 LLM 的限制只在 Forge 的 teacher_claim 辅助白名单。现有规则对“LLM 写的代码/物理补丁”没有任何归类。",
+  "types.py:475 和 validation.py:267 引用“D-021 §3.4”，但 D-021（AWZ RESEARCH_LOG.md:558）是用户授权记录，没有 §3.4，出处无法核实。",
+  "状态头陈旧：SKILL_PROPOSAL.md:3 仍写“reported，待非作者 B6 复核”，TEACHERS_AND_CACHE.md:3 仍写“待非作者 T18 复核”，两张卡在 Relay 上都已 accepted；ARCHITECTURE_BASELINE.md:61 仍记 teacher_cache.v2 未通过复核（10-16 快照）。r6-candidate/ERRATA.md 已登记 SKILL_PROPOSAL.md:139 的“60 行”实为 184 行。",
+  "全仓库没有 conformal/共形、abstain/弃权、OOD 的任何表述。最接近的是式 8 的“机制 ID 与作用域”（只有一句）和教师噪声的 gated_out（未实现）。唯一已实现、已测试的“域”检查是编码器版本不符即拒。"
+ ]
+}

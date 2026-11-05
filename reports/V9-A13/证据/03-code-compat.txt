@@ -1,0 +1,185 @@
+# A13 本地源码兼容性核对（只读，原始输出）
+
+## 1. UpdateScheduler.update 签名 — src/ainerzero/v9/interfaces/scheduler.py:41-43
+    @abstractmethod
+    def update(self, belief: Mapping, dirty: Sequence) -> Any:
+        """Update ``belief`` on ``dirty`` (sparse) or on everything (fallback)."""
+
+## 2. require_graph：belief graph 的值必须是邻居序列 — scheduler.py:65-76
+    @staticmethod
+    def require_graph(value: Any) -> Mapping:
+        from .errors import SignalRejected
+
+        if not isinstance(value, Mapping):
+            raise SignalRejected(f"dirty_set() requires a belief-derived graph mapping, got {type(value).__name__}")
+        for node, neighbours in value.items():
+            if not isinstance(node, str):
+                raise SignalRejected("belief graph node ids must be strings")
+            if not isinstance(neighbours, (list, tuple, set, frozenset)):
+                raise SignalRejected(f"belief graph neighbours of {node!r} must be a sequence of node ids")
+        return value
+
+## 3. Fake 的 update：全量回退对【所有键】做 belief[node]+1 — fakes/scheduler.py:126-150
+    def update(self, belief: Mapping, dirty: Sequence) -> Any:
+        """``+1`` every updated node: sparse on ``dirty``, full on fallback."""
+        if not isinstance(belief, Mapping) or not belief:
+            raise UnsupportedInput(f"update(belief) must be a non-empty mapping, got {type(belief).__name__}")
+        full_reason = self._pending_full
+        if full_reason is not None:
+            nodes = tuple(belief.keys())
+            mode = "full"
+            fallback_reason = full_reason
+        else:
+            nodes = tuple(dirty)
+            missing = [node for node in nodes if node not in belief]
+            if missing:
+                raise SignalRejected(f"dirty node(s) {missing} are not in the belief")
+            mode = "sparse"
+            fallback_reason = None
+        updated = dict(belief)
+        for node in nodes:
+            updated[node] = belief[node] + 1
+        self._fallback = fallback_reason
+        self._pending_full = None
+        self._seeds.clear()
+        return UpdateResult(
+            belief=frozen_mapping(updated),
+            nodes_updated=tuple(nodes),
+
+## 4. BeliefSummary.belief 是 PoseBelief（不是 Mapping）— types.py:270-281
+class BeliefSummary:
+    """What ``WorldBrainAdapter.step`` is allowed to expose about its belief."""
+
+    t_ticks: int
+    dt_ticks: int
+    dt_s: float
+    sim_hz: int
+    belief: PoseBelief
+    encoder_version: str
+    used_pose_sensor: bool
+    updated_nodes: tuple = ()
+    fallback_reason: str | None = None
+
+## 5. PoseBelief 是 frozen dataclass — types.py:184-199
+class PoseBelief:
+    """Tangent-space Gaussian pose belief with an explicit gravity axis and gauge.
+
+    ``mean`` is the pose ``T_AB`` (r5 §4 convention: it maps coordinates of frame
+    B into frame A, so ``T_AC = T_AB @ T_BC``).  ``covariance`` belongs to the
+    **right** perturbation ``X = mean @ Exp(xi_r)``; a pure left world-frame
+    change leaves it untouched (r5 §4 约定段).
+    """
+
+    group: str
+    mean: np.ndarray
+    covariance: np.ndarray
+    gravity: np.ndarray
+    unobservable_dof: tuple
+    side: str = "right"
+    anchor: np.ndarray | None = None
+
+## 6. 合同测试里 BELIEF 的形状（节点→数值）— tests/v9/contracts/test_scheduler_contract.py:22-24
+GRAPH = {"bn-1": ["bn-2"], "bn-2": ["bn-3"], "bn-3": []}
+BELIEF = {"bn-1": 0, "bn-2": 0, "bn-3": 0}
+
+
+## 7. validate_producer 单参签名 + self 未被拦截 — validation.py:284-300
+def validate_producer(producer: Any) -> str:
+    """Validate a producer against the registry; unregistered are rejected."""
+    if not isinstance(producer, str):
+        raise EvidenceRequired(f"producer must be a string, got {type(producer).__name__}")
+    
+    # 精确匹配登记表
+    category = PRODUCER_REGISTRY.get(producer)
+    if category is None:
+        raise EvidenceRequired(f"unregistered producer {producer!r}; all producers must be in the registry")
+    
+    # 拦截非法晋升类别
+    if category in {"teacher", "llm", "assistant", "human_unreviewed"}:
+        raise EvidenceRequired(
+            f"producers of category {category!r} are not allowed to write SLOW directly (D-021 §3.4); "
+            f"producer={producer!r}"
+        )
+    return category
+
+## 8. trusted_context / admission_bindings 真实存在 — teachers/cache.py:557-560, 590-607
+def _lookup_admission(context: Dict, entry: Dict) -> Optional[Dict]:
+    bindings = context.get("admission_bindings")
+    if not isinstance(bindings, list):
+        return None
+        return ["schema"]
+    if context is None:
+        return ["trusted_context_missing"]
+    if not expected_context_sha256 or (
+        "context_identity" not in disabled and sha(context) != expected_context_sha256
+    ):
+        return ["trusted_context_identity"]
+
+    # Context schema: prefer v2.1 when admission_bindings present
+    ctx_schema = schema
+    if "admission_bindings" in context and SCHEMA_V21_PATH.exists():
+        try:
+            ctx_schema = _schema_load(SCHEMA_V21_PATH)
+        except OSError:
+            ctx_schema = schema
+    ctx_v = _subvalidator(ctx_schema, "trusted_context")
+    if "context_schema" not in disabled and ctx_v is not None and not ctx_v.is_valid(context):
+        return ["trusted_context_schema"]
+
+## 9. teacher_cache v2.1 schema 的 trusted_context / admission_bindings
+1795:    "trusted_context": {
+1884:        "admission_bindings": {
+1921:      "description": "v2.1: independent trusted context with optional admission_bindings. Expected SHA256 fixed by caller. Disk licenses/repro are hints only."
+
+## 10. PromotionEvidence 4 字段 + 唯一调用点 — types.py:458-478
+@dataclass(frozen=True)
+class PromotionEvidence:
+    """Independent evidence for a FAST/MID -> SLOW promotion (§1, §3 SpatialMemory)."""
+
+    kind: str
+    report_ref: str
+    producer: str
+    test_id: str = ""
+
+    def __post_init__(self) -> None:
+        if self.kind != "independent_test":
+            raise ValueError("a SLOW promotion needs kind='independent_test' evidence")
+        if not self.report_ref or not isinstance(self.report_ref, str):
+            raise ValueError("evidence.report_ref must name the independent test report")
+        if not self.test_id or not isinstance(self.test_id, str):
+            raise ValueError("evidence.test_id must name the independent test run")
+        
+        # r1 打回修复：使用登记表验证 producer (D-021 §3.4)
+        from .validation import validate_producer
+        validate_producer(self.producer)
+
+
+## 11. SpatialMemory 方法面（无 revoke/demote）— spatial_memory.py:29-59
+30:    def write(self, fragment: Fragment) -> str:
+34:    def transform(self, ego_motion: Mapping) -> None:
+38:    def query_metric(self, region: Mapping, *, encoder_version: str) -> QueryResult:
+46:    def query_topology(self, place: str, *, encoder_version: str) -> QueryResult:
+50:    def consolidate(self, budget: int) -> ConsolidationReport:
+54:    def promote(self, item_id: str, evidence: PromotionEvidence) -> Mapping:
+58:    def parameter_fingerprint(self) -> str:
+
+## 12. SkillProposal v1：additionalProperties:false + action_budget/expected_outcomes 必填
+7:  "additionalProperties": false,
+17:    "action_budget",
+19:    "expected_outcomes"
+72:    "action_budget": {
+80:    "expected_outcomes": {
+198:      "additionalProperties": false,
+
+## 13. r5 冻结阈值单一权威 — ARCHITECTURE_V9.md:163
+   - 所有阈值（`f_max`、`u_max` 等）在登记时冻结。
+
+## 14. r5 式 8 确有 event 参数 — ARCHITECTURE_V9.md:143
+8. 混合物理：`s_{t+dt} = F_prior(s_t, a_t, dt; φ̂) ⊕ r_θ(local_graph, event, history)`。
+
+## 15. r5 式 6 / 式 10 / 式 11 / 式 13 原文行（ARCHITECTURE_V9.md:141/151/152/164）
+6. 学习保护：`min L_new(θ)` s.t. `L_old(θ) ≤ L_old(θ_baseline) + ε`（ε、基线在登记时冻结）。
+10. RLT 停帧去重：同一位置的图块若 `‖p_t − p_{t−1}‖_∞ < τ` 就并入上一个 token，并以游程长度编码位置；`τ` 在登记时冻结，报告 token 保留率与精度损失。
+11. 教师表示对齐（仅 S5 及其消融）：`L_align = 1 − cos(h_φ(z^{(l)}), sg(T(x)))`；`T` 为冻结教师，`h_φ` 为小投影头；总损失加 `η L_align`，`η` 登记时冻结。
+13. 非劣检验（r4）：稀疏更新相对全量更新的误差差值 `Δ = e_sparse − e_full`，用按回合的配对 bootstrap 取 95% 置信区间上界 `U`；`U ≤ δ` 才判非劣，`δ` 登记时冻结。
+

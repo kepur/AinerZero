@@ -1,0 +1,62 @@
+$ /Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m pytest /Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_canonical.py -q -p no:cacheprovider
+AINERZERO_CANONICAL_OVERRIDE=/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/ainerzero-g3-mutants-_gmd9nsi/canonical_mutant_full_se3_missing_gravity_alignment.py
+
+.F................................................F......                [100%]
+=================================== FAILURES ===================================
+_______________ test_height_and_gravity_direction_are_preserved ________________
+
+    def test_height_and_gravity_direction_are_preserved():
+        # SE(3) estimate with a non-zero height: only the gravity-aligned part is used.
+        planar = SE2.exp([0.42, -0.31, 1.13])
+        height = 0.37
+        belief = make_belief(group=SE3, mean=Z_UP.lift(planar, height))
+        agent_world = Z_UP.lift(planar, height)
+        agent_xy = agent_world[:3, 3].copy()
+        agent_xy[2] = 0.0
+        # A world point at the agent's horizontal position keeps its own world height.
+        point = agent_xy + np.array([0.0, 0.0, 1.25])
+        expected = np.array([0.0, 0.0, 1.25])
+>       assert np.max(np.abs(canonical.canonicalize_points(point, belief) - expected)) <= ROUNDTRIP_TOL
+E       AssertionError: assert WorldPoints(0.37) <= 1e-09
+E        +  where WorldPoints(0.37) = <function max at 0x1026017b0>(WorldPoints([0.  , 0.  , 0.37]))
+E        +    where <function max at 0x1026017b0> = np.max
+E        +    and   WorldPoints([0.  , 0.  , 0.37]) = <ufunc 'absolute'>((WorldPoints([0.  , 0.  , 0.88]) - array([0.  , 0.  , 1.25])))
+E        +      where <ufunc 'absolute'> = np.abs
+E        +      and   WorldPoints([0.  , 0.  , 0.88]) = <function canonicalize_points at 0x101b53c40>(array([ 0.49344122, -0.03501318,  1.25      ]), CanonicalBelief(belief=TangentGaussian(group=<class 'ainerzero.v9.geometry.lie.SE3'>, mean=array([[ 0.42665981, -0.904...e=GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))))
+E        +        where <function canonicalize_points at 0x101b53c40> = canonical.canonicalize_points
+
+tests/v9/geometry/test_canonical.py:130: AssertionError
+___________ test_se3_gravity_aligned_error_injection_and_propagation ___________
+
+    def test_se3_gravity_aligned_error_injection_and_propagation():
+        rng = np.random.default_rng(20261025)
+        sigma = np.diag([4e-6, 3e-6, 2e-6, 1e-8, 1e-8, 2e-6])
+        mean = Z_UP.lift(SE2.exp([0.15, 0.2, -0.3]), 0.6)
+        belief = make_belief(group=SE3, mean=mean, covariance=sigma)
+        samples = canonical.sample_pose_errors(belief, rng, COV_SAMPLES)
+        # Roll/pitch coordinates are never perturbed, so every sample stays aligned.
+        assert np.max(np.abs(samples[:, 3:5])) == 0.0
+        indices = [0, 1, 2, 5]
+        marginal = sigma[np.ix_(indices, indices)]
+        assert _covariance_relative_error(np.cov(samples[:, indices].T), marginal) <= COV_RELATIVE_TOL
+        means = [boxplus(SE3, belief.belief.mean, xi) for xi in samples]
+        point = np.array([1.3, -0.7, 0.5])
+        canonical_point = canonical.canonicalize_points(point, belief)
+        values = np.array([
+            canonical.canonicalize_points(
+                point,
+                canonical.CanonicalBelief(TangentGaussian(SE3, mean, np.eye(6) * 1e-12), belief.frame),
+            )
+            for mean in means
+        ])
+        empirical = np.cov((values - canonical_point).T)
+        predicted = canonical.predicted_point_error_covariance(belief, canonical_point)
+>       assert _covariance_relative_error(empirical, predicted) <= COV_RELATIVE_TOL
+E       assert 0.25161196959493065 <= 0.05
+E        +  where 0.25161196959493065 = _covariance_relative_error(array([[4.34736566e-06, 1.32178058e-06, 1.75372745e-08],\n       [1.32178058e-06, 6.58655941e-06, 1.71352317e-08],\n       [1.75372745e-08, 1.71352317e-08, 2.04796027e-06]]), array([[4.50783949e-06, 1.34120950e-06, 0.00000000e+00],\n       [1.34120950e-06, 6.54214858e-06, 0.00000000e+00],\n       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00]]))
+
+tests/v9/geometry/test_canonical.py:415: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/geometry/test_canonical.py::test_height_and_gravity_direction_are_preserved
+FAILED tests/v9/geometry/test_canonical.py::test_se3_gravity_aligned_error_injection_and_propagation
+2 failed, 55 passed in 6.67s

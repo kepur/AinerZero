@@ -1,0 +1,272 @@
+{
+ "area": "physics-e1-geometry：确定性数学/物理核心与混合物理残差（式8、V10-E1、GeometryCore、E0 数据与物理后端）",
+ "facts": [
+  {
+   "claim": "1. GeometryCore（李群 SE(2)/SE(3)、不变 EKF 切空间协方差、解析规范化）明确规定零可学习参数，网络只学连续残差（式8）",
+   "verdict": "partial",
+   "evidence": "ARCHITECTURE_V9.md:40「解析数学与学习分开：已知运动学、李群运算、观测模型写成不训练的数学核心；网络只学残差与未知规律」；:73「NeuroGeometry 核心（不训练）」；interfaces/geometry_core.py:37「no learned parameters, no model.」；geometry/__init__.py:1「NumPy only, no learned parameters」",
+   "note": "零可学习参数这一半有源码支撑：G1 lie.py:79/117 实现 SE2/SE3，belief.py 的 TangentGaussian 和 canonical.py（G3）都只用 NumPy。另一半说法不准：原文是「残差与未知规律」，网络并不只学式8残差，还要学 L1 SSM、编码器等。「不变 EKF」实际是一阶局部的不变误差高斯，README:25 写明不承诺误差界，也不承诺 IEKF 稳定性。GeometryCore 接口目前只有 FakeGeometryCore 一个实现（fakes/geometry.py:118，仅 SE2），没有任何生产代码 import v9.geometry。式8 残差本身没有代码。"
+  },
+  {
+   "claim": "2. 式8 的神经残差 r_θ 目前无守恒/耗散代数约束",
+   "verdict": "confirmed",
+   "evidence": "ARCHITECTURE_V9.md:143-146 式8 约束只有：「残差只作用于连续状态量；离散事件单独预测；虚构世界规律带机制 ID 与作用域；先验必须登记它与真实世界的偏差来源」；src 全库 grep energy/hamilton/conserv/dissipat 无命中",
+   "note": "实际情况比这条说法更弱：r_θ 和 F_prior 在代码里根本不存在，只有文档。§2:93 那条「残差只能通过流形上的合法更新作用于位姿」是几何约束，不是能量约束。S1 prereg.py:395-396 把「E1 physics prior」整体留给 phase 2。"
+  },
+  {
+   "claim": "3. 长时滚动的能量漂移直接威胁 V10-E1 能量漂移门槛",
+   "verdict": "refuted",
+   "evidence": "ARCHITECTURE_V9.md:325 E1 门槛「未见场景 10 步位置误差，比 ①② 中较好者好 ≥ 10%；碰撞 F1 不下降；报告能量漂移与推理延迟」；v10 原件 AinerZero_v10_Architecture_Validation.source.md:48 同文、:34 能量漂移只列为指标",
+   "note": "E1 没有能量漂移门槛，能量漂移只要求报告。§5:192 和 §6:207 也只把它列为指标。真正的门槛是 10 步位置误差 ≥10% 和碰撞 F1 不下降，长时漂移只会通过 10 步位置误差间接影响门槛。S1 phase1 的 METRIC_DEFINITIONS（spec.py:402-457）既没有能量漂移，也没有碰撞 F1。全库没有任何能量漂移的计算代码，公式也没有定义。"
+  },
+  {
+   "claim": "4a. 当前存在环境隐参数（摩擦、弹性、质量、阻尼）的信念/后验表示",
+   "verdict": "not_found",
+   "evidence": "interfaces/types.py:269-281 BeliefSummary 只有「belief: PoseBelief」；types.py:184 PoseBelief 只含 group/mean/covariance/gravity/unobservable_dof；AinerZero src/contracts/tests grep friction|restitution|damping|hidden_param 零命中",
+   "note": "AinerZero 侧没有物理参数信念。UpdateScheduler.update(belief: Mapping, …)（scheduler.py:42）收的是通用 Mapping，是唯一能不改合同就挂上去的位置。"
+  },
+  {
+   "claim": "4b. E1 数据端随机化隐藏参数的约定位置",
+   "verdict": "confirmed",
+   "evidence": "ARCHITECTURE_V9.md:325「数据端随机化隐藏参数（摩擦、弹性、质量、阻尼），先验不知道它们」；AWZ python/animeworld/e0/hidden_params.py:18-24 DEFAULT_RANGES friction(0.05,0.95) restitution(0,0.9) mass(0.2,5) linear/angular_damping(0,0.25)",
+   "note": "约定层：arch §4 式8:146、§8.3:325；AWZ V9_LANDING_PLAN.md:219（B11）；mechanics_pack.schema.json:88-89（hidden_params_side const world）；WORLD_RUNTIME.md:54。实现层：AWZ e0 已实现，B11 r2 已验收，小样 18 段，apack@1.1。只记录动态物体的参数（blender_worker.py:351-360），静态地面和斜坡的摩擦/弹性虽然也随机化了（scenarios.py:62-63、88-89），但没有写进 hidden_parameters。"
+  },
+  {
+   "claim": "5. 已有「机制库/已验证规律库」数据结构，带适用域或版本",
+   "verdict": "partial",
+   "evidence": "AinerZero 仅 ARCHITECTURE_V9.md:145「虚构世界规律带机制 ID 与作用域」（doc_only）；AWZ contracts/drafts/world_runtime.v0/mechanics_pack.schema.json:8-9 required 含 version/content_sha256/applicability/…/dependencies，:18-25 applicability{regions,objects}",
+   "note": "AinerZero 侧没有规律库。相近的只有两处：一是 SpatialMemory.promote 加 PromotionEvidence（kind 必须为 independent_test，types.py:458-478），只有接口和假实现；二是 AbilityRegistryEntry/v0 schema，登记的是动作能力，不是物理规律。AWZ 侧有机制包登记表（runtime/mechanics.py 已实现，tests/runtime 有测试），带版本、内容 SHA 和适用区域/对象，但它是世界侧人工编写的规则包（门、灯、行走等）。它的适用域是语义区域和对象，不是参数有效范围，也不是学习后再验证的规律库。"
+  },
+  {
+   "claim": "6a. Blender/Bullet 已安装并作为 E0 物理后端使用",
+   "verdict": "confirmed",
+   "evidence": "/Applications/Blender.app Info.plist CFBundleShortVersionString=5.2.2；AWZ e0/blender_runner.py:19-23 默认路径 /Applications/Blender.app/Contents/MacOS/Blender；blender_worker.py:78-80 rbw.substeps_per_frame/solver_iterations/time_scale",
+   "note": "relay 板 awz.V9.B11 为 accepted，awz.V9.B13（复核 B11 r2）为 accepted，awz.V9.B12 为 rejected。确定性域按 EVENT_PROTOCOL.md:183-191 登记，要求写明 Blender 版本/构建、Bullet 设置、步长、平台和输入。本机是 5.2.2，不是 D6/D7 提到的 4.2.10。"
+  },
+  {
+   "claim": "6b. Genesis World 已登记/安装",
+   "verdict": "partial",
+   "evidence": "已登记：ADAPTER_REGISTRY.md:33「genesis-world … Apache-2.0 … Metal 后端的真实速度与长时间数值稳定性未经本机实测验证」；relay 板 awz.V9.B7「Genesis World 安装与 Apple Metal 物理真值基准（草稿：安装待批准）」status=draft，params={}",
+   "note": "已在注册表登记，但没有安装：两个项目 venv 和 envs/teachers 里都找不到 genesis 包。授权：arch:270 和 COORDINATION.md:33 写的是安装需批准；但 2026-10-20 的 AUTHORIZATION.md:4 写明 AWZ Genesis/Blender「可做官方元数据与版本/字节清单准备，之后按清单发布」，也就是隔离安装已在既有任务授权范围内，需要一级先出清单、改写 B7。基准运行的算力预算要另行登记。"
+  },
+  {
+   "claim": "6c. MuJoCo 已登记/安装",
+   "verdict": "not_found",
+   "evidence": "docs/research/adapter_registry.json:1498「官方仓库基于 TensorFlow + MuJoCo/DMControl」、:2297 仅作第三方仓库依赖提及；ARCHITECTURE_V9/AWZ docs 无 MuJoCo 后端登记；venv 中无 mujoco 包",
+   "note": "不在任何物理后端规划里。2026-10-20 的授权只覆盖「既有任务」的下载与隔离安装，引入 MuJoCo 需要新建卡并请用户确认。"
+  },
+  {
+   "claim": "S1 现有代码中是否存在物理先验+残差或 MLX 残差模型",
+   "verdict": "partial",
+   "evidence": "experiments/s1/arms.py:16「The analytic ego-motion integration (G3-style estimated pose) is fixed code… the pose head only predicts a bounded residual.」；:320-325 motion = logged motion + 0.05*residual；prereg.py:395-396「E1 physics prior: all reserved for phase 2」",
+   "note": "唯一的「解析加残差」是自运动位姿的运动学残差：MLX pose_head 输出经 tanh 有界，见 arms.py:393-397。它没有 φ̂、动力学或隐藏参数，不属于式8。arm1–arm4（spec.py:290-363）都是记忆结构的对照，没有物理先验臂。残差在 :442 经 np.asarray 进入位姿积分，梯度不经积分回传。"
+  },
+  {
+   "claim": "E0 的接触与速度真值来自 Bullet 求解器",
+   "verdict": "refuted",
+   "evidence": "AWZ e0/blender_worker.py:253-256「lin_vel = (pos - prev_pos) / dt; ang_vel = quaternion_diff_to_angular_velocity(...)」；:306-309「rad_a = max(data_a[\"dims\"]) / 2.0 … contact_threshold = rad_a + rad_b + 0.04」",
+   "note": "速度是对取 6 位小数后的位姿做后向差分得到的。接触是按包围球距离的启发式判定：Ground 尺寸 30×30×1，半径取 15，活动物体几乎每帧都被判为与地面接触。拿这个当 E1「碰撞 F1」的真值不合格。"
+  }
+ ],
+ "existing_mechanisms": [
+  {
+   "name": "G1 李群与切空间高斯（SE2/SE3、左右误差、Adjoint、TangentGaussian、KnownRotationGaussian、位姿图）",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/geometry/{lie,belief,gravity,pose_graph}.py",
+   "status": "run_evidence",
+   "what_it_does": "纯 NumPy float64 实现群运算、右/左扰动、一阶协方差预测与 Joseph 更新、重力对齐 SE2×高度，以及带锚点的小规模 Gauss-Newton 位姿图",
+   "gaps": "已登记 CPU 运行（reports/V9-G1/r1-codex-20261016/cpu_registration.json），G1/G2/G5 已验收。只有已知运动学（body twist），没有动力学、力、质量或接触；没有包装成 GeometryCore 子类，生产代码也没有 import 它；belief.py/gravity.py/pose_graph.py 的 G5 改动尚未提交"
+  },
+  {
+   "name": "G3 解析规范化 canonicalize/decanonicalize",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/geometry/canonical.py",
+   "status": "tested",
+   "what_it_does": "按式9把点、向量、位姿和平面栅格换到重力对齐的智能体系，并提供一阶位姿误差注入与协方差传播",
+   "gaps": "git 未跟踪（??）；S1 arms 没有调用它；README:12 仍写「没有实现 G3 的规范化 operator」，已过时"
+  },
+  {
+   "name": "GeometryCore 接口与 FakeGeometryCore",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/geometry_core.py:36-131；fakes/geometry.py:118",
+   "status": "fake_impl",
+   "what_it_does": "七个可替换接口之一：compose/inverse/exp/log/adjoint/act/predict/update/with_side/canonicalize，写明不含可学习参数",
+   "gaps": "唯一实现是只支持 SE(2) 的假实现；predict 只吃运动 twist，没有物理先验入口；没有基于 G1/G3 的真实实现"
+  },
+  {
+   "name": "UpdateScheduler（学习侧稀疏更新）",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/scheduler.py:30-76；types.py:85 UPDATE_SIGNAL_KINDS",
+   "status": "fake_impl",
+   "what_it_does": "信号只接受 observation_change、executed_action、belief_uncertainty 三类；信念图传递闭包；超过 f_max 时全量回退",
+   "gaps": "belief 参数是通用 Mapping，可以承载物理参数信念，但现在没有任何此类节点"
+  },
+  {
+   "name": "SpatialMemory.promote + PromotionEvidence（SLOW 晋升）",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/spatial_memory.py:54；types.py:458-478",
+   "status": "fake_impl",
+   "what_it_does": "晋升到 SLOW 必须附 kind=independent_test 的独立测试证据，并按登记表校验 producer；记忆条目要带编码器版本",
+   "gaps": "晋升对象是记忆条目，不是机制或规律；没有机制 ID、适用域或参数有效范围字段"
+  },
+  {
+   "name": "式8 混合物理 F_prior(φ̂) ⊕ r_θ",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md:143-146",
+   "status": "doc_only",
+   "what_it_does": "设计：残差只作用于连续量、离散事件单独预测、虚构规律带机制 ID 和作用域、先验必须登记偏差",
+   "gaps": "没有任何代码；没有守恒或耗散约束；没有物理先验接口"
+  },
+  {
+   "name": "V10-E1 四组对照（有偏先验 / 纯 MLX / 先验+残差 / 真参数上界）",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md:325；relay 卡 ainerzero.V9.P1 prompt r4 段",
+   "status": "doc_only",
+   "what_it_does": "门槛：10 步位置误差 ≥10%，碰撞 F1 不下降；能量漂移与推理延迟只报告",
+   "gaps": "S1 prereg.py:395-396 写明留给 phase 2；relay 上没有 E1 或 phase 2 的执行卡"
+  },
+  {
+   "name": "S1 有界自运动残差（MLX pose_head）",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/arms.py:289-325,393-397",
+   "status": "implemented",
+   "what_it_does": "记录的运动加上 0.05/2.0 缩放的 tanh 残差，再用自写的 float32 yaw 积分得到位姿",
+   "gaps": "属于运动学残差，不是式8；不用 G1/G3；prereg.py:393 说的「G3 estimated pose + covariance-injected error」在 arms.py 里找不到对应代码"
+  },
+  {
+   "name": "AWZ E0 物理真值生成器 + 隐藏参数随机化",
+   "location": "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/e0/{hidden_params,scenarios,dataset,blender_worker,blender_runner}.py",
+   "status": "run_evidence",
+   "what_it_does": "用 Blender 5.2.2 无头跑 Bullet 刚体；五类场景；按种子确定性随机化摩擦、弹性、质量和阻尼；train/dev/final 按世界不相交；final 用 APACK 封存",
+   "gaps": "B11 r2 已验收，小样 18 段（reports/V9-B11/r2/awz-v9-b11-e0-pilot@1.1.apack），1k–10k 批量要另批预算。接触是启发式判定，速度是差分，静态面参数没有记录；「3 个种子」实现成每个分区一个种子；60 fps，而世界时钟是 120 Hz；没有导出成 ObservationPacket 的路径；代码在 AWZ 仓库里未提交"
+  },
+  {
+   "name": "AWZ E0 物理合理性门 G1–G5",
+   "location": "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/e0/verify.py:168-184",
+   "status": "tested",
+   "what_it_does": "检查首帧位姿、最大高度、能量式速度上界 |v| ≤ √(2gΔh)+|v0|+slack、相邻帧位移和穿地，任一不过就拒绝封存",
+   "gaps": "只是数据层面的合理性上界，不是能量漂移指标；energy_slack=2.5 很宽"
+  },
+  {
+   "name": "AWZ 机制包登记表 mechanics_pack v0",
+   "location": "/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/drafts/world_runtime.v0/mechanics_pack.schema.json；python/animeworld/runtime/mechanics.py；runtime/data/mechanics/*.json",
+   "status": "tested",
+   "what_it_does": "登记版本、content_sha256、适用区域/对象、触发、效果、写集和冲突策略；同一写集冲突时拒绝；hidden_params_side 固定为 world",
+   "gaps": "属于世界侧人工规则包，不是学习后验证的规律库；WORLD_RUNTIME.md:51 要求地球物理也作为包登记，但 6 个包的 is_earth_physics_default 都是 false，E0 的 Bullet 路径也没进登记表；runtime/ 目录未提交"
+  },
+  {
+   "name": "AbilityRegistryEntry/v0",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/contracts/v9/ability_registry_entry.v0.schema.json",
+   "status": "contract_schema",
+   "what_it_does": "动作能力条目：ability_version、param_schema、前置条件（只能用可观察量）",
+   "gaps": "登记的是动作或技能，不是物理机制，也没有适用参数域"
+  },
+  {
+   "name": "Genesis World 后端（awz.V9.B7/B8）",
+   "location": "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md:171；relay awz.V9.B7 draft",
+   "status": "doc_only",
+   "what_it_does": "拟由 Genesis 出物理真值、Blender 只负责渲染，并用自动微分做可用性探针",
+   "gaps": "未安装；卡仍是草稿，params={}，验收标准写的是「待批准后补全」"
+  }
+ ],
+ "frozen_constraints": [
+  "ARCHITECTURE_V9.md:20 本文不改写 G1 已登记的 CPU 容差与 fixture，任何既有科学门、参数、预算都不变；:175 S0 的 CPU 工程界不能替代 S1 科学门",
+  "G1 数值容差：1e-9 往返只在登记域内成立，有限差分 Jacobian 2e-6（geometry/README.md:64）；PSD_RELATIVE_TOL=1e-12（belief.py:20）；HORIZONTAL_SIN_TOL=1e-9（gravity.py:15）",
+  "GeometryCore 约定写死（ARCHITECTURE_V9.md:119-125）：T_AB 方向、右扰动 X=μExp(ξ_r)，ξ_l=Ad(μ)ξ_r 只用于左右误差改写，规范与锚点、不可观自由度必须显式声明（types.py:82 UNOBSERVABLE_DOF）",
+  "GeometryCore 零可学习参数（interfaces/geometry_core.py:37；ARCHITECTURE_V9.md:40、:73）；残差只作用于连续状态量，离散事件单独预测（:93、:144）",
+  "式8：先验必须登记它与真实世界的偏差来源；先验与生成器完全相同时不能宣称残差有效（ARCHITECTURE_V9.md:146、:207）",
+  "V10-E1 门槛（ARCHITECTURE_V9.md:325；v10 原件:48）：未见场景 10 步位置误差比 ①② 中较好者好 ≥10%，碰撞 F1 不下降；能量漂移与推理延迟只报告；④ 真参数物理只作上界诊断，不计成绩",
+  "V10-E0（ARCHITECTURE_V9.md:324）：同种子逐位可复现、按世界划分且不相交、3 个随机种子、只做物理不渲染；1k–10k 批量需批准 CPU 运行预算（AWZ V9_LANDING_PLAN.md:219）",
+  "隐藏物理参数只在世界侧，带偏差的先验与 MLX 信念修正不回写生成器（mechanics_pack.schema.json:88-89 const world；WORLD_RUNTIME.md:54；ARCHITECTURE_V9.md:44）",
+  "sim_truth 只作监督通道，来源 simulator_truth，分区四值；用了它的模型要注明「借仿真特权信息训练」（ARCHITECTURE_V9.md:262-265）",
+  "学生规模从 0.1M–2M 起步（ARCHITECTURE_V9.md:47、:267；spec.py:289 注释）",
+  "学习保护 ε、稀疏阈值 f_max/u_max、非劣界 δ 都在登记时冻结（ARCHITECTURE_V9.md:141、:163、:164）",
+  "世界侧逐位一致只在登记的确定性域内承诺：Blender 构建、Bullet 设置、步长、平台、输入（AWZ EVENT_PROTOCOL.md:183-191；ARCHITECTURE_V9.md:161）",
+  "S1 phase1 预登记已冻结：E1 物理先验、多步滚动、Muon 留给 phase 2（prereg.py:395-396）；TRAIN_COMMON（spec.py:366-385）与 STOP_RULES 规定「任何超出冻结预登记的运行都要统筹新登记」",
+  "教师或 LLM 不得直接写 SLOW；晋升 SLOW 必须有 independent_test 证据（ARCHITECTURE_V9.md:46；types.py:458-478）",
+  "COORDINATION.md:76 规则 8：复跑不得改写已交付证据（B11 r1 apack 与 pilot_raw 作为反例保留）",
+  "需用户逐项批准：超出登记预算的运行、改冻结参数或门槛、CC-BY 素材进训练、付费、云 GPU（CLAUDE.md 授权现状）"
+ ],
+ "integration_hooks": [
+  {
+   "hook": "GeometryCore 的真实实现（包装 G1/G3）",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/geometry_core.py:36-98",
+   "attach_how": "新建零参数子类，委托给 geometry.lie/belief/canonical；predict 可以扩展成接收确定性运动学或积分器结果（例如李群上的辛/变分积分），但不能引入可学习参数",
+   "conflicts_or_risks": "B2 接口已验收，改签名要走合同复核；FakeGeometryCore 只支持 SE2，合同测试 test_geometry_contract.py 也要同步更新"
+  },
+  {
+   "hook": "TangentGaussian.predict 的过程噪声 Q",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/geometry/belief.py:72-88",
+   "attach_how": "把物理参数不确定性映射成位姿过程协方差，或在外层组合 F_prior；G1 本体不动",
+   "conflicts_or_risks": "G1 的容差和 fixture 已冻结，只能在外层封装，不改原函数"
+  },
+  {
+   "hook": "UpdateScheduler.update 的通用 belief Mapping",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/scheduler.py:42；types.py:85",
+   "attach_how": "把对象级物理参数后验（摩擦、弹性、质量、阻尼）作为信念节点挂进去；用 belief_uncertainty 信号触发局部更新",
+   "conflicts_or_risks": "信号不能来自世界侧（Event、隐藏接触）；信念图只能由信念推出（§8.6）"
+  },
+  {
+   "hook": "BeliefSummary 增加物理参数信念字段",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/types.py:269-281",
+   "attach_how": "新增可选的 physical_param_belief 字段（均值、协方差、来源和版本）",
+   "conflicts_or_risks": "属于 B2 合同变更，需要非作者复核；不能泄露真值参数"
+  },
+  {
+   "hook": "SLOW 晋升做成「已验证规律库」",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/spatial_memory.py:54；types.py:458-478",
+   "attach_how": "参照 encoder_version 校验模式，给条目加 mechanism_id、mechanism_version、适用参数域，晋升要求 independent_test 证据",
+   "conflicts_or_risks": "PromotionEvidence 的 producer 校验依赖登记表（validate_producer）；教师或 LLM 不能直接写"
+  },
+  {
+   "hook": "S1 phase 2 的 E1 物理先验臂",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/spec.py:290-363（ARM_SPECS）；prereg.py:395-396；arms.py:320 motion_from_residual 模式",
+   "attach_how": "新建 phase 2 预登记：加入 ①②③④ 四组，F_prior 用确定性积分，r_θ 只作用于连续量；数据来自 E0 批量",
+   "conflicts_or_risks": "phase1 冻结文档不能动；需要新实验 ID、预算登记和执行卡；目前不存在 E0 到 ObservationPacket 的导出"
+  },
+  {
+   "hook": "E0 场景与隐藏参数采样器",
+   "location": "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/e0/hidden_params.py:18-24；scenarios.py:25-31；blender_worker.py:296-327",
+   "attach_how": "补齐静态面参数记录，改用 Bullet 原生接触或更精确的接触判定，按需加入可校验能量记账（动能/势能/耗散）的字段",
+   "conflicts_or_risks": "B11 已验收，修改要开新卡；同种子逐位复现要重新验证；r1/r2 证据不能覆盖"
+  },
+  {
+   "hook": "E0 物理合理性门",
+   "location": "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/e0/verify.py:168-184",
+   "attach_how": "加入能量记账门：有阻尼或 restitution<1 时总能量单调不增，容差登记后冻结",
+   "conflicts_or_risks": "后向差分速度加 6 位小数取整，会让能量检查带入数值噪声"
+  },
+  {
+   "hook": "AWZ 机制包登记表",
+   "location": "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/runtime/mechanics.py:110-190；mechanics_pack.schema.json",
+   "attach_how": "登记 is_earth_physics_default=true 的地球物理包（引用 Bullet 设置），把 E0 和运行时物理放进版本化登记",
+   "conflicts_or_risks": "属于世界侧，AinerZero 不能写；目录未提交"
+  },
+  {
+   "hook": "Genesis 后端（B7/B8）",
+   "location": "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/design/V9_LANDING_PLAN.md:171；relay awz.V9.B7",
+   "attach_how": "一级按 2026-10-20 授权先出版本和字节清单，改写 B7；隔离安装后跑与 Blender 的轨迹偏差基准",
+   "conflicts_or_risks": "基准运行需要算力预算登记；跨后端没有逐位一致的承诺；ADR-0013 要求同一仿真区间只有一个权威物理域"
+  }
+ ],
+ "open_tasks": [
+  "relay 上没有 V10-E1 或 S1 phase 2 的执行卡：P1 卡文写了「并入 E1」，但实际 prereg 把 E1 物理先验留到 phase 2，需要统筹新建卡、预登记和预算",
+  "GeometryCore 没有基于 G1/G3 的真实实现，只有 SE2 假实现",
+  "E0 接触真值需要改成 Bullet 原生接触或更精确的判定，否则 E1 的「碰撞 F1 不下降」没有可信真值",
+  "E0 需要记录静态面（地面、斜坡）的摩擦和弹性，并给 ④ 真参数上界提供完整参数",
+  "E0 缺少到受限观察 ObservationPacket/v1.1 的导出路径（E1 学生输入）",
+  "能量漂移只要求报告，但它的公式、口径和有耗散时的期望行为都没定义",
+  "AinerZero 信念合同没有物理参数后验的位置，BeliefSummary 只有 PoseBelief",
+  "机制库/规律库在 AinerZero 侧不存在；式8 要求的「机制 ID 与作用域」没有任何结构",
+  "awz.V9.B7 Genesis 仍是草稿：需要按 2026-10-20 授权出清单并改写卡；MuJoCo 未登记",
+  "E0 批量 1k–10k 生成需要一级按卡登记运行预算"
+ ],
+ "surprises": [
+  "调研说法 3 不成立：V10-E1 没有能量漂移门槛，能量漂移只报告。门槛是 10 步位置误差 ≥10% 和碰撞 F1 不下降（ARCHITECTURE_V9.md:325）",
+  "E0 的接触是包围球距离启发式（blender_worker.py:306-309），Ground 半径取 15，活动物体每帧都会被判为与地面接触；速度是取整位姿的后向差分。B11 和 B13 复核都没有指出这一点，碰撞 F1 真值不可用",
+  "E0 只把动态物体的参数写进 hidden_parameters，静态地面和斜坡的摩擦/弹性随机化了却没记录，④ 真参数上界无法从数据记录还原",
+  "E0 把「3 个随机种子」实现成 train/dev/final 各一个种子（dataset.py:24-26），而不是 3 个重复种子；与 arch:324「3 个随机种子；按世界固定划分」的意图可能不一致",
+  "S1 prereg.py:393 声称等变来源是「G3 estimated pose + covariance-injected error」，但 arms.py 没有 import G3/G1，用的是自写 float32 yaw 积分，也没有协方差误差注入（噪声可能来自 AWZ sensing/noise.py）；位姿残差在 :442 被 np.asarray 截断，梯度不经积分",
+  "GeometryCore 接口只有 FakeGeometryCore；G1/G3 只被测试引用，生产路径不用",
+  "geometry/README.md:12 仍写「没有实现 G3 的规范化 operator」，但 canonical.py 已存在且 G3/G4 已验收",
+  "已验收的代码仍未进 git：AinerZero 的 canonical.py、interfaces/、fakes/、experiments/ 都是未跟踪（??），G5 改动未提交；AWZ 的 python/animeworld/e0/、runtime/、tests/e0 也未跟踪",
+  "AinerZero 主 .venv 里有 torch 2.3.1（以及 torchvision/torchaudio），但 pyproject/uv.lock 没有列，和 arch §7:216「未安装 PyTorch」矛盾，来源待查",
+  "授权文档不一致：arch:270 和 COORDINATION.md:33 说安装需逐项批准；CLAUDE.md 加 2026-10-20 AUTHORIZATION.md:4 已覆盖既有任务的隔离安装（含 AWZ Genesis 清单准备）",
+  "AWZ V9_LANDING_PLAN.md:186「E1 已 superseded」指的是 awz.P3.E1（WorldCommand 协议），不是 V10-E1，容易混淆",
+  "WORLD_RUNTIME.md:51 要求地球物理作为内建机制包登记，但已登记的 6 个包都不是地球物理，E0 的 Bullet 路径也在机制包登记表之外",
+  "E0 用 60 fps（config.py:105，Bullet 子步 10），世界时钟和 TimeScaleAdapter 按 120 Hz（arch:111），E1 接入时要做时间对齐；E0 坐标是 Blender Z-up，进 GravityFrame 前要显式映射",
+  "本机 Blender 是 5.2.2，确定性域登记要用这个版本，不是 D6/D7 文档里的 4.2.10"
+ ]
+}

@@ -1,0 +1,115 @@
+{
+  "task": "ainerzero.V9.G4",
+  "reviewer": "composer-m7k2",
+  "author_under_review": "deepseek-flash-9m2x",
+  "n_cases": 8,
+  "n_ok": 8,
+  "n_poison_caught": 8,
+  "all_ok": true,
+  "all_poison_caught": true,
+  "cases": [
+    {
+      "name": "C1_near_pi_equivariance_and_identity",
+      "ok": true,
+      "poison_caught": true,
+      "detail": "max_equiv_pt=1.332e-15 max_equiv_vec=4.441e-16 max_rt=4.441e-16",
+      "metrics": {
+        "max_equivariance_points": 1.3322676295501878e-15,
+        "max_equivariance_vectors": 4.440892098500626e-16,
+        "max_roundtrip": 4.440892098500626e-16,
+        "poison_equiv_error": 0.7348770567039703
+      }
+    },
+    {
+      "name": "C2_reflection_mixed_in_rejected",
+      "ok": true,
+      "poison_caught": true,
+      "detail": "validate_rejected=True left_compose_rejected=True reflection_on_canonical_residual=2.000e+00",
+      "metrics": {
+        "se2_validate_rejected": true,
+        "left_compose_rejected": true,
+        "reflection_residual": 2.0
+      }
+    },
+    {
+      "name": "C3_nonrigid_transform_rejected",
+      "ok": true,
+      "poison_caught": true,
+      "detail": "{'scale': 'rejected', 'shear': 'rejected', 'scale_compose': 'rejected', 'shear_compose': 'rejected'}",
+      "metrics": {
+        "scale": "rejected",
+        "shear": "rejected",
+        "scale_compose": "rejected",
+        "shear_compose": "rejected"
+      }
+    },
+    {
+      "name": "C4_grid_out_of_bounds_fill_and_mask",
+      "ok": true,
+      "poison_caught": true,
+      "detail": "far_valid_frac=0.0000 far_fill_frac=1.0000 near_interior_valid=True",
+      "metrics": {
+        "far_valid_fraction": 0.0,
+        "far_fill_fraction": 1.0,
+        "near_interior_valid": true
+      }
+    },
+    {
+      "name": "C5_non_pd_covariance_injection_rejected",
+      "ok": true,
+      "poison_caught": true,
+      "detail": "outcomes={'indefinite': 'rejected', 'singular': 'rejected', 'nonsymmetric': 'rejected', 'nan': 'rejected', 'inf': 'rejected'} inject_ok=True",
+      "metrics": {
+        "indefinite": "rejected",
+        "singular": "rejected",
+        "nonsymmetric": "rejected",
+        "nan": "rejected",
+        "inf": "rejected",
+        "spd_inject_ok": true
+      }
+    },
+    {
+      "name": "C6_identity_roundtrip_and_height_preservation",
+      "ok": true,
+      "poison_caught": true,
+      "detail": "rt=2.220e-16 height_ok=True at_agent=[0.0, 0.0, 1.25] roll_rejected=True poison_wrong_z=0.880000",
+      "metrics": {
+        "max_roundtrip": 2.220446049250313e-16,
+        "height_ok": true,
+        "at_agent_canonical": [
+          0.0,
+          0.0,
+          1.25
+        ],
+        "roll_pitch_rejected": true,
+        "poison_wrong_z": 0.88
+      }
+    },
+    {
+      "name": "C7_error_propagation_derivation_vs_measured",
+      "ok": true,
+      "poison_caught": true,
+      "detail": "deriv_pt=0.000e+00 deriv_vec=0.000e+00 fd_err=5.654e-08 rel_pt=0.0108 rel_vec=0.0112 poison_rel=0.9059",
+      "metrics": {
+        "deriv_match_point": 0.0,
+        "deriv_match_vector": 0.0,
+        "finite_diff_jacobian_err": 5.653568702079781e-08,
+        "mc_relative_point": 0.010848718344441037,
+        "mc_relative_vector": 0.011157633616153672,
+        "mc_samples": 8000,
+        "poison_yaw_dropped_relative": 0.9058563986789562
+      }
+    },
+    {
+      "name": "C8_image_rgb_rejected",
+      "ok": true,
+      "poison_caught": true,
+      "detail": "rejected=True",
+      "metrics": {
+        "rejected": true
+      }
+    }
+  ],
+  "canonical_sha256": "ea446f76043f8aeac33d1665dbf18252a4678700b849d54e17f5fa9cc3282a50",
+  "test_canonical_sha256": "38ced822b96d9815b6d1a7a2f40d3e0c48475054466311699dfd7dff02ab9606"
+}

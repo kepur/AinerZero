@@ -1,0 +1,81 @@
+# A13 关闭项检索证据（r2 行号）
+
+## grep -n "方向相反"  (r2)
+89:OSVerify（`2610.18089`）的目标是最大化无效解拒绝率（TNR = 1 − 无效解错误接受率），这与本门控制错误接受是**同一方向**（r1 草案与 REPORT 写“方向相反”系事实错误，特此更正）；区别在于 OSVerify 还对有效解误拒率（FNR）设了硬约束（如 5%），因为拒掉稀有有效解
+214:| **M1** | OSVerify 目标是最大化 TNR（拒绝无效解），与控制错误接受**同向**，FNR 只是其约束；r1 与 REPORT 写“方向相反”系事实错误 | 已改写 §2 D3 开头并在 RESEARCH_LOG 补勘误（不改已封存 REPORT 原字节）：删“方向相反”，改以**误拒可恢复
+
+## grep -n "0.621"  (r2)
+107:3. **多重比较与序列控制（含 M2 的 EGR 三条件与 0.621 警示）**：
+114:   - **已知失效警示（M2）**：在 EGR 的 5,000 轨迹闭环基准中，只喂开发集 e-value 的 **dev-only e-LOND 的 persistent FDR 高达 0.621**，而喂审计后 all-environment `E_pers` 的变体未观察到持续错误采纳。故**严禁对单
+215:| **M2** | e-LOND 缺 EGR 定理 2 的三条件，尤其 (ii) 证据单元须为世界级 block/cluster；且未提 dev-only e-LOND 在 EGR 基准上 persistent FDR = 0.621 | §2 D3-3 补齐 (i) 贷前冻结、(ii) 世界级 block/
+
+## grep -n "COVARIANCE_INCONSISTENT"  (r2)
+48:| 4a | `COVARIANCE_INCONSISTENT` | NIS 统计量 Σ_{k∈W} r_kᵀS_k⁻¹r_k < χ²_{W·d}(α_s/2)（**下尾**，S_k 系统性偏大/滤波器过度保守） | 重标定观测/过程噪声协方差 S 或 Q；**不学习、不作为 SUFFICIENT 缓存、不进入
+50:| 5 | `PARAMETRIC` | 更新 p(φ\|D) 后，第 4b 条在**未参与拟合的留出窗**上通过（若落入 4a 则转 `COVARIANCE_INCONSISTENT`） | FAST 内在线辨识（参数增广滤波或低维 SMC，无网络） |
+68:**可观测性**：每次判定记录路由码与原因（`COVARIANCE_INCONSISTENT` 单独计类），风格同 `fallback_reason()`，进入运行报告与 MSG 混淆矩阵。
+217:| **M4** | 双侧 χ² 的下尾（S_k 偏大/过度保守）被并入 `SUFFICIENT`，会污染缓存与 D_valid 分位数 | §2 D1 路由表拆出 `4a COVARIANCE_INCONSISTENT`（下尾 < χ²(α_s/2)），动作=重标定 S/Q、不学习、不缓存、不进 D_vali
+
+## grep -n "cmfl_registration"  (r2)
+63:所有可调量写入一份带 SHA256 的 **CMFL 登记文件**（`cmfl_registration.json`），在运行/实验登记时冻结；运行内不得修改，改任一字段 = 新登记 ID + 新实验 ID，旧结果不覆盖：
+66:3. **与 r5 已有冻结源的单一权威关系**：r5 式 6 的 (ε, θ_baseline)、式 10 的 τ、式 11 的 η、式 12b 的 (f_max, u_max) 仍以 r5 实验预登记为唯一权威；`cmfl_registration.json` **只通过 SHA 引用它们，不复制、不覆盖**
+92:第 t 次晋升检验只测 **1 个冻结候选 m′**（若同一发现作业向 T 送检 N>1 个候选，则该次检验的预算先替换为 α_t / N）。同一个 T 上跑的三类决策检验共用当次预算 α_t（由 e-LOND 给出：α_t = α_seq · γ_t · (R_{t−1}+1)，其中 R_{t−1} 为此前已晋
+133:- 只在 D_permit 与登记预算内选探针。线性高斯近似 `EIG_φ = ½ log det(I + S⁻¹JΣ_φJᵀ)`；非高斯用嵌套 MC，须在 `cmfl_registration.json` 登记内外层样本数 (M_in, M_out) 并说明其估计偏高（内层对数边际似然的 Jensen 偏差）
+175:| C5 CMFL 登记文件（M5） | 新文件类型 `cmfl_registration.json`（含 D1 完整冻结清单 1–3，带 SHA256，只引用不覆盖 r5 已有冻结值） | 新增，无旧数据 | 删除引用即可，不影响既有实验 |
+190:- 风险：可调量若漏进登记文件会变成调参自由度（以 D1 `cmfl_registration.json` 全量冻结约束）；合成玩具世界结论不得外推到 E0/Bullet，更不得外推到真实视频；新研究线与角色优先主线争夺统筹精力（世界脑仍为旁路，不成为出片前置）。
+218:| **M5** | D2/D3/D4 的 12 个可调量未进冻结清单；“独立上下文”“稳定过滤器”无定义；与 r5 `f_max`/`u_max` 权威关系未定 | §2 D1 新增 `cmfl_registration.json` 完整冻结清单（含 12 项）、独立上下文可判定谓词、D3-6 稳定过滤器可执
+
+## grep -n "τ_decorr"  (r2)
+59:- **独立上下文的可判定定义（M5）**：两个上下文 c₁=(g₁, [t₁, t₁+W))、c₂=(g₂, [t₂, t₂+W)) 称为独立，当且仅当 (i) 属于不同世界实例（`world_instance_id` 不同），或 (ii) 在同一世界内时间窗间隔 ≥ τ_decorr（去相关步数，登记时冻结）
+64:1. **MSG 路由参数**：α_s、κ、τ_id、τ_H、K、W、τ_decorr、积分器/步长集合、D_permit 版本与 provenance SHA；
+
+## grep -n "统一错误预算"  (r2)
+84:### D3 单侧晋升门（MID → SLOW）与统一错误预算（M1/M2/M3）
+91:**统一错误预算表（M3）**：
+127:8. **阈值标定**：见统一错误预算表 D3-8，在留出集上用次序统计量标定，不得在评测集上扫阈值。
+189:- 正面：把“何时不该学/不该探索”变成可审计 8 路由（含协方差失准下尾拦截）；晋升独立性、世界级 block e-process 与统一错误预算可核验；E1 能区分“学到未知规律”与“只做参数推断”且不漂移原门槛。
+216:| **M3** | bootstrap 95%、α/N、e-LOND α_t、FactTest 标定四套误差装置无统一错误预算，“T 上只测一次”不准 | §2 D3 新增**统一错误预算表**：删硬编码 95%，bootstrap 与式 6 共用当次 α_t/(2N)，逐例不回归为 0 违规硬门，α_dom
+
+## grep -n "require_independent_slow_producer"  (r2)
+172:| C2 SLOW 独立出具者守卫（M7） | **选定方案 (b)**：`PRODUCER_REGISTRY` 与 `validation.validate_producer(producer)` 的现有签名和登记表权威保持不变；在 `validation.py` 新增专用于 SLOW 晋升的 `requir
+220:| **M7** | C2“只读调用…并在其上扩展”自相矛盾 | §3 **C2** 选定方案 (b)：保持 `validate_producer` 不变，新增 `require_independent_slow_producer(producer, *, trusted_context)` 拦截 `"self
+
+## grep -n "MSGRouteRecord"  (r2)
+177:| C7 参数信念与 MSG 路由记录的承载（M6） | **(i) φ 后验承载**：不改 `BeliefSummary` dataclass（保持位姿语义不变）；在线参数信念 `p(φ\|D)` 作为键 `"physics_param_belief"` 挂在 `UpdateScheduler.update(
+219:| **M6** | §3 缺 φ 后验承载与 MSG 路由记录 schema；§0“全部是已有接口”措辞过强 | §0 改为“落点在 r5 已定义组件与式子上，C1–C7 为收紧与承载定义”；§3 新增 **C7**（`"physics_param_belief"` 挂通用 belief Mapping + 
+
+## grep -n "physics_param_belief"  (r2)
+177:| C7 参数信念与 MSG 路由记录的承载（M6） | **(i) φ 后验承载**：不改 `BeliefSummary` dataclass（保持位姿语义不变）；在线参数信念 `p(φ\|D)` 作为键 `"physics_param_belief"` 挂在 `UpdateScheduler.update(
+219:| **M6** | §3 缺 φ 后验承载与 MSG 路由记录 schema；§0“全部是已有接口”措辞过强 | §0 改为“落点在 r5 已定义组件与式子上，C1–C7 为收紧与承载定义”；§3 新增 **C7**（`"physics_param_belief"` 挂通用 belief Mapping + 
+
+## grep -n "D_permit 来源审计"  (r2)
+39:- **D_permit 来源审计（M8）**：因为 `D_permit` 在“同观察、异未来”对照中是同一常量，该反例结构上测不到 `D_permit` 夹带实验者知识。故规定：(a) `D_permit` 必须在实验登记**之前**冻结并记录 provenance（出具人、依据、所用数据身份，且不得触碰 T 
+
+## grep -n "⑤–⑧"  (r2)
+161:**新臂 ⑤–⑧ 不参与 E1 原门槛判定。即使实验结果在 P 族出现 ⑤≈④（即仅靠参数辨识已接近真参数上界），臂 ③ 相对 ①② 的过门结论仍按 r5 原门槛（10 步位置误差优于 ①② 较好者 ≥10% 且碰撞 F1 不降）单独成立，不得以 ⑤ 的表现否决 ③ 过门；⑤–⑧ 仅用于诊断和解释 ③ 的增益中
+183:- r5 冻结基线、`baseline.v1.json` 原字节与冻结身份；E1 原四组与原门槛（⑤–⑧ 不参与原门槛判定）；S1 r13 冻结件（不往已冻结的 S1 加臂）；§8.6 信息边界；“教师与 LLM 不能写 SLOW”。
+223:| **M10** | D6 假说可能被当作隐式新门槛，在 ⑤≈④ 时否决 ③ | §2 D6 新增**原门槛独立性声明**：⑤–⑧ 不参与原门槛判定，即使 ⑤≈④，③ 仍按原门槛单独成立；并同步写入 P48 卡面 |
+
+## grep -n "event"  (r2)
+37:- **式 8 的 `event` 参数消歧（M9）**：r5 §4 式 8 `r_θ(local_graph, event, history)` 中的 `event` 严禁指向世界侧 `Event/v1`；在学习侧它只能是 §8.6 允许的两类事件——观察事件（如 `ObservationPacket` 的 `
+222:| **M9** | r5 式 8 的 `event` 参数与 §8.6 冲突未消解 | §2 D1 输入边界写明：式 8 的 `event` 只能是观察事件或世界脑内部信念事件，严禁传 `Event/v1` |
+
+# 同一组关键词在 r1 封存件中的命中数（证明哪些是 r2 新增）
+OSVerify                           r1=0  r2=3
+FNR                                r1=0  r2=2
+误拒                                 r1=1  r2=3
+方向相反                               r1=0  r2=2
+0.621                              r1=0  r2=3
+COVARIANCE_INCONSISTENT            r1=0  r2=4
+cmfl_registration                  r1=0  r2=7
+physics_param_belief               r1=0  r2=2
+MSGRouteRecord                     r1=0  r2=2
+require_independent_slow_producer  r1=0  r2=2
+
+# r1 D3 段原文（line 76）
+候选 m′ 对现任 m₀，在独立世界集合 T 上检验。发现数据 D、标定数据 C、测试集 T 三者身份强制不相交，全部取自 development 分区；**final 不碰**。“单侧”指只控制**错误接受**（把无效或更差的机制晋升）；误拒只报告，不作门。
+
+# r1 路由表 4（line 44）
+| 4 | `SUFFICIENT` | NIS 统计量 Σ_{k∈W} r_kᵀS_k⁻¹r_k 落在 χ²(W·d) 的双侧 1−α_s 区间内 | 直接求解、缓存 |
+
+# REPORT.md:61（被封存、仍含「方向相反」）
+| OSVerify | 2610.18089 | FNR 指误拒有效解，与我们要控制的错误接受方向相反；主表阈值在评测集上选，只有附录 B.4 在留出集上标定 |

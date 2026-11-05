@@ -1,0 +1,262 @@
+{
+ "area": "plans-registry-governance（研究注册表、既有调研、跨仓落地计划与治理/授权边界）",
+ "facts": [
+  {
+   "claim": "equivariant-trust-horizons、epinet、lewm、h-jepa、titans、nested-learning、genesis-world、stable-worldmodel 已在研究注册表",
+   "verdict": "confirmed",
+   "evidence": "docs/research/adapter_registry.json:795 \"id\": \"equivariant-trust-horizons\"；:747 epinet；:1248 lewm；:1078 h-jepa；:2343 titans；:1422 nested-learning；:975 genesis-world；:2031 stable-worldmodel（ADAPTER_REGISTRY.md:28/29/33/35/38/42/55/61 同步）",
+   "note": "8 项都在工作区 r3（51 条）里。但其中 epinet、titans、nested-learning、genesis-world 只存在于未提交的 r3；git HEAD 只有 28 条，含 h-jepa、lewm、stable-worldmodel、equivariant-trust-horizons 4 项（git show HEAD:docs/research/adapter_registry.json → 28 个 id）。"
+  },
+  {
+   "claim": "EMPIRIC、MDA、PySINDy、PySR、MuJoCo、CoSR、NeSyS、Code-as-World 已在注册表（含未提交改动）",
+   "verdict": "refuted",
+   "evidence": "对 adapter_registry.json / ADAPTER_REGISTRY.md 做 grep -i 'pysindy|pysr|sindy|symbolic|EMPIRIC|CoSR|NeSyS|code-as-world|\\bMDA\\b'，无命中；MuJoCo 只出现在依赖文字中：json:1498 \"官方仓库基于 TensorFlow + MuJoCo/DMControl\"（plan2explore），json:2297 \"README 运行说明：nle、mujoco\"（thick）",
+   "note": "8 项都没有作为条目登记。MuJoCo 只作为 plan2explore、thick 两条的环境依赖被提到，不是独立条目。Relay 的 prompt/params 里也没有 PySR、pysindy、MuJoCo（sqlite 只读查询为空）。"
+  },
+  {
+   "claim": "调研说的 9 项全部不在现有 51 条注册表内",
+   "verdict": "partial",
+   "evidence": "ADAPTER_REGISTRY.md:9 \"## 1. 总表（51 条，与 adapter_registry.json 严格同步）\"；json 实计 51；HEAD 实计 28",
+   "note": "三点需要分开看。(1) 「51 条」只对未提交的工作区 r3 成立，已提交版本是 28 条。(2) 上面 8 个新名字确实都不在。(3) 如果「9 项」里含 epinet、trust-horizons、genesis-world、lewm 等，这个说法就是错的，它们都已登记。另外，主题上已有部分覆盖：共形校准见 equivariant-trust-horizons（json:817 \"构造共形校准的可信预测时域\"），S6 不确定性见 epinet 与 plan2explore。"
+  },
+  {
+   "claim": "注册表的未提交改动表明有人正在补登记新条目",
+   "verdict": "refuted",
+   "evidence": "ADAPTER_REGISTRY.md:7 \"r3 修订（V9.R5，二级 gemini-k7x2，访问日期 2026-10-16）…新增 23 条，合计 51 条\"；shasum json=5c1564b0…b6b5、md=332c5036…4ca1，与 Relay ainerzero.V9.R8 result \"输入身份…SHA 5c1564b0…\" 一致；文件 mtime 2026-10-16 19:47/19:50",
+   "note": "未提交的是已结案的修订号 r3：作者 V9.R5（gemini-k7x2 接力给 gemini-k8m1），Relay 里 R5/R6/R8/R9/R10 都是 accepted。没有在途编辑，也没有打开的注册表卡，R1–R10 全部 accepted，下一个序号是 R11。git diff --stat：ADAPTER_REGISTRY.md 279 行、adapter_registry.json 4040 行改动；reports/V9-R5/、reports/V-V9-R5/ 都未入库。"
+  },
+  {
+   "claim": "R5 补登记经过了非作者复核",
+   "verdict": "partial",
+   "evidence": "Relay tasks：ainerzero.V9.R5 assignee=gemini-k8m1；ainerzero.V9.R6（\"独立复核 ainerzero.V9.R5\"）assignee=gemini-k8m1；ainerzero.V9.R8 assignee=muse-9f2k \"二级独立复核\"",
+   "note": "R6 和作者是同一个代理 ID，按 COORDINATION 规则 6 和 10-22 别名裁定不算独立。实际的非作者覆盖来自 R8（muse-9f2k），R9 由 glm-4xq7 做、R10 由 deepseek-5gnh 复核。"
+  },
+  {
+   "claim": "既有调研/方案已提出符号回归、SINDy、端口哈密顿、贝叶斯、主动实验",
+   "verdict": "not_found",
+   "evidence": "grep -i 'symbolic|sindy|hamilton|哈密顿|bayes|贝叶斯|主动实验' 在 V9_FRONTIER_COST_SURVEY.md、V9_RESEARCH_SURVEY.md、M2Max_NoCUDA_Integration_Plan.source.md 中无命中；ARCHITECTURE_V9.md:24 \"用了哈密顿方程不代表理解所有物理\"",
+   "note": "相关的既有提议只有以下几处：epinet 用于 S6 主动探索和「教师作带噪传感器」的置信度校准（FRONTIER:19、:93–94）；Plan2Explore、学习进展、信息增益标为未核（RESEARCH_SURVEY:69）；物理+残差 E1（v10 source:25 \"S_(t+1) = Physics(S_t,a_t) + G_theta(...)\"，:48 E1 门 ≥10%）；M2Max:40 评测含\"物理约束\"，:75 以\"恒速度/物理解析/Blender 真值\"为基线。主架构 :24 对哈密顿方法明确持保留态度。"
+  },
+  {
+   "claim": "V9_RESEARCH_SURVEY 所说的 LearningProgress 接口已留位置",
+   "verdict": "refuted",
+   "evidence": "V9_RESEARCH_SURVEY.md:69 \"现在只在 HierarchicalPlanner / LearningProgress 接口里留位置\"；src/ainerzero/v9/interfaces/__init__.py:36–52 只导入 GeometryCore、PerceptionEncoder、HierarchicalPlanner、UpdateScheduler、SpatialMemory、TimeScaleAdapter、WorldBrainAdapter",
+   "note": "src 和 tests 里 grep LearningProgress、learning_progress 都是零命中。S6 的信息增益（ARCHITECTURE_V9 式 7）目前只在文档里，代码里只有 HierarchicalPlanner 接口和它的假实现（fakes/planner.py）。"
+  },
+  {
+   "claim": "往主架构加新机制/新研究臂须走 ADR、迁移、非作者复核",
+   "verdict": "confirmed",
+   "evidence": "ARCHITECTURE_BASELINE.md:88 \"改职责/权威写者、公共接口语义、来源与训练资格、观察可见性、已有科学门或预算，先登记 ADR/迁移与回滚方案…由非作者复核后发布新修订\"；:87 日常细化写入任务与模块文档",
+   "note": "其他依据：V9_LANDING_PLAN.md:267、ADR-0013:64 \"涉及权威、公共语义、来源资格或科学门的后续改变另起 ADR\"。只加一个新对照臂、不改门和接口的，归预登记，见 BASELINE:48 \"新研究臂逐项预登记\" 和 ARCHITECTURE_V9.md:168–171 \"每个对照臂…逐项预登记：数据、预算、指标、门槛、随机种子…加入更多候选对照，不等于这些运行已获授权\"。先例是前沿增补走 ADR-0012 修订四（D-017）、落地方案 §9 开卡、注册表 R5/R6 卡这条路。"
+  },
+  {
+   "claim": "非作者复核与一级分工规则（COORDINATION 规则 6–8）",
+   "verdict": "confirmed",
+   "evidence": "COORDINATION.md:68 \"唯一的限制是“做的人不验收自己”\"；:73 \"文档整理、契约文件、schema…一律拆成二级执行卡…并配非作者复核卡\"；:79 \"原地重新生成必须显式加 --regenerate…复核和验收不得调用\"；:189 \"非作者复核必须由不继承作者上下文的独立会话领取\"",
+   "note": "一级只做裁决和验收；注册表补登记、validator、契约都必须拆成二级卡，并配非作者卡。"
+  },
+  {
+   "claim": "「改冻结参数或门槛」仍需用户批准；其范围",
+   "verdict": "confirmed",
+   "evidence": "CLAUDE.md:23 \"改冻结参数或门槛。\"（列于「仍需用户逐项批准」）；AUTHORIZATION.md:3 \"付费、推送、删除及改冻结参数/门槛仍未授权\"；RESEARCH_LOG.md:729 \"冻结参数和门槛不变\"；ARCHITECTURE_BASELINE.md:48 \"旧科学门、种子、预算、数据分区、检查点和负结果原样保留\"",
+   "note": "「冻结」包括：登记时冻结的阈值（式 6 的 ε、式 13 的 δ、f_max/u_max、τ、η）；G1 的 CPU 容差和 fixture（ARCH S0 行 \"G1 已登记的…不改\"）；已冻结的 S1 预登记 r13；E1 门（≥10%）和 S6 门。先例：T6 视图 64→82 由用户批准（RESEARCH_LOG R20261027-T6-views-82），C06a 的 τ=1e-5 也是用户批准（AGENT_TASKS.md:66）。另立一个新臂、单独预登记，本身不算改冻结参数，但要单独登记预算；往已冻结的 S1 r13 加臂就必须重冻结。"
+  },
+  {
+   "claim": "S6 自驱现在可以开卡/开新研究臂",
+   "verdict": "refuted",
+   "evidence": "AWZ V9_LANDING_PLAN.md:64 \"S6 自驱成长 | … | 是 | 无教师独立测试、旧技能保留\"；:66 \"S1、S2 的实验卡建为草稿…其余阶段等前一级过门再开卡\"；ARCHITECTURE_V9.md:183 \"S6 自驱…需批准\"",
+   "note": "Relay 里没有任何 S6 卡（按 S6、自驱、信息增益、LearningProgress 查 prompt，只命中历史条目）。S1 第一阶段还没过门：P40 blocked，P1 实验 failed。"
+  },
+  {
+   "claim": "E1（物理先验+残差）已在 S1 中开展",
+   "verdict": "refuted",
+   "evidence": "src/ainerzero/v9/experiments/s1/prereg.py:395–396 \"forbidden\": \"multi-step rollout, Muon, equivariant-network/no-equivariance arms, E1 physics prior: all reserved for phase 2\"；ARCHITECTURE_V9.md:325 E1 四组；:334 \"E1、E2b、E4、E6 都要等用户批准训练或下载\"",
+   "note": "Relay ainerzero.V9.P1 的 prompt 第 14 行写着「并入 E1：四组对照」，但第一阶段预登记明确禁止 E1。第二阶段预登记目前不存在。arms.py:320–324 的有界残差只作用于自运动积分，不是 E1 的物理先验残差。"
+  },
+  {
+   "claim": "新增 pysindy、pysr+Julia、mujoco 的安装已在现行授权内",
+   "verdict": "refuted",
+   "evidence": "AUTHORIZATION.md:3 \"既有教师/引擎任务中的下载与隔离安装不再等待逐项人工批准；各卡仍按明确模型、许可、来源、字节/磁盘/资源预算执行\"；CLAUDE.md:10 \"既有任务的下载与隔离安装\"；AWZ RESEARCH_LOG.md:577 \"不变：下载、安装、付费仍需用户逐项批准\"",
+   "note": "三个包都不属于任何既有任务卡（Relay 查询为空），本机 .venv 和 .venv-ainerzero 里也没装（pysindy 还会连带装 scipy、scikit-learn，目前也都没有）。R20261021 的「开源免费插件」（RESEARCH_LOG.md:820）指 Blender/3D 插件，不是 Python 研究库。PySR README:51 写着 \"Julia dependencies will be installed at first import.\"，也就是首次 import 时会隐式联网，默认装到 ~/.julia，不在隔离环境里。MuJoCo 是新的物理后端，可类比 ADR-0012:120 把 Genesis 安装列为需批准，而 Genesis 的 awz.V9.B7 至今仍是 draft。结论：需要用户逐项批准，或者先立卡登记来源、字节和隔离方案，再取得用户批准。许可经一手 LICENSE 核实：pysindy 为 MIT，PySR 为 Apache-2.0，MuJoCo 为 Apache-2.0。"
+  },
+  {
+   "claim": "代码总门 awz.V9.A10 仍为 draft（基线/任务文档所述）",
+   "verdict": "refuted",
+   "evidence": "ARCHITECTURE_BASELINE.md:9 \"代码总门 awz.V9.A10 未放行\"；AGENT_TASKS.md:9 同句；Relay awz.V9.A10 status=accepted updated 2026-10-20T13:36；AWZ RESEARCH_LOG D-021 \"awz.V9.A10…办理通过\"",
+   "note": "根目录的入口文档已经过时。CLAUDE.md 第 7–24 行（未提交）写的是对的。NORTH_STAR.md:29、:284 仍写着「训练暂停（D-008）」，也已过时。"
+  },
+  {
+   "claim": "当前产品重心与「自主科学发现」新方向的关系",
+   "verdict": "partial",
+   "evidence": "ADR-0013:21 \"AinerZero 是独立世界脑…不成为出片前置或 LLM 导演\"；:54 \"研究 adapter_registry 不是执行授权\"；NORTH_STAR.md:265 \"关掉世界脑，生产照常\"；:243 \"学习“有条件的规律”…再靠观察缩小范围\"",
+   "note": "当前主线是角色优先的制作链，世界脑只是旁路。三仓 grep「科学发现、自主科学、scientific discovery」全部零命中，说明这是一个没有文档依据的新方向。NORTH_STAR §7 的「只学规律、靠观察缩小假设」和 ARCH:46 中 MID 层的「待验证假设」在精神上与它相容，但正式采纳需要 ADR，不能借注册表条目落地。"
+  },
+  {
+   "claim": "Relay/任务卡中与研究注册表、S6、E1 相关的卡号",
+   "verdict": "confirmed",
+   "evidence": "Relay：ainerzero.V9.R1–R10 全部 accepted；ainerzero.V9.P1 accepted（prompt 含 E1）；awz.P3.E1 cancelled（WorldCommand，与 V10-E1 无关）；awz.V9.B11 accepted 加 B13 复核 accepted（E0 数据），B12 rejected；awz.V9.B7/B8 draft（Genesis）；ainerzero.V9.B1、B4–B11 accepted（SkillProposal，S6 提案通道）；AGENT_TASKS.md 用 grep 'V9\\.R[0-9]|S6|自驱|V10-E1|注册表|registry' 零命中",
+   "note": "落地方案的卡号：V9_LANDING_PLAN.md:98–99 R1/R2，:166 R5/R6，:224 P1 并入 E1，:64 S6 无卡。ADR-0012 §5.4 第 6 条规定 V10-E1 与 awz.P3.E1 的命名要区分。"
+  }
+ ],
+ "existing_mechanisms": [
+  {
+   "name": "Research Adapter Registry v0（r3，51 条）",
+   "location": "/Users/mac/AinerWorkFlow/AinerZero/docs/research/ADAPTER_REGISTRY.md、adapter_registry.json；校验器 reports/V9-R5/validate_registry_r5.py",
+   "status": "tested",
+   "what_it_does": "只读登记论文、仓库、许可、可借鉴机制、MLX 可行性和不可推断项；校验器带改坏对照（R8 记录 18/18 变红），R9/R10 补了 MIT 精确串守卫",
+   "gaps": "r3 已在 Relay accepted，但没提交 git（HEAD 还是 28 条），reports/V9-R5 也未入库。R8 指出校验器把 EXPECTED_51_IDS 硬编码，新增条目会让旧校验器失败，需要新卡改写。R6 和作者是同一个代理。"
+  },
+  {
+   "name": "预登记规则与 S1 预登记实现",
+   "location": "ARCHITECTURE_V9.md:168–171；src/ainerzero/v9/experiments/s1/prereg.py",
+   "status": "tested",
+   "what_it_does": "每个对照臂预登记数据、预算、指标、门槛、种子；S1 第一阶段实现了批准行 SHA 绑定和冻结文档",
+   "gaps": "只覆盖 S1 第一阶段；E1、Muon、多步训练明确留给第二阶段，第二阶段预登记不存在"
+  },
+  {
+   "name": "E1 物理先验+残差（V10-E1）",
+   "location": "ARCHITECTURE_V9.md 式 8（:143–146）、§8.3:325；Relay ainerzero.V9.P1 prompt",
+   "status": "doc_only",
+   "what_it_does": "四组对照：有偏先验、纯 MLX、先验+残差、真参数上界；数据端随机化隐藏参数",
+   "gaps": "没有代码和运行；arms.py 的有界残差只作用于自运动，不是 E1"
+  },
+  {
+   "name": "E0 物理真值序列生成器（小样）",
+   "location": "AWZ awz.V9.B11（accepted）/ B13 复核 accepted",
+   "status": "implemented",
+   "what_it_does": "Blender/Bullet 无头生成物理与状态序列，不渲染；可作 E1 和符号回归的数据源",
+   "gaps": "1k–10k 批量要单独批准运行预算；B12 首轮复核 rejected"
+  },
+  {
+   "name": "S6 自驱：HierarchicalPlanner 接口与假实现",
+   "location": "src/ainerzero/v9/interfaces/planner.py:23；src/ainerzero/v9/fakes/planner.py",
+   "status": "fake_impl",
+   "what_it_does": "分层规划的接口、预算覆盖检查和子目标禁真值键检查",
+   "gaps": "没有 LearningProgress 或信息增益接口（调研文档说留了位置，不实）；没有 S6 卡"
+  },
+  {
+   "name": "SkillProposal/v1 契约（S6 提案与技能门禁通道）",
+   "location": "contracts/v9/skill_proposal.v1.schema.json、skill_gate_reply.v1.schema.json、ability_registry_entry.v0.schema.json；docs/v9/SKILL_PROPOSAL.md",
+   "status": "contract_schema",
+   "what_it_does": "学生提案用 ability_id 引用 AWZ 能力，证据绑定观察包摘要，门禁原样接受或拒绝；有 CPU 参考核对",
+   "gaps": "Relay 里 B1、B4–B11 都已 accepted，但文件在 git 中未跟踪；AWZ 门禁实现与 WorldBrainAdapter 实现不在范围内"
+  },
+  {
+   "name": "epinet / Plan2Explore（S6 不确定性候选）",
+   "location": "adapter_registry.json:747、:1464；ARCHITECTURE_V9.md:289",
+   "status": "doc_only",
+   "what_it_does": "作为 S6 主动探索和教师置信度的对照臂候选",
+   "gaps": "只有注册表条目，没有代码；Plan2Explore 依赖 TensorFlow + MuJoCo，留待 MLX 自写"
+  },
+  {
+   "name": "教师作带噪传感器：DA3 标定与噪声统计预登记",
+   "location": "src/ainerzero/v9/teachers/da3_calibration_math.py、da3_calibration_runner.py；reports/V9-T6/r2-calib-fixtures/statistical_protocol.json；Relay T28/T29 accepted",
+   "status": "tested",
+   "what_it_does": "配对真值标定教师误差（residual_7d），为教师置信度和教师约束提供噪声模型",
+   "gaps": "T35 唯一一次真跑 failed，T37 修复已 reported、T38 复核进行中；结论口径为「诊断候选、未登记」"
+  },
+  {
+   "name": "共形校准可信时域（equivariant-trust-horizons）",
+   "location": "adapter_registry.json:795–830",
+   "status": "doc_only",
+   "what_it_does": "用一步潜残差加共形校准给出 rollout 可信步数上限",
+   "gaps": "没有官方代码，许可无法核；条目注明不外推到非对称接触环境"
+  },
+  {
+   "name": "下载与隔离安装授权",
+   "location": "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261019-parallel/resume-20261020-downloads/AUTHORIZATION.md:3–6",
+   "status": "doc_only",
+   "what_it_does": "既有教师和引擎任务的下载与隔离安装不再逐项批准；限单流 2MiB/s，资源保护保留",
+   "gaps": "只覆盖既有任务；新研究包不在范围内"
+  },
+  {
+   "name": "非作者复核门（Relay 会话别名排除）",
+   "location": "COORDINATION.md:66–71、:183–191；relay.P2.S24",
+   "status": "implemented",
+   "what_it_does": "作者不验收自己；同会话别名整体排除",
+   "gaps": "历史上 R6 由 R5 同一 ID 完成，说明当时门没拦住"
+  },
+  {
+   "name": "Genesis World 物理真值候选",
+   "location": "AWZ awz.V9.B7/B8；adapter_registry.json:975",
+   "status": "interface_only",
+   "what_it_does": "Apache-2.0 多物理引擎，作 Metal 物理真值候选",
+   "gaps": "B7/B8 仍是 draft（安装待批准）；没安装、没运行"
+  }
+ ],
+ "frozen_constraints": [
+  "主架构 V9-r5-20261016 + v10 工程验证层与 baseline.v1.json 原字节不改；职责、公共接口语义、来源与训练资格、观察可见性、科学门或预算的改变，必须先做 ADR、迁移与回滚、非作者复核，再升版（ARCHITECTURE_BASELINE.md:88）",
+  "每个新对照臂逐项预登记数据、预算、指标、门槛、种子；不默认全因子；不复用其他阶段预算；加入候选不等于运行获授权（ARCHITECTURE_V9.md:168–171）",
+  "改冻结参数或门槛、超出登记预算的运行、付费、云 GPU、CC-BY 进训练，都需要用户逐项批准（CLAUDE.md:18–23）",
+  "下载与安装只对既有任务豁免逐项批准；单流、2MiB/s、16GiB 内存与 50GiB 磁盘余量、swap 保护保留（AUTHORIZATION.md:3–5）；注册表本身不授权下载（ADAPTER_REGISTRY.md:3、ADR-0012 §5）",
+  "S1 起每一级都要用户批准训练预算；S6 在前一级过门前不开卡（V9_LANDING_PLAN.md:64–66、ADR-0012 §5.3）",
+  "E1 的物理先验必须登记偏差来源，数据端随机化隐藏参数；真参数物理只作上界诊断，不计成绩（ARCHITECTURE_V9.md:146、:325）",
+  "世界真值与世界脑信念分开；物理后端属于 AWZ 的 World Plane，可替换；同一仿真区间只有一个权威物理域（ARCHITECTURE_BASELINE.md:38、ADR-0013:52）。世界脑侧的沙盒行动必须经 SkillProposal 和 AWZ 门禁（ARCHITECTURE_V9.md:89）",
+  "教师和 LLM 永远不能直接写 SLOW 记忆；MID 只放待验证假设（ARCHITECTURE_V9.md:46）",
+  "external_derived 默认不可训练；D-001 只收自产或 CC0；外部预训练只能作教师或基线，必须如实标注",
+  "一级只做架构、裁决、验收；文档、schema、校验器、实现拆给二级并配非作者卡；复跑不得改写交付证据（COORDINATION.md 规则 6–8）",
+  "MLX 训练走 CLI、共享锁、RunStore、预算守卫，串行执行；accept 不等于能力晋升（RESEARCH_LOG.md:729）"
+ ],
+ "integration_hooks": [
+  {
+   "hook": "注册表补登记新条目（EMPIRIC、CoSR、NeSyS、Code-as-World、PySINDy、PySR、MuJoCo 等）",
+   "location": "docs/research/ADAPTER_REGISTRY.md + adapter_registry.json；新卡 ainerzero.V9.R11（二级）+ R12（非作者）",
+   "attach_how": "沿用 R3/R5 模式：先把 r3 原字节归档到 reports/V9-R11/r3-archive/，md 和 json 严格同步；查不到的仓库和许可如实标「无法核」；写新的校验器，不再硬编码 51 个 ID",
+   "conflicts_or_risks": "r3 还没提交，应先把已 accepted 的 r3 和 reports/V9-R5 提交入库，否则新修订的「前字节」身份不稳。旧校验器的 EXPECTED_51_IDS 会让新增条目直接失败。2026 年论文必须核一手来源。"
+  },
+  {
+   "hook": "E1 物理先验识别臂（SINDy、符号回归作 F_prior 或残差结构）",
+   "location": "ARCHITECTURE_V9.md 式 8；S1 第二阶段预登记（prereg.py:395–396 预留）；ainerzero.V9.P1 后续卡",
+   "attach_how": "作为 E1 的附加对照臂单独预登记，冻结数据、预算、门、种子；数据来自 AWZ E0 生成器（awz.V9.B11）的隐藏参数随机化序列",
+   "conflicts_or_risks": "S1 第一阶段还没过门（P40 blocked）。如果学到的先验等于生成器本身，就违反「先验须有登记偏差」。新增门或改 E1 的 ≥10% 门，属于改门槛，需要用户批准。"
+  },
+  {
+   "hook": "S6 主动实验与信息增益",
+   "location": "interfaces/planner.py（HierarchicalPlanner）、SkillProposal/v1 契约、ARCHITECTURE_V9 式 7、epinet 条目",
+   "attach_how": "先补一个 LearningProgress 或信息增益接口（这会改公共接口语义，要走 ADR 或基线修订），提案经 AWZ 门禁执行",
+   "conflicts_or_risks": "S6 按规定要等 S5 过门才开卡。在世界脑内部自建 MuJoCo 沙盒会绕开 AWZ 门禁和物理权威，与 F1、F2 边界冲突。"
+  },
+  {
+   "hook": "教师约束与共形或贝叶斯置信",
+   "location": "Teacher Gateway（ARCHITECTURE_V9.md:101）、teacher_cache v2.1、T28 噪声统计预登记与 da3_calibration_math.py、equivariant-trust-horizons 条目",
+   "attach_how": "复用 T6/T28 的带噪传感器标定结果作似然或置信输入；共形校准只作诊断性的时域截断",
+   "conflicts_or_risks": "T6 噪声模型仍是「诊断候选、未登记」，T35 失败；教师置信不能直接写 SLOW；external_derived 默认拒训。"
+  },
+  {
+   "hook": "新物理后端（MuJoCo）",
+   "location": "AWZ World Plane 物理后端可替换（ARCHITECTURE_BASELINE.md:38）；与 awz.V9.B7（Genesis，draft）同类",
+   "attach_how": "如需要，在 AWZ 侧按 B7 模式立「安装与基准」卡，先做元数据与字节清单，再取得用户批准",
+   "conflicts_or_risks": "不在任何既有任务内，下载授权不覆盖；一个区间只能有一个权威物理域；与 Blender/Bullet、Genesis 职责重叠。"
+  },
+  {
+   "hook": "新研究方向（「自主科学发现」）的正式采纳",
+   "location": "AWZ docs/adr（新 ADR 或 ADR-0012 修订六）+ V9_LANDING_PLAN 新节 + ARCHITECTURE_BASELINE 状态",
+   "attach_how": "一级写 ADR 草案，由非作者一级平级审议，在落地方案中开草稿卡，研究臂逐项预登记并请用户批准预算",
+   "conflicts_or_risks": "与 ADR-0013 角色优先主线争夺资源；世界脑必须保持旁路，不成为出片前置。COORDINATION 10-26 节写明 ainerzero/relay（G1）由 codex 接管，但 10-26、10-27 Claude 仍以 F1·G1 名义登记，主责统筹需要先明确（规则 1）。"
+  }
+ ],
+ "open_tasks": [
+  "先把已 accepted 的注册表 r3（51 条，SHA 5c1564b0/332c5036）和 reports/V9-R5、reports/V-V9-R5 提交入库；SkillProposal 契约文件同样未跟踪",
+  "新开 ainerzero.V9.R11/R12 补登记新来源，并改写校验器，去掉 EXPECTED_51_IDS 硬编码",
+  "决定新方向走 ADR-0012 修订六还是新 ADR；需要非作者一级审议",
+  "为 pysindy、PySR+Julia、MuJoCo 安装向用户请批：写明来源、许可（MIT、Apache-2.0、Apache-2.0）、字节、隔离环境（JULIA_DEPOT_PATH 隔离），以及首次 import 会隐式下载这一点",
+  "S1 第二阶段预登记（含 E1 及可能的符号回归臂），需用户批准训练预算",
+  "修正过时入口文档：ARCHITECTURE_BASELINE.md:9/19/72、AGENT_TASKS.md:9、COORDINATION.md:9/23 仍写 A10 未放行；NORTH_STAR 仍写训练暂停",
+  "明确 ainerzero 的主责统筹：10-26 codex 接管 G1，与 10-26/27 claude 以 F1·G1 登记并存"
+ ],
+ "surprises": [
+  "注册表的「51 条」只存在于未提交的工作区；git HEAD 是 28 条（R3）。epinet、titans、nested-learning、genesis-world 等 23 条虽然 Relay 已 accepted，但从未入库。",
+  "未提交的注册表改动不是有人在补登记，而是 10-16 已结案的 r3；Relay 没有打开的注册表卡，下一个序号是 R11。",
+  "V9.R6（R5 的「独立复核」）和作者都是 gemini-k8m1，违反非作者原则；实际独立性靠 R8（muse-9f2k）。",
+  "V9_RESEARCH_SURVEY.md:69 声称已有 LearningProgress 接口位，但 src 只有 7 个接口，没有 LearningProgress。",
+  "既有调研和主架构里完全没有 SINDy、符号回归、端口哈密顿、贝叶斯、主动实验；主架构 :24 还明确写「用了哈密顿方程不代表理解所有物理」，对端口哈密顿提议是一个预先的保留。",
+  "共形校准已经通过 equivariant-trust-horizons 条目进了注册表（arXiv 2606.24946，仅论文、无代码），「全部不在注册表」的说法在主题层面不准确。",
+  "MuJoCo 在注册表里只作为 plan2explore、thick 的环境依赖出现，不是条目。",
+  "PySR README:51 写明 Julia 依赖在首次 import 时自动安装，默认写入 ~/.julia，既隐式联网又不隔离，与 AUTHORIZATION 的隔离和单流限速要求冲突。",
+  "awz.V9.A10 在 Relay 里 10-20 已 accepted，但 ARCHITECTURE_BASELINE、AGENT_TASKS、COORDINATION 顶部仍写「未放行/draft」；NORTH_STAR 仍写训练暂停，入口文档整体落后于 CLAUDE.md。",
+  "E1 写进了 P1 卡的 prompt，但 S1 第一阶段预登记明确禁止 E1、留到第二阶段，而第二阶段尚无预登记；S1 第一阶段本身也还没过门。",
+  "COORDINATION 10-26 节写明 ainerzero、relay（G1）由 codex 接管，「其他一级会话勿重复领取或抢先验收」，但之后 claude 仍以 F1·G1 名义登记 T6 批准；新研究臂的主责统筹需要先明确。",
+  "「自主科学发现」在三个仓库零命中；当前产品重心是 ADR-0013 角色优先，世界脑被定为旁路、不成为出片前置。",
+  "WebFetch 和 WebSearch 本次都报模型错误，不可用；三个 LICENSE 和 PySR README 是用 curl 输出到 stdout 只读核实的，没有落盘、没有安装。"
+ ]
+}

@@ -1,0 +1,314 @@
+{
+ "group": "C-science-harness-verify",
+ "items": [
+  {
+   "key": "OSVerify",
+   "title": "One-Sided Verification Under Limited Expert Review",
+   "arxiv_id": "2610.18089",
+   "authors": "Fan Nie, Haotian Ye, Shurui Liu, Zihao Wang, Stefano Ermon, James Zou（Stanford University）",
+   "date": "v1 2026-10-13；v2 2026-10-22",
+   "venue": "arXiv 预印本（cs.AI），未见会议或期刊",
+   "claimed_ref": "arXiv 2610.18089；X 帖 2026-10-13",
+   "primary_url": "https://arxiv.org/abs/2610.18089",
+   "exists": "verified",
+   "mechanism": "把“验证”写成 Neyman–Pearson 式单侧目标：以有效解为正类，在 FNR（误拒有效解的比例）≤α 的约束下最大化 TNR（拒掉无效解的比例），让人工审核量成为显式的待最小化项。架构上把“找错”和“核错”拆开：proposer 对解答做分层分解，在不同粒度上提出候选错误；validator 多次投票判断每个候选错误是实质性错误，还是轻微或幻觉错误。取“各候选错误上实质票数的最大值”作拒绝分数，再按阈值决定 Pass 或 Reject。validator 可选用 GRPO+LoRA 后训练。",
+   "claims_checked": [
+    {
+     "claim": "在有限专家审核预算下保守过滤错误数学解答",
+     "verdict": "supported",
+     "evidence": "摘要与 §2：在 FNR 约束下最大化 TNR，以减少人工审核无效解的工作量；实验用 Putnam100、H2V、FirstProof-Eval 三个数学基准。保留意见：论文里并没有硬性的审核预算，审核成本只是目标中的一项。主表阈值是在评测集上按经验前沿选出的（§4.1，引 Carlini et al.）。只有附录 B.4 用 100 个留出的有效解，按 FactTest 次序统计量选阈值，这才具备部署意义上的“保守”。https://arxiv.org/html/2610.18089v2"
+    },
+    {
+     "claim": "官方代码以 LLM 为核心",
+     "verdict": "supported",
+     "evidence": "github.com/OSVerify/OSVerify（Apache-2.0）README 要求安装并登录 Codex CLI 0.162+，默认模型 gpt-6-astra；只有 `osverify demo` 是不调模型的离线脚本演示。同一组织下另有 Rethlas-OSV（Apache-2.0），是带桌面应用的证明生成审阅工具。"
+    },
+    {
+     "claim": "FNR 指误拒有效解的比例，不是错误被接受的比例",
+     "verdict": "supported",
+     "evidence": "§2 原文：taking valid solutions as the positive class, Reject candidates are predicted negative；摘要称 FNR 为 false-rejection rate of valid ones。“错误被接受率”对应 1−TNR（无效解获 Pass 的比例），论文并不对它设约束，只对它做最大化压低。"
+    },
+    {
+     "claim": "摘要数字：相对投票基线减少 46% 的无效解人工审核，训练后 57%",
+     "verdict": "supported",
+     "evidence": "摘要与 §4.2 一致，例如 oss 骨干、5% FNR 下 Putnam100 的 TNR 从 38.4% 升到 70.4%。但这些是在评测集上选阈值的经验前沿数字，偏乐观。"
+    },
+    {
+     "claim": "X 帖 2026-10-13",
+     "verdict": "unverifiable",
+     "evidence": "无法访问 X。只能确认 arXiv v1 提交日为 2026-10-13，与所称日期一致。"
+    }
+   ],
+   "fit_gaps": [
+    "G5_promotion_verification",
+    "G8_failure_counterexample"
+   ],
+   "how_to_borrow": "只借三样：(1) 单侧门的统计形式，在类条件错误率约束下优化另一类错误率，阈值用留出校准集按次序统计量选取（FactTest 式，有限样本保证），不在评测集上挑阈值；(2) “提出反例”与“核验反例”解耦的协议，在 AinerZero 里 proposer 换成确定性搜索（GeometryCore 扰动或越界采样），validator 换成独立重放测试；(3) “Pass 只表示可进入确认，不等于已证实”的语义，对应 MID→SLOW 送审前的预筛。必须注意方向相反：OSVerify 约束的是误拒有效候选，最终由人兜底；AinerZero 的 SLOW 没有人工兜底，关键风险是错误被接受，所以若借用，要把受约束的错误率换成“无效规律被晋升”的比例（即 1−TNR），并且只把 OSVerify 式过滤用作降低独立测试预算的前置队列，不能当 SLOW 写入门。不借：LLM proposer/validator、Codex CLI 与专有模型、GRPO 训练、主表的评测集选阈值做法。",
+   "code_repo": "https://github.com/OSVerify/OSVerify（另有 https://github.com/OSVerify/Rethlas-OSV）",
+   "code_status": "released",
+   "code_license": "Apache-2.0（两个仓库均是）",
+   "paper_license": "CC BY 4.0（arXiv 页面）",
+   "needs_llm": "yes",
+   "needs_gpu_training": "optional",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "论文实验用 gpt-oss-120b 与 gpt-5-mini 作骨干，每个解约 128k token 量级的推理预算；训练版 validator 是对 gpt-oss-120b 做 LoRA+在线 GRPO（每步 32 例×8 rollout），需要 GPU 集群，M2 Max 不可行。官方工具走云端 Codex 账号。可在 CPU 上落地的只有统计门与阈值校准协议本身。",
+   "red_flags": [
+    "主表阈值在评测集上选（empirical frontier），只有附录 B.4 用留出集校准，部署保证弱于摘要给人的印象",
+    "官方代码依赖 Codex CLI 和专有模型 gpt-6-astra，与论文实验配置（gpt-oss-120b、gpt-5-mini、GRPO 训练版）不同，未见复现实验脚本",
+    "FNR 语义（误拒有效解）与 AinerZero 关心的错误接受率方向相反，二手转述容易混淆",
+    "Langlands 猜想、OpenAI 预印本找错等案例依赖专家确认，无法独立核实",
+    "X 帖无法核实"
+   ],
+   "access_log": [
+    "WebFetch 与 WebSearch 均报模型配置错误（deepseek-v4-pro 不可用），改用 curl 只读网页",
+    "https://export.arxiv.org/abs/2610.18089（元数据、v1/v2 日期、CC BY 4.0）",
+    "https://arxiv.org/html/2610.18089v2（全文：§2 定义、§4、附录 B.4、D.5）",
+    "https://api.github.com/orgs/OSVerify/repos",
+    "https://raw.githubusercontent.com/OSVerify/OSVerify/HEAD/README.md 与 LICENSE"
+   ]
+  },
+  {
+   "key": "SRHarness",
+   "title": "SRHarness: A Harness for Agentic Symbolic Regression",
+   "arxiv_id": "2609.35501",
+   "authors": "Zihan Yu, Shixuan Zhou, Hao Huang, Jingtao Ding, Yong Li（清华大学电子系 BNRist、人工智能学院、地球系统科学系）",
+   "date": "2026-09-28（v1）",
+   "venue": "arXiv 预印本（cs.AI; cs.LG; cs.SC）",
+   "claimed_ref": "arXiv 2609.35501（与 2609.35515 并列）；X 帖 2026-10-22",
+   "primary_url": "https://arxiv.org/abs/2609.35501",
+   "exists": "verified",
+   "mechanism": "给 LLM 符号回归智能体加一层领域运行时，由三部分组成。(1) 可组合科学动作：统计/关系分析、constant_fit、call_pysr、call_sindy、code_executor 等，共享一套“候选–证据”契约，记录表达式、评估、复杂度、诊断和出处。(2) 持久科学状态：放在对话记录之外，候选按 80/20 切分后的验证 MSE 排序，再经投影策略生成有界视图（拟合–复杂度 Pareto 视图与 Top-k）给模型看。(3) 轨迹生命周期：继续、分支、重启（从状态视图重开对话）、终止，并记录跨转换的出处。",
+   "claims_checked": [
+    {
+     "claim": "可组合科学操作、持久科学状态、分支与重启管理",
+     "verdict": "supported",
+     "evidence": "摘要与 §3.2–3.4：composable scientific actions、persistent scientific state、trajectory lifecycle management（continuation、branching、restart、termination）。https://arxiv.org/html/2609.35501v1"
+    },
+    {
+     "claim": "同一 LLM 主干下改善符号恢复与数值泛化",
+     "verdict": "supported",
+     "evidence": "对照组主干一致（DeepSeek-v4-flash-0731、GLM-5.3-flash）。LSR-Transform 上 SA 为 93.69%，SR-Scientist 为 62.16%；匿名变体 72.97% 对 39.64%。LSR-Synth 的 OOD 准确率在物理、化学、生物、材料上分别为 78.00/78.87/87.09/96.00%。保留意见：LSR-Synth 上 SA 只有 6.20%（基线不到 1%），绝对水平仍低；LSR-Transform 没有 OOD 切分，所以“数值泛化”只在 LSR-Synth 上成立。"
+    },
+    {
+     "claim": "每题约 11–12 分钟，主要是 API 调用",
+     "verdict": "overstated",
+     "evidence": "时间数字属实：LSR-Synth 11.11 分钟、LSR-Transform 12.47 分钟、Anon 12.34 分钟（附表 6/8/9）。但论文没有把墙钟时间拆成 API 与本地计算两部分，只说墙钟时间取决于 token 消耗和服务商吞吐，不应视为模型固有速度。动作集还包括本地的 call_pysr 和 call_sindy。“主要是 API 调用”是二手推断，不是原文结论。"
+    },
+    {
+     "claim": "Pareto（误差×复杂度）档案与出处链",
+     "verdict": "supported",
+     "evidence": "§3.2–3.3：候选–证据契约记录 evaluation、complexity、diagnostic evidence、provenance；实现中用 fit–complexity Pareto 视图与 Top-k 视图。§3.4：生命周期层记录跨转换的出处。附录 A.4：每个正式结果保留指向不可变原始日志的指针与哈希，指标在公共评估层重算。细节上，Pareto 是持久状态的“面向模型的投影视图”，不是档案本身，档案内部按验证 MSE 排序。"
+    },
+    {
+     "claim": "清华",
+     "verdict": "supported",
+     "evidence": "作者单位均为清华（电子系 BNRist、人工智能学院、地球系统科学系）；代码在 github.com/tsinghua-fib-lab/SRHarness。"
+    },
+    {
+     "claim": "X 帖 2026-10-22",
+     "verdict": "unverifiable",
+     "evidence": "无法访问 X。arXiv 提交日为 2026-09-28，比所称帖子早约三周。"
+    }
+   ],
+   "fit_gaps": [
+    "G3_low_compute_law_distillation",
+    "G5_promotion_verification"
+   ],
+   "how_to_borrow": "只借数据与协议形式：(1) 候选–证据记录的 schema（表达式、拟合/验证分离证据、复杂度、诊断、出处），可映射到 AinerZero 的残差到公式提炼候选；(2) 持久状态与模型视图分离，用有界 Pareto（误差×复杂度）加 Top-k 投影；(3) 不可变原始日志加哈希、指标在公共评估层重算，与 AinerZero 已有的“不可覆盖登记加消费前内容重验”一致；(4) 继续/分支/重启的生命周期语义，可用确定性调度器驱动 PySR、SINDy、constant_fit，不需要 LLM 控制器，适合 CPU。不借：LLM 控制器（尤其不能进高频回路）、OpenRouter 等云 API、把 LLM-SRBench 分数当作 AinerZero 的证据、把 80/20 内部验证当作 SLOW 证据（SLOW 仍需独立测试）。PySR 依赖 Julia，若要安装须走已有的隔离安装授权，不在本次只读任务范围内。",
+   "code_repo": "https://github.com/tsinghua-fib-lab/SRHarness（README 徽章指向 https://github.com/yuzhTHU/SRHarness，另有 PyPI 包 sr-harness）",
+   "code_status": "released",
+   "code_license": "MIT（GitHub API 与仓库 LICENSE）",
+   "paper_license": "CC BY-NC-ND 4.0（arXiv 页面）",
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "不训练模型。每题调用托管 LLM API 约 1.1–1.3M token，费用约 0.02–0.03 美元，墙钟 7–12 分钟；动作在本地 CPU 上跑 PySR/SINDy 与代码执行。harness 本身和确定性 SR 工具在 M2 Max 上可行；用本地 MLX 小模型替代 API 后效果未知，论文没有报告。",
+   "red_flags": [
+    "论文 CC BY-NC-ND 4.0，代码 MIT，许可分裂：可借思路与代码，论文文本不可改编",
+    "论文代码链接（tsinghua-fib-lab）与 README 徽章（yuzhTHU）不是同一仓库，哪个为准需核对",
+    "“每题耗时主要是 API 调用”不是原文结论",
+    "主结果像是固定种子的单次运行，只有消融做了三次重复（SA 72.97–75.68%）",
+    "LSR-Synth 上的符号准确率绝对值很低（6.20%）",
+    "结果依赖专有托管模型（DeepSeek-v4-flash-0731、GLM-5.3-flash、GPT-5.5）",
+    "X 帖无法核实"
+   ],
+   "access_log": [
+    "WebFetch 与 WebSearch 均报模型配置错误，改用 curl 只读网页",
+    "https://export.arxiv.org/abs/2609.35501",
+    "https://arxiv.org/html/2609.35501v1（全文 §3、§4、附录 A.4、B.1–B.3、表 6/8/9/10）",
+    "https://api.github.com/repos/tsinghua-fib-lab/SRHarness（MIT）与 contents 列表",
+    "https://raw.githubusercontent.com/tsinghua-fib-lab/SRHarness/HEAD/README.md"
+   ]
+  },
+  {
+   "key": "MechBench",
+   "title": "MechBench: Can AI Scientific Agents Discover Mechanisms Beyond Phenomenal Laws?",
+   "arxiv_id": "2609.35515",
+   "authors": "Zihan Yu, Jiadong Zhang, Jialin Cheng, Jingtao Ding, Yong Li（清华大学为主，另有中科院自动化所、北京中关村学院、西安交通大学）",
+   "date": "2026-09-28（v1）",
+   "venue": "arXiv 预印本（cs.AI; cs.LG; cs.SC）",
+   "claimed_ref": "arXiv 2609.35515（与 SRHarness 并列为“清华 SRHarness + MechBench”）；X 帖 2026-10-22",
+   "primary_url": "https://arxiv.org/abs/2609.35515",
+   "exists": "verified",
+   "mechanism": "把“唯象规律恢复”和“机制恢复”分开评测：每个任务由一组有科学含义的关系（机制）定义，这组关系联合推出可观测规律，但智能体只拿到观测数据和科学背景。机制恢复用“机制探针”评测，即询问无法从唯象规律单独推出的内部量与观测量的关系，用符号等价打分，所有探针都正确才算该任务正确。为防止背诵教科书机制，对经典机制做可解释突变并组合；为排除不可辨识的实例，构造时主动搜索复杂度相当、能推出同一唯象规律的竞争机制，发现后修改或剔除该实例。",
+   "claims_checked": [
+    {
+     "claim": "与 SRHarness 同属清华同一工作线（清单将二者并列）",
+     "verdict": "supported",
+     "evidence": "第一作者和通讯作者（Zihan Yu、Jingtao Ding、Yong Li）相同，同日提交，代码都在 tsinghua-fib-lab（MIT）。但 MechBench 正文没有评测 SRHarness，评测的是 Codex、Claude Code、DeepSeek Harness 共 7 种配置。把二者并列不能理解为 SRHarness 在 MechBench 上验证过。"
+    },
+    {
+     "claim": "唯象–机制差距：Codex+GPT-5.6-sol 在 Core-set 上唯象 35.00%、机制 13.75%，唯象正确时机制仍失败 64.29%",
+     "verdict": "supported",
+     "evidence": "见 arXiv 摘要原文。Full-set 512 例（16 族），Core-set 80 例（8 族）。"
+    },
+    {
+     "claim": "评分客观，不需要 LLM 评审",
+     "verdict": "supported",
+     "evidence": "仓库 README 称 no LLM judge is required；附录 B.3 用符号等价定义任务级机制准确率。注意探针答案仍由被测智能体（LLM）推导给出。"
+    }
+   ],
+   "fit_gaps": [
+    "G7_mechanism_sufficiency",
+    "G4_identifiability_active_experiment",
+    "G5_promotion_verification"
+   ],
+   "how_to_borrow": "只借评测设计：(1) 机制探针，候选机制或残差公式在拟合可观测量之外，还必须正确预测 GeometryCore 能给出真值的内部量，作为 MID→SLOW 的一类独立测试；(2) 机制不可辨识筛查，晋升前搜索复杂度不高于候选、能产生同一可观测规律的竞争机制，若存在就标记为不可辨识，转主动实验区分或弃权，而不是晋升；(3) 用可解释突变组合构造分布外任务，检验教师先验或背诵式泛化。不借：被测的 LLM 智能体配置与分数、任务文本中的科学语境提示、论文文本（NC-ND）。",
+   "code_repo": "https://github.com/tsinghua-fib-lab/MechBench",
+   "code_status": "released",
+   "code_license": "MIT（GitHub API 与仓库 LICENSE）",
+   "paper_license": "CC BY-NC-ND 4.0（arXiv 页面）",
+   "needs_llm": "optional",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "基准构造与打分（YAML 任务、符号等价、数值 ID/OOD）是纯 CPU 工作；论文里被测的是云端 LLM 智能体。只借探针与可辨识筛查协议的话，M2 Max 完全可行。",
+   "red_flags": [
+    "MechBench 没有评测 SRHarness，二手转述中二者并列，容易被误读为配套验证",
+    "不可辨识筛查是启发式的（看复杂度是否相当、背景偏离是否不更大），不是形式化的结构可辨识性证明",
+    "部分突变“按需调整”以保证可组合，涉及人工构造",
+    "论文 NC-ND 与代码 MIT 许可分裂",
+    "仓库 pushed_at（2026-09-27）早于 created_at（2026-09-28），可能是导入产生的，影响小",
+    "X 帖无法核实"
+   ],
+   "access_log": [
+    "WebFetch 与 WebSearch 均报模型配置错误，改用 curl 只读网页",
+    "https://export.arxiv.org/abs/2609.35515",
+    "https://arxiv.org/html/2609.35515v1（§3.2 探针、§3.3 不可辨识、§5、附录 A.2、B.3）",
+    "https://api.github.com/repos/tsinghua-fib-lab/MechBench 与 contents 列表",
+    "https://raw.githubusercontent.com/tsinghua-fib-lab/MechBench/HEAD/README.md"
+   ]
+  },
+  {
+   "key": "Paper2Agent",
+   "title": "Reimagining research papers as interactive and reliable AI agents（arXiv 预印本题为 Paper2Agent: Reimagining Research Papers As Interactive and Reliable AI Agents）",
+   "arxiv_id": "2509.06917（预印本，2025-09-08）",
+   "authors": "Jiacheng Miao, Joe R. Davis, Yaohui Zhang, Jonathan K. Pritchard, James Zou（Stanford）",
+   "date": "Nature 在线发表 2026-09-16（收稿 2025-10-13，接收 2026-08-14）",
+   "venue": "Nature，DOI 10.1038/s41586-026-11044-y，开放获取",
+   "claimed_ref": "Nature 2026-09（nature.com/articles/s41586-026-11044-y）",
+   "primary_url": "https://www.nature.com/articles/s41586-026-11044-y",
+   "exists": "verified",
+   "mechanism": "用 Claude Code 编排多个子代理，把论文及其代码库转成远程 MCP 服务器，含三类内容：tools（可执行函数）、resources（论文正文、代码、补充数据）、prompts（多步工作流模板）。流程依次是：定位代码库，自动配置环境，把教程抽取成参数化函数，然后由测试代理按教程原输出生成并迭代测试（数值容差 3%，图用感知哈希比对），最后组装出带清单和版本的 MCP 服务器，供聊天智能体调用。",
+   "claims_checked": [
+    {
+     "claim": "Nature 2026-09",
+     "verdict": "supported",
+     "evidence": "Nature 页面：Published 16 September 2026；DOI 10.1038/s41586-026-11044-y。正式标题与 arXiv 预印本标题不同，已改名。"
+    },
+    {
+     "claim": "把论文、代码、数据转成可调用工具",
+     "verdict": "supported",
+     "evidence": "摘要与 Main：Paper2MCP 从论文和代码库构建 MCP 服务器，分 tools、resources、prompts 三类，再由智能体层包装成论文专属智能体。"
+    },
+    {
+     "claim": "100 篇计算生物学论文中 74 篇成功转换",
+     "verdict": "supported",
+     "evidence": "原文：Among the 100 computational biology papers, 74 were successfully agentified，共提出 599 个工具，593 个通过自动验证。Methods 把“成功”定义为无人干预下端到端完成工具抽取、执行与自动验证。注意这里的“验证”是代理按教程输出自生成的测试，不等于独立正确性。"
+    }
+   ],
+   "fit_gaps": [
+    "G5_promotion_verification",
+    "G7_mechanism_sufficiency"
+   ],
+   "how_to_borrow": "只借工程协议，用于 AinerZero 的适配器或教师登记：(1) 每个外部方法封装成工具后，必须复现参考输出（数值容差、图像感知哈希），并配清单、版本和逐函数测试才能登记；(2) 用打乱的论文–问题配对构造越界基准，测量误接受，对应适用域与弃权检测。不借：Claude Code 或 LLM 编排、MCP 运行时进入世界脑高频回路、把 agent 自生成测试当作 SLOW 级独立证据、论文文本（NC-ND）。",
+   "code_repo": "https://github.com/jmiao24/Paper2Agent",
+   "code_status": "released",
+   "code_license": "MIT（GitHub API）",
+   "paper_license": "CC BY-NC-ND 4.0（Nature 开放获取声明）",
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "论文评测在 MacBook Air（M2、8GB）上进行，调用 claude-sonnet-4 等 API。AlphaGenome 转换约 45 分钟、花费 14 美元，单次查询约 0.20 美元、1.6 分钟。无 GPU 训练，但核心依赖专有 LLM API；与 AinerZero“教师与 LLM 不写 SLOW”的方向只有工程协议层面的交集。",
+   "red_flags": [
+    "期刊正式标题与 arXiv 预印本标题不同，按旧标题检索可能对不上",
+    "“成功转换”依赖代理自生成、以教程输出为准的测试，属于自我验证",
+    "论文许可 CC BY-NC-ND 4.0（非商用、禁止演绎），代码 MIT，许可分裂",
+    "依赖专有 Claude 模型与 MCP 生态",
+    "与 AinerZero 的缺口只有间接关联"
+   ],
+   "access_log": [
+    "WebFetch 与 WebSearch 均报模型配置错误，改用 curl（带 cookie）只读网页",
+    "https://www.nature.com/articles/s41586-026-11044-y（元数据、摘要、大规模评测段、Methods、许可、日期）",
+    "https://export.arxiv.org/abs/2509.06917（预印本标题与日期）",
+    "https://api.github.com/repos/jmiao24/Paper2Agent（MIT）"
+   ]
+  },
+  {
+   "key": "sciexplorer",
+   "title": "Agentic Exploration of Physics Models",
+   "arxiv_id": "2509.24978（预印本，2025-09-29，现为 v6）",
+   "authors": "Maximilian Nägele, Florian Marquardt（Max Planck Institute for the Science of Light 与 FAU Erlangen-Nürnberg）",
+   "date": "PRX 发表 2026-07-08（收稿 2025-11-12，接收 2026-05-22）",
+   "venue": "Physical Review X 16, 031002 (2026)，DOI 10.1103/xnqc-q6nt，开放获取",
+   "claimed_ref": "Phys. Rev. X 2026-07-08（journals.aps.org/prx/abstract/10.1103/xnqc-q6nt）",
+   "primary_url": "https://journals.aps.org/prx/abstract/10.1103/xnqc-q6nt",
+   "exists": "verified",
+   "mechanism": "一个通用 LLM 工具调用智能体：面对未知物理系统（数值仿真充当“实验”），自己设定初始条件或参数，观察时间演化，再用代码执行和绘图类通用工具分析，结果存入外部记忆，并据此自适应选下一次实验，迭代提出并检验模型。没有领域特定蓝图或微调。覆盖力学动力系统、波动方程、量子多体系统；可用新实验数据对比多次探索的候选理论，选出最好的一个。",
+   "claims_checked": [
+    {
+     "claim": "通过实验、代码执行与迭代分析恢复运动方程、推断量子哈密顿量",
+     "verdict": "supported",
+     "evidence": "PRX 摘要：recovering equations of motion from observed dynamics and inferring Hamiltonians from expectation values；工具以代码执行为主。注意“实验”是数值仿真，不是真实实验室。"
+    },
+    {
+     "claim": "依赖 LLM",
+     "verdict": "supported",
+     "evidence": "摘要称 leverages large language model tool-use capabilities。arXiv v6 正文：GPT 5 明显优于 Gemini 2.5 pro；附录试了开源的 GPT-OSS 120B、Qwen3 235B A22B、Mistral 3 675B，原文说这些模型 struggle with even the simplest tasks。单次探索从几分钟到 1.5 小时以上，瓶颈是 LLM 响应时间而不是数值仿真；GPT 5 约每次 2 美元。"
+    },
+    {
+     "claim": "发表于 Phys. Rev. X 2026-07-08",
+     "verdict": "supported",
+     "evidence": "APS 页面：Phys. Rev. X 16, 031002 – Published 8 July, 2026；CC BY 4.0。"
+    }
+   ],
+   "fit_gaps": [
+    "G4_identifiability_active_experiment",
+    "G3_low_compute_law_distillation",
+    "G5_promotion_verification"
+   ],
+   "how_to_borrow": "只借评测协议：(1) 隐藏模型任务集的设计，覆盖力学、波动、量子，含刻意构造的非标准或非物理系统，测试是否在背诵先验；(2) 主动选实验与随机初始条件的对照；(3) 用探索期没见过的新实验数据检验候选理论、多次探索取最优（可作为 G5 的独立留出检验）。在 AinerZero 中，主动实验的选择器应换成基于信息增益或最优实验设计、在 GeometryCore 参数后验上的确定性程序，并经 SkillProposal 门禁。不借：LLM 驱动的代码执行回路（自动执行 LLM 生成的代码，有安全风险）、对 GPT-5 等专有 API 的依赖、仿真里的结论直接外推到真实系统。",
+   "code_repo": "https://github.com/MaxNaeg/SciExplorer（结果库 https://github.com/MaxNaeg/SciExplorerResults）",
+   "code_status": "released",
+   "code_license": "MIT（两个仓库的 LICENSE 文件，Copyright 2025 Nägele, Marquardt）",
+   "paper_license": "CC BY 4.0（APS 页面）",
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "不训练模型。仿真器（JAX）可在 CPU 上跑；智能体需要前沿推理型 LLM API，作者附录显示本地开源大模型连最简单任务都难以完成，所以在 M2 Max 上用本地 MLX 模型复现大概率失败。只借任务集与评测协议的话可行。",
+   "red_flags": [
+    "实际依赖专有前沿 LLM（GPT-5），开源替代在附录中失败",
+    "“实验”全部是数值仿真",
+    "有效成功率靠 5 次探索择优抬高（作者承认少数场景仍失败）",
+    "“随机初始条件”对照同时去掉了工具，混淆了主动选实验与工具访问两个因素，不能当作主动实验价值的干净证据",
+    "名称写法不统一：PRX 用 sciexplorer，GitHub 和 arXiv 用 SciExplorer，影响小"
+   ],
+   "access_log": [
+    "WebFetch 与 WebSearch 均报模型配置错误，改用 curl（带 cookie）只读网页",
+    "https://journals.aps.org/prx/abstract/10.1103/xnqc-q6nt（元数据、摘要、日期、CC BY 4.0、代码引用）",
+    "https://export.arxiv.org/api/query?search_query=ti:%22Agentic%20Exploration%20of%20Physics%20Models%22（预印本 2509.24978v6）",
+    "https://arxiv.org/html/2509.24978v6（模型对比、开源模型附录、资源需求附录 G）",
+    "https://github.com/MaxNaeg/SciExplorer 与 raw LICENSE；https://raw.githubusercontent.com/MaxNaeg/SciExplorerResults/HEAD/LICENSE"
+   ]
+  }
+ ]
+}

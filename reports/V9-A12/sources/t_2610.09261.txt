@@ -1,0 +1,1243 @@
+ 
+ A Sensitivity-based Framework for Calibrating Coupled Ordinary Differential Equations under Model Discrepancy 
+ Skip to main content 
+ Report GitHub Issue 
+ × 
+ Title: 
+ Content selection saved. Describe the issue below: 
+ Description: 
+ Submit without GitHub 
+ Submit in GitHub 
+ Why HTML? 
+ Report Issue 
+ Back to Abstract 
+ Download PDF 
+ Contents 
+ Reading mode 
+ Colour theme 
+ Abstract 
+ 1 Introduction 
+ 2 Background 
+ 2.1 Calibration with Model Discrepancy 
+ 2.2 Calibration for Multivariate ODE Systems 
+ 2.3 Sensitivity Systems 
+ 3 Inference Methodology 
+ 3.1 Inferential Target and Observation Model 
+ 3.2 Multivariate Orthogonal Discrepancy Prior 
+ 3.3 Posterior Inference 
+ 4 Numerical Experiments 
+ 4.1 Experiment Design 
+ 4.1.1 Data Generation 
+ 4.1.2 Implementation Details 
+ 4.1.3 Competing Methods 
+ 4.1.4 Evaluation Metrics 
+ 4.2 Model 1: Mass-Spring-Damper Model 
+ 4.2.1 Inference Results 
+ 4.3 Model 2: Four-Mass Oscillator 
+ 4.3.1 Inference Results 
+ 4.4 Model 3: The FitzHugh-Nagumo model 
+ 4.4.1 Inference Results 
+ 4.5 Model 4: The susceptible-infected-recovered-vaccinated (SIRV) disease model 
+ 4.5.1 Inference Results 
+ 5 Conclusion and Future Work 
+ References 
+ A Proofs 
+ B Sensitivity Results 
+ License: CC BY-NC-SA 4.0
+arXiv:2610.09261v1 [stat.AP] 07 Oct 2026 
+ A Sensitivity-based Framework for Calibrating Coupled Ordinary Differential Equations under Model Discrepancy 
+ Mitchel J. Colebank
+ Affiliation:  Department of Mathematics, University of South Carolina, Columbia, SC
+ William Consagra
+ Affiliation:  Department of Statistics, University of South Carolina, Columbia, SC
+ Affiliation:  Authors Contributed Equally
+ Abstract 
+ Coupled systems of ordinary differential equations (ODEs) are widely used to model complex physical and biological processes. In these applications, ODE model parameters must be calibrated to field data to enable prediction and parameter inference. In practice, the governing ODEs are an imperfect approximation to the true system, leading to non-negligible model discrepancy that must be incorporated to avoid biased parameter estimates. However, it is well known that highly flexible discrepancy models can confound discrepancy and simulator parameters, leading to poor identifiability. As a result, practitioners often must impose problem-specific prior constraints to adequately regularize the discrepancy, which can be challenging and cumbersome. In this work, we propose a novel calibration framework for coupled, multi-output ODE systems that enforces automatic, model-structural constraints on the discrepancy, improving identifiability without requiring application-specific discrepancy priors. Forward-model gradients are computed via sensitivity equations, solved jointly with the ODE system as a coupled initial value problem. Posterior inference is performed using an adaptive Metropolis-within-Gibbs sampler tailored to the resulting constrained posterior. We demonstrate the approach on three model systems: a mass-spring oscillator, a model of infectious disease spread, and a neuron firing model. We show that our method leads to improved parameter inference and predictive accuracy compared to standard calibration approaches. 
+ 1 Introduction 
+ Model calibration is a necessary component in how simulation models are used for real-world decision making [ 27 , 35 ] . The integration of data with a computer model, often called the inverse problem , leads to a data-specific simulator that can be used for understanding an underlying process. In the case of mechanistic models, such as systems of differential equations, the model equations themselves embed hypotheses about the processes observed, and are almost always parameterized by interpretable variables that may or may not be measured [ 10 , 35 ] . These simulation platforms form an important foundation for emerging digital twin technologies [ 27 ] , as mechanistic models provide a way of forecasting the behavior of the system while being continually informed or updated by data. 
+ Accounting for model discrepancy , defined as the systematic difference between the true physical process and its simulator, is critical when calibrating differential-equation-based models to ensure reliable inference, prediction, and uncertainty quantification (UQ) [ 6 ] .
+To address this important aspect of model calibration, in this work we investigate both parameter and predictive inference in the calibration of multi-output ordinary differential equation (ODE) models from noisy data under model discrepancy. Specifically, we consider data arising from a statistical model of the form 
+ $\displaystyle y_{i}$ 
+ $\displaystyle=\xi(t_{i})+\epsilon_{i}$ 
+ (1) 
+ $\displaystyle=Az(t_{i},\theta)+\delta_{\theta}(t_{i})+\epsilon_{i};\quad i=1,...,n.$ 
+ In eq. ( 1 ), $A:\mathbb{R}^{J\times K}$ is a linear measurement operator, $t_{i}\in\Omega\subset\mathbb{R}$ are observation times, $\theta\in\Theta\subset\mathbb{R}^{p}$ is the unknown true calibration parameter, $\xi(\cdot)$ is the unknown true physical reality, and $z(t_{i},\theta):\Omega\mapsto\mathbb{R}^{K}$ is the forward model at some $t_{i}$ . The term $\delta_{\theta}(t_{i})=\xi(t)-z(t_{i},\theta)$ is the model discrepancy and $\epsilon_{i}$ is a mean-zero measurement error process. The matrix $A:\mathbb{R}^{K}\mapsto\mathbb{R}^{J}$ maps the full state vector $z(t_{i},\theta)\in\mathbb{R}^{K}$ to the observable state space $\mathbb{R}^{J}$ . Given noisy observations $\mathcal{D}:=\{(t_{i},y_{i})\}_{i=1}^{n}$ from the physical process, the primary goals are (i) to infer $\theta$ and quantify its uncertainty and (ii) to improve predictions of the physical process while quantifying their uncertainty. 
+ The contribution of this work is a novel calibration framework that extends the popular class of orthogonal Gaussian process discrepancy priors [ 32 ] from univariate calibration to the calibration of mulit-output ODE simulators using multivariate observations. They key to our approach is the development of a multivariate discrepancy prior which is orthogonal to the forward model sensitives. We develop a complete analytical framework and scalable computational inference algorithm based on model sensitivity equations for our multivariate orthogonal sensitivity (MOS) approach and apply it to several model types. We show that the MOS approach performs as well or better than the standard approach in both estimation and UQ. 
+ The outline of the article is as follows. In Section 2 we provide a brief overview of the general problem of calibration when model discrepancy is present, along with a review of calibration and sensitivity systems for ODE systems. Section 3 provides the mathematical preliminaries and derivation of the multivariate orthogonal discrepancy prior, as well as a computational inference algorithm for sampling from the relevant Bayesian posteriors. Section 4 provides numerical details for our case studies, as well as three prototypical ODE system models: a mass-spring-damper system, the Fitzhu-Nagumo model of neuron activity, and a “susceptible-infected-recovered-vaccinated” (SIRV) model. Here, we investigate how our proposed MOS method compares to classical multivariate calibration approaches in both parameter and prediction metrics. We provide a discussion and conclusion in Section 5 . 
+ 2 Background 
+ 2.1 Calibration with Model Discrepancy 
+ Eq. ( 1 ) is a special case of the calibration problem under model discrepancy. In the univariate output ( $J=1$ ) setting, parameter inference and prediction for this model have received extensive treatment across the Bayesian [ 6 , 8 , 23 , 32 , 44 ] , frequentist [ 38 , 42 ] , and machine learning [ 4 , 21 , 33 , 40 ] literature. The influential approach by Kennedy and O’Hagan (KOH) [ 23 ] propose the use of a flexible Gaussian process prior on $\delta$ . It is well known that this approach can suffer from identifiability issues between discrepancy and calibration parameters unless additional prior information is used to further constrain the prior on $\delta$ [ 6 ] .
+A variety of remedies to this identifiability issue have been proposed [ 2 , 36 ] . $L^{2}$ -calibration [ 38 ] addresses the issue by redefining the true $\theta$ as an $L^{2}$ minimizer between the physical process and the forward model,
+and propose an asymptotically consistent frequentist calibration procedure. Bayesian approaches constrain the discrepancy prior: [ 14 ] encourages identifiability by imposing a prior to promote smaller (in $\|\cdot\|_{L^{2}}$ norm) discrepancies, while [ 32 ] use the first order conditions implied by $L^{2}$ optimality to linearly constrain a Gaussian process prior for $\delta_{\theta}$ . 
+ The $J\geq 2$ multivariate setting has garnered less attention. A common approach extends KOH by using independent multivariate Gaussian process priors [ 18 , 29 ] .
+However, this unconstrained approach can inherit similar or worse identifiability issues as outlined above in the univariate case. Constrained priors for $\delta_{\theta}$ in the multivariate setting are seemingly limited, though a recent work [ 7 ] proposes a framework based on posterior projections [ 1 ] , while [ 41 ] use PCA in the output space to map into a low-rank subspace, in which a simplified bi-linear model, motivated by identifiability considerations, is proposed for the discrepancy in the reduced space. A very recent study by Barnett and Chan [ 3 ] extended the $L^{2}$ orthogonality criteria from [ 32 ] to the multioutput setting. This last example considered discrepancy between Gaussian process surrogates and the true simulation model, but did not extend this to handing discrepancy between simulators and observations. 
+ 2.2 Calibration for Multivariate ODE Systems 
+ We consider the case in which the state variables $z(t_{i},\theta)$ in eq. ( 1 ) evolve according to a system of ODEs. Systems of ODEs are a common modeling tool to describe the evolution of physical and biophysical processes [ 10 ] . The broad definition of the system is given by 
+ $\displaystyle\frac{d}{dt}z(t,\theta)=G(t,z(t,\theta),\theta),\quad z(0)=z_{0},$ 
+ (2) 
+ with $z(t,\theta):\Omega\times\mathbb{R}^{p}\rightarrow\mathbb{R}^{K}$ being the state variables which evolve in time according to some evolution equation $G(t,z(t,\theta),\theta)$ from initial state $z_{0}$ , and $\Omega\subset\mathbb{R}$ is the temporal domain. In the context of ODEs, the calibration problem in eq. ( 1 ) now defines $Az(t_{i},\theta)$ to be a mapping from the full states of the ODE system to the observations. This requires an additional level of care, as the solutions corresponding to observations are now approximations provided by numerical integration (e.g., using Runge-Kutta methods) at discrete time points for a possibly smaller subset of state variables (e.g., if $A$ is sparse). 
+ The most naive approach to solving these inverse problems is to (i) choose a current value for $\theta$ , (ii) numerically integrate the ODE system between $p+1$ and $2p+1$ times for a gradient approximation, and (iii) calculate a search direction by evaluating the residual between the observations and the subset of state solutions. This can become computationally expensive if either the ODE system is stiff, requiring small time-stepping, or if the dimensionality of the model is large, requiring repeated numerical integration in order to calculate the $p$ dimensional gradient of the objective function. 
+ Multiple prior studies across scientific domains have considered inverse problems governed by ODE systems. For instance, ODE models of temperature in air-cycle machines can be used for monitoring heat transfer in applications relevant to aerospace engineering [ 28 ] . Epidemiological applications are especially well suited for using ODE models. Numerous applications have looked at simulating the transmission of disease from those who are susceptible to an infected and recovered state, often called the SIR model [ 37 , 39 ] . In neuroscience, models of neuronal excitation can be described through coupled ODE systems, where ion channels on a neuron can lead to excitatory and inhibitory interactions [ 13 , 22 ] . While high-fidelity data on neuronal firing in rare, many groups use such ODE models to simulate whole-brain electrical activity as measured through imaging modalities [ 11 ] . Finally, the cardiovascular field has extensively used ODE models with available clinical data for calibration [ 9 , 25 , 34 ] . These models include electrophysiological dynamics at the cell-level as well as compartment, organ-level models for simulating blood flow and overall cardiovascular function. 
+ 2.3 Sensitivity Systems 
+ An alternative approach to approximating the gradient is to derive the so-called “sensitivity equations” to provide the Jacobian of the system analytically [ 45 ] . Consider the general form of the sensitivity of state $z_{j}(t,\theta)$ with respect to parameter $\theta_{k}$ : 
+ $\displaystyle\mathcal{S}_{jk}(t)=\frac{\partial z_{j}(t)}{\partial\theta_{k}}.$ 
+ (3) 
+ Note that the sensitivities evolve in time with the dynamics of $z(t,\theta)$ , and the total derivative of the differentiation equation with respect to $\theta$ can be written as 
+ $\displaystyle\frac{d}{d\theta}\frac{dz}{dt}=\frac{d}{dt}\frac{\partial z}{\partial\theta}$ 
+ $\displaystyle=\frac{d\mathcal{S}}{dt}=\frac{\partial}{\partial\theta}G(t,z(t,\theta),\theta)$ 
+ (4) 
+ $\displaystyle\implies\frac{d\mathcal{S}}{dt}$ 
+ $\displaystyle=\frac{\partial G}{\partial z}\frac{\partial z}{\partial\theta}+\frac{\partial G}{\partial\theta}=\mathcal{G}_{z}\mathcal{S}+\mathcal{G}_{\theta}$ 
+ (5) 
+ where $\partial G/\partial z=\mathcal{G}_{z}\in\mathbb{R}^{(p\ \cdot K)\times(p\ \cdot K)}$ is a block diagonal system with the state-Jacobian, $\mathcal{J}\in\mathbb{R}^{p\times K}$ , of the system on the diagonal, $\mathcal{S}$ is the sensitivity of the states with respect to the parameters, and $\partial G/\partial\theta=\mathcal{G}_{\theta}\in\mathbb{R}^{p\ \cdot K}$ is the parameter-Jacobian, with derivatives of the right hand side with respect to $\theta$ . We note that typically the sensitivity is written in matrix form with $\mathcal{S}\in\mathbb{R}^{K\times p},\mathcal{G}_{z}\in\mathbb{R}^{K\times K},$ and $\mathcal{G}_{\theta}\in\mathbb{R}^{K\times P}$ , but here we define everything in vectorized form for a cleaner translation to the available codes. 
+ If the initial conditions of the ODE system are known, as will be assumed here, then $\mathcal{S}(0)=0$ . Then, we can write the sensitivity in combination with the original ODE system as a coupled initial value problem: 
+ $\displaystyle\frac{dz}{dt}$ 
+ $\displaystyle=G(t,z(t,\theta),\theta),\ \ \ z(0)=z_{0}$ 
+ (6) 
+ $\displaystyle\frac{d\mathcal{S}}{dt}$ 
+ $\displaystyle=\mathcal{G}_{z}\mathcal{S}+\mathcal{G}_{\theta},\ \ \ \ \ \ \ \ \mathcal{S}(0)=0$ 
+ (7) 
+ on the time interval $\Omega$ . 
+ Sensitivity systems have been the focus of some modeling studies, though typically these sensitivities are numerically approximated using finite differences. Some of the theoretical foundations for this approach were provided by seminal works by Leis et. al [ 26 ] and Dickison et. al [ 12 ] who derived such a sensitvity system for ordinary differential equation models. The review by Zi [ 45 ] provides an excellent overview of how such sensitivity systems can be developed in biological modeling applications. Wu et al. [ 43 ] provides examples of this in the context of biochemical processes, while work by Guay et. al [ 15 ] apply this to chemical kinetic systems. 
+ 3 Inference Methodology 
+ 3.1 Inferential Target and Observation Model 
+ We assume that the sensitivity system defined in eq. ( 7 ) is well defined, smooth, and continuous [ 45 ] . We work in the inner product space induced by the direct sum of component-wise $L^{2}$ spaces $\mathcal{H}:=\bigtimes_{j=1}^{J}L^{2}(\Omega)$ , with inner product defined as 
+ $\langle v,u\rangle_{\mathcal{H}}=\sum_{j=1}^{J}\alpha_{j}\langle v_{j},u_{j}\rangle_{L^{2}(\Omega)},$ 
+ (8) 
+ where $\alpha_{j}\geq 0$ are optional weights. With loss of generality, for clarity of notation, from here on we will assume $\alpha_{j}=1$ $\forall j$ . Clearly, $\langle\cdot,\cdot\rangle_{\mathcal{H}}$ induces a norm, which we will denote as $\|\cdot\|_{\mathcal{H}}$ . We define our inferential target using the $L^{2}$ calibration framework [ 38 ] , suitably extended to the multivariate setting using the loss induced by the norm $\|\cdot\|_{\mathcal{H}}^{2}$ to define the minimizer: 
+ $\theta:=\min_{\eta\in\Theta}\left\|\xi(\cdot)-Az(\cdot,\eta)\right\|_{\mathcal{H}}^{2},$ 
+ (9) 
+ where we assume $\Theta\subset\mathbb{R}^{p}$ is compact. 
+ The observed data under model eq. ( 1 ) with $J\geq 2$ is collected into the matrix $Y\in\mathbb{R}^{J\times n}$ . We define the matrix of forward model and discrepancy evaluations at the fixed time points $t_{1},...,t_{n}\in\Omega$ as $Z_{\theta},\Delta_{\theta}\in\mathbb{R}^{J\times n}$ , respectively, with element-wise definitions $[Z_{\theta}]_{ji}=[Az]_{j}(x_{i},\theta)$ and $[\Delta_{\theta}]_{ji}=\delta_{j}(x_{i};\theta)$ . We assume normality and homoscedasticity on the additive measurement errors with variance $\sigma^{2}$ and define the $J\times n$ matrix-valued random variable $E\sim\mathcal{MN}_{J\times n}(0,\sigma^{2}I_{J},I_{n})$ , where
+ $\mathcal{MN}$ denotes the matrix normal distribution. Thus, in matrix form ( 1 ) becomes 
+ $Y=Z_{\theta}+\Delta_{\theta}+E$ 
+ (10) 
+ where, with slight abuse of notation, $Z_{\theta}$ incorporates the linear measurement operator. Taking a Bayesian approach, we are interested in sampling the marginal posterior density over the calibration parameter: 
+ $\pi(\theta|Y)\propto\int\pi(Y|\Delta_{\theta},\theta)\pi(\Delta_{\theta}|\theta)\pi(\theta)d\Delta_{\theta}.$ 
+ (11) 
+ Given the observation model eq. ( 10 ), it follows that $\pi(Y|\Delta_{\theta},\theta)$ is a matrix normal density while $\pi(\theta)$ is the parameter prior density determined by problem specific information, e.g. uniform density over parameter bounds. In the following subsection, we propose a multivariate analog to the orthogonal discrepancy prior from [ 32 ] to construct the prior density $\pi(\Delta_{\theta}|\theta)$ based on the structural constraints imposed by Equation eq. ( 9 ). 
+ 3.2 Multivariate Orthogonal Discrepancy Prior 
+ We begin with the following lemma, which characterizes a collection of $p$ linear constraints for which the true multivariate discrepancy must obey under the definition of the optimal calibration in Equation  9 . 
+ Lemma 1 . 
+ Denote $\mathcal{S}(t,\eta)\in\mathbb{R}^{K\times p}$ be the point-wise sensitivity of forward model $z(t,\eta)$ , with element-wise definition $[\mathcal{S}(t,\eta)]_{jp}=\frac{\partial z_{j}(t,\eta)}{\partial\eta_{p}}$ . Provided $\theta$ is in the interior of $\Theta$ , the first order optimality conditions of $\theta$ from eq. ( 9 ) imply 
+ $\int_{\Omega}\mathcal{S}(t,\theta)^{\intercal}A^{\intercal}\delta_{\theta}(t)dt=0,\quad 0\in\mathbb{R}^{p}$ 
+ (12) 
+ Given these a-priori structural constraints, we desire a discrepancy prior such that the realization satisfy eq. ( 12 ) with probability one. The following result, which is a multivariate extension of Theorem 3 from [ 32 ] , provides a general construction for such a prior. 
+ Theorem 1 . 
+ Let $C_{\phi}(t,t^{\prime})$ be a symmetric cross-variance function for a $J$ -multivariate process with q-dimensional hyperparameters $\phi$ . Let 
+ $\displaystyle h_{\theta}(t)$ 
+ $\displaystyle=\int_{\Omega}\mathcal{S}(t^{\prime},\theta)^{\intercal}A^{\intercal}C_{\phi}(t^{\prime},t)dt^{\prime}\in\mathbb{R}^{p\times J}$ 
+ (13) 
+ $\displaystyle H_{\theta}$ 
+ $\displaystyle=\int_{\Omega}\int_{\Omega}\mathcal{S}(t^{\prime},\theta)^{\intercal}A^{\intercal}C_{\phi}(t^{\prime},t)A\mathcal{S}(t,\theta)dtdt^{\prime}\in\mathbb{R}^{p\times p}$ 
+ and define the covariance function 
+ $C_{\theta,\phi}(t,t^{\prime})=C_{\phi}(t,t^{\prime})-h_{\theta}^{\intercal}(t)H_{\theta}^{-1}h_{\theta}(t^{\prime}),$ 
+ (14) 
+ Then for $\delta_{\theta}\sim GP(0,C_{\theta,\phi})$ , eq. ( 14 ) holds with probability one. 
+ The quantities in eq. ( 13 ) require the evaluation of the Jacobian of the ODE system $z(\cdot,\theta)$ with respect to $\theta$ , which can be done jointly with a forward pass of the model by solving the coupled sensitivity ODEs ( 6 ) and ( 7 ) to get $\mathcal{S}$ . 
+ 3.3 Posterior Inference 
+ Given the data and prior models outlined in Section  3.1 and Section  3.2 , respectively, our primary goal is to perform posterior inference for estimation and uncertainty quantification on $\theta$ . We are also interested in inferring the model discrepancy. 
+ We begin by considering the calibration parameter posterior by calculating the marginalization integral eq. ( 11 ) under the discrepancy prior outlined in Section  3.2 . Let vec denote the vectorization operator and define the vectorized variables $\vec{y}:=\text{vec}(Y)$ , $\vec{z}_{\theta}:=\text{vec}(Z_{\theta})$ and $\vec{\delta}_{\theta}:=\text{vec}(\Delta_{\theta})$ , where the stacking is performed columnwise, that is, 
+ $\text{vec}(\Delta_{\theta})=\left(\vec{\delta}_{1},\vec{\delta}_{2},...,\vec{\delta}_{n}\right)^{\intercal}\in\mathbb{R}^{Jn},$ 
+ where $\vec{\delta}_{m}=(\delta_{1}(t_{m};\theta),...,\delta_{J}(t_{m};\theta))\in\mathbb{R}^{J}$ . Under the multivariate mean-zero GP prior with covariance function eq. ( 14 ), we have 
+ $\displaystyle\text{Cov}\left[\vec{\delta}_{\theta}\right]$ 
+ $\displaystyle:=\begin{pmatrix}\mathbb{E}\left[\vec{\delta}_{1}\vec{\delta}_{1}^{\intercal}\right]&\mathbb{E}\left[\vec{\delta}_{1}\vec{\delta}_{2}^{\intercal}\right]&\cdots&\mathbb{E}\left[\vec{\delta}_{1}\vec{\delta}_{n}^{\intercal}\right]\\
+\mathbb{E}\left[\vec{\delta}_{2}\vec{\delta}_{1}^{\intercal}\right]&\mathbb{E}\left[\vec{\delta}_{2}\vec{\delta}_{2}^{\intercal}\right]&\cdots&\vdots\\
+\vdots&&\ddots\\
+\mathbb{E}\left[\vec{\delta}_{n}\vec{\delta}_{1}^{\intercal}\right]&\cdots&&\mathbb{E}\left[\vec{\delta}_{n}\vec{\delta}_{n}^{\intercal}\right]\end{pmatrix}=\begin{pmatrix}C_{\theta,\phi}(t_{1},t_{1})&C_{\theta,\phi}(t_{1},t_{2})&\cdots&C_{\theta,\phi}(t_{1},t_{n})\\
+C_{\theta,\phi}(t_{2},t_{1})&C_{\theta,\phi}(t_{2},t_{2})&\cdots&\vdots\\
+\vdots&&\ddots\\
+C_{\theta,\phi}(t_{n},t_{1})&\cdots&&C_{\theta,\phi}(t_{n},t_{n})\end{pmatrix}.$ 
+ (15) 
+ Let $\vec{t}=(t_{1},...,t_{n})$ and
+with slight abuse of notation, we denote $\text{Cov}\left[\vec{\delta}_{\theta}\right]:=C_{\theta,\phi}(\vec{t},\vec{t})\in\mathbb{R}^{Jn\times J_{n}}$ 
+and hence $\vec{\delta}_{\theta}\sim\mathcal{N}_{Jn}(0,C_{\theta,\phi}(\vec{t},\vec{t}))$ . 
+ From the linear model eq. ( 10 ) we have that $Y|Z_{\theta},\Delta_{\theta}$ is a matrix normal random variable: $\mathcal{MN}_{J\times n}(Z_{\theta}+\Delta_{\theta},\sigma^{2}I_{J},I_{n})$ , and hence by properties of the matrix-normal we have the vectorized likelihood 
+ $\pi(\vec{y}|z_{\theta},\delta_{\theta},\sigma^{2})=\mathcal{N}_{Jn}(\vec{y};\vec{z}_{\theta}+\vec{\delta}_{\theta},\sigma^{2}I_{nJ}).$ 
+ (16) 
+ Putting these identities together, we can write re-write the posterior of interest eq. ( 11 ) in terms of the vectorized distributions as 
+ $\displaystyle\pi(\theta|\vec{y},\sigma^{2},\phi)$ 
+ $\displaystyle\propto\int\mathcal{N}_{Jn}(\vec{y};\vec{z}_{\theta}+\vec{\delta}_{\theta},\sigma^{2}I_{nJ})\mathcal{N}_{Jn}(\delta_{\theta};\vec{0},C_{\theta,\phi}(\vec{t},\vec{t}))\pi(\theta)d\vec{\delta}_{\theta}$ 
+ (17) 
+ $\displaystyle\propto\mathcal{N}_{Jn}(\vec{y};\vec{z}_{\theta},C_{\theta,\phi}(\vec{t},\vec{t})+\sigma^{2}I_{nJ})\pi(\theta)$ 
+ $\displaystyle\propto\frac{\exp\left(-\frac{1}{2}\left(\vec{y}-\vec{z}_{\theta}\right)^{\intercal}\left(C_{\theta,\phi}(\vec{t},\vec{t})+\sigma^{2}I_{nJ}\right)^{-1}\left(\vec{y}-\vec{z}_{\theta}\right)\right)\pi(\theta)}{\det|C_{\theta,\phi}(\vec{t},\vec{t})+\sigma^{2}I_{nJ}|^{1/2}},$ 
+ where the second line follows from standard marginalization properties of Gaussian-Gaussian models. 
+ We now calculate the conditional posterior of the discrepancy function at the observed time points $\vec{t}$ . By Bayes theorem, we have 
+ $\displaystyle\pi(\vec{\delta}_{\theta}|\vec{y},\theta,\sigma^{2},\phi)$ 
+ $\displaystyle\propto\pi(\vec{y}|\vec{\delta}_{\theta},\theta)\pi(\delta_{\theta}|\theta,\phi)$ 
+ (18) 
+ $\displaystyle\propto\mathcal{N}_{Jn}(\vec{y};\vec{z}_{\theta}+\vec{\delta}_{\theta},\sigma^{2}I_{nJ})\mathcal{N}_{Jn}(\delta_{\theta};\vec{0},C_{\theta,\phi}(\vec{t},\vec{t}))$ 
+ $\displaystyle\propto\mathcal{N}_{Jn}\left(\vec{\delta}_{\theta};\frac{1}{\sigma^{2}}\Gamma_{\theta}^{-1}\left(\vec{y}-\vec{z}_{\theta}\right),\Gamma_{\theta}^{-1}\right)$ 
+ where 
+ $\Gamma_{\theta}=\left[C_{\theta,\phi}(\vec{t},\vec{t})\right]^{-1}+\frac{1}{\sigma^{2}}I_{nJ},$ 
+ which follows from the Conjugate properties of Gaussian-Gaussian models. Then the conditional posterior of the discrepancy is given by 
+ $\pi(\vec{\delta}_{\theta}|\vec{y},\sigma^{2},\phi)\propto\int_{\Theta}\mathcal{N}_{Jn}\left(\vec{\delta}_{\theta};\frac{1}{\sigma^{2}}\Gamma_{\theta}^{-1}\left(\vec{y}-\vec{z}_{\theta}\right),\Gamma_{\theta}^{-1}\right)\pi(\theta|\vec{y},\sigma^{2},\phi)d\theta.$ 
+ (19) 
+ In general, eq. ( 19 ) will not have a closed form. However, it can be sample from via Monte-Carlo integration, where draws from eq. ( 17 ) are used to approximate the integral. 
+ To construct a conditional posterior for the measurement error variance $\sigma^{2}$ , we use an inverse-gamma prior $\pi(\sigma^{2})=\operatorname{IG}(\sigma^{2};\alpha_{\sigma^{2}},\beta_{\sigma^{2}})$ . Then we have the closed form conditional posterior 
+ $\displaystyle\pi(\sigma^{2}\mid\vec{y},\theta,\vec{\delta}_{\theta})$ 
+ $\displaystyle\propto\mathcal{N}_{Jn}(\vec{y};\vec{z}_{\theta}+\vec{\delta}_{\theta},\sigma^{2}I_{nJ})\operatorname{IG}(\alpha_{\sigma^{2}},\beta_{\sigma^{2}})$ 
+ (20) 
+ $\displaystyle\propto\operatorname{IG}\left(\sigma^{2};\alpha_{\sigma^{2}}+\frac{Jn}{2},\beta_{\sigma^{2}}+\frac{1}{2}\left|\vec{y}-\vec{z}_{\theta}-\vec{\delta}_{\theta}\right|_{2}^{2}\right),$ 
+ which follows from standard results in conjugacy. 
+ For the unconstrained discrepancy kernel hyper-parameters $\phi$ , we assume independent uniform priors over problem-specific bounds, denoted collectively by $\pi(\phi)$ . Extending eq. ( 17 ), the joint conditional posterior of the calibration and kernel parameters is 
+ $\displaystyle\pi(\theta,\phi\mid\vec{y},\sigma^{2})$ 
+ $\displaystyle\propto\frac{\exp\left[-\frac{1}{2}(\vec{y}-\vec{z}_{\theta})^{\intercal}\left(C_{\theta,\phi}(\vec{t},\vec{t})+\sigma^{2}I_{nJ}\right)^{-1}(\vec{y}-\vec{z}_{\theta})\right]\pi(\theta)\pi(\phi)}{\det\left|C_{\theta,\phi}(\vec{t},\vec{t})+\sigma^{2}I_{nJ}\right|^{1/2}}.$ 
+ (21) 
+ Algorithm 1 Adaptive Metropolis-within-Gibbs Posterior Inference 
+ 1: 
+ Input $\vec{y}$ , $\vec{t}$ , initial values
+ $(\theta^{(1)},\phi^{(1)},\sigma^{2(1)})$ ,
+proposal covariance $V_{0}$ , adaptation frequency $k_{0}$ , number of iterations $M$ .
+ 2: 
+ Output Samples
+ $\{\theta^{(m)},\phi^{(m)},\vec{\delta}^{(m)},\sigma^{2(m)}\}_{m=1}^{M}$ 
+ 3: 
+ Set $p=\dim(\theta)$ , $q=\dim(\phi)$ , $c=2.38^{2}/(p+q)$ , and
+ $R\leftarrow\operatorname{chol}(cV_{0}+\epsilon I_{p+q})$ 
+ 4: 
+ Sample $\vec{\delta}^{(1)}$ from
+eq. ( 18 ), conditional on $\theta^{(1)},\phi^{(1)},\sigma^{2(1)}$ .
+ 5: 
+ for $m=1,\ldots,M-1$ do 
+ 6: 
+   Propose
+ $([\theta^{\mathrm{prop}}],[\phi^{\mathrm{prop}}])=([\theta^{(m)}],[\phi^{(m)}])+R\psi$ ,
+where $\psi\sim\mathcal{N}_{p+q}(0,I_{p+q})$ 
+ 7: 
+   Get $\vec{z}(t,\theta^{\mathrm{prop}})$ , $\mathcal{S}(\vec{t},\theta^{\mathrm{prop}})$ by solving coupled ODEs ( 6 ),
+( 7 )
+ 8: 
+   Set $\theta^{(m+1)}=\theta^{\mathrm{prop}},\phi^{(m+1)}=\phi^{\mathrm{prop}}$ with probability
+ $\min\left\{1,\frac{\pi(\theta^{\mathrm{prop}},\phi^{\mathrm{prop}}\mid\vec{y},\sigma^{2(m)})}{\pi(\theta^{(m)},\phi^{(m)}\mid\vec{y},\sigma^{2(m)})}\right\}$ 
+   Using eq. ( 21 ).
+Otherwise, set $\theta^{(m+1)}=\theta^{(m)},\phi^{(m+1)}=\phi^{(m)}$ 
+ 9: 
+   Sample $\vec{\delta}^{(m+1)}$ from
+eq. ( 18 )
+conditional on $\theta^{(m+1)}$ , $\phi^{(m+1)}$ , and $\sigma^{2(m)}$ 
+ 10: 
+   Sample $\sigma^{2(m+1)}$ from
+eq. ( 20 )
+conditional on $\theta^{(m+1)}$ and $\vec{\delta}^{(m+1)}$ 
+ 11: 
+    if $m$ is a multiple of $k_{0}$ then 
+ 12: 
+    Set
+ $V_{m}\leftarrow\operatorname{Cov}\left(([\theta^{(1)}],[\phi^{(1)}]),\ldots,([\theta^{(m+1)}],[\phi^{(m+1)}])\right),\qquad R\leftarrow\operatorname{chol}(cV_{m}+\epsilon I_{d})$ 
+ The posterior in eq. ( 21 ) does not generally admit a closed form. Therefore, $(\theta,\phi)$ are sampled jointly using the adaptive Metropolis algorithm [ 35 ] . Algorithm  1 provides the pseudocode for the complete posterior sampling procedure. At each iteration, $(\theta,\phi)$ are updated jointly using an adaptive Gaussian random-walk Metropolis step targeting the marginal posterior in eq. ( 21 ). This involves solving the augmented ODE and sensitivity system for $\theta$ , and then updating the discrepancy covariance using $\mathcal{S}$ and the current hyperparameter values $\phi$ . Conditional on the accepted parameters, the discrepancy is sampled exactly from eq. ( 18 ), and $\sigma^{2}$ is sampled using eq. ( 20 ). The proposal covariance is periodically adapted using the empirical covariance of the sampled $(\theta,\phi)$ values. 
+ 4 Numerical Experiments 
+ 4.1 Experiment Design 
+ 4.1.1 Data Generation 
+ We examine three underlying ODE models split into five sections. With slight abuse of notation, for each model type we use mathematical notation that is consistent with the modeling community. Thus, there may be overlap in the use of previously defined variables and each set of results should be interpreted within the context of the model domain. Each model is given specific upper and lower parameter bounds, denoted by UB and LB, respectively. For each model, we simulate observed data under observation model ( 1 ) where model parameters $\theta$ are sampled from box-uniform priors over the problem specific bounds and model discrepancy is simulated from the MOS prior outlined in Theorem  1 . This ensures that the simulated model parameters remain the $L^{2}$ minimizer according to Equation  8 and are the proper inferential target. The kernel hyperparameters $\phi$ are generated from a problem specific log-normal distribution, where we simultaneously infer $\phi$ in posterior inference to simulate the realistic setting where the discrepancy hyperparameters are unknown.
+The measurement error is zero-mean Gaussian with a variance $\sigma_{\varepsilon}^{2}$ that is set based on the specific model system. Each experiment was repeated for $100$ Monte-Carlo replications and results combined for evaluation. 
+ 4.1.2 Implementation Details 
+ All empirical results in this manuscript are generated using a custom Python implementation built on standard scientific computing libraries, including SciPy, NumPy, PyTorch, and GPyTorch, and made publicly available on Github ( https://github.com/mjcolebank/Discrepancy_USC ). Unless otherwise stated, default numerical and inferential settings are used throughout. The ODE system (with the state variables and sensitivites) are solved using SciPy’s odeint integration tool, which uses the LSODA algorithm [ 19 ] . Inputs ( $t$ ) correspond to the fixed simulation grid from the ODE solver and are in their physical units. Uniform priors defined using problem specific LB and UB are used for the model parameters. For each proposed parameter value, the simulator is solved on a fixed, prescribed time interval to provide the state and sensitivity outputs. Solving sensitivities directly avoids extra simulations and reduces numerical errors for gradient approximation. Sensitivity information is used only when building ( 14 ). Posterior inference is performed using Algorithm  1 for a single chain for 10,000 iterations. All inferences are conducted on the last 5,000 samples from the MCMC procedure, discarding the first 5,000 as burn-in. The initial proposal covariance is defined by the diagonal matrix $V^{0}=\textrm{diag}(\sigma_{\theta})$ , where $\sigma_{\theta}=0.01\left(\textrm{UB}-\textrm{LB}\right)$ , and updates are made every $k_{0}=2,000$ iterations. 
+ 4.1.3 Competing Methods 
+ We compare our method to a multivariate extension of the Kennedy O’Hagan approach [ 23 ] (KOH), where the unconstrained discrepancy prior is modeled using a mean-zero independent multivariate Gaussian process [ 30 ] , and a radial basis function (RBF) for each output dimension, resulting in the Kronecker form 
+ $\mathcal{C}_{\phi}(\vec{t},\vec{t}^{\prime})=I_{J}\otimes C_{\phi}\left(\vec{t},\vec{t}^{\prime}\right)\in\mathbb{R}^{Jn\times Jn},\ \ \ C_{\phi}(t_{i},t_{j})=\phi_{1}\exp\left(-\frac{(t_{i}-t_{j})^{2}}{2\phi_{2}^{2}}\right).$ 
+ (22) 
+ The kernel $C_{\phi}(t,t^{\prime})$ is used in both the KOH and the MOS procedure, the latter of which uses $C_{\phi}(\vec{t},\vec{t}^{\prime})$ to calculate $C_{\theta,\phi}(\vec{t},\vec{t}^{\prime})$ . Posterior inference using KOH was performed using the same Algorithm  1 , with settings kept largely consistent with those outlined in Section  4.1.2 , except replacing any computations involving orthogonalized kernel ( 15 ) with the kernel ( 22 ) for KOH. 
+ 4.1.4 Evaluation Metrics 
+ We evaluate the estimation performance of the methods by computing the Monte-Carlo average of the root mean squared error (RMSE) and bias of the posterior mean. For UQ, we use the MCMC samples to form $95\%$ credible intervals and compute the empirical coverage and average interval length over the Monte-Carlo replications. 
+ We also evaluate inference on the true process $\xi$ by sampling the push-forward of the posterior parameter and discrepancy samples through the discrepancy adjusted forward model. Estimation performance is quantified by approximating the integrated squared error and integrated bias of the posterior predicted process. The quality of the uncertainty quantification was assessed by constructing $95\%$ point-wise credible intervals over the time grid and computing their empirical coverage and average length using the Monte-Carlo replications. 
+ 4.2 Model 1: Mass-Spring-Damper Model 
+ For our first example, we consider a coupled mass-spring-damper system given by the second-order, linear matrix differential equation 
+ $\displaystyle{M}\ddot{x}+{C}\dot{x}+{K}{x}={F}.$ 
+ (23) 
+ Here, we relate the acceleration $\ddot{x}$ , velocity $\dot{x}$ , and position $x$ of masses that are connected to each other through a spring-dashpot system. Given $n_{s}$ springs, the above equation has four sets of parameters: a set of $n_{s}$ mass terms which are described by the diagonal matrix of masses ${M}$ , a set of $n_{s}$ dashpot elements (the dampers) parameterized by the bidiagonal matrix ${C}$ , and $n_{s}$ stiffness parameters given by the bidiagonal matrix ${K}$ . The vector ${F}$ includes the nonhomogenous component of the system, e.g., periodic forcing functions. We recast the system of $n_{s}$ second-order equations as a system of $2n_{s}$ first-order equations given by 
+ $\frac{d}{dt}\begin{bmatrix}{x}\\
+\dot{x}\end{bmatrix}=\begin{bmatrix}{0}&{I}\\
+-{M}^{-1}{K}&-{M}^{-1}{C}\ \ \end{bmatrix}\begin{bmatrix}{x}\\
+{\dot{x}}\end{bmatrix}+\begin{bmatrix}0\\
+F\end{bmatrix},$ 
+ (24) 
+ with known initial conditions $x(0)=x_{0}$ and $\dot{x}(0)=v_{0}$ . 
+ Inferring the elements of ${M}$ , ${C}$ , ${K}$ , and ${F}$ simultaneously leads to non-identifiability, since the mass terms are not uniquely determined in this system [ 35 ] . Thus, we fix the masses ${M}$ and treat them as known quantities. We also leave the forcing terms ${F}$ fixed at their known value, and focus on inferring the parameters that make up the matrices ${C}$ and ${K}$ representing the dashpot and stiffness elements. 
+ In general, the sensitivity system of eq. ( 24 ) can be derived by noting that, since the ODE system is linear in the states, the state-Jacobian is the evolution matrix 
+ $\displaystyle\mathcal{J{}}=\begin{bmatrix}0&I\\
+-M^{-1}K&-M^{-1}C\end{bmatrix}$ 
+ (25) 
+ which is true regardless of the number of springs. The term $\mathcal{G}_{\theta}$ also follows a pattern that is best seen on a case-by-case basis. 
+ We begin with the case where there are $n_{s}=2$ masses, where the first mass is connected to a fixed surface and the second mass is free. The linear system is given by 
+ $\displaystyle\mathbf{M}=\begin{bmatrix}m_{1}&0\\[4.0pt]
+0&m_{2}\\[4.0pt]
+\end{bmatrix},\ \ \ \mathbf{K}=\begin{bmatrix}k_{1}+k_{2}&-k_{2}\\[4.0pt]
+-k_{2}&k_{2}\\[4.0pt]
+\end{bmatrix},\ \ \ \mathbf{C}=\begin{bmatrix}c_{1}+c_{2}&-c_{2}\\[4.0pt]
+-c_{2}&c_{2}\\[4.0pt]
+\end{bmatrix}.$ 
+ (26) 
+ Our parameter vector of interest is $\theta=\{k_{1},c_{1},k_{2},c_{2}\}$ . We assume that the forcing function is applied to the second mass only, giving 
+ ${F}=\begin{bmatrix}0\\[4.0pt]
+F_{0}\cos(\omega_{f}\cdot t)\\[4.0pt]
+\end{bmatrix}$ 
+ (27) 
+ where $F_{0}$ is the forcing magnitude and $\omega_{f}$ is the forcing frequency. We fix the external force parameters for all simulations and data at $F_{0}=25$ and $\omega_{f}=5$ . The corresponding sensitivity system then uses $\mathcal{G}_{z}=\textrm{diag}\left(\mathcal{J}\right)$ defined in eq. ( 25 ), while the term $\mathcal{G}_{\theta}\in\mathbb{R}^{16}$ has the non-trivial elements 
+ $\displaystyle\mathcal{G}_{\theta_{3}}=-x_{1}/m_{1},$ 
+ $\displaystyle\mathcal{G}_{\theta_{7}}=-\dot{x}_{1}/m_{1}$ 
+ (28) 
+ $\displaystyle\mathcal{G}_{\theta_{11}}=(-x_{1}+x_{2})/m_{1},$ 
+ $\displaystyle\mathcal{G}_{\theta_{12}}=(x_{1}-x_{2})/m_{2},$ 
+ (29) 
+ $\displaystyle\mathcal{G}_{\theta_{15}}=(-\dot{x}_{1}+\dot{x}_{2})/m_{1},$ 
+ $\displaystyle\mathcal{G}_{\theta_{16}}=(\dot{x}_{1}-\dot{x}_{2})/m_{2}.$ 
+ (30) 
+ We provide an example forward evaluation of the model and its sensitivities in Figure 1 . An averaged ranking of parameter influence, given by the sensitivity system across all 100 datasets, is provided in Figure 10 of the Appendix (Sec. B ). 
+ Figure 1 : Example realization from the two-mass model. (Left): Example trajectory for the two mass displacements. (Right): The corresponding 8 sensitivities of each model state to the parameters of the system. 
+ 4.2.1 Inference Results 
+ We consider the case where $A$ maps our model states to observations for the two mass displacements, $x_{1}$ and $x_{2}$ , at 20 equally spaced time points on the interval $\Omega=[0,10]$ . Here, our observation operator $A$ ignores the velocity states $\dot{x}_{1}$ and $\dot{x}_{2}$ . Each dataset is generated by sampling parameters from a uniform distribution, with $k_{i}\sim\mathcal{U}(1,100)$ , $i=1,2$ , and $c_{i}\sim\mathcal{U}(0.1,10)$ , $i=1,2$ . The initial conditions for the model are $x_{1}(0)=5.0$ and $x_{2}=\dot{x}_{1}=\dot{x}_{2}=0.0$ , with corresponding fixed, known masses of $m_{1}=5.0$ and $m_{2}=10.0$ . We add independent zero-mean Gaussian noise to each dataset, with a noise variance $\sigma_{\varepsilon}^{2}=0.1$ . For the model discrepancy, we generate a signal using the MOS framework with hyperparameters $\gamma\sim\textrm{LogNormal}\left(-2.0,1.0^{2}\right)$ and $\ell\sim\textrm{LogNormal}\left(-0.2,0.8^{2}\right)$ . We use these priors for the GP to ensure the discrepancy magnitude is reasonable relative to the displacement magnitudes and a smaller length-scale to ensure sufficient discrepancy as the spring reaches steady state over the time interval $\Omega$ . 
+ Table 1 provides the average bias, root mean square error (RMSE), 95% coverage, and interval width over 100 Monte-Carlo experimental replications. In general, our method demonstrates superior parameter estimation compared to KOH, with smaller magnitude bias (except for $c_{2}$ ) and a smaller RMSE for all model parameters. For UQ, both methods achieve reasonable calibration, with empirical coverage for most parameters near the $95\%$ nominal level, though both exhibit slight conservatism. The mean interval widths for MOS are smaller than KOH for all model parameters, indicating less uncertainty in the marginal posterior. 
+ We also provide predictive error metrics in Table 2 , as well as one representative example of output uncertainty and marginal posteriors in Figure 2 . Similar patterns emerge, with MOS providing lower MSE and less conservative intervals, and empirical coverage closer to the nominal level than KOH. We observe that KOH does achieve a lower bias, though the bias for both methods is quite small. 
+ Table 1 : Posterior summary metrics for the two-mass oscillator across 100 Monte-Carlo experimental replications. Bold values for the bias and RMSE are the best for the given parameter. 
+ Method 
+ Parameter 
+ Mean Bias 
+ Mean RMSE 
+ Mean 95% Coverage 
+ Mean Int. Width 
+ KOH 
+ $k_{1}$ 
+ 0.5533 
+ 3.1099 
+ 0.98 
+ 25.8976 
+ KOH 
+ $c_{1}$ 
+ 0.3660 
+ 0.9100 
+ 0.96 
+ 5.6902 
+ KOH 
+ $k_{2}$ 
+ -0.5922 
+ 3.7509 
+ 0.96 
+ 32.9859 
+ KOH 
+ $c_{2}$ 
+ 0.1553 
+ 0.6997 
+ 0.95 
+ 5.4625 
+ MOS 
+ $k_{1}$ 
+ 0.1767 
+ 2.5667 
+ 0.98 
+ 22.0292 
+ MOS 
+ $c_{1}$ 
+ 0.2961 
+ 0.6945 
+ 0.96 
+ 5.0494 
+ MOS 
+ $k_{2}$ 
+ -0.4139 
+ 3.5067 
+ 0.96 
+ 30.1337 
+ MOS 
+ $c_{2}$ 
+ 0.1639 
+ 0.6294 
+ 0.95 
+ 5.0156 
+ Table 2 : Output uncertainty metrics between KOH and our MOS approach for the two-mass oscillator. Error metrics are first time-averaged and then averaged across 100 Monte-Carlo experimental replications. Bold values for the bias and RMSE are the best for the given parameter. 
+ KOH 
+ MOS 
+ Metric 
+ Mean 
+ Mean 
+ Time Integrated RMSE 
+ 0.3133 
+ 0.3083 
+ Time Integrated Bias 
+ -0.0174 
+ -0.0177 
+ Time Integrated Coverage 
+ 0.9895 
+ 0.9788 
+ Time Integrated Interval Width 
+ 2.0935 
+ 1.8589 
+ Figure 2 : Output UQ for two-mass oscillator using one representative dataset. Posterior samples of the simulator and discrepancy are drawn from either the KOH (left column, red) or MOS (right column, cyan) approach. 
+ 4.3 Model 2: Four-Mass Oscillator 
+ We now consider a larger system of $n_{s}=4$ masses, with 
+ $\displaystyle\mathbf{M}=\begin{bmatrix}m_{1}&0&0&0\\[4.0pt]
+0&m_{2}&0&0\\[4.0pt]
+0&0&m_{3}&0\\[4.0pt]
+0&0&0&m_{4}\end{bmatrix},\ \ \ \mathbf{K}=\begin{bmatrix}k_{1}+k_{2}&-k_{2}&0&0\\[6.0pt]
+-k_{2}&k_{2}+k_{3}&-k_{3}&0\\[6.0pt]
+0&-k_{3}&k_{3}+k_{4}&-k_{4}\\[6.0pt]
+0&0&-k_{4}&k_{4}\end{bmatrix},\ \ $ 
+ (31) 
+ $\displaystyle\mathbf{C}=\begin{bmatrix}c_{1}+c_{2}&-c_{2}&0\\[6.0pt]
+-c_{2}&c_{2}+c_{3}&-c_{3}\\[6.0pt]
+0&-c_{3}&c_{3}+c_{4}&-c_{4}\\[6.0pt]
+0&0&-c_{4}&c_{4}\end{bmatrix}.$ 
+ (32) 
+ We can recast the system of $4$ second-order equations as a system of $8$ first-order equations as we did before, where the forcing function ${F}$ is only applied to the last mass $m_{4}$ as before. The model parameters are now ${\theta}=\left\{k_{1},c_{1},k_{2},c_{2},k_{3},c_{3},k_{4},c_{4}\right\}\in\mathbb{R}^{8}$ . The sensitivity system requires $\mathcal{G}_{\theta}$ and $\mathcal{G}_{z}$ as before, where $\mathcal{G}_{z}$ is structured identically to eq. ( 25 ). The term $\mathcal{G}_{\theta}\in\mathbb{R}^{64}$ has the non-trivial elements 
+ $\displaystyle\mathcal{G}_{\theta_{5}}=-x_{1}/m_{1},$ 
+ $\displaystyle\mathcal{G}_{\theta_{13}}=-\dot{x}_{1}/m_{1}$ 
+ (33) 
+ $\displaystyle\mathcal{G}_{\theta_{21}}=(-x_{1}+x_{2})/m_{1},$ 
+ $\displaystyle\mathcal{G}_{\theta_{22}}=(x_{1}-x_{2})/m_{2},$ 
+ (34) 
+ $\displaystyle\mathcal{G}_{\theta_{29}}=(-\dot{x}_{1}+\dot{x}_{2})/m_{1},$ 
+ $\displaystyle\mathcal{G}_{\theta_{30}}=(\dot{x}_{1}-\dot{x}_{2})/m_{2},$ 
+ (35) 
+ $\displaystyle\mathcal{G}_{\theta_{38}}=(-x_{2}+x_{3})/m_{2},$ 
+ $\displaystyle\mathcal{G}_{\theta_{39}}=(x_{2}-x_{3})/m_{3},$ 
+ (36) 
+ $\displaystyle\mathcal{G}_{\theta_{46}}=(-\dot{x}_{2}+\dot{x}_{3})/m_{2},$ 
+ $\displaystyle\mathcal{G}_{\theta_{47}}=(\dot{x}_{2}-\dot{x}_{3})/m_{3},$ 
+ (37) 
+ $\displaystyle\mathcal{G}_{\theta_{55}}=(-x_{3}+x_{4})/m_{3},$ 
+ $\displaystyle\mathcal{G}_{\theta_{56}}=(x_{3}-x_{4})/m_{4},$ 
+ (38) 
+ $\displaystyle\mathcal{G}_{\theta_{63}}=(-\dot{x}_{3}+\dot{x}_{4})/m_{3},$ 
+ $\displaystyle\mathcal{G}_{\theta_{64}}=(\dot{x}_{3}-\dot{x}_{4})/m_{4},$ 
+ (39) 
+ We show an example simulation of the displacement and velocities from the model in Figure 3 . An averaged ranking of parameter influence, given by the sensitivity system across all 100 datasets, is provided in Figure 11 of the Appendix (Sec. B ). 
+ Figure 3 : Example realization from the four-mass model. (Left): Example trajectory for the four mass displacements. (Right): The corresponding 32 sensitivities of each model state to the parameters of the system 
+ 4.3.1 Inference Results 
+ We again impose the measurement operator $A$ that maps the full displacement space for the model, which includes $x_{1},x_{2},x_{3},$ and $x_{4}$ . We again use 20 equally spaced time points on the interval $\Omega=[0,10]$ . Each dataset is generated by sampling parameters from a uniform distribution, again using $k_{i}\sim\mathcal{U}(1,100)$ , $i=1,2,3,4$ , and $c_{i}\sim\mathcal{U}(0.1,10)$ , $i=1,2,3,4$ as in the case of the two-mass system. We fixed the external force parameters for all simulations and data at $F_{0}=25$ and $\omega_{f}=5$ . The initial conditions for the model are $x_{1}(0)=5.0$ and $x_{2}=x_{3}=x_{4}=0.0$ , as well as $\dot{x}_{1}=\dot{x}_{2}=\dot{x}_{3}=\dot{x}_{4}=0.0$ . The masses are fixed at $m_{1}=5.0,m_{2}=4.0,m_{3}=7.0$ , and $m_{4}=10$ . We add independent zero-mean Gaussian noise to each dataset, with a noise variance $\sigma_{\varepsilon}^{2}=0.1$ . We use the same priors for the model discrepancy, with $\gamma\sim\textrm{LogNormal}\left(-2.0,1.0^{2}\right)$ and $\ell\sim\textrm{LogNormal}\left(-0.2,0.8^{2}\right)$ , as was the case in the two-mass example. 
+ Parameter inference results comparing KOH and the MOS approach can be found in Table 3 . As with the two-mass example, we find that our MOS approach achieves a smaller mean RMSE for nearly all parameters except for $c_{4}$ where KOH out performs, while the bias results are less consistently in favor of either approach. Both methods demonstrate empirical coverage that is quite similar across all of the parameters, including some severe under-coverage for several parameters, including $c_{4},c_{3}$ and $k_{3}$ . We attribute this to the relatively small influence on the model behavior, as the model outputs are less sensitive to these parameters (see Figure 11 of the Appendix (Sec. B )). 
+ We provide an example of the output uncertainty and posterior predictive in Figure 4 . Error metrics in output space are provided in Table 4 . The proposed MOS method results in lower MSE, empirical coverage closer to the nominal level, and smaller average intervals, though improvements are somewhat modest. 
+ Table 3 : Posterior summary metrics for the four-mass oscillator across 100 Monte-Carlo experimental replications. Bold values for the bias and RMSE are the best for the given parameter. 
+ Method 
+ Parameter 
+ Mean Bias 
+ Mean RMSE 
+ Mean Coverage 
+ Mean Int. Width 
+ KOH 
+ $k_{1}$ 
+ 0.5984 
+ 5.3948 
+ 0.96 
+ 36.6688 
+ KOH 
+ $c_{1}$ 
+ 0.3017 
+ 1.1947 
+ 0.92 
+ 6.7745 
+ KOH 
+ $k_{2}$ 
+ -1.2837 
+ 8.8567 
+ 0.96 
+ 54.2071 
+ KOH 
+ $c_{2}$ 
+ 0.0739 
+ 1.3538 
+ 0.91 
+ 6.9601 
+ KOH 
+ $k_{3}$ 
+ -2.8743 
+ 12.4060 
+ 0.88 
+ 63.0391 
+ KOH 
+ $c_{3}$ 
+ 0.6001 
+ 2.1844 
+ 0.86 
+ 8.5545 
+ KOH 
+ $k_{4}$ 
+ 2.8305 
+ 13.0305 
+ 0.96 
+ 68.8297 
+ KOH 
+ $c_{4}$ 
+ 0.5589 
+ 2.1696 
+ 0.78 
+ 8.1605 
+ MOS 
+ $k_{1}$ 
+ 0.6039 
+ 5.2327 
+ 0.96 
+ 34.0988 
+ MOS 
+ $c_{1}$ 
+ 0.2574 
+ 1.0994 
+ 0.94 
+ 6.4482 
+ MOS 
+ $k_{2}$ 
+ -1.1730 
+ 8.0224 
+ 0.96 
+ 51.8563 
+ MOS 
+ $c_{2}$ 
+ 0.1166 
+ 1.2479 
+ 0.91 
+ 6.6844 
+ MOS 
+ $k_{3}$ 
+ -3.0939 
+ 11.8767 
+ 0.88 
+ 61.6692 
+ MOS 
+ $c_{3}$ 
+ 0.6302 
+ 2.0900 
+ 0.85 
+ 8.4068 
+ MOS 
+ $k_{4}$ 
+ 2.8293 
+ 12.1778 
+ 0.97 
+ 66.0800 
+ MOS 
+ $c_{4}$ 
+ 0.5555 
+ 2.1859 
+ 0.80 
+ 8.1247 
+ Table 4 : Output uncertainty metrics between KOH and our MOS approach for the four-mass oscillator. Error metrics are first time-averaged and then averaged across 100 Monte-Carlo experimental replications. Bold values for the bias and RMSE are the best for the given parameter. 
+ KOH 
+ MOS 
+ Metric 
+ Mean 
+ Mean 
+ Time Integrated RMSE 
+ 0.3025 
+ 0.2985 
+ Time Integrated Bias 
+ -0.0060 
+ -0.0060 
+ Time Integrated Coverage 
+ 0.9715 
+ 0.9680 
+ Time Integrated Interval Width 
+ 1.7748 
+ 1.6764 
+ Figure 4 : Output UQ for four-mass oscillator using one representative dataset. Posterior samples of the simulator and discrepancy are drawn from either the KOH (left column, red) or MOS (right column, cyan) approach. 
+ 4.4 Model 3: The FitzHugh-Nagumo model 
+ In this section, we consider the FitzHugh–Nagumo model, which is an oscillator-like equation that can describe the dynamics of excitatory and inhibitory neurons. The system of equations is given by 
+ $\displaystyle\frac{dv}{dt}$ 
+ $\displaystyle=v-\frac{v^{3}}{3}-w+I$ 
+ (41) 
+ $\displaystyle\frac{dw}{dt}$ 
+ $\displaystyle=(v+a-bw)\frac{1}{\tau}$ 
+ (42) 
+ where $v$ and $w$ represent the excitatory and inhibitory signals, respectively. The parameters are $a$ and $b$ , which control the threshold for excitatory spiking and the resiting potential, an external applied current $I$ , and the time-scale modulation $\tau$ , which controls how the inhibitory signal acts relative to the excitatory signal. Thus, our parameters for inference are $\theta=\left\{a,b,I,\tau\right\}$ . The sensitivity system is then controlled by $\mathcal{G}_{z}=\textrm{diag}\left(\mathcal{J}\right)$ , where 
+ $\mathcal{J}=\begin{bmatrix}1-v^{2}&-1\\
+\displaystyle\frac{1}{\tau}&\displaystyle\frac{-b}{\tau}\end{bmatrix}$ 
+ (43) 
+ and the vector $\mathcal{G}_{\theta}\in\mathbb{R}^{8}$ which has four non-trivial entries 
+ $\displaystyle\mathcal{G}_{\theta_{3}}=1,$ 
+ $\displaystyle\mathcal{G}_{\theta_{5}}$ 
+ $\displaystyle=\frac{1}{\tau},$ 
+ (44) 
+ $\displaystyle\mathcal{G}_{\theta_{6}}=\frac{-1}{\tau},$ 
+ $\displaystyle\mathcal{G}_{\theta_{8}}$ 
+ $\displaystyle=\frac{-(v+a-bw)}{\tau^{2}}.$ 
+ (45) 
+ Figure 5 shows a sample trajectory and the corresponding sensitivities for the system. An averaged ranking of parameter influence, given by the sensitivity system across all 100 datasets, is provided in Figure 12 of the Appendix (Sec. B ). 
+ Figure 5 : Example realization from the FitzHugh-Nagumo model. (Left) Example trajectory of the nondimensional $v$ and $w$ state variables. (Right) Corresponding $8$ dimensional sensitivities. 
+ 4.4.1 Inference Results 
+ We let our measurement operator $A$ map the full state space for the model, which includes the nondimensional states $v$ and $w$ . We use 20 equally spaced time points on the interval $\Omega=[0,100]$ . Each dataset is generated by sampling parameters from uniform distributions, with $a\sim\mathcal{U}(0.1,1)$ , $b\sim\mathcal{U}(0.1,10)$ , $I\sim\mathcal{U}(0.1,1)$ , and $\tau\sim\mathcal{U}(0.04,0.1)$ . The initial conditions for the model are $v(0)=-1.0$ and $w(0)=1.0$ . We add independent zero-mean Gaussian noise to each dataset, with a noise variance $\sigma_{\varepsilon}^{2}=0.1$ . For the model discrepancy, we generate a signal using the MOS framework with hyperparameters $\gamma\sim\textrm{LogNormal}\left(-1.6,1.0^{2}\right)$ and $\ell\sim\textrm{LogNormal}\left(3,0.4^{2}\right)$ . We use these priors for the GP to ensure a relatively small discrepancy magnitude (since the states are non-dimensional) and a somewhat large length-scale to match the time domain $\Omega$ . 
+ Results comparing KOH and the orthogonal MOS approach can be found in Table 5 . For parameter estimation, results echo previous models with uniformly lower MSE for MOS compared to KOH. The empirical coverage is similar for both methods, and severely undercover for the parameter $b$ , while attaining reasonable coverage for the remaining parameter. The mean interval width for MOS is again uniformly lower for all parameters. We note that the average sensitivity of the model to $b$ and $I$ is much lower than $\tau$ and $a$ parameters (see Figure  12 of the Appendix (Sec. B ). 
+ Figure 6 shows example of the predictive posteriors in the output-space, with error metrics and UQ in Table 6 . MOS demonstrates lower MSE and tighter posterior intervals than KOH, however, both method produce intervals that are overly conservative, with empirical coverage of nominal $95\%$ intervals near $100\%$ . 
+ Table 5 : Posterior summary metrics for the FitzHugh-Nagumo model across 100 Monte-Carlo experimental replications. Bold values for the bias and RMSE are the best for the given parameter. 
+ Method 
+ Parameter 
+ Mean Bias 
+ Mean RMSE 
+ Mean Coverage 
+ Mean Int. Width 
+ KOH 
+ $a$ 
+ -0.0025 
+ 0.0833 
+ 0.92 
+ 0.4795 
+ KOH 
+ $b$ 
+ 0.0059 
+ 0.1541 
+ 0.83 
+ 0.6305 
+ KOH 
+ $I$ 
+ 0.2772 
+ 1.1208 
+ 0.90 
+ 4.9521 
+ KOH 
+ $\tau$ 
+ 0.0137 
+ 0.0838 
+ 0.95 
+ 0.4623 
+ MOS 
+ $a$ 
+ -0.0037 
+ 0.0655 
+ 0.91 
+ 0.3876 
+ MOS 
+ $b$ 
+ 0.0021 
+ 0.1443 
+ 0.84 
+ 0.5883 
+ MOS 
+ $I$ 
+ 0.2370 
+ 1.0393 
+ 0.90 
+ 4.3114 
+ MOS 
+ $\tau$ 
+ 0.0143 
+ 0.0424 
+ 0.97 
+ 0.3238 
+ Table 6 : Output uncertainty metrics between KOH and our MOS approach for the FitzHugh-Nagumo model. Error metrics are first time-averaged and then averaged across 100 Monte-Carlo experimental replications. Bold values for the bias and RMSE are the best for the given parameter. 
+ KOH 
+ MOS 
+ Metric 
+ Mean 
+ Mean 
+ Time Integrated RMSE 
+ 0.2952 
+ 0.2887 
+ Time Integrated Bias 
+ 0.0056 
+ 0.0052 
+ Time Integrated Coverage 
+ 0.9999 
+ 1.0000 
+ Time Integrated Interval Width 
+ 3.2241 
+ 2.6823 
+ Figure 6 : Output UQ for FitzHugh-Nagumo model using one representative dataset. Posterior samples of the simulator and discrepancy are drawn from either the KOH (left column, red) or MOS (right column, cyan) approach. 
+ 4.5 Model 4: The susceptible-infected-recovered-vaccinated (SIRV) disease model 
+ The susceptible-infected-recovered-vaccinated (SIRV) model is a system of nonlinear ODEs given by 
+ $\displaystyle\frac{dS}{dt}$ 
+ $\displaystyle=-\alpha SI/N-vS+{w_{r}}R+w_{v}V$ 
+ (46) 
+ $\displaystyle\frac{dI}{dt}$ 
+ $\displaystyle=\alpha SI/N-\mu I$ 
+ $\displaystyle\frac{dR}{dt}$ 
+ $\displaystyle=\mu I-w_{r}R$ 
+ $\displaystyle\frac{dV}{dt}$ 
+ $\displaystyle=vS-w_{v}V$ 
+ where $\alpha$ is the infection rate, $v$ is the vaccination rate, $\mu$ represents the transition from infected to recovered, $w_{r}$ is the rate of diminished immunity that leads to being susceptible again, and $w_{v}$ reflects the diminished effects of vaccination. The term $N$ is the total population size, where we assume $N=S+I+V+R$ is a constant. The state vector $(S(t),I(t),R(t),V(t))^{\intercal}$ denotes the susceptible, infected and recovered populations at time $t$ , respectively. Thus, the full parameter set is $\theta=\left\{\alpha,v,\mu,w_{r},w_{v}\right\}$ . These models have been used extensively to study the spread of pathogens such as measles, dengue virus, and, more recently, COVID-19 [ 16 , 20 , 39 ] . 
+ The sensitivity system of the SIRV model can be derived with knowledge of $\mathcal{J}$ and $\mathcal{G}_{\theta}$ . The Jacobian, $\mathcal{J}$ is 
+ $\displaystyle\mathcal{J}=\begin{bmatrix}-\alpha I/N-v&-\alpha S/{N}&w_{r}&w_{v}\\[6.0pt]
+\alpha I/{N}&\alpha S/{N}-\mu&0&0\\[6.0pt]
+0&\mu&-w_{r}&0\\[6.0pt]
+v&0&0&-w_{v}\end{bmatrix}$ 
+ (47) 
+ and $\mathcal{G}_{\theta}\in\mathbb{R}^{20}$ has nonzero entries 
+ $\displaystyle\mathcal{G}_{\theta_{1}}=-SI/{N},\ \ \mathcal{G}_{\theta_{2}}=-S,\ \ \mathcal{G}_{\theta_{4}}=R,\ \ \mathcal{G}_{\theta_{5}}=V,\ \ \mathcal{G}_{\theta_{6}}=SI/N,$ 
+ $\displaystyle\mathcal{G}_{\theta_{8}}=-I,\ \ \mathcal{G}_{\theta_{13}}=I,\ \ \mathcal{G}_{\theta_{14}}=-R,\ \ \mathcal{G}_{\theta_{17}}=S,\ \ \mathcal{G}_{\theta_{20}}=-V.$ 
+ (48) 
+ For this model, we consider two different observation operators. The first observation operator, $A_{IRV}$ returns the $I,R,V$ states, while the second observation operator, $A_{IV}$ , returns only the $I$ and $V$ states of the model. These are defined as the matrices 
+ $A_{IRV}=\begin{pmatrix}0&0&0&0\\
+0&1&0&0\\
+0&0&1&0\\
+0&0&0&1\\
+\end{pmatrix}\ \ \ \ \ A_{IV}=\begin{pmatrix}0&0&0&0\\
+0&1&0&0\\
+0&0&0&0\\
+0&0&0&1\\
+\end{pmatrix}.$ 
+ We note that this observation operator is consistent with previous studies using such an epidemic model [ 37 , 39 ] , as susceptible individuals ( $S$ ) are typically difficult to obtain for model calibration. We also scaled predictions by the total population $N$ so that observations represent percentages. An averaged ranking of parameter influence, given by the sensitivity system across all 100 datasets, is provided in Figure 13 of the Appendix (Sec. B ). 
+ Figure 7 : Example realization from the $SIRV$ model. (Left): Example trajectory for the $S,I,R,$ and $V$ states. (Right): The corresponding 30 sensitivities of each model state to the parameters of the system 
+ 4.5.1 Inference Results 
+ We use 20 equally spaced time points on the interval $\Omega=[0,5]$ , representing five days. Each dataset is generated by sampling parameters from uniform distributions, with $a\sim\mathcal{U}(8,16)$ , $v\sim\mathcal{U}(0.1,1)$ , $\mu\sim\mathcal{U}(0.1,1)$ , $w_{r}\sim\mathcal{U}(0.1,1)$ , and $w_{v}\sim\mathcal{U}(0.1,1)$ . The initial conditions for the model are $S(0)=0.99999$ , $I=0.00001$ , and $V(0)=R(0)=0$ . We add independent zero-mean Gaussian noise to each dataset, with a noise variance $\sigma_{\varepsilon}^{2}=0.001$ . For the model discrepancy, we generate a signal using the MOS framework with hyperparameters $\gamma\sim\textrm{LogNormal}\left(-7,1.0^{2}\right)$ and $\ell\sim\textrm{LogNormal}\left(-0.5,0.8^{2}\right)$ . We use these priors for the GP to ensure a relatively small discrepancy magnitude (since the states are scaled by the population size) and a somewhat large length-scale that allows for oscillations slowly across the first few days of the simulation. 
+ Results comparing KOH and the orthogonal MOS approach for the operator $A_{IRV}$ can be found in Table 7 . Parameter estimation results are similar to previous models with consistently lower bias and RMSE for MOS compared to KOH. The MOS approach also leads to slightly lower mean interval widths and improved mean coverage for a non-influential parameters $w_{r}$ (see sensitivities in Figure 13 of the Appendix (Sec. B )). 
+ Figure 8 shows example of the predictive posteriors in the output-space, with error metrics and uncertainty quantification in Table 8 . MOS demonstrates lower RMSE and tighter posterior intervals than KOH, but the time integrated bias is slightly better for KOH. The KOH method produce intervals that are overly conservative, with empirical coverage of nominal $95\%$ intervals near $100\%$ . The average emperical coverage for the MOS approach is approximately 95%. 
+ Table 7 : Posterior summary metrics for the $SIRV$ model across 100 Monte-Carlo experimental replications using the $A_{IRV}$ operator. Bold values for the bias and RMSE are the best for the given parameter. 
+ Method 
+ Parameter 
+ Mean Bias 
+ Mean RMSE 
+ Mean Coverage 
+ Mean Int. Width 
+ KOH 
+ $a$ 
+ 0.0410 
+ 0.2044 
+ 0.99 
+ 2.1091 
+ KOH 
+ $v$ 
+ 0.0120 
+ 0.0310 
+ 0.97 
+ 0.2874 
+ KOH 
+ $\mu$ 
+ 0.0010 
+ 0.0486 
+ 0.96 
+ 0.3133 
+ KOH 
+ $w_{r}$ 
+ 0.0070 
+ 0.1124 
+ 0.88 
+ 0.5384 
+ KOH 
+ $w_{v}$ 
+ 0.0260 
+ 0.0551 
+ 0.97 
+ 0.3987 
+ MOS 
+ $a$ 
+ 0.0291 
+ 0.1324 
+ 0.99 
+ 1.5453 
+ MOS 
+ $v$ 
+ 0.0069 
+ 0.0187 
+ 0.97 
+ 0.2000 
+ MOS 
+ $\mu$ 
+ -0.0007 
+ 0.0316 
+ 0.96 
+ 0.2169 
+ MOS 
+ $w_{r}$ 
+ 0.0061 
+ 0.0771 
+ 0.89 
+ 0.4221 
+ MOS 
+ $w_{v}$ 
+ 0.0185 
+ 0.0352 
+ 0.97 
+ 0.2760 
+ Table 8 : Output uncertainty metrics between KOH and our MOS approach for the $SIRV$ model using the $A_{IRV}$ operator. Error metrics are first time-averaged and then averaged across 100 Monte-Carlo experimental replications. Bold values for the bias and RMSE are the best for the given parameter. 
+ KOH 
+ MOS 
+ Metric 
+ Mean 
+ Mean 
+ Time Integrated RMSE 
+ 0.0194 
+ 0.0187 
+ Time Integrated Bias 
+ -0.0004 
+ -0.0005 
+ Time Integrated Coverage 
+ 0.9888 
+ 0.9547 
+ Time Integrated Interval Width 
+ 0.1657 
+ 0.1082 
+ Figure 8 : Output UQ for $SIRV$ model with the $A_{IRV}$ observation operator using one representative dataset. Posterior samples of the simulator and discrepancy are drawn from either the KOH (left column, red) or MOS (right column, cyan) approach. 
+ We generate data in an identical fashion to the previous section, with the same parameter and GP discrepancy priors as before, but using the observation operator $A_{IV}$ . Results for this design can be found in Table 9 . Parameter estimation results are similar to when the observation operator $A_{IRV}$ is used, but with KOH providing a slightly better mean bias in the parameter $a$ than the MOS method. We find that this observation operator, $A_{IV}$ , leads to a lower RMSE in general for the estimation of $a$ , but also leads to a reduction in coverage for the parameter $w_{r}$ . We see in general that again the MOS approach provides nearly similar or slightly worse coverage but consistently leads to smaller interval widths and reduced uncertainty. 
+ Figure 9 shows example of the predictive posteriors in the output-space, with error metrics and uncertainty quantification in Table 10 . MOS demonstrates lower RMSE and tighter posterior intervals than KOH, but the time integrated bias is slightly better for KOH. The KOH method produce intervals that are overly conservative, with empirical coverage of nominal $95\%$ intervals near $100\%$ . The average emperical coverage for the MOS approach is approximately 95%. We find again that output uncertainty is reduced in the MOS approach, and that this method tends to find output-specific uncertainty, whereas KOH tends to apply the same amount of uncertainty across state variables. 
+ Table 9 : Posterior summary metrics for the $SIRV$ model across 100 Monte-Carlo experimental replications using the $A_{IV}$ operator. Bold values for the bias and RMSE are the best for the given parameter. 
+ Method 
+ Parameter 
+ Mean Bias 
+ Mean RMSE 
+ Mean Coverage 
+ Mean Int. Width 
+ KOH 
+ $a$ 
+ 0.0108 
+ 0.1770 
+ 0.97 
+ 1.9289 
+ KOH 
+ $v$ 
+ 0.0050 
+ 0.0251 
+ 0.98 
+ 0.2709 
+ KOH 
+ $\mu$ 
+ 0.0066 
+ 0.0568 
+ 0.97 
+ 0.3486 
+ KOH 
+ $w_{r}$ 
+ 0.0114 
+ 0.1470 
+ 0.78 
+ 0.6186 
+ KOH 
+ $w_{v}$ 
+ 0.0158 
+ 0.0530 
+ 0.93 
+ 0.4002 
+ MOS 
+ $a$ 
+ 0.0115 
+ 0.1239 
+ 0.98 
+ 1.2471 
+ MOS 
+ $v$ 
+ 0.0034 
+ 0.0148 
+ 0.98 
+ 0.1540 
+ MOS 
+ $\mu$ 
+ 0.0022 
+ 0.0337 
+ 0.96 
+ 0.2192 
+ MOS 
+ $w_{r}$ 
+ 0.0064 
+ 0.1050 
+ 0.80 
+ 0.4732 
+ MOS 
+ $w_{v}$ 
+ 0.0102 
+ 0.0294 
+ 0.95 
+ 0.2354 
+ Table 10 : Output uncertainty metrics between KOH and our MOS approach for the $SIRV$ model using the $A_{IV}$ operator. Error metrics are first time-averaged and then averaged across 100 Monte-Carlo experimental replications. Bold values for the bias and RMSE are the best for the given parameter. 
+ KOH 
+ MOS 
+ Metric 
+ Mean 
+ Mean 
+ Time Integrated RMSE 
+ 0.0173 
+ 0.0159 
+ Time Integrated Bias 
+ -0.0015 
+ -0.0014 
+ Time Integrated Coverage 
+ 1.0000 
+ 1.0000 
+ Time Integrated Interval Width 
+ 0.2533 
+ 0.1885 
+ Figure 9 : Output UQ for $SIRV$ model with the $A_{IV}$ observation operator using one representative dataset. Posterior samples of the simulator and discrepancy are drawn from either the KOH (left column, red) or MOS (right column, cyan) approach. 
+ 5 Conclusion and Future Work 
+ Model discrepancy is a significant source of uncertainty in the case of simulation models [ 17 , 24 , 31 ] , yet this form of uncertainty is sparsely considered in physics and biological models governed by complex ODE models. To address this gap, we provide a novel approach to multi-output ODE model calibration under model discrepancy that is demonstrated to improve upon the dominant existing approach in several key areas. Central to our approach is a new discrepancy prior, semi-automatically elicited from the sensitivity structure of the forward model, that extends the orthogonal-prior construction of [ 32 ] to multivariate ODE calibration. Extensive experimental evaluation demonstrates that our proposed MOS approach outperforms the standard method of multivariate calibration under model discrepancy (KOH). In particular, the MOS approach consistently results in lower estimation errors and largely provides well-calibrated intervals for (identifiable) model parameters and process predictions. This is anticipated, as the use of sensitivity-based priors on the discrepancy helps enforce a key structural identifiability condition on the target parameter. 
+ Our approach is not without several limitations. First, this specific approach leverages analytical sensitivities for ODE models. This would be limited for systems with parameters and/or state variables that in very high dimensions. Deriving sensitivity equations can be timely and complex in this setting. In addition, the computational complexity of solving the sensitivity system simultaneously with the ODE can be burdensome with high-dimensional parameter vectors. Potential solutions to this, such as the use of automatic differentiation and Jacobian-vector products in packages like Jax [ 5 ] , should be investigated next. We generated data for our study from the models and MOS approach, hence our results are not for actual measurements that might suffer from even larger model discrepancy. Additional investigations into the selection of Gaussian process kernels is also warranted, as specific kernels may be better suited for certain simulations based on their sensitivity systems. 
+ Acknowledgements 
+ This work was funded in part by a South Carolina EPSCoR Grant for Applications in Industry and Networking Program (26-GA01), through the University of South Carolina’s NIAID-funded R25AI164581 (R25) BigDataHealth Science Fellow Program, and through an American Heart Association Career Development Award (26CDA1599801, 
+ doi:10.58275/AHA.26CDA1599801.pc.gr.243168). 
+ References 
+ [1] 
+ L. Astfalck, D. Sen, S. Patra, E. Cripps, and D. Dunson (2024) 
+ Posterior projection for inference in constrained spaces .
+ External Links: 1812.05741 ,
+ Link 
+ Cited by: §2.1 .
+ [2] 
+ E. Baker, P. Barbillon, A. Fadikar, R. B. Gramacy, R. Herbei, D. Higdon, J. Huang, L. R. Johnson, P. Ma, A. Mondal, B. Pires, J. Sacks, and V. Sokolov (2022) 
+ Analyzing Stochastic Computer Models: A Review with Opportunities .
+ Statistical Science 37 ( 1 ), pp. 64 – 89 .
+ External Links: Document ,
+ Link 
+ Cited by: §2.1 .
+ [3] 
+ E. C. Barnett and M. Y. -H. Chan (2026) 
+ Multi-output orthogonal gaussian processes for noisy simulator outputs .
+ External Links: Link 
+ Cited by: §2.1 .
+ [4] 
+ S. Bhatnagar, W. Chang, S. Kim, and J. Wang (2022) 
+ Computer model calibration with time series data using deep learning and quantile regression .
+ SIAM/ASA Journal on Uncertainty Quantification 10 ( 1 ), pp. 1–26 .
+ External Links: Document ,
+ Link ,
+ https://doi.org/10.1137/20M1382581 
+ Cited by: §2.1 .
+ [5] 
+ J. Bradbury, R. Frostig, P. Hawkins, M. J. Johnson, Y. Katariya, C. Leary, D. Maclaurin, G. Necula, A. Paszke, J. VanderPlas, S. Wanderman-Milne, and Q. Zhang (2018) 
+ JAX: composable transformations of Python+NumPy programs .
+ External Links: Link 
+ Cited by: §5 .
+ [6] 
+ J. Brynjarsdottir and A. O’Hagan (2014) 
+ Learning about physical parameters: the importance of model discrepancy .
+ Inverse Problems 30 ( 11 ), pp. 114007 .
+ External Links: Document ,
+ Link 
+ Cited by: §1 ,
+ §2.1 .
+ [7] 
+ A. Chakraborty, J. L. Walsh, L. Strigari, B. K. Mallick, and A. Bhattacharya (2025) 
+ Orthogonal calibration via posterior projections with applications to the schwarzschild model .
+ Technometrics 0 ( 0 ), pp. 1–10 .
+ External Links: Document 
+ Cited by: §2.1 .
+ [8] 
+ C. Chang and V. R. Joseph (2014) 
+ Model calibration through minimal adjustments .
+ Technometrics 56 ( 4 ), pp. 474–482 .
+ External Links: Document 
+ Cited by: §2.1 .
+ [9] 
+ M. J. Colebank and N. C. Chesler (2024) 
+ Efficient uncertainty quantification in a spatially multiscale model of pulmonary arterial and venous hemodynamics .
+ Biomechanics and Modeling in Mechanobiology 23 , pp. 1909–1931 .
+ External Links: Document ,
+ ISSN 1617-7959 ,
+ Link 
+ Cited by: §2.2 .
+ [10] 
+ M. J. Colebank, P. A. Oomen, C. M. Witzenburg, A. Grosberg, D. A. Beard, D. Husmeier, M. S. Olufsen, and N. C. Chesler (2024) 
+ Guidelines for mechanistic modeling and analysis in cardiovascular research .
+ American Journal of Physiology-Heart and Circulatory Physiology 327 ( 2 ), pp. H473–H503 .
+ Cited by: §1 ,
+ §2.2 .
+ [11] 
+ W. Consagra, L. Ning, and Y. Rathi (2024) 
+ Neural orientation distribution fields for estimation and uncertainty quantification in diffusion mri .
+ Medical Image Analysis 93 , pp. 103105 .
+ Cited by: §2.2 .
+ [12] 
+ R. P. Dickinson and R. J. Gelinas (1976) 
+ Sensitivity analysis of ordinary differential equation systems—a direct method .
+ Journal of computational physics 21 ( 2 ), pp. 123–143 .
+ Cited by: §2.3 .
+ [13] 
+ R. O. Doruk and L. Abosharb (2019) 
+ Estimating the parameters of fitzhugh–nagumo neurons from neural spiking data .
+ Brain Sciences 9 .
+ External Links: Document ,
+ ISSN 20763425 
+ Cited by: §2.2 .
+ [14] 
+ M. Gu and L. Wang (2018) 
+ Scaled gaussian stochastic process for computer model calibration and prediction .
+ SIAM/ASA Journal on Uncertainty Quantification 6 ( 4 ), pp. 1555–1583 .
+ External Links: Document 
+ Cited by: §2.1 .
+ [15] 
+ M. Guay and D.D. McLean (1995) 
+ Optimization and sensitivity analysis for multiresponse parameter estimation in systems of ordinary differential equations .
+ Computers & Chemical Engineering 19 , pp. 1271–1285 .
+ External Links: Document ,
+ ISSN 00981354 ,
+ Link 
+ Cited by: §2.3 .
+ [16] 
+ M. E. Hajji and A. H. Albargi (2022) 
+ A mathematical investigation of an “sveir” epidemic model for the measles transmission .
+ Mathematical Biosciences and Engineering 19 , pp. 2853–2875 .
+ External Links: Document ,
+ ISSN 15510018 
+ Cited by: §4.5 .
+ [17] 
+ J. Hart, S. A. McQuarrie, Z. Morrow, and B. van Bloemen Waanders (2026) 
+ Toward real-time optimization through model reduction and model discrepancy sensitivities .
+ Structural and Multidisciplinary Optimization 69 ( 3 ), pp. 62 .
+ Cited by: §5 .
+ [18] 
+ D. Higdon, J. Gattiker, B. Williams, and M. Rightley (2008) 
+ Computer model calibration using high-dimensional output .
+ Journal of the American Statistical Association 103 ( 482 ), pp. 570–583 .
+ External Links: Document ,
+ Link ,
+ https://doi.org/10.1198/016214507000000888 
+ Cited by: §2.1 .
+ [19] 
+ A. C. Hindmarsh and L. R. Petzold (2005) 
+ LSODA, ordinary differential equation solver for stiff or non-stiff system .
+ External Links: Link 
+ Cited by: §4.1.2 .
+ [20] 
+ B. Hollingsworth, K. W. Okamoto, and A. L. Lloyd (2020) 
+ After the honeymoon, the divorce: unexpected outcomes of disease control measures against endemic infections .
+ PLoS Computational Biology 16 .
+ External Links: Document ,
+ ISSN 15537358 
+ Cited by: §4.5 .
+ [21] 
+ D. Huang, A. Bharti, A. H. Souza, L. Acerbi, and S. Kaski (2023) 
+ Learning robust statistics for simulation-based inference under model misspecification .
+ In Thirty-seventh Conference on Neural Information Processing Systems ,
+ External Links: Link 
+ Cited by: §2.1 .
+ [22] 
+ A. C. Jensen, S. Ditlevsen, M. Kessler, and O. Papaspiliopoulos (2012) 
+ Markov chain monte carlo approach to parameter estimation in the fitzhugh-nagumo model .
+ Physical Review E - Statistical, Nonlinear, and Soft Matter Physics 86 .
+ External Links: Document ,
+ ISSN 15393755 
+ Cited by: §2.2 .
+ [23] 
+ M. C. Kennedy and A. O’Hagan (2001) 
+ Bayesian calibration of computer models .
+ Journal of the Royal Statistical Society: Series B (Statistical Methodology) 63 ( 3 ), pp. 425–464 .
+ External Links: Document ,
+ Link ,
+ https://rss.onlinelibrary.wiley.com/doi/pdf/10.1111/1467-9868.00294 
+ Cited by: §2.1 ,
+ §4.1.3 .
+ [24] 
+ L. M. Kimpton, L. M. Paun, M. J. Colebank, and V. Volodina (2025) 
+ Challenges and opportunities in uncertainty quantification for healthcare and biological systems .
+ Philosophical Transactions of the Royal Society A: Mathematical, Physical and Engineering Sciences 383 .
+ External Links: Document ,
+ ISSN 1364-503X ,
+ Link 
+ Cited by: §5 .
+ [25] 
+ C. L. Lei, S. Ghosh, D. G. Whittaker, Y. Aboelkassem, K. A. Beattie, C. D. Cantwell, T. Delhaas, C. Houston, G. M. Novaes, A. V. Panfilov, P. Pathmanathan, M. Riabiz, R. W. dos Santos, J. Walmsley, K. Worden, G. R. Mirams, and R. D. Wilkinson (2020) 
+ Considering discrepancy when calibrating a mechanistic electrophysiology model .
+ Philosophical Transactions of the Royal Society A: Mathematical, Physical and Engineering Sciences 378 , pp. 20190349 .
+ External Links: Document ,
+ ISSN 1364-503X ,
+ Link 
+ Cited by: §2.2 .
+ [26] 
+ J. R. Leis and M. A. Kramer (1988) 
+ The simultaneous solution and sensitivity analysis of systems described by ordinary differential equations .
+ ACM Transactions on Mathematical Software 14 , pp. 45–60 .
+ External Links: Document ,
+ ISSN 0098-3500 ,
+ Link 
+ Cited by: §2.3 .
+ [27] 
+ National Academies for Science, Engineering, and Medicine (2024) 
+ Foundational research gaps and future directions for digital twins .
+ National Academies Press .
+ External Links: Document ,
+ ISBN 978-0-309-70042-9 
+ Cited by: §1 .
+ [28] 
+ K. Neal, Z. Hu, S. Mahadevan, and J. Zumberge (2019) 
+ Discrepancy prediction in dynamical system models under untested input histories .
+ Journal of Computational and Nonlinear Dynamics 14 .
+ External Links: Document ,
+ ISSN 15551423 
+ Cited by: §2.2 .
+ [29] 
+ R. Paulo, G. García-Donato, and J. Palomo (2012) 
+ Calibration of computer models with multivariate output .
+ Computational Statistics & Data Analysis 56 ( 12 ), pp. 3959–3974 .
+ External Links: ISSN 0167-9473 ,
+ Document ,
+ Link 
+ Cited by: §2.1 .
+ [30] 
+ L. M. Paun, M. J. Colebank, and D. Husmeier (2025) 
+ A comparison of gaussian processes and polynomial chaos emulators in the context of haemodynamic pulse–wave propagation modelling .
+ Philosophical Transactions of the Royal Society A: Mathematical, Physical and Engineering Sciences 383 , pp. 20240222 .
+ External Links: Document ,
+ ISSN 1364-503X ,
+ Link 
+ Cited by: §4.1.3 .
+ [31] 
+ L. M. Paun, M. J. Colebank, M. S. Olufsen, N. A. Hill, and D. Husmeier (2020) 
+ Assessing model mismatch and model selection in a Bayesian uncertainty quantification analysis of a fluid-dynamics model of pulmonary blood circulation .
+ Journal of The Royal Society Interface 17 , pp. 20200886 .
+ External Links: ISBN 0000000326940 ,
+ ISSN 1742-5689 
+ Cited by: §5 .
+ [32] 
+ M. Plumlee (2017) 
+ Bayesian calibration of inexact computer models .
+ Journal of the American Statistical Association 112 ( 519 ), pp. 1274–1285 .
+ External Links: Document 
+ Cited by: §1 ,
+ §2.1 ,
+ §2.1 ,
+ §3.1 ,
+ §3.2 ,
+ §5 .
+ [33] 
+ M. Schmitt, P. Bürkner, U. Köthe, and S. T. Radev (2024) 
+ Detecting model misspecification in amortized bayesian inference with neural networks: an extended investigation .
+ arXiv: cs.LG .
+ External Links: 2406.03154 ,
+ Link 
+ Cited by: §2.1 .
+ [34] 
+ J. G. Shuttleworth, C. L. Lei, D. G. Whittaker, M. J. Windley, A. P. Hill, S. P. Preston, and G. R. Mirams (2024) 
+ Empirical quantification of predictive uncertainty due to model discrepancy by training with an ensemble of experimental designs: an application to ion channel kinetics .
+ Bulletin of Mathematical Biology 86 .
+ External Links: Document ,
+ ISSN 15229602 
+ Cited by: §2.2 .
+ [35] 
+ R. C. Smith (2024) 
+ Uncertainty quantification: theory, implementation, and applications .
+ SIAM .
+ Cited by: §1 ,
+ §3.3 ,
+ §4.2 .
+ [36] 
+ C. Sung and R. Tuo (2024) 
+ A review on computer model calibration .
+ Wiley Interdisciplinary Reviews: Computational Statistics 16 ( 1 ), pp. e1645 .
+ Cited by: §2.1 .
+ [37] 
+ S. Tavener, M. Mikucki, S. G. Field, and M. F. Antolin (2011) 
+ Transient sensitivity analysis for nonlinear population models .
+ Methods in Ecology and Evolution 2 , pp. 560–575 .
+ External Links: Document ,
+ ISSN 2041210X 
+ Cited by: §2.2 ,
+ §4.5 .
+ [38] 
+ R. Tuo and C. F. J. Wu (2015) 
+ Efficient calibration for imperfect computer models .
+ The Annals of Statistics 43 ( 6 ), pp. 2331 – 2352 .
+ External Links: Document ,
+ Link 
+ Cited by: §2.1 ,
+ §3.1 .
+ [39] 
+ X. Wang (2026) 
+ Bayesian identifiability analysis for infectious disease models: parameter reduction and model selection .
+ Bulletin of Mathematical Biology 88 .
+ External Links: Document ,
+ ISSN 15229602 
+ Cited by: §2.2 ,
+ §4.5 ,
+ §4.5 .
+ [40] 
+ D. Ward, P. Cannon, M. Beaumont, M. Fasiolo, and S. M. Schmon (2022) 
+ Robust neural posterior estimation and statistical model criticism .
+ In Advances in Neural Information Processing Systems , A. H. Oh, A. Agarwal, D. Belgrave, and K. Cho (Eds.) ,
+ External Links: Link 
+ Cited by: §2.1 .
+ [41] 
+ A. White and S. Mahadevan (2023) 
+ Discrepancy modeling for model calibration with multivariate output .
+ International Journal for Uncertainty Quantification 13 ( 6 ).
+ Cited by: §2.1 .
+ [42] 
+ R. K. W. Wong, T. C. M. Lee, D. Paul, J. Peng, and A. D. N. Initiative (2016) 
+ Fiber direction estimation, smoothing and tracking in diffusion MRI .
+ The Annals of Applied Statistics 10 ( 3 ), pp. 1137 – 1156 .
+ External Links: Document ,
+ Link 
+ Cited by: §2.1 .
+ [43] 
+ W. H. Wu, F. S. Wang, and M. S. Chang (2008) 
+ Dynamic sensitivity analysis of biological systems .
+ BMC Bioinformatics 9 , pp. S17 .
+ External Links: Document ,
+ ISSN 1471-2105 ,
+ Link 
+ Cited by: §2.3 .
+ [44] 
+ F. Xie and Y. Xu (2021) 
+ Bayesian projected calibration of computer models .
+ Journal of the American Statistical Association 116 ( 536 ), pp. 1965–1982 .
+ External Links: Document 
+ Cited by: §2.1 .
+ [45] 
+ Z. Zi (2011) 
+ Sensitivity analysis approaches applied to systems biology models .
+ IET Systems Biology 5 , pp. 336–346 .
+ External Links: Document ,
+ ISBN 1751-8849 (Print)1̊751-8849 (Linking) ,
+ ISSN 1751-8849 ,
+ Link 
+ Cited by: §2.3 ,
+ §2.3 ,
+ §3.1 .
+ Appendix A Proofs 
+ Lemma  1 : 
+ Proof. 
+ Let $a_{j}$ be a column vector of $k$ ’th row of $A$ . Consider that for each component of the loss and for any $\eta\in\Theta$ : 
+ $\displaystyle\|\xi_{j}(\cdot)-a_{j}^{\intercal}z(\cdot,\eta)\|_{L^{2}(\Omega)}^{2}$ 
+ $\displaystyle=\|a_{j}^{\intercal}z(\cdot,\theta)+\delta_{j}(\cdot,\theta)-a_{j}^{\intercal}z(\cdot,\eta)\|_{L^{2}(\Omega)}^{2}$ 
+ $\displaystyle=\|\delta_{j}(\cdot,\theta)\|_{L^{2}(\Omega)}^{2}+2\langle\delta_{j}(\cdot|\theta),a_{j}^{\intercal}(z(\cdot,\theta)-z(\cdot,\eta)\rangle_{L^{2}(\Omega)}$ 
+ $\displaystyle+\|a_{j}^{\intercal}(z(\cdot,\theta)-z(\cdot,\eta))\|_{L^{2}(\Omega)}^{2}.$ 
+ The above decomposition implies we have the form of the gradient of the $L^{2}$ -calibration loss for the $j$ ’th output dimension: 
+ $\displaystyle\nabla_{\eta}\|\xi_{j}(\cdot)-a_{j}^{\intercal}z(\cdot,\eta)\|_{L^{2}(\Omega)}^{2}$ 
+ $\displaystyle=\nabla_{\eta}\|\delta_{j}(\cdot;\theta)\|_{L^{2}(\Omega)}^{2}+2\nabla_{\eta}\langle\delta_{j}(\cdot;\theta),a_{j}^{\intercal}(z(\cdot,\theta)-z(\cdot,\eta))\rangle_{L^{2}(\Omega)}$ 
+ $\displaystyle+\nabla_{\eta}\|a_{j}^{\intercal}(z(\cdot,\theta)-z(\cdot,\eta))\|_{L^{2}(\Omega)}^{2}$ 
+ $\displaystyle=-2\langle\delta_{j}(\cdot;\theta),a_{j}^{\intercal}\mathcal{S}(\cdot,\eta)\rangle_{L^{2}(\Omega)}$ 
+ $\displaystyle-2\langle a_{j}^{\intercal}z(\cdot,\theta),a_{j}^{\intercal}\mathcal{S}(\cdot,\eta)\rangle_{L^{2}(\Omega)}+2\langle a_{j}^{\intercal}z(\cdot,\eta),a_{j}^{\intercal}\mathcal{S}(\cdot,\eta)\rangle_{L^{2}(\Omega)}$ 
+ Evaluating the above gradient at $\theta$ , the bottom two terms in the final equality cancel. Plugging in this expression for the $j$ ’th component into the full direct sum we have 
+ $\displaystyle\nabla_{\eta=\theta}\|\xi(\cdot)-Az(\cdot,\theta)\|_{\mathcal{H}}^{2}$ 
+ $\displaystyle=\nabla_{\eta=\theta}\sum_{k=1}^{J}\|\xi_{k}(\cdot)-a_{k}^{\intercal}z(\cdot,\theta)\|_{L^{2}(\Omega)}^{2}$ 
+ (49) 
+ $\displaystyle=-2\sum_{j=1}^{J}\langle\delta_{k}(\cdot;\theta),a_{k}^{\intercal}\mathcal{S}(\cdot,\theta)\rangle_{L^{2}(\Omega)}^{2}$ 
+ Provided $\theta$ is in the interior of $\Theta$ , the first order optimality conditions of $\theta$ coupled with ( 49 ) imply 
+ $\displaystyle 0$ 
+ $\displaystyle=\int_{\Omega}\mathcal{S}^{\intercal}(t,\theta)A^{\intercal}\delta(t;\theta)$ 
+ where $0\in\mathbb{R}^{P}$ denotes the vector of zeros, as desired to show.
+∎ 
+ Theorem  1 : 
+ Proof. 
+ Denote integrand of the left-hand side of ( 12 ) as $f_{\theta}(t):=S_{z}(t,\theta)^{\intercal}A^{\intercal}\delta_{\theta}$ . $f_{\theta}(t)$ is a Gaussian process due to closure under linear operators. Hence, to show ( 12 ) holds with probability 1, its suffices to show that
+ $\mathbb{E}[\int_{\Omega}f_{\theta}]=0\in\mathbb{R}^{p}$ and $\text{Diag}\{\text{Var}[\int_{\Omega}f_{\theta}]\}=0\in\mathbb{R}^{p}$ 
+The zero mean condition of $\delta_{\theta}$ implies $f_{\theta}$ is mean zero and so the zero mean condition follows trivially. We now consider the variance. 
+ $\displaystyle\text{Var}[\int_{\Omega}f_{\theta}]$ 
+ $\displaystyle=\mathbb{E}[\left(\int_{\Omega}S_{z}(t,\theta)^{\intercal}A^{\intercal}\delta_{\theta}(t)dt\right)\left(\int_{\Omega}S_{z}(t^{\prime},\theta)^{\intercal}A^{\intercal}\delta_{\theta}(t^{\prime})dt^{\prime}\right)^{\intercal}]$ 
+ $\displaystyle=\int_{\Omega}\int_{\Omega}S_{z}(t,\theta)^{\intercal}A^{\intercal}\mathbb{E}[\delta_{\theta}(t)\delta_{\theta}^{\intercal}(t^{\prime})]AS_{z}(t^{\prime},\theta)dtdt^{\prime}$ 
+ $\displaystyle=\int_{\Omega}\int_{\Omega}S_{z}(t,\theta)^{\intercal}A^{\intercal}C_{\theta,\phi}(t,t^{\prime})AS_{z}(t^{\prime},\theta)dtdt^{\prime}$ 
+ $\displaystyle=\underbrace{\int_{\Omega}\int_{\Omega}S_{z}(t,\theta)^{\intercal}A^{\intercal}C_{\phi}(t,t^{\prime})AS_{z}(t^{\prime},\theta)dtdt^{\prime}}_{H_{\theta}}-$ 
+ $\displaystyle\int_{\Omega}\int_{\Omega}S_{z}(t,\theta)^{\intercal}A^{\intercal}[h_{\theta}^{\intercal}(t)H_{\theta}^{-1}h_{\theta}(t^{\prime})]AS_{z}(t^{\prime},\theta)dtdt^{\prime}$ 
+ $\displaystyle=H_{\theta}-\underbrace{[\int_{\Omega}S_{z}(t,\theta)^{\intercal}A^{\intercal}h_{\theta}^{\intercal}(t)dt]}_{H_{\theta}}H_{\theta}^{-1}\underbrace{[\int_{\Omega}h_{\theta}(t^{\prime})]AS_{z}(t^{\prime},\theta)dt^{\prime}]}_{H_{\theta}}$ 
+ $\displaystyle=H_{\theta}-H_{\theta}H_{\theta}^{-1}H_{\theta}=0\in\mathbb{R}^{p\times p}$ 
+ Hence, the $p$ -dimensional Gaussian random vector $\int f_{\theta}$ has zero mean and covariance, and thus equals zero with probability 1, as desired to show.
+∎ 
+ Appendix B Sensitivity Results 
+ We calculated average sensitivity metrics by using the sensitivity systems defined for each model. We calculate a scalar index for the model sensitivity by first integrating the time series sensitivity to provide $\bar{S}_{i}=\int_{\Omega}S_{i}(t)dt$ for each dataset. We calculate the sensitivity at the data generating parameter. Then, we average over all 100 data instances to provide an average sensitivity, $\mathcal{S}_{i}=\frac{1}{100}\sum_{i=1}^{100}\bar{S}_{i}$ . We then provide plots of a scaled sensitivity, $\mathcal{S}^{*}_{i}=\mathcal{S}_{i}/\underset{i}{\max}{\mathcal{S}_{i}}$ to visualize the relative impact of the parameters on each state variable. 
+ Figure 10 : Sample averaged sensitivity metrics across the 100 data instances for the two-mass oscillator. Sensitivities are time-integrated for each state variable, then averaged across each dataset. Results are shown as sensitivities scaled to the maximum sensitivity in the system, $\mathcal{S}^{*}$ . 
+ Figure 11 : Sample averaged sensitivity metrics across the 100 data instances for the four-mass oscillator. Sensitivities are time-integrated for each state variable, then averaged across each dataset. Results are shown as sensitivities scaled to the maximum sensitivity in the system, $\mathcal{S}^{*}$ . 
+ Figure 12 : Sample averaged sensitivity metrics across the 100 data instances for the FitzHugh-Nagumo model. Sensitivities are time-integrated for each state variable, then averaged across each dataset. Results are shown as sensitivities scaled to the maximum sensitivity in the system, $\mathcal{S}^{*}$ . 
+ Figure 13 : Sample averaged sensitivity metrics across the 100 data instances for the $SIRV$ model. We focus on the $I,R,$ and $V$ states. Sensitivities are time-integrated for each state variable, then averaged across each dataset. Results are shown as sensitivities scaled to the maximum sensitivity in the system, $\mathcal{S}^{*}$ . 
+ Experimental support, please
+ view the build logs 
+ for errors. Generated by
+ L
+ A 
+ T
+ E 
+ xml 
+ .
+ Instructions for reporting errors 
+ We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+ support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+ methods listed below: 
+ Click the "Report Issue" ( 
+ ) button, located in the page header. 
+ Tip: You can select the relevant text first, to include it in your report. 
+ Our team has already identified the following issues . We appreciate your time reviewing and reporting rendering errors we
+ may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+ should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+ all. 
+ Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion , and welcome developer contributions . 
+ We gratefully acknowledge support from our major funders ,
+ member institutions , ,
+ and all contributors.
+ About · 
+ Help · 
+ Contact · 
+ Subscribe · 
+ Copyright · 
+ Privacy · 
+ Accessibility · 
+ Operational Status (opens in new tab) 

@@ -1,0 +1,57 @@
+$ /Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m pytest /Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_canonical.py -q -p no:cacheprovider
+AINERZERO_CANONICAL_OVERRIDE=/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/ainerzero-g3-mutants-_gmd9nsi/canonical_mutant_grid_rotation_direction_reversed.py
+
+.....................................................FF.F                [100%]
+=================================== FAILURES ===================================
+_______________ test_grid_roundtrip_and_second_order_convergence _______________
+
+    def test_grid_roundtrip_and_second_order_convergence():
+        belief = make_belief(mean=SE2.exp([1.3, -0.9, 2.7]))
+        errors = []
+        for resolution in GRID_RESOLUTIONS:
+            grid = make_grid(resolution)
+            canonical_grid = canonical.canonicalize_grid(grid, belief)
+            back = canonical.decanonicalize_grid(canonical_grid, belief)
+            assert np.array_equal(back.frame, grid.frame)
+            interior = interior_mask(back.valid) & interior_mask(grid.valid)
+            assert interior.sum() > 0
+            error = np.max(np.abs(back.data - grid.data)[interior])
+            bound = GRID_BOUND_FACTOR * analytic_bound(belief, resolution, grid.shape)
+>           assert error <= bound
+E           assert np.float64(0.12274477080286006) <= 0.004133323050362426
+
+tests/v9/geometry/test_canonical.py:548: AssertionError
+_________________ test_grid_equivariance_under_se2_left_action _________________
+
+    def test_grid_equivariance_under_se2_left_action():
+        rng = np.random.default_rng(20261026)
+        for _ in range(6):
+            belief = random_belief(rng, group=SE2, translation=0.5)
+            g = SE2.exp([rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), rng.uniform(-math.pi, math.pi)])
+            grid = make_grid(0.1)
+            base = canonical.canonicalize_grid(grid, belief)
+            moved = canonical.canonicalize_grid(act_grid(grid, Z_UP, g), belief.left_compose(g))
+>           assert np.array_equal(base.valid, moved.valid)
+E           assert False
+E            +  where False = <function array_equal at 0x1056d1370>(array([[False, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False],\n      ...alse, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False]], shape=(40, 40)), array([[False, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False],\n      ...True,  True,  True, ..., False, False, False],\n       [ True,  True,  True, ..., False, False, False]], shape=(40, 40)))
+E            +    where <function array_equal at 0x1056d1370> = np.array_equal
+E            +    and   array([[False, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False],\n      ...alse, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False]], shape=(40, 40)) = PlanarGrid(data=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0..., False, False, False]], shape=(40, 40)), source_frame=array([[1., 0., 0.],\n       [0., 1., 0.],\n       [0., 0., 1.]])).valid
+E            +    and   array([[False, False, False, ..., False, False, False],\n       [False, False, False, ..., False, False, False],\n      ...True,  True,  True, ..., False, False, False],\n       [ True,  True,  True, ..., False, False, False]], shape=(40, 40)) = PlanarGrid(data=array([[0.        , 0.        , 0.        , ..., 0.        , 0.        ,\n        0.        ],\n       [...504709, -0.27415399],\n       [ 0.99504709,  0.09940468, -0.40628468],\n       [ 0.        ,  0.        ,  1.        ]])).valid
+
+tests/v9/geometry/test_canonical.py:572: AssertionError
+_________________ test_grid_boundary_fill_and_degenerate_grid __________________
+
+    def test_grid_boundary_fill_and_degenerate_grid():
+        belief = make_belief(mean=SE2.exp([0.2, 0.1, 0.4]))
+        tiny = canonical.PlanarGrid(np.array([[2.0]]), 0.1, belief.planar())
+        canonical_tiny = canonical.canonicalize_grid(tiny, belief)
+        assert canonical_tiny.shape == (1, 1)
+>       assert canonical_tiny.valid[0, 0]
+E       assert np.False_
+
+tests/v9/geometry/test_canonical.py:607: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/geometry/test_canonical.py::test_grid_roundtrip_and_second_order_convergence
+FAILED tests/v9/geometry/test_canonical.py::test_grid_equivariance_under_se2_left_action
+FAILED tests/v9/geometry/test_canonical.py::test_grid_boundary_fill_and_degenerate_grid
+3 failed, 54 passed in 7.77s

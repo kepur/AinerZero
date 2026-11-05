@@ -1,0 +1,258 @@
+{
+ "group": "H-structure-preserving-backends",
+ "items": [
+  {
+   "key": "PH-Dreamer",
+   "claimed_ref": "arXiv 2605.18303（2026-05）",
+   "exists": "verified",
+   "arxiv_id": "2605.18303",
+   "title": "PH-Dreamer: A Physics-Driven World Model via Port-Hamiltonian Generative Dynamics",
+   "authors": "Xueyu Luan, Chenwei Shi（同济大学）",
+   "date": "2026-05-18（仅 v1）",
+   "venue": "仅 arXiv 预印本（cs.LG；comments 只写 12 pages, 3 figures），未见会议信息",
+   "primary_url": "https://arxiv.org/abs/2605.18303",
+   "paper_license": "arXiv.org perpetual non-exclusive license",
+   "code_repo": "未找到",
+   "code_status": "none",
+   "code_license": "无",
+   "mechanism": "在 R2Dreamer 的 RSSM 上把确定性状态拆成 h_phys/h_env，用线性映射 x=W·h_phys+b 投影到低维相空间，再以并行的“影子转移” dx/dt=[J(x)−R(x)]∇H(x)+G(x)a（RK4，仅用于优化）作辅助正则；对 h_phys 施加 stop-gradient，PH 损失只更新 PH 模块参数。另有一个从本体感受 q 历史推断 p、H=V(q)+½pᵀM⁻¹p（Cholesky 保正定）、功率平衡 P_work−P_diss 的显式能量模型。第三部分用能量梯度与 Hessian-向量积作约束，通过投影对偶上升做 Lagrangian 正则的 Actor-Critic。",
+   "claims_checked": [
+    {
+     "claim": "标题为 PH-Dreamer、arXiv 2605.18303、2026-05",
+     "verdict": "supported",
+     "evidence": "arXiv API 与 https://arxiv.org/abs/2605.18303v1：标题一致，作者 Xueyu Luan、Chenwei Shi，2026-05-18 提交，只有 v1。"
+    },
+    {
+     "claim": "把潜空间写成 port-Hamiltonian 结构 dx/dt=(J−R)∇H+Gu",
+     "verdict": "overstated",
+     "evidence": "HTML 版第 3.1 节式(3)确为该形式，但原文说“Rather than replacing the backbone, we utilize PH dynamics as a structural regularizer… parallel shadow transition”，只作用于线性投影后的低维子空间；h_phys 加 stop-gradient，GRU 主干不变。第 5 节 Limitations 自认 PH 约束只是 auxiliary inductive biases，不是 closed-loop guarantees。"
+    },
+    {
+     "claim": "有代码",
+     "verdict": "wrong",
+     "evidence": "论文正文和参考文献之外没有代码链接；GitHub 仓库搜索 PH-Dreamer、port-hamiltonian dreamer 都没有对应仓库（命中的 PhysDreamer 是另一项工作）。"
+    },
+    {
+     "claim": "摘要数字：相空间体积降 4.18–8.41%、能耗最多降 7.80%、jerk 最多降 9.38%",
+     "verdict": "supported",
+     "evidence": "表 2 中 ΔS 为 7.35%/4.18%/8.00%/8.41%，与摘要区间一致。但渐近回报取“多个随机种子中的最好值”，种子数未报告。"
+    }
+   ],
+   "fit_gaps": [
+    "G1_residual_structure"
+   ],
+   "red_flags": [
+    "文内自相矛盾：3.1 节说不替换主干，只做并行影子正则；4.2 节又说 substitutes its generic recurrent transitions with Port-Hamiltonian dynamics",
+    "表 1 的渐近回报是多种子取最大值，种子数未报告",
+    "相空间体积在 PH 损失自身训练出的投影空间上度量，基线 R2Dreamer 的对应投影怎么定义不清，有自证循环嫌疑",
+    "没有代码，算力与训练时长未报告",
+    "显式能量分支依赖本体感受信号和 MuJoCo 真值能量（作者自认）",
+    "RK4 离散后的影子转移没有离散层面的能量或无源性保证"
+   ],
+   "needs_llm": "no",
+   "needs_gpu_training": "yes",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "完整复现需要在 6 个 DMC 任务上各跑 DreamerV3 类 500k 步、多种子，在 M2 Max 上不现实。只借式(3)–(6)的数学形式（小型 J/R/G/H 网络加 RK4）在 NumPy/MLX 上很轻。",
+   "how_to_borrow": "只借数学形式：残差 r_theta 取端口哈密顿参数化（J 反对称、R=DᵀD 半正定、M⁻¹=LLᵀ 且对角用 softplus），加上功率平衡 dH/dt=P_work−P_diss 作为能量漂移的诊断量，正好对应 V10-E1 中“能量漂移只报告”的那一项。不借 Dreamer/Actor-Critic 训练流程、多种子取最大值的评测方式，以及“潜空间即物理”的说法；GeometryCore 已有显式状态，不需要学习投影。",
+   "access_log": [
+    "WebSearch/WebFetch 两次调用都报模型配置错误（deepseek-v4-pro），改用 curl 只读访问",
+    "curl http://export.arxiv.org/api/query?id_list=2605.18303：元数据",
+    "curl https://arxiv.org/html/2605.18303v1：第 3.1–3.3、4.1–4.2、5 节",
+    "curl api.github.com/search/repositories?q=PH-Dreamer 和 q=port-hamiltonian+dreamer：无匹配"
+   ]
+  },
+  {
+   "key": "Stochastic-Port-Hamiltonian-NN",
+   "claimed_ref": "2026-03，无源性/耗散保证，arXiv 号未给",
+   "exists": "verified",
+   "arxiv_id": "2603.10078",
+   "title": "Stochastic Port-Hamiltonian Neural Networks: Universal Approximation with Passivity Guarantees",
+   "authors": "Luca Di Persio（Verona）, Matthias Ehrhardt（Wuppertal）, Youness Outaleb（Trento）",
+   "date": "2026-03-10（仅 v1）",
+   "venue": "仅 arXiv 预印本（cs.LG），未见期刊或会议信息",
+   "primary_url": "https://arxiv.org/abs/2603.10078",
+   "paper_license": "arXiv nonexclusive-distrib 1.0",
+   "code_repo": "未找到",
+   "code_status": "none",
+   "code_license": "无",
+   "mechanism": "用前馈网络参数化 H_θ，结构上保证 J 反对称、R 半正定（R=DᵀD），扩散项 σ 可固定也可学，构成 Itô SDE 形式的随机端口哈密顿系统。理论上给出两点：一是在紧集 K 上、对停时过程、在显式生成元条件下，期望意义的弱无源不等式；二是 C² 万能逼近，即有限时域内到出域时刻之前均方接近。训练目标有增量法 IB、条件期望法 CE，以及基于 Euler–Maruyama 高斯近似的 NLL。实验只有 2 维质量弹簧、Duffing、Van der Pol，对比对象只有 MLP。",
+   "claims_checked": [
+    {
+     "claim": "2026-03 发表，找到 arXiv 号",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/abs/2603.10078：2026-03-10 提交，作者 Di Persio, Ehrhardt, Outaleb。"
+    },
+    {
+     "claim": "有无源性/耗散保证",
+     "verdict": "overstated",
+     "evidence": "摘要原文为 weak passivity inequality in expectation under an explicit generator condition, stated for a stopped process on a compact set。Remark 6 承认 Corollary 5 含 (c0+ε)t 项，会随时间线性累积，只是局部、有限时域的保证。Corollary 7 要求 r(x)≤−δ，即耗散项压过 Itô 修正项。正文也说单条轨迹既不守恒也不严格无源。"
+    },
+    {
+     "claim": "保证在连续时间成立还是离散积分也成立",
+     "verdict": "supported",
+     "evidence": "只在连续时间 Itô 动力学上成立。离散部分只有 Euler–Maruyama，作为训练似然的近似，原文说该近似 fidelity improves as Δt→0；全文没有离散积分器的无源性或能量漂移定理，回放所用积分器也没写明。因此连续时间有耗散，不代表离散积分没有能量漂移。"
+    },
+    {
+     "claim": "长时域回放更好、能量误差更低",
+     "verdict": "supported",
+     "evidence": "表 2 在 3 个 2 维系统上全部优于 MLP，例如质量弹簧 Mean|ΔH| 为 0.557 对 0.011–0.065。但第 6 节只说 energy remains within one order of magnitude of the actual value；对比对象只有 MLP，没有 HNN/PHNN 基线；实验中 J 和 g 固定为解析值，只学 H。"
+    }
+   ],
+   "fit_gaps": [
+    "G1_residual_structure",
+    "G7_mechanism_sufficiency"
+   ],
+   "red_flags": [
+    "只在连续时间、期望意义、紧集停时过程上成立，没有离散时间保证",
+    "只与 MLP 比较，没有 HNN 或确定性 PHNN 基线",
+    "实验只到 2 维，J 解析固定，只学 H；作者自认 Hessian-向量积使成本随维度快速上升",
+    "没有代码，无法复核",
+    "能量误差“同一数量级以内”的表述偏弱"
+   ],
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "网络只有 2 层、每层 64、Tanh，Adam 训练，2 维系统，CPU 上很轻。高维时 Hessian-向量积会贵起来。",
+   "how_to_borrow": "借两样东西。其一是结构参数化：R=DᵀD、J 反对称，扩散项单独建模。其二是“紧集 K 上、出域时刻之前有效”的局部保证写法，可作为 SLOW 规律适用域和越界弃权的形式模板（G7）。V10-E1 的能量漂移指标须在离散积分器上实测并单列，不得引用连续时间定理代替。不借 Euler–Maruyama NLL 当作物理保证，也不借只对 MLP 的评测设计。",
+   "access_log": [
+    "WebSearch/WebFetch 调用失败（模型配置错误），改用 curl 只读访问",
+    "curl arXiv API search_query=ti:\"stochastic port-hamiltonian\"：定位到 2603.10078",
+    "curl https://arxiv.org/abs/2603.10078：元数据和摘要",
+    "curl https://arxiv.org/html/2603.10078v1：Corollary 5/7、Remark 6、第 3–4 节、表 2、第 6–7 节",
+    "curl GitHub 仓库搜索（stochastic port-hamiltonian neural、SPH-NN）：无对应仓库"
+   ]
+  },
+  {
+   "key": "mlx-sim",
+   "claimed_ref": "GitHub novix-science/mlx-sim，MIT，Apple Silicon 原生 MLX+Metal 刚体/关节动力学",
+   "exists": "partially_verified",
+   "title": "mlx-sim（Apple-Silicon-first robotics simulation platform）",
+   "authors": "组织 novix-science（Novix）；所有提交作者都是 AutoResearcher",
+   "date": "创建 2026-03-21，最后推送 2026-03-21",
+   "venue": "无（软件仓库）",
+   "primary_url": "https://github.com/novix-science/mlx-sim",
+   "code_repo": "https://github.com/novix-science/mlx-sim",
+   "code_status": "released",
+   "code_license": "仓库根目录没有 LICENSE 文件（raw/LICENSE 返回 404，GitHub API license=null），只有 README 徽章和 pyproject 写了 MIT",
+   "mechanism": "由 C++20、Metal Shading Language 和 pybind11 组成的机器人仿真器。C++ 端有 Baumgarte 稳定的冲量接触求解器、gjk_epa.cpp，以及 Featherstone 风格的 aba_forward_dynamics 和 rnea_inverse_dynamics（float32）。Python 端是另一套 NumPy 实现：其中 dynamics/aba.py 并非 ABA，而是 CRBA 质量矩阵加 np.linalg.solve 求逆。仓库没有依赖 Apple 的 MLX 框架。",
+   "claims_checked": [
+    {
+     "claim": "仓库存在",
+     "verdict": "supported",
+     "evidence": "api.github.com/repos/novix-science/mlx-sim：存在，19 star、4 fork，创建于 2026-03-21。"
+    },
+    {
+     "claim": "许可为 MIT",
+     "verdict": "overstated",
+     "evidence": "README 和 pyproject 声明 license=\"MIT\"，但根目录没有 LICENSE 文件（HTTP 404），GitHub 也识别不出许可。只有声明、没有许可证正文，法律上不完整。"
+    },
+    {
+     "claim": "MLX+Metal 原生",
+     "verdict": "wrong",
+     "evidence": "pyproject 依赖中没有 mlx；aba.py 和 gjk.py 只 import numpy；CLAUDE.md 描述的架构是 C++20 + metal-cpp + pybind11。名字里的 mlx 不代表使用 Apple MLX。"
+    },
+    {
+     "claim": "有冲量求解器、GJK/EPA、Featherstone ABA、RNEA",
+     "verdict": "overstated",
+     "evidence": "C++ 的 src/physics/src/forward_dynamics.cpp 有 aba_forward_dynamics 和 rnea_inverse_dynamics，solver.cpp 有累积冲量和 Baumgarte，gjk_epa.cpp 497 行，这些文件确实存在。但 Python 的 ABA 类注释写着 Simplified version using mass matrix inversion。CI 的 Build 和 Test 最近几次运行全部 failure，能否正确构建和运行未经证实。"
+    },
+    {
+     "claim": "成熟度",
+     "verdict": "wrong",
+     "evidence": "全部提交（contributors 统计 304 次）都由 AutoResearcher 在 2026-03-21 一天内完成，分支名为 clawteam/mlx-sim/*，并带 contracts/ 目录（Inter-agent API contracts），属于 AI 代理批量生成的代码库。之后没有推送；CI 最近 5 次全部失败；README 指向的 github.com/mlx-sim/mlx-sim 不存在；PyPI 上没有 mlx-sim 包，README 中的 pip install 不可用。"
+    }
+   ],
+   "fit_gaps": [
+    "none"
+   ],
+   "red_flags": [
+    "AI 代理一天内批量生成，之后再无维护",
+    "CI 构建和测试持续失败",
+    "没有 LICENSE 文件，MIT 只是声明",
+    "名为 mlx，实际不用 MLX",
+    "Python 端的“ABA”名不副实",
+    "README 的安装方式和官方链接都失效（PyPI 无包，mlx-sim/mlx-sim 组织不存在）",
+    "float32 实现，与确定性核心的数值要求可能冲突"
+   ],
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "unknown",
+   "compute_notes": "目标平台是 Apple Silicon 的 Metal，但 CI 在 macos-14 上失败，按只读规则也未实际构建，可用性未知。",
+   "how_to_borrow": "不建议作为后端或依赖引入。最多把它的模块清单当作检查表，提醒需要哪些刚体组件；参考实现应改用 Featherstone 原著或 MuJoCo/Pinocchio 等成熟实现。不借任何代码：许可不完整，质量也未经验证。",
+   "access_log": [
+    "WebSearch/WebFetch 调用失败，改用 curl 只读访问",
+    "api.github.com/repos/novix-science/mlx-sim：元数据",
+    "api.github.com/.../contents、/commits?per_page=100、/contributors、/actions/runs",
+    "raw.githubusercontent.com：README.md、pyproject.toml、CLAUDE.md、LICENSE(404)、python/mlx_sim/dynamics/aba.py、collision/gjk.py、src/physics/src/forward_dynamics.cpp、solver.cpp、articulation.cpp、.github/workflows/test.yml",
+    "pypi.org/pypi/mlx-sim/json：无包",
+    "中途 GitHub API 匿名限流（60/h），成功的 CI 运行数因此没能单独查询"
+   ]
+  },
+  {
+   "key": "MuJoCo-CPU-and-MuJoCo-Warp",
+   "claimed_ref": "MuJoCo（CPU）与 MuJoCo Warp；许可、macOS arm64 wheel、Warp 是否需要 NVIDIA、“MuJoCo Warp 不可微”、MJX 与 Apple Silicon 的关系",
+   "exists": "verified",
+   "title": "MuJoCo / MuJoCo Warp (MJWarp) / MJX",
+   "authors": "Google DeepMind；MJWarp 由 Google DeepMind 与 NVIDIA 共同维护（Newton 项目）",
+   "date": "PyPI 上 mujoco、mujoco-warp、mujoco-mjx 均为 3.17.0，上传于 2026-10-22",
+   "venue": "MuJoCo 原始论文为 Todorov, Erez, Tassa, IROS 2012（训练知识，未在本次会话联网核对）",
+   "primary_url": "https://github.com/google-deepmind/mujoco",
+   "code_repo": "https://github.com/google-deepmind/mujoco ; https://github.com/google-deepmind/mujoco_warp",
+   "code_status": "released",
+   "code_license": "Apache-2.0（mujoco 的 LICENSE 文件已核对；mujoco_warp 的 README 写明 Apache 2.0；PyPI 上三个包的 license_expression 均为 Apache-2.0）",
+   "mechanism": "MuJoCo 是 CPU 上的广义坐标刚体与接触动力学引擎，内置有限差分导数 mjd_transitionFD，可得动力学转移的 A、B 雅可比。MJWarp 是基于 NVIDIA Warp 的 GPU 批量并行重写版。MJX 有两种实现：MJX-JAX 基于 XLA，大致可微；MJX-Warp 调用 MJWarp。",
+   "claims_checked": [
+    {
+     "claim": "MuJoCo 许可",
+     "verdict": "supported",
+     "evidence": "raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE 是 Apache License 2.0；PyPI mujoco 3.17.0 的 license_expression 为 Apache-2.0。"
+    },
+    {
+     "claim": "macOS arm64 有官方 wheel",
+     "verdict": "supported",
+     "evidence": "https://pypi.org/pypi/mujoco/json：3.17.0 提供 cp310–cp315（含 t 版本）的 macosx_11_0_arm64 wheel，2026-10-22 上传。"
+    },
+    {
+     "claim": "MuJoCo Warp 需要 NVIDIA GPU",
+     "verdict": "supported",
+     "evidence": "mujoco_warp README 原文：requires an NVIDIA GPU for fast simulation but supports CPU for development and debugging。warp-lang 1.18.0 有 macosx_11_0_arm64 wheel，在 Mac 上可以用 CPU 跑通，但只适合开发调试，谈不上性能。"
+    },
+    {
+     "claim": "MuJoCo Warp 不可微",
+     "verdict": "supported",
+     "evidence": "README 原文：Differentiability via Warp is not yet available，See #500。issue #500 仍为 OPEN，关联 PR #1535（hybrid analytic differentiability）也仍为 OPEN。MJX 文档写 MJX-Warp does not support automatic differentiation and has no immediate plans，与 README“进行中”的口径略有出入。"
+    },
+    {
+     "claim": "MJX 与 Apple Silicon 的关系",
+     "verdict": "overstated",
+     "evidence": "https://mujoco.readthedocs.io/en/stable/mjx.html 列出 MJX-JAX 可在 Apple Silicon 上运行，MJX-Warp 针对 NVIDIA 优化。但 PyPI 上 jax-metal 最新版 0.1.1 停在 2024-10，所以 Mac 上实际基本是 JAX CPU 后端；文档也说单场景时 MJX-JAX 可能比 CPU MuJoCo 慢 10 倍。"
+    }
+   ],
+   "fit_gaps": [
+    "G5_promotion_verification",
+    "G2_sparse_change_action_sensitivity",
+    "G4_identifiability_active_experiment"
+   ],
+   "red_flags": [
+    "MJWarp 在 Mac 上只能用 CPU 调试，不能作为性能后端",
+    "MJWarp 可微仍在开发中（#500 和 PR #1535 均未合并），不能按可微使用",
+    "MJX-JAX 在 Mac 上实际走 CPU，jax-metal 已长期未更新；MJX-JAX 的功能与 MuJoCo 不完全对齐",
+    "MuJoCo 的软接触模型与 GeometryCore 的接触语义可能不同，用作独立验证时要先对齐接触和摩擦参数，否则会出现系统性偏差"
+   ],
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "MuJoCo CPU 在 M2 Max 上有官方 arm64 wheel，单场景速度快，可以本地运行。MJWarp 在 Mac 上只能 CPU 调试。MJX-JAX 可在 CPU 上跑，单场景比原生 MuJoCo 慢。",
+   "how_to_borrow": "MuJoCo CPU 用作独立参考仿真器，作为 MID→SLOW 晋升时的外部测试证据来源（G5），不并入 GeometryCore。用 mjd_transitionFD 的 A、B 雅可比做动作敏感性和可辨识性分析（G2/G4）。不借 MJWarp/MJX-Warp 作 Mac 后端，也不依赖其可微性；不把 MuJoCo 接触模型写进确定性核心。",
+   "access_log": [
+    "WebSearch/WebFetch 调用失败，改用 curl 只读访问",
+    "raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE",
+    "pypi.org/pypi/mujoco/json、mujoco-warp/json、mujoco-mjx/json、warp-lang/json、jax-metal/json",
+    "raw.githubusercontent.com/google-deepmind/mujoco_warp/main/README.md",
+    "https://mujoco.readthedocs.io/en/stable/mjx.html",
+    "https://github.com/google-deepmind/mujoco_warp/issues/500（页面内嵌状态 OPEN）",
+    "https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html（确认 mjd_transitionFD 存在）"
+   ]
+  }
+ ]
+}

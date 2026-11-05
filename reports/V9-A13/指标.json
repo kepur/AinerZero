@@ -1,0 +1,89 @@
+{
+  "task": "ainerzero.V9.A13",
+  "agent": "deepseek-q7m2",
+  "kind": "review",
+  "verdict": "request_changes",
+  "verdict_scope": "设计层面已达定稿条件；仅 2 处文字必改（R1 实现层承载形状冲突、R2 关闭表记录准确性）",
+  "reviewed_task": "ainerzero.V9.A11",
+  "upstream_review": "ainerzero.V9.A12",
+  "items": {
+    "m_total": 10,
+    "m_closed": 10,
+    "m_open": 0,
+    "m_closed_with_note": 2,
+    "s_total": 7,
+    "s_addressed": 7,
+    "required_changes": 2,
+    "suggestions": 4
+  },
+  "required_change_ids": ["R1", "R2"],
+  "suggestion_ids": ["N1", "N2", "N3", "N4"],
+  "identity": {
+    "adr_r2_live_sha256": "2e9ca190f88bbf90a3b872dd8ae1ef61dd0e64b020f3e07cde29d3f150717e26",
+    "adr_r2_draft_sha256": "2e9ca190f88bbf90a3b872dd8ae1ef61dd0e64b020f3e07cde29d3f150717e26",
+    "adr_r1_draft_sha256": "cceaa99743693683d3ea185535427f619b9629130af362cd3eda417097747a4b",
+    "card_param_adr_r2_sha256": "2e9ca190f88bbf90a3b872dd8ae1ef61dd0e64b020f3e07cde29d3f150717e26",
+    "card_sha_match": true,
+    "r2_draft_equals_live": true,
+    "report_md_sha256": "43db8165841249209b72aa1535dca211088cdc046e03710f7e5953fbc540d4f2",
+    "design_core_md_sha256": "609c3cdd389bd395a2f83b6d6c1409b473d008d677097f9f85869fafc7aaa19e",
+    "report_design_core_byte_proof": "none_hash_level; mtime+line-anchor+RESEARCH_LOG statement only",
+    "adr_r2_lines": 230,
+    "adr_r1_lines": 171,
+    "a12_report_lines": 396
+  },
+  "checks": {
+    "r1_contains_OSVerify": 0,
+    "r1_contains_FNR": 0,
+    "r1_contains_方向相反": 0,
+    "r2_contains_方向相反": 2,
+    "r2_contains_0.621": 3,
+    "r2_contains_COVARIANCE_INCONSISTENT": 4,
+    "r2_contains_cmfl_registration": 7,
+    "r2_contains_physics_param_belief": 2,
+    "r2_contains_MSGRouteRecord": 2,
+    "r2_contains_require_independent_slow_producer": 2,
+    "registry_freeze_items_counted": 12,
+    "routing_codes": 8,
+    "r5_formulas_verified": ["式6:141", "式7:142", "式8:143", "式10:151", "式11:152", "式12b:162", "式13:164", "f_max/u_max冻结:163"],
+    "code_compat": {
+      "c2_require_independent_slow_producer": "compatible",
+      "c7_physics_param_belief": "incompatible_needs_one_sentence",
+      "c7_reason": "fakes/scheduler.py:132-144 全量回退对所有键做 belief[node]+1；types.py:277 BeliefSummary.belief 为 PoseBelief 非 Mapping；scheduler.py:66-76 require_graph 要求值为邻居序列",
+      "trusted_context_exists": true,
+      "admission_bindings_exists": true,
+      "export_surface_pinned_by_tests": false
+    }
+  },
+  "evidence": [
+    "reports/V9-A13/证据/01-identity.txt",
+    "reports/V9-A13/证据/02-closure-greps.txt",
+    "reports/V9-A13/证据/03-code-compat.txt"
+  ],
+  "deliverables": [
+    "reports/V9-A13/报告.md",
+    "reports/V9-A13/指标.json"
+  ],
+  "runs": {
+    "training": 0,
+    "mlx": 0,
+    "gpu": 0,
+    "downloads": 0,
+    "installs": 0,
+    "paid_calls": 0,
+    "source_files_modified": 0,
+    "docs_modified": 0
+  },
+  "budget": {
+    "gpu_seconds": 0,
+    "cloud_cost": 0.0,
+    "tokens_note": "无付费调用"
+  },
+  "readonly": true,
+  "file_scope_respected": "仅新增 reports/V9-A13/",
+  "handoff_questions": [
+    "R1/R2 落定后是否由本复核 ID 增量确认（建议是，不必重开全量复核）",
+    "G7 是否先放（不依赖 C7 措辞）；B12 建议等 R1",
+    "REPORT.md / DESIGN_CORE.md 的 SHA256 是否登记进 COORDINATION 或 ADR §0，以让「原字节未动」可被哈希验证"
+  ]
+}

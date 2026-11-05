@@ -1,0 +1,120 @@
+--- /Users/mac/AinerWorkFlow/AinerZero/reports/frontier-integration-20261027/adr-0014-drafts/ADR-0014-r2-draft.md	2026-10-28 00:47:51
++++ /Users/mac/AinerWorkFlow/AinerZero/reports/frontier-integration-20261027/adr-0014-drafts/ADR-0014-r3-draft.md	2026-10-28 01:00:05
+@@ -1,7 +1,7 @@
+ # ADR-0014 受限机制形成环（Constrained Mechanism Formation Loop, CMFL）
+ 
+-- 扩展 ID：**CMFL-r2-20261028**；日期：2026-10-28；状态：**proposed（r2 草案，响应 ainerzero.V9.A12 非作者审议，待 A13 复核）**。
+-- 起草：一级 claude-agy（Relay 卡 ainerzero.V9.A11 r2）；r1 审议人：deepseek-v41f-n4t8（`reports/V9-A12/报告.md`）；设计来源：一级 claude 的 [REPORT](../../../AinerZero/reports/frontier-integration-20261027/REPORT.md) 与 [DESIGN_CORE](../../../AinerZero/reports/frontier-integration-20261027/DESIGN_CORE.md)（2026-10-27/28，原字节保留，勘误以本文 §8 与 RESEARCH_LOG 补记为准）。r1 原字节封存于 `reports/frontier-integration-20261027/adr-0014-drafts/ADR-0014-r1-draft.md`（SHA256 `cceaa997…7a4b`）。
++- 扩展 ID：**CMFL-r3-20261028**；日期：2026-10-28；状态：**proposed（r3 草案，响应 A12 与 A13 复核，待 A14 增量确认）**。
++- 起草：一级 claude-agy（Relay 卡 ainerzero.V9.A11 r3）；r1 审议人：deepseek-v41f-n4t8（`reports/V9-A12/报告.md`）；r2 复核人：deepseek-q7m2（`reports/V9-A13/报告.md`）；设计来源：一级 claude 的 [REPORT](../../../AinerZero/reports/frontier-integration-20261027/REPORT.md)（SHA256 `43db8165841249209b72aa1535dca211088cdc046e03710f7e5953fbc540d4f2`）与 [DESIGN_CORE](../../../AinerZero/reports/frontier-integration-20261027/DESIGN_CORE.md)（SHA256 `609c3cdd389bd395a2f83b6d6c1409b473d008d677097f9f85869fafc7aaa19e`）（2026-10-27/28，原字节保留，勘误以本文 §8 与 RESEARCH_LOG 补记为准）。历次草案封存于 `reports/frontier-integration-20261027/adr-0014-drafts/`（r1 `cceaa997…7a4b`、r2 `2e9ca190…7e26`）。
+ - 研究线主责统筹：claude（CMFL 线）。S1、T6、E0 等既有线主责不变。
+ - 用户授权口径：用户 2026-10-28「落地并入工作台」= 立项并登记卡片。**本 ADR 不授权**训练、MLX 运行、下载、安装第三方包（pysindy、PySR/Julia、MuJoCo 等）、付费、云 GPU，也不修改任何冻结参数、门槛、数据分区或已交付证据。
+ - 现行主基线：[V9-r5-20261016](../../../AinerZero/ARCHITECTURE_BASELINE.md) 与 [ARCHITECTURE_V9](../../../AinerZero/ARCHITECTURE_V9.md)；与 [ADR-0012](ADR-0012-v9-neurogeometry-hjepa.md)、[ADR-0013](ADR-0013-character-first-production.md) 兼容，不替换任何 accepted ADR。
+@@ -56,7 +56,7 @@
+ - 第 4a/4b 条的 χ² 分布只在“模型正确、残差为高斯、S_k 为正确的创新协方差、跨 k 条件独立”时成立（滤波创新满足；开环多步预测残差相关，必须改用联合协方差或降采样去相关）。
+ - 第 5 条若在拟合数据上复检，自由度应扣减拟合参数个数且不再是精确分布；故规定用留出窗。
+ - 第 6 条 I_φ = Σ J_kᵀS_k⁻¹J_k 是线性化高斯近似；λ_min 依赖参数尺度，τ_id 只对按先验尺度无量纲化后的 φ 有意义。
+-- **独立上下文的可判定定义（M5）**：两个上下文 c₁=(g₁, [t₁, t₁+W))、c₂=(g₂, [t₂, t₂+W)) 称为独立，当且仅当 (i) 属于不同世界实例（`world_instance_id` 不同），或 (ii) 在同一世界内时间窗间隔 ≥ τ_decorr（去相关步数，登记时冻结）且涉及的信念子图对象集合不相交（`objects(g₁) ∩ objects(g₂) = ∅`）。K 计数只对满足该谓词的最大独立子集计。
++- **独立上下文的可判定定义与贪心计数算法（M5 + N1）**：两个上下文 c₁=(g₁, [t₁, t₁+W))、c₂=(g₂, [t₂, t₂+W)) 称为独立，当且仅当 (i) 属于不同世界实例（`world_instance_id` 不同），或 (ii) 在同一世界内时间窗间隔 ≥ τ_decorr（去相关步数，登记时冻结）且涉及的信念子图对象集合不相交（`objects(g₁) ∩ objects(g₂) = ∅`）。为避免一般图最大独立集的启发式差异，K 计数固定采用**确定性贪心算法**：将上尾失败上下文按 `(world_instance_id, t_start, context_id)` 字典序升序排列，从前向后扫描，凡与已入选集合中所有元素均满足上述独立谓词者即归入独立集 `I_indep`，最终以 `|I_indep| ≥ K` 判定第 7 条（结果唯一、可复现）。
+ - 第 3 条先于学习：避免把积分误差学成假规律；第 5 条先于第 7 条：参数未辨识干净前不得宣称新结构。
+ 
+ **完整冻结清单与单一权威（M5）**：
+@@ -85,15 +85,15 @@
+ 
+ 候选 m′ 对现任 m₀，在独立世界集合 T 上检验。发现数据 D、标定数据 C、测试集 T 三者身份强制不相交，全部取自 development 分区；**final 不碰**。
+ 
+-**为什么只设“错误接受”硬门、不设“误拒”硬门（M1 更正）**：
+-OSVerify（`2610.18089`）的目标是最大化无效解拒绝率（TNR = 1 − 无效解错误接受率），这与本门控制错误接受是**同一方向**（r1 草案与 REPORT 写“方向相反”系事实错误，特此更正）；区别在于 OSVerify 还对有效解误拒率（FNR）设了硬约束（如 5%），因为拒掉稀有有效解不可恢复。而在 CMFL 中，误拒一个有效候选只是暂缓晋升——候选仍留在 MID、证据账本只追加、后续可补采证据重测（**误拒可恢复，错误接受写进 SLOW 会污染下游确定性层**）。因代价不对称，本门只对错误接受设硬门，误拒率只报告不作门；OSVerify 在 5% FNR 约束下报告的 46%/57% 等工作点数值在定义上不可移植到本门。
++**为什么只设“错误接受”硬门、不设“误拒”硬门（M1 + R2 + N3）**：
++OSVerify（`2610.18089`）的目标是最大化无效解拒绝率（TNR = 1 − 无效解错误接受率），这与本门控制错误接受是**同一方向**（注：r1 草案原文未引 OSVerify；封存件 `DESIGN_CORE.md:66` 与 `REPORT.md:61` 曾误写为反向，本节与 RESEARCH_LOG 对该封存件作引述性勘误）；区别在于 OSVerify 还对有效解误拒率（FNR）设了硬约束（如 5%），因为拒掉稀有有效解不可恢复。而在 CMFL 中，误拒一个有效候选只是暂缓晋升——候选仍留在 MID、证据账本只追加、后续可在**新的独立测试集 T_{t'} 上按新检验步 t' 重测**（见 D3-3 重测记账规则：每次重测消耗一个新的序列步 t' 与对应的 α_{t'}，受序列预算约束但候选本身不被永久销毁，**误拒有界可恢复，而错误接受写进 SLOW 会直接污染下游确定性层**）。因代价不对称，本门只对错误接受设硬门，误拒率只报告不作门；OSVerify 在 5% FNR 约束下报告的 46%/57% 等工作点数值在定义上不可移植到本门。
+ 
+-**统一错误预算表（M3）**：
++**统一错误预算表（M3 + N2）**：
+ 第 t 次晋升检验只测 **1 个冻结候选 m′**（若同一发现作业向 T 送检 N>1 个候选，则该次检验的预算先替换为 α_t / N）。同一个 T 上跑的三类决策检验共用当次预算 α_t（由 e-LOND 给出：α_t = α_seq · γ_t · (R_{t−1}+1)，其中 R_{t−1} 为此前已晋升次数，默认基准 α_seq = 0.05，在 `cmfl_registration.json` 冻结）：
+ 
+ | 装置 | 作用对象 | 误差语义与预算归属 |
+ |---|---|---|
+-| e-LOND 序列预算 α_t | 第 t 次晋升决策（总闸门） | 控制整条晋升序列的 persistent-target FDR ≤ α_seq；单次晋升满足 E_pers ≥ 1/α_t（或等价 p ≤ α_t） |
++| e-LOND 序列预算 α_t | 第 t 次晋升决策（总闸门） | 控制整条晋升序列的 persistent-target FDR ≤ α_seq；e-process 路径下采纳条件为 `E_pers ≥ 1/α_t`，固定样本 p 值路径（D3-1+D3-2）下采纳条件为联合显著性水平 `≤ α_t`（两者是不同检验构造，不作双向代数等价，N2） |
+ | D3-1 优越性检验 | T 上 m′ 对 m₀ 的损失差 Δ | 不再硬编码 95%；配对 bootstrap 单侧置信上界水平取 **1 − α_t / (2N)**（与 D3-2 各分 α_t/2 的 union bound，N 为本次送检候选数，默认 N=1） |
+ | D3-2 式 6 旧能力保持 | 旧任务/基准上的回归损失 | 沿用 r5 式 6 硬阈值 `L_old ≤ L_baseline + ε`；若用 bootstrap 上界检验，则分担另一半 **α_t / (2N)** |
+ | D3-5 逐例不回归 | T 与历史反例库上的每一条确定性回放 | **零容忍硬门**（0 违规，不消耗概率预算 α_t） |
+@@ -113,11 +113,13 @@
+    - 在预先声明的每个世界族 e ∈ `env_families` 上各建一条满足 (i)–(iii) 的 e-process，用交并检验合成 `E_pers = min_e E^e`（无需跨族独立，代价是被证据最慢的一族拖保守），再把 `E_pers` 喂给 e-LOND（`E_pers ≥ 1/α_t` 才采纳）。
+    - **已知失效警示（M2）**：在 EGR 的 5,000 轨迹闭环基准中，只喂开发集 e-value 的 **dev-only e-LOND 的 persistent FDR 高达 0.621**，而喂审计后 all-environment `E_pers` 的变体未观察到持续错误采纳。故**严禁对单一开发集 e-value 单独跑 e-LOND 宣称控制了晋升 FDR**；只有目标显式声明为“在每一声明世界族都优于现任”且喂入 `E_pers` 时，序列保证才成立。
+    - 晋升会改变现任者 m₀，从而影响后续候选（路径依赖），必须在报告里写明。
++   - **重测记账规则（N3）**：被拒候选 m′ 若在补采证据后再次送检，**必须视作序列中的新检验步 t' > t**：(a) 必须使用与此前任何检验集 T_1…T_{t'−1} 均不相交的新独立测试世界集 T_{t'}（严禁在旧 T_t 上重跑）；(b) 消耗新步的 e-LOND 预算 `α_{t'} = α_seq · γ_{t'} · (R_{t'−1}+1)`，且计入发现作业尝试总数 N（受 `N_max` 硬上限约束）；(c) 被拒的那次检验不增加 `R`（`R` 只计已采纳晋升次数）。
+    - 准入（ALDER 式）：文法、预算、准入阈值在发现前冻结；准入由提议方看不到的留出数据决定；预算内无人通过即不返回候选；失败提案不删，证据账本只追加。
+-4. **适用域 D_valid（含 S3）**：= (D ∪ C) 协变量覆盖包络 ∩ 标定残差分位数。
++4. **适用域 D_valid（含 S3 + N4）**：= (D ∪ C_clean) 协变量覆盖包络 ∩ C_clean 上的标定残差分位数。
++   - **4a 窗口的确定性剔除规则（N4）**：在计算标定集 C 的次序统计量之前，必须先用冻结的 MSG 参数在 C 上跑一遍路由；凡命中 `4a COVARIANCE_INCONSISTENT`（NIS 下尾）的窗口一律从 C 中剔除，记剩余干净样本集为 `C_clean`（样本数 `n_cal = |C_clean|`）。若 `n_cal < n_min` 或 `⌈(1−α_dom)(n_cal+1)⌉ > n_cal`，则证书为空、直接拒绝晋升。
+    - 共形覆盖只在可交换前提下、且只在 D_valid 内是**边际**覆盖；越界检测靠包络，不靠共形。
+    - 先做可交换性自检（时间二分比较残差统计，必要时降采样去相关）。
+-   - 分位数用有限样本修正：在 C（样本数 n_cal）上取第 `k = ⌈(1−α_dom)(n_cal+1)⌉` 个次序统计量；若 `k > n_cal`，证书为空，拒绝晋升（注：本条依据标准 split conformal 有限样本引理；REPORT 中关于他文漏修正的评述移交 R11/R12 文献核实，不作本条判据）。
++   - 分位数用有限样本修正：在 `C_clean`（样本数 `n_cal`）上取第 `k = ⌈(1−α_dom)(n_cal+1)⌉` 个次序统计量；若 `k > n_cal`，证书为空，拒绝晋升（注：本条依据标准 split conformal 有限样本引理；REPORT 中关于他文漏修正的评述移交 R11/R12 文献核实，不作本条判据）。
+    - **FPCA 基与标定集严格分离（S3）**：若对残差曲线先做 FPCA 降维再做 split conformal，**FPCA 基函数必须在发现集 D（或 C 的独立前半 split C₁）上估计并冻结**，共形次序统计量只能在未参与估基的标定集 C（或后半 C₂）上取；严禁在同一批数据上既估基又取分位数。漂移下可用 ACI 在线更新，但只有长期平均覆盖，须报实测覆盖率。
+ 5. **反例与逐例不回归**：T 上失败上下文全部留档；带已知反例的晋升须先收窄 D_valid 再重测。回放门是**逐例**不回归，不是聚合分数改善（这是本项目的工程硬要求，不依赖外部论文作依据）。反例分类：执行/接口 > 缺失隐变量 > 状态/读出不符。
+ 6. **审计统计与稳定过滤器定义（M5）**：
+@@ -174,7 +176,7 @@
+ | C4 撤销与降级 | `SpatialMemory` 增 `revoke(item_id, reason, evidence_ref)` 与 `demote(item_id, to_level, reason)`；supersede 指针；编码器/先验版本变化触发重验 | 新方法，fake 与合同测试同步 | 新方法可整体移除，不影响 `promote` |
+ | C5 CMFL 登记文件（M5） | 新文件类型 `cmfl_registration.json`（含 D1 完整冻结清单 1–3，带 SHA256，只引用不覆盖 r5 已有冻结值） | 新增，无旧数据 | 删除引用即可，不影响既有实验 |
+ | C6 SkillProposal | **本 ADR 不改**；探针用 v1 已登记能力（含单次 `action_budget`）；v1.1 另立 | — | — |
+-| C7 参数信念与 MSG 路由记录的承载（M6） | **(i) φ 后验承载**：不改 `BeliefSummary` dataclass（保持位姿语义不变）；在线参数信念 `p(φ\|D)` 作为键 `"physics_param_belief"` 挂在 `UpdateScheduler.update(belief=...)` 已有的通用 `Mapping` 上，并在 `fakes/` 与 CMFL 原型中提供类型化结构 `ParamBelief(mean, cov, dimensionless_scale, updated_at_ticks)`。**(ii) MSG 路由记录 schema**：定义冻结 dataclass `MSGRouteRecord(context_id, t_ticks, route_code, reason, nis_stat, dof, registration_sha)`，每次路由必产出一条，汇总写入运行报告 JSON（`msg_routes.json`），不改中央 `RunStore` 表结构 | 不改 `BeliefSummary` 与 `RunStore` 公共契约；G7 与 B12 共用同一 `MSGRouteRecord` 定义 | 移除附加键与报告文件即可 |
++| C7 参数信念与 MSG 路由记录的承载（M6 + R1） | **(i) φ 后验承载（R1 选定方案 b：独立 `ParamBeliefStore`，不混入 `UpdateScheduler` 的 belief Mapping）**：鉴于本地 `fakes/scheduler.py:132-144` 全量回退对 `belief` Mapping 所有键执行 `belief[node] + 1`、`interfaces/scheduler.py:66-76` `require_graph` 要求值为邻居序列，且 `BeliefSummary.belief` 为 `PoseBelief`（`types.py:277`），**严禁把参数信念放进 `UpdateScheduler.update(belief=...)` 的节点 Mapping 中**。改为定义独立冻结结构 `ParamBelief(mean, cov, dimensionless_scale, updated_at_ticks)` 与学习侧只读/可写容器 `ParamBeliefStore`（由 MSG `PARAMETRIC` 分支更新、供式 8 `F_prior(…; φ̂)` 读取），完全不触碰 `UpdateScheduler` 的 `belief` Mapping、`BeliefSummary` 或 `RunStore`。**(ii) MSG 路由记录 schema**：定义冻结 dataclass `MSGRouteRecord(context_id, t_ticks, route_code, reason, nis_stat, dof, registration_sha)`，每次路由必产出一条，汇总写入运行报告 JSON（`msg_routes.json`），不改中央 `RunStore` 表结构 | 零改动 `UpdateScheduler`、`BeliefSummary` 与 `RunStore` 公共契约；G7 与 B12 共用同一 `ParamBelief` / `ParamBeliefStore` / `MSGRouteRecord` 定义 | 移除新增类与报告文件即可 |
+ 
+ 守卫类变更（C1–C4）的实现卡（ainerzero.V9.B12）必须附“拆守卫坏控”：逐条移除守卫后对应负例测试必须变红。
+ 
+@@ -194,37 +196,32 @@
+ 
+ | 序 | 卡 | 内容 | 前置/授权 |
+ |---|---|---|---|
+-| 1 | ainerzero.V9.A11 → A12 → A13 | 本 ADR r1 → A12 非作者审议（已完成，request_changes）→ 本 r2 修订 → A13 非作者复核关闭 M1–M10 | 无运行 |
++| 1 | ainerzero.V9.A11 → A12 → A13 → A14 | 本 ADR r1 → A12 审议（request_changes）→ r2 修订 → A13 复核（M1–M10 10/10 实质关闭，提 R1/R2）→ 本 r3 收口 → A14 增量确认 | 无运行 |
+ | 2 | awz.V9.B20 → B21 | E0 接触与速度真值修复与复核 | E1 硬前置，与本 ADR 并行 |
+-| 3 | ainerzero.V9.G7 → G8 | CMFL CPU 原型（纯 NumPy 合成玩具力学，含 8 路由、去 D_permit 对照、世界级 block 检验）与对抗复核 | A13 通过后放出 |
+-| 4 | ainerzero.V9.B12 → B13 | 按 §3 C1–C5、C7 修补晋升证据与复核 | A13 通过、ADR 定稿 |
+-| 5 | ainerzero.V9.R11 → R12 | 研究注册表补登记（含 §8 的文献勘误） | 无 |
++| 3 | ainerzero.V9.G7 → G8 | CMFL CPU 原型（纯 NumPy 合成玩具力学，含 8 路由、去 D_permit 对照、世界级 block 检验）与对抗复核 | A13 已确认设计层 M1–M10 闭合，可先行放出 |
++| 4 | ainerzero.V9.B12 → B13 | 按 §3 C1–C5、C7 修补晋升证据与复核 | A14 确认 R1/R2 关闭、ADR 定稿 |
++| 5 | ainerzero.V9.R11 → R12 → R13 | 研究注册表补登记（含 §8 的文献勘误） | 无 |
+ | 6 | ainerzero.V9.P48 | S1 第二阶段预登记草案（含 D6 M10 原门槛独立性条款） | D6 全部前置 + 用户批准预算 |
+ | — | 安装申请 | pysindy、PySR+Julia（隔离）、MuJoCo | 用户逐项批准；第一阶段无需安装 |
+ 
+ ## 7. 状态变更规则
+ 
+-- 本 ADR 由 `proposed` 转 `accepted` 的条件：A12 提出的 M1–M10 必修项经非作者复核卡 ainerzero.V9.A13 确认全部关闭并给出 accept，由研究线主责统筹登记定稿 SHA。
+-- 历次草案在 `reports/frontier-integration-20261027/adr-0014-drafts/` 封存（`ADR-0014-r1-draft.md`、`ADR-0014-r2-draft.md`），不覆盖。
++- 本 ADR 由 `proposed` 转 `accepted` 的条件：A12 提出的 M1–M10 与 A13 提出的 R1–R2 经非作者复核卡 ainerzero.V9.A14 确认全部关闭并给出 accept，由研究线主责统筹登记定稿 SHA。
++- 历次草案在 `reports/frontier-integration-20261027/adr-0014-drafts/` 封存（`ADR-0014-r1-draft.md`、`ADR-0014-r2-draft.md`、`ADR-0014-r3-draft.md`），不覆盖。
+ 
+-## 8. r2 修订关闭表（回应 ainerzero.V9.A12 非作者审议 `deepseek-v41f-n4t8`）
++## 8. r2/r3 修订关闭表（回应 A12 `deepseek-v41f-n4t8` 与 A13 `deepseek-q7m2`）
+ 
+-| 编号 | A12 审议意见 | r2 处理与位置 |
++| 编号 | 审议意见 | r2/r3 处理与位置 |
+ |---|---|---|
+-| **M1** | OSVerify 目标是最大化 TNR（拒绝无效解），与控制错误接受**同向**，FNR 只是其约束；r1 与 REPORT 写“方向相反”系事实错误 | 已改写 §2 D3 开头并在 RESEARCH_LOG 补勘误（不改已封存 REPORT 原字节）：删“方向相反”，改以**误拒可恢复 vs 错误接受污染 SLOW 的代价不对称**论证不设误拒门，并写明 OSVerify 在 5% FNR 下的数字定义上不可移植 |
++| **M1 + R2** | OSVerify 目标是最大化 TNR（拒绝无效解），与控制错误接受**同向**，FNR 只是其约束；R2 指出 r1 原文未引 OSVerify，反向表述出自封存件 `DESIGN_CORE.md:66` 与 `REPORT.md:61` | r1 原文未引 OSVerify；封存件 `DESIGN_CORE.md:66` 与 `REPORT.md:61` 原字节保留不改，勘误记 `RESEARCH_LOG`；§2 D3 以引述性勘误说明两封存件的反向表述不成立，并给出 TNR 同向 + **误拒有界可恢复 vs 错误接受污染 SLOW 的代价不对称**论证，写明 OSVerify 在 5% FNR 下的数字定义上不可移植（ADR 正文无以论断形式出现的反向说法） |
+ | **M2** | e-LOND 缺 EGR 定理 2 的三条件，尤其 (ii) 证据单元须为世界级 block/cluster；且未提 dev-only e-LOND 在 EGR 基准上 persistent FDR = 0.621 | §2 D3-3 补齐 (i) 贷前冻结、(ii) 世界级 block/cluster 联合历史条件均值、(iii) 可预测分配与停时；写明 0.621 警示，严禁对 dev-only e-value 单独用 e-LOND |
+-| **M3** | bootstrap 95%、α/N、e-LOND α_t、FactTest 标定四套误差装置无统一错误预算，“T 上只测一次”不准 | §2 D3 新增**统一错误预算表**：删硬编码 95%，bootstrap 与式 6 共用当次 α_t/(2N)，逐例不回归为 0 违规硬门，α_dom 为覆盖参数，FactTest 以无效对照候选为 null 类标定 (τ_cal, δ_cal, n_cal) |
+-| **M4** | 双侧 χ² 的下尾（S_k 偏大/过度保守）被并入 `SUFFICIENT`，会污染缓存与 D_valid 分位数 | §2 D1 路由表拆出 `4a COVARIANCE_INCONSISTENT`（下尾 < χ²(α_s/2)），动作=重标定 S/Q、不学习、不缓存、不进 D_valid 标定 |
+-| **M5** | D2/D3/D4 的 12 个可调量未进冻结清单；“独立上下文”“稳定过滤器”无定义；与 r5 `f_max`/`u_max` 权威关系未定 | §2 D1 新增 `cmfl_registration.json` 完整冻结清单（含 12 项）、独立上下文可判定谓词、D3-6 稳定过滤器可执行定义，并声明只通过 SHA 引用 r5 已有冻结值 |
+-| **M6** | §3 缺 φ 后验承载与 MSG 路由记录 schema；§0“全部是已有接口”措辞过强 | §0 改为“落点在 r5 已定义组件与式子上，C1–C7 为收紧与承载定义”；§3 新增 **C7**（`"physics_param_belief"` 挂通用 belief Mapping + `MSGRouteRecord` 写 `msg_routes.json`） |
+-| **M7** | C2“只读调用…并在其上扩展”自相矛盾 | §3 **C2** 选定方案 (b)：保持 `validate_producer` 不变，新增 `require_independent_slow_producer(producer, *, trusted_context)` 拦截 `"self"` 并強制可信上下文绑定 |
++| **M3 + N2** | bootstrap 95%、α/N、e-LOND α_t、FactTest 标定四套误差装置无统一错误预算，“T 上只测一次”不准；N2 指出 `E_pers ≥ 1/α_t` 与 `p ≤ α_t` 非双向代数等价 | §2 D3 新增**统一错误预算表**：删硬编码 95%，bootstrap 与式 6 共用当次 α_t/(2N)，逐例不回归为 0 违规硬门，α_dom 为覆盖参数，FactTest 以无效对照候选为 null 类标定 (τ_cal, δ_cal, n_cal)，并区分 e-process 路径与固定样本 p 值路径的采纳条件 |
++| **M4 + N4** | 双侧 χ² 的下尾（S_k 偏大/过度保守）被并入 `SUFFICIENT`，会污染缓存与 D_valid 分位数；N4 要求给出从 C 中剔除 4a 窗口的规则 | §2 D1 路由表拆出 `4a COVARIANCE_INCONSISTENT`（下尾 < χ²(α_s/2)）；§2 D3-4 给出确定性剔除规则：先在 C 上跑冻结 MSG 剔除全部 4a 窗口得 `C_clean` 再取次序统计量 |
++| **M5 + N1** | D2/D3/D4 的 12 个可调量未进冻结清单；“独立上下文”“稳定过滤器”无定义；与 r5 `f_max`/`u_max` 权威关系未定；N1 要求独立集计数有确定性算法 | §2 D1 新增 `cmfl_registration.json` 完整冻结清单（含 12 项）、按 `(world_instance_id, t_start, context_id)` 升序的确定性贪心独立上下文计数算法、D3-6 稳定过滤器可执行定义，并声明只通过 SHA 引用 r5 已有冻结值 |
++| **M6 + R1** | §3 缺 φ 后验承载与 MSG 路由记录 schema；R1 指出 `fakes/scheduler.py:132-144` 全量回退对 `belief` 所有键 `+1`、无法混放 `ParamBelief` | §0 改为“落点在 r5 已定义组件与式子上，C1–C7 为收紧与承载定义”；§3 **C7** 选定 R1 方案 (b)：定义独立 `ParamBelief` 与 `ParamBeliefStore`，**严禁混入 `UpdateScheduler.update` 的 `belief` 节点 Mapping**，并定义 `MSGRouteRecord` 写 `msg_routes.json` |
++| **M7** | C2“只读调用…并在其上扩展”自相矛盾 | §3 **C2** 选定方案 (b)：保持 `validate_producer` 不变，新增 `require_independent_slow_producer(producer, *, trusted_context)` 拦截 `"self"` 并强制可信上下文绑定 |
+ | **M8** | `D_permit` 在“同观察、异未来”中是常量，反例测不到其夹带否定性世界知识 | §2 D1 输入边界与 D5 新增 `D_permit` 来源审计：实验前冻结 + provenance + 禁编码“某处无机制” + 评测侧去 `D_permit` 敏感性对照 |
+ | **M9** | r5 式 8 的 `event` 参数与 §8.6 冲突未消解 | §2 D1 输入边界写明：式 8 的 `event` 只能是观察事件或世界脑内部信念事件，严禁传 `Event/v1` |
+ | **M10** | D6 假说可能被当作隐式新门槛，在 ⑤≈④ 时否决 ③ | §2 D6 新增**原门槛独立性声明**：⑤–⑧ 不参与原门槛判定，即使 ⑤≈④，③ 仍按原门槛单独成立；并同步写入 P48 卡面 |
+-| **S1** | 灵敏度 ∂F_prior/∂φ 是单步还是 k 步传播 | §2 D2-7 与 D6-⑥ 写明分单步与 k 步传播 S_k^φ 两档，单步正交的残余混淆列为已知限制 |
+-| **S2** | 式 7（状态信息增益）与 D4 EIG（参数信息增益）不同 | §2 D4 开头写明：沿用式 7 的 argmax 形式而目标换为参数 φ，不修改式 7 |
+-| **S3** | FPCA 基与共形标定集必须分开 | §2 D3-4 写明：FPCA 基只能在 D（或独立前半 split）上估计并冻结，分位数在未参与估基的 C 上取 |
+-| **S4** | EMPIRIC“不碰引擎内部”应为“不读引擎特权状态” | §2 D2-6 已改准 |
+-| **S5** | MOS 论文许可为 CC BY-NC-SA 4.0，且本 ADR 用硬约束强于其软先验 | §2 D2-7 与 RESEARCH_LOG 补记已写明（同时供 R11 登记） |
+-| **S6** | `Fragment` 主键字段名为 `fragment_id` | §1 表与 §3 C3 已改准 |
+-| **S7** | `SkillProposal v1` 已有单次 `action_budget`，需 v1.1 的是跨多次累计预算 | §2 D4 与 §3 C6 已改准 |
++| **N3** | 误拒候选补采证据重测与 D3-3 序列预算记账的关系 | §2 D3-3 新增重测记账规则：重测视作新检验步 `t' > t`，必须用不相交新测试集 `T_{t'}`、消耗新 `α_{t'}` 并计入 N（`≤ N_max`），被拒步不增加 `R` |
++| **S1–S7** | 灵敏度两档口径、式 7 vs EIG、FPCA 基与标定分离、EMPIRIC 措辞、MOS 许可与硬约束、Fragment 主键名、SkillProposal 累计预算 | 均已在正文对应节处理并经 A13 §4 核对 7/7 通过 |

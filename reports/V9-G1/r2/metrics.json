@@ -1,0 +1,180 @@
+{
+  "task": "ainerzero.V9.G5",
+  "agent": "deepseek-flash-a7k2",
+  "date": "2026-10-20",
+  "scope": {
+    "cpu_only": true,
+    "gpu": false,
+    "model_budget": 0,
+    "model_calls": 0,
+    "training_runs": 0,
+    "downloads": 0,
+    "installs": 0,
+    "paid_calls": 0,
+    "files_modified": [
+      "src/ainerzero/v9/geometry/belief.py",
+      "src/ainerzero/v9/geometry/gravity.py",
+      "src/ainerzero/v9/geometry/pose_graph.py",
+      "src/ainerzero/v9/geometry/README.md"
+    ],
+    "files_added": [
+      "tests/v9/geometry/test_geometry_r2.py",
+      "reports/V9-G1/r2/"
+    ]
+  },
+  "f1_semidefinite_relative_tolerance": {
+    "status": "fixed",
+    "relative_tolerance": "tol = 1e-12 * max(1, ||M||_2)（belief.PSD_RELATIVE_TOL）",
+    "exact_psd_rank_deficient_accepted": true,
+    "checks": [
+      {
+        "name": "F1 outer([1,2,2])",
+        "green": true,
+        "detail": "被接受；G2 记录的 float64 最小特征值 -5.551e-16（精确矩阵 PSD）"
+      },
+      {
+        "name": "F1 J^T J 整数",
+        "green": true,
+        "detail": "被接受；G2 记录的 float64 最小特征值 -1.139e-16（精确矩阵 PSD）"
+      },
+      {
+        "name": "F1 下游 solve_pose_graph",
+        "green": true,
+        "detail": "进入可观测性检查并 fail-closed：ObservabilityError(remaining unobserved directions: rank 1/3)"
+      }
+    ],
+    "pose_graph_clamp": "eigh 后把 [-tol*max(1,||M||_2), 0) 的特征值截为 0 再开方",
+    "fail_closed_checks": "缺锚/断图/剩余方向未观测仍抛 ObservabilityError"
+  },
+  "f2_gravity_reference_direction": {
+    "status": "fixed",
+    "criterion": "先拒非有限值与精确零向量，再按 |sin theta| < 1e-9 拒绝（gravity.HORIZONTAL_SIN_TOL）",
+    "scale_independent": true,
+    "checks": [
+      {
+        "name": "F2 同方向不同尺度结论一致",
+        "green": true,
+        "detail": "恰好垂直的重力水平参考在 1e-20…1e8 全部被接受"
+      },
+      {
+        "name": "F2 平行参考仍拒绝",
+        "green": true,
+        "detail": "{1e-20: 'rejected', 1.0: 'rejected', 100000000.0: 'rejected'}"
+      }
+    ],
+    "parallel_reference_still_rejected": true
+  },
+  "f3_input_reregistration": {
+    "status": "re-registered; documents enforced without exemption",
+    "documents": {
+      "ARCHITECTURE_V9.md": {
+        "old_sha256": "ebaf1c4bcf23ad8fcac7fc9424c1f4c384c912a8535b0dbe37a648cbe977ac91",
+        "new_sha256": "0f54a96ace5b9c6fad2f3a16f3e6417a2f521fe131a13400263a0f5d9920f2a4",
+        "s0_math_changed": false
+      },
+      "docs/research/V9_RESEARCH_SURVEY.md": {
+        "old_sha256": "51f6a984b009d0a0d54884cf938425dee76af9ca91b0c3e8b99377693d378b29",
+        "new_sha256": "1dc744ea4a59403423063faff7d4fc422bcf02bb541fed2bc3f2763ab2daf636",
+        "s0_math_changed": false
+      }
+    },
+    "section_diff": {
+      "ARCHITECTURE_V9.md": {
+        "sections": 26,
+        "s0_math_changed": false
+      },
+      "docs/research/V9_RESEARCH_SURVEY.md": {
+        "sections": 11,
+        "s0_math_changed": false
+      }
+    },
+    "survey_appended_lines": 13,
+    "code_inputs_still_enforced": {
+      "src/ainerzero/environments/gridlab2d.py": {
+        "sha256": "baea7cb605ca26a9e6c4bd5004dd36f3bbcef0888bc80a8c6a65f582359bc395",
+        "unchanged": true,
+        "enforced": true
+      },
+      "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/kernel/motion.py": {
+        "sha256": "c21cd8a2950cf668008b836a2522b9ba50c4fb10757a43187207ad46e2b47db1",
+        "unchanged": true,
+        "enforced": true
+      }
+    },
+    "r1_evidence_freeze": {
+      "sha256sums_sha256": "e8007233e4f62e1c92072a74aa4920e34e59f2cbd90238a4097fec5d925ebc09",
+      "evidence_entries": 28,
+      "evidence_entries_ok": 28,
+      "source_snapshot_entries": 7,
+      "r2_changed_source_entries": 4,
+      "unchanged_source_entries": 3
+    },
+    "r1_registration_sha256": "5aa8199fbc6bbf525b678860d155526053002a78cb975e608d96f53cda5334c6",
+    "input_registration_r2_sha256": "41f5acb67bdc58caf9aebd08b0ae5c89d8dcd2e8dcc7175dfd8acd1facc1e129",
+    "section_changes_sha256": "3f5a6641b558a3d4058b6e1d126c1606b3c22dcba0455f0cde398475d480595c"
+  },
+  "tests": {
+    "r1_delivered_49": {
+      "file": "tests/v9/geometry/test_geometry.py",
+      "tests": 49,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "time_s": 1.171
+    },
+    "r2_new": {
+      "file": "tests/v9/geometry/test_geometry_r2.py",
+      "tests": 43,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "time_s": 0.223
+    }
+  },
+  "g2_minimal_repro_f1_f2": {
+    "green": true,
+    "f4_out_of_scope": {
+      "se2_exp": {
+        "1e+102": "ok",
+        "1e+103": "OverflowError",
+        "6.283185307179586": "ok"
+      },
+      "predict_dt_1e300": "OverflowError"
+    }
+  },
+  "mutation_controls": {
+    "controls_green": true,
+    "source_mutations_red": 6,
+    "source_mutations_total": 6,
+    "registration_mutations_red": 2,
+    "registration_mutations_total": 2,
+    "all_ok": true,
+    "sandbox": "/tmp/ainerzero-v9g5-r2-20261020T145732"
+  },
+  "reference_replay_r2_gate": {
+    "task": "ainerzero.V9.G5",
+    "r1_references_vs_r2_replay": "identical",
+    "references_equal": true,
+    "compared_fields": [
+      "references"
+    ]
+  },
+  "source_sha256": {
+    "src/ainerzero/v9/geometry/belief.py": "1d1f12d1d37945d02de104d419ca9831285e0624edc6d9c1de75e8e889ae6fe6",
+    "src/ainerzero/v9/geometry/gravity.py": "150e169a4fe5c72b16a17bda8a7c3babf398246040b7f19d4de47c2c2736f5b9",
+    "src/ainerzero/v9/geometry/pose_graph.py": "6676d3975d529e226da22d790af8a912aeb41ae5fff4c047161bb5f5a359d0cc",
+    "src/ainerzero/v9/geometry/README.md": "e68811950926a0b802589f1922ba7f71c2cd53d2299d73f0233b22cac378862c",
+    "tests/v9/geometry/test_geometry_r2.py": "624884044454d1cb7ba6e5e2bae36d48ac5ea1263121055a527139b5f8c724cc",
+    "reports/V9-G1/r2/build_r2_registration.py": "0149e9cf10dad88da3ebff2f276c2c88b697084850c7f6cb64cdebe2f4256daa",
+    "reports/V9-G1/r2/verify_registration_r2.py": "9a62711c535315db545b844f4601603ad275e6052d4aff4eaa1ddc920d7fec93",
+    "reports/V9-G1/r2/run_reference_r2.py": "ebf552a0e6055393f2a77199408cfcaa9bb72f18a6a9be48083b104bf94d3726",
+    "reports/V9-G1/r2/run_mutations_r2.py": "3765a4119c937bfa3ca39038abcd5013e1944cbbc693f89a330e68a68940cd8b"
+  },
+  "failures_and_unverified": [
+    "G2 F4（SE2/SE3.exp 超大角泄漏 OverflowError）不在本卡范围，未修；本卡未改变该行为，r2 脚本只报告状态。",
+    "一般非线性 SE(2)/SE(3) EKF 全路径确定性界、统计校准（NEES）未验证，G1 亦未声明。",
+    "测试通过不等于能力通过；本卡不构成 S1 科学门、训练授权或能力晋升。",
+    "r1 49 项是作者回归测试的重跑，不是新的独立复核。"
+  ],
+  "evidence_dir": "reports/V9-G1/r2/evidence/"
+}

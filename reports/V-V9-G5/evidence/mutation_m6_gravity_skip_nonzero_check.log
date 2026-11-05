@@ -1,0 +1,29 @@
+Command: python /Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-G5/independent_verification.py
+
+STDOUT:
+[PASS] C1_PSD_BOUNDARY: 近 PSD 与真负定边界对抗扫描
+       - tested_configurations: 25
+       - near_psd_accepted: 25
+       - true_negatives_rejected: 50
+       - asymmetric_rejected: 25
+       - tolerance_scales_tested: [1e-06, 0.001, 1.0, 1000.0, 1000000.0]
+[PASS] C2_POSE_GRAPH_OBSERVABILITY: pose_graph 秩亏负舍入截断与不可观 fail-closed
+       - rank_deficient_sol_converged: True
+       - rank_deficient_sol_rank: 6
+       - disconnected_graph_fail_closed: remaining unobserved directions: rank 6/9
+       - missing_anchor_fail_closed: no anchor: global translation and rotation gauge is unobservable
+       - unobservable_graph_fail_closed: remaining unobserved directions: rank 2/6
+
+
+STDERR:
+Traceback (most recent call last):
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-G5/independent_verification.py", line 536, in <module>
+    suite_res = run_counterexamples()
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-G5/independent_verification.py", line 330, in run_counterexamples
+    GravityFrame(gravity, up, np.zeros(3))
+  File "<string>", line 6, in __init__
+  File "/tmp/ainerzero-v9g6-verify-mutation-20261020T160103/src/ainerzero/v9/geometry/gravity.py", line 39, in __post_init__
+    sin_theta = float(np.linalg.norm(x)) / h_norm
+                ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~
+ZeroDivisionError: float division by zero

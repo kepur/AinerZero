@@ -1,0 +1,70 @@
+=== /Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/fakes/scheduler.py:130-148 ===
+ 130:         full_reason = self._pending_full
+ 131:         if full_reason is not None:
+ 132:             nodes = tuple(belief.keys())
+ 133:             mode = "full"
+ 134:             fallback_reason = full_reason
+ 135:         else:
+ 136:             nodes = tuple(dirty)
+ 137:             missing = [node for node in nodes if node not in belief]
+ 138:             if missing:
+ 139:                 raise SignalRejected(f"dirty node(s) {missing} are not in the belief")
+ 140:             mode = "sparse"
+ 141:             fallback_reason = None
+ 142:         updated = dict(belief)
+ 143:         for node in nodes:
+ 144:             updated[node] = belief[node] + 1
+ 145:         self._fallback = fallback_reason
+ 146:         self._pending_full = None
+ 147:         self._seeds.clear()
+ 148:         return UpdateResult(
+
+=== /Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/scheduler.py:64-78 ===
+  64: 
+  65:     @staticmethod
+  66:     def require_graph(value: Any) -> Mapping:
+  67:         from .errors import SignalRejected
+  68: 
+  69:         if not isinstance(value, Mapping):
+  70:             raise SignalRejected(f"dirty_set() requires a belief-derived graph mapping, got {type(value).__name__}")
+  71:         for node, neighbours in value.items():
+  72:             if not isinstance(node, str):
+  73:                 raise SignalRejected("belief graph node ids must be strings")
+  74:             if not isinstance(neighbours, (list, tuple, set, frozenset)):
+  75:                 raise SignalRejected(f"belief graph neighbours of {node!r} must be a sequence of node ids")
+  76:         return value
+
+=== /Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/types.py:270-282 ===
+ 270: class BeliefSummary:
+ 271:     """What ``WorldBrainAdapter.step`` is allowed to expose about its belief."""
+ 272: 
+ 273:     t_ticks: int
+ 274:     dt_ticks: int
+ 275:     dt_s: float
+ 276:     sim_hz: int
+ 277:     belief: PoseBelief
+ 278:     encoder_version: str
+ 279:     used_pose_sensor: bool
+ 280:     updated_nodes: tuple = ()
+ 281:     fallback_reason: str | None = None
+ 282: 
+
+=== /Users/mac/AinerWorkFlow/AinerZero/reports/frontier-integration-20261027/DESIGN_CORE.md:63-70 ===
+  63: 8. **阈值标定**：接受阈值在留出集上用次序统计量标定（借 OSVerify 附录 B.4 的 FactTest 做法），不得在评测集上扫阈值（OSVerify 主表正是在评测集上选的阈值）。
+  64: 9. **回滚**：版本化、supersede 指针；编码器或先验版本变更触发重验；补上接口里缺失的撤销/降级方法（S3 “回滚可复现”、S6 “晋升与撤销”）。
+  65: 
+  66: 错误方向的说明：OSVerify 控制的是“误拒有效解”（FNR）；本门控制的是**错误接受**——方向相反，不能照搬其指标。
+  67: 
+  68: ## 4. 教师三职责
+  69: 
+  70: | 职责 | 落点 | 约束 |
+
+=== /Users/mac/AinerWorkFlow/AinerZero/reports/frontier-integration-20261027/REPORT.md:59-64 ===
+  59: | MDA | 2608.09696，Kevin Murphy 单作者，v1–v5 | LLM 用于假设扩展，**包括初始化**。ChemBench 主实验用多起点最小二乘加 BIC，SMC 配置反而不如 BIC。93%/31% 出自 v1/v4，v5 已删除。MDA 代理本身未发布 |
+  60: | T2-z | 2610.22364 | z 是点估计，不是“信念”；底座为 5B 视频模型，训练要 2×24 H200 小时；摘要的 15.20→7.00 是混合单位的加权平均 |
+  61: | OSVerify | 2610.18089 | FNR 指误拒有效解，与我们要控制的错误接受方向相反；主表阈值在评测集上选，只有附录 B.4 在留出集上标定 |
+  62: | SRHarness / MechBench | 2609.35501 / 2609.35515 | SRHarness 的分支与重启在消融里没有收益；符号准确率由 LLM 评审给出。MechBench 没有评测 SRHarness；它的不可辨识筛查是启发式的 |
+  63: | Paper2Agent | 预印本 2509.06917；Nature 版标题不同 | 74/100 依赖代理自生成的测试；Nature 版 CC BY-NC-ND |
+  64: | sciexplorer | 预印本 2509.24978 | 依赖 GPT-5，开源模型失败；没有“主动选实验对随机选实验”的消融 |
+
+0

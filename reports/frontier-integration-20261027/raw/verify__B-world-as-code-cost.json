@@ -1,0 +1,222 @@
+{
+ "group": "B-world-as-code-cost",
+ "items": [
+  {
+   "key": "SuperMimic",
+   "claimed_ref": "X 帖 2026-10-21；CoRL 2026（未给 arXiv 号）",
+   "exists": "verified",
+   "arxiv_id": "2610.28480",
+   "title": "SuperMimic: Scaling Humanoid Whole-Body Control with One Differentiable World Model",
+   "authors": "Qiayuan Liao, Yiyang Shao, Junfeng Long, Kevin Zakka, Roberto Horowitz, Pieter Abbeel, Koushil Sreenath（UC Berkeley）",
+   "date": "2026-10-20（arXiv v1）",
+   "venue": "CoRL 2026 Oral（arXiv comment 自述；OpenReview psNqjklVOK 的 venue 字段同为 'CoRL 2026 Oral'）",
+   "primary_url": "https://arxiv.org/abs/2610.28480",
+   "paper_license": "arXiv nonexclusive-distrib 1.0（除 arXiv 分发外保留全部权利）",
+   "code_status": "none",
+   "code_repo": "截至 2026-10-27 未找到官方仓库；项目页 https://supermimic.github.io 只链接 PDF。GitHub 上有 2026-10-21 起出现的第三方复现，例如 CuboiLeo/SuperMimic-Reproduced（MIT）、Motphys/Uni-SuperMimic（Apache-2.0）、zita-ch/supermimic_vibed（MIT），都不是作者发布",
+   "code_license": "无官方代码，不适用",
+   "mechanism": "用一个可微的世界模型（MLP 2048×3，输入为 ŝ_t、a_t 和域随机化物理参数 ξ，输出 ŝ_{t+1}）拟合标准刚体仿真器 MuJoCo Warp 的已记录转移，整个过程不对仿真器求导。世界模型与跟踪策略在同一循环里联合更新：世界模型每轮都更新，只在单次策略更新内冻结。策略的解析梯度来自对 32 步想象 rollout 做 BPTT，超出视界的回报由 critic 自举。动作后果由一个共享的动力学模型摊销到全部 12.9 万条动作上，所以比无模型 PPO 省算力。",
+   "claims_checked": [
+    {
+     "claim": "用刚体仿真器数据训练可微机器人动力学模型，并用短时预测优化动作策略",
+     "verdict": "supported",
+     "evidence": "摘要原文为 'one differentiable world model ... fit from logged transitions of a standard rigid-body simulator'，并用 BPTT over short imagined rollouts 训练策略。项目页 FAQ：仿真器为 MuJoCo Warp，想象 rollout 32 步，加 critic 后 16 步即可。https://arxiv.org/abs/2610.28480 ；https://supermimic.github.io"
+    },
+    {
+     "claim": "在其运动跟踪基准上，相比大规模基线 GPU 小时减少超过 1000 倍",
+     "verdict": "supported",
+     "evidence": "§4.1 的 Compute accounting：SONIC 自报约 21,000 GPU-h（128 张 L40 × 7 天），SuperMimic 在 1 张 H100 上 3 h 超过 SONIC 公开 checkpoint 的 normalized return（0.90）。按此计算约 7200 倍，文中保守写作 >1000 倍。另在 129,514 条动作上，失败数 25（1 卡 3 h）、0（2 卡 9.8 h），SONIC 为 179。注意：基线算力取自 SONIC 论文自报数字，没有重跑。"
+    },
+    {
+     "claim": "作者自承比较不完全公平",
+     "verdict": "supported",
+     "evidence": "项目页 FAQ 'Is the comparison with SONIC fair?' 和正文 §4.1 都承认两边数据与硬件不同：数据 264.56 h，是 SONIC 611 h 的公开子集，少约 2.3 倍；GPU 为 L40 对 H100，H100 的 tensor 峰值约为 L40 的 5.5 倍，双方实际利用率未知。作者随后论证这些差异解释不了 1000 倍的差距，并补了 LAFAN1 上的受控 PPO-Sim 对照：SuperMimic 1 卡 1.2 h 达到 0.82，PPO-Sim 用 8 卡 18 h 只到 0.72。所以'不完全公平'是转述，作者并未认输。"
+    },
+    {
+     "claim": "仍在 H100 上",
+     "verdict": "supported",
+     "evidence": "正文原文为 'All our reported costs are measured on NVIDIA H100 (80 GB SXM5) GPUs of Lambda on-demand instances'；仿真器 MuJoCo Warp 也是 GPU 实现。"
+    },
+    {
+     "claim": "X 帖日期 2026-10-21",
+     "verdict": "unverifiable",
+     "evidence": "无法访问 X。arXiv 提交日为 2026-10-20，第三方复现仓库最早创建于 2026-10-21，两者与该帖日期吻合。"
+    }
+   ],
+   "fit_gaps": [
+    "G9_low_power_control",
+    "G7_mechanism_sufficiency"
+   ],
+   "how_to_borrow": "可借：(1) 数学形式。用可微代理拟合不可微的确定性核心转移（相当于 F_prior ⊕ r_θ 的代理），再沿短视界（16–32 步）BPTT 给出动作的解析梯度，视界外用 critic 自举；可用来对 SkillProposal 的候选动作做低维局部优化或敏感性排序。(2) 把物理参数 ξ 作为世界模型的条件输入，对应式 8 里的 phi_hat。(3) 算力账本协议：写明硬件型号、数据量、计时包含的内容（采样、拟合世界模型、更新策略，评估不计），以及'保守报告点'的定义；可用作 v10 预算登记模板。(4) 负面教训：作者因为确定性世界模型捕捉不了推搡造成的状态不连续，主动删掉了 root-velocity 扰动。这对应 G7 的适用域与越界声明，扰动或接触突变要单独标记。不借：1000 倍这个数字（它是跨硬件、跨数据、对比自报算力的结果，不能外推到我们的场景）；MuJoCo Warp 或 GPU 并行 6.4 万环境的管线；2048 宽的全状态 MLP（与'只学残差'冲突）；第三方复现代码（与作者无关，未审）。",
+   "needs_llm": "no",
+   "needs_gpu_training": "yes",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "论文规模：1–2 张 H100，3–9.8 h，MuJoCo Warp 为 GPU 仿真（依赖 NVIDIA Warp/CUDA），并行 512 到 6.4 万环境，世界模型比 MuJoCo Warp 快 11–62 倍。M2 Max 无 CUDA，跑不了 MuJoCo Warp，论文规模无法复现。方法本身（小 MLP 代理加短视界 BPTT）可以在 CPU MuJoCo 或 MLX 上做玩具级、低维实验，但吞吐和规模结论都不能迁移。",
+   "red_flags": [
+    "1000×/7200× 对比的是 SONIC 论文自报的 128×L40×7 天，没有在同一硬件上重跑；GPU 型号不同，数据量也差 2.3 倍",
+    "摘要只写 '128 GPUs'，没写 L40；二手转述容易把基线也说成 H100",
+    "failed motion 的判定用的是 SuperMimic 自己的训练终止条件，同一规则套到 SONIC checkpoint 上评估，口径由一方定义",
+    "论文自述 'figures do not report seed variation'，图中没有种子方差",
+    "截至 2026-10-27 没有官方代码，只有第三方复现（含自称 vibe coded 的仓库），可复现性未经作者背书",
+    "论文许可为 arXiv nonexclusive-distrib，不能复用文字和图",
+    "X 帖本身无法核实"
+   ],
+   "access_log": [
+    "WebSearch/WebFetch 两次调用都报模型错误（deepseek-v4-pro 不可用），改用只读 curl 抓取网页",
+    "https://export.arxiv.org/api/query?search_query=all:SuperMimic",
+    "https://export.arxiv.org/api/query?id_list=2610.28480",
+    "https://arxiv.org/abs/2610.28480",
+    "https://arxiv.org/html/2610.28480（无 HTML 版本）",
+    "https://arxiv.org/pdf/2610.28480（PDF 存入 scratchpad，用 pypdf 读文本）",
+    "https://supermimic.github.io",
+    "https://api2.openreview.net/notes/search?term=SuperMimic",
+    "https://api.github.com/search/repositories?q=supermimic"
+   ]
+  },
+  {
+   "key": "Code-as-World",
+   "claimed_ref": "arXiv 2608.27549；仓库 MirroS-Lab/Code-as-World（创建 2026-08-27）",
+   "exists": "verified",
+   "arxiv_id": "2608.27549",
+   "title": "Code as Worlds: Agentic Discovery of Executable World Representations for Physical Reasoning（arXiv 标题用复数 Worlds；仓库描述写作 'Code as World'）",
+   "authors": "Hanyang Wang, Yimo Cai, Weiliang Chen, Jiawei Chi, Haowen Sun, Qiyu Dai, Yi-Hsin Hung, Xingzhuo Guo, Jinshan Ren, Runmao Yao, Ziwei Liu, Mingsheng Long, Yueqi Duan, Jun Gao, Jiangran Lyu, Fangfu Liu, Jialong Wu（BibTeX 署名为 MirroS Team）",
+   "date": "v1 2026-08-27；v2 2026-10-26",
+   "venue": "arXiv 预印本 [cs.CV]（技术报告），未见会议",
+   "primary_url": "https://arxiv.org/abs/2608.27549",
+   "paper_license": "CC BY-NC-SA 4.0（arXiv 页）",
+   "code_status": "released",
+   "code_repo": "https://github.com/MirroS-Lab/Code-as-World（created_at 2026-08-27T17:42:04Z，最后 push 2026-08-31）；权重为 https://huggingface.co/MirroS-Lab/Code-as-World-VL-4B 和 -9B",
+   "code_license": "仓库 LICENSE 为 Apache-2.0；HF 两个权重卡标 apache-2.0，base_model 分别为 Qwen/Qwen3.5-4B 和 Qwen3.5-9B",
+   "mechanism": "把物理世界写成可执行世界表示 EWR，记作 p=(𝒞,ℰ,𝒜)。𝒞 是物理组成：物体、几何、尺度、质量、摩擦、重力、静态环境。ℰ 是动态演化：初始状态、事件、时长，执行后展开成含接触和碰撞的完整轨迹。𝒜 是视觉外观：相机、材质、光照、渲染配置，规定不改变物理过程。由 LLM agent 按溯因推理跑 propose→instantiate(CompileEWR)→execute(MuJoCo)→render→verify 循环，verifier 比较 RGB、深度、mask、轨迹，把逐帧差异汇总成 Δ 反馈，只局部修改相关组件；K=5 轮仍解释不了就拒绝该假设。验证通过的 EWR 被用来合成监督数据，以 SFT 加 GRPO 训练 VLM 做定量物理推理（QuantiPhy）。",
+   "claims_checked": [
+    {
+     "claim": "把物理世界表示为可执行程序（状态、动力学、机制）",
+     "verdict": "supported",
+     "evidence": "摘要：'expressing physical composition, dynamic evolution, and visual appearance as executable code'；§3.1 给出 EWR p=(𝒞,ℰ,𝒜)。https://arxiv.org/abs/2608.27549 ；https://arxiv.org/html/2608.27549"
+    },
+    {
+     "claim": "发布 4B/9B VLM 推理与评测代码",
+     "verdict": "supported",
+     "evidence": "README 写明 release 包含 Code-as-World-VL-4B/9B 的本地推理、QuantiPhy 评测，以及一个视频驱动的抽象示例（ballistic_soccer）。仓库 code_as_world/ 下只有 evaluation.py、simulation.py 和 templates。agentic discovery loop、数据生成管线、SFT/GRPO 训练代码都未发布；论文报告的 27B 也没有发布。"
+    },
+    {
+     "claim": "许可分裂：仓库 Apache-2.0，arXiv 页 CC BY-NC-SA 4.0",
+     "verdict": "supported",
+     "evidence": "GitHub API 的 license 字段为 apache-2.0，LICENSE 文件为 Apache License 2.0 全文；arXiv abs 页的 abs-license 链接是 creativecommons.org/licenses/by-nc-sa/4.0；HF 权重为 apache-2.0。论文文字和图属于非商用，代码和权重可商用。"
+    },
+    {
+     "claim": "所谓'EWR 三段式' schema 是什么",
+     "verdict": "supported",
+     "evidence": "论文 §3.1 原文为 'an EWR p conceptually consists of three components: p=(𝒞,ℰ,𝒜)'，即 physical composition、dynamic evolution、visual appearance。已发布示例 examples/ballistic_soccer/scene.json 的落地字段是：schema_version、coordinate_system（单位米，y 轴向上）、execution_mode=physics、timeline（fps、帧数）、camera（内外参）、objects[]（initial_state 位姿和速度，physics 含 mass/friction/restitution/contact_stiffness/damping）、collision_objects、contact_events。所以三段式是论文里的概念划分，JSON 层面并没有严格分成三段。"
+    },
+    {
+     "claim": "（附带）Code-as-World-VL 超过领先专有模型",
+     "verdict": "overstated",
+     "evidence": "QuantiPhy 表中 9B 得 55.4，Gemini-3.1 Flash 得 54.8，只差 0.6 分；README 的评测产物是 single-run 汇总，看不到方差。表中这一行标为 'Gemini-3.1 Flash'，但引用 [3] 是 Gemini 3.1 Flash-Lite 的模型卡，身份存疑。论文报告的 27B（58.6）未发布。"
+    }
+   ],
+   "fit_gaps": [
+    "G3_low_compute_law_distillation",
+    "G4_identifiability_active_experiment",
+    "G5_promotion_verification",
+    "G7_mechanism_sufficiency",
+    "G8_failure_counterexample"
+   ],
+   "how_to_borrow": "可借：(1) 三段分离原则。物理组成 𝒞、动态演化 ℰ、观测外观 𝒜 分开存放，𝒜 不许改动物理；可映射为 GeometryCore 的 state/phi_hat、事件时间线和渲染/传感器配置三层，便于对单个组件单独干预和验证。(2) 协议形式：propose→compile→execute→render→verify 加结构化差异 Δ 做局部修补，预算 K 用完就显式拒绝；可作为 MID 层'程序补丁或参数假设'的离线搜索与弃权机制（G3/G7/G8）。(3) 评测设计：候选选择只由 verifier 信号驱动，报告的指标则是不进入验证信号的独立指标；这与 SLOW 晋升'独立测试证据'同构（G5）。(4) 负面案例：示例里足球的恢复质量 mass≈3.68 kg（真实约 0.43 kg）、friction=0，说明轨迹拟合不等于参数可辨识。可用作 G4 的反例测试，晋升前必须做可辨识性检查或物理合理域检查。不借：论文文字和图（CC BY-NC-SA，非商用）；LLM agent 进入高频回路（只能作离线提案者，输出当带噪传感器，不能直接写 SLOW）；VLM 权重与 GRPO 训练路线（8×H100）；把 QuantiPhy 上的 SOTA 当作世界模型能力的证据。",
+   "needs_llm": "yes",
+   "needs_gpu_training": "yes",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "论文在 8×H100 上训练 4B/9B（两阶段：SFT，然后 GRPO）；27B 用 GRPO，每个 prompt 16 个 rollout。发现循环依赖一个 LLM agent（正文没检索到具体模型名），还有 SAM 3、DA3、VGGT 等感知管线。README 要求 'CUDA host' 和 vLLM 推理。M2 Max 上：simulation.py 加 MuJoCo 的单例回放可以在 CPU 上跑；scene.json 的 schema 可以直接读；4B/9B 是 Qwen3.5 底座，理论上可以非官方转 MLX 推理，但官方不支持；训练和完整发现管线不可行。",
+   "red_flags": [
+    "许可分裂：论文 CC BY-NC-SA 4.0（非商用），代码和权重为 Apache-2.0",
+    "核心的 agentic discovery loop、数据管线、训练代码都未发布，只放了推理、评测和一个 MuJoCo 示例；论文的 27B 也未发布",
+    "超过专有模型的幅度只有 0.6 分（55.4 对 54.8），单次运行，看不到方差",
+    "表中标 'Gemini-3.1 Flash' 的行引用的是 Gemini 3.1 Flash-Lite 的模型卡",
+    "标题不一致：arXiv 为 'Code as Worlds'，仓库和 README 为 'Code as World'",
+    "论文自认的局限：过程超出仿真器建模范围时，循环可能收敛到局部合理但机制不对的 EWR",
+    "发布示例中足球质量约 3.68 kg、摩擦为 0：参数是拟合出来的，不代表可辨识",
+    "v2（2026-10-26）刚修订，引用时要标明版本"
+   ],
+   "access_log": [
+    "https://export.arxiv.org/abs/2608.27549",
+    "https://arxiv.org/abs/2608.27549（版本历史 v1/v2、许可）",
+    "https://arxiv.org/html/2608.27549v2（全文 HTML，存入 scratchpad 后转成文本检索）",
+    "https://api.github.com/repos/MirroS-Lab/Code-as-World",
+    "https://raw.githubusercontent.com/MirroS-Lab/Code-as-World/main/README.md",
+    "https://raw.githubusercontent.com/MirroS-Lab/Code-as-World/main/LICENSE",
+    "https://github.com/MirroS-Lab/Code-as-World/tree/main/code_as_world",
+    "https://raw.githubusercontent.com/MirroS-Lab/Code-as-World/main/code_as_world/simulation.py",
+    "https://raw.githubusercontent.com/MirroS-Lab/Code-as-World/main/examples/ballistic_soccer/scene.json",
+    "https://huggingface.co/api/models/MirroS-Lab/Code-as-World-VL-4B",
+    "https://huggingface.co/api/models/MirroS-Lab/Code-as-World-VL-9B"
+   ]
+  },
+  {
+   "key": "SimulCost",
+   "claimed_ref": "ICML 2026；GitHub Rose-STL-Lab/SimulCost-Bench",
+   "exists": "verified",
+   "arxiv_id": "2603.20253",
+   "title": "SimulCost: A Cost-Aware Benchmark and Toolkit for Automating Physics Simulations with LLMs",
+   "authors": "Yadi Cao, Sicheng Lai, Jiahe Huang, Yang Zhang, Zach Lawrence, Rohan Bhakta, Izzy F. Thomas, Mingyun Cao, Chung-Hao Tsai, Zihao Zhou, Yidong Zhao, Hao Liu, Alessandro Marinoni, Alexey Arefiev, Rose Yu",
+   "date": "v1 2026-03-11；v4 2026-08-17",
+   "venue": "ICML 2026（OpenReview ww57OvgpP9 的 venue 为 'ICML 2026 regular'，ICML 2026 虚拟站可检索到；arXiv comment 写 'post conference revision version at ICML'）",
+   "primary_url": "https://arxiv.org/abs/2603.20253",
+   "paper_license": "CC BY 4.0",
+   "code_status": "released",
+   "code_repo": "https://github.com/Rose-STL-Lab/SimulCost-Bench（仓库创建 2025-03-28，最后 push 2026-10-21）；求解器子模块 https://github.com/Eydcao/simulcost-tools；数据集 https://huggingface.co/datasets/Rose-STL-Lab/SimulCost-Bench",
+   "code_license": "主仓库 Apache-2.0；HF 数据集 apache-2.0；子模块 Eydcao/simulcost-tools 根目录没有 LICENSE 文件（GitHub license 字段为 null，默认保留全部权利）；其中嵌套的 EPOCH（epochpic/epoch）为 GPL-3.0",
+   "mechanism": "一个面向物理仿真参数调优的成本感知基准。每个求解器的成本按主导运算的 FLOPs 解析定义，与平台无关；11 个求解器覆盖流体、固体、等离子体、传热，第 12 个 EPOCH 按墙钟计时，单独报告。LLM 在两种模式下选空间分辨率、收敛容差等成本敏感参数：单轮给初值，多轮靠反馈试错。主指标是成功率 S 和效率 E_i = C_bf / C_LLM × S_i，以暴力扫描成本为参考，用 GP-UCB 贝叶斯优化作为基线。结论是 LLM 应该调用扫描算法，而不是靠自身推理去试错。",
+   "claims_checked": [
+    {
+     "claim": "11 种物理模拟器",
+     "verdict": "supported",
+     "evidence": "摘要：'across 11 simulators from fluid dynamics, solid mechanics, and plasma physics, whose costs are analytically defined'。工具包实际有 12 个，第 12 个 EPOCH 按墙钟单独报告。v4 的 comment 写着因 cases search 有 bug 移除了 CGYRO，'Will add back soon'，各版本的模拟器清单有变动。"
+    },
+    {
+     "claim": "数千次参数调优测试",
+     "verdict": "supported",
+     "evidence": "摘要：2,643 个单轮任务加 2,304 个多轮任务；另有 EPOCH 各 273 个。"
+    },
+    {
+     "claim": "LLM 多轮虽提高成功率，但总体比传统参数扫描慢 1.5–2.7 倍",
+     "verdict": "supported",
+     "evidence": "摘要：'Multi-round mode improves rates to 66-81%, but LLMs are 1.5-2.7x slower than traditional scanning'。需要三点限定：(a) '慢'指解析 FLOP 成本，不是墙钟；(b) 数字来自多轮效率的几何均值 0.37–0.67，取倒数约 1.5–2.7，且只在成功样本上统计（E_i>0）；(c) 参考对象是暴力扫描的累计成本。论文同时报告 LLM 的效率高于 GP-BO（表 19），所以'LLM 不经济'只相对暴力扫描成立。"
+    }
+   ],
+   "fit_gaps": [
+    "G4_identifiability_active_experiment",
+    "G6_teacher_boundary",
+    "G9_low_power_control"
+   ],
+   "how_to_borrow": "可借：(1) 评测协议。为每次主动实验或仿真定义平台无关的解析成本（FLOPs），用效率 E = C_ref/C_agent × S 同时衡量成功和成本；参考基线设为暴力扫描加 GP-BO，精度分低、中、高三档。可直接迁移到 SkillProposal 的受限实验预算和 v10 运行账本（G4）。(2) 实证结论可作为'教师边界'的依据：LLM 单轮初值在高精度档只有 34–50% 成功，只能当带噪的先验或范围提示，具体搜索交给确定性的扫描或 BO（G6/G9）。(3) 表 18 的结构性发现：BO 在平滑、单调的成本-精度关系上占优，在离散、多峰参数空间上落后。可作为选择实验策略的先验。不借：把 LLM 放进调参内循环；simulcost-tools 子模块代码（没有 LICENSE，不能复用）；EPOCH（GPL-3.0，会传染）；表 19 的 'Overall' 算术平均结论。",
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "基准本身不需要训练。被测对象是 LLM：GPT-5、Claude-3.7-Sonnet 走 API；GPT-OSS-120B、Llama-3-70B、Qwen3-32B 是开源权重。暴力扫描和 GP-BO 基线不需要 LLM。求解器以 CPU 为主，但 FEM 2D（FastIPC）编译时用了 -mavx/-mavx2/-mfma，Apple Silicon 不能原生运行；EPOCH 要编译 Fortran；子模块嵌套 5 层；官方 Docker 镜像为 x86。M2 Max 上：大部分 1D/2D Python 求解器和扫描/BO 基线可行，FEM 2D 需要 x86 环境，本地 LLM 只能跑 32B 级量化版（MLX）。",
+   "red_flags": [
+    "表 19 的 BO 对比：正文说 LLM 效率优势明显（2.13 对 1.05），但复算表中 11 个求解器，Overall 是算术平均，被 Heat 2D 一个离群值（16.81 对 6.13）拉高。去掉 Heat 2D 后是 0.66 对 0.55，几何均值是 0.77 对 0.59。这与论文 §3.4 自己定的'效率用几何均值'口径不一致",
+    "效率只在成功样本上统计（E_i>0），存在幸存者偏差；'1.5–2.7 倍'不含失败样本",
+    "'慢'是解析 FLOP 成本，不是墙钟；二手转述容易误读成运行时间",
+    "v4 因 bug 移除了 CGYRO 并说之后会加回，基准清单跨版本不稳定",
+    "求解器子模块 Eydcao/simulcost-tools 没有 LICENSE 文件；嵌套 EPOCH 为 GPL-3.0；与主仓库的 Apache-2.0 存在许可分裂",
+    "FEM 2D 依赖 AVX 指令，Apple Silicon 不能原生运行",
+    "被测模型较旧（Claude-3.7-Sonnet、Llama-3-70B），结论能否迁移到新模型未知"
+   ],
+   "access_log": [
+    "https://export.arxiv.org/api/query?search_query=all:SimulCost",
+    "https://export.arxiv.org/api/query?id_list=2603.20253",
+    "https://arxiv.org/abs/2603.20253（版本、许可）",
+    "https://arxiv.org/html/2603.20253（全文 HTML，存入 scratchpad 后转文本，检索 §3.4、§4.2、§4.6、表 5、18、19）",
+    "https://api2.openreview.net/notes/search?term=SimulCost",
+    "https://icml.cc/virtual/2026/papers.html?search=SimulCost",
+    "https://api.github.com/repos/Rose-STL-Lab/SimulCost-Bench",
+    "https://api.github.com/repos/Rose-STL-Lab/SimulCost-Bench/license",
+    "https://raw.githubusercontent.com/Rose-STL-Lab/SimulCost-Bench/main/README.md",
+    "https://raw.githubusercontent.com/Rose-STL-Lab/SimulCost-Bench/main/.gitmodules",
+    "https://api.github.com/repos/Eydcao/simulcost-tools（及 contents）",
+    "https://api.github.com/repos/Warwick-Plasma/epoch",
+    "https://huggingface.co/api/datasets/Rose-STL-Lab/SimulCost-Bench"
+   ]
+  }
+ ]
+}

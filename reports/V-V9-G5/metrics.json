@@ -1,0 +1,123 @@
+{
+  "task": "ainerzero.V9.G6",
+  "verified_task": "ainerzero.V9.G5",
+  "role": "executor (tier 2 verify)",
+  "agent": "gemini-k8d2",
+  "timestamp": "2026-10-20",
+  "status": "completed",
+  "recommendation": "accept",
+  "source_sha256": {
+    "belief.py": "1d1f12d1d37945d02de104d419ca9831285e0624edc6d9c1de75e8e889ae6fe6",
+    "gravity.py": "150e169a4fe5c72b16a17bda8a7c3babf398246040b7f19d4de47c2c2736f5b9",
+    "pose_graph.py": "6676d3975d529e226da22d790af8a912aeb41ae5fff4c047161bb5f5a359d0cc",
+    "lie.py": "fb56767d836f70a7cb08a22a809b9d326ead6b599ba5964125e32a1bbedb6b30",
+    "README.md": "e68811950926a0b802589f1922ba7f71c2cd53d2299d73f0233b22cac378862c",
+    "test_geometry.py": "44ead2eead63e9cceb94680d8c6aa25a27fd7e2b0e549d180894ea18b02b2941",
+    "test_geometry_r2.py": "624884044454d1cb7ba6e5e2bae36d48ac5ea1263121055a527139b5f8c724cc"
+  },
+  "counterexamples": {
+    "cases_count": 7,
+    "passed_count": 7,
+    "failed_count": 0,
+    "ok": true,
+    "cases_summary": [
+      {
+        "id": "C1_PSD_BOUNDARY",
+        "name": "近 PSD 与真负定边界对抗扫描",
+        "passed": true
+      },
+      {
+        "id": "C2_POSE_GRAPH_OBSERVABILITY",
+        "name": "pose_graph 秩亏负舍入截断与不可观 fail-closed",
+        "passed": true
+      },
+      {
+        "id": "C3_GRAVITY_SCALE_INVARIANCE",
+        "name": "GravityFrame 水平参考向量尺度无关性与临界/退化对抗",
+        "passed": true
+      },
+      {
+        "id": "C4_DOCUMENT_SECTIONS_AUDIT",
+        "name": "逐节差异与 S0 数学稳定性核验",
+        "passed": true
+      },
+      {
+        "id": "C5_CONSUMER_GATE_NO_EXEMPTION",
+        "name": "消费门未豁免文档逻辑与防篡改拦截核实",
+        "passed": true
+      },
+      {
+        "id": "C6_F4_STATUS_AND_LARGE_ANGLE",
+        "name": "F4 超大角状态保留与安全角数值精度核实",
+        "passed": true
+      },
+      {
+        "id": "C7_EKF_FILTER_NUMERICAL_STABILITY",
+        "name": "李群 EKF 在近秩亏过程噪声下的闭环稳定性",
+        "passed": true
+      }
+    ]
+  },
+  "mutations": {
+    "all_controls_green": true,
+    "all_mutations_red": true,
+    "mutations_count": 6,
+    "ok": true,
+    "cases": [
+      {
+        "name": "m1_psd_revert_to_zero_tol",
+        "red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "m2_psd_excessive_loose_tol",
+        "red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "m3_pose_graph_remove_clamp",
+        "red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "m4_pose_graph_bypass_observability",
+        "red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "m5_gravity_revert_absolute_norm",
+        "red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "m6_gravity_skip_nonzero_check",
+        "red": true,
+        "exit_code": 1
+      }
+    ]
+  },
+  "regressions": {
+    "r1_pytest_passed": 49,
+    "r2_pytest_passed": 43,
+    "g2_minimal_repro_fixed": true,
+    "replay_references_diff": 0
+  },
+  "findings_verdict": {
+    "F1_semidefinite_relative_tolerance": {
+      "status": "verified_fixed",
+      "evidence": "相对容差 1e-12 * max(1, ||M||_2) 在 1e-6 到 1e6 尺度保持一致；近 PSD 正常接受；真负定严格拒绝；pose_graph 截断负舍入不开方为 NaN 且不可观保持 fail-closed"
+    },
+    "F2_gravity_frame_direction_tolerance": {
+      "status": "verified_fixed",
+      "evidence": "水平参考改用纯方向判定 (|sin theta| >= 1e-9)；跨 1e-13 到 1e13 尺度基底一致；近平行与非有限值严格拒绝"
+    },
+    "F3_document_re_registration": {
+      "status": "verified_fixed",
+      "evidence": "ARCHITECTURE_V9.md 与 SURVEY 重登记至 r5 哈希；代码输入保持 r1 哈希且逐字节一致；消费门未豁免文档且防篡改拦截有效；逐节抽查确认 S0 数学未变"
+    },
+    "F4_large_angle_overflow": {
+      "status": "confirmed_out_of_scope_and_preserved",
+      "evidence": "超大角 θ=1e103 仍抛 OverflowError；未越权修改 lie.py；安全大角 θ=1e3 数值计算稳定"
+    }
+  }
+}

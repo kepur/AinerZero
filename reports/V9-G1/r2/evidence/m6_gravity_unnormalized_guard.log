@@ -1,0 +1,252 @@
+$ pytest /Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py
+...................FFF....FF.......F......F                              [100%]
+=================================== FAILURES ===================================
+_____ test_f2_exactly_perpendicular_reference_accepted_at_any_scale[1e-20] _____
+
+scale = 1e-20
+
+    @pytest.mark.parametrize("scale", F2_SCALES)
+    def test_f2_exactly_perpendicular_reference_accepted_at_any_scale(scale):
+        up = np.array([0.0, 0.0, 1.0])
+>       frame = GravityFrame([0.0, 0.0, -9.81], up, np.array([scale, 0.0, 0.0]))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<string>:6: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = GravityFrame(gravity=[0.0, 0.0, -9.81], up=array([0., 0., 1.]), horizontal_reference=array([1.e-20, 0.e+00, 0.e+00]))
+
+    def __post_init__(self):
+        # vector() rejects wrong shapes and non-finite values before any arithmetic.
+        g, u, h = (vector(x, 3).copy() for x in (self.gravity, self.up, self.horizontal_reference))
+        if np.linalg.norm(g) == 0 or np.linalg.norm(u) == 0:
+            raise ValueError("gravity and up must be nonzero")
+        u /= np.linalg.norm(u)
+        if not np.allclose(g / np.linalg.norm(g), -u, atol=1e-10, rtol=0):
+            raise ValueError("gravity must point opposite the declared up direction")
+        h_norm = float(np.linalg.norm(h))
+        if h_norm == 0:
+            raise ValueError("horizontal reference must be nonzero")
+        x = h - u * (u @ h)
+        # Direction-only decision: |sin theta| between the normalized reference
+        # and the gravity axis; the same direction gives the same verdict at any
+        # nonzero length. The message states exactly this criterion.
+        sin_theta = float(np.linalg.norm(x))
+        if sin_theta < HORIZONTAL_SIN_TOL:
+>           raise ValueError("horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)")
+E           ValueError: horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/gravity.py:41: ValueError
+_____ test_f2_exactly_perpendicular_reference_accepted_at_any_scale[1e-13] _____
+
+scale = 1e-13
+
+    @pytest.mark.parametrize("scale", F2_SCALES)
+    def test_f2_exactly_perpendicular_reference_accepted_at_any_scale(scale):
+        up = np.array([0.0, 0.0, 1.0])
+>       frame = GravityFrame([0.0, 0.0, -9.81], up, np.array([scale, 0.0, 0.0]))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<string>:6: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = GravityFrame(gravity=[0.0, 0.0, -9.81], up=array([0., 0., 1.]), horizontal_reference=array([1.e-13, 0.e+00, 0.e+00]))
+
+    def __post_init__(self):
+        # vector() rejects wrong shapes and non-finite values before any arithmetic.
+        g, u, h = (vector(x, 3).copy() for x in (self.gravity, self.up, self.horizontal_reference))
+        if np.linalg.norm(g) == 0 or np.linalg.norm(u) == 0:
+            raise ValueError("gravity and up must be nonzero")
+        u /= np.linalg.norm(u)
+        if not np.allclose(g / np.linalg.norm(g), -u, atol=1e-10, rtol=0):
+            raise ValueError("gravity must point opposite the declared up direction")
+        h_norm = float(np.linalg.norm(h))
+        if h_norm == 0:
+            raise ValueError("horizontal reference must be nonzero")
+        x = h - u * (u @ h)
+        # Direction-only decision: |sin theta| between the normalized reference
+        # and the gravity axis; the same direction gives the same verdict at any
+        # nonzero length. The message states exactly this criterion.
+        sin_theta = float(np.linalg.norm(x))
+        if sin_theta < HORIZONTAL_SIN_TOL:
+>           raise ValueError("horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)")
+E           ValueError: horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/gravity.py:41: ValueError
+_____ test_f2_exactly_perpendicular_reference_accepted_at_any_scale[1e-12] _____
+
+scale = 1e-12
+
+    @pytest.mark.parametrize("scale", F2_SCALES)
+    def test_f2_exactly_perpendicular_reference_accepted_at_any_scale(scale):
+        up = np.array([0.0, 0.0, 1.0])
+>       frame = GravityFrame([0.0, 0.0, -9.81], up, np.array([scale, 0.0, 0.0]))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:279: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<string>:6: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = GravityFrame(gravity=[0.0, 0.0, -9.81], up=array([0., 0., 1.]), horizontal_reference=array([1.e-12, 0.e+00, 0.e+00]))
+
+    def __post_init__(self):
+        # vector() rejects wrong shapes and non-finite values before any arithmetic.
+        g, u, h = (vector(x, 3).copy() for x in (self.gravity, self.up, self.horizontal_reference))
+        if np.linalg.norm(g) == 0 or np.linalg.norm(u) == 0:
+            raise ValueError("gravity and up must be nonzero")
+        u /= np.linalg.norm(u)
+        if not np.allclose(g / np.linalg.norm(g), -u, atol=1e-10, rtol=0):
+            raise ValueError("gravity must point opposite the declared up direction")
+        h_norm = float(np.linalg.norm(h))
+        if h_norm == 0:
+            raise ValueError("horizontal reference must be nonzero")
+        x = h - u * (u @ h)
+        # Direction-only decision: |sin theta| between the normalized reference
+        # and the gravity axis; the same direction gives the same verdict at any
+        # nonzero length. The message states exactly this criterion.
+        sin_theta = float(np.linalg.norm(x))
+        if sin_theta < HORIZONTAL_SIN_TOL:
+>           raise ValueError("horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)")
+E           ValueError: horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/gravity.py:41: ValueError
+_________________ test_f2_basis_independent_of_reference_scale _________________
+
+    def test_f2_basis_independent_of_reference_scale():
+>       frames = [GravityFrame([0.0, 0.0, -9.81], [0.0, 0.0, 1.0], [s, 0.0, 0.0]) for s in F2_SCALES]
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:290: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<string>:6: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = GravityFrame(gravity=[0.0, 0.0, -9.81], up=[0.0, 0.0, 1.0], horizontal_reference=[1e-20, 0.0, 0.0])
+
+    def __post_init__(self):
+        # vector() rejects wrong shapes and non-finite values before any arithmetic.
+        g, u, h = (vector(x, 3).copy() for x in (self.gravity, self.up, self.horizontal_reference))
+        if np.linalg.norm(g) == 0 or np.linalg.norm(u) == 0:
+            raise ValueError("gravity and up must be nonzero")
+        u /= np.linalg.norm(u)
+        if not np.allclose(g / np.linalg.norm(g), -u, atol=1e-10, rtol=0):
+            raise ValueError("gravity must point opposite the declared up direction")
+        h_norm = float(np.linalg.norm(h))
+        if h_norm == 0:
+            raise ValueError("horizontal reference must be nonzero")
+        x = h - u * (u @ h)
+        # Direction-only decision: |sin theta| between the normalized reference
+        # and the gravity axis; the same direction gives the same verdict at any
+        # nonzero length. The message states exactly this criterion.
+        sin_theta = float(np.linalg.norm(x))
+        if sin_theta < HORIZONTAL_SIN_TOL:
+>           raise ValueError("horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)")
+E           ValueError: horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/gravity.py:41: ValueError
+____________ test_f2_small_tilt_verdict_is_scale_independent[1e-20] ____________
+
+scale = 1e-20
+
+    @pytest.mark.parametrize("scale", (1e-20, 1.0, 1e8))
+    def test_f2_small_tilt_verdict_is_scale_independent(scale):
+        angle = 2e-9  # |sin theta| = 2e-9 > 1e-9，方向合法
+        reference = scale * np.array([math.sin(angle), 0.0, math.cos(angle)])
+>       frame = GravityFrame([0.0, 0.0, -9.81], [0.0, 0.0, 1.0], reference)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:299: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+<string>:6: in __init__
+    ???
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = GravityFrame(gravity=[0.0, 0.0, -9.81], up=[0.0, 0.0, 1.0], horizontal_reference=array([2.e-29, 0.e+00, 1.e-20]))
+
+    def __post_init__(self):
+        # vector() rejects wrong shapes and non-finite values before any arithmetic.
+        g, u, h = (vector(x, 3).copy() for x in (self.gravity, self.up, self.horizontal_reference))
+        if np.linalg.norm(g) == 0 or np.linalg.norm(u) == 0:
+            raise ValueError("gravity and up must be nonzero")
+        u /= np.linalg.norm(u)
+        if not np.allclose(g / np.linalg.norm(g), -u, atol=1e-10, rtol=0):
+            raise ValueError("gravity must point opposite the declared up direction")
+        h_norm = float(np.linalg.norm(h))
+        if h_norm == 0:
+            raise ValueError("horizontal reference must be nonzero")
+        x = h - u * (u @ h)
+        # Direction-only decision: |sin theta| between the normalized reference
+        # and the gravity axis; the same direction gives the same verdict at any
+        # nonzero length. The message states exactly this criterion.
+        sin_theta = float(np.linalg.norm(x))
+        if sin_theta < HORIZONTAL_SIN_TOL:
+>           raise ValueError("horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)")
+E           ValueError: horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/gravity.py:41: ValueError
+___ test_f2_near_parallel_reference_rejected_scale_independent[100000000.0] ____
+
+scale = 100000000.0
+
+    @pytest.mark.parametrize("scale", (1e-20, 1.0, 1e8))
+    def test_f2_near_parallel_reference_rejected_scale_independent(scale):
+        angle = 5e-10  # |sin theta| = 5e-10 < 1e-9，必须拒绝
+        reference = scale * np.array([math.sin(angle), 0.0, math.cos(angle)])
+>       with pytest.raises(ValueError, match="parallel"):
+E       Failed: DID NOT RAISE ValueError
+
+tests/v9/geometry/test_geometry_r2.py:319: Failed
+_________________ test_g2_minimal_reproduction_f1_f2_is_green __________________
+
+    def test_g2_minimal_reproduction_f1_f2_is_green():
+        # --- F1：G2 的精确整数 PSD 输入必须被接受 ---
+        int_rank1 = rank1([1.0, 2.0, 2.0])
+        j = np.array([[1.0, 2.0, 0.0], [0.0, 1.0, 1.0]])
+        int_jtj = j.T @ j
+        for matrix in (int_rank1, int_jtj):
+            assert np.array_equal(matrix, np.round(matrix))
+            covariance(matrix, 3, semidefinite=True)  # 修复前：ValueError
+        # G2 的下游检查：rank-deficient PSD information 不再被协方差守卫拒绝，
+        # 而是进入既有可解性检查并 fail-closed 为 ObservabilityError。
+        with pytest.raises(ObservabilityError) as excinfo:
+            solve_pose_graph(
+                SE2,
+                [SE2.identity(), SE2.exp([1.0, 0.0, 0.0])],
+                [RelativeFactor(0, 1, SE2.exp([1.0, 0.0, 0.0]), int_rank1)],
+                anchor=0,
+            )
+        assert "positive semidefinite" not in str(excinfo.value)
+    
+        # --- F2：同方向不同尺度结论一致（G2 的尺度表） ---
+        up = np.array([0.0, 0.0, 1.0])
+        verdicts = {}
+        for scale in (1e-20, 1e-13, 1e-12, 1e-9, 1.0, 1e8):
+            try:
+                GravityFrame([0.0, 0.0, -9.81], up, np.array([scale, 0.0, 0.0]))
+                verdicts[scale] = "accepted"
+            except ValueError as exc:  # pragma: no cover - 变红路径
+                verdicts[scale] = f"rejected({exc})"
+>       assert all(verdict == "accepted" for verdict in verdicts.values()), verdicts
+E       AssertionError: {1e-20: 'rejected(horizontal reference must not be parallel to gravity (|sin theta| < 1e-9))', 1e-13: 'rejected(horizo..., 1e-12: 'rejected(horizontal reference must not be parallel to gravity (|sin theta| < 1e-9))', 1e-09: 'accepted', ...}
+E       assert False
+E        +  where False = all(<generator object test_g2_minimal_reproduction_f1_f2_is_green.<locals>.<genexpr> at 0x118b63780>)
+
+tests/v9/geometry/test_geometry_r2.py:405: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f2_exactly_perpendicular_reference_accepted_at_any_scale[1e-20]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f2_exactly_perpendicular_reference_accepted_at_any_scale[1e-13]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f2_exactly_perpendicular_reference_accepted_at_any_scale[1e-12]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f2_basis_independent_of_reference_scale
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f2_small_tilt_verdict_is_scale_independent[1e-20]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f2_near_parallel_reference_rejected_scale_independent[100000000.0]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_g2_minimal_reproduction_f1_f2_is_green
+7 failed, 36 passed in 0.30s

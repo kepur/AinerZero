@@ -1,0 +1,1359 @@
+ 
+ One-Sided Verification Under Limited Expert Review 
+ Skip to main content 
+ Report GitHub Issue 
+ × 
+ Title: 
+ Content selection saved. Describe the issue below: 
+ Description: 
+ Submit without GitHub 
+ Submit in GitHub 
+ Why HTML? 
+ Report Issue 
+ Back to Abstract 
+ Download PDF 
+ Contents 
+ Reading mode 
+ Colour theme 
+ Abstract 
+ 1 Introduction 
+ 2 Verification under Limited Human Effort 
+ 3 OSVerify : Decoupling Error Proposal and Validation 
+ 3.1 Error Proposer 
+ 3.2 Error Validator 
+ 4 Experiments 
+ 4.1 Experimental Setup 
+ 4.2 OSVerify Reduces Review Effort under the Same FNR Constraint 
+ 4.3 Scaling Analysis and Meta-Algorithm Applications 
+ 4.4 Mathematical Research Case Study 
+ 5 Related Work 
+ 6 Conclusion 
+ References 
+ Appendix 
+ A Additional Related Work 
+ AI for scientific discovery and expert review. 
+ LLM judges, self-correction, and aggregation. 
+ Learning verifiers. 
+ B Additional Results and Analyses 
+ B.1 Additional training-free comparisons 
+ B.2 Cost analysis 
+ Component-wise inference cost. 
+ B.3 Saturation of the Voting baseline 
+ B.4 Held-out threshold selection on Putnam 
+ B.5 Training data audit ablation 
+ C Datasets and Annotation 
+ C.1 Evaluation datasets 
+ Putnam100. 
+ H2V. 
+ FirstProof-Eval. 
+ C.2 Training data and supervision 
+ D Experimental Details 
+ D.1 Evaluation protocol and metrics 
+ D.2 Models and inference configurations 
+ D.3 Setup of whole-solution judging and proposed-error checking 
+ D.4 Hierarchical proposal and aggregation 
+ D.5 Online GRPO training 
+ E Prompts 
+ E.1 Proposer prompt 
+ E.2 Validator prompt 
+ E.3 Dataset-specific policies 
+ License: CC BY 4.0
+arXiv:2610.18089v2 [cs.AI] 22 Oct 2026 
+One-Sided Verification Under Limited Expert Review
+ Fan Nie
+ † † thanks: Equal contribution. Correspond to {niefan,haotianye}@stanford.edu . 
+ Haotian Ye 1 1 footnotemark: 
+ 1 
+ Affiliation:  Shurui Liu
+ Zihao Wang
+ Stefano Ermon
+ James Zou
+ Affiliation:  Stanford University
+ Abstract 
+ AI has become increasingly helpful in scientific discovery, yet human expert review remains essential for those problems without reliable automated evaluation, posing a fundamental challenge as candidate generation scales beyond available review capacity.
+This paper studies verification under limited human effort, where rare valid solutions need to be prioritized while invalid candidates should be filtered out to reduce human workload. We adopt the one-sided verification objective that maximizes the rejection rate of invalid solutions (TNR) under a constraint on the false-rejection rate of valid ones (FNR),
+making human review cost an explicit term to minimize.
+Drawing on the intuition that verifying a specific error can be easier than discovering one, we introduce OSVerify , an algorithmic framework that decouples error proposal from error validation.
+The error proposer searches for errors in solutions across different granularities by hierarchical decomposition, while the validator distinguishes substantial errors from minor or hallucinated ones.
+Experiments on competition- and research-level benchmarks show that OSVerify reduces the number of human reviews of invalid solutions by 46% on average compared to voting baselines under the same empirical low FNR constraint. Our post-training of the validator further improves the reduction to 57%. As high-impact real-world use cases, we apply OSVerify to identify errors in published research papers that are subsequently confirmed by the original authors and help resolve three Langlands open conjectures that are confirmed by experts, demonstrating its utility to facilitate human-AI research collaboration. 
+  Website    
+  GitHub 
+ Figure 1: One-sided verification for open-ended scientific discovery. (a) AI-generated candidates can outpace limited expert review capacity. (b) OSVerify decouples verification into hierarchical error proposal and repeated error validation, converting solution verification to error validation. (c) Under empirical 5% FNR constraint, OSVerify reduces the invalid candidates requiring review by 52% on Putnam100 and 34% on FirstProof-Eval, and the trained variant raises the reduction to 83% and 41%. 
+ 1 Introduction 
+ Recent advances in AI have demonstrated growing potential to accelerate scientific discovery in mathematics, biology, materials science, quantum physics, and many more  [ 51 , 38 , 18 , 62 ] . Regardless of domain, existing approaches largely rely on automatic evaluations to guide the discovery process  [ 48 , 69 , 68 ] . Clearly, such feedback can be unavailable or too expensive to obtain  [ 62 ] , making it difficult to assess candidate solutions and guide subsequent attempts. While recent LLM-as-a-Judge frameworks offer a flexible way to evaluate candidates in natural language and provide feedback in the absence of task-specific automated evaluators  [ 71 ] , their judgments cannot reliably establish the validity of scientific results  [ 58 ] , raising the question of how automated verification can effectively support scientific discovery. 
+ This paper takes the view that, while AI can greatly expand the scale and breadth of future scientific exploration, human expert review remains essential to establishing the validity of its results. Yet candidate generation can outpace experts’ review capacity. Cohn [11] warns that producing AI-generated solutions without their verification can irresponsibly shift substantial work onto the research community. These pressures motivate an increasingly important question: how should AI discovery systems engage human experts whose review capacity is limited? 
+ Verification under limited human effort should satisfy two objectives. First, valid solutions are rare in challenging discovery problems, and mistakenly discarding one may lose an important discovery. Second, subject to the discovery goal, a verifier should minimize the human effort spent reviewing invalid candidates. This paper focuses on one-sided verification under the Neyman-Pearson principle  [ 46 , 60 ] : maximize TNR subject to a low FNR constraint. This objective requires a verifier to reject as many invalid candidates as possible while limiting the fraction of valid solutions rejected. Under a fixed FNR constraint, increasing TNR lowers the number of candidates requiring human review per valid solution found. 
+ Drawing on the generate-and-verify intuition that checking a candidate can be easier than generating one  [ 10 ] , we hypothesize a similar difficulty gap within verification: discovering an error requires searching across a solution, whereas validating a proposed error focuses on whether that specific error invalidates the solution. Relatedly, LLMs often fail to locate reasoning errors that they can correct once the location is given  [ 61 ] . Following this, this paper proposes OSVerify , an algorithmic framework that separates verification into error proposal and error validation . The error proposer searches broadly for potential errors by hierarchically decomposing the solution candidates into pieces and examining the pieces at different levels of granularity, aiming to identify errors in as many invalid solutions as possible. The error validator checks all proposed errors and examines whether each error is minor or substantial enough to invalidate the solution. We further post-train the error validator with GRPO on carefully constructed substantial and non-substantial proposed errors, improving its ability to distinguish different error types and generalize across problems with different difficulties. This separation decouples the verification into two adversarial components, allowing both to improve their capability by scaling up computation effectively. 
+ To study verification without reliable automatic evaluation, we first conduct a controlled evaluation on competition-level and research-level mathematical benchmarks with known solutions, withholding the reference solutions and formal proof checkers such as Lean from the verifier. We intentionally use relatively weak LLMs as verifier backbones to approximate scenarios where problems exceed the models’ reliable problem-solving ability. Under the low FNR setting, OSVerify reduces the invalid candidates requiring human review by 46% on average relative to the baselines. Validator training raises this reduction to 57%, with the largest gains under the strictest constraint, and the gains carry over to research-level FirstProof-Eval, which is unseen during training. Moreover, we demonstrate that OSVerify can also be built upon existing verifiers and improve their one-sided performance. 
+ Finally, as high-impact real-world use cases, we apply OSVerify to research problems of central importance in several most challenging areas of mathematical research, including Langlands program. When reviewing 11 OpenAI preprints, OSVerify identifies mistakes in each of these papers autonomously, which were overlooked by OpenAI internal models and might require substantial effort for human experts to discover. When we use OSVerify as the verifier for a recent agentic mathematics problem solver  [ 26 ] , it further helps resolve three open conjectures in relative Langlands duality  [ 5 , 36 ] , whose proofs have subsequently been confirmed by human experts and are undergoing the publication process. These results suggest that OSVerify extends beyond controlled benchmarks and can facilitate human-AI research collaboration. 
+ 2 Verification under Limited Human Effort 
+ Throughout the paper, we consider verification under the LLM-as-a-Judge setting, where an LLM-based verifier $\mathcal{V}$ evaluates whether a candidate solution correctly solves a problem through reasoning, tool use, or aggregated judgments  [ 42 , 19 ] . We use $(X,Y)$ to denote a random problem–solution pair and $(x,y)$ to denote a realization.
+A solution $y$ is valid if it correctly solves $x$ , equivalently $y\in S(x)$ , where $S(x)$ is the set of all valid solutions for $x$ . Otherwise, $y$ is invalid . Given $(x,y)\sim(X,Y)$ , a verifier $\mathcal{V}$ returns one of the decisions 
+ $\mathcal{V}(x,y)\in\{\textsc{Reject},\textsc{Pass}\},$ 
+ where Reject indicates that $\mathcal{V}$ judges $y\notin S(x)$ , and Pass indicates that $\mathcal{V}$ judges $y\in S(x)$ . Additionally, the verifier may return reasons and justifications for its decision. 
+ Existing verification metrics do not fully reflect the requirements of human–AI collaboration in challenging, open-ended scientific discovery. Existing approaches commonly focus on accuracy, the proportion of candidates correctly passed or rejected  [ 58 , 42 ] ; however, valid solutions are typically rare in these discovery settings, so rejecting all candidates can already yield high accuracy. Alternatively, AUROC measures how well a score ranks valid and invalid candidates across thresholds  [ 14 , 7 ] , but does not directly characterize performance in the low-FNR regime needed to preserve rare valid solutions. In addition, many scientific problems lack reliable automated evaluation  [ 48 , 1 ] , so human experts remain essential to establishing the validity of candidates that Pass the verifier  [ 59 , 1 ] . Neither metric directly quantifies the review effort. 
+ One-sided verification. 
+We call for a verification objective that preserves rare valid solutions by limiting false rejections and, subject to this requirement, filters out as many invalid candidates as possible to reduce human review effort.
+To this end, we adopt a Neyman–Pearson-style objective  [ 46 , 60 ] for scientific discovery, and focus on one-sided verification : maximize the true negative rate (TNR) subject to a low false negative rate (FNR) constraint. Specifically, taking valid solutions as the positive class, Reject candidates are predicted negative and filtered out, while Pass candidates are predicted positive and retained for human review. We require the verifier $\mathcal{V}$ to satisfy, for a prescribed tolerance $\tau\in[0,1)$ , 
+ $\operatorname{FNR}(\mathcal{V})\triangleq P(\mathcal{V}(X,Y)=\textsc{Reject}\mid Y\in S(X))\leq\tau.$ 
+ Probabilities are taken over the problem–solution distribution and any randomness in the verifier. The constraint ensures that at least a $1-\tau$ fraction of valid solutions are retained by $\mathcal{V}$ for human review. To quantify the filtering of invalid candidates and its effect on human review effort, define 
+ $\operatorname{TNR}(\mathcal{V})\triangleq P(\mathcal{V}(X,Y)=\textsc{Reject}\mid Y\notin S(X)).$ 
+ The average number of Pass candidates requiring human review per retained valid solution is 
+ $\frac{P\big(\mathcal{V}(X,Y)=\textsc{Pass}\big)}{P\big(\mathcal{V}(X,Y)=\textsc{Pass},Y\in S(X)\big)}=1+\frac{(1-p)(1-\operatorname{TNR}(\mathcal{V}))}{p(1-\operatorname{FNR}(\mathcal{V}))}\leq 1+\frac{1-\operatorname{TNR}(\mathcal{V})}{p(1-\tau)},$ 
+ (1) 
+ where $p\triangleq P(Y\in S(X))\in(0,1)$ is the proportion of valid solutions. Under the FNR constraint $\tau$ , higher TNR lowers the human review cost. We therefore adopt the following objective for verification under limited human effort: 
+ $\max_{\mathcal{V}}\operatorname{TNR}(\mathcal{V})\quad\text{s.t.}\quad\operatorname{FNR}(\mathcal{V})\leq\tau.$ 
+ (2) 
+ Figure 2: (a) Frequencies of LLM Reject on Putnam100 with 64 samples per $(x,y)$ ; the dashed line marks empirical FNR below 5%. (b) The TNR increases and saturates as the number of judgments $n$ increases, regardless of the FNR constraint. (c) LLM judgments on the error-level distribution $(x,y,e)$ achieve higher TNR at matched FNR than judgments on the solution-level distribution $(x,y)$ , particularly in the low-FNR regime. All experiments use gpt-oss-120b . 
+ LLM-as-a-Judge under one-sided verification. 
+Contemporary LLM-based verifiers make judgments based on complex reasoning processes or agent behaviors such as tool calls and file checks. As such, it is non-trivial to obtain a numeric rejection score for the TNR–FNR trade-off.
+One way to construct the score is Voting : sample multiple judgments independently and use the fraction of Reject votes to estimate its rejection probability  [ 42 ] . Other voting rules include pessimistic voting  [ 25 ] , which rejects if any judgment returns Reject , and its optimistic counterpart, which rejects only if all judgments return Reject . 
+ Regardless of how the rejection score is obtained, thresholding essentially selects a trade-off point on the verifier’s TNR–FNR curve, rather than improving TNR under the FNR constraint.
+As shown in Figure   2 , a higher threshold preserves more valid solutions, but also passes invalid solutions whose scores fall below it. Allocating more computation to voting improves the estimate of each candidate’s rejection probability, but the attainable TNR under the evaluated FNR constraints saturates in our experiment ( Figure   2 ).
+The central question remains unaddressed: How can we achieve a higher TNR under the same low-FNR constraint? 
+ 3 OSVerify : Decoupling Error Proposal and Validation 
+ We build on a general intuition: checking whether a candidate satisfies a set of requirements can be easier than finding a candidate that does. For instance, finding a solution for difficult scientific problems inevitably requires searching over possible approaches, whereas evaluating a candidate focuses on a concrete attempt and is conceptually easier for the same model. This difficulty gap motivates generating multiple candidate solutions and assessing them separately  [ 10 ] , where additional compute helps scale up the search and lead to better eventual performance. We hypothesize that an analogous gap exists within verification itself. Identifying an error requires searching across a solution for what might be wrong, but given a specific proposed error, the task narrows to checking whether that particular error holds and invalidates the solution. 
+ Following this intuition, we introduce OSVerify , an algorithmic framework that separates verification into error proposal, a component that searches for potential errors with broad coverage, and error validation, a component that checks whether each proposed error is substantial.
+We illustrate the algorithm in Figure   1 . Given $(x,y)$ , an error proposer generates a set of proposed errors $\mathcal{G}(x,y)$ , each $e\in\mathcal{G}(x,y)$ identifying a claim or step in $y$ and explaining why it may invalidate the solution. Its objective is high coverage : on as many invalid solutions as possible, the proposed set should contain at least one substantial error , i.e., a real error that invalidates the solution. An error validator $\mathcal{C}$ then receives the full problem, solution, and one proposed error $(x,y,e)$ , and checks whether the proposed error is substantial. The two stages yield the solution-level rule 
+ $\mathcal{V}(x,y)=\textsc{Reject}\quad\Longleftrightarrow\quad\exists e\in\mathcal{G}(x,y):\mathcal{C}\text{ confirms that }e\text{ invalidates }y.$ 
+ (3) 
+ The advantage of decoupling verification into error proposal and error validation is illustrated in Figure   2 . On FirstProof-Eval, using the same gpt-oss-120b , the TNR of the error-level distribution $(x,y,e)$ is higher at matched FNR than that of the solution-level distribution $(x,y)$ , particularly in the low-FNR regime, with overall AUROC improving from 0.68 to 0.90. This suggests that assessing a specific proposed error is easier than determining the validity of an entire solution. These results motivate allocating additional compute to searching for potential errors, which provide concrete targets for focused validation.
+More details on settings and results can be found in Section   4 . 
+ 3.1 Error Proposer 
+ The objective of the error proposer is to maximize the coverage of substantial errors, i.e., the probability that $\mathcal{G}(X,Y)$ contains at least one substantial error when $Y\notin S(X)$ .
+To this end, we search for errors at different levels of granularity within a solution, a method we call hierarchical decomposition. Inspecting the full solution exposes issues in the overall argument, while zooming in on individual parts focuses attention on specific claims and reasoning steps. 
+ Starting from $u_{1}=y$ at depth zero, we recursively decompose the solution into sub-pieces. At each node $u_{k}$ , the model selects a suitable boundary and splits the text into two contiguous parts, 
+ $u_{k}=u_{2k}\,\|\,u_{2k+1},$ 
+ where $\|$ denotes concatenation in the original order. Recursion stops when the maximum depth $D$ is reached or the model judges the current part sufficiently atomic that no further split is needed. Let $U$ contain all resulting nodes, including the root, intermediate nodes, and leaves. 
+ For each $u\in U$ , the proposer receives the problem $x$ , the complete solution $y$ , and the part $u$ on which to focus. It returns a possibly empty set of proposed errors $\mathcal{G}(x,y,u)$ , each identifying a potential error in $u$ and explaining how it could invalidate $y$ . The final proposal set merges proposed errors across all nodes: 
+ $\mathcal{G}(x,y)=\bigcup_{u\in U}\mathcal{G}(x,y,u).$ 
+ Identical proposed errors against the same target are merged, while distinct ones remain separate for validation. Algorithm  1 in Appendix  D.4 summarizes the procedure. Additionally and optionally, one may call the proposer repeatedly at selected nodes $u\in U$ to increase coverage. For instance, we find that running $\mathcal{G}(x,y,u_{1})$ more than once at the root node can further improve its coverage. 
+ 3.2 Error Validator 
+ By maximizing the error coverage, the error proposer could also produce more hallucinated errors and minor issues that do not invalidate a solution. The objective of the error validator $\mathcal{C}$ is to assess which proposed errors warrant rejection, helping preserve valid solutions while retaining substantial errors. Specifically, given a $(x,y,e)$ tuple, it first checks whether $e$ holds, returning Not-Real if it does not hold, i.e., it is a hallucinated error. For a real error, it then judges whether the error invalidates $y$ , returning Substantial if it does and Minor otherwise. This distinction is to account for differences in error definitions across different tasks: minor errors could lead to severe accidents in production, but are totally acceptable in proof sketches.
+For each proposed error $e$ , we define its substantial-error probability and the resulting solution-level rejection score as 
+ $\displaystyle p_{\mathcal{C}}(x,y,e)$ 
+ $\displaystyle=P\bigl(\mathcal{C}(x,y,e)=\textsc{Substantial}\bigr),$ 
+ (4) 
+ $\displaystyle s_{\mathcal{V}}(x,y)$ 
+ $\displaystyle=\max_{e\in\mathcal{G}(x,y)}p_{\mathcal{C}}(x,y,e).$ 
+ The maximum reflects that a single substantial error suffices to invalidate a solution, and we set the score to zero when no error is proposed. In practice, the score can be approximated by independently sampling $\mathcal{C}(x,y,e)$ multiple times. 
+ Given a threshold $t>0$ , the verifier $\mathcal{V}$ rejects if $s_{\mathcal{V}}(x,y)\geq t$ , and returns Pass otherwise.
+For a given FNR constraint $\tau$ , we select the threshold to maximize TNR subject to the constraint 
+ $\operatorname{FNR}(\mathcal{V}_{t})=P\bigl(s_{\mathcal{V}}(X,Y)\geq t\mid Y\in S(X)\bigr)\leq\tau.$ 
+ Notice that we do not consider the calibration problem here, but in practice, $t$ can be pre-estimated by a small set of samples (see example in Section   B.4 ), or by transferring from similar problem sets.
+More details can be found in Section   4.1 . 
+ Learning to validate via RL. 
+The validator operates on the same $(x,y,e)$ interface regardless of how the solution or proposed error was generated; its capability should be generalizable across different errors, solution candidates, and even problems. Additionally, the objective of the error validator is clear and binary, making it possible to construct error-level supervision and further train the validator $\mathcal{C}$ to distinguish substantial errors from minor or hallucinated ones across diverse problems. 
+ Specifically, we use reinforcement learning to post-train $\mathcal{C}$ on the environment constructed below.
+The training data is $(x,y,e)$ and the label is whether the error $e$ is substantial or not.
+For valid problem-solution pairs $(x,y)$ , all proposed errors have a negative label.
+For an invalid solution $y$ , since we only have the reference answer $y^{\star}$ and optionally the grading guideline, we provide them as the context to the proposer and the untrained validator. We sample this reference-assisted validator five times for each proposed error and label the error as positive only if at least three of the five samples judge it substantial. The remaining errors are discarded for the sake of training accuracy and informativeness.
+For each training instance, we roll out the validator eight times, and use the standard GRPO loss to LoRA  [ 22 ] fine-tune the model. For more training details, please refer to Section  4.1 . 
+ Table 1: Empirical TNR (%) under empirical FNR constraints of 0%, 5%, and 10%.
+Entries report means and standard deviations over 2,000 resampling trials.
+Zero includes the always-pass fallback when no nontrivial operating point satisfies the constraint. 
+ Putnam100 
+ H2V 
+ FirstProof-Eval 
+ Method 
+ 0% 
+ 5% 
+ 10% 
+ 0% 
+ 5% 
+ 10% 
+ 0% 
+ 5% 
+ 10% 
+ gpt-oss-120b 
+ LLM-as-a-Judge 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$54.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.0$}}$ 
+ $\makebox[20.00003pt][r]{$54.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$43.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.9$}}$ 
+ Voting 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$38.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.9$}}$ 
+ $\makebox[20.00003pt][r]{$45.5$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.8$}}$ 
+ $\makebox[20.00003pt][r]{$60.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 4.2$}}$ 
+ $\makebox[20.00003pt][r]{$69.2$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.6$}}$ 
+ $\makebox[20.00003pt][r]{$75.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.7$}}$ 
+ $\makebox[20.00003pt][r]{$29.5$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 10.2$}}$ 
+ $\makebox[20.00003pt][r]{$35.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.5$}}$ 
+ $\makebox[20.00003pt][r]{$48.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.2$}}$ 
+ OSVerify 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$70.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 14.3$}}$ 
+ $\makebox[20.00003pt][r]{$77.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.3$}}$ 
+ $\makebox[20.00003pt][r]{$83.2$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.6$}}$ 
+ $\makebox[20.00003pt][r]{$84.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.6$}}$ 
+ $\makebox[20.00003pt][r]{$84.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.5$}}$ 
+ $\makebox[20.00003pt][r]{$50.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 15.1$}}$ 
+ $\makebox[20.00003pt][r]{$58.0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.1$}}$ 
+ $\makebox[20.00003pt][r]{$60.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.3$}}$ 
+ + trained validator 
+ $\makebox[20.00003pt][r]{$85.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.9$}}$ 
+ $\makebox[20.00003pt][r]{$89.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.7$}}$ 
+ $\makebox[20.00003pt][r]{$92.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.5$}}$ 
+ $\makebox[20.00003pt][r]{$82.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.1$}}$ 
+ $\makebox[20.00003pt][r]{$83.2$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.7$}}$ 
+ $\makebox[20.00003pt][r]{$83.2$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.7$}}$ 
+ $\makebox[20.00003pt][r]{$57.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.0$}}$ 
+ $\makebox[20.00003pt][r]{$62.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.8$}}$ 
+ $\makebox[20.00003pt][r]{$62.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.3$}}$ 
+ gpt-5-mini 
+ LLM-as-a-Judge 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$63.1$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.9$}}$ 
+ $\makebox[20.00003pt][r]{$66.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.8$}}$ 
+ $\makebox[20.00003pt][r]{$66.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.8$}}$ 
+ $\makebox[20.00003pt][r]{$66.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.8$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$42.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.4$}}$ 
+ Voting 
+ $\makebox[20.00003pt][r]{$28.5$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 17.3$}}$ 
+ $\makebox[20.00003pt][r]{$58.1$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 4.4$}}$ 
+ $\makebox[20.00003pt][r]{$75.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.7$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$19.1$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 16.4$}}$ 
+ $\makebox[20.00003pt][r]{$42.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.8$}}$ 
+ $\makebox[20.00003pt][r]{$49.2$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.3$}}$ 
+ OSVerify 
+ $\makebox[20.00003pt][r]{$72.1$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 21.9$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.6$}}$ 
+ $\makebox[20.00003pt][r]{$86.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.3$}}$ 
+ $\makebox[20.00003pt][r]{$85.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.3$}}$ 
+ $\makebox[20.00003pt][r]{$85.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.3$}}$ 
+ $\makebox[20.00003pt][r]{$85.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.3$}}$ 
+ $\makebox[20.00003pt][r]{$33.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 25.5$}}$ 
+ $\makebox[20.00003pt][r]{$60.0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 9.1$}}$ 
+ $\makebox[20.00003pt][r]{$65.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.4$}}$ 
+ 4 Experiments 
+ Our experiments aim to address the following questions:
+ (1) How well OSVerify can effectively reject invalid solutions while preserving valid ones, and how much RL on the error validator can further raise TNR on unseen problems;
+ (2) How verification scales up with more compute, and how OSVerify can be applied as a meta-algorithm on top of existing verifiers to improve their one-sided performance;
+ (3) Whether OSVerify can support expert review in real-world research settings. 
+ 4.1 Experimental Setup 
+ As mentioned in Section   1 , we focus on mathematical benchmarks with known solutions.
+As the latest LLMs may have been too strong and could directly address these problems, we intentionally use weaker models as verifier backbones, namely gpt-oss-120b   [ 3 ] and gpt-5-mini   [ 49 ] , abbreviated as oss and 5mini . This simulates scenarios where problems exceed the models’ problem-solving ability. Importantly, these known solutions are inaccessible to verifiers, and we do not use any formal proof checker. This allows us to study verification without reliable automated evaluation signals while rigorously assessing verifier performance. 
+ Datasets. 
+We evaluate on three mathematical benchmarks, including competition-level Putnam100  [ 27 ] and Hard2Verify (H2V)  [ 50 ] , as well as research-level FirstProof-Eval constructed from First Proof  [ 1 ] with human-labeled valid and invalid solutions.
+For Putnam100, we collect publicly available official solutions as valid examples and incorrect solutions generated by frontier models. For H2V, the dataset contains model-generated solutions (valid and invalid) with step-level annotations by PhD-level mathematics experts.
+Namely, both H2V and First Proof problems were released after the release of the two models considered.
+For validator post-training, training data is constructed from the training portion of our collected Putnam corpus, IMO-GradingBench  [ 39 ] , ProofBench  [ 40 ] and Open Proof Corpus  [ 12 ] .
+Details about the distribution of valid and invalid solutions and dataset construction can be found in Appendix  C . 
+ Methods. 
+We compare OSVerify against direct LLM-as-a-Judge   [ 71 ] , which evaluates the whole solution, as well as its Voting variant, which estimates the Reject probability by independently resampling the judge $n$ times. We use $n=16$ for the results in Table   1 and additionally report results for $n$ ranging from $1$ to $64$ in Section   B.3 .
+We also compare with Multiagent Debate   [ 13 ] and pseudo-formalization with block verification ( PFBV )  [ 4 ] , as specified below.
+For OSVerify , we set the maximum decomposition depth to two unless otherwise specified, with the root node at depth zero and one proposal call made at each node.
+For each proposed error, we similarly estimate the validation probability with 16 independent samples.
+We aggregate these judgments using the solution-level score defined in Equation   4 .
+For validator post-training, we use online GRPO with LoRA adapters, and keep the proposer unchanged. Appendix  D.5 describes the training procedure. 
+ Metrics. 
+For LLM-as-a-Judge , we first compute the mean FNR and the mean and standard deviation of the TNR across single-call samples. At each FNR constraint, we report the corresponding TNR mean and standard deviation if the mean FNR satisfies the constraint, and report zero otherwise. For Voting and OSVerify , we sweep the rejection threshold over the evaluation set and, for each empirical FNR constraint, report the highest TNR attained by any threshold satisfying that constraint, following the empirical-frontier evaluation protocol of  Carlini et al. [8] . The threshold used to meet each FNR constraint is determined solely from valid solutions. 
+ Figure 3: (a) Deeper decomposition raises TNR for training-free and trained validators, with most of the gain reached by depth two.
+(b) More validation votes raise TNR on fixed proposal pools; the stricter the FNR constraint, the more votes it takes. 
+ 4.2 OSVerify Reduces Review Effort under the Same FNR Constraint 
+ Table  1 compares OSVerify against LLM-as-a-Judge and Voting under empirical FNR constraints of 0%, 5%, and 10%.
+Consistently, OSVerify achieves a higher TNR under different FNR constraints.
+With oss , OSVerify improves TNR over Voting from 38.4% to 70.4% on Putnam100, from 69.2% to 84.7% on H2V, and from 35.9% to 58.0% on FirstProof-Eval under the 5% FNR constraint.
+This implies that the number of invalid candidates requiring human review is reduced by 52.0% on Putnam100, 50.4% on H2V, and 34.4% on FirstProof-Eval relative to Voting .
+With 5mini , OSVerify improves TNR over Voting from 58.1% to 82.9% on Putnam100 and from 42.6% to 60.0% on FirstProof-Eval under the 5% FNR constraint. 
+ We train the oss -equipped error validator, with training dynamics presented in Figure   4 .
+Overall, the TNR can be further improved over its training-free counterpart, both on the in-distribution dataset (Putnam100) and on the out-of-distribution datasets (FirstProof-Eval).
+Particularly, at zero FNR, training increases TNR from 0% to 85.8% on Putnam100 and from 50.4% to 57.8% on FirstProof-Eval. Both benchmarks retain TNR gains under the 5% and 10% FNR constraints. On H2V, the training-free validator already reaches the coverage limit of the proposer while rejecting few valid solutions, leaving little room for further improvement through validator training. 
+ 4.3 Scaling Analysis and Meta-Algorithm Applications 
+ Below, we investigate the scaling behavior and inference budgets of OSVerify , and demonstrate that OSVerify can serve as a meta-algorithm that transforms existing verifiers into one-sided verifiers. 
+ Scaling behavior analysis. 
+Since OSVerify can be decoupled into an error proposer and an error validator, we study how the performance of each changes as we scale up the computation cost. For the proposer, whose goal is to maximize error coverage, we increase the maximum decomposition depth and allow additional proposal calls on finer-grained parts of the solution. We use 16 validation votes per proposed error.
+As shown in Figure   3 , under different datasets and different FNR constraints, TNR initially increases and then saturates as the maximum depth increases.
+FirstProof-Eval solutions are substantially longer than Putnam100 solutions, leaving more room for decomposition. For many Putnam100 solutions, decomposition stops before reaching the depth limit.
+These results support searching for error hypotheses at multiple levels of granularity. 
+ Besides, we scale up compute for the error validator by increasing the number of resamples per error from 1 to 30, with the proposer depth fixed at 2.
+As shown in Figure   3 , the benefit of additional validation depends on the FNR constraint: performance under the 10% constraint generally saturates with relatively few resamples, whereas tighter constraints benefit from more.
+On FirstProof-Eval, increasing the vote count from 10 to 30 raises TNR under zero empirical FNR from 38.7% to 56.5% with oss and from 13.6% to 52.3% with 5mini .
+Theoretically, increasing the resampling size only improves the estimation accuracy, and the performance will converge once the size is large enough. 
+ Comparison under matched token budgets. 
+In Figure   4 , we compare the performance of Voting , OSVerify , and its trained counterpart under different token budgets with oss , with more results included in Appendix  B.2 .
+Under the 5% FNR constraint, OSVerify can achieve a higher TNR performance at all token budgets per solution.
+This budget includes the cost of decomposition, error proposing, and error validation.
+With training, the cost is amortized and the per-token TNR further increases, and the method reaches the same TNR of 58% with almost 4 times less compute. 
+ Figure 4: (a) Training rewards for proposed errors to overturn or confirm, with EMA decay 0.9.
+(b) Empirical TNR under different input-plus-output token budgets on FirstProof-Eval.
+(c) Applying OSVerify to existing verifiers Multiagent Debate and PFBV on H2V. 
+ OSVerify as a meta-algorithm. 
+The proposal-validation decoupling allows OSVerify to act as a meta-algorithm and be applied to existing verifiers that validate solutions by raising errors, either through multi-agent debate or through checking proof blocks. Specifically, for any existing verifier, we can decompose the solution into sub-pieces (if the verifier has not done this), use the verifier to find errors in the sub-pieces, and use a validator to check each error.
+This allows different error-search procedures to be combined with the same validation and thresholding rule.
+We apply OSVerify to two recent verifier works, Multiagent Debate and PFBV , using oss on H2V.
+ Figure   4 shows that both extensions achieve higher TNR than Voting under the evaluated FNR constraints.
+Under zero FNR, OSVerify improves TNR over Voting from 71.2% to 80.8% for Multiagent Debate and from 0% to 92.6% for PFBV , and from 78.8% to 84.6% and from 89.6% to 94.4% under 5% FNR.
+These results demonstrate the applicability of OSVerify beyond its pure LLM-based error proposer. 
+ 4.4 Mathematical Research Case Study 
+ We apply OSVerify in two real-world research settings: reviewing research papers and contributing to the resolution of open conjectures. We focus on research problems of central importance in several most challenging areas of mathematical research, including Langlands program, where technically involved arguments and abstract theories require substantial specialist expertise. 
+ As we aim to examine how OSVerify can support research beyond the benchmarks, we turn to frontier closed-source models as the verifier backbone in these studies. 
+ Reviewing mathematical papers. 
+We apply OSVerify to review 11 OpenAI preprints, each of which claims to solve a central problem in an area of mathematical research. OSVerify identifies nontrivial mathematical mistakes in each of the 11 papers autonomously, which were overlooked by OpenAI internal models and may require substantial effort for human experts to discover. These mistakes are confirmed to be real errors by human experts. The main conclusions of these papers remain valid after revisions, but correcting these issues is important to ensure the correctness of the statements and proofs and avoid confusion in the literature.
+ OSVerify also discovered mistakes and suggested repairs for papers in submission to or already published in top-tier mathematical journals and induced the revisions of the authors.
+These findings illustrate how OSVerify can detect subtle mistakes in mathematical research, including previously overlooked issues in published papers and mistakes in primarily AI-generated manuscripts. 
+ Automated conjecture solving. 
+We further pair OSVerify with the latest open-source mathematical problem-solving system [ 26 ] , a Codex agent equipped with mathematical reasoning skills, and see whether OSVerify helps verify the candidate solutions.
+No formal proof checker is used throughout the process.
+We target relative Langlands duality, proposed by Ben-Zvi, Sakellaridis, and Fields medalist Venkatesh  [ 5 ] and among the most far-reaching unifying frameworks in mathematics.
+The problem is inspired by electric–magnetic duality in gauge theory, whose connection to the Langlands program was developed by Fields medalist Edward Witten and collaborators  [ 65 ] .
+It predicts relations between periods of automorphic forms and special values of $L$ -functions, unifying many earlier results  [ 5 , Table 1.5.1] .
+Together, the system produced proofs of three previously open statements:
+(i) the flatness of the loop-rotated Plancherel algebra $\mathrm{PL}_{X,\hbar}$ over $k[\hbar]$   [ 5 , Conjecture 8.5.2] ;
+(ii) the commutativity of $\mathrm{PL}_{X}$ asserted in Ben-Zvi et al. [5, Corollary of Conjecture 8.1.8] , with (i) and (ii) restated in Liu and Wang [36, Conjecture 4.36] ; and
+(iii) the automorphic commutator relation of Liu and Wang [36, Conjecture 4.45] , which they had established only under additional cohomological vanishing assumptions and for curves of genus other than one.
+ OSVerify provides a verification signal during the solving process, and returns Pass to the eventual solutions, which are examined and confirmed by human experts subsequently. The proofs of (i) and (ii) are documented in [ 21 ] . The proof of (iii) is polished and rewritten in [ 35 ] , and it is in submission to a top-tier mathematical research journal. 
+ Additionally, OSVerify contributed to the paper [ 72 ] , which proved the Manin constant conjecture. This conjecture is of fundamental importance in number theory and the study of the BSD conjecture, and has been open for over 50 years. OSVerify contributed in two ways: (i) it reported one mistake in an earlier version of that paper, and this mistake was overlooked by both human and 12 rounds of AI reviews using Claude Code Opus-5.5 and GPT-Astra-6 Pro (see [ 72 , Appendix A.3] ); (ii) after paired with the problem-solving system [ 26 ] , it reproduced the result by rejecting ineffective strategies automatically, while GPT-6-Astra Pro needed multiple rounds of prompting by mathematics experts (see [ 72 , Appendix A.1, A.5] ). 
+ 5 Related Work 
+ Structured verification and error validation. 
+Formal provers offer machine-checked guarantees  [ 2 , 9 ] , but formalizing research proofs remains costly. In natural language, prior work splits LLM verification into smaller checks: criteria in CheckEval and LLM-as-a-Verifier  [ 31 , 29 ] , reasoning steps in Deductive Verification  [ 34 ] , Pessimistic Verification  [ 25 ] , and self-contained proof blocks in PFBV  [ 4 ] .
+Judging such units in isolation can produce spurious failures when context is lost  [ 63 , 23 ] , so OSVerify keeps the full problem and solution in context at every level of its decomposition.
+DeepSeekMath-V2 trains a verifier to identify issues in math proofs  [ 55 ] .
+ OSVerify combines error check with decomposition: it proposes errors at every level and rejects a solution only when independent validation confirms one of them. 
+ One-sided objectives. 
+LLM-based checkers already find errors in published papers that experts confirm, but with low precision  [ 56 ] , which motivates an explicit limit on false rejections. Our objective follows the Neyman–Pearson paradigm, which constrains one class-conditional error rate while optimizing the other  [ 46 , 53 , 60 ] .
+FactTest  [ 47 ] applies this principle to factuality with finite-sample guarantees; Section   B.4 uses its threshold selection on held-out valid solutions.
+ Appendix   A discusses additional related work about AI for discovery, LLM judges, and learning verifiers. 
+ 6 Conclusion 
+ We study scientific verification under limited human review capacity, aiming to filter out invalid solutions while preserving valid candidates for expert review.
+We introduce OSVerify , which separates error proposal from error validation to improve TNR under low FNR constraints.
+Experiments on three mathematical benchmarks demonstrate its effectiveness, with further gains from validator training.
+Applications to mathematical paper review and open conjecture solving yield findings confirmed by human experts.
+These results highlight the potential of structured verification to support scientific discovery with limited human effort. 
+ Acknowledgments 
+ We thank Ken Ziyu Liu and Yongchan Kwon for helpful discussions, advice, and support.
+We also thank members of the Zou group for insightful discussions. 
+ References 
+ [1] 
+Mohammed Abouzaid, Andrew J. Blumberg, Martin Hairer, Joe Kileel, Tamara G.
+Kolda, Paul D. Nelson, Daniel Spielman, Nikhil Srivastava, Rachel Ward,
+Shmuel Weinberger, and Lauren Williams.
+ First proof.
+ arXiv preprint arXiv:2602.05192 , 2026.
+ doi: 10.48550/arXiv.2602.05192 .
+ URL https://arxiv.org/abs/2602.05192 .
+ [2] 
+Tudor Achim, Alex Best, Alberto Bietti, Kevin Der, Mathïs
+Fédérico, Sergei Gukov, Daniel Halpern-Leistner, Kirsten
+Henningsgard, Yury Kudryashov, Alexander Meiburg, et al.
+ Aristotle: IMO-level automated theorem proving.
+ arXiv preprint arXiv:2510.01346 , 2025.
+ URL https://arxiv.org/abs/2510.01346 .
+ [3] 
+Sandhini Agarwal, Lama Ahmad, Jason Ai, Sam Altman, Andy Applebaum, Edwin
+Arbus, Rahul K. Arora, Yu Bai, Bowen Baker, Haiming Bao, et al.
+ gpt-oss-120b & gpt-oss-20b model card.
+ arXiv preprint arXiv:2508.10925 , 2025.
+ doi: 10.48550/arXiv.2508.10925 .
+ URL https://arxiv.org/abs/2508.10925 .
+ [4] 
+Slim Barkallah, Luke Bailey, Kaiyue Wen, Mohammed Abouzaid, and Tengyu Ma.
+ Pseudo-formalization for automatic proof verification.
+ arXiv preprint arXiv:2605.20531 , 2026.
+ doi: 10.48550/arXiv.2605.20531 .
+ URL https://arxiv.org/abs/2605.20531 .
+ [5] 
+David Ben-Zvi, Yiannis Sakellaridis, and Akshay Venkatesh.
+ Relative langlands duality, 2024.
+ URL https://arxiv.org/abs/2409.04677 .
+ [6] 
+Daniil A. Boiko, Robert MacKnight, and Gabe Gomes.
+ Emergent autonomous scientific research capabilities of large
+language models.
+ CoRR , abs/2304.05332, 2023.
+ doi: 10.48550/arXiv.2304.05332 .
+ URL https://arxiv.org/abs/2304.05332 .
+ [7] 
+Dylan Bouchard and Mohit Singh Chauhan.
+ Uncertainty quantification for language models: A suite of black-box,
+white-box, LLM judge, and ensemble scorers.
+ Transactions on Machine Learning Research , 2025.
+ URL https://arxiv.org/abs/2504.19254 .
+ [8] 
+Nicholas Carlini, Steve Chien, Milad Nasr, Shuang Song, Andreas Terzis, and
+Florian Tramèr.
+ Membership inference attacks from first principles.
+ In 2022 IEEE Symposium on Security and Privacy , pages
+1897–1914. IEEE, 2022.
+ doi: 10.1109/SP46214.2022.9833649 .
+ URL https://doi.org/10.1109/SP46214.2022.9833649 .
+ [9] 
+Luoxin Chen, Jinming Gu, Liankai Huang, Wenhao Huang, Zhicheng Jiang, Allan
+Jie, Xiaoran Jin, Xing Jin, Chenggang Li, Kaijing Ma, et al.
+ Seed-prover: Deep and broad reasoning for automated theorem proving.
+ arXiv preprint arXiv:2507.23726 , 2025.
+ URL https://arxiv.org/abs/2507.23726 .
+ [10] 
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz
+Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano,
+Christopher Hesse, and John Schulman.
+ Training verifiers to solve math word problems.
+ arXiv preprint arXiv:2110.14168 , 2021.
+ doi: 10.48550/arXiv.2110.14168 .
+ URL https://arxiv.org/abs/2110.14168 .
+ [11] 
+Henry Cohn.
+ The technical debt of AI-generated mathematics.
+ Guest post on Terence Tao’s blog, What’s New, September 2026.
+ URL
+ https://terrytao.wordpress.com/2026/09/15/the-technical-debt-of-ai-generated-mathematics/ .
+ September 15, 2026. Accessed September 23, 2026.
+ [12] 
+Jasper Dekoninck, Ivo Petrov, Kristian Minchev, Mislav Balunović, Martin
+Vechev, Miroslav Marinov, Maria Drencheva, Lyuba Konova, Milen Shumanov,
+Kaloyan Tsvetkov, Nikolay Drenchev, Lazar Todorov, Kalina Nikolova, Nikolay
+Georgiev, Vanesa Kalinkova, and Margulan Ismoldayev.
+ The open proof corpus: A large-scale study of LLM-generated
+mathematical proofs.
+ arXiv preprint arXiv:2506.21621 , 2025.
+ URL https://arxiv.org/abs/2506.21621 .
+ [13] 
+Yilun Du, Shuang Li, Antonio Torralba, Joshua B. Tenenbaum, and Igor Mordatch.
+ Improving factuality and reasoning in language models through
+multiagent debate.
+ In Proceedings of the 41st International Conference on Machine
+Learning , volume 235 of Proceedings of Machine Learning Research ,
+pages 11733–11763. PMLR, 2024.
+ URL https://proceedings.mlr.press/v235/du24e.html .
+ [14] 
+Tom Fawcett.
+ An introduction to ROC analysis.
+ Pattern Recognition Letters , 27(8):861–874, June 2006.
+ ISSN 0167-8655.
+ doi: 10.1016/j.patrec.2005.10.010 .
+ URL http://dx.doi.org/10.1016/j.patrec.2005.10.010 .
+ [15] 
+Tony Feng, Trieu Trinh, Garrett Bingham, Jiwon Kang, Shengtong Zhang, Sang-hyun
+Kim, Kevin Barreto, Carl Schildkraut, Junehyuk Jung, Jaehyeon Seo, Carlo
+Pagano, Yuri Chervonyi, Dawsen Hwang, Kaiying Hou, Sergei Gukov, Cheng-Chiang
+Tsai, Hyunwoo Choi, Youngbeom Jin, Wei-Yuan Li, Hao-An Wu, Ruey-An Shiu,
+Yu-Sheng Shih, Quoc V. Le, and Thang Luong.
+ Semi-autonomous mathematics discovery with Gemini: A case study on
+the Erdős problems.
+ arXiv preprint arXiv:2601.22401 , 2026a.
+ doi: 10.48550/arXiv.2601.22401 .
+ URL https://arxiv.org/abs/2601.22401 .
+ [16] 
+Tony Feng, Trieu H. Trinh, Garrett Bingham, Dawsen Hwang, Yuri Chervonyi,
+Junehyuk Jung, Joonkyung Lee, Carlo Pagano, Sang-hyun Kim, Federico
+Pasqualotto, Sergei Gukov, Jonathan N. Lee, Junsu Kim, Kaiying Hou, Golnaz
+Ghiasi, Yi Tay, YaGuang Li, Chenkai Kuang, Yuan Liu, Hanzhao Lin, Evan Zheran
+Liu, Nigamaa Nayakanti, Xiaomeng Yang, Heng-Tze Cheng, Demis Hassabis, Koray
+Kavukcuoglu, Quoc V. Le, and Thang Luong.
+ Towards autonomous mathematics research.
+ arXiv preprint arXiv:2602.10177 , 2026b.
+ doi: 10.48550/arXiv.2602.10177 .
+ URL https://arxiv.org/abs/2602.10177 .
+ [17] 
+Bofei Gao, Zefan Cai, Runxin Xu, Peiyi Wang, Ce Zheng, Runji Lin, Keming Lu,
+Dayiheng Liu, Chang Zhou, Wen Xiao, Tianyu Liu, and Baobao Chang.
+ LLM critics help catch bugs in mathematics: Towards a better
+mathematical verifier with natural language feedback.
+ In Wanxiang Che, Joyce Nabende, Ekaterina Shutova, and Mohammad Taher
+Pilehvar, editors, Findings of the Association for Computational
+Linguistics: ACL 2025 , pages 14588–14604, Vienna, Austria, July 2025.
+Association for Computational Linguistics.
+ ISBN 979-8-89176-256-5.
+ doi: 10.18653/v1/2025.findings-acl.753 .
+ URL https://aclanthology.org/2025.findings-acl.753/ .
+ [18] 
+Juraj Gottweis, Wei-Hung Weng, Alexander Daryin, Tao Tu, Petar Sirkovic, Artiom
+Myaskovsky, Grzegorz Glowaty, Felix Weissenberger, Alessio Orlandi, Dan
+Popovici, et al.
+ Accelerating scientific discovery with Co-Scientist.
+ Nature , 655:487–496, 2026.
+ doi: 10.1038/s41586-026-10644-y .
+ URL https://www.nature.com/articles/s41586-026-10644-y .
+ [19] 
+Zhibin Gou, Zhihong Shao, Yeyun Gong, Yelong Shen, Yujiu Yang, Nan Duan, and
+Weizhu Chen.
+ CRITIC: Large language models can self-correct with
+tool-interactive critiquing.
+ In International Conference on Learning Representations , 2024.
+ URL https://arxiv.org/abs/2305.11738 .
+ [20] 
+Jiawei Gu, Xuhui Jiang, Zhichao Shi, Hexiang Tan, Xuehao Zhai, Chengjin Xu, Wei
+Li, Yinghan Shen, Shengjie Ma, Honghao Liu, Saizhuo Wang, Kun Zhang, Zhouchi
+Lin, Bowen Zhang, Lionel Ni, Wen Gao, Yuanzhuo Wang, and Jian Guo.
+ A survey on LLM-as-a-judge.
+ The Innovation , 7(6):101253, June 2026.
+ ISSN 2666-6758.
+ doi: 10.1016/j.xinn.2025.101253 .
+ URL http://dx.doi.org/10.1016/j.xinn.2025.101253 .
+ [21] 
+hexagon:2609.00128v1.
+ On properties of plancherel algebras.
+ Hexagon preprint hexagon:2609.00128v1, 2026.
+ URL https://hexagonmath.org/2609.00128v1 .
+ Contributors: Shurui Liu.
+ [22] 
+Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean
+Wang, Lu Wang, and Weizhu Chen.
+ LoRA: Low-rank adaptation of large language models.
+ In International Conference on Learning Representations , 2022.
+ URL https://arxiv.org/abs/2106.09685 .
+ [23] 
+Qisheng Hu, Quanyu Long, and Wenya Wang.
+ Decomposition dilemmas: Does claim decomposition boost or burden
+fact-checking performance?
+ In Proceedings of the 2025 Conference of the Nations of the
+Americas Chapter of the Association for Computational Linguistics , 2025.
+ URL https://arxiv.org/abs/2411.02400 .
+ [24] 
+Jie Huang, Xinyun Chen, Swaroop Mishra, Huaixiu Steven Zheng, Adams Wei Yu,
+Xinying Song, and Denny Zhou.
+ Large language models cannot self-correct reasoning yet.
+ In International Conference on Learning Representations , 2024.
+ URL https://arxiv.org/abs/2310.01798 .
+ [25] 
+Yanxing Huang, Zihan Tang, Zejin Lin, Peng Li, and Yang Liu.
+ Pessimistic verification for open ended math questions.
+ arXiv preprint arXiv:2511.21522 , 2025.
+ doi: 10.48550/arXiv.2511.21522 .
+ URL https://arxiv.org/abs/2511.21522 .
+ [26] 
+Haocheng Ju, Guoxiong Gao, Jiedong Jiang, Bin Wu, Zeming Sun, Shurui Liu,
+Leheng Chen, Yutong Wang, Yuefeng Wang, Zichen Wang, Wanyi He, Peihao Wu,
+Liang Xiao, Ruochuan Liu, Bryan Dai, and Bin Dong.
+ Automated conjecture resolution with formal verification, 2026.
+ URL https://arxiv.org/abs/2604.03789 .
+ [27] 
+Kiran Kedlaya.
+ The Putnam archive, n.d.
+ URL https://kskedlaya.org/putnam-archive/ .
+ Accessed September 25, 2026.
+ [28] 
+Akbir Khan, John Hughes, Dan Valentine, Laura Ruis, Kshitij Sachan, Ansh
+Radhakrishnan, Edward Grefenstette, Samuel R. Bowman, Tim Rocktäschel,
+and Ethan Perez.
+ Debating with more persuasive LLMs leads to more truthful answers.
+ In International Conference on Machine Learning , 2024.
+ URL https://arxiv.org/abs/2402.06782 .
+ [29] 
+Jacky Kwok, Shulu Li, Pranav Atreya, Yuejiang Liu, Yixing Jiang, Chelsea Finn,
+Marco Pavone, Ion Stoica, and Azalia Mirhoseini.
+ LLM-as-a-Verifier: A general-purpose verification framework.
+ arXiv preprint arXiv:2607.05391 , 2026.
+ doi: 10.48550/arXiv.2607.05391 .
+ URL https://arxiv.org/abs/2607.05391 .
+ [30] 
+Tian Lan, Wenwei Zhang, Chen Xu, Heyan Huang, Dahua Lin, Kai Chen, and
+Xian-Ling Mao.
+ CriticEval: Evaluating large-scale language model as critic.
+ In Advances in Neural Information Processing Systems ,
+volume 37, pages 66907–66960, 2024.
+ doi: 10.52202/079017-2137 .
+ URL
+ https://proceedings.neurips.cc/paper_files/paper/2024/hash/7b7d7985f62284060d65f532ed2ea5fa-Abstract-Conference.html .
+ [31] 
+Yukyung Lee, JoongHoon Kim, Jaehee Kim, Hyowon Cho, Jaewook Kang, Pilsung Kang,
+and Najoung Kim.
+ CheckEval: A reliable LLM-as-a-judge framework for evaluating
+text generation using checklists.
+ In Proceedings of the 2025 Conference on Empirical Methods in
+Natural Language Processing , pages 15771–15798. Association for
+Computational Linguistics, 2025.
+ doi: 10.18653/v1/2025.emnlp-main.796 .
+ URL https://aclanthology.org/2025.emnlp-main.796/ .
+ [32] 
+Shalev Lifshitz, Sheila A. McIlraith, and Yilun Du.
+ Multi-agent verification: Scaling test-time compute with multiple
+verifiers.
+ arXiv preprint arXiv:2502.20379 , 2025.
+ doi: 10.48550/arXiv.2502.20379 .
+ URL https://arxiv.org/abs/2502.20379 .
+ [33] 
+Hunter Lightman, Vineet Kosaraju, Yura Burda, Harri Edwards, Bowen Baker, Teddy
+Lee, Jan Leike, John Schulman, Ilya Sutskever, and Karl Cobbe.
+ Let’s verify step by step.
+ In International Conference on Learning Representations , 2024.
+ URL https://arxiv.org/abs/2305.20050 .
+ [34] 
+Zhan Ling, Yunhao Fang, Xuanlin Li, Zhiao Huang, Mingu Lee, Roland Memisevic,
+and Hao Su.
+ Deductive verification of chain-of-thought reasoning.
+ In Advances in Neural Information Processing Systems , 2023.
+ URL https://arxiv.org/abs/2306.03872 .
+ [35] 
+Shurui Liu.
+ Automorphic commutator relations in relative geometric langlands,
+2026.
+ URL https://arxiv.org/abs/2610.05781 .
+ [36] 
+Shurui Liu and Zeyu Wang.
+ Higher period integrals and derivatives of l-functions, 2026.
+ URL https://arxiv.org/abs/2504.00275 .
+ [37] 
+Yang Liu, Dan Iter, Yichong Xu, Shuohang Wang, Ruochen Xu, and Chenguang Zhu.
+ G-Eval: NLG evaluation using GPT-4 with better human alignment.
+ In Proceedings of the 2023 Conference on Empirical Methods in
+Natural Language Processing , pages 2511–2522, 2023.
+ doi: 10.18653/v1/2023.emnlp-main.153 .
+ URL https://aclanthology.org/2023.emnlp-main.153/ .
+ [38] 
+Chris Lu, Cong Lu, Robert Tjarko Lange, Yutaro Yamada, Shengran Hu, Jakob
+Foerster, David Ha, and Jeff Clune.
+ Towards end-to-end automation of AI research.
+ Nature , 651:914–919, 2026.
+ doi: 10.1038/s41586-026-10265-5 .
+ URL https://www.nature.com/articles/s41586-026-10265-5 .
+ [39] 
+Thang Luong, Dawsen Hwang, Hoang H. Nguyen, Golnaz Ghiasi, Yuri Chervonyi,
+Insuk Seo, Junsu Kim, Garrett Bingham, Jonathan Lee, Swaroop Mishra, Alex
+Zhai, Huiyi Hu, Henryk Michalewski, Jimin Kim, Jeonghyun Ahn, Junhwi Bae,
+Xingyou Song, Trieu Hoang Trinh, Quoc V. Le, and Junehyuk Jung.
+ Towards robust mathematical reasoning.
+ In Proceedings of the 2025 Conference on Empirical Methods in
+Natural Language Processing , pages 35418–35442. Association for
+Computational Linguistics, 2025.
+ doi: 10.18653/v1/2025.emnlp-main.1794 .
+ URL https://aclanthology.org/2025.emnlp-main.1794/ .
+ [40] 
+Wenjie Ma, Andrei Cojocaru, Neel Kolhe, Bradley Louie, Robin Said Sharif,
+Haihan Zhang, Vincent Zhuang, Matei Zaharia, and Sewon Min.
+ Reliable fine-grained evaluation of natural language math proofs.
+ In International Conference on Learning Representations , 2026.
+ URL https://openreview.net/forum?id=ky5iqwZSXI .
+ [41] 
+Aman Madaan, Niket Tandon, Prakhar Gupta, Skyler Hallinan, Luyu Gao, Sarah
+Wiegreffe, Uri Alon, Nouha Dziri, Shrimai Prabhumoye, Yiming Yang, Shashank
+Gupta, Bodhisattwa Prasad Majumder, Katherine Hermann, Sean Welleck, Amir
+Yazdanbakhsh, and Peter Clark.
+ Self-Refine: Iterative refinement with self-feedback.
+ In Advances in Neural Information Processing Systems ,
+volume 36, pages 46534–46594, 2023.
+ doi: 10.52202/075280-2019 .
+ URL
+ https://proceedings.neurips.cc/paper_files/paper/2023/hash/91edff07232fb1b55a505a9e9f6c0ff3-Abstract-Conference.html .
+ [42] 
+Sadegh Mahdavi, Branislav Kisacanin, Shubham Toshniwal, Wei Du, Ivan Moshkov,
+George Armstrong, Renjie Liao, Christos Thrampoulidis, and Igor Gitman.
+ Scaling generative verifiers for natural language mathematical proof
+verification and selection.
+ In NeurIPS 2025 Workshop on Mathematical Reasoning and AI ,
+2025.
+ doi: 10.48550/arXiv.2511.13027 .
+ URL https://arxiv.org/abs/2511.13027 .
+ [43] 
+Samuele Marro, Jialin Yu, Emanuele La Malfa, Oishi Deb, Jiawei Li, Yibo Yang,
+Ebey Abraham, Sunando Sengupta, Eric Sommerlade, Michael Wooldridge, and
+Philip Torr.
+ Benchmarking at the Edge of Comprehension, 2026.
+ URL https://arxiv.org/abs/2602.14307 .
+ [44] 
+Nat McAleese, Rai Michael Pokorny, Juan Felipe Ceron Uribe, Evgenia
+Nitishinskaya, Maja Trebacz, and Jan Leike.
+ LLM Critics Help Catch LLM Bugs, 2024.
+ URL https://arxiv.org/abs/2407.00215 .
+ [45] 
+Aaditya Naik, Guruprerana Shabadi, Rajeev Alur, and Mayur Naik.
+ Do We Need Frontier Models to Verify Mathematical Proofs?, 2026.
+ URL https://arxiv.org/abs/2604.02450 .
+ [46] 
+Jerzy Neyman and Egon S. Pearson.
+ On the problem of the most efficient tests of statistical hypotheses.
+ Philosophical Transactions of the Royal Society of London.
+Series A , 231:289–337, 1933.
+ [47] 
+Fan Nie, Xiaotian Hou, Shuhang Lin, James Zou, Huaxiu Yao, and Linjun Zhang.
+ Facttest: Factuality testing in large language models with
+finite-sample and distribution-free guarantees.
+ In Aarti Singh, Maryam Fazel, Daniel Hsu, Simon Lacoste-Julien, Felix
+Berkenkamp, Tegan Maharaj, Kiri Wagstaff, and Jerry Zhu, editors,
+ Proceedings of the 42nd International Conference on Machine Learning ,
+volume 267 of Proceedings of Machine Learning Research , pages
+46320–46345. PMLR, 13–19 Jul 2025.
+ URL https://proceedings.mlr.press/v267/nie25a.html .
+ [48] 
+Alexander Novikov, Ngân Vũ, Marvin Eisenberger, Emilien Dupont,
+Po-Sen Huang, Adam Zsolt Wagner, Sergey Shirobokov, Borislav Kozlovskii,
+Francisco J. R. Ruiz, Abbas Mehrabian, M. Pawan Kumar, Abigail See, Swarat
+Chaudhuri, George Holland, Alex Davies, Sebastian Nowozin, Pushmeet Kohli,
+and Matej Balog.
+ AlphaEvolve: A coding agent for scientific and algorithmic
+discovery.
+ arXiv preprint arXiv:2506.13131 , 2025.
+ doi: 10.48550/arXiv.2506.13131 .
+ URL https://arxiv.org/abs/2506.13131 .
+ [49] 
+OpenAI.
+ OpenAI GPT-5 system card.
+ Technical report, OpenAI, 2025.
+ URL https://cdn.openai.com/gpt-5-system-card.pdf .
+ [50] 
+Shrey Pandit, Austin Xu, Xuan-Phi Nguyen, Yifei Ming, Caiming Xiong, and Shafiq
+Joty.
+ Hard2Verify: A step-level verification benchmark for open-ended
+frontier math.
+ In Proceedings of the 64th Annual Meeting of the Association
+for Computational Linguistics (Volume 1: Long Papers) , pages 22502–22517.
+Association for Computational Linguistics, 2026.
+ doi: 10.18653/v1/2026.acl-long.1031 .
+ URL https://aclanthology.org/2026.acl-long.1031/ .
+ [51] 
+Bernardino Romera-Paredes, Mohammadamin Barekatain, Alexander Novikov, Matej
+Balog, M. Pawan Kumar, Emilien Dupont, Francisco J. R. Ruiz, Jordan S.
+Ellenberg, Pengming Wang, Omar Fawzi, Pushmeet Kohli, and Alhussein Fawzi.
+ Mathematical discoveries from program search with large language
+models.
+ Nature , 625:468–475, 2024.
+ doi: 10.1038/s41586-023-06924-6 .
+ URL https://www.nature.com/articles/s41586-023-06924-6 .
+ [52] 
+William Saunders, Catherine Yeh, Jeff Wu, Steven Bills, Long Ouyang, Jonathan
+Ward, and Jan Leike.
+ Self-critiquing models for assisting human evaluators, 2022.
+ URL https://arxiv.org/abs/2206.05802 .
+ [53] 
+Clayton Scott and Robert Nowak.
+ A Neyman-Pearson approach to statistical learning.
+ IEEE Transactions on Information Theory , 51(11):3806–3819, 2005.
+ doi: 10.1109/TIT.2005.856955 .
+ [54] 
+Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei
+Zhang, Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo.
+ DeepSeekMath: Pushing the limits of mathematical reasoning in open
+language models.
+ arXiv preprint arXiv:2402.03300 , 2024.
+ doi: 10.48550/arXiv.2402.03300 .
+ URL https://arxiv.org/abs/2402.03300 .
+ [55] 
+Zhihong Shao, Yuxiang Luo, Chengda Lu, Z. Z. Ren, Jiewen Hu, Tian Ye, Zhibin
+Gou, Shirong Ma, and Xiaokang Zhang.
+ DeepSeekMath-V2: Towards Self-Verifiable Mathematical Reasoning,
+2025.
+ URL https://arxiv.org/abs/2511.22570 .
+ [56] 
+Guijin Son, Jiwoo Hong, Honglu Fan, Heejeong Nam, Hyunwoo Ko, Seungwon Lim,
+Jinyeop Song, Jinha Choi, Gonçalo Paulo, Youngjae Yu, et al.
+ When AI co-scientists fail: SPOT—a benchmark for automated
+verification of scientific research.
+ arXiv preprint arXiv:2505.11855 , 2025.
+ URL https://arxiv.org/abs/2505.11855 .
+ [57] 
+Kyle Swanson, Wesley Wu, Nash L. Bulaong, John E. Pak, and James Zou.
+ The virtual lab of AI agents designs new SARS-CoV-2 nanobodies.
+ Nature , 646:716–723, 2025.
+ doi: 10.1038/s41586-025-09442-9 .
+ URL https://www.nature.com/articles/s41586-025-09442-9 .
+ [58] 
+Sijun Tan, Siyuan Zhuang, Kyle Montgomery, William Y. Tang, Alejandro Cuadron,
+Chenguang Wang, Raluca Ada Popa, and Ion Stoica.
+ JudgeBench: A benchmark for evaluating LLM-based judges.
+ In International Conference on Learning Representations , 2025.
+ URL https://openreview.net/forum?id=G0dksFayVq .
+ [59] 
+Terence Tao.
+ A pilot project in universal algebra to explore new ways to
+collaborate and use machine assistance?
+ What’s New, blog post, September 2024.
+ URL
+ https://terrytao.wordpress.com/2024/09/25/a-pilot-project-in-universal-algebra-to-explore-new-ways-to-collaborate-and-use-machine-assistance/ .
+ Accessed January 21, 2026.
+ [60] 
+Xin Tong, Yang Feng, and Jingyi Jessica Li.
+ Neyman–pearson classification algorithms and NP receiver operating
+characteristics.
+ Science Advances , 4(2):eaao1659, 2018.
+ doi: 10.1126/sciadv.aao1659 .
+ URL https://www.science.org/doi/10.1126/sciadv.aao1659 .
+ [61] 
+Gladys Tyen, Hassan Mansoor, Victor Cărbune, Peter Chen, and Tony Mak.
+ LLMs cannot find reasoning errors, but can correct them given the
+error location.
+ In Findings of the Association for Computational Linguistics:
+ACL 2024 , pages 13894–13908, 2024.
+ URL https://aclanthology.org/2024.findings-acl.826/ .
+ [62] 
+Hanchen Wang, Tianfan Fu, Yuanqi Du, Wenhao Gao, Kexin Huang, Ziming Liu, Payal
+Chandak, Shengchao Liu, Peter Van Katwyk, Andreea Deac, Anima Anandkumar,
+Karianne Bergen, Carla P. Gomes, Shirley Ho, Pushmeet Kohli, Joan Lasenby,
+Jure Leskovec, Tie-Yan Liu, Arjun Manrai, Debora Marks, Bharath Ramsundar,
+Le Song, Jimeng Sun, Jian Tang, Petar Veličković, Max Welling,
+Linfeng Zhang, Connor W. Coley, Yoshua Bengio, and Marinka Zitnik.
+ Scientific discovery in the age of artificial intelligence.
+ Nature , 620(7972):47–60, August 2023.
+ ISSN 1476-4687.
+ doi: 10.1038/s41586-023-06221-2 .
+ URL http://dx.doi.org/10.1038/s41586-023-06221-2 .
+ [63] 
+Miriam Wanner, Seth Ebner, Zhengping Jiang, Mark Dredze, and Benjamin
+Van Durme.
+ A closer look at claim decomposition.
+ In Proceedings of the 13th Joint Conference on Lexical and
+Computational Semantics (*SEM 2024) , pages 153–175, 2024.
+ URL https://aclanthology.org/2024.starsem-1.13/ .
+ [64] 
+Chenxi Whitehouse, Tianlu Wang, Ping Yu, Xian Li, Jason Weston, Ilia Kulikov,
+and Swarnadeep Saha.
+ J1: Incentivizing thinking in LLM-as-a-judge via reinforcement
+learning.
+ In International Conference on Learning Representations , 2026.
+ URL https://arxiv.org/abs/2505.10320 .
+ [65] 
+Edward Witten.
+ Geometric langlands from six dimensions, 2009.
+ URL https://arxiv.org/abs/0905.2720 .
+ [66] 
+David P. Woodruff, Vincent Cohen-Addad, Lalit Jain, et al.
+ Accelerating scientific research with Gemini: Case studies and
+common techniques.
+ arXiv preprint arXiv:2602.03837 , 2026.
+ doi: 10.48550/arXiv.2602.03837 .
+ URL https://arxiv.org/abs/2602.03837 .
+ [67] 
+Zhihui Xie, Jie Chen, Liyu Chen, Weichao Mao, Jingjing Xu, and Lingpeng Kong.
+ Teaching language models to critique via reinforcement learning.
+ In International Conference on Machine Learning , 2025.
+ URL https://arxiv.org/abs/2502.03492 .
+ [68] 
+Haotian Ye, Haowei Lin, Jingyi Tang, Yizhen Luo, Rahul Thapa, Caiyin Yang,
+Chang Su, Rui Yang, Ruihua Liu, Rundao Li, Zeyu Li, Pengwei Sun, Chong Gao,
+Dachao Ding, Guangrong He, Miaolei Zhang, Lina Sun, Wenyang Wang, Yuchen
+Zhong, Zhuohao Shen, Puheng Li, Pan Lu, Bianxiao Cui, Di He, Jianzhu Ma,
+Junfeng Li, Hexi Baoyin, Yejin Choi, Stefano Ermon, Xiaowen Chu, Tongyang Li,
+Yuzhi Xu, and James Zou.
+ Structured scaling of AI discovery across diverse scientific
+domains.
+ arXiv preprint arXiv:2604.19341 , 2026.
+ doi: 10.48550/arXiv.2604.19341 .
+ URL https://arxiv.org/abs/2604.19341 .
+ [69] 
+Mert Yuksekgonul, Daniel Koceja, Xinhao Li, Federico Bianchi, Jed McCaleb,
+Xiaolong Wang, Jan Kautz, Yejin Choi, James Zou, Carlos Guestrin, and Yu Sun.
+ Learning to discover at test time.
+ arXiv preprint arXiv:2601.16175 , 2026.
+ doi: 10.48550/arXiv.2601.16175 .
+ URL https://arxiv.org/abs/2601.16175 .
+ [70] 
+Lunjun Zhang, Arian Hosseini, Hritik Bansal, Seyed Mehran Kazemi, Aviral Kumar,
+and Rishabh Agarwal.
+ Generative verifiers: Reward modeling as next-token prediction.
+ In International Conference on Learning Representations , 2025.
+ URL
+ https://proceedings.iclr.cc/paper_files/paper/2025/hash/214308a2d5e3f83ef9ad2739e1cbc46d-Abstract-Conference.html .
+ [71] 
+Lianmin Zheng, Wei-Lin Chiang, Ying Sheng, Siyuan Zhuang, Zhanghao Wu, Yonghao
+Zhuang, Zi Lin, Zhuohan Li, Dacheng Li, Eric P. Xing, Hao Zhang, Joseph E.
+Gonzalez, and Ion Stoica.
+ Judging LLM-as-a-judge with MT-Bench and Chatbot Arena.
+ In Advances in Neural Information Processing Systems ,
+volume 36, pages 46595–46623, 2023.
+ doi: 10.52202/075280-2020 .
+ URL
+ https://proceedings.neurips.cc/paper_files/paper/2023/hash/91f18a1287b398d378ef22505bf41832-Abstract-Datasets_and_Benchmarks.html .
+ [72] 
+Ping Nie Zhuoni Chi, Shurui Liu.
+ On the Manin–Stevens constant, 2026.
+ URL https://srliu.com/math_papers/manin_constant.pdf .
+ Appendix 
+ Contents 
+ Appendix A Additional Related Work 
+ This section extends Section  5 with broader context on AI-driven discovery, LLM judges, and learning verifiers. 
+ AI for scientific discovery and expert review. 
+ AI systems increasingly support scientific research, from hypothesis generation and experimentation  [ 62 , 6 ] to research agents such as The AI Scientist, Virtual Lab, and AI Co-Scientist  [ 38 , 57 , 18 ] .
+Automated evaluators drive large-scale search in FunSearch, AlphaEvolve, TTT-Discover, and SimpleTES  [ 51 , 48 , 69 , 68 ] ; in natural-language mathematics, Aletheia interleaves generation, verification, and revision  [ 16 ] , and recent reports document model-assisted progress on research problems  [ 15 , 66 ] .
+Critique-assisted evaluation, such as self-critiquing models, CriticGPT, and Critique-Resilient Benchmarking, helps humans find flaws while keeping them as final arbiters  [ 52 , 44 , 43 ] .
+We study the verifier’s side of this division of labor: filtering candidates for limited expert review without discarding rare valid solutions. 
+ LLM judges, self-correction, and aggregation. 
+ Gu et al. [20] survey LLM-as-a-Judge methods and strategies for improving their reliability, consistency, and robustness to bias.
+ LLM-as-a-Judge and G-Eval use language models to evaluate generated outputs  [ 71 , 37 ] , and JudgeBench and CriticEval examine the reliability of such judgments and critiques  [ 58 , 30 ] .
+Self-correction without external feedback can fail to improve reasoning  [ 24 ] , and LLMs often fail to locate reasoning errors that they can correct once the location is given  [ 61 ] .
+Self-Refine and CRITIC revise outputs using critiques, with CRITIC incorporating tool feedback  [ 41 , 19 ] .
+Multiagent Debate refines answers through exchanges among model instances  [ 13 , 28 ] , Multi-Agent Verification aggregates binary judgments from multiple aspect verifiers  [ 32 ] , and prompt ensembles improve proof verification with smaller models  [ 45 ] . 
+ Learning verifiers. 
+ Outcome and process verifiers learn from solution-level and step-level supervision, respectively  [ 10 , 33 ] , and Generative Verifiers formulate reward modeling as next-token prediction  [ 70 ] .
+Math-Minos incorporates natural-language feedback into verifier training  [ 17 ] , reinforcement learning has been used to train LLM judges and critics  [ 64 , 67 ] , and Mahdavi et al. [42] study how inference compute and reinforcement learning affect proof verification.
+These approaches supervise judgments of whole solutions, steps, or critiques; we instead train a validator on individual proposed errors, predicting whether each one warrants rejection. 
+ Appendix B Additional Results and Analyses 
+ B.1 Additional training-free comparisons 
+ Table  2 extends the training-free rows of Table  1 with two fixed voting rules.
+Pessimistic voting  [ 25 ] rejects when any of the 16 sampled judgments rejects the solution.
+Optimistic voting rejects only when all 16 judgments reject it.
+We recompute both rules over 2,000 draws from the recorded pools.
+Within each draw, a rule that violates the FNR constraint is replaced by the always-pass rule before averaging TNR. 
+ Table 2: Additional training-free comparisons. Empirical TNR (%) under empirical FNR constraints of 0%, 5%, and 10%, reported as mean and standard deviation over 2,000 resampling trials.
+ LLM-as-a-Judge , Voting , and OSVerify entries are reproduced from Table  1 .
+Pessimistic and optimistic voting use 16 judgments drawn without replacement from each recorded 64-judgment pool; an infeasible rule is replaced by the always-pass rule within each trial. 
+ Putnam100 
+ H2V 
+ FirstProof-Eval 
+ Method 
+ 0% 
+ 5% 
+ 10% 
+ 0% 
+ 5% 
+ 10% 
+ 0% 
+ 5% 
+ 10% 
+ gpt-oss-120b 
+ LLM-as-a-Judge 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$54.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.0$}}$ 
+ $\makebox[20.00003pt][r]{$54.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$43.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.9$}}$ 
+ Pessimistic voting 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$1.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 11.8$}}$ 
+ $\makebox[20.00003pt][r]{$45.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 38.8$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ Optimistic voting 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$19.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.6$}}$ 
+ $\makebox[20.00003pt][r]{$19.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.6$}}$ 
+ $\makebox[20.00003pt][r]{$33.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.4$}}$ 
+ $\makebox[20.00003pt][r]{$33.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.4$}}$ 
+ $\makebox[20.00003pt][r]{$33.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.4$}}$ 
+ $\makebox[20.00003pt][r]{$26.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 9.1$}}$ 
+ $\makebox[20.00003pt][r]{$29.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.9$}}$ 
+ $\makebox[20.00003pt][r]{$29.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.7$}}$ 
+ Voting 
+ $\makebox[20.00003pt][r]{$0.0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.0$}}$ 
+ $\makebox[20.00003pt][r]{$38.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.9$}}$ 
+ $\makebox[20.00003pt][r]{$45.5$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.8$}}$ 
+ $\makebox[20.00003pt][r]{$60.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 4.2$}}$ 
+ $\makebox[20.00003pt][r]{$69.2$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.6$}}$ 
+ $\makebox[20.00003pt][r]{$75.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.7$}}$ 
+ $\makebox[20.00003pt][r]{$29.5$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 10.2$}}$ 
+ $\makebox[20.00003pt][r]{$35.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.5$}}$ 
+ $\makebox[20.00003pt][r]{$48.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.2$}}$ 
+ OSVerify 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$70.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 14.3$}}$ 
+ $\makebox[20.00003pt][r]{$77.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.3$}}$ 
+ $\makebox[20.00003pt][r]{$83.2$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.6$}}$ 
+ $\makebox[20.00003pt][r]{$84.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.6$}}$ 
+ $\makebox[20.00003pt][r]{$84.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.5$}}$ 
+ $\makebox[20.00003pt][r]{$50.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 15.1$}}$ 
+ $\makebox[20.00003pt][r]{$58.0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.1$}}$ 
+ $\makebox[20.00003pt][r]{$60.8$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.3$}}$ 
+ gpt-5-mini 
+ LLM-as-a-Judge 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$63.1$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.9$}}$ 
+ $\makebox[20.00003pt][r]{$66.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.8$}}$ 
+ $\makebox[20.00003pt][r]{$66.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.8$}}$ 
+ $\makebox[20.00003pt][r]{$66.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.8$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$42.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.4$}}$ 
+ Pessimistic voting 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ $\makebox[20.00003pt][r]{$0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0$}}$ 
+ Optimistic voting 
+ $\makebox[20.00003pt][r]{$25.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 15.2$}}$ 
+ $\makebox[20.00003pt][r]{$34.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.4$}}$ 
+ $\makebox[20.00003pt][r]{$34.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.4$}}$ 
+ $\makebox[20.00003pt][r]{$50.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$50.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$50.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$18.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 16.0$}}$ 
+ $\makebox[20.00003pt][r]{$32.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.5$}}$ 
+ $\makebox[20.00003pt][r]{$32.3$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.5$}}$ 
+ Voting 
+ $\makebox[20.00003pt][r]{$28.5$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 17.3$}}$ 
+ $\makebox[20.00003pt][r]{$58.1$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 4.4$}}$ 
+ $\makebox[20.00003pt][r]{$75.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 3.7$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.2$}}$ 
+ $\makebox[20.00003pt][r]{$19.1$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 16.4$}}$ 
+ $\makebox[20.00003pt][r]{$42.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.8$}}$ 
+ $\makebox[20.00003pt][r]{$49.2$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 2.3$}}$ 
+ OSVerify 
+ $\makebox[20.00003pt][r]{$72.1$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 21.9$}}$ 
+ $\makebox[20.00003pt][r]{$82.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.6$}}$ 
+ $\makebox[20.00003pt][r]{$86.6$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.3$}}$ 
+ $\makebox[20.00003pt][r]{$85.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.3$}}$ 
+ $\makebox[20.00003pt][r]{$85.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.3$}}$ 
+ $\makebox[20.00003pt][r]{$85.7$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 0.3$}}$ 
+ $\makebox[20.00003pt][r]{$33.9$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 25.5$}}$ 
+ $\makebox[20.00003pt][r]{$60.0$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 9.1$}}$ 
+ $\makebox[20.00003pt][r]{$65.4$}_{\makebox[18.33618pt][l]{$\scriptscriptstyle\pm 1.4$}}$ 
+ B.2 Cost analysis 
+ We compare Voting , OSVerify , and OSVerify with a trained validator under approximate token budgets.
+Cost is the mean number of input and output tokens per solution, including reasoning tokens, summed over all stages: judgments for Voting ; decomposition, error proposal, and validation for OSVerify .
+We estimate token counts from recorded usage and saved text; decomposition cost grows with the selected depth, and validation cost with the number of votes.
+This comparison uses tokens as a proxy for inference compute. 
+ Voting scales the number of judgments per solution from 1 to 64.
+For both OSVerify configurations, we jointly vary the number of validation votes from 1 to 16 and the decomposition depth from 0 to 4.
+Each point selects the highest TNR within the token budget under the indicated empirical FNR constraint. 
+ Figure  5 shows that OSVerify attains higher TNR than Voting over the displayed budget range.
+The trained-validator configuration further improves the attainable frontier on Putnam100 and FirstProof-Eval.
+At approximately 128k tokens per solution and a 5% FNR constraint on Putnam100, Voting , OSVerify , and the trained-validator configuration attain TNRs of 41.4%, 86.2%, and 94.8%, respectively. 
+ Figure 5: Approximate inference cost comparison. 
+ OSVerify never falls below Voting at any displayed budget; arrows mark its gain at 128k tokens per solution.
+Each point reports the best empirical TNR attainable within an input-plus-output token budget.
+ Voting varies from 1 to 64 judgments; OSVerify jointly varies the proposal budget and 1–16 validation votes per proposed error.
+The displayed range starts at 30k tokens per solution, and curves omit leading zero-TNR operating points that accept every solution.
+Lines connect evaluated budget points; vertical axes vary across panels. 
+ Component-wise inference cost. 
+ Table  3 reports the decomposition, proposal, and validation costs for 200 H2V solutions with oss , decomposition depth two, and 16 validator judgments per proposed error.
+Decomposition and proposer costs use recorded provider usage.
+Validator input tokens are reconstructed with the model tokenizer, and output tokens are estimated from the mean length of 50 previously sampled completions.
+The estimate counts the prompt for each proposed error once and sums the output tokens of 16 completions under batched-equivalent accounting. 
+ Table 3: Component-wise H2V inference cost with oss , projected to 16 validator judgments per proposed error.
+Decomposition and proposer usage are provider-reported; validator inputs are reconstructed with the model tokenizer.
+Outputs marked $\dagger$ are estimated from previously sampled completion lengths.
+Requests include every internal decomposition request and one batched-equivalent validation request per proposed error.
+ $K=10^{3}$ and $M=10^{6}$ . 
+ Component 
+ Requests 
+ Input tokens 
+ Output tokens 
+ Total tokens 
+ Tokens/solution 
+ OSVerify : decomposition 
+ 4.51K 
+ 7.08M 
+ 3.26M 
+ 10.34M 
+ 51.7K 
+ OSVerify : proposer 
+ 1.19K 
+ 6.47M 
+ 2.28M 
+ 8.75M 
+ 43.7K 
+ OSVerify : validator ( $n=16$ ) 
+ 672 
+ 3.11M 
+ $15.22\mathrm{M}^{\dagger}$ 
+ $18.33\mathrm{M}^{\dagger}$ 
+ 91.6K 
+ The validation estimate uses the original proposed errors and prompts, with completion lengths extrapolated to 16 judgments per proposed error.
+All 50 sampled validator completions terminated without reaching the output-token limit. 
+ B.3 Saturation of the Voting baseline 
+ Figure  6 scales the whole-solution Voting baseline from 1 to 64 judgments for two backbones on Putnam100 and FirstProof-Eval.
+We use the first $n$ recorded judgments for each solution, without subset resampling.
+At each $n$ , we select the rejection threshold with the highest TNR under the specified empirical FNR constraint on the evaluated cohort. 
+ Voting exhibits diminishing returns, with most curves approaching a plateau within the first few dozen judgments.
+For oss under the 5% FNR cap, increasing the vote count from 16 to 64 changes TNR from 41.4% to 39.7% on Putnam100 and leaves it at 35.6% on FirstProof-Eval.
+Thus increasing Voting to 64 judgments does not recover the main-table gains from OSVerify on these configurations.
+These are empirical observations within the evaluated budget range. 
+ Figure 6: Scaling the whole-solution Voting baseline to 64 judgments. 
+Each curve reports the best empirical TNR at the FNR constraint of 0%, 5%, or 10%, using the first $n$ judgments per solution. No subset resampling or smoothing is applied. 
+ B.4 Held-out threshold selection on Putnam 
+ The main results select thresholds on the evaluation set; this section illustrates deployment, where the threshold is instead selected on held-out valid solutions.
+We use 100 Putnam valid solutions from the training pool as a calibration dataset. They share no problems with the Putnam100 solutions.
+We collect 16 whole-solution judgments for Voting and 16 validation judgments per proposed error for OSVerify , using oss .
+The score is the number of rejecting votes for Voting and the maximum substantial-vote count over proposed errors for OSVerify . 
+ We select thresholds using the order-statistic procedure of FactTest  [ 47 ] , with valid solutions as the null class and $\delta=0.10$ .
+For a target valid-solution rejection rate $\tau$ , we choose the smallest $k$ satisfying 
+ $\sum_{j=k}^{100}\binom{100}{j}(1-\tau)^{j}\tau^{100-j}\leq\delta.$ 
+ We set the threshold to the $k$ th smallest calibration score and reject only scores strictly above it.
+This gives $k=99$ for $\tau=0.05$ and $k=95$ for $\tau=0.10$ .
+Table  4 applies the resulting thresholds to the recorded test votes. 
+ Table 4: Diagnostic comparison using calibration-selected thresholds on Putnam. 
+All scores use 16 votes. 
+ Target FNR 
+ Method 
+ Reject if score 
+ Test FNR 
+ Test TNR 
+ 5% 
+ Voting 
+ $>16$ 
+ 0.0% (0/50) 
+ 0.0% (0/58) 
+ OSVerify 
+ $\geq 16$ 
+ 4.0% (2/50) 
+ 77.6% (45/58) 
+ 10% 
+ Voting 
+ $\geq 15$ 
+ 2.0% (1/50) 
+ 29.3% (17/58) 
+ OSVerify 
+ $\geq 15$ 
+ 6.0% (3/50) 
+ 81.0% (47/58) 
+ B.5 Training data audit ablation 
+ We examine the effect of auditing proposed errors from invalid solutions when constructing validator training data.
+The full setup uses the reference-assisted screening described in Appendix  C.2 ; the ablated setup omits this audit.
+Figure  7 compares the resulting oss validators under a 5% empirical FNR constraint.
+With auditing, TNR is $89.6\pm 1.7\%$ on Putnam100, $83.2\pm 0.7\%$ on H2V, and $62.3\pm 0.8\%$ on FirstProof-Eval.
+Without auditing, the corresponding results are $84.8\pm 2.6\%$ , $82.6\pm 0.7\%$ , and $60.0\pm 1.5\%$ .
+Auditing improves mean TNR by 4.8, 0.6, and 2.3 percentage points, respectively.
+These results support checking individual proposed errors rather than relying solely on the invalidity of the source solution. 
+ Figure 7: Auditing proposed errors for validator training. 
+We compare the full training setup with a variant that omits auditing proposed errors from invalid solutions.
+Bars show mean TNR under a 5% empirical FNR constraint; error bars show standard deviations.
+The vertical axis starts at 40%. 
+ Appendix C Datasets and Annotation 
+ C.1 Evaluation datasets 
+ Table  5 summarizes the evaluation datasets. Valid
+solutions are the positive class for the solution-level FNR and TNR
+definitions. 
+ Table 5: Evaluation datasets. 
+ Benchmark 
+ Invalid 
+ Valid 
+ Total 
+ Putnam100 
+ 58 
+ 50 
+ 108 
+ H2V 
+ 163 
+ 37 
+ 200 
+ FirstProof-Eval 
+ 59 
+ 35 
+ 94 
+ Putnam100. 
+ The valid set contains 50 official solutions to 46 Putnam problems, collected from the Putnam archive. 1 1 
+ 1 
+ https://kskedlaya.org/putnam-archive/ 
+To construct the invalid set, we generate solutions using Claude Sonnet 4.5, GPT-5.4-mini, and Qwen3-235B-A22B-Instruct.
+We grade these solutions against the official references using GPT-5.5 with xhigh reasoning effort and retain those classified as invalid.
+Human experts then independently verify that the retained solutions are indeed invalid. 
+ H2V. 
+ We use the full test split of Hard2Verify  [ 50 ] , which contains 200 solutions to 79 problems, generated by GPT-5, Claude Sonnet 4, and Gemini 2.5 Pro, with 1,860 step-level labels from expert annotators. A solution is valid if and only if all of its steps are labeled correct.
+A solution is valid if and only if all of its steps are labeled correct, which yields 42 valid and 158 invalid solutions.
+We subsequently re-examine all valid and invalid solutions. We relabel five solutions from valid to invalid because they contain a false step or omits a necessary component of the argument.
+The relabeling is independently confirmed by a human expert.
+Among them, four contain a false step: a circular equivalence between an event and itself (solution 140), an appeal to a nonexistent theorem whose claimed probability of $1/2$ contradicts the official value of about $1/3$ (141), an upper bound silently used as an equality (199), and a false
+structural lemma (62; see the example below). The fifth (179) omits the upper-bound direction of the proof, which the official solution establishes over a full page. 
+ FirstProof-Eval. 
+ FirstProof-Eval contains solutions to the 20 problems of First Proof  [ 1 ] , released in two batches of ten. The 94 solutions comprise 17 written by humans, 39 generated by GPT and Gemini models, and 38 released publicly by OpenAI, UCLA, Princeton, and IMProofBench, each with a human-assigned validity label. 
+ Audit example: H2V solution 62 
+ Problem. A rectangle $R$ is divided into finitely many
+axis-parallel rectangles, no three of which share a corner. An ant moves
+from a corner of a chosen rectangle to an adjacent corner of the same
+rectangle. Prove that if the ant travels from the bottom-left to the
+top-right corner of $R$ , some rectangle is chosen at least twice. 
+ Original label. Valid. 
+ Claim in the solution (Step 0). Every interior cut runs across
+all of $R$ , so the dissection consists of parallel strips. The argument
+considers an interior endpoint $P$ of a vertical cut and asserts that
+“the rectangle(s) adjacent above or below then also have a corner at
+ $P$ ,” which would give three rectangles with a common corner. 
+ Counterexample. Let $R=[0,2]^{2}$ , $A=[0,2]\times[1,2]$ ,
+ $B=[0,1]\times[0,1]$ , and $C=[1,2]\times[0,1]$ . The vertical cut
+ $x=1$ ends at $P=(1,1)$ , which is a corner of $B$ and $C$ only;
+ $P$ lies in the interior of the bottom side of $A$ . No point is a
+corner of three rectangles, yet the dissection is not a strip
+decomposition. 
+ Consequence. Steps 2–3 count moves under the strip structure, so the proof does not establish the result, and the step is not locally repairable. We relabel the solution as invalid. 
+ C.2 Training data and supervision 
+ We construct training examples from the training split of the Putnam corpus, IMO-GradingBench  [ 39 ] , ProofBench  [ 40 ] , and the Open Proof Corpus  [ 12 ] .
+Each example consists of a problem, a submitted solution, a proposed error, and a binary target indicating whether the error warrants rejection.
+For valid source solutions, proposed errors receive negative targets.
+For invalid source solutions, trusted reference answers and available grading guidelines support error proposal and screening before a positive target is assigned; only proposed errors judged substantial by at least 3 of the 5 validation votes receive positive targets.
+The online validator receives the reference-free problem, solution, and proposed error.
+We exclude easy examples, on which all five sampled verdicts of the base validator match the target, and examples whose prompts leave fewer than 8,192 output tokens in the 32,768-token context window.
+Table  6 gives the resulting composition. 
+ Table 6: Composition of the online GRPO training pool. Negative examples are proposed errors on valid solutions; positive examples are substantial proposed errors on invalid solutions. 
+ Source 
+ Negative 
+ Positive 
+ Total 
+ Putnam (training split) 
+ 774 
+ 270 
+ 1,044 
+ IMO-GradingBench 
+ 71 
+ 165 
+ 236 
+ ProofBench 
+ 45 
+ 223 
+ 268 
+ Open Proof Corpus 
+ 13 
+ 126 
+ 139 
+ Total 
+ 903 
+ 784 
+ 1,687 
+ Appendix D Experimental Details 
+ D.1 Evaluation protocol and metrics 
+ For Voting and OSVerify , we independently sample judgments without replacement from each recorded pool.
+Within each trial, we reselect the rejection threshold that maximizes empirical TNR under the specified FNR constraint, including the always-pass rule. 
+ The reported means and standard deviations summarize variation across the 2,000 resampling trials with the evaluation solutions held fixed. 
+ D.2 Models and inference configurations 
+ Table  7 lists the backbones and their inference settings.
+The main comparison uses the sampling protocol above.
+Unless otherwise specified, we use the same backbone for the error proposer and error validator in OSVerify .
+All validation calls include the problem, the full submitted solution, the focused excerpt, and the proposed error.
+Dataset-specific policies are fixed within each experiment. 
+ Table 7: Backbones and inference settings. 5mini only supports
+its default temperature of 1. The trained validator is oss with the LoRA adapter described in Appendix  D.5 ; it
+validates the proposed errors of the training-free oss proposer. 
+ Model 
+ Provider 
+ Reasoning effort 
+ Temperature 
+ oss 
+ Together AI 
+ Medium 
+ 0.7 
+ 5mini 
+ OpenAI 
+ Medium 
+ 1.0 
+ oss + LoRA (trained validator) 
+ Tinker 
+ Medium 
+ 0.7 
+ D.3 Setup of whole-solution judging and proposed-error checking 
+ Figure   2 compares oss judgments of whole solutions with its validation of proposed errors on FirstProof-Eval.
+Both use 15 votes per decision. For whole-solution judging, the score is the fraction of Reject verdicts among the first 15 whole-solution judgments. At each threshold, TNR is the fraction of the 59 invalid solutions rejected, and FNR is the fraction of the 35 valid solutions rejected. 
+ For proposed-error checking, the score is the fraction of 15 validator votes that label the proposed error Substantial .
+TNR is the fraction of the errors on that are confirmed as Substantial by an independent audit (gpt-6-astra xhigh), and FNR is the fraction of the errors on that are confirmed as Minor or Not-real by the audit. 
+ D.4 Hierarchical proposal and aggregation 
+ We use maximum decomposition depth two for the main comparison, with the root at depth zero and one proposal call per retained node.
+The solution-level score is the largest number of Substantial votes received by any of its proposed errors; solutions without proposed errors receive score zero.
+The decision rejects if this score reaches the selected positive threshold. 
+ Algorithm 1 Hierarchical error proposal 
+ Input  Problem $x$ , solution $y$ , maximum depth $D$ . 
+ Function $\operatorname{Decompose}(u_{k},d)$ : 
+ 1. 
+ If $d=D$ or the model judges $u_{k}$ atomic, return $\{u_{k}\}$ . 
+ 2. 
+ Split $u_{k}$ into $(u_{2k},u_{2k+1})$ ; return $\{u_{k}\}\cup\operatorname{Decompose}(u_{2k},d+1)\cup\operatorname{Decompose}(u_{2k+1},d+1)$ . 
+ Main : 
+ 3. 
+ Set $u_{1}=y$ , $U\leftarrow\operatorname{Decompose}(u_{1},0)$ and $\mathcal{G}(x,y)\leftarrow\bigcup_{u\in U}\mathcal{G}(x,y,u)$ . 
+ 4. 
+ Merge identical proposed errors and return $\mathcal{G}(x,y)$ . 
+ D.5 Online GRPO training 
+ We fine-tune the oss validator with LoRA using online GRPO  [ 54 ] , starting from the base model.
+Training inputs and targets are constructed as described in Appendix  C.2 .
+At each optimization step, we sample 32 training examples and the current policy generates eight fresh rollouts for each.
+Each rollout uses the validator prompt with the dataset policy of its source domain.
+Examples are sampled with weights that balance valid-side and invalid-side examples within each domain, and the oversampling of any single example is capped at three times that of the least-sampled example in its domain.
+Each rollout receives reward one if its final verdict matches the binary target and zero otherwise.
+For positive targets, the required verdict is Substantial ; for negative targets, either Not-Real or Minor is accepted.
+Truncated responses and responses without a parseable final verdict receive zero reward. 
+ For rewards $r_{i1},\ldots,r_{i8}$ from example $i$ , we compute the within-group mean $\bar{r}_{i}$ and standard deviation $\sigma_{i}$ .
+The normalized advantage is 
+ $A_{ij}=\frac{r_{ij}-\bar{r}_{i}}{\sigma_{i}+\epsilon}.$ 
+ Groups with zero reward variance do not contribute an update.
+A per-token KL penalty against the base model is subtracted from the advantage of each generated token.
+We take one policy-gradient update on the fresh rollouts per step, summing contributions over generated tokens without per-sequence length normalization, and then refresh the sampling policy.
+We report the checkpoint after 400 optimization steps.
+Table  8 lists the hyperparameters. 
+ Table 8: Online GRPO hyperparameters. 
+ Setting 
+ Value 
+ Base model 
+ oss , medium reasoning effort 
+ Adapter 
+ LoRA, rank 32 
+ Optimizer 
+ Adam, $\beta_{1}=0.9$ , $\beta_{2}=0.95$ , $\epsilon=10^{-8}$ 
+ Learning rate 
+ $10^{-5}$ , linear warmup for 10 steps, then constant 
+ Examples per step 
+ 32 
+ Rollouts per example 
+ 8 
+ Sampling temperature 
+ 0.7 
+ Context window 
+ 32,768 tokens (prompt and completion) 
+ KL coefficient 
+ 0.03 (reference: base model) 
+ Advantage $\epsilon$ 
+ $10^{-6}$ 
+ Per-example oversampling cap 
+ $3\times$ 
+ Training Steps 
+ 400 steps 
+ Appendix E Prompts 
+ The listings below materialize the prompt code used for the reported
+training-free experiments. Bracketed fields are replaced at inference time.
+We normalize typographic punctuation to ASCII for display; the instructions
+and output schemas are otherwise unchanged. 
+ E.1 Proposer prompt 
+ The box below gives the root-level proposer prompt. For a non-root node, the
+problem and full solution remain visible, the node’s
+verbatim solution excerpt is added, and root-level
+ TASK_INCOMPLETE errors are disabled to avoid decomposition
+boundary artifacts. The rules for proposed errors, the error types, and the
+JSON schema are shared across depths. 
+ Proposer prompt 
+ E.2 Validator prompt 
+ The box below gives the validator prompt. Each validator sees the
+full problem and solution, the focused node excerpt, and one proposed error.
+The placeholder for the dataset policy is filled with the corresponding block
+shown in the following boxes. 
+ Validator prompt 
+ E.3 Dataset-specific policies 
+ The boxes below contain the complete policy text appended for each benchmark.
+H2V uses the rigorous olympiad standard because every claimed proof step is
+part of the correctness target; FirstProof-Eval uses the expert-sketch
+standard. These dataset-specific policies are applied to every methods including OSVerify , Voting and others. 
+ Putnam100 policy 
+ H2V policy 
+ FirstProof-Eval policy 
+ Experimental support, please
+ view the build logs 
+ for errors. Generated by
+ L
+ A 
+ T
+ E 
+ xml 
+ .
+ Instructions for reporting errors 
+ We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+ support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+ methods listed below: 
+ Click the "Report Issue" ( 
+ ) button, located in the page header. 
+ Tip: You can select the relevant text first, to include it in your report. 
+ Our team has already identified the following issues . We appreciate your time reviewing and reporting rendering errors we
+ may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+ should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+ all. 
+ Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion , and welcome developer contributions . 
+ We gratefully acknowledge support from our major funders ,
+ member institutions , ,
+ and all contributors.
+ About · 
+ Help · 
+ Contact · 
+ Subscribe · 
+ Copyright · 
+ Privacy · 
+ Accessibility · 
+ Operational Status (opens in new tab) 

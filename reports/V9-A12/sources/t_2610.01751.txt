@@ -1,0 +1,585 @@
+ 
+ Evidence-Gated Research: Statistically Controlled Model Adoption in Adaptive Search 
+ Skip to main content 
+ Report GitHub Issue 
+ × 
+ Title: 
+ Content selection saved. Describe the issue below: 
+ Description: 
+ Submit without GitHub 
+ Submit in GitHub 
+ Why HTML? 
+ Report Issue 
+ Back to Abstract 
+ Download PDF 
+ Contents 
+ Reading mode 
+ Colour theme 
+ Abstract 
+ 1 Introduction 
+ Contributions. 
+ 2 Related Work 
+ Adaptive validation and model search. 
+ Anytime evidence, experimentation, and online multiplicity. 
+ Intersection–union targets. 
+ 3 Persistent Adoption in an Adaptive Search Loop 
+ 4 Evidence-Gated Research 
+ 4.1 Anytime-valid components and persistent composition 
+ 4.2 Predictable routing and evidence allocation 
+ 4.3 Across-candidate control 
+ 5 Experiments 
+ 5.1 Target mismatch and repeated adoption 
+ 5.2 Stream-level controller sensitivity 
+ 5.3 Evidence validity, candidate freezing, and adaptive allocation 
+ Evidence-unit dependence. 
+ Candidate-time leakage. 
+ Adaptive allocation. 
+ 5.4 Multi-environment and larger neural searches 
+ 5.5 Matched replay isolates acquisition efficiency 
+ 6 Discussion and Limitations 
+ 7 Conclusion 
+ Reproducibility Statement. 
+ AI Use Statement. 
+ References 
+ A Proofs 
+ A.1 Proof of Proposition 1 
+ A.2 Proof of Lemma  
+ A.3 Proof of Theorem  
+ A.4 Proof of Proposition  
+ A.5 Proof of Theorem  
+ Candidate-level validity. 
+ Across-candidate FDR control. 
+ FWER variant. 
+ B Detailed Experimental Protocol 
+ B.1 Common conventions 
+ B.2 Synthetic closed loop and long streams 
+ B.3 Controller and clustered-dependence diagnostics 
+ B.4 E33: candidate-freezing / candidate-time leakage stress test 
+ B.5 Adaptive-allocation diagnostics 
+ B.6 Public-data adaptive search: original two-environment studies 
+ B.7 E30: three-environment public-data extension 
+ B.8 E31: proposal-policy robustness 
+ B.9 E32: larger controlled neural benchmark 
+ B.10 Frozen-candidate replay 
+ C Additional Results and Diagnostics 
+ C.1 Original two-environment public-data results 
+ C.2 Three-environment uncertainty and balancing 
+ C.3 Proposal-policy robustness 
+ C.4 Frozen-pair diagnostics 
+ C.5 Controller and evidence-unit diagnostics 
+ C.6 Candidate-freezing / leakage diagnostic 
+ Additional allocation calibration. 
+ License: CC BY 4.0
+arXiv:2610.01751v1 [cs.LG] 01 Oct 2026 
+ Evidence-Gated Research: Statistically Controlled Model Adoption in Adaptive Search 
+ Yifan Guo
+ Affiliation:  Department of Applied Mathematics and Statistics
+ Affiliation:  Stony Brook University
+ Preprint – October 2026 
+ Abstract 
+ Adaptive model search is path dependent: once a challenger is adopted, it becomes the reference from which later candidates are generated. A statistically unsupported replacement can therefore alter hypotheses that have not yet been proposed. We introduce Evidence-Gated Research (EGR), a statistical adoption layer for moving-incumbent search. EGR freezes each challenger before decision evidence is revealed, builds anytime-valid evidence across a predeclared set of environments, routes evidence predictably toward unresolved components, composes a persistent candidate e-value, and passes that e-value to an online controller. Under explicit conditional-validity and predictability conditions, the resulting procedure controls false discovery rate for the declared all-environment adoption target even though earlier adoptions change later challengers. In a 5,000-trajectory closed-loop benchmark, development-only e-LOND attains persistent FDR 0.621, whereas no persistent false-adoption path is observed for the audited EGR variants in that finite run. In matched replay over 600 challenger–incumbent pairs, Stagewise EGR preserves fixed-anytime alternative crossing decisions while using 56.1% less decision evidence at the representative threshold. A three-environment public-data study and a 40,000-sample controlled neural benchmark reproduce the evidence-efficiency pattern. These results identify model replacement as a distinct statistical control point in adaptive model development. 
+ 1 Introduction 
+ Modern model development is increasingly closed-loop: propose a modification, evaluate it, decide whether to replace the incumbent, and generate the next proposal from the resulting state. AutoML and hyperparameter optimization make this coupling explicit ( Baratchi et al., 2024 ) , while automated research agents increasingly instantiate the same search–evaluate–update loop ( Chan et al., 2025 ; Toledo et al., 2025 ; Lu et al., 2026 ; Aygün et al., 2026 ; Ghareeb et al., 2026 ) . Recent systems now use tree search to optimize empirical scientific software and multi-agent loops to generate hypotheses, propose experiments, and analyze results ( Aygün et al., 2026 ; Ghareeb et al., 2026 ) . In such systems, an unsupported replacement is state changing : it changes the reference model from which later candidates are generated. 
+ This creates a statistical problem that is not captured by ordinary fixed-family model comparison: when is there enough evidence to let an adaptively proposed challenger replace the current incumbent? Four issues interact. A development-selected gain may fail in another environment that is part of the adoption target. Evidence may be stopped or redirected as it arrives, so candidate-level inference must remain valid under sequential acquisition. Repeated challenger tests create stream-level multiplicity even if every individual candidate test is anytime valid. Finally, a fixed acquisition plan can waste observations on environments whose evidence is no longer decision-limiting. 
+ Evidence-Gated Research (EGR) separates flexible proposal generation from the statistical decision to replace an incumbent. At step $t$ , a predictable policy proposes challenger $c_{t}$ against incumbent $b_{t-1}$ . EGR fixes that comparison before decision evidence is opened, tests whether the gain exceeds a predeclared practical margin in every declared environment, and permits adoption only when the resulting persistent candidate e-value clears a stream-level threshold. The proposal mechanism may remain fully adaptive across candidates: validity is required conditionally on the realized history that generated the current frozen comparison. 
+ Contributions. 
+ (1) We formulate model replacement as an online sequence of history-dependent, moving-incumbent hypotheses and define persistent benefit relative to predeclared environments and practical margins. (2) We give sufficient conditions under which predictably routed, anytime-valid component evidence yields a conditionally valid persistent candidate e-value, and show how this candidate interface composes with online e-value control for persistent-target FDR (or FWER under a stricter threshold). (3) We separate validity from evidence acquisition: Stagewise EGR short-circuits resolved intersection–union decisions, EGR-ALLOC recycles saved budget, and a balancing rule targets weak components. Experiments then isolate target mismatch, stream multiplicity, evidence-unit dependence, candidate-time leakage, controller choice, and acquisition cost. 
+ Figure 1: EGR inserts a statistically controlled adoption gate between adaptive proposal generation and the next search state. The challenger is frozen before decision evidence is opened; component e-processes are updated under predictable routing, combined through a persistent target, and passed to a compatible online controller. Only adoption changes the incumbent. 
+ 2 Related Work 
+ Adaptive validation and model search. 
+ The reusable holdout studies repeated adaptive access to evaluation data ( Dwork et al., 2015 ) . Learn-then-test (LTT) converts risk calibration into multiple testing ( Angelopoulos et al., 2025 ) , and adaptive LTT (aLTT) uses e-processes for sequential hyperparameter selection ( Zecchin et al., 2025 ) . Model selection under temporal shift estimates changing-environment performance and compares candidate models ( Han et al., 2024 ) . Recent automated-science systems broaden adaptive search to empirical software optimization and multi-agent discovery workflows ( Lu et al., 2026 ; Aygün et al., 2026 ; Ghareeb et al., 2026 ) ; these works motivate increasingly autonomous proposal loops but do not supply the moving-incumbent, multi-environment adoption control studied here. EGR instead targets a state-changing challenger–incumbent stream with a predeclared intersection target across environments. 
+ Anytime evidence, experimentation, and online multiplicity. 
+ Always-valid A/B inference permits continuous monitoring under optional stopping ( Johari et al., 2022 ) . Betting-based e-processes provide a general anytime-valid framework ( Ramdas et al., 2023 ; Waudby-Smith and Ramdas, 2024 ; Pandeva et al., 2024 ; Ramdas and Wang, 2025 ) . Once a valid candidate e-value is available, e-LOND controls online FDR for e-value streams ( Xu and Ramdas, 2024 ) ; e-GAI methods such as e-LORD and e-SAFFRON improve spending efficiency ( Zhang et al., 2025 ) , and online e-closure/compound-e methods provide further power improvements ( Xu et al., 2026 ) . EGR addresses the upstream construction and adaptive acquisition of the candidate-level multi-environment evidence required by such controllers. 
+ Intersection–union targets. 
+ Persistent benefit has classical intersection–union structure: the scientific alternative holds only if every environment-specific alternative holds ( Berger and Hsu, 1996 ) . EGR combines this structure with anytime-valid components and a changing incumbent. 
+ Table 1: Statistical objects addressed by related frameworks. Our construction is shown in the final column. 
+ Object 
+ aLTT 
+ e-LOND / e-GAI 
+ EGR (ours) 
+ Native target 
+ candidate / hyperparameter risk 
+ online e-value stream 
+ persistent challenger–incumbent adoption 
+ Within-candidate acquisition 
+ sequential 
+ assumes e-value supplied 
+ predictable multi-env. acquisition 
+ Changing incumbent 
+ extra specification 
+ extra specification 
+ explicitly modeled 
+ Across-candidate control 
+ family selection 
+ online FDR 
+ compatible online controller 
+ 3 Persistent Adoption in an Adaptive Search Loop 
+ Let $\mathcal{F}_{t-1}$ contain all proposals, measurements, and adoption decisions available before candidate $t$ . A predictable proposal policy selects 
+ $c_{t}=\pi(\mathcal{F}_{t-1}),$ 
+ (1) 
+ and $c_{t}$ is compared with current incumbent $b_{t-1}$ . For each predeclared environment $e\in\mathcal{E}$ , define paired utility gain 
+ $X^{e}_{t,i}=U^{e}(c_{t};Z^{e}_{t,i})-U^{e}(b_{t-1};Z^{e}_{t,i}),\qquad\Delta_{t}^{e}=\mathbb{E}[X^{e}_{t,i}\mid\mathcal{F}_{t-1}],$ 
+ (2) 
+ where the practical margin $\delta_{e}\geq 0$ is fixed before candidate- $t$ decision evidence is revealed. We call $c_{t}$ persistently beneficial when $\Delta_{t}^{e}>\delta_{e}$ for every $e\in\mathcal{E}$ . The persistent null is therefore 
+ $H_{t}^{\mathrm{pers}}=\bigcup_{e\in\mathcal{E}}H_{t}^{e},\qquad H_{t}^{e}:\Delta_{t}^{e}\leq\delta_{e}.$ 
+ (3) 
+ An adoption made while $H_{t}^{\mathrm{pers}}$ is true is a persistent false adoption . If $R_{T}$ and $V_{T}$ are total and false adoptions through $T$ , we target 
+ $\mathrm{FDR}(T)=\mathbb{E}\!\left[\frac{V_{T}}{R_{T}\vee 1}\right],\qquad\mathrm{FWER}(T)=\mathbb{P}(V_{T}\geq 1).$ 
+ (4) 
+ “Persistent” is local to the declared all-environment target; it does not imply robustness to undeclared future shifts. 
+ 4 Evidence-Gated Research 
+ 4.1 Anytime-valid components and persistent composition 
+ For candidate $t$ , let $\mathcal{G}_{t,n-1}$ denote the full joint history before global allocation $n$ , let $A_{t,n}\in\mathcal{E}$ be the environment selected next, and let $N^{e}_{t,n}=\sum_{s\leq n}\mathbf{1}\{A_{t,s}=e\}$ count the number of environment- $e$ updates revealed by that time. 
+ Assumption 1 (Sequentially valid evidence unit) . 
+ Whenever $H_{t}^{e}$ is true, the predeclared acquisition mechanism yields bounded selected updates satisfying 
+ $\mathbb{E}\!\left[X^{e}_{t,N^{e}_{t,n}}-\delta_{e}\mid\mathcal{G}_{t,n-1},A_{t,n}=e\right]\leq 0.$ 
+ (5) 
+ The condition is deliberately joint-history conditional: it must hold for the actual unit consumed by the sequential update. Fresh independent draws satisfy it directly; with dependence, the valid unit may instead be a block or cluster. A marginal mean condition for correlated raw rows is not sufficient. 
+ Choose $B_{e}$ so that $Y^{e}_{t,i}=(X^{e}_{t,i}-\delta_{e})/B_{e}\in[-1,1]$ . For precommitted $0\leq\lambda_{k} 
+ $E^{e}_{t,m}=\frac{1}{K}\sum_{k=1}^{K}\prod_{i=1}^{m}(1+\lambda_{k}Y^{e}_{t,i}).$ 
+ (6) 
+ Proposition 1 (Component e-process) . 
+ Under Assumption 1, each betting product in Eq. ( 6 ) is a nonnegative supermartingale on its component-null event. Their fixed mixture is therefore an e-process. At any almost-surely finite stopping time $\tau$ , 
+ $\mathbb{E}[\nu_{t}^{e}E^{e}_{t,\tau}\mid\mathcal{F}_{t-1}]\leq\nu_{t}^{e},$ 
+ where $\nu_{t}^{e}=\mathbf{1}\{H_{t}^{e}\text{ is true}\}$ . 
+ Lemma 1 (Persistent candidate e-value) . 
+ Suppose each nonnegative stopped component value satisfies
+ $\mathbb{E}[\nu_{t}^{e}E_{t}^{e}\mid\mathcal{F}_{t-1}]\leq\nu_{t}^{e}$ .
+Then 
+ $E_{t}^{\mathrm{pers}}=\min_{e\in\mathcal{E}}E_{t}^{e}$ 
+ (7) 
+ satisfies $\mathbb{E}[\nu_{t}E_{t}^{\mathrm{pers}}\mid\mathcal{F}_{t-1}]\leq\nu_{t}$ , where $\nu_{t}=\max_{e}\nu_{t}^{e}$ . No independence across environments is required. 
+ Under the union null, at least one component is null and Eq. ( 7 ) is pointwise bounded by that component. The price of this assumption-light composition is possible conservatism when one environment accumulates evidence slowly. 
+ 4.2 Predictable routing and evidence allocation 
+ Theorem 1 (Validity under predictable routing) . 
+ If $A_{t,n}$ is $\mathcal{G}_{t,n-1}$ -measurable and Assumption 1 holds, then updating a component only when its environment is selected preserves its nonnegative-supermartingale property on the component-null event. Any almost-surely finite joint-history stopping rule therefore produces a conditionally valid component e-value, and the stopped components may be combined by Lemma  1 . 
+ We use three routing rules. Stagewise EGR visits environments in a fixed predeclared order and opens the next component only after the current component crosses its candidate threshold. EGR-ALLOC has nominal cap $B$ per environment and total cap $|\mathcal{E}|B$ ; at stage $j$ (zero indexed), cumulative spend may not exceed $(j+1)B$ , so the current stage can recycle only budget saved by completed stages while reserving $B$ for every unopened future stage. Evidence balancing sends the next unit to an unresolved environment with the weakest current log evidence. 
+ For intuition, suppose deterministic log evidence grows as $\ell_{e}(n_{e})=n_{e}r_{e}$ , $r_{e}>0$ , and define $S=\sum_{e}r_{e}^{-1}$ and $r_{\max}=\max_{e}r_{e}$ . 
+ Proposition 2 (First-order balancing guarantee) . 
+ If each observation is sent to a current minimizer of $n_{e}r_{e}$ , then after $N$ allocations, 
+ $\frac{N}{S}-r_{\max}\leq\min_{e}n_{e}r_{e}\leq\frac{N}{S}.$ 
+ (8) 
+ Thus any rule that raises every component to level $L$ needs at least $SL$ observations, while greedy balancing reaches the level within $\lceil S(L+r_{\max})\rceil$ . This is a deterministic benchmark, not a general stochastic optimality claim. 
+ Table 2: Operational validity contract. The guarantee is local to the declared target and evidence unit. 
+ Condition 
+ Required? 
+ Role 
+ Candidate frozen before evidence 
+ Yes 
+ prevents candidate-time leakage 
+ Joint-filtration validity 
+ Yes 
+ links null to selected updates 
+ Predictable allocation / stopping 
+ Yes 
+ preserves e-process validity 
+ Cross-environment independence 
+ No 
+ minimum composition is pointwise 
+ Raw-unit dependence 
+ Not automatic 
+ must be handled in evidence unit 
+ 4.3 Across-candidate control 
+ For nonnegative $\gamma_{t}$ with $\sum_{t}\gamma_{t}\leq 1$ , e-LOND uses ( Xu and Ramdas, 2024 ) 
+ $\alpha_{t}=\alpha\gamma_{t}(R_{t-1}+1),\qquad q_{t}=\alpha_{t}^{-1},$ 
+ (9) 
+ and adopts only if $E_{t}^{\mathrm{pers}}\geq q_{t}$ . Other compatible online e-value controllers may be substituted. 
+ Theorem 2 (End-to-end persistent adoption control) . 
+ Assume (i) $c_{t}$ is fixed before candidate- $t$ decision evidence is opened, (ii) Assumption 1 holds for every true component null, and (iii) allocation and stopping are predictable. Then $E_{t}^{\mathrm{pers}}$ is conditionally valid under every true persistent null given $\mathcal{F}_{t-1}$ . Feeding these e-values to e-LOND yields online persistent-target FDR control at level $\alpha$ under the dependence conditions of Xu and Ramdas (2024) , even though earlier adoptions may affect future proposals. Replacing the threshold by $1/(\alpha\gamma_{t})$ yields persistent FWER at most $\alpha$ . 
+ Complete proofs are in Appendix  A . Scout data used to construct a challenger must remain separate from its decision evidence; any post-evidence change to architecture, prompt, hyperparameters, weights, or other decision-relevant attributes defines a new candidate and restarts both its evidence process and downstream testing index. 
+ 5 Experiments 
+ Our experiments ask: Q1 why development-only validation can fail the persistent target; Q2 how repeated state-changing adoptions interact with stream multiplicity; and Q3 whether predictable evidence placement reduces validation cost without changing the declared target. Finite-run error estimates below are descriptive; formal guarantees are Theorem  2 . Full protocols, uncertainty estimates, and additional diagnostics are in Appendices  B – C . 
+ 5.1 Target mismatch and repeated adoption 
+ The headline synthetic closed loop has two search coordinates: one improves both environments and the other is rewarded on development but penalized on audit. Each of $T=20$ steps scouts $M$ mutations of the current incumbent; accepted challengers become parents of later proposals. At $M=16$ , 5,000 trajectories, $\delta=0.01$ , and per-environment reference cap $B=120$ , development-only e-LOND remains valid for the development hypothesis yet attains persistent FDR $0.621$ . Reusing an anytime-valid two-environment candidate test without stream correction yields both all-null FDR and $\mathbb{P}(V_{T}>0)$ of $0.999$ by $T=500$ , demonstrating that candidate-level anytime validity does not by itself control a repeated adoption stream. 
+ Figure 2: Target mismatch and stream multiplicity. Development-only procedures can appear powerful while missing the declared persistent target; repeated reuse of an anytime-valid candidate test accumulates false adoptions, whereas EGR with online correction remains controlled in the tested regimes. 
+ Table 3: Headline closed-loop results. Methods are columns so EGR variants appear last. Lower is better for FDR/evidence; higher is better for power/audit utility. 
+ Metric 
+ Dev 
+ mean 
+ Dev 
+ e-LOND 
+ Two-env 
+ mean 
+ Fixed IUT 
+ + e-LOND 
+ Stagewise 
+ EGR 
+ EGR-ALLOC 
+ Persistent FDR 
+ .6240 
+ .6210 
+ .0340 
+ .0000 
+ .0000 
+ .0000 
+ Pers.-alt. power 
+ .907 
+ .461 
+ .867 
+ .188 
+ .196 
+ .251 
+ Final audit utility 
+ .493 
+ .489 
+ .705 
+ .641 
+ .642 
+ .657 
+ Evidence / candidate 
+ 240.0 
+ 221.6 
+ 240.0 
+ 240.0 
+ 145.5 
+ 153.7 
+ Relative to fixed audited IUT, EGR-ALLOC uses 36% less decision evidence and raises persistent-alternative power from .188 to .251. Neither EGR variant has an observed persistent false-adoption path in the 5,000 headline trajectories; $0/5000$ corresponds to a one-sided 95% binomial upper bound of approximately $6\times 10^{-4}$ . 
+ 5.2 Stream-level controller sensitivity 
+ To separate candidate construction from downstream spending, we feed identical persistent candidate e-value streams to four compatible controllers at $T=500$ with 5% alternatives. Persistent-alternative power is .619 for e-LOND, .890 for e-LORD, .888 for e-SAFFRON, and .415 for the e-FWER rule; the corresponding empirical FDRs are .00015, .00055, .00055, and .00020. Thus controller choice materially affects long-horizon power even when the EGR candidate interface is held fixed. 
+ 5.3 Evidence validity, candidate freezing, and adaptive allocation 
+ Evidence-unit dependence. 
+ A clustered-observation stress test probes Assumption 1. At within-cluster correlation $\rho=.95$ , treating dependent raw rows as fresh sequential evidence units crosses the candidate null threshold with probability .728, whereas aggregating each cluster into one bounded evidence unit reduces the crossing probability to .0127. This directly shows that marginal mean validity is insufficient when the sequential evidence unit is misspecified. 
+ Candidate-time leakage. 
+ We next stress-test the requirement that a challenger be frozen before decision evidence is opened. Using the same synthetic utility surface and paired Bernoulli evidence mechanism, we construct development-favorable challengers exactly on the audit boundary, so every variant is a true persistent null. To isolate leakage from optional stopping, component e-values are evaluated at a fixed endpoint. At candidate threshold $q=20$ with $L=64$ post-evidence variants, a challenger frozen using scout data crosses the persistent null in only .052% of 100,000 trials. If the decision evidence is instead used to select the most favorable variant and then reused for adoption, the crossing rate rises to 3.802% (about $73\times$ the frozen rate). Making the same post-evidence selection but discarding those observations and restarting on fresh decision evidence restores the rate to .063%. The failure therefore comes from reusing candidate-shaping evidence, not from adaptivity itself. Full protocol and threshold sweeps appear in Appendices  B – C . 
+ Adaptive allocation. 
+ Once the target and evidence unit are valid, allocation is an efficiency problem. Across $|\mathcal{E}|\in\{2,3,5\}$ and $q\in\{5,10,20,50,100\}$ , weakest-component balancing uses only realized evidence yet stays close to an oracle supplied with simulator evidence rates: the balancing/oracle mean-evidence ratio remains between .970 and 1.034 in the tested regimes. 
+ 5.4 Multi-environment and larger neural searches 
+ The original public-data experiments use a fixed stratified scikit-learn digits snapshot, local incumbent-changing proposals, a held-out hidden environment used only for evaluation, and paired correctness gains sampled with replacement from fixed empirical decision pools. We extend this setting from two to three declared environments : clean development, Gaussian-noise audit, and dropout+noise audit, with a stronger corruption reserved for hidden evaluation (E30). The sequential statement is therefore relative to the induced finite empirical distributions, not to an unknown deployment population. 
+ We additionally run a larger controlled neural benchmark (E32) with 40,000 samples, 50 features, five classes, a 16-model MLP bank, three declared environments, and a stronger evaluation-only hidden environment. This experiment tests scale/mechanism robustness while remaining controlled/synthetic; it is not a CIFAR/ImageNet or LLM-agent benchmark. 
+ Table 4: Three-environment audited comparisons. EGR columns are last; Monte Carlo uncertainty is reported in Appendix  C . 
+ Benchmark 
+ Metric 
+ Fixed IUT 
+ + e-LOND 
+ Stagewise EGR 
+ EGR-ALLOC 
+ Digits 3-env. 
+ FDR 
+ 0 
+ 0 
+ 0 
+ ( $N=800$ ) 
+ Power 
+ .3137 
+ .3221 
+ .3349 
+ Evidence 
+ 1200.0 
+ 388.8 
+ 392.6 
+ Controlled 40k 
+ FDR 
+ 0 
+ 0 
+ 0 
+ ( $N=500$ ) 
+ Power 
+ .2149 
+ .2380 
+ .2666 
+ Evidence 
+ 1200.0 
+ 444.6 
+ 440.9 
+ Stagewise EGR reduces mean evidence by 67.6% versus fixed IUT in the three-environment digits extension and by 62.9% in the 40k controlled benchmark. EGR-ALLOC preserves the same total cap while recycling only saved earlier-stage budget; it improves power to .3349 and .2666, respectively, with no observed persistent false-adoption path in those audited runs. Proposal-policy robustness experiments (local, wide-local, global predictable proposals) are reported in Appendix  C . 
+ Figure 3: Persistent-alternative power versus decision-evidence cost in the three-environment studies. Error bars show 95% Monte Carlo intervals. The EGR variants achieve substantially lower evidence use; exact numerical summaries are in Table  4 . 
+ 5.5 Matched replay isolates acquisition efficiency 
+ To remove proposal-state feedback, we freeze all 600 ordered non-self challenger–incumbent pairs from the 25-model neural grid and replay identical paired evidence streams across acquisition rules. At $q=20$ , fixed-anytime IUT and Stagewise EGR have identical component crossing events by construction, hence identical persistent-alternative power (.6477), while Stagewise reduces mean evidence from 1600.0 to 702.4 (56.1%). The paired saving is 897.6 observations per candidate (95% pair-bootstrap CI 878.1–917.3). EGR-ALLOC reaches power .6699 at 715.7 observations; its power increase over Stagewise is .0222 (95% CI .0159–.0290). 
+ Figure 4: Matched frozen-candidate replay over 600 challenger–incumbent pairs. Stagewise EGR has the same alternative crossing event as fixed-anytime IUT while placing evidence sequentially; EGR-ALLOC can recycle saved early-stage budget. At $q=20$ , Stagewise uses 56.1% less evidence at identical power. 
+ 6 Discussion and Limitations 
+ The experiments separate five failure modes that are easy to conflate. Target mismatch is not repaired by online multiplicity correction: a development-only procedure can be statistically valid for the wrong scientific target. Candidate-level anytime validity does not remove across-candidate multiplicity. Valid component evidence can fail when dependent raw rows are treated as fresh sequential units. Candidate-level validity can also fail when decision evidence is allowed to shape the candidate and then reused: the leakage stress test increases a $q=20$ boundary-null crossing rate from .052% to 3.802%, while a fresh restart restores .063%. Finally, once target, evidence unit, candidate identity, and stream correction are fixed, evidence placement is an efficiency problem: the matched replay isolates a large reduction in acquisition cost without changing Stagewise crossing decisions. 
+ The framework remains deliberately modular. Controller choice affects long-horizon power (Appendix  C ); the candidate layer can be paired with stronger compatible online e-value controllers as their assumptions permit. Guarantees are conditional on the declared utility, environments, margins, valid evidence unit, and candidate-freezing/restart protocol; they do not imply robustness to undeclared shifts. The leakage experiment is a mechanism stress test with boundary-null challengers and independent evidence streams across candidate variants; it is not a deployment-risk estimate. The public-data studies use finite empirical pools, and the 40k neural benchmark is controlled/synthetic. Larger prospectively sampled image, language-model, and fully agentic search loops remain important tests of external scope. Runtime overhead in large training systems is also not characterized here; our experiments measure statistical evidence cost. 
+ 7 Conclusion 
+ EGR treats state-changing model adoption as a separate statistical control point in adaptive search. By freezing challengers, constructing predictably routed multi-environment anytime evidence, composing a persistent candidate e-value, and applying stream-level online control, the framework separates proposal flexibility from adoption validity. Across closed-loop, leakage, public-data, matched-replay, multi-environment, and larger controlled-neural studies, the empirical pattern is that target mismatch, candidate-time leakage, or missing stream correction can drive unsupported adoptions, while predictable evidence placement can substantially reduce validation cost once the target and validity contract are correctly specified. 
+ Reproducibility Statement. 
+ Appendix  B specifies the evidence unit, splits, model families, search policies, budgets, and Monte Carlo conventions. Appendix  A contains complete proofs. The supplementary experiment bundle includes runnable code, source arrays/data, run manifests, paper-facing tables/figures, Monte Carlo uncertainty outputs, reproducibility checks, and SHA-256 checksums for E27/E29 and the E30–E33 experiments. 
+ AI Use Statement. 
+ Generative AI tools supported parts of the research workflow, including refinement of hypotheses and experiments, analysis-code assistance, mathematical proof drafting, literature search, figure preparation, interpretation of results, and manuscript editing. The author checked the resulting arguments, numerical claims, references, code, and released artifacts against executable analyses and source material and takes responsibility for the final paper. 
+ References 
+ Angelopoulos et al. (2025) 
+ A. N. Angelopoulos, S. Bates, E. J. Candès, M. I. Jordan, and L. Lei. Learn then test: Calibrating predictive algorithms to achieve risk control. The Annals of Applied Statistics , 19(2):1641–1662, 2025.
+ Aygün et al. (2026) 
+ E. Aygün, A. Belyaeva, G. Comanici, et al. An AI system to help scientists write expert-level empirical software. Nature , 654:909–916, 2026.
+ Baratchi et al. (2024) 
+ M. Baratchi, C. Wang, S. Limmer, J. N. van Rijn, H. H. Hoos, T. Bäck, and M. Olhofer. Automated machine learning: Past, present and future. Artificial Intelligence Review , 57:122, 2024.
+ Berger and Hsu (1996) 
+ R. L. Berger and J. C. Hsu. Bioequivalence trials, intersection–union tests and equivalence confidence sets. Statistical Science , 11(4):283–302, 1996.
+ Chan et al. (2025) 
+ J. S. Chan, N. Chowdhury, O. Jaffe, et al. MLE-Bench: Evaluating machine learning agents on machine learning engineering. In International Conference on Learning Representations , 2025.
+ Dwork et al. (2015) 
+ C. Dwork, V. Feldman, M. Hardt, T. Pitassi, O. Reingold, and A. Roth. The reusable holdout: Preserving validity in adaptive data analysis. Science , 349(6248):636–638, 2015.
+ Ghareeb et al. (2026) 
+ A. E. Ghareeb, B. Chang, L. Mitchener, et al. A multi-agent system for automating scientific discovery. Nature , 655:497–505, 2026.
+ Han et al. (2024) 
+ E. Han, C. Huang, and K. Wang. Model assessment and selection under temporal distribution shift. In Proceedings of the 41st International Conference on Machine Learning , PMLR 235:17374–17392, 2024.
+ Johari et al. (2022) 
+ R. Johari, P. Koomen, L. Pekelis, and D. Walsh. Always valid inference: Continuous monitoring of A/B tests. Operations Research , 70(3):1806–1821, 2022.
+ Lu et al. (2026) 
+ C. Lu, C. Lu, R. T. Lange, Y. Yamada, S. Hu, J. Foerster, D. Ha, and J. Clune. Towards end-to-end automation of AI research. Nature , 651:914–919, 2026.
+ Pandeva et al. (2024) 
+ T. Pandeva, P. Forré, A. Ramdas, and S. Shekhar. Deep anytime-valid hypothesis testing. In Proceedings of the 27th International Conference on Artificial Intelligence and Statistics , PMLR 238:622–630, 2024.
+ Ramdas and Wang (2025) 
+ A. Ramdas and R. Wang. Hypothesis testing with e-values. Foundations and Trends in Statistics , 1(1–2):1–390, 2025.
+ Ramdas et al. (2023) 
+ A. Ramdas, P. Grünwald, V. Vovk, and G. Shafer. Game-theoretic statistics and safe anytime-valid inference. Statistical Science , 38(4):576–601, 2023.
+ Toledo et al. (2025) 
+ E. Toledo, K. Hambardzumyan, M. Josifoski, et al. AI research agents for machine learning: Search, exploration, and generalization in MLE-bench. In Advances in Neural Information Processing Systems , volume 38, 2025.
+ Waudby-Smith and Ramdas (2024) 
+ I. Waudby-Smith and A. Ramdas. Estimating means of bounded random variables by betting. Journal of the Royal Statistical Society Series B: Statistical Methodology , 86(1):1–27, 2024.
+ Xu and Ramdas (2024) 
+ Z. Xu and A. Ramdas. Online multiple testing with e-values. In Proceedings of the 27th International Conference on Artificial Intelligence and Statistics , PMLR 238:3997–4005, 2024.
+ Xu et al. (2026) 
+ Z. Xu, L. Fischer, and A. Ramdas. Improving online FDR procedures via online analogs of e-closure and compound e-values. In Proceedings of the 42nd Conference on Uncertainty in Artificial Intelligence , PMLR 337:7552–7561, 2026.
+ Zecchin et al. (2025) 
+ M. Zecchin, S. Park, and O. Simeone. Adaptive learn-then-test: Statistically valid and efficient hyperparameter selection. In Proceedings of the 42nd International Conference on Machine Learning , PMLR 267:74018–74036, 2025.
+ Zhang et al. (2025) 
+ Y. Zhang, Z. Wei, H. Ren, and C. Zou. e-GAI: e-value-based generalized $\alpha$ -investing for online false discovery rate control. In Proceedings of the 42nd International Conference on Machine Learning , PMLR 267:76308–76331, 2025.
+ Appendix A Proofs 
+ We use the same filtration throughout the appendix. For candidate $t$ , $\mathcal{F}_{t-1}$ is the frozen pre-candidate history and $\mathcal{G}_{t,n}$ is the joint within-candidate history after $n$ routed allocations. The challenger, incumbent, declared environment laws, utilities, and practical margins are $\mathcal{F}_{t-1}$ -measurable. Let 
+ $\nu_{t}^{e}=\mathbf{1}\{H_{t}^{e}\text{ is true}\},\qquad\nu_{t}=\max_{e\in\mathcal{E}}\nu_{t}^{e}.$ 
+ Thus $\nu_{t}=1$ exactly on the persistent null. Writing validity with these indicators avoids treating the set of true component nulls as deterministic. 
+ A.1 Proof of Proposition 1 
+ Fix $t$ , $e$ , and a betting fraction $\lambda_{k}$ . For the local environment- $e$ clock, define 
+ $L^{e,k}_{t,m}=\prod_{i=1}^{m}(1+\lambda_{k}Y^{e}_{t,i}),\qquad L^{e,k}_{t,0}=1.$ 
+ Because $Y^{e}_{t,i}\in[-1,1]$ and $0\leq\lambda_{k} 
+ $\mathbb{E}[\nu_{t}^{e}Y^{e}_{t,m}\mid\mathcal{G}_{t,m-1}]\leq 0.$ 
+ Since $\nu_{t}^{e}$ is measurable at the frozen history, 
+ $\displaystyle\mathbb{E}[\nu_{t}^{e}L^{e,k}_{t,m}\mid\mathcal{G}_{t,m-1}]$ 
+ $\displaystyle=\nu_{t}^{e}L^{e,k}_{t,m-1}+\lambda_{k}L^{e,k}_{t,m-1}\mathbb{E}[\nu_{t}^{e}Y^{e}_{t,m}\mid\mathcal{G}_{t,m-1}]$ 
+ $\displaystyle\leq\nu_{t}^{e}L^{e,k}_{t,m-1}.$ 
+ Hence $(\nu_{t}^{e}L^{e,k}_{t,m})_{m}$ is a nonnegative supermartingale. Averaging over the precommitted betting grid preserves nonnegativity and the supermartingale property, so the mixture in Eq. ( 6 ) is a component e-process. 
+ Let $\tau$ be any almost-surely finite stopping time. For each deterministic $b$ , bounded optional sampling gives 
+ $\mathbb{E}[\nu_{t}^{e}E^{e}_{t,\tau\wedge b}\mid\mathcal{F}_{t-1}]\leq\nu_{t}^{e}.$ 
+ As $b\to\infty$ , nonnegativity and conditional Fatou’s lemma yield 
+ $\mathbb{E}[\nu_{t}^{e}E^{e}_{t,\tau}\mid\mathcal{F}_{t-1}]\leq\nu_{t}^{e}.$ 
+ Thus the stopped component value is conditionally valid. A finite evidence cap is a simple implementation-level condition ensuring almost-sure finiteness. 
+ A.2 Proof of Lemma  1 
+ Order the finite environment set as $e_{1},\ldots,e_{d}$ before decision sampling. Define the disjoint, $\mathcal{F}_{t-1}$ -measurable events 
+ $B_{j}=\{\nu_{t}^{e_{j}}=1\}\cap\bigcap_{i 
+ The events $B_{j}$ partition $\{\nu_{t}=1\}$ and select the first true component null without using decision evidence. Pointwise, 
+ $\nu_{t}E_{t}^{\mathrm{pers}}=\nu_{t}\min_{e\in\mathcal{E}}E_{t}^{e}\leq\sum_{j=1}^{d}\mathbf{1}_{B_{j}}E_{t}^{e_{j}}.$ 
+ Taking conditional expectations and using $\mathbf{1}_{B_{j}}\leq\nu_{t}^{e_{j}}$ gives 
+ $\displaystyle\mathbb{E}[\nu_{t}E_{t}^{\mathrm{pers}}\mid\mathcal{F}_{t-1}]$ 
+ $\displaystyle\leq\sum_{j=1}^{d}\mathbf{1}_{B_{j}}\mathbb{E}[\nu_{t}^{e_{j}}E_{t}^{e_{j}}\mid\mathcal{F}_{t-1}]$ 
+ $\displaystyle\leq\sum_{j=1}^{d}\mathbf{1}_{B_{j}}=\nu_{t}.$ 
+ Therefore $E_{t}^{\mathrm{pers}}$ is a conditional e-value for the union null. The argument is pointwise and requires neither cross-environment independence nor simultaneous component stopping. 
+ A.3 Proof of Theorem  1 
+ Fix $t$ and $e$ . Let $N^{e}_{t,n}=\sum_{s\leq n}\mathbf{1}\{A_{t,s}=e\}$ be the number of environment- $e$ updates by global allocation time $n$ . Define the routed increment 
+ $W^{e}_{t,n}=\begin{cases}(X^{e}_{t,N^{e}_{t,n}}-\delta_{e})/B_{e},&A_{t,n}=e,\\
+0,&A_{t,n}\neq e.\end{cases}$ 
+ Because $A_{t,n}$ is $\mathcal{G}_{t,n-1}$ -measurable, the routing decision is known before the next outcome is revealed. Assumption 1 therefore implies 
+ $\mathbb{E}[\nu_{t}^{e}W^{e}_{t,n}\mid\mathcal{G}_{t,n-1}]\leq 0.$ 
+ For a fixed $\lambda_{k}$ , define the global-clock product 
+ $\widetilde{L}^{e,k}_{t,n}=\prod_{s=1}^{n}(1+\lambda_{k}W^{e}_{t,s}).$ 
+ Zero increments contribute a factor of one, so this product is exactly the local environment- $e$ betting process evaluated at $N^{e}_{t,n}$ . Moreover, 
+ $\displaystyle\mathbb{E}[\nu_{t}^{e}\widetilde{L}^{e,k}_{t,n}\mid\mathcal{G}_{t,n-1}]$ 
+ $\displaystyle=\nu_{t}^{e}\widetilde{L}^{e,k}_{t,n-1}+\lambda_{k}\widetilde{L}^{e,k}_{t,n-1}\mathbb{E}[\nu_{t}^{e}W^{e}_{t,n}\mid\mathcal{G}_{t,n-1}]$ 
+ $\displaystyle\leq\nu_{t}^{e}\widetilde{L}^{e,k}_{t,n-1}.$ 
+ Thus predictable interleaving preserves the component supermartingale property. Averaging over $k$ and applying the stopping argument from Proposition 1 gives a conditionally valid stopped value for every routed component. Lemma  1 then yields a valid persistent candidate e-value. 
+ A.4 Proof of Proposition  2 
+ Let $p_{e}=n_{e}r_{e}$ denote deterministic progress after $N$ allocations and let $m_{N}=\min_{e}p_{e}$ . Since $p_{e}\geq m_{N}$ , 
+ $N=\sum_{e}n_{e}=\sum_{e}\frac{p_{e}}{r_{e}}\geq m_{N}\sum_{e}r_{e}^{-1}=m_{N}S,$ 
+ so $m_{N}\leq N/S$ . 
+ For the reverse direction, consider any environment $e$ that receives at least one allocation. Immediately before its most recent allocation, greedy balancing selected a current minimizer; after that one update, its progress can exceed the final minimum by at most its own increment size. Hence 
+ $p_{e}\leq m_{N}+r_{e}\leq m_{N}+r_{\max}.$ 
+ The same bound is trivial for an environment that is never selected. Therefore 
+ $N=\sum_{e}\frac{p_{e}}{r_{e}}\leq m_{N}S+r_{\max}S,$ 
+ which gives $m_{N}\geq N/S-r_{\max}$ . To reach level $L$ in every component, any allocation requires $N\geq SL$ ; greedy balancing reaches the level once $N\geq S(L+r_{\max})$ , giving the stated ceiling bound. 
+ A.5 Proof of Theorem  2 
+ The proof has two layers: candidate-level conditional validity and across-candidate online control. 
+ Candidate-level validity. 
+ The candidate $c_{t}$ , incumbent $b_{t-1}$ , declared target, and all proposal randomness are fixed in $\mathcal{F}_{t-1}$ before decision evidence is opened. By Proposition 1 and Theorem  1 , each true component null yields a stopped value satisfying 
+ $\mathbb{E}[\nu_{t}^{e}E_{t}^{e}\mid\mathcal{F}_{t-1}]\leq\nu_{t}^{e}.$ 
+ Lemma  1 therefore gives 
+ $\mathbb{E}[\nu_{t}E_{t}^{\mathrm{pers}}\mid\mathcal{F}_{t-1}]\leq\nu_{t}.$ 
+ This statement is conditional on the realized adaptive search history, so previous adoptions may change the next challenger and even the next null hypothesis without invalidating the current candidate e-value. 
+ Across-candidate FDR control. 
+ The sequence $E_{t}^{\mathrm{pers}}$ therefore satisfies the conditional e-value requirement supplied to e-LOND. Applying the e-LOND guarantee of Xu and Ramdas (2024) with 
+ $\alpha_{t}=\alpha\gamma_{t}(R_{t-1}+1),\qquad q_{t}=\alpha_{t}^{-1},$ 
+ yields persistent-target FDR control at level $\alpha$ under the controller’s stated dependence conditions. 
+ FWER variant. 
+ If the adoption threshold is instead $q_{t}=(\alpha\gamma_{t})^{-1}$ , then on a true persistent null conditional Markov inequality gives 
+ $\mathbb{P}\!\left(E_{t}^{\mathrm{pers}}\geq\frac{1}{\alpha\gamma_{t}}\middle|\mathcal{F}_{t-1}\right)\leq\alpha\gamma_{t}\mathbb{E}[E_{t}^{\mathrm{pers}}\mid\mathcal{F}_{t-1},\nu_{t}=1]\leq\alpha\gamma_{t}.$ 
+ Taking expectations and applying the union bound over candidate indices gives 
+ $\mathbb{P}(V_{T}\geq 1)\leq\sum_{t\leq T}\alpha\gamma_{t}\leq\alpha.$ 
+ This proves the FWER claim. 
+ Appendix B Detailed Experimental Protocol 
+ B.1 Common conventions 
+ Empirical FDR is estimated by computing $\mathrm{FDP}=V_{T}/(R_{T}\vee 1)$ for each independent trajectory and averaging. “Any false” is $\mathbb{P}(V_{T}>0)$ . Persistent-alternative power is defined relative to the declared all-environment practical-margin target. Evidence counts paired decision-evidence updates across declared environments; scout data used only for candidate proposal are excluded. Component e-processes use the precommitted betting grid $\Lambda=\{.03,.06,.10,.18,.30,.45,.65,.82\}$ . For horizon $T$ , e-LOND uses $\gamma_{t}\propto[t\log^{2}(t+1)]^{-1}$ normalized over $t=1,\ldots,T$ . Monte Carlo standard errors are the across-replicate sample standard deviation divided by the square root of the number of nonmissing replicates. 
+ B.2 Synthetic closed loop and long streams 
+ The latent stable score is $s(x)=0.20+0.90x_{0}-0.20x_{0}^{2}-0.06x_{1}^{2}$ , with development and audit logits $\ell_{\rm dev}(x)=s(x)+\rho x_{1}$ and $\ell_{\rm audit}(x)=s(x)-\kappa x_{1}$ . Bernoulli utilities use the logistic transform. Mutations have Gaussian standard deviation .55 and are clipped to $[-2,2]^{2}$ ; the incumbent starts at $(0,0)$ . At each step, $M$ mutations are evaluated with four scout observations each; scout observations are never reused as decision evidence. Decision evidence uses common-uniform paired Bernoulli gains with $\delta=.01$ . The main grid is $M\in\{1,4,16,64\}$ with 2,000 trajectories per cell; the $M=16$ headline uses 5,000 trajectories. Long-stream diagnostics use $T\in\{20,50,100,200,500\}$ , $B=60$ , and 2,000 streams per displayed cell. 
+ B.3 Controller and clustered-dependence diagnostics 
+ Controller comparisons feed identical persistent candidate e-value streams to e-LOND, e-LORD, e-SAFFRON, and an e-FWER rule. At $T=500$ and 5% alternatives, powers are .619, .890, .888, and .415, with empirical FDR .00015, .00055, .00055, and .00020. Clustered-dependence experiments vary within-cluster correlation $\rho\in\{0,.25,.5,.75,.95\}$ over 20,000 null trials per setting; the naive construction treats dependent rows as fresh sequential units, whereas the block-valid construction aggregates each cluster into one bounded evidence unit. 
+ B.4 E33: candidate-freezing / candidate-time leakage stress test 
+ To isolate candidate-time leakage from optional stopping, E33 evaluates component e-values at a fixed endpoint with $B=800$ . It uses the same synthetic score $s(x)$ , development/audit logits, practical margin $\delta=.01$ , paired Bernoulli gain mechanism, and precommitted betting grid as the main synthetic study. The incumbent is $x=(0,0)$ . For each trial and each candidate-pool size $L\in\{1,4,16,64\}$ , we sample $x_{1}\sim\mathrm{Unif}[.8,1.2]$ and solve for the smaller admissible $x_{0}$ such that the true audit gain equals exactly $\delta$ . The resulting development gains lie in [.2766,.3522], while every challenger remains a true persistent null because $\Delta^{\rm audit}=\delta$ . 
+ We compare three protocols over 100,000 trials per $L$ and candidate thresholds $q\in\{5,10,20,50\}$ . Frozen chooses one variant using four development-only scout observations and only then opens decision evidence. Leak+reuse opens independent decision-evidence streams for all $L$ variants, selects the variant with the largest fixed-endpoint persistent e-value, and reuses those same observations for the decision. Leak+restart makes the same post-evidence selection but treats the leaked observations as candidate-construction data, discards them, and starts a fresh candidate/test index with new decision evidence. Independent streams across variants are deliberate: the diagnostic is designed to expose candidate-time selection bias, not to estimate a deployment error rate. 
+ B.5 Adaptive-allocation diagnostics 
+ Allocation studies vary $|\mathcal{E}|\in\{2,3,5\}$ (with an additional $|\mathcal{E}|=8$ calibration), candidate threshold $q\in\{5,10,20,50,100\}$ , and compare realized weakest-component balancing with an oracle that knows simulator evidence rates. 
+ B.6 Public-data adaptive search: original two-environment studies 
+ The fixed stratified digits split contains 808 training, 269 search, 270 development, 270 audit, and 180 hidden examples. Standardization is fit on training only. The RBF-SVC family has 64 configurations, with $\log C\in\{-4,-3,\dots,3\}$ and $\log\gamma\in\{-6,-5.5,\dots,-2.5\}$ . The neural family contains 25 one-hidden-layer ReLU MLPs formed by crossing widths $\{4,8,16,32,64\}$ with train-noise augmentation $\{0,.2,.4,.6,.8\}$ . Search uses $T=12$ , $M=8$ local grid proposals, and 32 scout examples. The neural run uses 1,000 trajectories, $B=800$ , $\delta=.005$ , $\alpha=.10$ . Decision evidence is sampled with replacement from fixed empirical development/audit pools; hidden data are evaluation only. 
+ B.7 E30: three-environment public-data extension 
+ E30 reuses the neural digits architecture but declares three environments: clean development, Gaussian-noise audit, and dropout+noise audit. A stronger corruption is hidden evaluation only. Runs use $N=800$ , $T=12$ , $M=8$ , nominal $B=400$ per environment, $\delta=.005$ , and $\alpha=.10$ . EGR-ALLOC uses the cumulative pooled-budget rule described in Section 4.2. A weakest-component balancing rule is also evaluated. Because decision evidence is sampled with replacement from fixed empirical pools, validity is relative to those empirical distributions. 
+ B.8 E31: proposal-policy robustness 
+ E31 fixes the E30 model/evidence bank and adoption rules while changing only the predictable proposal policy: local, wide-local, or global. Each cell uses $N=400$ trajectories. This isolates empirical sensitivity to proposal dynamics without changing the candidate evidence construction. 
+ B.9 E32: larger controlled neural benchmark 
+ E32 uses a reproducibly generated 40,000-sample, 50-feature, five-class controlled classification problem and a 16-model MLP bank indexed by hidden width and train-noise augmentation. Three declared environments are clean development, strong additive-noise audit, and dropout+noise audit; a stronger hidden environment is evaluation only. Runs use $N=500$ , $T=15$ , $M=8$ , $B=400$ , $\delta=.0025$ , and $\alpha=.10$ . E32 is a scale/mechanism stress test, not a public-image or LLM-agent benchmark. 
+ B.10 Frozen-candidate replay 
+ All 600 ordered non-self pairs from the 25-model neural grid are frozen. Each pair is evaluated with 200 replicated evidence streams at $q\in\{5,10,20,50,100\}$ and per-environment cap $B=800$ . Within each pair/replicate, identical development and audit streams are reused across fixed-endpoint IUT, fixed-anytime IUT, Stagewise EGR, and EGR-ALLOC. Therefore fixed-anytime IUT and Stagewise EGR have identical alternative crossing events by construction and differ only in evidence usage. 
+ Appendix C Additional Results and Diagnostics 
+ C.1 Original two-environment public-data results 
+ Table 5: Original public-data adaptive searches. EGR methods are the final columns. 
+ Benchmark 
+ Metric 
+ Fixed IUT 
+ Stagewise EGR 
+ EGR-ALLOC 
+ RBF-SVC 
+ FDR 
+ .0000 
+ .0000 
+ .0000 
+ Power 
+ .522 
+ .554 
+ .583 
+ Evidence 
+ 1200.0 
+ 567.5 
+ 584.3 
+ Neural MLP 
+ FDR 
+ .0000 
+ .0005 
+ .0000 
+ Power 
+ .319 
+ .355 
+ .374 
+ Evidence 
+ 1600.0 
+ 782.3 
+ 781.0 
+ C.2 Three-environment uncertainty and balancing 
+ For E30, fixed IUT, Stagewise EGR, and EGR-ALLOC each have 0 observed any-false paths in 800 trajectories; the corresponding one-sided Wilson upper bound is .00478. Power (95% MC interval) is .3137 [.2981,.3293], .3221 [.3064,.3379], and .3349 [.3185,.3514]. Evidence intervals are 1200 exactly, 388.8 [387.1,390.4], and 392.6 [390.3,394.9]. Weakest-component EGR-Balance attains power .3687 [.3517,.3858] with evidence 1106.4 [1105.4,1107.5] and one observed false-adoption path ( $\mathbb{P}(V_{T}>0)=.00125$ ); it is included as an allocation diagnostic rather than the main efficiency comparison. 
+ For E32, fixed IUT, Stagewise, and EGR-ALLOC have 0 observed any-false paths in 500 trajectories (Wilson upper bound .00762). Power intervals are .2149 [.1886,.2413], .2380 [.2135,.2625], and .2666 [.2414,.2919]; evidence intervals are 1200 exactly, 444.6 [440.2,448.9], and 440.9 [436.6,445.3]. 
+ C.3 Proposal-policy robustness 
+ Table 6: E31 proposal-policy robustness. Every displayed audited method has zero observed FDR in 400 trajectories per policy; EGR methods are the final columns. 
+ Policy 
+ Metric 
+ Fixed IUT 
+ Stagewise EGR 
+ EGR-ALLOC 
+ Local 
+ Power 
+ .3192 
+ .3224 
+ .3309 
+ Evidence 
+ 1200.0 
+ 389.3 
+ 390.7 
+ Wide-local 
+ Power 
+ .5466 
+ .5519 
+ .5705 
+ Evidence 
+ 1200.0 
+ 379.0 
+ 379.4 
+ Global 
+ Power 
+ .6993 
+ .6877 
+ .6855 
+ Evidence 
+ 1200.0 
+ 379.1 
+ 378.4 
+ The global-policy row illustrates that adaptive evidence placement is primarily an evidence-efficiency device, not a guarantee of higher finite-run power for every proposal dynamic; its validity claim is the conditional one in Theorem  2 . 
+ C.4 Frozen-pair diagnostics 
+ Table 7: Frozen-pair replay at $q=20$ . Reported null rates are candidate-level crossing frequencies, not online-stream FDR. 
+ Metric 
+ Fixed endpoint 
+ Fixed anytime 
+ Stagewise EGR 
+ EGR-ALLOC 
+ Pers.-alt. power 
+ .6082 
+ .6477 
+ .6477 
+ .6699 
+ Persistent-null crossing 
+ .000013 
+ .000355 
+ .000355 
+ .000395 
+ Mismatch-null crossing 
+ .000000 
+ .001667 
+ .001667 
+ .001905 
+ Evidence 
+ 1600.0 
+ 1600.0 
+ 702.4 
+ 715.7 
+ C.5 Controller and evidence-unit diagnostics 
+ At $T=500$ with 5% alternatives and identical persistent candidate e-values, e-LOND, e-LORD, e-SAFFRON, and the e-FWER rule attain powers .619, .890, .888, and .415, respectively; empirical FDR values remain small in these runs. This shows that downstream spending materially affects long-horizon power while leaving the EGR candidate interface unchanged. In the dependence stress test, treating highly correlated raw rows as fresh evidence produces a null crossing probability .728 at $\rho=.95$ ; aggregating each cluster into one bounded unit reduces it to .0127, directly illustrating the operational importance of Assumption 1. 
+ C.6 Candidate-freezing / leakage diagnostic 
+ The expanded E33 threshold sweep shows that, with one available variant, the frozen and reuse protocols coincide. As the number of post-evidence variants grows, reuse of the same evidence produces a strong multiplicity-like inflation, while restarting remains near the frozen baseline. At $q=20$ and $L=64$ , the rates are .052% (Frozen), 3.802% (Leak+reuse), and .063% (Leak+restart). 
+ Table 8: E33 persistent-null crossing at $q=20$ over 100,000 trials per $L$ (percent; Wilson 95% interval in brackets). 
+ Variants $L$ 
+ Frozen 
+ Leak+reuse 
+ Leak+restart 
+ 1 
+ .063 [.049,.081] 
+ .063 [.049,.081] 
+ .054 [.041,.070] 
+ 4 
+ .060 [.047,.077] 
+ .223 [.196,.254] 
+ .042 [.031,.057] 
+ 16 
+ .062 [.048,.079] 
+ .988 [.929,1.051] 
+ .059 [.046,.076] 
+ 64 
+ .052 [.040,.068] 
+ 3.802 [3.685,3.922] 
+ .063 [.049,.081] 
+ Additional allocation calibration. 
+ At $q=20$ and $|\mathcal{E}|=2,3,5,8$ , balancing/oracle powers are .898/.904, .961/.965, .996/.996, and 1.000/1.000; mean evidence is 114.1/114.4, 144.4/142.8, 190.8/191.5, and 260.7/258.0, compared with equal-split caps 240, 360, 600, and 960. These are empirical diagnostics under the simulator, not a stochastic optimality theorem. 
+ Experimental support, please
+ view the build logs 
+ for errors. Generated by
+ L
+ A 
+ T
+ E 
+ xml 
+ .
+ Instructions for reporting errors 
+ We are continuing to improve HTML versions of papers, and your feedback helps enhance accessibility and mobile
+ support. To report errors in the HTML that will help us improve conversion and rendering, choose any of the
+ methods listed below: 
+ Click the "Report Issue" ( 
+ ) button, located in the page header. 
+ Tip: You can select the relevant text first, to include it in your report. 
+ Our team has already identified the following issues . We appreciate your time reviewing and reporting rendering errors we
+ may not have found yet. Your efforts will help us improve the HTML versions for all readers, because disability
+ should not be a barrier to accessing research. Thank you for your continued support in championing open access for
+ all. 
+ Have a free development cycle? Help support accessibility at arXiv! Our collaborators at LaTeXML maintain a list of packages that need conversion , and welcome developer contributions . 
+ We gratefully acknowledge support from our major funders ,
+ member institutions , ,
+ and all contributors.
+ About · 
+ Help · 
+ Contact · 
+ Subscribe · 
+ Copyright · 
+ Privacy · 
+ Accessibility · 
+ Operational Status (opens in new tab) 

@@ -1,0 +1,29 @@
+[SHA] 被测源码 7 个文件与 V9-G7 报告登记一致：True {'__init__.py': True, 'discovery.py': True, 'identification.py': True, 'promotion_gate.py': True, 'registration.py': True, 'sufficiency_gate.py': True, 'toy_worlds.py': True}
+[MSG] 独立生成器 80 个上下文：准确率 0.9750；逐路由召回 {"SUFFICIENT": 1.0, "OUT_OF_DOMAIN": 1.0, "NUMERICAL": 1.0, "COVARIANCE_INCONSISTENT": 1.0, "PARAMETRIC": 0.8, "UNIDENTIFIABLE": 1.0, "STRUCTURAL": 1.0, "ABSTAIN": 1.0}
+[MSG] 包络口径（OOD 不带标签）：n_cal=24，OOD 召回 1.00，域内保留 0.60
+[MSG·OOD 泄漏] 只有标签无包络 6/6；只有包络无标签 6/6；两者都没有 0/6
+[PARAMETRIC] 30 个纯参数上下文：召回 0.8667，路由分布 {'COVARIANCE_INCONSISTENT': 3, 'PARAMETRIC': 26, 'STRUCTURAL': 1}
+[STRUCTURAL] 20 个结构上下文：召回 1.0000，路由分布 {'STRUCTURAL': 20}
+[共形] n_cal=18 → k=19、有效=False；n_cal=19 → k=19、有效=True
+[共形覆盖] 名义 0.95，经验 0.935（n_cal=39，200 次留出）
+[thinning] 两视图相同=False，最大差 1.793e-02，交叉协方差 9.979e-08（方差 1.250e-05）
+[发现·空世界] 假发现 2/20 = 0.10
+[投影·单上下文] max|<r_perp,q>| = 1.936e-16 / 1.048e-16；分解恒等式 {'single_step': True, 'k_step': True}
+[投影·批量路径] 整批能量比 0.7384；逐上下文比值 [1.856, 0.454, 2.587, 0.469, 1.785, 0.459]（>1 表示能量反而增大）
+[投影·单上下文能量] 纯参数世界残余 0.0227；结构世界残余 0.0043
+[发现质量] 纯参数世界假发现 9/10；结构世界精确支持 13/20，系数中位 0.523
+[负对照] NC_A_missing_quadratic_drag: 非空候选 0，准入 0/6
+[负对照] NC_B_missing_inv_r: 非空候选 0，准入 0/6
+[负对照] NC_C_wrong_mechanism_nonempty: 非空候选 -，准入 6/6
+[晋升门] admitted=True，n_candidates_submitted=2（discover 内层迭代 2 次），alpha_t=0.03040，alpha/N=0.01520
+[晋升门·e-LOND] e_pers=66.375，阈值 1/α=65.797，e_lond_passed=True；环境族 e-value 唯一值个数 1
+[坏控] 矩阵已写入 evidence/mutation_matrix.txt
+  坏控 | 路由序列相同 | PARAMETRIC召回 | 共形k(n=18) | 共形有效 | 视图相同 | 交叉协方差 | 空世界假发现 | 投影max_ip | 批量能量比 | 结构精确支持 | NC-A | NC-B | NC-C | 准入 | e_lond
+  baseline | - | 0.867 | 19 | False | False | 9.98e-08 | 0.10 | 1.94e-16 | 0.738 | 13/20 | 0.00 | 0.00 | 1.00 | True | True
+  M1a_swap_param_structural_literal | True | 0.867 | 19 | False | False | 9.98e-08 | 0.10 | 1.94e-16 | 0.738 | 13/20 | 0.00 | 0.00 | 1.00 | True | True
+  M1b_structural_before_parametric | False | 0.000 | 19 | False | False | 9.98e-08 | 0.10 | 1.94e-16 | 0.738 | 13/20 | 0.00 | 0.00 | 1.00 | True | True
+  M2_conformal_no_finite_sample | True | 0.867 | 18 | True | False | 9.98e-08 | 0.10 | 1.94e-16 | 0.738 | 13/20 | 0.00 | 0.00 | 1.00 | True | True
+  M3_discovery_test_overlap | True | 0.867 | 19 | False | True | 1.25e-05 | 0.45 | 1.94e-16 | 0.738 | 11/20 | 0.00 | 0.00 | 1.00 | True | True
+  M4_no_orthogonal_projection | True | 0.867 | 19 | False | False | 9.98e-08 | 0.00 | 2.45e-01 | 1.000 | 20/20 | 0.00 | 0.33 | 1.00 | True | True
+  M5_elond_gate_always_false | True | 0.867 | 19 | False | False | 9.98e-08 | 0.10 | 1.94e-16 | 0.738 | 13/20 | 0.00 | 0.00 | 1.00 | True | False
+  M6_allow_empty_candidate | True | 0.867 | 19 | False | False | 9.98e-08 | 0.10 | 1.94e-16 | 0.738 | 13/20 | 0.00 | 0.00 | 1.00 | True | True

@@ -1,0 +1,99 @@
+{
+  "task": "ainerzero.V9.G3",
+  "source": "src/ainerzero/v9/geometry/canonical.py",
+  "source_sha256": "ea446f76043f8aeac33d1665dbf18252a4678700b849d54e17f5fa9cc3282a50",
+  "test": "tests/v9/geometry/test_canonical.py",
+  "test_sha256": "38ced822b96d9815b6d1a7a2f40d3e0c48475054466311699dfd7dff02ab9606",
+  "import_shim": [
+    [
+      "from .belief import TangentGaussian",
+      "from ainerzero.v9.geometry.belief import TangentGaussian"
+    ],
+    [
+      "from .gravity import GravityFrame",
+      "from ainerzero.v9.geometry.gravity import GravityFrame"
+    ],
+    [
+      "from .lie import SE2, SE3, boxplus, vector",
+      "from ainerzero.v9.geometry.lie import SE2, SE3, boxplus, vector"
+    ]
+  ],
+  "all_caught": true,
+  "runs": [
+    {
+      "name": "control-import-shim-only",
+      "kind": "control",
+      "outcome": "pass-green",
+      "returncode": 0,
+      "caught": null,
+      "failed_tests": [],
+      "log": "mutation-control-import-shim-only.log",
+      "mutant_sha256": "9d44f66da491d136bebec7b9f512c2b5b73340b37381e5bf8a39b2ac719d08a6"
+    },
+    {
+      "name": "inverse-direction-g-instead-of-g-inverse",
+      "kind": "mutation",
+      "outcome": "caught-red",
+      "returncode": 1,
+      "caught": true,
+      "failed_tests": [
+        "test_height_and_gravity_direction_are_preserved",
+        "test_dispatchers_match_typed_functions",
+        "test_roundtrip_is_identity_for_all_supported_inputs[SE2-frame0]",
+        "test_roundtrip_is_identity_for_all_supported_inputs[SE2-frame1]",
+        "test_roundtrip_is_identity_for_all_supported_inputs[SE3-frame0]",
+        "test_roundtrip_is_identity_for_all_supported_inputs[SE3-frame1]",
+        "test_boundary_yaw_near_pi_and_tiny_translation[0.0--3.141592652589793]",
+        "test_boundary_yaw_near_pi_and_tiny_translation[0.0-3.141592652589793]",
+        "test_boundary_yaw_near_pi_and_tiny_translation[1e-12--3.141592652589793]",
+        "test_boundary_yaw_near_pi_and_tiny_translation[1e-12-3.141592652589793]",
+        "test_boundary_yaw_near_pi_and_tiny_translation[-1e-12--3.141592652589793]",
+        "test_boundary_yaw_near_pi_and_tiny_translation[-1e-12-3.141592652589793]",
+        "test_canonicalize_equivariance_under_se2_left_action[points3d-SE2-frame0]",
+        "test_canonicalize_equivariance_under_se2_left_action[points3d-SE2-frame1]",
+        "test_canonicalize_equivariance_under_se2_left_action[points3d-SE3-frame0]",
+        "test_canonicalize_equivariance_under_se2_left_action[points3d-SE3-frame1]",
+        "test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE2-frame0]",
+        "test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE2-frame1]",
+        "test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE3-frame0]",
+        "test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE3-frame1]",
+        "test_canonicalize_equivariance_under_se2_left_action[poses-SE2-frame0]",
+        "test_canonicalize_equivariance_under_se2_left_action[poses-SE2-frame1]",
+        "test_canonicalize_equivariance_under_se2_left_action[poses-SE3-frame0]",
+        "test_canonicalize_equivariance_under_se2_left_action[poses-SE3-frame1]",
+        "test_wrapper_makes_arbitrary_numpy_map_strictly_equivariant",
+        "test_first_order_error_propagation_matches_empirical_covariance",
+        "test_se3_gravity_aligned_error_injection_and_propagation"
+      ],
+      "log": "mutation-inverse-direction-g-instead-of-g-inverse.log",
+      "mutant_sha256": "e17fffb9944c0a49d966a863358d38e461311e29074a886261a0b39146ae42ab"
+    },
+    {
+      "name": "full-se3-missing-gravity-alignment",
+      "kind": "mutation",
+      "outcome": "caught-red",
+      "returncode": 1,
+      "caught": true,
+      "failed_tests": [
+        "test_height_and_gravity_direction_are_preserved",
+        "test_se3_gravity_aligned_error_injection_and_propagation"
+      ],
+      "log": "mutation-full-se3-missing-gravity-alignment.log",
+      "mutant_sha256": "a23fee4205d7503303c5657a8de0d6b2a40b0e3913a5bebbd37695700cada6cc"
+    },
+    {
+      "name": "grid-rotation-direction-reversed",
+      "kind": "mutation",
+      "outcome": "caught-red",
+      "returncode": 1,
+      "caught": true,
+      "failed_tests": [
+        "test_grid_roundtrip_and_second_order_convergence",
+        "test_grid_equivariance_under_se2_left_action",
+        "test_grid_boundary_fill_and_degenerate_grid"
+      ],
+      "log": "mutation-grid-rotation-direction-reversed.log",
+      "mutant_sha256": "ad1d8e5abaf5b7c5cfefaf24c064d59937a634edbca23850baea9bbbdabc7814"
+    }
+  ]
+}

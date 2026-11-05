@@ -1,0 +1,159 @@
+{
+  "task": "ainerzero.V9.G5",
+  "sandbox": "/tmp/ainerzero-v9g5-r2-20261020T145732",
+  "control": [
+    {
+      "name": "control_import_sandbox",
+      "exit_code": 0,
+      "imported_from": "/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py",
+      "passed": true
+    },
+    {
+      "name": "control_unmutated_r2_tests",
+      "command": [
+        "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+        "-m",
+        "pytest",
+        "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "failed_tests": 0,
+      "broken_harness": false,
+      "log": "evidence/control_unmutated_r2_tests.log",
+      "passed": true
+    },
+    {
+      "name": "control_verify_registration",
+      "exit_code": 0,
+      "passed": true,
+      "log": "evidence/control_verify_registration.log"
+    }
+  ],
+  "source_mutations": [
+    {
+      "name": "m1_psd_guard_zero_tolerance",
+      "command": [
+        "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+        "-m",
+        "pytest",
+        "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py",
+        "-q"
+      ],
+      "exit_code": 1,
+      "failed_tests": 12,
+      "broken_harness": false,
+      "log": "evidence/m1_psd_guard_zero_tolerance.log",
+      "file": "src/ainerzero/v9/geometry/belief.py",
+      "mutation": "if smallest < -psd_tolerance(p):  ->  if smallest < 0:",
+      "red": true
+    },
+    {
+      "name": "m2_psd_guard_absolute_tolerance",
+      "command": [
+        "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+        "-m",
+        "pytest",
+        "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py",
+        "-q"
+      ],
+      "exit_code": 1,
+      "failed_tests": 2,
+      "broken_harness": false,
+      "log": "evidence/m2_psd_guard_absolute_tolerance.log",
+      "file": "src/ainerzero/v9/geometry/belief.py",
+      "mutation": "if smallest < -psd_tolerance(p):  ->  if smallest < -1e-12:",
+      "red": true
+    },
+    {
+      "name": "m3_psd_guard_loose_relative_tolerance",
+      "command": [
+        "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+        "-m",
+        "pytest",
+        "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py",
+        "-q"
+      ],
+      "exit_code": 1,
+      "failed_tests": 4,
+      "broken_harness": false,
+      "log": "evidence/m3_psd_guard_loose_relative_tolerance.log",
+      "file": "src/ainerzero/v9/geometry/belief.py",
+      "mutation": "PSD_RELATIVE_TOL = 1e-12  ->  PSD_RELATIVE_TOL = 1e-3",
+      "red": true
+    },
+    {
+      "name": "m4_pose_graph_no_eigenvalue_clamp",
+      "command": [
+        "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+        "-m",
+        "pytest",
+        "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py",
+        "-q"
+      ],
+      "exit_code": 1,
+      "failed_tests": 4,
+      "broken_harness": false,
+      "log": "evidence/m4_pose_graph_no_eigenvalue_clamp.log",
+      "file": "src/ainerzero/v9/geometry/pose_graph.py",
+      "mutation": "eig = np.where(negative, 0.0, eig)  ->  eig = eig  # mutated: no clamp",
+      "red": true
+    },
+    {
+      "name": "m5_gravity_absolute_norm_guard",
+      "command": [
+        "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+        "-m",
+        "pytest",
+        "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py",
+        "-q"
+      ],
+      "exit_code": 1,
+      "failed_tests": 8,
+      "broken_harness": false,
+      "log": "evidence/m5_gravity_absolute_norm_guard.log",
+      "file": "src/ainerzero/v9/geometry/gravity.py",
+      "mutation": "if sin_theta < HORIZONTAL_SIN_TOL:  ->  if np.linalg.norm(x) < 1e-12:",
+      "red": true
+    },
+    {
+      "name": "m6_gravity_unnormalized_guard",
+      "command": [
+        "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+        "-m",
+        "pytest",
+        "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py",
+        "-q"
+      ],
+      "exit_code": 1,
+      "failed_tests": 7,
+      "broken_harness": false,
+      "log": "evidence/m6_gravity_unnormalized_guard.log",
+      "file": "src/ainerzero/v9/geometry/gravity.py",
+      "mutation": "sin_theta = float(np.linalg.norm(x)) / h_norm  ->  sin_theta = float(np.linalg.norm(x))",
+      "red": true
+    }
+  ],
+  "registration_mutations": [
+    {
+      "name": "m7_registration_document_hash_tamper",
+      "description": "文档输入哈希被改却仍通过消费门",
+      "exit_code": 1,
+      "contains_fail": true,
+      "red": true,
+      "log": "evidence/m7_registration_document_hash_tamper.log"
+    },
+    {
+      "name": "m8_registration_code_hash_tamper",
+      "description": "代码输入哈希被改却仍通过消费门",
+      "exit_code": 1,
+      "contains_fail": true,
+      "red": true,
+      "log": "evidence/m8_registration_code_hash_tamper.log"
+    }
+  ],
+  "all_controls_green": true,
+  "all_source_mutations_red": true,
+  "all_registration_mutations_red": true,
+  "ok": true
+}

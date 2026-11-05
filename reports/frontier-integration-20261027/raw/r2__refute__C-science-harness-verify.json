@@ -1,0 +1,110 @@
+{
+ "group": "C-science-harness-verify",
+ "verdicts": [
+  {
+   "key": "OSVerify",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2610.18089 标题、六位作者（Nie, Ye, Liu, Wang, Ermon, Zou）一致；v1 为 2026-10-13，v2 为 2026-10-22；分类 cs.AI；许可 CC BY 4.0。GitHub 组织 OSVerify 下的 OSVerify 与 Rethlas-OSV 均为 Apache-2.0，2026-10-13 创建。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "evidence": [
+    "https://arxiv.org/abs/2610.18089：摘要写的是在 FNR（有效解被误拒的比例）约束下最大化 TNR；相对投票基线，无效解的人工审核量平均减少 46%，validator 后训练后减少 57%，均标注为在相同的 empirical low FNR 约束下。",
+    "https://arxiv.org/html/2610.18089v2 §2：以有效解为正类，目标为 max TNR s.t. FNR≤τ。§3 中拒绝分数取各候选错误上 p_C 的最大值，validator 输出 Not-Real/Minor/Substantial 三类。§4.1：主表阈值是在评测集上扫出来的，按 Carlini et al. 的 empirical-frontier 协议选取。",
+    "附录 B.4 明确写主结果在评测集上选阈值，本节才演示部署做法：用 100 个留出的 Putnam 有效解，按 FactTest 次序统计量（δ=0.10）定阈值；测试集只有 50 个有效解、58 个无效解，OSVerify 在 5% 目标下得到 FNR 4.0%、TNR 77.6%。附录 D.5：LoRA（rank 32）+ 在线 GRPO，每步 32 个样本，每个样本 8 条 rollout。",
+    "https://github.com/OSVerify/OSVerify README：需要 Codex CLI 0.162+，默认模型 gpt-6-astra；demo 与 export 两个命令不调用模型。仓库有 experiments/ 目录，内含 run_firstproof_pilot.py 与 run_firstproof_workflow.py，都通过 CODEX_BIN 调 Codex。"
+   ],
+   "corrections": [
+    "红旗里“未见复现实验脚本”不准确。仓库 experiments/ 下有基于 Codex CLI 的 FirstProof pilot/workflow 脚本，只是没有看到复现 Putnam100/H2V 主表或 GRPO 训练的脚本。",
+    "compute_notes 里“需要 GPU 集群”是推断，论文没有写训练硬件；“每个解约 128k token”只是附录 B.2 预算曲线上的一个对比点（该点 Voting/OSVerify/训练版的 TNR 为 41.4/86.2/94.8%），不是固定的推理预算。",
+    "FactTest 式阈值给的是概率保证：以 1−δ（论文取 0.9）的概率成立，并且要求校准样本与测试样本可交换；B.4 自己称为 diagnostic comparison，样本很小。借到 AinerZero、把受约束的错误率换成“无效规律被晋升率”后，校准集必须是带标签的留出无效候选，不能用有效解。目标错误率越低，所需校准样本越多：n=100 时只能到 τ≈5%，τ=0 无法用有限样本保证。",
+    "how_to_borrow (2) 把 proposer 和 validator 换成确定性搜索与重放测试，是 AinerZero 自己的改造。论文支持“拆开更好”的证据是 LLM 在错误层面判断更容易（gpt-oss-120b 在 FirstProof-Eval 上 AUROC 从 0.68 升到 0.90），这个难度差不一定适用于确定性组件，需要自行验证。"
+   ]
+  },
+  {
+   "key": "SRHarness",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2609.35501 标题、五位作者（Yu, Zhou, Huang, Ding, Li）一致，2026-09-28 v1，cs.AI/cs.LG/cs.SC，许可 CC BY-NC-ND 4.0，作者单位均为清华。论文里的代码链接 tsinghua-fib-lab/SRHarness 是 yuzhTHU/SRHarness 的 fork（GitHub API 显示 fork=true、parent=yuzhTHU/SRHarness）；上游仓库创建于 2026-03-18，为 MIT 许可，PyPI 包 sr-harness 1.0.8。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "evidence": [
+    "https://arxiv.org/abs/2609.35501：摘要中的三项机制，以及 93.69% 对 62.16%、72.97% 对 39.64%、对 Codex 72.97% 对 20.72%，与记录一致。",
+    "https://arxiv.org/html/2609.35501v1 附录 A：80/20 切分（split seed 42），候选按验证 MSE 排序；动作集包含 constant_fit、call_pysr、call_sindy、code_executor 等；每条正式结果保留指向不可变原始日志的指针和哈希，指标在公共评估层重算。",
+    "同一附录：主实验配置为 R1-C1-L30-K1，即一个 restart 轮次、一个会话分支、最多 30 步精炼。§4.5 消融：把预算转给重启（L→15、R→2）后 SA 从 74.47% 降到 66.67%，加分支为 72.07%，局部采样为 73.87%，都没有超过默认配置。",
+    "SA 的定义：先做数值诊断（atol 1e-8、rtol 1e-6），再由 DeepSeek-v4-flash-0731 当结构等价评审，SA 以这个评审的结论为准。表 1（LSR-Synth）：不用 LLM 的 PySR 基线 SA 同为 6.20%，物理 OOD 82.87% 高于 SRHarness 的 78.00%，材料 OOD 100% 高于 96.00%。"
+   ],
+   "corrections": [
+    "机制描述本身准确，但 how_to_borrow (4) 引用“继续/分支/重启生命周期语义”缺乏依据。论文主结果没有用到分支和重启（R1-C1）；消融中把预算挪给重启或分支，SA 持平或下降，论文结论是在当前预算下精炼深度优先。生命周期只能当记录格式借用，不能当已验证有效的搜索策略。",
+    "记录漏了一个关键事实：符号准确率 SA 由 LLM（DeepSeek-v4-flash-0731，与主实验骨干相同）做结构等价评审，不是纯符号判定。“指标在公共评估层重算”也就包含 LLM 评审，借鉴时 AinerZero 的评估层不能照搬这一点。",
+    "“改善数值泛化”只是相对 LLM 基线而言。在 LSR-Synth 上，纯 PySR（无 LLM）的 SA 与 SRHarness 相同（6.20%），物理和材料两项 OOD 更高。这一点对“确定性调度 PySR/SINDy”的路线反而是有用的基线信息，应写进记录。",
+    "红旗“两个仓库哪个为准”已可解决：yuzhTHU/SRHarness 是上游，tsinghua-fib-lab 是它的 fork（推送更早，可能落后）。上游 LICENSE 的版权人是 YuMeow。",
+    "墙钟时间应写作随骨干约 3.6–15 分钟（GLM-5.3 在 Transform 上 3.57 分钟，GLM-5.3-flash 在 Anon 上 15.15 分钟），7–12 分钟只是 DeepSeek-v4-flash 的范围。"
+   ]
+  },
+  {
+   "key": "MechBench",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2609.35515 标题、五位作者（Yu, Zhang, Cheng, Ding, Li）一致，2026-09-28 v1，许可 CC BY-NC-ND 4.0。tsinghua-fib-lab/MechBench 是 yuzhTHU/mdbench 的 fork，许可 MIT，版权人 MDBench contributors。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "evidence": [
+    "https://arxiv.org/abs/2609.35515：摘要中的数字与记录一致，Codex+GPT-5.6-sol 在 Core-set 上为 35.00%/13.75%，条件失败率 64.29%；Gold-P 条件下机制准确率仍低于 50%。",
+    "https://arxiv.org/html/2609.35515v1 §3.3/§4：不可辨识筛查只针对“替换另一条关系 m_i（i≠j）的候选修改 δ̃(m_i)”。判据是结构复杂度相当或更低、且偏离背景知识不更大，满足就修改或剔除该实例。",
+    "附录 B.3：SA(M) 要求每个任务的全部探针都符号等价才算对，且与 SA(P) 无条件独立。附录 A.4：探针量必须在各个同样合理的机制下取值相同，这一条由筛查保证。README 写明 no LLM judge is required，用 SymPy，FLINT 为可选加速。",
+    "§6 局限：只覆盖能通过可处理的符号消元得到唯象规律的机制；需要解非线性或超越方程、积分 ODE 或数值仿真的系统不在覆盖范围内。"
+   ],
+   "corrections": [
+    "“主动搜索竞争机制”的范围应写窄一些：论文只枚举“改另一条关系能否复现同一唯象规律”的单关系替代，判据是启发式的，不是对所有竞争机制的穷举或形式化证明。",
+    "how_to_borrow (1) 需要两条限定。第一，探针只适用于结构化机制（关系集合），单个唯象残差公式没有内部量可以探测。第二，探针量必须先经过不可辨识筛查，保证它在等价合理的机制下不变；否则会惩罚同样被观测数据支持的机制。顺序应该是先筛查、再探针。",
+    "论文的适用范围限于可做符号消元的机制。AinerZero 若用 GeometryCore 仿真或数值积分来定义机制，MechBench 的等价判定与筛查不能直接沿用，要换成数值等价检验。",
+    "红旗中 pushed_at 早于 created_at 的现象，可由该仓库是 yuzhTHU/mdbench 的 fork 解释，不构成问题。"
+   ]
+  },
+  {
+   "key": "Paper2Agent",
+   "identity_confirmed": true,
+   "identity_note": "Nature 页面标题为 Reimagining research papers as interactive and reliable AI agents，作者 Miao, Davis, Zhang, Pritchard, Zou；DOI 10.1038/s41586-026-11044-y；2025-10-13 收稿，2026-08-14 接收，2026-09-16 发表。arXiv 2509.06917 用的是旧标题（v1 2025-09-08，v2 2025-10-16）。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "evidence": [
+    "https://www.nature.com/articles/s41586-026-11044-y：100 篇计算生物学论文中 74 篇 successfully agentified，产出 599 个工具，其中 593 个通过自动验证。Methods 把成功定义为端到端完成工具抽取、执行和自动验证，全程无人干预。",
+    "Methods：用 Claude Code 的 agent SDK 搭建 orchestrator 加 6 步子代理流程。测试通过的条件是数值与教程输出一致（允许 3% 容差）、图的感知哈希 Hamming 距离小于 20。每个函数最多尝试 6 次，仍失败的移除 MCP 装饰器，不进入服务器。最后组装出带 manifest 与版本信息的 MCP 服务器。",
+    "正文报告：在 permuted paper–question benchmark 中，越界查询被拒绝的比例为 100%。主评测用 claude-sonnet-4-20250514，在 MacBook Air（M2、8GB）上调用 API；AlphaGenome 转换约 45 分钟、14 美元，单次查询 0.20 美元、1.6 分钟。",
+    "页面许可链接为 CC BY-NC-ND 4.0；arXiv 2509.06917 的许可是 CC BY 4.0。GitHub 仓库 jmiao24/Paper2Agent 为 MIT，版权人 Jiacheng Miao。"
+   ],
+   "corrections": [
+    "论文许可要分版本说明：Nature 版是 CC BY-NC-ND 4.0，arXiv 预印本是 CC BY 4.0。“论文文本不可演绎”只适用于 Nature 版。",
+    "借用复现门时要注意两点。第一，3% 的浮点容差比较宽松，不应直接照搬为 AinerZero 登记门的阈值。第二，验证失败的函数会被直接删掉而不计入失败，所以 593/599 是筛掉失败函数之后的幸存者统计，不代表覆盖率。",
+    "越界查询 100% 被拒是 Claude 驱动的 agent 的行为结果。借用的只是“置换论文–问题配对”这种构造方法，弃权能力本身不能迁移过来。"
+   ]
+  },
+  {
+   "key": "sciexplorer",
+   "identity_confirmed": true,
+   "identity_note": "PRX 页面：Agentic Exploration of Physics Models，作者 Nägele 与 Marquardt，Phys. Rev. X 16, 031002，2025-11-12 收稿，2026-05-22 接收，2026-07-08 发表，DOI 10.1103/xnqc-q6nt，许可 CC BY 4.0。arXiv 2509.24978 共 v1–v6，v6 日期 2026-07-08，arXiv 版许可为 arXiv 非独占分发许可，不是 CC。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "evidence": [
+    "https://journals.aps.org/prx/abstract/10.1103/xnqc-q6nt：摘要说 agent 借助 LLM 工具调用，无需领域蓝图和微调；参考文献给出代码库 MaxNaeg/SciExplorer 与结果库 SciExplorerResults，两者均为 MIT，版权人 Nägele 与 Marquardt。",
+    "https://arxiv.org/html/2509.24978v6：单次探索从几分钟到 1.5 小时以上，瓶颈是 LLM 响应时间；GPT 5 每次约 2 美元。附录试了 GPT-OSS 120B、Qwen3 235B、Mistral 3 675B，原文说它们 struggle with even the simplest tasks。",
+    "同一文本：所谓“随机初始条件”对照，原文明确说是为了检验 tool access 的重要性，对照组是不能用工具的 LLM，直接给它随机初始条件下的轨迹图。附录 A1 的消融只在阻尼受迫振子和偏心引力两个任务上做。",
+    "Fig. 4：五次探索中正确模型至少出现一次的有效成功率，除三个场景外都成立；agent 自评选最优时，若五次都没有完全正确的模型，常常选不中 R² 最高的那次。任务集包含完全非物理的 sinusoidal potential relaxation。"
+   ],
+   "corrections": [
+    "G4（主动实验）缺口在论文里没有得到干净的证据。唯一的随机初始条件对照同时去掉了工具，原文的目的是检验工具访问的作用；论文也没有“主动选实验对随机选实验、其他条件不变”的消融。how_to_borrow (2) 只能当作 AinerZero 自己要补做的对照设计，不能当作这篇论文的结论。",
+    "“用新实验数据从多次探索中选最优”在论文里是一个论证。Fig. 4 统计的是正确模型是否出现在五次里（用真值评估的 R² 判定）；agent 自己挑选在全部近似失败时并不可靠。作为 G5 留出检验借用时，选择必须由外部的留出数据评估来完成，不能交给 agent。",
+    "消融只覆盖两个力学任务，“工具必要”等结论不宜推广到全部任务。",
+    "许可应注明：PRX 版是 CC BY 4.0，arXiv 版是 arXiv 非独占许可。"
+   ]
+  }
+ ]
+}

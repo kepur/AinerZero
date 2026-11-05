@@ -1,0 +1,109 @@
+{
+ "group": "J-conformal-validity-bo",
+ "verdicts": [
+  {
+   "key": "fcp-mpc-2607.00776",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API 与 abs 页一致：2607.00776v1，标题“From Prediction Uncertainty to Conformalized Distance Fields for Safe Motion Planning”，作者 Jaeuk Shin、Yoonseok Ra、Insoon Yang，2026-07-01 发布，主类 cs.RO（交叉 eess.SY/cs.SY），只有 v1。论文脚注给出 https://github.com/CORE-SNU/FCP-MPC。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "章节引用有误：“Remark on what is proven”在 §4 问题设定中（Eq.(6) 之后、§5 标题之前），不在 §7。内容核对无误：形式保证不逐时刻认证单步概率，只给长期经验时间平均。",
+    "静态包络的覆盖失败只出现在 3D。2D ETH–UCY 留出集上，静态离线包络在 i=1 和全部 12 个预测步都达到 0.9 目标（附录 B Tables 7–8；只有 univ 在 1−α=0.7 时有一格低于目标）。因此 red flag“名义保证完全依赖在线调整”应限定为 3D 四旋翼场景。",
+    "Table 6 中的在线自适应对象是投影松弛 ε_i（Eq.(32)，Corollary 1），不是主 AFCP 的 c 标量。静态失败的原因是固定的 ε 低估了测试时的 FPCA 投影残差，在标定密度 N_obs=50 下覆盖也只有 0.080。若把 FPCA+系数空间共形借作 G7 判据，必须对截断/投影残差单独做实测覆盖核验，不能只信两段 union bound。",
+    "Theorem 2/3 都要求每一步可行。作者自述 N_obs=280 时这一前提已被实证违反（硬过滤不可行率 0.833），此时依赖的是 Theorem 4 软版的退化分支：带 η(w) 松弛，不可行时退化量等于不可约违背。",
+    "FCP 的实用前提是残差场低秩且近似时不变，这只在 ETH–UCY 上实证过（前后半段逐格均值 Pearson r=0.71–0.91）。理论还假设函数基固定。K=7、p_i=5、128×128 网格都是 ETH–UCY 的设置。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2607.00776：标题、三位作者与 2026-07-01 发布日期一致",
+    "https://arxiv.org/abs/2607.00776：许可 CC BY-NC-ND 4.0；类别 cs.RO、eess.SY",
+    "https://arxiv.org/html/2607.00776v1 §3.1–3.2：split CP 在可交换下有有限样本边际保证；ACP 只给长期覆盖。Theorem 1 引 Gibbs & Candès 2021 Prop. 4.1。Theorem 3 只给 liminf 时间平均的 (1−α) 安全",
+    "同上 Algorithm 第 22 行：没有可行候选时 brake-to-hover。§8 Table 3：只统计可行步时碰撞率在各场景都低于 0.1；fallback 步碰撞率 0.33–0.37",
+    "同上 §8.6 Table 6：3D 在 N_obs=50 标定，静态覆盖 0.080/0.051/0.034，自适应 0.897/0.891/0.909。作者原话：coverage is sufficient for safety but not, here, necessary",
+    "同上附录 B：ETH–UCY 留出 20%，pooled 在各目标水平都达标；Table 8 在 12 个预测步都 ≥0.9",
+    "同上 §8：Python(NumPy)，Apple M4 16GB；离线结果约 5MB；3D 软版每步 74.8ms；硬过滤不可行率 0.353→0.833",
+    "https://api.github.com/repos/CORE-SNU/FCP-MPC：license=null，/license 返回 404。README 末节写 MIT；README 第 118 行称 2D 使用预计算的恒速预测，与论文的 Trajectron++ 不一致。requirements.txt 含 numpy/scipy/scikit-learn/pybullet，gym-pybullet-drones 从 git 安装"
+   ]
+  },
+  {
+   "key": "geo-conformal-abstention-2604.27914",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API 与 abs 页一致：2604.27914v1，“Geometry-Calibrated Conformal Abstention for Language Models”，作者 Rui Xu、Yi Chen、Sihong Xie、Hui Xiong（HKUST(Guangzhou)），2026-04-30，cs.CL（交叉 cs.LG）。仓库 rxu0112/Geometry-calibrated-conformal-abstention 的描述写明对应本文，创建于 2026-09-28。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": true,
+   "corrections": [
+    "记录中“给出两个有限样本保证”是夸大，只有第一个成立。参与率保证 Eq.(4) P(U_{n+1}≤τ)∈[1−α, 1−α+1/(n+1)) 是标准 split-conformal 结论（Vovk 2005），有效。条件正确率“下界” Eq.(6) 不是严格的有限样本界，HTML 的 alttext 中可以完整读到公式。",
+    "按定义推导，1−β=sup{q: Quantile(⌈q(c+1)⌉/c, 𝒰)≤τ}=k/(c+1)，其中 k 是校准集里分数不超过 τ 的正确样本数。Eq.(6) 右端即 [k/(c+1)]·(c/n)/(1−α+1/(n+1))，约等于 k/A（A 为被接受的校准样本数），只差 1±O(1/n) 的因子。也就是说，它实质是“校准集上被接受样本的经验正确率”这一点估计，不是高概率下界。",
+    "推导中还有两处把随机量当成确定概率：一处是“P(J_{n+1}=1)=c/n”，把校准集比例当作总体概率；另一处是 β 由校准数据事后选出。Eq.(5)/(6) 的不等式两边一边是概率、一边是随机量，不构成边际或条件有限样本保证。Figure 2 只是单数据集的经验观察。",
+    "Lemma 3.2 要求评判函数 ξ 确定。实际的 ξ 是 Qwen2.5-7B 改写、HHEM 相似度 >0.8，再由 GPT-4o 与 GPT-5.1 共识复判，确定性没有保证，前提本身存疑。",
+    "对 how_to_borrow 的更正：G7 的“分数低于阈值才采用，否则回落 F_prior”只是通用 split-conformal 阈值，应直接引用 Vovk 等的标准结果，不必引本文。G5 的“用条件正确率下界控制被接受项错误率”不能以 Eq.(6) 为依据，应改用在被接受的校准子集上做 Clopper–Pearson 一类的精确二项置信界，或 Learn-then-Test / conformal risk control 一类有严格保证的方法。",
+    "记录的其余部分核对无误：5:3:1:1 切分，校准/测试重切 1000 次；平均条件正确率最高 75.0%；“OOD”只是特征名（参考集中答对的样本记为 in、答错的记为 out），没有分布偏移保证。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2604.27914：标题、四位作者与 2026-04-30 发布日期一致",
+    "https://arxiv.org/abs/2604.27914：许可 CC BY 4.0",
+    "https://arxiv.org/html/2604.27914v1 §3.1：Eq.(3) τ 取 ⌈(1−α)(n+1)⌉/n 分位数；Eq.(4) 参与率保证，要求可交换且分数几乎必然互不相同",
+    "同上 §3.2：1−β 的 sup 定义；原文写“By exchangeability, the test prediction is correct with probability P(J_{n+1}=1)=c/n”；Eq.(6)=(1−β)/(1−α+1/(n+1))·c/n",
+    "同上 Lemma 3.2：要求 f 是确定性 LLM，ξ 是确定性评判。附录 B：Qwen2.5-7B 改写，HHEM-2.1-Open 相似度 >0.8 判对，判错样本再经 GPT-4o 与 GPT-5.1 一致同意后改判为对",
+    "同上 §4.4：in/out 方向由参考集中答对/答错的样本估计，属于特征定义，不是 OOD 保证",
+    "https://api.github.com/repos/rxu0112/Geometry-calibrated-conformal-abstention：license=null；readme 要求 Linux x86-64、NVIDIA 驱动、HF bucket 中的 conda 压缩包，脚本用 --device cuda:0"
+   ]
+  },
+  {
+   "key": "equivariant-trust-horizons",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API 与 abs 页一致：2606.24946v1，“Conformal Orbit-Valid Trust Horizons for Equivariant World Models”，单作者 Hongbo Wang（Stony Brook 数学系），2026-06-23，cs.LG（交叉 cs.RO），comments 为“15 pages, 6 figures”。注册表 docs/research/adapter_registry.json 第 796–832 行记为“Equivariant World Models Trust Horizons”，标题、日期与 URL 一致。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "非一致性分数定义为 Γ_i=inf{γ≥1: …}，所以 γ_α≥1 恒成立：校准只能放宽原始曲线，不能收紧。γ_α=1.0 表示原始曲线在该审计集上本来就保守。作者自述原始曲线是 estimator 而非 guarantee（δ̂ 取中位数），保证也只相对于实测审计分布。",
+    "附录 A.2 写的是 γ_α=Q_{1−α}(Γ_cal)，没有写出 ⌈(1−α)(n+1)⌉/n 有限样本修正，也没有报告校准/测试切分的大小。Proposition B 的“≥1−α”需要这一修正；α=0.1 且 n<9 时修正后的分位数为 +∞，证书变成空。因为全部 Γ_i=1，这不影响论文数字，但借用时必须补上修正。",
+    "审计的时域只有 H∈[1,8]，且属中性区（L≈1）。把这一证书借给 V10-E1 的“10 步位置误差”是超出审计范围的外推，需要在我们自己的数据上重新审计，不能直接引用论文的 5.8%。",
+    "Corollary C 要求精确等变，并且只在保持动力学的对称子群上成立（3D 桌面只有 yaw SO(2)，不是完整的 SO(3)）。这与记录中“不要把轨道搬运套到有接触或破坏对称的场景”一致。",
+    "代码检索的补充：GitHub 上有一个同名主题的仓库 megazron/trusthorizon-worldmodel（MIT，2026-09-16 创建，作者不同），它不是本文代码，不要混淆。本文仍无公开官方代码。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2606.24946：单作者 Hongbo Wang，2026-06-23，comments 为 15 pages, 6 figures",
+    "https://arxiv.org/abs/2606.24946：许可 CC BY 4.0；类别 cs.LG、cs.RO",
+    "https://arxiv.org/html/2606.24946v1 §3.1：Err(H)=δ̂Σ_{t<H}e^{λ̂t}，δ̂ 取中位数、λ̂ 用 Benettin/QR 估计；Proposition B 的 Γ_i 定义取 inf over γ≥1；“This is an estimator, not a guarantee”",
+    "同上 §3.2–3.3：Theorem A 与 Corollary C 要求 E、T、f 精确等变且 ρ 保范；3D 只在 yaw SO(2) 上成立",
+    "同上 §4 与附录 A.1：0/50 违规，UB 5.8%；分族 n 为 23/10/8/9，UB 为 12.2%/25.9%/31.2%/28.3%；候选审计 75 条，过滤后 50 条；86/86 曲线级检查只作辅助证据；H∈[1,8]",
+    "同上附录 A.2：γ_α=Q_{1−α}(Γ_cal)，α=0.1，没有写明 n+1 修正和切分大小",
+    "同上附录 A.3：GPU rollout 与 CPU 规范实现等价（δ̂ 4.6526 对 4.653）。附录 D 写有 e2cnn 在 MPS 上不可复现、等变模型方差高。§6 与摘要：证书指导的子目标间距在 3D CEM-MPC 中未得到确认",
+    "https://api.github.com/search/repositories?q=orbit-valid+trust+horizon 返回 0 条；q=trust-horizon+world+model 只返回不相关的 megazron/trusthorizon-worldmodel"
+   ]
+  },
+  {
+   "key": "mad-physics-2605.10820",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API 与 abs 页一致：2605.10820v1，“MaD Physics: Evaluating information seeking under constraints in physical environments”，7 位作者，2026-05-11，cs.AI（交叉 cs.LG），comments 为 64 pages, 10 figures 及项目页。项目页标注作者单位为 Google DeepMind，Moksh Jain 另属 Mila，DeepMind 实习期间完成。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "基准是被动观测选择：智能体不能干预系统，只能选择测量时刻 t、观测函数 o 和噪声 σ。作者明确把它与干预式实验区分开（相关工作写道“the agent cannot alter the system and is only allowed to make measurements”）。借给 G4 时只能当“预算受限的主动测量/感知”基准，不能当 SkillProposal 的“主动干预实验”基准。",
+    "评分并非统一 L2：经典力学用按包围盒对角线归一化的 nRMSE；流体用查询点涡量的 L2；量子的预测目标是粒子出现在随机区域内的概率。",
+    "成本除随保真度递增外，还随观测函数的复杂度变化。预算为经典/流体 200、量子每次试验 30。量子环境因测量会坍缩，允许以同一初始化做多次试验。量子的两种改动是非线性纠缠初始化和 L_p 范数的广义 Born 规则，记录没有列出。",
+    "算力画像需修正：流体环境是 512×512 伪谱求解，Δt=0.001、T_max=60；经典 Δt=0.001、T_max=300。CPU 可以跑，但流体并不“小”。",
+    "记录的其余部分核对无误：只评测 4 个 Gemini 模型，带 Python 代码执行工具，思考预算 4000 tokens；Strategy 提示只是“inspired by Bayesian experimental design”，要求最大化 EIG/成本；全文没有随机、均匀、启发式或算法化 BOED 基线；N=5 次查询 × 3 个随机初始化；项目页写“Code · coming soon”。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2605.10820：标题、7 位作者与 2026-05-11 发布日期一致，comments 含项目页",
+    "https://arxiv.org/abs/2605.10820：许可 CC BY 4.0",
+    "https://arxiv.org/html/2605.10820v1 §3.1：观测元组 (t_k,o_k,σ_k)，Eq.(2) 高斯噪声，Eq.(3) ΣC≤B，T_query>T_max；成本随观测函数复杂度变化",
+    "同上 §3.2.1–3.2.3：经典用 nRMSE（Eq.8）、流体用涡量 L2（Eq.12）、量子预测区域概率；改动包括各向异性惯性、1/R 与 Ripple 引力、alien 陀螺强迫、非线性纠缠、广义 Born 规则",
+    "同上 §4.1 与附录 A.1：Gemini 2.5 Flash Lite/Flash/Pro 与 3 Flash，代码执行脚手架，thinking budget 4000；N=5 次查询，3 个随机初始化；全文检索 random/heuristic/oracle/greedy 均无基线",
+    "同上附录 A.2：全部用 JAX 实现；三档成本 {2,5,10}，噪声 {0.1,0.01,0.001}；流体 N=512、Δt=0.001、T_max=60；经典 Δt=0.001、T_max=300",
+    "https://mad-physics.github.io/：“Code · coming soon”，DeepMind 与 Mila 单位",
+    "GitHub API：google-deepmind/mad_physics 与 google-deepmind/mad-physics 均返回 404；搜索 mad-physics 无官方仓库"
+   ]
+  }
+ ]
+}

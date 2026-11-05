@@ -1,0 +1,69 @@
+{
+ "group": "F-jepa-sparse-change",
+ "verdicts": [
+  {
+   "key": "SLIM",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2610.03137 的标题、作者（Strohm, Wagner, Schwab, Huber；单位 Fraunhofer IPA / Univ. Stuttgart）、日期（2026-10-02 v1，cs.AI）都与原核实记录一致。二手清单里的“Meta FAIR”和“facebookresearch/jepa-wms”确属张冠李戴：jepa-wms 对应的是 Terver et al. 的 arXiv 2512.24497，已被 TMLR 接收。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "how_to_borrow(3) 拿 IDM 损失去防止式8残差网络学成与动作无关，这一条缺少原文支撑。Table 2 中只加预测器侧 IDM 时为 0.010（4/400，McNemar p=0.13），与 plain 无法区分。修复全靠回传进编码器的梯度：仅编码器项三种子平均 0.298，约占全部增益的 85%。原文明说预测器项“a complement that needs the encoder term, not a carrier on its own”。AinerZero 的 GeometryCore 是显式状态，没有可学编码器；把 IDM 加到残差上，对应的恰是原文中单独无效的那一支，只能当待验证假设，不能当设计依据。",
+    "spread/motion 阈值约 0.05 是在 LeWM 潜空间上、从 28 个配置事后得到的经验值，原文也只说它是必要条件，不能直接移到显式状态或 r_θ 上，必须在本项目重新标定。附录 C（ViT-Small）中探针正常、物体位置解码却从 15 px 恶化到 72 px，作者称其为“the sharpest instance of the probe's insufficiency”。",
+    "适用范围比原记录写得更窄：OGBench cube-single 上 plain 与 LeWM+I 没有差别（4/50 vs 3/50，p=1.0），cube-double 两者都是 0/50。修复只在稀疏变化的 2D 合成推动场景上被证实有效。",
+    "小更正：原记录“仅预测器项 0.010”是 canonical 单种子的值，“仅编码器项 0.298”是三种子均值，两者口径不同（canonical 种子上仅编码器项为 0.290）。",
+    "许可补充：GitHub API 把 jepa-wms 的 license 标为 Other/NOASSERTION，但 LICENSE 原文和 README 都写 CC BY-NC 4.0。Terver 论文在 arXiv 上的许可是 CC BY-NC-ND 4.0。两者都与本文无关。"
+   ],
+   "evidence": [
+    "https://arxiv.org/abs/2610.03137：标题、作者、Submitted 2 Oct 2026、许可 nonexclusive-distrib/1.0 均一致，无 Comments/代码链接。",
+    "https://arxiv.org/html/2610.03137v1：§3 写明 SLIM 0.37% vs PushT 0.64%，T 块 27 px vs SLIM 物体 1.1 px；§4 式(2)–(4)，(0.09,1,1)，头 3 层 MLP 约 167K；§5.3 Table 2 中预测器 IDM 单独 p=0.13，原文“Encoder-IDM is load-bearing”；§5.4 spread/motion 定义（K=32）、3.8e-4、12.4×、28 个配置、阈值约 0.05、0.01–0.83；附录 G 显示变化画面 0.35%→1.65% 时 plain 从 0.005 升到 0.530；附录 A 记录 ViT-Tiny 5.5M、约 18M、10 000×200、30 epoch、bf16，A100 上 20 回合 3–4 分钟；附录 B 带墙变体 seed 42 为 0.010；附录 D 的 OGBench 为 null；可复现声明写“will be released”。",
+    "https://raw.githubusercontent.com/facebookresearch/jepa-wms/main/LICENSE 为 Attribution-NonCommercial 4.0 International；README 引用的是 arXiv 2512.24497（Terver, Yang, Ponce, Bardes, LeCun）。",
+    "https://arxiv.org/abs/2603.19312：LeWorldModel（Maes, Le Lidec, Scieur, LeCun, Balestriero），CC BY 4.0，摘要写“~15M parameters trainable on a single GPU in a few hours”。"
+   ]
+  },
+  {
+   "key": "DeepJEPA",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2610.00368 的标题、8 位作者（Jin†, Zhang† … Pavone）、日期（2026-09-30 v1，cs.RO; cs.AI）和 CC BY 4.0 均一致。项目页列出的单位为 NYU、Tulane、UIUC、Princeton、MIT、Columbia、Stanford。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "how_to_borrow(1) 把命题 3.1 当成“何时不必再算”的跳过规则，属于外推。命题里的 δ^(k)_i=J^(k+1)_i−J^(k)_i 是算完下一次更新后才知道的实际代价修正，所以 2||δ||∞<γ_k 只是事后判断精英集不变的充分条件。原文没有给 δ 的先验上界，也没有在运行时用它来跳过计算；运行时真正决定停不停的是学到的 continue 头，而附录 B 明说 p_k“is not claimed to equal the true value of computation”。要当跳过规则，必须由本项目另外给出 |δ_i|≤B 的先验界（例如残差或教师修正的幅度界），用 2B<γ 判断。这是本项目的推导，不能算作论文的结论。",
+    "命题 3.1 的适用条件很窄：一次 CEM 迭代、采样动作批固定、标准不加权精英更新（均值和协方差）。对 MPPI、softmax 加权或带精英保留的变体不能直接套用。式6 的 VOC 阈值形式依赖“边际收益随深度不增”的假设，作者明说它不保证有限随机 CEM 的全局最优。",
+    "性能证据比原记录写得还弱。Cube Double 上不循环的 LeWM 为 74.7，高于 DeepJEPA 的 74.0；Cube Single 与 K=1 打平。在 Cube Triple 换搜索种子的复验中，K=1 与 K=4 只差 +1.1pp，bootstrap CI 下界为 −1.3。README 的结果表只和最佳固定深度比，省略了 LeWM 那一行。",
+    "原记录写“CEM 规模 300 样本×30 迭代”，这只适用于 Reacher 和 Cube（30 个精英）；PushT 用的是基准自带的规划器配置。",
+    "code_status 写成 announced 有出入。论文、README、项目页都没有“will be released”一类的承诺，只有一个 Code 按钮，指向只含 README.md 和 assets/ 的仓库，license=null。应改为“仓库已建、无代码、无发布承诺”。"
+   ],
+   "evidence": [
+    "https://arxiv.org/abs/2610.00368：标题、作者、Submitted 30 Sep 2026、许可 creativecommons.org/licenses/by/4.0、Comments 中的项目页。",
+    "https://arxiv.org/html/2610.00368v1：§3.1 L=3、K_max=4、τ_rel=5e-4、线性 continue 头（BCE）、p_k≤η 即停；§3.3 命题 3.1，原文称“sufficient stability guarantee, not a claim that deeper prediction always improves control”；附录 C 证明中 δ 为实际修正；Table 1/4 中 LeWM 在 Double 上为 74.7±7.6，DeepJEPA 为 74.0±3.5，Triple 为 77.3±7.6 vs 74.0±4.0；附录 A 中 η 取扫参最优，Reacher/Cube 为 300/30/30，PushT 用基准自带配置；附录 D 承认没有 held-out 阈值、接触分析只用单个 checkpoint、K̄ 不等于墙钟时间；全文未提 GPU。",
+    "https://api.github.com/repos/deepjepa/DeepJEPA：license=null，contents=[README.md, assets]，创建于 2026-09-30，最后推送 2026-10-06；README 和 https://deepjepa.github.io/ 都没有代码发布承诺。"
+   ]
+  },
+  {
+   "key": "JEPA-Anything",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2609.20800 的标题、13 位作者（Cui … Heng*, Wu*, Yin*, Yang*）、日期（2026-09-17 v1，主类 cs.CL）一致，Comments 中给出 Gen-Verse/JEPA-Anything 链接。论文许可是 arXiv nonexclusive，代码为 Apache-2.0。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "how_to_borrow(1) 把 r_θ 按机制拆成接触、摩擦、空气各一个头再套 OPF，与 OPF 的性质不符。OPF 把目标空间划成彼此正交的子空间。作者明说因子身份“emerge from predictability”，并且“without assuming object, causal”语义。而接触、摩擦、空气阻力的残差通常作用在同一组状态分量上（线速度、角速度），彼此并不正交；强行正交分头会和机制的加性叠加冲突。可借的只是几何审计手段（跨因子重叠、σ_min(P)、κ2(P)）和伪逆合成的稳定性界，不能当按机制分解的依据。",
+    "补充原记录漏掉的附录 A 命题 2：||PᵀP−I||₂≤ε<1 时，κ2(P)≤√((1+ε)/(1−ε))，且 ||ẑ−z||₂≤||e||₂/√(1−ε)。软正交惩罚下真正可用的保证是这一条，不是严格正交时的 κ2=1。Table 5 的审计（κ2 为 1.00005，无约束多头为 438.5）只在 CITRIS Interventional Pong 上用 5 个种子做过。",
+    "Kepler 例子是对已知解析律 f∝a^{-3/2} 的事后诊断（“One analyzed run”），不是从数据中发现定律。放在 G3 下只能当外部检验模板，不能当低算力定律提炼的证据。原记录对单次运行的限定是对的。",
+    "复现链与原记录一致：GitHub 的 checkpoints/manifest.json 为 availability=not_published、training.executed=false，原文写明它“supports no performance... conclusion”。HF 数据集共 156 个文件，只有 test/inference 脚本；内嵌 painn.py、cell_jepa、torch_scatter shim，只附项目自己的 LICENSE，没有上游 LICENSE/NOTICE。"
+   ],
+   "evidence": [
+    "https://arxiv.org/abs/2609.20800：标题、作者、Submitted 17 Sep 2026、cs.CL、nonexclusive-distrib/1.0、Comments 中的 Code 链接；摘要提到七个领域、34.8%、−1.4991。",
+    "https://arxiv.org/html/2609.20800v1：§2.2 式(3)–(7)，P_k∈R^{d×r}、Kr=d、伪逆合成、L_orth；命题 1 和推论 1（严格正交时 κ2=1）；§2.3 L_fac、L_enc；附录 A 命题 2（近似正交界）；Table 5 审计仅 CITRIS；Fig.9 原文“In a JEPA-Anything run”，R²=0.9999999；Table 10 中 APEBench/PDE 为 d=128、K=4、r=32，Hopper/Walker/HalfCheetah 为 d=32、K=4、r=8；B.3 AI 使用声明写 OpenAI Codex 参与实验设计反馈；B.4 用 UK Biobank 受控数据；全文无 GPU/A100/H100 字样。",
+    "https://api.github.com/repos/Gen-Verse/JEPA-Anything：license=apache-2.0，jepa-anything-core/LICENSE 为 Apache 2.0 原文；raw checkpoints/manifest.json 为 not_published、executed=false。",
+    "https://huggingface.co/api/datasets/Gen-Verse/jepa-anything：license:apache-2.0，156 个文件，.py 只有模型、测试和推理脚本，没有训练脚本；包含 tito/models/painn.py、torch_scatter/__init__.py、cell_jepa/。"
+   ]
+  }
+ ]
+}

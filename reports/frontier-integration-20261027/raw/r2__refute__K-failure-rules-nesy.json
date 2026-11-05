@@ -1,0 +1,86 @@
+{
+ "group": "K-failure-rules-nesy",
+ "verdicts": [
+  {
+   "key": "FACT",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2608.10232 的标题与原记录完全一致，作者为 Peng/Liang/Yan/Hansen/Wang 五人，v1 2026-08-10，v2 2026-10-13，无 comment。OpenReview YrNlVJcApO 的 venue 为“CoRL 2026 Poster”。仓库 Bariona/FACT 创建于 2026-08-10，描述为“[CoRL 2026]”，README 链回该 arXiv 号。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "表2消融的对照基线有误。去掉因果掩码的 77% 对应的是不加失败数据的 Ours（82%），论文原文为“trained without failure data, matching the ‘Ours’ setting”，并非从 89% 降下来。只有“失败轨迹不屏蔽动作损失”的 63% 是对照 89%（Ours w/ failure）。",
+    "进度目标“被压低”的实际程度：论文取 λ_fail=1，并用均匀进度 p_t=t/T，因此失败发生后目标为 clip(p−1,0,1)=0，即失败起点之后的进度目标直接置零，不是轻微下调。",
+    "训练算力：论文未报告训练所用 GPU 数量和时长，只报告了 RTX PRO 6000 上 380 ms 的推理延迟。“多 GPU”出自代码配置：configs/robotwin.py 默认 GPU_IDS=[0..7]、BATCH_SIZE_PER_GPU=32，即 8 卡训练配置。结论（本地不可复现）成立。",
+    "依赖许可无阻碍：Wan-AI/Wan2.2-TI2V-5B-Diffusers 在 HF 上标 apache-2.0，RoboTwin 仓库为 MIT。",
+    "方差说明需限定范围：真实实验每格 20 次；仿真是 50 个任务 × 每个划分 100 次。“方差大”只适用于真实实验。失败数据量：仿真约 1.3K 条 rollout，真实每个 cube 任务约 30 条。失败数据扩展实验（32.7→57.3）只覆盖 3 个 RoboTwin clean 任务。",
+    "借鉴边界：FACT 的策略增益来自共享视频主干，失败损失经主干回流改善动作生成（§3.2 action adapter）。若 AinerZero 的 r_theta 与 SkillProposal 分离，只能借“失败样本屏蔽模仿损失、保留后果监督”这一掩码原则，不能把 89% 对 63% 的策略成功率当作分离架构的预期收益。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2608.10232：标题、5 位作者、published 2026-08-10、updated 2026-10-13，无 comment",
+    "https://arxiv.org/abs/2608.10232：许可链接为 creativecommons.org/licenses/by-nc-nd/4.0",
+    "https://arxiv.org/html/2608.10232v2 摘要与 §3.2–3.3：token 顺序为 [P‖A_pred‖G_gt‖V‖I]，世界侧以干净动作 G 为条件；失败轨迹屏蔽 L_act，并写明“failures teach consequences, not behavior”；初始化自 WAN2.2-5B，λ_fail=1，H=48",
+    "同页表1：Ours 85.6 → w/ failure 87.5，Motus 87.8。表2：Ours 82、w/ failure 89、+scoring(N=4) 92、Ours+scoring 79、w/o causal mask 77、w/ failed-action loss 63。正文写明 causal-mask 消融未加失败数据",
+    "同页表4/表8（512 个留出样本）：失败窗口 PSNR 19.51→25.92，成功窗口 26.12/26.08。表7：380 ms（RTX PRO 6000）",
+    "https://api2.openreview.net/notes/search?term=Failure-Aware Causal Training：YrNlVJcApO，CoRL 2026 Poster",
+    "https://api.github.com/repos/Bariona/FACT：license apache-2.0，created 2026-08-10；raw LICENSE 为 Apache 2.0 全文；README 下载 Wan2.2-TI2V-5B-Diffusers，需准备 T5 嵌入缓存",
+    "https://raw.githubusercontent.com/Bariona/FACT/main/world_action_model/configs/robotwin.py：Multi-GPU 配置，GPU_IDS 为 8 卡",
+    "https://huggingface.co/api/models/Bariona/fact-wam：license:apache-2.0；Wan2.2-TI2V-5B-Diffusers：apache-2.0；RoboTwin：MIT"
+   ]
+  },
+  {
+   "key": "PatchWorld",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2605.30880 的标题为“PatchWorld: Gradient-Free Optimization of Executable World Models for Agent Environments”，16 位作者顺序与记录一致，v1 2026-05-29，v4 2026-07-28，无 comment，许可 CC BY 4.0。OpenReview 只有 gl749kcn7z（CoRR 2026，题名不含 for Agent Environments），无会议记录。仓库 HKBU-KnowComp/PatchWorld 于 2026-05-26 创建，2026-06-01 最后推送，许可 MIT。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "“零回归 = wrong”这一判定成立，但应补一句：论文正文本身措辞偏强，§2 写“preventing the regression problem”，§4.3 写该门“rejects patches that repair only the displayed examples while regressing on the broader replay set B”。实际语义只是“验证集严重度加权总分严格下降（平分时比失败数）”，不做逐例回归检查。代码另有三处：加载错误修复的放行上限 max(1000, 10×验证轨迹数)、disable_validation_gate 开关、patch_no_improve_patience（无改进轮之后仍可继续搜索，与论文“no candidate improves 即终止”略有出入）。",
+    "red_flag“多数结果为单种子（仅 Residual+Qwen 做了 5 种子）”需更正。附录H表13对所有方法的宏平均实时成功率都给了五次运行的均值±标准差：PatchWorld-Simple 76.4±0.8，LLM-Direct 75.7±0.8，ReAct 74.4±2.3。只有单步预测的五种子重拟合仅做了 Residual+Qwen（附录C表9）。另外 76.4 与 75.7 在误差范围内，作者自己的表述也只是“within error of—or ahead of”。",
+    "red_flag 的保真度比较需限定后端。PatchWorld-Simple 的 Token F1 为 0.57/0.60/0.60（Qwen/Mimo/DeepSeek），只在 Qwen 和 Mimo 后端上低于 WorldCoder（0.63/0.63）与 PoE-World（0.63/0.65）。DeepSeek 后端下它反而更高（WorldCoder 0.57，PoE-World 0.51）。Word2World 的 0.85 是 SFT 后的 Qwen3.5-4B，推理时需要 LLM。",
+    "附录P补充：归纳出的程序只预测观测、不预测奖励，所以实时决策必须依赖共享的 LLM 选择器。候选为默认动作加最多 4 个 LLM 候选，合并后上限 8 个。“推理时不调用 LLM”只对世界模型预测模块成立。",
+    "表7与附录L的数字核实无误：宏平均每个环境 17.0–28.4 次调用、30–50 万 token；错误下降 Qwen 78.6%（17510→3741）、Mimo 71.1%、DeepSeek 11.8%；R=15 内所有环境都未收敛。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2605.30880：标题、16 位作者、2026-05-29/2026-07-28",
+    "https://arxiv.org/abs/2605.30880：creativecommons.org/licenses/by/4.0",
+    "https://arxiv.org/html/2605.30880v4 §1/§4.3：明文写“counterexample-guided inductive synthesis (CEGIS)”；修复提示含 top-16 反例，LLM 返回完整替换模块；接受条件为 Score 严格下降、|E| 作平分依据；Algorithm 2 第 18 行",
+    "同页表4：Simple 76.4，ReAct 74.4，LLM-Direct 75.7；AlfWorld 6.0 对 17.5。表13：所有方法五次运行均值±标准差。表2：Token F1 各后端数值。表7、表19/20：成本与未收敛。附录P：选择器依赖 LLM，程序不预测奖励",
+    "https://raw.githubusercontent.com/HKBU-KnowComp/PatchWorld/main/patchworld/worldmodel_inducer.py：L934–955 的 _patch_improves 只比较 candidate_score < current_score；L373 load_error_acceptance_cap=max(1000, len(validation_trajs)*10)；L375 disable_validation_gate；errors[:16]；内部仍名 TracePatch",
+    "https://api.github.com/repos/HKBU-KnowComp/PatchWorld：MIT，created 2026-05-26，pushed 2026-06-01；README 中有 PATCHWORLD_LLM_API_KEY（OpenAI 兼容接口），并引用 /data/jbai/abduct-world 路径",
+    "https://huggingface.co/api/datasets/HKBU-KnowComp/patchworld-trajectories：license:mit",
+    "https://api2.openreview.net/notes/search?term=PatchWorld：gl749kcn7z，CoRR 2026 Public_Article"
+   ]
+  },
+  {
+   "key": "NeSyS",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API：2602.10480 的标题为“Neuro-Symbolic Synergy for World Modeling”，作者为 Zhao/Zhou/Yang/Qin/Zhou 五人，v1 2026-02-11，v4 2026-09-14，comment 为“Camera-ready version accepted at COLM 2026”。OpenReview ygvJV6wx5t 的 venue 为 COLM 2026。仓库 tianyi-lab/NeSyS 许可 MIT，README 标题多出“Interactive”。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "借鉴时必须连同候选自适应缩放一起借。论文 §4.1 的缩放为 γ=1+max_k log p_k − min_k log p_k。表5中固定 γ=1 降到 70.1/73.9，接近全量 SFT 的 64.1/68.6，而线性插值与 log-linear 几乎相同。真正起作用的是按候选集自适应的缩放，不是 log-linear 这个代数形式。how_to_borrow (1) 只写“对数平移项”不够。",
+    "“规则不适用时输出 0”是规则生成提示词对 GPT-5-mini 的要求（“otherwise return 0.0”），不是框架本身强制的不变量。若在 AinerZero 中借用，需要在执行层另加校验。Phase 2 的覆盖度 k 是“对金标候选返回非零分的规则数”：k=0 的样本全部保留，其余按 1/k 概率采样。",
+    "“表间数字出入”可以部分解释，不应全部算作不一致。表9中 PlanCraft 三行都用固定 γ=1（87.4）；表6/表8用 released final rule snapshots（87.9）；表3/表13 为 88.4。剩余 0.5 的差异来源未说明。",
+    "算力需补论文 A.5 的具体数字。单次 PlanCraft+Qwen3-4B 规则归纳调用 GPT-5-mini 150 次，每次约 2,700 token，成本低于 1 美元。在 4 张 48GB A6000 上，全量 SFT 用 2.3 小时，NeSyS 降量训练用 0.8 小时。金额虽小，仍属付费调用，按项目规则需要用户逐项批准。",
+    "开放式 WebShop 智能体评测只有 100 个会话、seed 0、15 步上限、单环境一步前瞻，属于初步证据。“35–60%”指 Phase 2 神经微调所用训练对的比例。作者用 GPT-5-nano 和 Qwen3-4B 自生成规则做了部分对照，但数据缩减效应与规则教师的知识注入仍未完全分离。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2602.10480：标题、5 位作者、2026-02-11/2026-09-14、COLM comment",
+    "https://arxiv.org/abs/2602.10480：creativecommons.org/licenses/by/4.0",
+    "https://arxiv.org/html/2602.10480v4 §4.1：p̃_i=p_i·exp(γE_i)，E_i=Σw_j e_ij，为软惩罚，不会把概率置零。§4.2：Phase 1 由开发集错误聚类，交 gpt-5-mini 写规则；只有提升开发集准确率的规则才入库；按坐标下降校准权重；Phase 2 按 1/k 采样并清理有害规则",
+    "同页表3：Qwen PlanCraft NeSyS 88.4 < SFT 90.1。表5/表6：线性插值 82.4/84.5，log-linear 82.7/83.7，固定 γ=1 为 70.1/73.9。表9：WebShop 92.6（GPT-5-mini）、84.5（nano）、80.3（Qwen 自生成），未在 ScienceWorld 和 Llama 上做",
+    "同页附录I：干扰项为 Llama-3.2-1B 的错误答案；WebShop 在轨迹中间插入 click[buy now]→Fail。结论/局限：没有第二个留出的规则选择集。A.5：150 次调用、成本低于 1 美元、4×A6000 上 2.3h 对 0.8h",
+    "https://api2.openreview.net/notes/search?term=Neuro-Symbolic Synergy for World Modeling：ygvJV6wx5t，COLM 2026",
+    "https://api.github.com/repos/tianyi-lab/NeSyS：MIT（Copyright (c) 2026 Tianyi Lab）；README 写“reducing training data by 50% without loss of accuracy”，并称基于预计算 logprob 复现主结果“no GPU needed”",
+    "git tree：nesys/final_rules 共 6 个文件，合计 729,103 字节，顶层 def 共 216 个（44/30/48/44/20/30）",
+    "https://huggingface.co/api/datasets/cindermond/nesys-world-model-benchmark：无 license 标签"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,436 @@
+{
+ "group": "GI-recursion-control-misc",
+ "items": [
+  {
+   "key": "1a-TRM",
+   "title": "Less is More: Recursive Reasoning with Tiny Networks",
+   "arxiv_id": "2510.04871",
+   "authors": "Alexia Jolicoeur-Martineau (Samsung SAIL Montreal)",
+   "date": "2025-10-06 (v1)",
+   "venue": "arXiv preprint (comment 字段无会议信息)",
+   "primary_url": "https://arxiv.org/abs/2510.04871",
+   "exists": "verified",
+   "mechanism": "单个 2 层小网络递归：先按问题 x、当前答案 y、潜变量 z 重复更新 z 共 n 次，再用 z 更新 y，最多 K 轮改进；配合深监督（上一轮潜变量作下一轮初值）与 ACT/Q 头停机。论文 4.4 节称加层反而过拟合，减层并按比例增加递归次数（保持等效深度）泛化更好。",
+   "claims_checked": [
+    {
+     "claim": "TRM 约 7M 参数",
+     "verdict": "supported",
+     "evidence": "arXiv 摘要：'With only 7M parameters, TRM obtains 45% on ARC-AGI-1 and 8% on ARC-AGI-2'。注意 Table 1：Sudoku-Extreme 最优的 MLP 版为 5M（87.4%），7M 为 self-attention 版（ARC/Maze 用）。"
+    },
+    {
+     "claim": "用递归深度替代参数量",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/html/2510.04871v1 §4.4 'Less is more'：减少层数、按比例增加递归次数 n（等效深度约不变）泛化更好；4 层 n=3 为 79.5%/10M，2 层为 87.4%/5M。前提是小数据（约 1K 样本），算力（等效深度 42/监督步）并未减少。"
+    },
+    {
+     "claim": "许可",
+     "verdict": "supported",
+     "evidence": "https://raw.githubusercontent.com/SamsungSAILMontreal/TinyRecursiveModels/main/LICENSE：MIT，Copyright (c) 2025 Samsung Electronics；GitHub API 显示 archived=true（README 称因垃圾 issue 暂时只读归档）。论文本身为 arXiv perpetual non-exclusive license。"
+    }
+   ],
+   "code_repo": "https://github.com/SamsungSAILMontreal/TinyRecursiveModels",
+   "code_license": "MIT（仓库已归档、只读）",
+   "code_status": "released",
+   "needs_llm": "no",
+   "needs_gpu_training": "yes",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "论文：Sudoku-Extreme 用 1 张 L40S 训练不到 36h；Maze-Hard 用 4×L40S 不到 24h；ARC-AGI 用 4×H100 约 3 天。README 要求 CUDA 12.6。5–7M 模型推理可在 CPU/MLX 上跑，但复现训练须自行把 PyTorch/CUDA 代码移植到 MLX，且要付出较高的时间成本。",
+   "fit_gaps": [
+    "G2_sparse_change_action_sensitivity"
+   ],
+   "how_to_borrow": "只借思路：小网络迭代细化 + Q 头停机，即按样本难度分配迭代次数，可对应残差 r_theta 的按事件分配内部算力；也可借鉴其消融的设计方式（等效深度与参数量对照）。不借：ARC/Sudoku 的 1000 倍增强加投票流程、CUDA 训练脚本（仓库已归档无人维护）。若需要代码，按 MIT 署名后用 NumPy/MLX 重写。",
+   "red_flags": [
+    "7M 与 5M 混用：Sudoku 最优结果来自 5M 的 MLP 版，7M 是 attention 版",
+    "ARC 成绩依赖 1000 次数据增强加投票，不是单次前向",
+    "仓库已 archived（只读），README 要求 CUDA GPU",
+    "“少即是多”只在约 1K 样本的小数据设定下成立"
+   ],
+   "access_log": [
+    "WebFetch/WebSearch 均报模型错误（deepseek-v4-pro 不可用），改用 curl 只读访问",
+    "https://export.arxiv.org/api/query?id_list=2510.04871",
+    "https://arxiv.org/html/2510.04871v1",
+    "https://api.github.com/repos/SamsungSAILMontreal/TinyRecursiveModels",
+    "https://raw.githubusercontent.com/SamsungSAILMontreal/TinyRecursiveModels/main/LICENSE",
+    "https://raw.githubusercontent.com/SamsungSAILMontreal/TinyRecursiveModels/main/README.md"
+   ],
+   "claimed_ref": "SamsungSAILMontreal/TinyRecursiveModels"
+  },
+  {
+   "key": "1b-PTRM",
+   "title": "Probabilistic Tiny Recursive Model",
+   "arxiv_id": "2605.19943",
+   "authors": "Amin Sghaier, Ali Parviz, Alexia Jolicoeur-Martineau (Mila / ETS Montreal 等)",
+   "date": "2026-05-19 (v1)",
+   "venue": "arXiv preprint（comment 字段无会议信息）",
+   "primary_url": "https://arxiv.org/abs/2605.19943",
+   "exists": "verified",
+   "mechanism": "在已训练好的 TRM 上做测试时宽度扩展：并行跑 K 条 rollout，每个深递归步向潜变量注入高斯噪声，让各条轨迹落到不同解盆地；再用 TRM 原有的 Q 头（原本用于早停）挑选答案。不重新训练，也不做任务特定增强。",
+   "claims_checked": [
+    {
+     "claim": "PTRM 发表于 2026-05",
+     "verdict": "supported",
+     "evidence": "arXiv API：published 2026-05-19T15:00:38Z，标题 'Probabilistic Tiny Recursive Model'"
+    },
+    {
+     "claim": "PTRM 是什么",
+     "verdict": "supported",
+     "evidence": "摘要：'injects Gaussian noise at each deep recursion step... selects among them using the model's existing Q head'；Sudoku-Extreme 87.4%→98.75%，Pencil Puzzle Bench 62.6%→91.2%，模型仍为 7M 参数。"
+    },
+    {
+     "claim": "PTRM 的算力效率（隐含于“测试时扩展”的定位）",
+     "verdict": "overstated",
+     "evidence": "后续工作 arXiv 2610.16427（GAR，Maxime Illouz，2026-10-12，v2 2026-10-26）报告：在相同 checkpoint 上，只重采样答案态 y 即可胜过 PTRM，而 PTRM 用了 42–197 倍算力。"
+    }
+   ],
+   "code_repo": "官方代码未见；社区实现 https://github.com/JerMa88/PTRM",
+   "code_license": "官方：无；社区实现为 GPL-3.0",
+   "code_status": "none",
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "PTRM 本身只在推理时起作用，不增加训练成本；论文在单张 H100 80GB 上评测。前提是要有训练好的 TRM checkpoint（训练需 GPU，见 TRM 条目）。7M 模型跑 K 条并行 rollout 推理，在 M2 Max 上可行。",
+   "fit_gaps": [
+    "G2_sparse_change_action_sensitivity"
+   ],
+   "how_to_borrow": "只借协议：确定性递归加噪多轨迹，再由置信头筛选，可作为测试时多假设探索的对照；同时借 GAR 的结论（失败多由答案态携带，重采样答案态更省算力）设计消融。不借：GPL-3.0 社区代码（传染性许可）；也不借按 H100 租价折算的与 LLM 成本对比口径。",
+   "red_flags": [
+    "论文正文未见官方代码链接；唯一公开实现是第三方 GPL-3.0",
+    "2610.16427 指出 PTRM 的 z 扰动远不如答案态重采样省算力",
+    "与前沿 LLM 的成本对比按 H100 每小时 2.5 美元折算，部分行假设有完美验证器"
+   ],
+   "access_log": [
+    "https://export.arxiv.org/api/query?search_query=all:%22PTRM%22",
+    "https://export.arxiv.org/api/query?id_list=2605.19943,2610.16427",
+    "https://arxiv.org/html/2605.19943v1",
+    "https://api.github.com/search/repositories?q=probabilistic+tiny+recursive",
+    "https://api.github.com/repos/JerMa88/PTRM"
+   ],
+   "claimed_ref": "PTRM（声称 2026-05）"
+  },
+  {
+   "key": "2-InPlaceTTT",
+   "title": "In-Place Test-Time Training",
+   "arxiv_id": "2604.06169",
+   "authors": "Guhao Feng, Shengjie Luo, Kai Hua, Ge Zhang, Di He, Wenhao Huang, Tianle Cai",
+   "date": "2026-04-07 (v1)",
+   "venue": "ICLR 2026 Oral",
+   "primary_url": "https://arxiv.org/abs/2604.06169",
+   "exists": "verified",
+   "mechanism": "把 LLM 中各 MLP 块的最终投影矩阵当作快权重，推理时按块（chunk-wise）在线更新，其余参数冻结。用与下一词预测对齐的目标替代 TTT 通用的重建目标，可与上下文并行兼容；既可作为已有模型的增量增强（4B 模型，上下文 128k），也可从头预训练。",
+   "claims_checked": [
+    {
+     "claim": "把 MLP 块末层投影矩阵当作测试时在线更新的快权重",
+     "verdict": "supported",
+     "evidence": "摘要：'In-Place TTT treats the final projection matrix of the ubiquitous MLP blocks as its adaptable fast weights'"
+    },
+    {
+     "claim": "ICLR 2026 Oral",
+     "verdict": "supported",
+     "evidence": "arXiv comment：'ICLR 2026 Oral Presentation'；OpenReview API 记录 dTWfCLSoyl 的 venue 为 'ICLR 2026 Oral'，venueid 为 ICLR.cc/2026/Conference"
+    },
+    {
+     "claim": "代码与许可",
+     "verdict": "supported",
+     "evidence": "https://github.com/ByteDance-Seed/In-Place-TTT，GitHub API 识别为 Apache-2.0，LICENSE 文件为 Apache License 2.0"
+    }
+   ],
+   "code_repo": "https://github.com/ByteDance-Seed/In-Place-TTT",
+   "code_license": "Apache-2.0",
+   "code_status": "released",
+   "needs_llm": "yes",
+   "needs_gpu_training": "yes",
+   "cpu_or_mlx_feasible": "unlikely",
+   "compute_notes": "论文附录：所有模型在 Nvidia H800 上训练，规模为 500M、1.5B、4B。这是 LLM 级方法，在 M2 Max 上无法复现。",
+   "fit_gaps": [
+    "none"
+   ],
+   "how_to_borrow": "只借概念：冻结主体、只开放一小块指定矩阵作在线快权重并按块更新，可对应 FAST 层的会话内适应；快权重只能写 FAST，必须走 MID→SLOW 晋升门，不能绕过 PromotionEvidence。不借：LLM 训练栈、NTP 对齐目标、任何高频回路里的 LLM。",
+   "red_flags": [
+    "这是 LLM 方法，与小型世界脑的残差学习只有概念上的联系",
+    "“drop-in”仍要对已有模型做持续训练，只是不必从头训练"
+   ],
+   "access_log": [
+    "https://export.arxiv.org/api/query?id_list=2604.06169",
+    "https://arxiv.org/html/2604.06169v1",
+    "https://api2.openreview.net/notes/search?term=In-Place%20Test-Time%20Training",
+    "https://api.github.com/repos/ByteDance-Seed/In-Place-TTT",
+    "https://raw.githubusercontent.com/ByteDance-Seed/In-Place-TTT/main/LICENSE"
+   ],
+   "claimed_ref": "arXiv 2604.06169, ICLR 2026 Oral",
+   "paper_license": "arXiv.org perpetual non-exclusive license"
+  },
+  {
+   "key": "3-LeWM",
+   "title": "LeWorldModel: Stable End-to-End Joint-Embedding Predictive Architecture from Pixels",
+   "arxiv_id": "2603.19312",
+   "authors": "Lucas Maes, Quentin Le Lidec, Damien Scieur, Yann LeCun, Randall Balestriero",
+   "date": "2026-03-13 (v1)；v3 2026-06-03",
+   "venue": "arXiv preprint（comment 字段未列会议）",
+   "primary_url": "https://arxiv.org/abs/2603.19312",
+   "exists": "verified",
+   "mechanism": "从像素端到端训练的 JEPA 世界模型，只有两项损失：下一嵌入预测 MSE，加 SIGReg（把潜嵌入投影到多条随机方向并做正态性检验，强制其服从高斯分布以防塌缩）。不用 stop-gradient、EMA 或预训练编码器；规划用 CEM；另用违反预期的“惊奇”评测检测物理上不合理的事件。",
+   "claims_checked": [
+    {
+     "claim": "arXiv 2603.19312 即 LeWorldModel",
+     "verdict": "supported",
+     "evidence": "arXiv API 标题 'LeWorldModel: Stable End-to-End Joint-Embedding Predictive Architecture from Pixels'，摘要自称 LeWM"
+    },
+    {
+     "claim": "小型 JEPA 世界模型",
+     "verdict": "supported",
+     "evidence": "摘要：约 15M 参数，单 GPU 数小时可训完；编码器为 ViT-tiny（约 5M）。"
+    },
+    {
+     "claim": "使用 SIGReg",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/html/2603.19312v3 方法节：'the SIGReg regularization term enforces Gaussian-distributed latent embeddings... projected onto multiple random directions, and a normality test'；附录 A 专门介绍 SIGReg"
+    }
+   ],
+   "code_repo": "https://github.com/lucas-maes/le-wm",
+   "code_license": "MIT",
+   "code_status": "released",
+   "needs_llm": "no",
+   "needs_gpu_training": "yes",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "约 15M 参数，论文称单 GPU 数小时可训完，规划比基于基础模型的世界模型快至多 48 倍。移植到 MLX 并在 M2 Max 上训练原则上可行，但会更慢，且需自行移植代码。",
+   "fit_gaps": [
+    "G7_mechanism_sufficiency",
+    "G9_low_power_control"
+   ],
+   "how_to_borrow": "只借：SIGReg 的数学形式（随机投影加正态性检验），作为潜空间健康诊断；违反预期的惊奇评测协议，用于越界与异常检测。不借：像素端到端编码器训练，因为 AinerZero 的状态来自确定性几何核心，无需从像素学。",
+   "red_flags": [
+    "“48 倍”是相对 DINO-WM 等基于基础模型的世界模型而言",
+    "训练仍需 GPU",
+    "论文已改到 v3，引用数字应以 v3 为准"
+   ],
+   "access_log": [
+    "https://export.arxiv.org/api/query?id_list=2603.19312",
+    "https://arxiv.org/html/2603.19312v3",
+    "https://api.github.com/repos/lucas-maes/le-wm",
+    "https://raw.githubusercontent.com/lucas-maes/le-wm/main/LICENSE"
+   ],
+   "claimed_ref": "arXiv 2603.19312",
+   "paper_license": "CC BY 4.0"
+  },
+  {
+   "key": "4-RefFreeSamplingMPC",
+   "title": "Reference-Free Sampling-Based Model Predictive Control",
+   "arxiv_id": "2511.19204",
+   "authors": "Fabian Schramm, Pierre Fabre, Nicolas Perrin-Gilbert, Justin Carpentier (Inria/ENS-PSL, Sorbonne ISIR)",
+   "date": "2025-11-24 (v1)；v3 2026-04-16",
+   "venue": "ICRA 2026（据 arXiv comment）",
+   "primary_url": "https://arxiv.org/abs/2511.19204",
+   "exists": "verified",
+   "mechanism": "基于 MPPI 加噪声退火，用三次 Hermite 样条同时采样位置与速度控制点（端点导数受约束以防越过关节限位），并跟踪历史最优轨迹。只靠高层目标就能涌现小跑、奔跑、跳跃、倒立等步态，不需要参考轨迹、步态先验或离线预训练；只需 30–70 条采样。",
+   "claims_checked": [
+    {
+     "claim": "ICRA 2026",
+     "verdict": "supported",
+     "evidence": "arXiv comment：'Accepted to the 2026 IEEE International Conference on Robotics and Automation (ICRA), Vienna, Austria'（作者自报，未在 IEEE Xplore 核对）"
+    },
+    {
+     "claim": "仅用标准 CPU 实现四足实时控制、无需离线预训练或 GPU",
+     "verdict": "supported",
+     "evidence": "摘要：'real-time control on standard CPU hardware, eliminating the GPU acceleration'，'without requiring reference tracking or offline pre-training'。HTML 实验节：高层 MPC 以 50 Hz 运行在 Mac Studio M3（16 个效率核），机载 PD 为 12 kHz，全局状态来自 300 Hz 动捕；Table I 中采样数为 30。注意是外置计算加动捕，不是机载 CPU。"
+    },
+    {
+     "claim": "arXiv 号",
+     "verdict": "supported",
+     "evidence": "arXiv 2511.19204，标题完全一致"
+    }
+   ],
+   "code_repo": "未找到（论文未给链接，GitHub 搜索无果）；仿真器 Simple：https://github.com/Simple-Robotics/Simple",
+   "code_license": "方法代码：无；Simple 仿真器为 BSD-3-Clause",
+   "code_status": "none",
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "实机控制在 Apple Silicon（Mac Studio M3）上以 50 Hz 运行，采样数 30–70，与 M2 Max 的条件非常接近。没有训练环节。仿真用 Simple（Inria，处理非线性互补接触）。",
+   "fit_gaps": [
+    "G9_low_power_control"
+   ],
+   "how_to_borrow": "只借算法与评测设计：MPPI、噪声退火、Hermite 样条参数化（位置+速度控制点）、少样本、最优轨迹跟踪，并以 GeometryCore 加残差作为 rollout 模型，做 CPU 实时控制基线；评测可借鉴其 50 Hz 频率与采样数对照表。不借：论文文字和图（CC BY-NC-SA，禁止商用）；代码未公开，需自行实现。",
+   "red_flags": [
+    "方法代码未公开",
+    "实机实验依赖 300 Hz 动捕和外置 Mac Studio，不是机载感知与计算",
+    "后空翻、人形等复杂行为只在仿真中展示",
+    "论文许可为 CC BY-NC-SA 4.0",
+    "ICRA 录用仅为作者在 arXiv comment 自报"
+   ],
+   "access_log": [
+    "https://arxiv.org/search/?query=%22Reference-Free%22+predictive&searchtype=title",
+    "https://arxiv.org/abs/2511.19204",
+    "https://arxiv.org/html/2511.19204v3",
+    "https://api.github.com/search/repositories?q=reference-free+mpc",
+    "https://api.github.com/repos/Simple-Robotics/Simple"
+   ],
+   "claimed_ref": "Reference-Free Sampling-Based MPC, ICRA 2026",
+   "paper_license": "CC BY-NC-SA 4.0"
+  },
+  {
+   "key": "5-DWC",
+   "title": "Differentiable Weightless Controllers: Learning Logic Circuits for Continuous Control",
+   "arxiv_id": "2512.01467",
+   "authors": "Fabian Kresse, Christoph H. Lampert (ISTA)",
+   "date": "PMLR 发布 2026-09-29；arXiv v2 2026-06-08",
+   "venue": "ICML 2026（PMLR v306, pp. 61119–61137）",
+   "primary_url": "https://proceedings.mlr.press/v306/kresse26a.html",
+   "exists": "verified",
+   "mechanism": "连续观测先按分位数分箱并做温度计编码，变成定宽比特向量，再经两层稀疏连接的多输入布尔查找表（LUT），按组求和后用逐动作查表输出动作值。训练时用可微松弛端到端训练（SAC/PPO/DDPG），部署时直接编译为 FPGA 电路。",
+   "claims_checked": [
+    {
+     "claim": "ICML 2026，proceedings.mlr.press/v306/kresse26a.html",
+     "verdict": "supported",
+     "evidence": "PMLR 页面 citation_conference_title 为 International Conference on Machine Learning，BibTeX booktitle 为 Proceedings of the 43rd ICML，v306，pp. 61119–61137"
+    },
+    {
+     "claim": "可编译为逻辑电路的控制策略",
+     "verdict": "supported",
+     "evidence": "摘要：'compile directly into FPGA-compatible circuits with few- or even single-clock-cycle latency'；仓库含 export_hdl.py 与 hdl/ 目录"
+    },
+    {
+     "claim": "5 个 MuJoCo 基准有竞争力",
+     "verdict": "supported",
+     "evidence": "arXiv HTML 表注：'DWC returns are comparable to FP and at least as good as Quant across four of the five tasks (all except HalfCheetah)'；DDPG/PPO 下结果互有高低。HalfCheetah 存在明显差距。"
+    },
+    {
+     "claim": "FPGA 每动作纳焦耳级能耗",
+     "verdict": "overstated",
+     "evidence": "数量级成立（Table 2 约 1.0–1.2×10⁻⁹ J/动作，Artix-7 XC7A15T @100 MHz），但能耗来自 Vivado 2022.2 out-of-context 实现后的功耗报告估计，不是上板实测。"
+    }
+   ],
+   "code_repo": "https://github.com/FKresse/differentiable_weightless_controllers",
+   "code_license": "MIT（LICENSE 附 CleanRL 与 TD3 的 MIT 第三方声明，GitHub 因此识别为 NOASSERTION）",
+   "code_status": "released",
+   "needs_llm": "no",
+   "needs_gpu_training": "yes",
+   "cpu_or_mlx_feasible": "unlikely",
+   "compute_notes": "README 明确 WNN 训练 'requires a CUDA-enabled device'（依赖 DWN 的 CUDA 扩展）；float/quant 基线可在 CPU 上跑。论文自述训练开销远高于部署开销，且只能在仿真中训练，不能在设备上交互训练。部署端为 FPGA。",
+   "fit_gaps": [
+    "G9_low_power_control"
+   ],
+   "how_to_borrow": "只借：温度计编码加稀疏 LUT 的离散策略形式，作为远期低功耗部署形态；借“读出哪些输入维度影响决策”的稀疏连接分析，作为可解释性评测。不借：依赖 CUDA 的 DWN 训练栈；引用能耗数字时必须注明“工具链估计”。",
+   "red_flags": [
+    "能耗为 Vivado 功耗报告估计，非实测",
+    "HalfCheetah 上明显落后于全精度策略",
+    "WNN 训练需 CUDA，M2 Max 上无法直接复现",
+    "GitHub 许可识别为 NOASSERTION（实为 MIT 加第三方声明）"
+   ],
+   "access_log": [
+    "https://proceedings.mlr.press/v306/kresse26a.html",
+    "https://arxiv.org/search/?query=Differentiable+Weightless+Controllers&searchtype=title",
+    "https://arxiv.org/html/2512.01467",
+    "https://api.github.com/search/repositories?q=differentiable+weightless",
+    "https://raw.githubusercontent.com/FKresse/differentiable_weightless_controllers/main/LICENSE",
+    "https://raw.githubusercontent.com/FKresse/differentiable_weightless_controllers/main/README.md"
+   ],
+   "claimed_ref": "ICML 2026, proceedings.mlr.press/v306/kresse26a.html",
+   "paper_license": "CC BY 4.0 (arXiv v2)"
+  },
+  {
+   "key": "6-ActiveInference-ValueProfiles",
+   "title": "Active inference with reusable state-dependent value profiles",
+   "authors": "Jacob Poschl",
+   "date": "2026-10-09",
+   "venue": "Biological Cybernetics 120(5-6), article 40",
+   "primary_url": "https://link.springer.com/article/10.1007/s00422-026-01066-0",
+   "exists": "verified",
+   "mechanism": "在主动推断生成模型中引入少量可复用的“价值档案”（value profiles）。每个档案是一组参数包：结果偏好、策略先验、动作精度，并分配给隐状态。逐试次的后验信念对各档案加权混合，得到有效控制参数，从而按情境调用策略，而不必为每个情境单独参数化。作者在概率反转学习任务上用模拟式模型恢复与参数恢复论证其结构可辨识性。",
+   "claims_checked": [
+    {
+     "claim": "标题“可复用状态价值模型”",
+     "verdict": "supported",
+     "evidence": "Crossref（DOI 10.1007/s00422-026-01066-0）标题为 'Active inference with reusable state-dependent value profiles'，中文意译大体对应，但“价值模型”实为“价值档案”。"
+    },
+    {
+     "claim": "Biological Cybernetics 2026-10-09",
+     "verdict": "supported",
+     "evidence": "Crossref：container-title 为 Biological Cybernetics，published 2026-10-09，卷 120 期 5-6，文章号 40，CC BY 4.0"
+    },
+    {
+     "claim": "核心机制",
+     "verdict": "supported",
+     "evidence": "Crossref 摘要：'compact set of reusable parameter bundles—comprising outcome preferences, policy priors, and action precision—assigned to hidden states... belief-weighted mixing'；'simulation-based model recovery and parameter recovery... structural identifiability'。仅读到摘要，正文因 Springer 页面有机器人校验未读。"
+    }
+   ],
+   "code_repo": "未知（未检索到）",
+   "code_license": "未知",
+   "code_status": "unknown",
+   "needs_llm": "no",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "likely",
+   "compute_notes": "离散生成模型加反转学习模拟，属于典型的小规模 CPU 计算（据摘要推断，未见正文算力说明）。",
+   "fit_gaps": [
+    "G4_identifiability_active_experiment"
+   ],
+   "how_to_borrow": "只借评测协议：先用已知机制生成数据、再拟合，做模型恢复（混淆矩阵）与参数恢复，用来检验机制或参数的可辨识性，可作为 G4 与晋升前的检查项；可选借用“少量可复用参数包按后验加权混合”的形式，表达控制模式切换。不借：主动推断全套框架与反转学习任务本身。",
+   "red_flags": [
+    "只读到 Crossref 摘要，Springer 正文页被 Client Challenge 拦截，未绕过",
+    "单作者；可辨识性结论来自模拟恢复，任务限于概率反转学习",
+    "代码可得性未知"
+   ],
+   "access_log": [
+    "https://link.springer.com/article/10.1007/s00422-026-01066-0（返回 Client Challenge JS 校验页，未绕过）",
+    "https://api.crossref.org/works/10.1007/s00422-026-01066-0"
+   ],
+   "claimed_ref": "Biological Cybernetics 2026-10-09, link.springer.com/article/10.1007/s00422-026-01066-0",
+   "paper_license": "CC BY 4.0（Crossref）"
+  },
+  {
+   "key": "7-LeanQEC-PRXIntelligence",
+   "title": "Lean-verified discovery of exact nonadditive quantum codes with AI assistants（PRX Intelligence 录用题名）；arXiv 预印本题名：Co-Designing Quantum Codes with Transversal Diagonal Gates via Multi-Agent Systems",
+   "arxiv_id": "2510.20728（推断为同一工作）",
+   "authors": "Xi He, Sirui Lu, Bei Zeng (UT Dallas)",
+   "date": "PRX Intelligence 录用 2026-10-06；arXiv v1 2025-10-23，v3 2026-04-06",
+   "venue": "PRX Intelligence（accepted）",
+   "primary_url": "https://journals.aps.org/prxintelligence/accepted",
+   "exists": "verified",
+   "mechanism": "在 TeXRA 多代理平台（由 GPT-5 驱动）上，LLM 代理负责符号综合、组合与线性规划（SSLP）搜索，并把数值候选精确重构为有理/代数对象；外加一个独立的 Lean 4 验证层，只有编译通过且无错误、无警告、无 sorry 的证明才被接受。产出 14,116 个经 Lean 认证的距离 2 码，并在 ((7,2,3)) transversal-T 问题中给出 10 个构造与 2 个 no-go 证明。",
+   "claims_checked": [
+    {
+     "claim": "PRX Intelligence 2026-10-06 接收",
+     "verdict": "supported",
+     "evidence": "https://journals.aps.org/prxintelligence/accepted 列出 'Lean-verified discovery of exact nonadditive quantum codes with AI assistants — Xi He, Sirui Lu, and Bei Zeng — Accepted 6 October, 2026'"
+    },
+    {
+     "claim": "标题与主题（Lean 验证的 AI 数学发现、量子纠错码）",
+     "verdict": "supported",
+     "evidence": "录用题名同上。arXiv 2510.20728 作者相同、主题相同（nonadditive QEC、Lean 4），但题名不同；arXiv 无 journal-ref，两者对应关系为推断。"
+    },
+    {
+     "claim": "生成候选与证明正确性分离",
+     "verdict": "supported",
+     "evidence": "arXiv 2510.20728 摘要：'candidate constructions must be turned into exact objects and checked independently... independent Lean 4 verification layer'。HTML 正文：'A proof is accepted only when it compiles with no errors, no warnings, and no sorry placeholders'，并称 'verification independence (the Verification Agent cannot be influenced by earlier reasoning...)'。"
+    }
+   ],
+   "code_repo": "https://github.com/LionSR/lean-qec（重定向到 LionSR/lean-qec-sslp）",
+   "code_license": "无 LICENSE 文件（GitHub API license=null）",
+   "code_status": "released",
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "候选生成依赖 GPT-5 API；Lean 4 与 Mathlib 验证、SSLP 线性规划搜索均可在 CPU 上本地运行；单个 no-go 证明在代理循环里约耗时 10 小时。",
+   "fit_gaps": [
+    "G5_promotion_verification",
+    "G6_teacher_boundary",
+    "G8_failure_counterexample"
+   ],
+   "how_to_borrow": "只借协议：生成器（教师/LLM/搜索）只产出候选；由与生成过程隔离的独立验证器决定接受与否，接受标准是二值的硬门（类比“无 sorry、无警告”）；no-go 证明作为反例归档。这直接对应 PromotionEvidence 与 SLOW 只能由独立测试写入的规则。不借：TeXRA 与 GPT-5 驱动的多代理循环（不得进入高频回路）；仓库无 LICENSE，不复制其代码与数据。",
+   "red_flags": [
+    "arXiv 题名与录用题名不同，对应关系依据作者与主题推断，录用版正文未见",
+    "候选生成依赖闭源 GPT-5 API",
+    "代码仓库无 LICENSE（默认保留所有权利），且仓库名已重定向为 lean-qec-sslp"
+   ],
+   "access_log": [
+    "https://api.crossref.org/works?filter=container-title:PRX+Intelligence（未见该文正式发表）",
+    "https://journals.aps.org/prxintelligence/accepted",
+    "https://arxiv.org/search/?query=nonadditive+quantum+codes+Lean",
+    "https://arxiv.org/abs/2510.20728",
+    "https://arxiv.org/html/2510.20728v3",
+    "https://api.github.com/repos/LionSR/lean-qec"
+   ],
+   "claimed_ref": "PRX Intelligence 2026-10-06 接收，Lean 验证的 AI 数学发现（量子纠错码）",
+   "paper_license": "arXiv.org perpetual non-exclusive license（预印本）"
+  }
+ ]
+}

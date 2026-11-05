@@ -1,0 +1,449 @@
+$ pytest /Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_geometry_r2.py
+FFFFFFF......FF..FF.......................F                              [100%]
+=================================== FAILURES ===================================
+_______ test_f1_guard_accepts_exact_psd_integer_matrices[integer J^T J] ________
+
+name = 'integer J^T J'
+
+    @pytest.mark.parametrize("name", sorted(G2_PSD_INTEGER_MATRICES))
+    def test_f1_guard_accepts_exact_psd_integer_matrices(name):
+        matrix = G2_PSD_INTEGER_MATRICES[name]
+        # 前提：元素是逐位精确的整数，精确特征值非负；float64 eigvalsh 只是舍入为小负数。
+        assert np.array_equal(matrix, np.round(matrix))
+        assert np.all(np.abs(matrix) < 2 ** 53)
+        assert np.linalg.eigvalsh(matrix)[0] < 0, "G2 输入必须复现 float64 负特征值，否则本测试失去意义"
+>       out = covariance(matrix, 3, semidefinite=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[1., 2., 0.],
+       [2., 5., 1.],
+       [0., 1., 1.]]), n = 3
+semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+_______ test_f1_guard_accepts_exact_psd_integer_matrices[outer([1,2,2])] _______
+
+name = 'outer([1,2,2])'
+
+    @pytest.mark.parametrize("name", sorted(G2_PSD_INTEGER_MATRICES))
+    def test_f1_guard_accepts_exact_psd_integer_matrices(name):
+        matrix = G2_PSD_INTEGER_MATRICES[name]
+        # 前提：元素是逐位精确的整数，精确特征值非负；float64 eigvalsh 只是舍入为小负数。
+        assert np.array_equal(matrix, np.round(matrix))
+        assert np.all(np.abs(matrix) < 2 ** 53)
+        assert np.linalg.eigvalsh(matrix)[0] < 0, "G2 输入必须复现 float64 负特征值，否则本测试失去意义"
+>       out = covariance(matrix, 3, semidefinite=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[1., 2., 2.],
+       [2., 4., 4.],
+       [2., 4., 4.]]), n = 3
+semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+_______________ test_f1_guard_accepts_rank_deficient_psd_inputs ________________
+
+    def test_f1_guard_accepts_rank_deficient_psd_inputs():
+        inputs = {
+            "diag(1,1,0)": np.diag([1.0, 1.0, 0.0]),
+            "normalized u u^T": rank1(np.array([1.0, 0.5, 0.0]) / np.linalg.norm([1.0, 0.5, 0.0])),
+            "zero matrix": np.zeros((3, 3)),
+            "rank-2 PSD sum": rank1([1.0, 2.0, 2.0]) + rank1([2.0, -1.0, 2.0]),
+        }
+        for tag, matrix in inputs.items():
+            assert np.linalg.eigvalsh(matrix)[0] >= -psd_tol(matrix), tag
+>           out = covariance(matrix, 3, semidefinite=True)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[0.8, 0.4, 0. ],
+       [0.4, 0.2, 0. ],
+       [0. , 0. , 0. ]])
+n = 3, semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+_______________ test_f1_guard_tolerance_is_relative_not_absolute _______________
+
+    def test_f1_guard_tolerance_is_relative_not_absolute():
+        base = rank1([1.0, 2.0, 2.0])
+        for scale in (1e6, 1e12):
+            matrix = base * scale
+            smallest = np.linalg.eigvalsh(matrix)[0]
+            assert smallest < 0
+            assert abs(smallest) > 1e-12, f"scale {scale}: 绝对 1e-12 容差会拒绝这个精确 PSD 输入"
+>           out = covariance(matrix, 3, semidefinite=True)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[1000000., 2000000., 2000000.],
+       [2000000., 4000000., 4000000.],
+       [2000000., 4000000., 4000000.]])
+n = 3, semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+______ test_f1_guard_boundary_matches_registered_relative_formula[0.001] _______
+
+scale = 0.001
+
+    @pytest.mark.parametrize("scale", [1e-3, 1.0, 1e6])
+    def test_f1_guard_boundary_matches_registered_relative_formula(scale):
+        # 矩阵谱范数 ~ scale；登记容差 = 1e-12 * max(1, ||M||_2)。
+        tolerance = PSD_RTOL * max(1.0, scale)
+    
+        accepted = np.diag([scale, scale, -0.5 * tolerance])
+>       out = covariance(accepted, 3, semidefinite=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[ 1.e-03,  0.e+00,  0.e+00],
+       [ 0.e+00,  1.e-03,  0.e+00],
+       [ 0.e+00,  0.e+00, -5.e-13]])
+n = 3, semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+_______ test_f1_guard_boundary_matches_registered_relative_formula[1.0] ________
+
+scale = 1.0
+
+    @pytest.mark.parametrize("scale", [1e-3, 1.0, 1e6])
+    def test_f1_guard_boundary_matches_registered_relative_formula(scale):
+        # 矩阵谱范数 ~ scale；登记容差 = 1e-12 * max(1, ||M||_2)。
+        tolerance = PSD_RTOL * max(1.0, scale)
+    
+        accepted = np.diag([scale, scale, -0.5 * tolerance])
+>       out = covariance(accepted, 3, semidefinite=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[ 1.e+00,  0.e+00,  0.e+00],
+       [ 0.e+00,  1.e+00,  0.e+00],
+       [ 0.e+00,  0.e+00, -5.e-13]])
+n = 3, semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+____ test_f1_guard_boundary_matches_registered_relative_formula[1000000.0] _____
+
+scale = 1000000.0
+
+    @pytest.mark.parametrize("scale", [1e-3, 1.0, 1e6])
+    def test_f1_guard_boundary_matches_registered_relative_formula(scale):
+        # 矩阵谱范数 ~ scale；登记容差 = 1e-12 * max(1, ||M||_2)。
+        tolerance = PSD_RTOL * max(1.0, scale)
+    
+        accepted = np.diag([scale, scale, -0.5 * tolerance])
+>       out = covariance(accepted, 3, semidefinite=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[ 1.e+06,  0.e+00,  0.e+00],
+       [ 0.e+00,  1.e+06,  0.e+00],
+       [ 0.e+00,  0.e+00, -5.e-07]])
+n = 3, semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+___________ test_f1_rank_deficient_process_noise_accepted_downstream ___________
+
+    def test_f1_rank_deficient_process_noise_accepted_downstream():
+        right = TangentGaussian(SE2, SE2.identity(), np.eye(3) * 0.04)
+        rate = rank1([1.0, 2.0, 2.0]) * 1e-6
+>       predicted = right.predict([0.1, -0.2, 0.05], 1.0, rate)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:77: in predict
+    q = covariance(process_covariance_rate, g.dof, semidefinite=True) * dt
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[1.e-06, 2.e-06, 2.e-06],
+       [2.e-06, 4.e-06, 4.e-06],
+       [2.e-06, 4.e-06, 4.e-06]])
+n = 3, semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+_______ test_f1_pose_graph_accepts_rank_deficient_information_and_solves _______
+
+    def test_f1_pose_graph_accepts_rank_deficient_information_and_solves():
+        poses = [SE2.identity(), SE2.exp([1.0, 0.5, 0.2])]
+        measurement = SE2.compose(SE2.inverse(poses[0]), poses[1])
+        factors = [RelativeFactor(0, 1, measurement, info) for info in SE2_PARTIAL_INFORMATION]
+        for info in SE2_PARTIAL_INFORMATION:
+            assert np.linalg.eigvalsh(info)[0] < 0, "整数 PSD 输入必须复现 float64 负特征值"
+>       fit = solve_pose_graph(SE2, poses, factors, anchor=0)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:194: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:57: in solve_pose_graph
+    info = covariance(f.information, group.dof, semidefinite=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[1., 2., 2.],
+       [2., 4., 4.],
+       [2., 4., 4.]]), n = 3
+semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+_____ test_f1_pose_graph_clamps_tolerated_negative_information_without_nan _____
+
+    def test_f1_pose_graph_clamps_tolerated_negative_information_without_nan():
+        poses = [planar_pose(0, 0), planar_pose(1, 0), planar_pose(1, 1)]
+        tiny_negative_information = np.diag([-5e-13, 1.0, 0.0])
+        assert -psd_tol(tiny_negative_information) <= -5e-13 < 0
+        factors = [
+            RelativeFactor(0, 1, SE2.exp([1, 0, 0]), np.diag([1.0, 0.0, 0.0])),
+            RelativeFactor(0, 1, SE2.exp([1, 0, 0]), np.diag([0.0, 1.0, 0.0])),
+            RelativeFactor(1, 2, SE2.exp([0, 1, 0]), np.diag([1.0, 0.0, 0.0])),
+            RelativeFactor(1, 2, SE2.exp([0, 1, 0]), tiny_negative_information),
+        ]
+>       fit = solve_pose_graph(SE2, poses, factors, anchor=0, fixed_rotations=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:241: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:57: in solve_pose_graph
+    info = covariance(f.information, group.dof, semidefinite=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[-5.e-13,  0.e+00,  0.e+00],
+       [ 0.e+00,  1.e+00,  0.e+00],
+       [ 0.e+00,  0.e+00,  0.e+00]])
+n = 3, semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+_______ test_f1_pose_graph_partial_information_keeps_fail_closed_checks ________
+
+    def test_f1_pose_graph_partial_information_keeps_fail_closed_checks():
+        # G2 最小复现的下游：2 个位姿 + 1 条 rank-1 PSD information 仍不可观。
+        rank_one = rank1([1.0, 2.0, 2.0])
+        with pytest.raises(ObservabilityError, match="unobserved"):
+>           solve_pose_graph(
+                SE2,
+                [SE2.identity(), SE2.exp([1.0, 0.0, 0.0])],
+                [RelativeFactor(0, 1, SE2.exp([1.0, 0.0, 0.0]), rank_one)],
+                anchor=0,
+            )
+
+tests/v9/geometry/test_geometry_r2.py:253: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/pose_graph.py:57: in solve_pose_graph
+    info = covariance(f.information, group.dof, semidefinite=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[1., 2., 2.],
+       [2., 4., 4.],
+       [2., 4., 4.]]), n = 3
+semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+_________________ test_g2_minimal_reproduction_f1_f2_is_green __________________
+
+    def test_g2_minimal_reproduction_f1_f2_is_green():
+        # --- F1：G2 的精确整数 PSD 输入必须被接受 ---
+        int_rank1 = rank1([1.0, 2.0, 2.0])
+        j = np.array([[1.0, 2.0, 0.0], [0.0, 1.0, 1.0]])
+        int_jtj = j.T @ j
+        for matrix in (int_rank1, int_jtj):
+            assert np.array_equal(matrix, np.round(matrix))
+>           covariance(matrix, 3, semidefinite=True)  # 修复前：ValueError
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/geometry/test_geometry_r2.py:384: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = array([[1., 2., 2.],
+       [2., 4., 4.],
+       [2., 4., 4.]]), n = 3
+semidefinite = True
+
+    def covariance(value, n, *, semidefinite=False):
+        p = np.array(value, dtype=float, copy=True)
+        if p.shape != (n, n) or not np.isfinite(p).all():
+            raise ValueError("invalid finite covariance shape")
+        if not np.allclose(p, p.T, atol=1e-12, rtol=0):
+            raise ValueError("covariance must be symmetric")
+        p = (p + p.T) / 2
+        smallest = np.linalg.eigvalsh(p)[0]
+        if semidefinite:
+            if smallest < 0:
+>               raise ValueError("covariance must be positive semidefinite")
+E               ValueError: covariance must be positive semidefinite
+
+/tmp/ainerzero-v9g5-r2-20261020T145732/src/ainerzero/v9/geometry/belief.py:39: ValueError
+=========================== short test summary info ============================
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_accepts_exact_psd_integer_matrices[integer J^T J]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_accepts_exact_psd_integer_matrices[outer([1,2,2])]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_accepts_rank_deficient_psd_inputs
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_tolerance_is_relative_not_absolute
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_boundary_matches_registered_relative_formula[0.001]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_boundary_matches_registered_relative_formula[1.0]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_guard_boundary_matches_registered_relative_formula[1000000.0]
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_rank_deficient_process_noise_accepted_downstream
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_accepts_rank_deficient_information_and_solves
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_clamps_tolerated_negative_information_without_nan
+FAILED tests/v9/geometry/test_geometry_r2.py::test_f1_pose_graph_partial_information_keeps_fail_closed_checks
+FAILED tests/v9/geometry/test_geometry_r2.py::test_g2_minimal_reproduction_f1_f2_is_green
+12 failed, 31 passed in 0.33s

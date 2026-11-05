@@ -1,0 +1,228 @@
+{
+ "group": "F-jepa-sparse-change",
+ "items": [
+  {
+   "key": "SLIM",
+   "claimed_ref": "SLIM / \"Keeping JEPA World Models Plannable When Little of the Frame Moves\"，声称 arXiv 2610.03137（2026-10），Meta FAIR，代码 facebookresearch/jepa-wms，许可 CC-BY-NC 4.0",
+   "exists": "partially_verified",
+   "title": "Keeping JEPA World Models Plannable When Little of the Frame Moves",
+   "arxiv_id": "2610.03137",
+   "authors": "Florian Strohm, Patrick Wagner, Jannik Schwab, Marco Huber（Fraunhofer IPA, Stuttgart；Huber 另属 University of Stuttgart）",
+   "date": "2026-10-02（v1，arXiv 提交时间 Fri, 2 Oct 2026 11:02:39 UTC）",
+   "venue": "arXiv 预印本（cs.AI），无会议/期刊信息",
+   "primary_url": "https://arxiv.org/abs/2610.03137",
+   "paper_license": "arXiv.org perpetual non-exclusive license（http://arxiv.org/licenses/nonexclusive-distrib/1.0/），不是 CC 许可",
+   "code_repo": "",
+   "code_status": "announced",
+   "code_license": "无：论文 Reproducibility 声明称代码（环境、数据生成器、训练评测、探针、语言模板）\"will be released\"，未见仓库。所称 CC-BY-NC 4.0 属于 facebookresearch/jepa-wms，那是另一篇论文（Terver et al., arXiv 2512.24497, TMLR 2026）的仓库，与本文无关",
+   "mechanism": "作者构建 SLIM 基准（2D 多小物体推动，配对视觉/语言目标），发现在只有极少画面随动作变化时（随机动作下每步约 0.37% 像素变化，PushT 为 0.64%；物体 25 步 RMS 位移 1.1 px，PushT 的 T 块为 27 px），LeWM 的编码器会退化成对动作不敏感：pusher 和物体位置都解不出来，rollout 不比把当前潜变量原样复制好，CEM 代价面变平。修复办法是加一个共享逆动力学头 h_ξ：L_enc-IDM=||h(z_t,z_{t+1})-a_t||²（梯度回传编码器），L_pred-IDM=||h(sg(z_t),ẑ_{t+1})-a_t||²（对 z_t 停梯度），总损失 L=L_pred+0.09·L_SIGReg+1·L_enc-IDM+1·L_pred-IDM，测试时丢弃这个头。另外提出免环境的动作敏感度探针 spread/motion=mean Var_k[ẑ^(k)_{t+1}] / mean||ẑ^(k)_{t+1}-z_t||²（K=32 个随机动作），把它作为可规划性的经验必要条件（阈值约 0.05）。",
+   "claims_checked": [
+    {
+     "claim": "标题为 Keeping JEPA World Models Plannable When Little of the Frame Moves，arXiv 2610.03137，2026-10",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/abs/2610.03137：标题一致，Submitted on 2 Oct 2026，v1。"
+    },
+    {
+     "claim": "出自 Meta FAIR",
+     "verdict": "wrong",
+     "evidence": "作者 Strohm/Wagner/Schwab/Huber，单位为 Fraunhofer IPA, Stuttgart 和 University of Stuttgart（HTML 全文作者栏，https://arxiv.org/html/2610.03137v1），与 Meta FAIR 无关。"
+    },
+    {
+     "claim": "SLIM 是方法名",
+     "verdict": "overstated",
+     "evidence": "SLIM 是基准名（small-object, language-instructed, multi-object pushing），方法在文中叫 LeWM+I。"
+    },
+    {
+     "claim": "针对 LeWM（arXiv 2603.19312）",
+     "verdict": "supported",
+     "evidence": "正文以 LeWM（Maes et al. 2026b）为基线，参考文献写明 arXiv:2603.19312。2603.19312 本身已核实为 LeWorldModel（Maes, Le Lidec, Scieur, LeCun, Balestriero），CC BY 4.0。"
+    },
+    {
+     "claim": "只有极小比例像素/对象随动作变化时，JEPA 编码器退化为动作不敏感，CEM/MPC 规划失效",
+     "verdict": "supported",
+     "evidence": "摘要和 §5.4：plain LeWM 在 SLIM 上 1200 次试验成功 3 次，PushT 成功率 98%。spread/motion 为 3.8e-4，10 步 rollout 误差是真实运动的 12.4 倍，pusher 和物体位置都解不出来。response sweep 中，变化画面比例从约 0.35% 提到 1.65% 后，vanilla 成功率从 0.005 升到 0.530。限定：结论只在 LeWM（端到端 ViT+SIGReg）、2D 合成推动场景上成立。作者强调探针是必要条件、不是充分条件：28 个配置中低于约 0.05 的全部失败，高于阈值的成功率在 0.01–0.83 之间。"
+    },
+    {
+     "claim": "具体修正（损失/约束形式）",
+     "verdict": "supported",
+     "evidence": "§4 式(2)–(4)：共享 3 层 MLP 逆动力学头（宽 256，约 167K 参数），编码器对和（停梯度 z_t, 预测 ẑ_{t+1}）对共用一个头，(λ_sigreg, α_inv, α_pid)=(0.09,1,1)。SLIM 成功率从 0.003 升到 0.348±0.016。消融（Table 2）显示主要靠编码器项（仅编码器项 0.298，仅预测器项 0.010）；打乱动作的 null 对照为 0.002。"
+    },
+    {
+     "claim": "代码 facebookresearch/jepa-wms，许可 CC-BY-NC 4.0",
+     "verdict": "wrong",
+     "evidence": "GitHub API：facebookresearch/jepa-wms 的描述为 \"Code, data and weights for the paper What drives success in physical planning with Joint-Embedding Predictive World Models?\"（Terver et al.），LICENSE 确为 CC BY-NC 4.0，但它不是本文的仓库。本文只承诺 \"will be released\"，arXiv 页面和全文都没有代码链接。"
+    }
+   ],
+   "fit_gaps": [
+    "G2_sparse_change_action_sensitivity",
+    "G7_mechanism_sufficiency",
+    "G5_promotion_verification"
+   ],
+   "needs_llm": "no",
+   "needs_gpu_training": "optional",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "原文模型：ViT-Tiny 编码器（5.5M 参数）+6 层预测器，共约 18M 可训练参数，输入 224px，10k 条×200 步数据，训练 30 epoch，bf16。评测用 A100（SLIM 20 回合约 3–4 分钟）。语言头用冻结的 all-MiniLM-L6-v2 句向量，不需要生成式 LLM，且不是核心修复的一部分。在 M2 Max 上完整复现像素 ViT 训练理论上能用 MLX/PyTorch-MPS 跑，但很慢，也没有官方代码。值得借的部分（spread/motion 探针、IDM 辅助损失加在低维状态残差上）在 CPU 上就能算。",
+   "how_to_borrow": "借：(1) spread/motion 动作敏感度探针，作为单侧必要条件门：任何学到的 r_θ 或潜表示要进入规划或 MID→SLOW 候选之前，先在 K 个随机动作下测预测方差与平均位移之比，低于阈值直接拒绝。只拒不晋（necessary-not-sufficient），对应 G5/G7。(2) 免模型的「动作可影响的状态分量占比」指标，用来提前标记稀疏变化场景，按事件分配验证预算。(3) IDM 辅助损失的数学形式（共享头，预测分支对 z_t 停梯度，测试时丢弃），用于防止式8 残差网络在动作只影响少数状态分量时学成与动作无关。(4) 评测设计：打乱动作的 null、冻结编码器对照、编码器与预测器分离消融、McNemar 配对检验，并用持有特权状态的脚本控制器当上限。不借：代码（尚未发布）；facebookresearch/jepa-wms（CC-BY-NC 4.0，非商用，且是另一篇论文）；像素 ViT 端到端训练；MiniLM 语言头。另注意 AinerZero 的 GeometryCore 是确定性显式状态，不存在编码器坍缩本身；可迁移的是「残差对动作不敏感」这一失败模式和对应的检测协议。",
+   "red_flags": [
+    "单位张冠李戴：二手清单写 Meta FAIR，实际是 Fraunhofer IPA / University of Stuttgart",
+    "代码仓库和许可张冠李戴：facebookresearch/jepa-wms（CC-BY-NC 4.0）属于 Terver et al. arXiv 2512.24497，不是本文；本文代码只写了 will be released",
+    "论文许可是 arXiv non-exclusive distrib，不是 CC，不能按 CC 自由改编转载",
+    "SLIM 是基准名，不是方法名（方法叫 LeWM+I）",
+    "预印本未经同行评审；场景是单一合成 2D 推动基准，very hard 档所有方法都是 0",
+    "带墙变体中 5 个种子有 1 个不收敛（0.010），存在训练不稳定",
+    "探针阈值约 0.05 是从 28 个配置事后得到的经验值，只是必要条件"
+   ],
+   "access_log": [
+    "WebFetch 工具报模型错误（deepseek-v4-pro 不可用），改用 curl 只读抓取页面",
+    "GET https://arxiv.org/abs/2610.03137 → 200（标题、作者、日期、许可、摘要）",
+    "GET https://arxiv.org/html/2610.03137v1 → 200（全文：单位、§4 损失、§5 消融、附录 A 算力、可复现声明）",
+    "GET https://arxiv.org/abs/2603.19312 → 200（核实 LeWM 身份与 CC BY 4.0）",
+    "GET https://api.github.com/repos/facebookresearch/jepa-wms 和 /license → 200（描述指向 Terver et al.；LICENSE 为 CC BY-NC 4.0）"
+   ]
+  },
+  {
+   "key": "DeepJEPA",
+   "claimed_ref": "DeepJEPA: Scaling World Models from Within，声称 arXiv 2610.00368（2026-10），作者含 Jin、Zhang、Pavone；论文 CC BY 4.0，官方代码待放",
+   "exists": "verified",
+   "title": "DeepJEPA: Scaling World Models from Within",
+   "arxiv_id": "2610.00368",
+   "authors": "Zijian Jin†, Yunbei Zhang†, Yuanzhe Liu, Ming Liu, Baian Chen, Weirui Ye, Shilong Liu, Marco Pavone（NYU, Tulane, UIUC, Princeton, MIT, Columbia, Stanford；†共同一作）",
+   "date": "2026-09-30（v1，Wed, 30 Sep 2026 06:48:25 UTC；arXiv 号为 2610）",
+   "venue": "arXiv 预印本（cs.RO; cs.AI），无会议信息",
+   "primary_url": "https://arxiv.org/abs/2610.00368",
+   "paper_license": "CC BY 4.0（http://creativecommons.org/licenses/by/4.0/）",
+   "code_repo": "https://github.com/deepjepa/DeepJEPA",
+   "code_status": "announced",
+   "code_license": "无 LICENSE 文件（GitHub API license=null）。仓库只有 README.md 和 assets/，没有代码；未声明许可时默认保留全部权利",
+   "mechanism": "DeepJEPA 把每个想象转移变成可预算的计算过程。上下文网络 c_t=C(z_{t-L+1:t},a_{t-L+1:t})（L=3），用权重共享的循环单元迭代 h^(k)=F(h^(k-1),c_t,b^(k-1))，输出 ẑ^(k)=P(h^(k))，k≤K_max=4。训练时以相对误差改进 r_k=(e_k−e_{k+1})/max(e_k,ε)>τ_rel=5e-4 作二元标签，训练一个线性 continue 头（BCE）。推理时对每个候选×时间步独立判断，p_k≤η 即停，外层 CEM 的样本数、视界、代价都不变。理论部分给出精英集稳定性命题：若 2||δ^(k)||∞ < γ_k（第 M 与第 M+1 名代价的间隔），再做一次细化不会改变 CEM 精英集和下一轮提议分布。",
+   "claims_checked": [
+    {
+     "claim": "arXiv 2610.00368，标题为 DeepJEPA: Scaling World Models from Within，作者含 Jin、Zhang、Pavone",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/abs/2610.00368：作者 Zijian Jin, Yunbei Zhang, …, Marco Pavone，Submitted on 30 Sep 2026。"
+    },
+    {
+     "claim": "论文许可 CC BY 4.0",
+     "verdict": "supported",
+     "evidence": "arXiv 摘要页许可链接为 http://creativecommons.org/licenses/by/4.0/。"
+    },
+    {
+     "claim": "官方代码待放",
+     "verdict": "supported",
+     "evidence": "项目页 https://deepjepa.github.io/ 的 Code 按钮指向 github.com/deepjepa/DeepJEPA。该仓库（创建于 2026-09-30，最后推送 2026-10-06）只有 README.md 和 assets/，没有代码和 LICENSE。"
+    },
+    {
+     "claim": "以权重共享的内部循环深度作为测试时缩放轴",
+     "verdict": "supported",
+     "evidence": "摘要和 §3.1：\"weight-tied joint-embedding predictive world model that treats transition depth as an inner test-time scaling axis\"，式(1)–(3) 中参数在 k 之间共享。"
+    },
+    {
+     "claim": "按难度/接触自适应迭代",
+     "verdict": "supported",
+     "evidence": "§3.1/§4 Q3：continue 头对每个候选×时间步独立决定深度，监督信号只有边际潜误差改进，没有接触标签。接触对齐是涌现出来的：PushT 中 K>1 的比例从接触前 1.24% 升到接触起点 9.02%（95% CI [5.01,13.88]）；Cube Triple 持续接触时 +12.5pp，接触释放时 −9.9pp。注意它不是显式按难度或接触条件化的机制，而且接触分析每个任务只用一个 checkpoint。"
+    },
+    {
+     "claim": "（附加核查）自适应深度提升了规划",
+     "verdict": "overstated",
+     "evidence": "Table 1/4：增益为 +0~3.3pp（Reacher 85.3±4.2 vs 84.0±5.3；Cube Triple 77.3±7.6 vs 74.0；PushT 11.6 vs 10.7），都在种子标准差以内，每格只有 150 回合。η 是在评测扫参里选最优值，作者在 App. D 承认没有用 held-out 验证集。平均深度 K̄ 是结构深度，不代表墙钟时间节省。"
+    }
+   ],
+   "fit_gaps": [
+    "G2_sparse_change_action_sensitivity",
+    "G9_low_power_control",
+    "G7_mechanism_sufficiency"
+   ],
+   "needs_llm": "no",
+   "needs_gpu_training": "optional",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "基于 LeWM 规模的像素 JEPA（LeWM 自称约 15M 参数，单 GPU 数小时可训练），CEM 规模为 300 样本×30 迭代。论文没写 GPU 型号。没有代码，也没有官方 MLX 实现，在 M2 Max 上复现完整像素训练只能做到部分可行。可借的部分（基于相对改进的停止标签、精英间隔稳定性判据）是纯标量运算，CPU 上几乎零成本。",
+   "how_to_borrow": "借：(1) 命题 3.1 的确定性判据 2||δ||∞<γ（精英间隔），用于 MPC/CEM 或 SkillProposal 候选排序：可证明再细化、再调用教师或残差不会改变决策时，直接跳过，作为低功耗控制和「何时不必再算」的规则（G9/G7）。(2) VOC（式6）框架和基于相对改进 r_k>τ 的停止标签构造，用于按事件分配残差网络或验证器的内部算力（G2）。(3) 评测设计：把计算分配与接触起点、释放对齐的事件对齐分析，以及 exact-batch 重放。不借：论文报告的性能增益（在噪声范围内，η 在测试扫参中选取），不要作为能力证据引用；不训练循环像素 JEPA；仓库没有代码也没有 LICENSE，不能复制任何实现。",
+   "red_flags": [
+    "规划增益（0–3.3pp）都在种子标准差以内，每格只有 150 回合",
+    "η 阈值按评测扫参的最优值选，没有 held-out 验证（作者在 App. D 承认）",
+    "PushT 绝对成功率只有约 11%；接触与探针分析每个任务只用一个 checkpoint",
+    "K̄ 是结构深度，作者承认批处理下不等于墙钟节省",
+    "代码仓库只有 README 和图片，没有 LICENSE（默认保留全部权利）",
+    "arXiv 号 2610 但提交时间是 2026-09-30（属正常公告时差，不算编号错误）"
+   ],
+   "access_log": [
+    "WebFetch 工具报模型错误，改用 curl 只读抓取",
+    "GET https://arxiv.org/abs/2610.00368 → 200（元数据、CC BY 4.0、项目页链接）",
+    "GET https://arxiv.org/html/2610.00368v1 → 200（§3 方法、Table 1/4、App. A/D）",
+    "GET https://deepjepa.github.io/ → 200（单位、Code 链接）",
+    "GET https://api.github.com/repos/deepjepa/DeepJEPA 及 /contents → 200（license=null，内容只有 README.md 和 assets）",
+    "GET https://raw.githubusercontent.com/deepjepa/DeepJEPA/HEAD/README.md → 200"
+   ]
+  },
+  {
+   "key": "JEPA-Anything",
+   "claimed_ref": "JEPA-Anything（Orthogonal Predictive Factorization, OPF），声称 arXiv 2609.20800（2026-09），仓库 Gen-Verse/JEPA-Anything，Apache-2.0",
+   "exists": "verified",
+   "title": "JEPA-Anything: Learning Predictive Models across Different Worlds",
+   "arxiv_id": "2609.20800",
+   "authors": "Taoyong Cui, Zhongyao Wang, Xinyue Xu, Weiyang Liu, Zhaochen Yu, Yuying Zhang, Qiang Gao, Mengyue Yang, Wanli Ouyang, Pheng Ann Heng*, Yingcheng Wu*, Zhenfei Yin*, Ling Yang*（PhAI Labs, CUHK, Fudan, CityU HK, Bristol, Stanford, Oxford, Princeton）",
+   "date": "2026-09-17（v1，Thu, 17 Sep 2026 17:55:57 UTC）",
+   "venue": "arXiv 预印本（主类 cs.CL），无会议信息",
+   "primary_url": "https://arxiv.org/abs/2609.20800",
+   "paper_license": "arXiv.org perpetual non-exclusive license（不是 CC）",
+   "code_repo": "https://github.com/Gen-Verse/JEPA-Anything",
+   "code_status": "released",
+   "code_license": "GitHub 仓库根目录和 jepa-anything-core/ 的 LICENSE 均为 Apache-2.0（已读 LICENSE 原文）。HF 数据集 Gen-Verse/jepa-anything 标注 apache-2.0，含各领域 checkpoint 和推理脚本，还内嵌第三方代码（tito/models/painn.py、cell_jepa、torch_scatter shim），但没有对应的上游 LICENSE/NOTICE",
+   "mechanism": "在 JEPA（在线编码器加 EMA 目标编码器）的基础上，把停梯度的目标表示 z_t 用 K 个可学习投影 P_k∈R^{d×r}（Kr=d）分解成因子 z^(k)=P_k^T sg(z_t)。每个因子配一个专用预测器 q_k，各因子预测拼接后经 Moore–Penrose 伪逆合成：ẑ=(P^T)^†û；若 P 严格正交，则退化为 ẑ=Σ P_k ẑ^(k)。正交性是软约束：L_orth=Σ||P_k^T P_k−I||²_F+Σ_{i<j}||P_i^T P_j||²_F。另有每因子坐标和编码器坐标的标准差下限 hinge（L_fac、L_enc）。OPF 损失以加法叠到各领域原有损失上。推论给出：严格正交时 κ2(P)=1，误差不放大；无约束多头则可能秩亏或病态。",
+   "claims_checked": [
+    {
+     "claim": "arXiv 2609.20800（2026-09），名为 JEPA-Anything，提出 OPF",
+     "verdict": "supported",
+     "evidence": "https://arxiv.org/abs/2609.20800：标题为 JEPA-Anything: Learning Predictive Models across Different Worlds，Submitted 17 Sep 2026，摘要写明基于 orthogonal predictive factorization (OPF)。"
+    },
+    {
+     "claim": "7 类跨学科世界（分子动力学、物理场、生物、气象等）",
+     "verdict": "supported",
+     "evidence": "摘要原文列出 seven domains：vision, biology, clinical trajectories, control, molecular dynamics, physical fields, weather。注意临床数据来自受控访问的 UK Biobank，不可再分发；各领域用各自的编码器和基线，并不是单一共享模型。"
+    },
+    {
+     "claim": "OPF 把潜状态转移分解为正交互补子空间",
+     "verdict": "supported",
+     "evidence": "§2.2 式(3)–(8)：分解对象是目标潜表示，并带每因子预测器；在动作/干预条件下，转移形式为 û_{t+1}=[q_k(z_t,ξ_t,s_{t+1})]，经伪逆合成。限定：正交性是惩罚项（近似正交），只有受控几何分析用 QR 得到严格正交；作者也承认因子语义不可辨识（引用 Locatello 2019）。"
+    },
+    {
+     "claim": "仓库 Gen-Verse/JEPA-Anything，Apache-2.0",
+     "verdict": "supported",
+     "evidence": "arXiv Comments 字段为 \"Code: https://github.com/Gen-Verse/JEPA-Anything\"；GitHub API license=apache-2.0，LICENSE 和 jepa-anything-core/LICENSE 均为 Apache 2.0 原文。但该 GitHub 仓库只含 core 库、任务脚手架和一个合成线性动力学示例，checkpoints/manifest.json 标为 not_published、training.executed=false。各领域 checkpoint 放在 HF 数据集里，只见推理/测试脚本，未见训练脚本。"
+    },
+    {
+     "claim": "（附加核查）Kepler 斜率 −1.4991、Interventional Pong 误差降低 34.8%",
+     "verdict": "supported",
+     "evidence": "摘要和 §3.4.2 Fig. 9 写有拟合斜率 −1.4991、R²=0.9999999，但只来自单次运行（\"In a JEPA-Anything run\"）。34.8% 出现在摘要中，比较对象是 matched JEPA baselines。"
+    }
+   ],
+   "fit_gaps": [
+    "G3_low_compute_law_distillation"
+   ],
+   "needs_llm": "no",
+   "needs_gpu_training": "optional",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "OPF 损失本身很轻：K 个 d×r 投影加 Frobenius 惩罚，APEBench/PDE 用 MLP，d=128、K=4、r=32；运动控制任务 d=32。这类小规模状态型任务在 CPU/MLX 上可行。论文没写 GPU。CLEVRER、DMC 像素、WeatherBench2、TiTo 分子动力学等骨干沿用原实现的默认配置，基本需要 GPU。临床任务依赖受控的 UK Biobank 数据。",
+   "how_to_borrow": "借：(1) 若把式8 的 r_θ 拆成按机制分头的残差（例如接触、摩擦、空气各一头），可以借 OPF 的数学结构：近似正交投影子空间、每头预测、伪逆合成，加上 L_orth 和每坐标标准差下限，并监控 κ2(P)，作为防止多头残差重复编码、合成不稳的结构约束和审计指标。(2) 借 §3.4.2 的评测模板：从隐模式的频谱中拟合已知标度律（f∝a^{-3/2}）来检验学到的结构是否物理上有意义，可用作 G3 公式提炼的外部检验样例；但单次运行、R² 极高的结果不能直接当晋升证据，必须独立重跑。不借：跨领域统一和湿实验/临床的结论（与本项目无关，且不可复核）；HF 包内未审计许可的第三方代码（TiTo/PaiNN、cell_jepa、torch_scatter shim）；大骨干训练。只有 core 库（Apache-2.0）在许可上可直接参考。",
+   "red_flags": [
+    "论文许可是 arXiv non-exclusive，不是 CC；代码 Apache-2.0，两者不同",
+    "GitHub 仓库没有各领域训练代码，checkpoint manifest 为 not_published；领域 checkpoint 只在 HF 数据集中，未见训练脚本，复现链不完整",
+    "HF 包整体标 apache-2.0，但内嵌第三方代码（TiTo/PaiNN、cell_jepa、torch_scatter shim），没有上游 LICENSE/NOTICE，存在许可分裂风险",
+    "临床实验用受控访问的 UK Biobank，数据不可再分发",
+    "arXiv 主类为 cs.CL，与内容（世界模型/科学 ML）不符",
+    "Kepler 斜率 R²=0.9999999 只来自单次运行；湿实验结论超出可复核范围",
+    "AI 使用声明写明 OpenAI Codex 参与了实验设计和统计报告的反馈",
+    "比较对象主要是 matched JEPA 基线，「全部 10 项提升」只是相对这些基线"
+   ],
+   "access_log": [
+    "WebFetch 工具报模型错误，改用 curl 只读抓取",
+    "GET https://arxiv.org/abs/2609.20800 → 200（元数据、许可、Code 链接）",
+    "GET https://arxiv.org/html/2609.20800v1 → 200（§2 OPF 公式、§3.4.2、App. B/C）",
+    "GET https://api.github.com/repos/Gen-Verse/JEPA-Anything、/license、/git/trees/HEAD → 200（Apache-2.0，79 个文件）",
+    "GET raw.githubusercontent.com 上的 README.md、recipes/README.md、checkpoints/README.md、checkpoints/manifest.json、jepa-anything-core/LICENSE → 200",
+    "GET https://huggingface.co/api/collections/Gen-Verse/jepa-anything 与 /api/datasets/Gen-Verse/jepa-anything → 200（只读元数据和文件列表，未下载权重）",
+    "GET https://huggingface.co/datasets/Gen-Verse/jepa-anything/raw/main/README.md → 200"
+   ]
+  }
+ ]
+}

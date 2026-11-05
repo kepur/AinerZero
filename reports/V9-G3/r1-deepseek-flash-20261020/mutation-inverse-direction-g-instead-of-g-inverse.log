@@ -1,0 +1,970 @@
+$ /Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m pytest /Users/mac/AinerWorkFlow/AinerZero/tests/v9/geometry/test_canonical.py -q -p no:cacheprovider
+AINERZERO_CANONICAL_OVERRIDE=/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/ainerzero-g3-mutants-_gmd9nsi/canonical_mutant_inverse_direction_g_instead_of_g_inverse.py
+
+.F..FFFFF...FF....FF....FF.....FFFF....FFFFFFFFF.FF......                [100%]
+=================================== FAILURES ===================================
+_______________ test_height_and_gravity_direction_are_preserved ________________
+
+    def test_height_and_gravity_direction_are_preserved():
+        # SE(3) estimate with a non-zero height: only the gravity-aligned part is used.
+        planar = SE2.exp([0.42, -0.31, 1.13])
+        height = 0.37
+        belief = make_belief(group=SE3, mean=Z_UP.lift(planar, height))
+        agent_world = Z_UP.lift(planar, height)
+        agent_xy = agent_world[:3, 3].copy()
+        agent_xy[2] = 0.0
+        # A world point at the agent's horizontal position keeps its own world height.
+        point = agent_xy + np.array([0.0, 0.0, 1.25])
+        expected = np.array([0.0, 0.0, 1.25])
+>       assert np.max(np.abs(canonical.canonicalize_points(point, belief) - expected)) <= ROUNDTRIP_TOL
+E       AssertionError: assert WorldPoints(0.73563911) <= 1e-09
+E        +  where WorldPoints(0.73563911) = <function max at 0x106c56970>(WorldPoints([0.73563911, 0.39632235, 0.        ]))
+E        +    where <function max at 0x106c56970> = np.max
+E        +    and   WorldPoints([0.73563911, 0.39632235, 0.        ]) = <ufunc 'absolute'>((WorldPoints([0.73563911, 0.39632235, 1.25      ]) - array([0.  , 0.  , 1.25])))
+E        +      where <ufunc 'absolute'> = np.abs
+E        +      and   WorldPoints([0.73563911, 0.39632235, 1.25      ]) = <function canonicalize_points at 0x1069f3c40>(array([ 0.49344122, -0.03501318,  1.25      ]), CanonicalBelief(belief=TangentGaussian(group=<class 'ainerzero.v9.geometry.lie.SE3'>, mean=array([[ 0.42665981, -0.904...e=GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))))
+E        +        where <function canonicalize_points at 0x1069f3c40> = canonical.canonicalize_points
+
+tests/v9/geometry/test_canonical.py:130: AssertionError
+____________________ test_dispatchers_match_typed_functions ____________________
+
+    def test_dispatchers_match_typed_functions():
+        belief = make_belief(mean=SE2.exp([0.3, -0.2, 0.8]))
+        points = np.array([[1.0, 2.0, 3.0], [-1.0, 0.5, 0.0]])
+        vectors = np.array([[1.0, 0.0, 0.0], [0.2, -0.4, 0.1]])
+        poses = np.stack([SE3.exp([0, 0, 0, 0, 0, 0.1]), SE3.exp([1, 2, 3, 0.1, -0.2, 0.3])])
+        np.testing.assert_allclose(
+            canonical.canonicalize(canonical.WorldPoints(points), belief),
+            canonical.canonicalize_points(points, belief),
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            canonical.canonicalize(canonical.WorldVectors(vectors), belief),
+            canonical.canonicalize_vectors(vectors, belief),
+            atol=1e-12,
+        )
+        np.testing.assert_allclose(
+            canonical.canonicalize(poses, belief), canonical.canonicalize_poses(poses, belief), atol=1e-12
+        )
+>       np.testing.assert_allclose(
+            canonical.decanonicalize(canonical.canonicalize(poses, belief), belief), poses, atol=1e-12
+        )
+E       AssertionError: 
+E       Not equal to tolerance rtol=1e-07, atol=1e-12
+E       
+E       Mismatched elements: 14 / 32 (43.8%)
+E       First 5 mismatches are at indices:
+E        [0, 0, 0]: -0.1288444942955247 (ACTUAL), 0.9950041652780258 (DESIRED)
+E        [0, 0, 1]: -0.9916648104524687 (ACTUAL), -0.09983341664682815 (DESIRED)
+E        [0, 0, 3]: 0.6321399817158866 (ACTUAL), 0.0 (DESIRED)
+E        [0, 1, 0]: 0.9916648104524687 (ACTUAL), 0.09983341664682815 (DESIRED)
+E        [0, 1, 1]: -0.12884449429552475 (ACTUAL), 0.9950041652780258 (DESIRED)
+E       Max absolute difference among violations: 1.70605765
+E       Max relative difference among violations: 8.93319515
+E        ACTUAL: array([[[-0.128844, -0.991665,  0.      ,  0.63214 ],
+E               [ 0.991665, -0.128844,  0.      ,  0.136056],
+E               [ 0.      ,  0.      ,  1.      ,  0.      ],...
+E        DESIRED: array([[[ 0.995004, -0.099833,  0.      ,  0.      ],
+E               [ 0.099833,  0.995004,  0.      ,  0.      ],
+E               [ 0.      ,  0.      ,  1.      ,  0.      ],...
+
+tests/v9/geometry/test_canonical.py:202: AssertionError
+_______ test_roundtrip_is_identity_for_all_supported_inputs[SE2-frame0] ________
+
+frame = GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE2'>
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    def test_roundtrip_is_identity_for_all_supported_inputs(frame, group):
+        rng = np.random.default_rng(20261020)
+        for _ in range(16):
+            belief = random_belief(rng, frame=frame, group=group)
+            points_3d = rng.normal(size=(17, 3)) * 2.0
+            points_2d = rng.normal(size=(17, 2)) * 2.0
+            vectors_3d = rng.normal(size=(9, 3))
+            vectors_2d = rng.normal(size=(9, 2))
+            poses = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(6)])
+            for x, kind in (
+                (points_3d, "points3d"),
+                (points_2d, "points2d"),
+                (canonical.WorldVectors(vectors_3d), "vectors3d"),
+                (canonical.WorldVectors(vectors_2d), "vectors2d"),
+                (poses, "poses"),
+            ):
+                canonicalized = canonical.canonicalize(x, belief)
+                back = canonical.decanonicalize(canonicalized, belief)
+                assert canonicalized.shape == np.asarray(x).shape, kind
+>               assert np.max(np.abs(back - np.asarray(x))) <= ROUNDTRIP_TOL, kind
+E               AssertionError: points3d
+E               assert np.float64(6.453700566006498) <= 1e-09
+E                +  where np.float64(6.453700566006498) = <function max at 0x106c56970>(array([[1.30791922, 1.69035806, 0.        ],\n       [1.81164978, 0.84854897, 0.        ],\n       [0.78122578, 1.680080...96, 2.30931749, 0.        ],\n       [3.82455787, 1.68756112, 0.        ],\n       [0.63761783, 2.93229031, 0.        ]]))
+E                +    where <function max at 0x106c56970> = np.max
+E                +    and   array([[1.30791922, 1.69035806, 0.        ],\n       [1.81164978, 0.84854897, 0.        ],\n       [0.78122578, 1.680080...96, 2.30931749, 0.        ],\n       [3.82455787, 1.68756112, 0.        ],\n       [0.63761783, 2.93229031, 0.        ]]) = <ufunc 'absolute'>((array([[ 0.5973947 ,  2.04247218,  0.78703044],\n       [ 0.09358925, -0.52446857, -0.73977325],\n       [ 1.73587673,  ...1429964,  0.4640862 ],\n       [-1.96768054, -0.09361975,  1.10423148],\n       [-0.89191673,  1.85425297,  3.08364891]]) - array([[-0.71052451,  0.35211413,  0.78703044],\n       [ 1.90523903,  0.3240804 , -0.73977325],\n       [ 0.95465095,  ...9501785,  0.4640862 ],\n       [ 1.85687733, -1.78118087,  1.10423148],\n       [-0.25429891, -1.07803734,  3.08364891]])))
+E                +      where <ufunc 'absolute'> = np.abs
+E                +      and   array([[-0.71052451,  0.35211413,  0.78703044],\n       [ 1.90523903,  0.3240804 , -0.73977325],\n       [ 0.95465095,  ...9501785,  0.4640862 ],\n       [ 1.85687733, -1.78118087,  1.10423148],\n       [-0.25429891, -1.07803734,  3.08364891]]) = <built-in function asarray>(array([[-0.71052451,  0.35211413,  0.78703044],\n       [ 1.90523903,  0.3240804 , -0.73977325],\n       [ 0.95465095,  ...9501785,  0.4640862 ],\n       [ 1.85687733, -1.78118087,  1.10423148],\n       [-0.25429891, -1.07803734,  3.08364891]]))
+E                +        where <built-in function asarray> = np.asarray
+
+tests/v9/geometry/test_canonical.py:231: AssertionError
+_______ test_roundtrip_is_identity_for_all_supported_inputs[SE2-frame1] ________
+
+frame = GravityFrame(gravity=array([ 0.  , -9.81,  0.  ]), up=array([0., 1., 0.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE2'>
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    def test_roundtrip_is_identity_for_all_supported_inputs(frame, group):
+        rng = np.random.default_rng(20261020)
+        for _ in range(16):
+            belief = random_belief(rng, frame=frame, group=group)
+            points_3d = rng.normal(size=(17, 3)) * 2.0
+            points_2d = rng.normal(size=(17, 2)) * 2.0
+            vectors_3d = rng.normal(size=(9, 3))
+            vectors_2d = rng.normal(size=(9, 2))
+            poses = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(6)])
+            for x, kind in (
+                (points_3d, "points3d"),
+                (points_2d, "points2d"),
+                (canonical.WorldVectors(vectors_3d), "vectors3d"),
+                (canonical.WorldVectors(vectors_2d), "vectors2d"),
+                (poses, "poses"),
+            ):
+                canonicalized = canonical.canonicalize(x, belief)
+                back = canonical.decanonicalize(canonicalized, belief)
+                assert canonicalized.shape == np.asarray(x).shape, kind
+>               assert np.max(np.abs(back - np.asarray(x))) <= ROUNDTRIP_TOL, kind
+E               AssertionError: points3d
+E               assert np.float64(9.444796194020011) <= 1e-09
+E                +  where np.float64(9.444796194020011) = <function max at 0x106c56970>(array([[0.18781385, 0.        , 3.03690153],\n       [1.40290465, 0.        , 1.33992515],\n       [3.20677092, 0.      ...59, 0.        , 1.05738714],\n       [3.15892274, 0.        , 0.88736261],\n       [2.60970842, 0.        , 5.30305453]]))
+E                +    where <function max at 0x106c56970> = np.max
+E                +    and   array([[0.18781385, 0.        , 3.03690153],\n       [1.40290465, 0.        , 1.33992515],\n       [3.20677092, 0.      ...59, 0.        , 1.05738714],\n       [3.15892274, 0.        , 0.88736261],\n       [2.60970842, 0.        , 5.30305453]]) = <ufunc 'absolute'>((array([[-0.52271066,  0.35211413, -2.2498711 ],\n       [ 0.50233438,  0.3240804 ,  0.6001519 ],\n       [ 4.16142187,  ...9501785,  1.52147334],\n       [-1.30204541, -1.78118087,  0.21686887],\n       [-2.86400733, -1.07803734, -2.21940562]]) - array([[-0.71052451,  0.35211413,  0.78703044],\n       [ 1.90523903,  0.3240804 , -0.73977325],\n       [ 0.95465095,  ...9501785,  0.4640862 ],\n       [ 1.85687733, -1.78118087,  1.10423148],\n       [-0.25429891, -1.07803734,  3.08364891]])))
+E                +      where <ufunc 'absolute'> = np.abs
+E                +      and   array([[-0.71052451,  0.35211413,  0.78703044],\n       [ 1.90523903,  0.3240804 , -0.73977325],\n       [ 0.95465095,  ...9501785,  0.4640862 ],\n       [ 1.85687733, -1.78118087,  1.10423148],\n       [-0.25429891, -1.07803734,  3.08364891]]) = <built-in function asarray>(array([[-0.71052451,  0.35211413,  0.78703044],\n       [ 1.90523903,  0.3240804 , -0.73977325],\n       [ 0.95465095,  ...9501785,  0.4640862 ],\n       [ 1.85687733, -1.78118087,  1.10423148],\n       [-0.25429891, -1.07803734,  3.08364891]]))
+E                +        where <built-in function asarray> = np.asarray
+
+tests/v9/geometry/test_canonical.py:231: AssertionError
+_______ test_roundtrip_is_identity_for_all_supported_inputs[SE3-frame0] ________
+
+frame = GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE3'>
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    def test_roundtrip_is_identity_for_all_supported_inputs(frame, group):
+        rng = np.random.default_rng(20261020)
+        for _ in range(16):
+            belief = random_belief(rng, frame=frame, group=group)
+            points_3d = rng.normal(size=(17, 3)) * 2.0
+            points_2d = rng.normal(size=(17, 2)) * 2.0
+            vectors_3d = rng.normal(size=(9, 3))
+            vectors_2d = rng.normal(size=(9, 2))
+            poses = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(6)])
+            for x, kind in (
+                (points_3d, "points3d"),
+                (points_2d, "points2d"),
+                (canonical.WorldVectors(vectors_3d), "vectors3d"),
+                (canonical.WorldVectors(vectors_2d), "vectors2d"),
+                (poses, "poses"),
+            ):
+                canonicalized = canonical.canonicalize(x, belief)
+                back = canonical.decanonicalize(canonicalized, belief)
+                assert canonicalized.shape == np.asarray(x).shape, kind
+>               assert np.max(np.abs(back - np.asarray(x))) <= ROUNDTRIP_TOL, kind
+E               AssertionError: points3d
+E               assert np.float64(8.297974799275176) <= 1e-09
+E                +  where np.float64(8.297974799275176) = <function max at 0x106c56970>(array([[0.20698893, 1.91383526, 0.        ],\n       [2.18413595, 0.89022433, 0.        ],\n       [2.19323077, 6.162372...83, 4.07384184, 0.        ],\n       [1.44961133, 0.1365823 , 0.        ],\n       [5.42200822, 1.59195489, 0.        ]]))
+E                +    where <function max at 0x106c56970> = np.max
+E                +    and   array([[0.20698893, 1.91383526, 0.        ],\n       [2.18413595, 0.89022433, 0.        ],\n       [2.19323077, 6.162372...83, 4.07384184, 0.        ],\n       [1.44961133, 0.1365823 , 0.        ],\n       [5.42200822, 1.59195489, 0.        ]]) = <ufunc 'absolute'>((array([[ 1.54598115, -0.21752203,  0.63379237],\n       [ 1.36829369,  2.00684029, -1.13189797],\n       [-0.8199441 ,  ...7787582, -2.20641817],\n       [-0.13512609,  0.11867564,  1.25410165],\n       [-2.72664129, -0.80583242,  2.45385343]]) - array([[ 1.33899222,  1.69631324,  0.63379237],\n       [-0.81584226,  1.11661596, -1.13189797],\n       [-3.01317487, -...9596602, -2.20641817],\n       [ 1.31448524, -0.01790666,  1.25410165],\n       [ 2.69536693, -2.39778731,  2.45385343]])))
+E                +      where <ufunc 'absolute'> = np.abs
+E                +      and   array([[ 1.33899222,  1.69631324,  0.63379237],\n       [-0.81584226,  1.11661596, -1.13189797],\n       [-3.01317487, -...9596602, -2.20641817],\n       [ 1.31448524, -0.01790666,  1.25410165],\n       [ 2.69536693, -2.39778731,  2.45385343]]) = <built-in function asarray>(array([[ 1.33899222,  1.69631324,  0.63379237],\n       [-0.81584226,  1.11661596, -1.13189797],\n       [-3.01317487, -...9596602, -2.20641817],\n       [ 1.31448524, -0.01790666,  1.25410165],\n       [ 2.69536693, -2.39778731,  2.45385343]]))
+E                +        where <built-in function asarray> = np.asarray
+
+tests/v9/geometry/test_canonical.py:231: AssertionError
+_______ test_roundtrip_is_identity_for_all_supported_inputs[SE3-frame1] ________
+
+frame = GravityFrame(gravity=array([ 0.  , -9.81,  0.  ]), up=array([0., 1., 0.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE3'>
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    def test_roundtrip_is_identity_for_all_supported_inputs(frame, group):
+        rng = np.random.default_rng(20261020)
+        for _ in range(16):
+            belief = random_belief(rng, frame=frame, group=group)
+            points_3d = rng.normal(size=(17, 3)) * 2.0
+            points_2d = rng.normal(size=(17, 2)) * 2.0
+            vectors_3d = rng.normal(size=(9, 3))
+            vectors_2d = rng.normal(size=(9, 2))
+            poses = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(6)])
+            for x, kind in (
+                (points_3d, "points3d"),
+                (points_2d, "points2d"),
+                (canonical.WorldVectors(vectors_3d), "vectors3d"),
+                (canonical.WorldVectors(vectors_2d), "vectors2d"),
+                (poses, "poses"),
+            ):
+                canonicalized = canonical.canonicalize(x, belief)
+                back = canonical.decanonicalize(canonicalized, belief)
+                assert canonicalized.shape == np.asarray(x).shape, kind
+>               assert np.max(np.abs(back - np.asarray(x))) <= ROUNDTRIP_TOL, kind
+E               AssertionError: points3d
+E               assert np.float64(9.024677685082375) <= 1e-09
+E                +  where np.float64(9.024677685082375) = <function max at 0x106c56970>(array([[2.08417224, 0.        , 0.84050216],\n       [2.19916254, 0.        , 0.87215999],\n       [2.49529875, 0.      ...39, 0.        , 0.5248271 ],\n       [2.66514507, 0.        , 1.59784574],\n       [5.47713728, 0.        , 1.65822872]]))
+E                +    where <function max at 0x106c56970> = np.max
+E                +    and   array([[2.08417224, 0.        , 0.84050216],\n       [2.19916254, 0.        , 0.87215999],\n       [2.49529875, 0.      ...39, 0.        , 0.5248271 ],\n       [2.66514507, 0.        , 1.59784574],\n       [5.47713728, 0.        , 1.65822872]]) = <ufunc 'absolute'>((array([[-0.74518002,  1.69631324, -0.20670979],\n       [ 1.38332028,  1.11661596, -2.00405796],\n       [-0.51787612, -...9596602, -2.73124527],\n       [-1.35065983, -0.01790666, -0.34374409],\n       [-2.78177035, -2.39778731,  0.79562472]]) - array([[ 1.33899222,  1.69631324,  0.63379237],\n       [-0.81584226,  1.11661596, -1.13189797],\n       [-3.01317487, -...9596602, -2.20641817],\n       [ 1.31448524, -0.01790666,  1.25410165],\n       [ 2.69536693, -2.39778731,  2.45385343]])))
+E                +      where <ufunc 'absolute'> = np.abs
+E                +      and   array([[ 1.33899222,  1.69631324,  0.63379237],\n       [-0.81584226,  1.11661596, -1.13189797],\n       [-3.01317487, -...9596602, -2.20641817],\n       [ 1.31448524, -0.01790666,  1.25410165],\n       [ 2.69536693, -2.39778731,  2.45385343]]) = <built-in function asarray>(array([[ 1.33899222,  1.69631324,  0.63379237],\n       [-0.81584226,  1.11661596, -1.13189797],\n       [-3.01317487, -...9596602, -2.20641817],\n       [ 1.31448524, -0.01790666,  1.25410165],\n       [ 2.69536693, -2.39778731,  2.45385343]]))
+E                +        where <built-in function asarray> = np.asarray
+
+tests/v9/geometry/test_canonical.py:231: AssertionError
+____ test_boundary_yaw_near_pi_and_tiny_translation[0.0--3.141592652589793] ____
+
+yaw = -3.141592652589793, translation = 0.0
+
+    @pytest.mark.parametrize("yaw", [math.pi, math.pi - 1e-12, -math.pi + 1e-12, -math.pi + 1e-9,
+                                     math.pi - 1e-9, 0.0])
+    @pytest.mark.parametrize("translation", [0.0, 1e-12, -1e-12])
+    def test_boundary_yaw_near_pi_and_tiny_translation(yaw, translation):
+        rng = np.random.default_rng(20261020)
+        belief = make_belief(mean=SE2.exp([translation, -translation, yaw]))
+        points = rng.normal(size=(12, 3))
+        back = canonical.decanonicalize(canonical.canonicalize(points, belief), belief)
+>       assert np.max(np.abs(back - points)) <= ROUNDTRIP_TOL
+E       AssertionError: assert np.float64(4.140311204992031e-09) <= 1e-09
+E        +  where np.float64(4.140311204992031e-09) = <function max at 0x106c56970>(array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]))
+E        +    where <function max at 0x106c56970> = np.max
+E        +    and   array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]) = <ufunc 'absolute'>((array([[-1.91624098, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627013, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719902,  3.32679783]]) - array([[-1.91624099, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]])))
+E        +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:247: AssertionError
+____ test_boundary_yaw_near_pi_and_tiny_translation[0.0-3.141592652589793] _____
+
+yaw = 3.141592652589793, translation = 0.0
+
+    @pytest.mark.parametrize("yaw", [math.pi, math.pi - 1e-12, -math.pi + 1e-12, -math.pi + 1e-9,
+                                     math.pi - 1e-9, 0.0])
+    @pytest.mark.parametrize("translation", [0.0, 1e-12, -1e-12])
+    def test_boundary_yaw_near_pi_and_tiny_translation(yaw, translation):
+        rng = np.random.default_rng(20261020)
+        belief = make_belief(mean=SE2.exp([translation, -translation, yaw]))
+        points = rng.normal(size=(12, 3))
+        back = canonical.decanonicalize(canonical.canonicalize(points, belief), belief)
+>       assert np.max(np.abs(back - points)) <= ROUNDTRIP_TOL
+E       AssertionError: assert np.float64(4.140311204992031e-09) <= 1e-09
+E        +  where np.float64(4.140311204992031e-09) = <function max at 0x106c56970>(array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]))
+E        +    where <function max at 0x106c56970> = np.max
+E        +    and   array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]) = <ufunc 'absolute'>((array([[-1.91624099, -0.12930802, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]]) - array([[-1.91624099, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]])))
+E        +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:247: AssertionError
+___ test_boundary_yaw_near_pi_and_tiny_translation[1e-12--3.141592652589793] ___
+
+yaw = -3.141592652589793, translation = 1e-12
+
+    @pytest.mark.parametrize("yaw", [math.pi, math.pi - 1e-12, -math.pi + 1e-12, -math.pi + 1e-9,
+                                     math.pi - 1e-9, 0.0])
+    @pytest.mark.parametrize("translation", [0.0, 1e-12, -1e-12])
+    def test_boundary_yaw_near_pi_and_tiny_translation(yaw, translation):
+        rng = np.random.default_rng(20261020)
+        belief = make_belief(mean=SE2.exp([translation, -translation, yaw]))
+        points = rng.normal(size=(12, 3))
+        back = canonical.decanonicalize(canonical.canonicalize(points, belief), belief)
+>       assert np.max(np.abs(back - points)) <= ROUNDTRIP_TOL
+E       AssertionError: assert np.float64(4.140311204992031e-09) <= 1e-09
+E        +  where np.float64(4.140311204992031e-09) = <function max at 0x106c56970>(array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]))
+E        +    where <function max at 0x106c56970> = np.max
+E        +    and   array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]) = <ufunc 'absolute'>((array([[-1.91624098, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627013, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719902,  3.32679783]]) - array([[-1.91624099, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]])))
+E        +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:247: AssertionError
+___ test_boundary_yaw_near_pi_and_tiny_translation[1e-12-3.141592652589793] ____
+
+yaw = 3.141592652589793, translation = 1e-12
+
+    @pytest.mark.parametrize("yaw", [math.pi, math.pi - 1e-12, -math.pi + 1e-12, -math.pi + 1e-9,
+                                     math.pi - 1e-9, 0.0])
+    @pytest.mark.parametrize("translation", [0.0, 1e-12, -1e-12])
+    def test_boundary_yaw_near_pi_and_tiny_translation(yaw, translation):
+        rng = np.random.default_rng(20261020)
+        belief = make_belief(mean=SE2.exp([translation, -translation, yaw]))
+        points = rng.normal(size=(12, 3))
+        back = canonical.decanonicalize(canonical.canonicalize(points, belief), belief)
+>       assert np.max(np.abs(back - points)) <= ROUNDTRIP_TOL
+E       AssertionError: assert np.float64(4.140311204992031e-09) <= 1e-09
+E        +  where np.float64(4.140311204992031e-09) = <function max at 0x106c56970>(array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]))
+E        +    where <function max at 0x106c56970> = np.max
+E        +    and   array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]) = <ufunc 'absolute'>((array([[-1.91624099, -0.12930802, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]]) - array([[-1.91624099, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]])))
+E        +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:247: AssertionError
+__ test_boundary_yaw_near_pi_and_tiny_translation[-1e-12--3.141592652589793] ___
+
+yaw = -3.141592652589793, translation = -1e-12
+
+    @pytest.mark.parametrize("yaw", [math.pi, math.pi - 1e-12, -math.pi + 1e-12, -math.pi + 1e-9,
+                                     math.pi - 1e-9, 0.0])
+    @pytest.mark.parametrize("translation", [0.0, 1e-12, -1e-12])
+    def test_boundary_yaw_near_pi_and_tiny_translation(yaw, translation):
+        rng = np.random.default_rng(20261020)
+        belief = make_belief(mean=SE2.exp([translation, -translation, yaw]))
+        points = rng.normal(size=(12, 3))
+        back = canonical.decanonicalize(canonical.canonicalize(points, belief), belief)
+>       assert np.max(np.abs(back - points)) <= ROUNDTRIP_TOL
+E       AssertionError: assert np.float64(4.140311204992031e-09) <= 1e-09
+E        +  where np.float64(4.140311204992031e-09) = <function max at 0x106c56970>(array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]))
+E        +    where <function max at 0x106c56970> = np.max
+E        +    and   array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]) = <ufunc 'absolute'>((array([[-1.91624098, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627013, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719902,  3.32679783]]) - array([[-1.91624099, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]])))
+E        +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:247: AssertionError
+___ test_boundary_yaw_near_pi_and_tiny_translation[-1e-12-3.141592652589793] ___
+
+yaw = 3.141592652589793, translation = -1e-12
+
+    @pytest.mark.parametrize("yaw", [math.pi, math.pi - 1e-12, -math.pi + 1e-12, -math.pi + 1e-9,
+                                     math.pi - 1e-9, 0.0])
+    @pytest.mark.parametrize("translation", [0.0, 1e-12, -1e-12])
+    def test_boundary_yaw_near_pi_and_tiny_translation(yaw, translation):
+        rng = np.random.default_rng(20261020)
+        belief = make_belief(mean=SE2.exp([translation, -translation, yaw]))
+        points = rng.normal(size=(12, 3))
+        back = canonical.decanonicalize(canonical.canonicalize(points, belief), belief)
+>       assert np.max(np.abs(back - points)) <= ROUNDTRIP_TOL
+E       AssertionError: assert np.float64(4.140311204992031e-09) <= 1e-09
+E        +  where np.float64(4.140311204992031e-09) = <function max at 0x106c56970>(array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]))
+E        +    where <function max at 0x106c56970> = np.max
+E        +    and   array([[2.58616240e-10, 3.83248278e-09, 0.00000000e+00],\n       [2.78141954e-09, 3.05344061e-09, 0.00000000e+00],\n    ...00],\n       [3.32829120e-09, 1.04007691e-09, 0.00000000e+00],\n       [1.63439839e-09, 2.55841193e-09, 0.00000000e+00]]) = <ufunc 'absolute'>((array([[-1.91624099, -0.12930802, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]]) - array([[-1.91624099, -0.12930803, -2.10332224],\n       [ 1.52672001,  1.3907094 , -0.4277014 ],\n       [ 0.5427606 , -...1627014, -0.54596995],\n       [-0.52003841,  1.66414527, -0.51518443],\n       [ 1.27920565, -0.81719903,  3.32679783]])))
+E        +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:247: AssertionError
+__ test_canonicalize_equivariance_under_se2_left_action[points3d-SE2-frame0] ___
+
+frame = GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE2'>, kind = 'points3d'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: points3d
+E           assert WorldPoints(3.85670572) <= 1e-09
+E            +  where WorldPoints(3.85670572) = <function max at 0x106c56970>(WorldPoints([[0.55997863, 3.85670572, 0.        ],\n             [0.38676264, 1.36204085, 0.        ],\n             [0....42, 0.        ],\n             [1.12563598, 0.78464914, 0.        ],\n             [0.58822666, 1.51876615, 0.        ]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   WorldPoints([[0.55997863, 3.85670572, 0.        ],\n             [0.38676264, 1.36204085, 0.        ],\n             [0....42, 0.        ],\n             [1.12563598, 0.78464914, 0.        ],\n             [0.58822666, 1.51876615, 0.        ]]) = <ufunc 'absolute'>((WorldPoints([[ 0.97918254,  1.61405905, -0.83997414],\n             [-2.05320071,  1.33788826, -0.14524788],\n          ...19401124],\n             [-3.01492241,  1.80712435,  1.4175845 ],\n             [-1.40493817,  0.4161126 ,  0.4409341 ]]) - WorldPoints([[ 4.19203910e-01, -2.24264667e+00, -8.39974143e-01],\n             [-1.66643807e+00, -2.41525896e-02, -1.4...[-1.88928643e+00,  1.02247521e+00,  1.41758450e+00],\n             [-1.99316482e+00, -1.10265354e+00,  4.40934101e-01]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+__ test_canonicalize_equivariance_under_se2_left_action[points3d-SE2-frame1] ___
+
+frame = GravityFrame(gravity=array([ 0.  , -9.81,  0.  ]), up=array([0., 1., 0.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE2'>, kind = 'points3d'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: points3d
+E           assert WorldPoints(2.70914401) <= 1e-09
+E            +  where WorldPoints(2.70914401) = <function max at 0x106c56970>(WorldPoints([[0.37597465, 0.        , 1.87900188],\n             [0.38892951, 0.        , 1.33875092],\n             [0....  , 1.21030082],\n             [1.19507281, 0.        , 0.03833106],\n             [0.51564998, 0.        , 0.73870056]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   WorldPoints([[0.37597465, 0.        , 1.87900188],\n             [0.38892951, 0.        , 1.33875092],\n             [0....  , 1.21030082],\n             [1.19507281, 0.        , 0.03833106],\n             [0.51564998, 0.        , 0.73870056]]) = <ufunc 'absolute'>((WorldPoints([[-1.14153646,  3.10660421, -0.81395733],\n             [-2.07817482,  0.17194028, -1.32846606],\n          ...13995009],\n             [-3.81520954, -0.5622355 , -1.50519321],\n             [-2.24141322,  0.45309264, -0.10052854]]) - WorldPoints([[-1.51751112,  3.10660421,  1.06504455],\n             [-1.68924531,  0.17194028,  0.01028486],\n          ...92964927],\n             [-2.62013673, -0.5622355 , -1.46686215],\n             [-2.7570632 ,  0.45309264,  0.63817202]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+__ test_canonicalize_equivariance_under_se2_left_action[points3d-SE3-frame0] ___
+
+frame = GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE3'>, kind = 'points3d'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: points3d
+E           assert WorldPoints(4.55320379) <= 1e-09
+E            +  where WorldPoints(4.55320379) = <function max at 0x106c56970>(WorldPoints([[2.5137339 , 1.52044941, 0.        ],\n             [1.76861233, 1.59695153, 0.        ],\n             [0....66, 0.        ],\n             [2.3383316 , 0.72297245, 0.        ],\n             [3.49588937, 0.05681407, 0.        ]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   WorldPoints([[2.5137339 , 1.52044941, 0.        ],\n             [1.76861233, 1.59695153, 0.        ],\n             [0....66, 0.        ],\n             [2.3383316 , 0.72297245, 0.        ],\n             [3.49588937, 0.05681407, 0.        ]]) = <ufunc 'absolute'>((WorldPoints([[ 0.50698132,  1.19127055, -2.07892996],\n             [ 0.17812867,  1.6552337 , -0.7933254 ],\n          ...56671987],\n             [-0.86245942,  0.16977263, -1.84970319],\n             [ 0.09691733, -0.15849843, -1.20481599]]) - WorldPoints([[-2.00675258, -0.32917886, -2.07892996],\n             [-1.59048366,  0.05828217, -0.7933254 ],\n          ...56671987],\n             [-3.20079102,  0.89274508, -1.84970319],\n             [-3.39897204, -0.10168436, -1.20481599]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+__ test_canonicalize_equivariance_under_se2_left_action[points3d-SE3-frame1] ___
+
+frame = GravityFrame(gravity=array([ 0.  , -9.81,  0.  ]), up=array([0., 1., 0.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE3'>, kind = 'points3d'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: points3d
+E           assert WorldPoints(4.18957261) <= 1e-09
+E            +  where WorldPoints(4.18957261) = <function max at 0x106c56970>(WorldPoints([[2.05241733, 0.        , 4.1665676 ],\n             [1.63303938, 0.        , 2.3745998 ],\n             [1....  , 2.15207927],\n             [1.55446797, 0.        , 3.77328012],\n             [2.936474  , 0.        , 3.15200018]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   WorldPoints([[2.05241733, 0.        , 4.1665676 ],\n             [1.63303938, 0.        , 2.3745998 ],\n             [1....  , 2.15207927],\n             [1.55446797, 0.        , 3.77328012],\n             [2.936474  , 0.        , 3.15200018]]) = <ufunc 'absolute'>((WorldPoints([[ 1.78813608,  0.03963256, -2.77789474],\n             [ 0.55463785,  0.19401124, -2.12151505],\n          ...74660217],\n             [ 1.31446352, -1.6154467 , -2.86574561],\n             [ 1.65050918, -1.26813725, -1.76552082]]) - WorldPoints([[-0.26428125,  0.03963256,  1.38867285],\n             [-1.07840153,  0.19401124,  0.25308475],\n          ...4054771 ],\n             [-0.24000445, -1.6154467 ,  0.90753452],\n             [-1.28596482, -1.26813725,  1.38647936]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+__ test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE2-frame0] __
+
+frame = GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE2'>, kind = 'vectors3d'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: vectors3d
+E           assert WorldVectors(2.64589075) <= 1e-09
+E            +  where WorldVectors(2.64589075) = <function max at 0x106c56970>(WorldVectors([[9.47771995e-01, 2.64589075e+00, 0.00000000e+00],\n              [1.03072792e-03, 1.51225879e-01, 0.00000...     [1.67890569e+00, 5.28144382e-01, 0.00000000e+00],\n              [1.82405394e+00, 5.99504451e-02, 0.00000000e+00]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   WorldVectors([[9.47771995e-01, 2.64589075e+00, 0.00000000e+00],\n              [1.03072792e-03, 1.51225879e-01, 0.00000...     [1.67890569e+00, 5.28144382e-01, 0.00000000e+00],\n              [1.82405394e+00, 5.99504451e-02, 0.00000000e+00]]) = <ufunc 'absolute'>((WorldVectors([[ 3.18802523,  0.35072641, -0.83997414],\n              [ 0.15564198,  0.07455562, -0.14524788],\n        ...468129],\n              [-0.29768543,  1.98628381,  0.03963256],\n              [-0.85053015,  1.90107907,  0.19401124]]) - WorldVectors([[ 2.24025324e+00, -2.29516434e+00, -8.39974143e-01],\n              [ 1.54611257e-01, -7.66702540e-02, -1... 1.38122026e+00,  1.45813943e+00,  3.96325620e-02],\n              [ 9.73523784e-01,  1.84112862e+00,  1.94011237e-01]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+__ test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE2-frame1] __
+
+frame = GravityFrame(gravity=array([ 0.  , -9.81,  0.  ]), up=array([0., 1., 0.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE2'>, kind = 'vectors3d'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: vectors3d
+E           assert WorldVectors(1.8672531) <= 1e-09
+E            +  where WorldVectors(1.8672531) = <function max at 0x106c56970>(WorldVectors([[7.63768019e-01, 0.00000000e+00, 6.68186910e-01],\n              [1.13614844e-03, 0.00000000e+00, 1.27935...     [1.71643109e+00, 0.00000000e+00, 1.24815411e-01],\n              [1.82967951e+00, 0.00000000e+00, 5.14151011e-04]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   WorldVectors([[7.63768019e-01, 0.00000000e+00, 6.68186910e-01],\n              [1.13614844e-03, 0.00000000e+00, 1.27935...     [1.71643109e+00, 0.00000000e+00, 1.24815411e-01],\n              [1.82967951e+00, 0.00000000e+00, 5.14151011e-04]]) = <ufunc 'absolute'>((WorldVectors([[ 1.06730623,  3.10660421,  0.44937531],\n              [ 0.13066787,  0.17194028, -0.06513343],\n        ...185721],\n              [-0.73018063,  0.42261945, -1.82311266],\n              [-0.91536717, -0.12471326, -1.87661745]]) - WorldVectors([[ 0.30353821,  3.10660421,  1.11756222],\n              [ 0.13180402,  0.17194028,  0.06280252],\n        ...183482],\n              [ 0.98625046,  0.42261945, -1.69829725],\n              [ 0.91431234, -0.12471326, -1.8771316 ]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+__ test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE3-frame0] __
+
+frame = GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE3'>, kind = 'vectors3d'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: vectors3d
+E           assert WorldVectors(3.72600486) <= 1e-09
+E            +  where WorldVectors(3.72600486) = <function max at 0x106c56970>(WorldVectors([[0.53941022, 0.14702799, 0.        ],\n              [0.20571135, 0.22353011, 0.        ],\n              ..., 0.        ],\n              [2.57888011, 3.72600486, 0.        ],\n              [0.20702705, 0.28053323, 0.        ]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   WorldVectors([[0.53941022, 0.14702799, 0.        ],\n              [0.20571135, 0.22353011, 0.        ],\n              ..., 0.        ],\n              [2.57888011, 3.72600486, 0.        ],\n              [0.20702705, 0.28053323, 0.        ]]) = <ufunc 'absolute'>((WorldVectors([[ 0.35370696, -0.23466854, -2.07892996],\n              [ 0.02485432,  0.22929462, -0.7933254 ],\n        ...089324],\n              [-0.83934723, -3.33640018, -1.01891208],\n              [ 0.26379125,  0.02198536, -0.56671987]]) - WorldVectors([[-0.18570325, -0.38169653, -2.07892996],\n              [ 0.23056567,  0.00576451, -0.7933254 ],\n        ...089324],\n              [-3.41822734,  0.38960467, -1.01891208],\n              [ 0.0567642 , -0.25854788, -0.56671987]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+__ test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE3-frame1] __
+
+frame = GravityFrame(gravity=array([ 0.  , -9.81,  0.  ]), up=array([0., 1., 0.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE3'>, kind = 'vectors3d'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: vectors3d
+E           assert WorldVectors(2.81615119) <= 1e-09
+E            +  where WorldVectors(2.81615119) = <function max at 0x106c56970>(WorldVectors([[0.07809365, 0.        , 2.79314618],\n              [0.3412843 , 0.        , 1.00117838],\n              ..., 2.81615119],\n              [1.64189921, 0.        , 1.64853048],\n              [0.12018545, 0.        , 0.77865785]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   WorldVectors([[0.07809365, 0.        , 2.79314618],\n              [0.3412843 , 0.        , 1.00117838],\n              ..., 2.81615119],\n              [1.64189921, 0.        , 1.64853048],\n              [0.12018545, 0.        , 0.77865785]]) = <ufunc 'absolute'>((WorldVectors([[ 1.63486172,  0.03963256, -1.35195566],\n              [ 0.4013635 ,  0.19401124, -0.69557597],\n        ...522168],\n              [ 1.76280848, -3.12310847,  0.11380497],\n              [ 0.50496518,  0.18282763, -0.32066308]]) - WorldVectors([[ 1.55676808,  0.03963256,  1.44119052],\n              [ 0.74264779,  0.19401124,  0.30560241],\n        ...092951],\n              [ 0.12090927, -3.12310847,  1.76233545],\n              [ 0.38477973,  0.18282763,  0.45799476]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+____ test_canonicalize_equivariance_under_se2_left_action[poses-SE2-frame0] ____
+
+frame = GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE2'>, kind = 'poses'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: poses
+E           assert np.float64(3.7824160633972097) <= 1e-09
+E            +  where np.float64(3.7824160633972097) = <function max at 0x106c56970>(array([[[0.83872828, 0.20487255, 0.14987221, 0.68016995],\n        [0.20589984, 0.85168177, 0.01195814, 3.78241606],\n  ...,\n        [0.        , 0.        , 0.        , 0.        ],\n        [0.        , 0.        , 0.        , 0.        ]]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   array([[[0.83872828, 0.20487255, 0.14987221, 0.68016995],\n        [0.20589984, 0.85168177, 0.01195814, 3.78241606],\n  ...,\n        [0.        , 0.        , 0.        , 0.        ],\n        [0.        , 0.        , 0.        , 0.        ]]]) = <ufunc 'absolute'>((array([[[ 0.20815329,  0.97608644,  0.06266951,  0.9630723 ],\n        [-0.96331248,  0.21568382, -0.1597171 ,  1.45362...  [ 0.63350691,  0.7451475 ,  0.20838473,  0.91549199],\n        [ 0.        ,  0.        ,  0.        ,  1.        ]]]) - array([[[-0.63057499,  0.77121389, -0.08720269,  0.28290236],\n        [-0.75741264, -0.63599794, -0.14775896, -2.32879...  [ 0.63350691,  0.7451475 ,  0.20838473,  0.91549199],\n        [ 0.        ,  0.        ,  0.        ,  1.        ]]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+____ test_canonicalize_equivariance_under_se2_left_action[poses-SE2-frame1] ____
+
+frame = GravityFrame(gravity=array([ 0.  , -9.81,  0.  ]), up=array([0., 1., 0.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE2'>, kind = 'poses'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: poses
+E           assert np.float64(1.954194894595652) <= 1e-09
+E            +  where np.float64(1.954194894595652) = <function max at 0x106c56970>(array([[[0.86427566, 0.12675655, 0.06971326, 0.51007372],\n        [0.        , 0.        , 0.        , 0.        ],\n  ...,\n        [0.61046938, 0.61328168, 0.13824723, 0.35207182],\n        [0.        , 0.        , 0.        , 0.        ]]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   array([[[0.86427566, 0.12675655, 0.06971326, 0.51007372],\n        [0.        , 0.        , 0.        , 0.        ],\n  ...,\n        [0.61046938, 0.61328168, 0.13824723, 0.35207182],\n        [0.        , 0.        , 0.        , 0.        ]]]) = <ufunc 'absolute'>((array([[[ 5.02596928e-01,  7.57684873e-02, -8.61194208e-01,\n         -9.97354379e-01],\n        [-1.45287640e-01,  9.89...01,\n         -2.49241513e-01],\n        [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\n          1.00000000e+00]]]) - array([[[-3.61678729e-01, -5.09880617e-02, -9.30907468e-01,\n         -1.50742810e+00],\n        [-1.45287640e-01,  9.89...01,\n          1.02830306e-01],\n        [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00,\n          1.00000000e+00]]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+____ test_canonicalize_equivariance_under_se2_left_action[poses-SE3-frame0] ____
+
+frame = GravityFrame(gravity=array([ 0.  ,  0.  , -9.81]), up=array([0., 0., 1.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE3'>, kind = 'poses'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: poses
+E           assert np.float64(3.1759793694325658) <= 1e-09
+E            +  where np.float64(3.1759793694325658) = <function max at 0x106c56970>(array([[[1.05119913, 0.74406948, 0.27601628, 2.23692115],\n        [0.77607868, 1.05956292, 0.09935937, 1.15803697],\n  ...,\n        [0.        , 0.        , 0.        , 0.        ],\n        [0.        , 0.        , 0.        , 0.        ]]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   array([[[1.05119913, 0.74406948, 0.27601628, 2.23692115],\n        [0.77607868, 1.05956292, 0.09935937, 1.15803697],\n  ...,\n        [0.        , 0.        , 0.        , 0.        ],\n        [0.        , 0.        , 0.        , 0.        ]]]) = <ufunc 'absolute'>((array([[[ 0.08220067,  0.97739736,  0.19477536,  0.16151697],\n        [-0.98862346,  0.10467046, -0.10801736,  1.16821...  [-0.87263763, -0.1598819 , -0.46145568, -1.415965  ],\n        [ 0.        ,  0.        ,  0.        ,  1.        ]]]) - array([[[-0.96899846,  0.23332788, -0.08124091, -2.07540417],\n        [-0.21254478, -0.95489246, -0.20737672,  0.01017...  [-0.87263763, -0.1598819 , -0.46145568, -1.415965  ],\n        [ 0.        ,  0.        ,  0.        ,  1.        ]]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+____ test_canonicalize_equivariance_under_se2_left_action[poses-SE3-frame1] ____
+
+frame = GravityFrame(gravity=array([ 0.  , -9.81,  0.  ]), up=array([0., 1., 0.]), horizontal_reference=array([1., 0., 0.]))
+group = <class 'ainerzero.v9.geometry.lie.SE3'>, kind = 'poses'
+
+    @pytest.mark.parametrize("frame", [Z_UP, Y_UP])
+    @pytest.mark.parametrize("group", [SE2, SE3])
+    @pytest.mark.parametrize("kind", ["points2d", "points3d", "vectors2d", "vectors3d", "poses"])
+    def test_canonicalize_equivariance_under_se2_left_action(frame, group, kind):
+        rng = np.random.default_rng(20261021)
+        for _ in range(12):
+            belief = random_belief(rng, frame=frame, group=group)
+            g = SE2.exp([rng.uniform(-2, 2), rng.uniform(-2, 2), rng.uniform(-math.pi, math.pi)])
+            moved = belief.left_compose(g)
+            if kind == "points2d":
+                x = rng.normal(size=(13, 2))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "points3d":
+                x = rng.normal(size=(13, 3))
+                base = canonical.canonicalize_points(x, belief)
+                lifted = canonical.canonicalize_points(act_points(x, frame, g), moved)
+            elif kind == "vectors2d":
+                x = rng.normal(size=(11, 2))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            elif kind == "vectors3d":
+                x = rng.normal(size=(11, 3))
+                base = canonical.canonicalize_vectors(x, belief)
+                lifted = canonical.canonicalize_vectors(act_vectors(x, frame, g), moved)
+            else:
+                x = np.stack([SE3.exp(rng.normal(size=6)) for _ in range(7)])
+                base = canonical.canonicalize_poses(x, belief)
+                lifted = canonical.canonicalize_poses(act_poses(x, frame, g), moved)
+>           assert np.max(np.abs(lifted - base)) <= EQUIVARIANCE_TOL, kind
+E           AssertionError: poses
+E           assert np.float64(4.131732120922756) <= 1e-09
+E            +  where np.float64(4.131732120922756) = <function max at 0x106c56970>(array([[[0.86038905, 0.85984317, 0.50521717, 1.71849576],\n        [0.        , 0.        , 0.        , 0.        ],\n  ...,\n        [1.1397666 , 0.41634997, 0.51227804, 3.12106489],\n        [0.        , 0.        , 0.        , 0.        ]]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   array([[[0.86038905, 0.85984317, 0.50521717, 1.71849576],\n        [0.        , 0.        , 0.        , 0.        ],\n  ...,\n        [1.1397666 , 0.41634997, 0.51227804, 3.12106489],\n        [0.        , 0.        , 0.        , 0.        ]]]) = <ufunc 'absolute'>((array([[[ 0.61211278,  0.65587409, -0.44175459,  1.60127266],\n        [-0.71753248,  0.69546991,  0.03832419, -0.19533...  [-0.65820579,  0.45573946, -0.59922173, -2.77659976],\n        [ 0.        ,  0.        ,  0.        ,  1.        ]]]) - array([[[-0.24827627, -0.20396908, -0.94697176, -0.1172231 ],\n        [-0.71753248,  0.69546991,  0.03832419, -0.19533...  [ 0.48156081,  0.87208943, -0.08694369,  0.34446512],\n        [ 0.        ,  0.        ,  0.        ,  1.        ]]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:283: AssertionError
+_________ test_wrapper_makes_arbitrary_numpy_map_strictly_equivariant __________
+
+    def test_wrapper_makes_arbitrary_numpy_map_strictly_equivariant():
+        rng = np.random.default_rng(20261022)
+        f = _non_equivariant_map()
+        for _ in range(8):
+            belief = random_belief(rng, group=SE2, translation=1.0)
+            g = SE2.exp([rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-math.pi, math.pi)])
+            points = rng.normal(size=(15, 3)) * 1.5
+            wrapped = _wrap_equivariant(f, belief)
+            wrapped_moved = _wrap_equivariant(f, belief.left_compose(g))
+            left = wrapped_moved(act_points(points, Z_UP, g))
+            right = act_points(wrapped(points), Z_UP, g)
+>           assert np.max(np.abs(left - right)) <= EQUIVARIANCE_TOL
+E           AssertionError: assert np.float64(3.600774076731939) <= 1e-09
+E            +  where np.float64(3.600774076731939) = <function max at 0x106c56970>(array([[0.00644829, 1.65633188, 0.16116283],\n       [2.05820292, 0.70721708, 0.25108192],\n       [0.38927942, 0.155356...51, 0.68330672, 0.54292483],\n       [0.31695482, 1.31797605, 0.52054267],\n       [0.13891367, 0.48599316, 0.91553101]]))
+E            +    where <function max at 0x106c56970> = np.max
+E            +    and   array([[0.00644829, 1.65633188, 0.16116283],\n       [2.05820292, 0.70721708, 0.25108192],\n       [0.38927942, 0.155356...51, 0.68330672, 0.54292483],\n       [0.31695482, 1.31797605, 0.52054267],\n       [0.13891367, 0.48599316, 0.91553101]]) = <ufunc 'absolute'>((array([[ 7.03070877,  0.86970796,  1.04178843],\n       [ 7.68504695, -0.52895832,  1.52847004],\n       [ 9.76888507, -...7015701,  1.3403021 ],\n       [-1.50587865, -0.32627287,  5.9990916 ],\n       [-1.23427915,  0.17693102,  5.02273893]]) - array([[ 7.03715706, -0.78662393,  0.8806256 ],\n       [ 5.62684402, -1.23617539,  1.77955197],\n       [ 9.37960564, -...5346374,  1.88322693],\n       [-1.82283347, -1.64424893,  5.47854893],\n       [-1.37319282, -0.30906214,  5.93826994]])))
+E            +      where <ufunc 'absolute'> = np.abs
+
+tests/v9/geometry/test_canonical.py:318: AssertionError
+_______ test_first_order_error_propagation_matches_empirical_covariance ________
+
+    def test_first_order_error_propagation_matches_empirical_covariance():
+        rng = np.random.default_rng(20261024)
+        sigma = np.array([[4e-6, 1e-7, 2e-7], [1e-7, 3e-6, -1e-7], [2e-7, -1e-7, 2e-6]])
+        belief = make_belief(mean=SE2.exp([0.4, -0.2, 1.1]), covariance=sigma)
+        samples = canonical.sample_pose_errors(belief, rng, COV_SAMPLES)
+        means = [boxplus(SE2, belief.belief.mean, xi) for xi in samples]
+        point = np.array([1.3, -0.7, 0.5])
+        vector = np.array([1.0, 0.3, 0.2])
+        point_canonical = canonical.canonicalize_points(point, belief)
+        vector_canonical = canonical.canonicalize_vectors(vector, belief)
+        point_values = np.array([
+            canonical.canonicalize_points(
+                point,
+                canonical.CanonicalBelief(TangentGaussian(SE2, mean, np.eye(3) * 1e-12), belief.frame),
+            )
+            for mean in means
+        ])
+        vector_values = np.array([
+            canonical.canonicalize_vectors(
+                vector,
+                canonical.CanonicalBelief(TangentGaussian(SE2, mean, np.eye(3) * 1e-12), belief.frame),
+            )
+            for mean in means
+        ])
+        point_empirical = np.cov((point_values - point_canonical).T)
+        vector_empirical = np.cov((vector_values - vector_canonical).T)
+        point_predicted = canonical.predicted_point_error_covariance(belief, point_canonical)
+        vector_predicted = canonical.predicted_vector_error_covariance(belief, vector_canonical)
+>       assert _covariance_relative_error(point_empirical, point_predicted) <= COV_RELATIVE_TOL
+E       assert 0.17456892396677504 <= 0.05
+E        +  where 0.17456892396677504 = _covariance_relative_error(array([[ 4.17165966e-06, -1.54201505e-06,  0.00000000e+00],\n       [-1.54201505e-06,  7.16200558e-06,  0.00000000e+00],\n       [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00]]), array([[ 5.18965605e-06, -2.35835098e-06,  0.00000000e+00],\n       [-2.35835098e-06,  8.03176775e-06,  0.00000000e+00],\n       [ 0.00000000e+00,  0.00000000e+00,  0.00000000e+00]]))
+
+tests/v9/geometry/test_canonical.py:379: AssertionError
+___________ test_se3_gravity_aligned_error_injection_and_propagation ___________
+
+    def test_se3_gravity_aligned_error_injection_and_propagation():
+        rng = np.random.default_rng(20261025)
+        sigma = np.diag([4e-6, 3e-6, 2e-6, 1e-8, 1e-8, 2e-6])
+        mean = Z_UP.lift(SE2.exp([0.15, 0.2, -0.3]), 0.6)
+        belief = make_belief(group=SE3, mean=mean, covariance=sigma)
+        samples = canonical.sample_pose_errors(belief, rng, COV_SAMPLES)
+        # Roll/pitch coordinates are never perturbed, so every sample stays aligned.
+        assert np.max(np.abs(samples[:, 3:5])) == 0.0
+        indices = [0, 1, 2, 5]
+        marginal = sigma[np.ix_(indices, indices)]
+        assert _covariance_relative_error(np.cov(samples[:, indices].T), marginal) <= COV_RELATIVE_TOL
+        means = [boxplus(SE3, belief.belief.mean, xi) for xi in samples]
+        point = np.array([1.3, -0.7, 0.5])
+        canonical_point = canonical.canonicalize_points(point, belief)
+        values = np.array([
+            canonical.canonicalize_points(
+                point,
+                canonical.CanonicalBelief(TangentGaussian(SE3, mean, np.eye(6) * 1e-12), belief.frame),
+            )
+            for mean in means
+        ])
+        empirical = np.cov((values - canonical_point).T)
+        predicted = canonical.predicted_point_error_covariance(belief, canonical_point)
+>       assert _covariance_relative_error(empirical, predicted) <= COV_RELATIVE_TOL
+E       assert 0.09754407358673627 <= 0.05
+E        +  where 0.09754407358673627 = _covariance_relative_error(array([[5.96719562e-06, 1.95721150e-06, 0.00000000e+00],\n       [1.95721150e-06, 5.25200599e-06, 0.00000000e+00],\n       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00]]), array([[5.54257620e-06, 2.12989956e-06, 0.00000000e+00],\n       [2.12989956e-06, 5.94084151e-06, 0.00000000e+00],\n       [0.00000000e+00, 0.00000000e+00, 0.00000000e+00]]))
+
+tests/v9/geometry/test_canonical.py:415: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/geometry/test_canonical.py::test_height_and_gravity_direction_are_preserved
+FAILED tests/v9/geometry/test_canonical.py::test_dispatchers_match_typed_functions
+FAILED tests/v9/geometry/test_canonical.py::test_roundtrip_is_identity_for_all_supported_inputs[SE2-frame0]
+FAILED tests/v9/geometry/test_canonical.py::test_roundtrip_is_identity_for_all_supported_inputs[SE2-frame1]
+FAILED tests/v9/geometry/test_canonical.py::test_roundtrip_is_identity_for_all_supported_inputs[SE3-frame0]
+FAILED tests/v9/geometry/test_canonical.py::test_roundtrip_is_identity_for_all_supported_inputs[SE3-frame1]
+FAILED tests/v9/geometry/test_canonical.py::test_boundary_yaw_near_pi_and_tiny_translation[0.0--3.141592652589793]
+FAILED tests/v9/geometry/test_canonical.py::test_boundary_yaw_near_pi_and_tiny_translation[0.0-3.141592652589793]
+FAILED tests/v9/geometry/test_canonical.py::test_boundary_yaw_near_pi_and_tiny_translation[1e-12--3.141592652589793]
+FAILED tests/v9/geometry/test_canonical.py::test_boundary_yaw_near_pi_and_tiny_translation[1e-12-3.141592652589793]
+FAILED tests/v9/geometry/test_canonical.py::test_boundary_yaw_near_pi_and_tiny_translation[-1e-12--3.141592652589793]
+FAILED tests/v9/geometry/test_canonical.py::test_boundary_yaw_near_pi_and_tiny_translation[-1e-12-3.141592652589793]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[points3d-SE2-frame0]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[points3d-SE2-frame1]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[points3d-SE3-frame0]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[points3d-SE3-frame1]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE2-frame0]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE2-frame1]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE3-frame0]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[vectors3d-SE3-frame1]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[poses-SE2-frame0]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[poses-SE2-frame1]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[poses-SE3-frame0]
+FAILED tests/v9/geometry/test_canonical.py::test_canonicalize_equivariance_under_se2_left_action[poses-SE3-frame1]
+FAILED tests/v9/geometry/test_canonical.py::test_wrapper_makes_arbitrary_numpy_map_strictly_equivariant
+FAILED tests/v9/geometry/test_canonical.py::test_first_order_error_propagation_matches_empirical_covariance
+FAILED tests/v9/geometry/test_canonical.py::test_se3_gravity_aligned_error_injection_and_propagation
+27 failed, 30 passed in 7.03s

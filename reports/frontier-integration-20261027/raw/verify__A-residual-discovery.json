@@ -1,0 +1,219 @@
+{
+ "group": "A-residual-discovery",
+ "items": [
+  {
+   "key": "EMPIRIC",
+   "title": "EMPIRIC: Experiment-Driven Learning of Residual World Models for Robot Planning",
+   "arxiv_id": "2609.35047",
+   "authors": "Yichao Liang, Amber Li, Dat Nguyen, Emily Bunnapradist, Michelangelo Naim, Sreela Kodali, Matteo Merler, Bowen Li, Kiran Gopinathan, Yiyun Liu, Nikhil Pimpalkhare, Joshua B. Tenenbaum, Adrian Weller, Zenna Tavares, Tom Silver, Kevin Ellis（最后两位为共同导师）",
+   "date": "2026-09-28（v1，唯一版本）",
+   "venue": "arXiv 预印本（cs.RO；未标会议）",
+   "claimed_ref": "arXiv 2609.35047（2026-09-28），Liang 等，主页 yichao-liang.github.io/empiric",
+   "exists": "verified",
+   "primary_url": "https://arxiv.org/abs/2609.35047",
+   "paper_license": "CC BY-SA 4.0（相同方式共享，转载正文或图需注意）",
+   "code_repo": "https://github.com/BasisResearch/predicators（项目页 Code 按钮所指；子目录 predicators/code_sim_learning）；网站源码在 https://github.com/BasisResearch/empiric",
+   "code_license": "BasisResearch/predicators：MIT（LICENSE.md，Copyright 2022 Rohan Chitnis and Tom Silver，fork 自 Learning-and-Intelligent-Systems/predicators）；BasisResearch/empiric（网站源码）没有 LICENSE 文件",
+   "code_status": "released",
+   "mechanism": "给定一个刚体物理引擎（PyBullet）作基座模拟器，由编码代理（Claude Opus 5）编写 Python 子类，在基座之上加入缺失的机制，比如新的力、约束和隐藏的循环状态 x_res（如胶水固化进度）。x_res 只从可观测特征按动作更新，不读特权状态。参数 θ 由回放损失（标准化误差加 Huber）定义的广义后验估计，温度取 λ=max(1,E_min/N)；先用网格加 LM 求点估计，再沿各坐标线算条件分布，作为均值场近似。状态部分用变点检测求近期观测均值。规划时在 K 个联合抽样上 rehearsal，选成功概率最高的方案；实验按谓词二值读数的互信息（BALD 式）排序。预测与执行不符时，修改程序或补充实验。",
+   "claims_checked": [
+    {
+     "claim": "在已有物理引擎上添加代码机制补丁（LLM 生成 Python）",
+     "verdict": "supported",
+     "evidence": "§3.1：代理编写程序 P 子类化基座模拟器，加入 θ_res 和循环状态 x_res；§4.1：七个代理都用 Claude Opus 5 high effort。论文说明 residual 指可执行扩展，“need not take the form of an additive correction”。https://arxiv.org/html/2609.35047v1"
+    },
+    {
+     "claim": "贝叶斯推断估计未知参数",
+     "verdict": "supported",
+     "evidence": "有保留。§3.2 式(2) 与附录 B.3 式(12) 用的是广义后验（Bissiri 2016），回放损失代替负对数似然。参数因子取均值场逐坐标线条件分布，作者承认会低估相关参数的不确定性。论文不对程序结构本身建模不确定性，也不按新观测重新加权（不是 SMC）。"
+    },
+    {
+     "claim": "5 个模拟领域共 25 次测试，EMPIRIC 完成全部，两个主要基线各完成 16 次",
+     "verdict": "overstated",
+     "evidence": "§4.1 原文要点：EMPIRIC 完成全部 25 个 runs；三个基线分别为 Direct agent 16、Direct + scene 14、Standalone sim. 16。所以是三个基线而非两个，其中一个只有 14。25 指 5 领域 × 5 seeds 的 runs，每个 run 含 1 个训练任务和 1 个测试任务（Balloons 为 2 个训练任务），不是 25 次独立测试。另有 Oracle dynamics 25/25；两个消融分别为 20/25 和 21/25。合并比较用 Fisher 精确检验，p≤0.002。"
+    },
+    {
+     "claim": "另有一项真实机器人实验",
+     "verdict": "supported",
+     "evidence": "§4.2 与附录 C：Franka Panda 上的 Fan–Domino 域，从两次吹风学到风力和两块多米诺的质量；预测滑移 10.1±2.3 cm，实测 9.9 cm。正文只描述一次记录运行，没有重复成功率统计，属于案例展示。"
+    },
+    {
+     "claim": "许可（论文与代码）",
+     "verdict": "supported",
+     "evidence": "arXiv 页许可图标为 CC BY-SA 4.0。项目页 https://basisresearch.github.io/empiric/ 的 Code 链到 BasisResearch/predicators，其 LICENSE.md 为 MIT，目录 predicators/code_sim_learning 下有 fitting.py、parameter_belief.py、active_experiment.py、identifiability.py 等。网站仓库 README 写明代码在 predicators。arXiv 给的 yichao-liang.github.io/empiric 现已跳转。"
+    },
+    {
+     "claim": "（任务附注）同名基准库 BasisResearch/empiric 对应 arXiv 2510.19788",
+     "verdict": "wrong",
+     "evidence": "GitHub API 显示 BasisResearch/empiric 建于 2026-09-30，描述为 'Project page for EMPIRIC...'，是本文网站源码，不是基准库。arXiv 2510.19788 是 'Benchmarking World-Model Learning with Environment-Level Queries'（Warrier 等，WorldTest/AutumnBench，2025-10-22），与该仓库无关。这条混淆警告本身就是张冠李戴。"
+    }
+   ],
+   "fit_gaps": [
+    "G3_low_compute_law_distillation",
+    "G4_identifiability_active_experiment",
+    "G7_mechanism_sufficiency",
+    "G8_failure_counterexample"
+   ],
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "不训练网络。模拟与拟合都在 CPU 上：PyBullet 回放、网格种子加 Levenberg–Marquardt、逐坐标线积分。整个回路靠前沿 LLM 编码代理驱动：每个 run 中位数为 424 次模拟 rollout、162 轮 LM 交互、107 分钟（Direct agent 为 115 轮、64 分钟）。在 M2 Max 上，拟合、后验和实验选择这一半可行；换成本地小模型来写机制代码，效果未知。云端 LLM 调用属于付费，按用户规则需逐项批准。",
+   "red_flags": [
+    "实验只有 5 seeds × 5 领域，共 25 runs；基线是作者按 CaP-X、SimFoundry、WorldCoder 思路自行重实现（论文用 'inspired by'），不是原系统",
+    "所有代理都依赖 Claude Opus 5 high effort，结论与特定闭源模型绑定",
+    "二手说法把三个基线说成两个，漏掉 14/25 的 Direct + scene",
+    "参数后验是均值场线近似的广义后验，作者承认会低估相关参数的不确定性，也不表示程序不确定性",
+    "真实机器人只有单一域，正文描述一次记录运行",
+    "arXiv 上的主页地址已迁移；BasisResearch/empiric 只是网站仓库且无 LICENSE，真正代码在 predicators（MIT）。是否包含全部实验脚本未核实",
+    "论文正文为 CC BY-SA 4.0（相同方式共享），引用或改编图文需遵守"
+   ],
+   "how_to_borrow": "可借的部分：(1) 数学形式。完整状态取 x=(x_base,x_res)，x_res 只由可观测特征按动作更新，禁止读特权状态。这可以作为式8中 F_prior 固定、补丁带显式 θ_res 和先验的结构参考。(2) 拟合协议。广义后验温度 λ=max(1,E_min/N)，防止模型失配时过度自信；用标准化 Huber 回放损失；最优网格回放的 RMS 标准化误差大于 2 的段落被剔除，并上报为缺失机制证据。这条可直接作为 G7 机制充分性检测和 G8 反例收集的判据。(3) 实验选择。谓词二值读数的 BALD 式互信息（式4）CPU 上开销低；候选方案在公共随机抽样上比较。(4) 评测设计。连续的训练到测试任务共享步数预算，设 Oracle-dynamics 参照和“无拟合／无显式不确定性”消融，用 Fisher 精确检验。不借的部分：高频回路里的 LLM 编码代理。在 AinerZero 中，LLM 写出的补丁只能作为 SkillProposal 提案，经独立测试证据才能晋升，不能直接写 SLOW。也不照搬 PyBullet 依赖，不在相关参数场景沿用均值场线近似。MIT 代码可阅读参考，不整体搬运。",
+   "access_log": [
+    "WebFetch 与 WebSearch 均报错（工具模型配置 deepseek-v4-pro 不可用），改用 curl 只读抓取网页到 scratchpad",
+    "https://arxiv.org/abs/2609.35047（标题、作者、日期 2026-09-28、CC BY-SA 4.0、comments）",
+    "https://arxiv.org/html/2609.35047v1（§3 方法、§4 结果、§6 局限、附录 B.3、附录 C）",
+    "https://yichao-liang.github.io/empiric/（跳转页）到 https://basisresearch.github.io/empiric/",
+    "https://api.github.com/repos/BasisResearch/empiric（网站仓库，无 license）与 https://raw.githubusercontent.com/BasisResearch/empiric/main/README.md",
+    "https://api.github.com/repos/BasisResearch/predicators（MIT，fork）与 https://raw.githubusercontent.com/BasisResearch/predicators/master/LICENSE.md",
+    "https://arxiv.org/abs/2510.19788（核对混淆警告：实为 WorldTest/AutumnBench）"
+   ]
+  },
+  {
+   "key": "MDA",
+   "title": "Model Discovery Agent: LLM-assisted Bayesian experiment design for data-efficient discovery of mechanistic world models",
+   "arxiv_id": "2608.09696",
+   "authors": "Kevin Murphy（单作者，Univ. British Columbia）",
+   "date": "v1 2026-08-10；v2 08-11；v3 08-13；v4 08-25；v5 2026-09-27（当前版）",
+   "venue": "arXiv 预印本（cs.AI；未标会议）",
+   "claimed_ref": "arXiv 2608.09696（2026-08-10 提交，HTML 版标 2026-09-27）",
+   "exists": "verified",
+   "primary_url": "https://arxiv.org/abs/2608.09696",
+   "paper_license": "CC BY 4.0",
+   "code_repo": "未找到 MDA 代理本身的公开仓库。只有配套基准 https://github.com/murphyk/glucosebench 和 https://github.com/murphyk/neuronbench",
+   "code_license": "glucosebench、neuronbench 均为 MIT（GitHub API）。MDA 代理代码未发布，论文也未承诺发布",
+   "code_status": "none",
+   "mechanism": "用三层层级模型表示未知世界：结构 m、参数 θ、潜轨迹 z。m 是有限候选池上的离散后验，按 Bayes 规则加证据 Z_m 计算；Z_m 用调温 SMC 或 BIC 近似。θ 用 SMC（128 粒子），潜轨迹似然用 bootstrap 粒子滤波。实验按 EIG（VoI 的特例）选择，用模型分歧替代量：ChemBench 用 CMA-ES 优化，其他任务枚举有限动作菜单。当前最优模型的预测检查或全数据拟合误差过大时，进入 M-open 扩展：提示 LLM 提出局部变异的新结构，然后评分、剪枝。LLM 只在这一步使用，后验、VoI 和预测全由数值例程计算。",
+   "claims_checked": [
+    {
+     "claim": "LLM 提议机制",
+     "verdict": "supported",
+     "evidence": "v5 §3：'this hypothesis expansion step is the only part of MDA that uses an LLM'。附录说明后验、VoI 和预测 'computed by numerical fitting, inference, and acquisition routines, never by the LLM'。主文用 GPT-5.6-Luna medium（经 OpenRouter），附录 BoxingGym 用 Claude-Opus-4.7。https://arxiv.org/html/2608.09696v5"
+    },
+    {
+     "claim": "SMC/SBI 维护模型与参数后验",
+     "verdict": "overstated",
+     "evidence": "v1–v3 摘要确实写了 SMC 和 SBI。v5 中模型后验是有限池上枚举 Bayes 规则，证据用调温 SMC 或 BIC（v5 comments 称已 'de-emphasized SCMC3 narrative'）。ChemBench 实际用多起点非线性最小二乘加 BIC，预测用 MAP 插值；潜变量用 bootstrap PF。SBI 只以 Bayesian synthetic likelihood 做附录对比，摊销 SBI 列为未来工作（§6）。"
+    },
+    {
+     "claim": "按信息价值（VoI）选实验",
+     "verdict": "supported",
+     "evidence": "§3 'Experiment design'：χ*=argmax I(M;Y_χ|D)，即 EIG（VoI 特例），实际用模型分歧替代量（式59）。v5 只称 'some evidence that these EIG designs outperform random designs'（图7）。v1 图7 说明 Bayes 预测器内部 'VoI and LLM design strategies perform similarly'，VoI 相对 LLM 选实验的增益证据弱。"
+    },
+    {
+     "claim": "M-open 机制在全部候选都解释不了时扩展假设空间",
+     "verdict": "supported",
+     "evidence": "§3 'Expanding the hypothesis space'：对当前最优模型做新输入输出对的预测检查，和/或检查对全部数据的拟合；误差过大时提示 LLM 提出新模型，迭代 R_m 轮扩展、评分、剪枝。触发条件以当前最优模型为准，表述上等价于“池内都解释不了”。"
+    },
+    {
+     "claim": "拟合在笔记本 CPU 上完成",
+     "verdict": "supported",
+     "evidence": "有保留。脚注4：'The model fitting uses CPUs, which we run locally on a laptop or sometimes on Modal'。部分运行用了 Modal 云。"
+    },
+    {
+     "claim": "只比较样本效率，无算力对齐",
+     "verdict": "supported",
+     "evidence": "脚注4：'It is therefore hard to match compute budgets. However, our focus in this paper is on sample efficiency, not compute effiency.' §5 又写：'this is not a compute-matched isolation of induction versus transduction'。"
+    },
+    {
+     "claim": "X 帖中的 93%/31% 数字",
+     "verdict": "overstated",
+     "evidence": "X 帖本身未能访问，无法核实。数字出自 v1（附录 C.5、表8）和 v4（表7）：DiscoverPhysics/ForceBench 两粒子世界，nMSE<0.1 通过率，MDA 93% 对纯 LLM 代理（Opus 4.7，B=8，每轮 1 个实验）31%。同处还写到，换更强的 Fable 5 代理可达 81%；不限制预算时 LLM 代理约用 41 个实验，可达 nMSE 0.013。v4 comments 称修复了物理和化学基准的提示泄漏并重跑。v5 已删除 DiscoverPhysics 基准和相应数字，当前版本不含 93%/31%。"
+    }
+   ],
+   "fit_gaps": [
+    "G4_identifiability_active_experiment",
+    "G7_mechanism_sufficiency",
+    "G6_teacher_boundary",
+    "G3_low_compute_law_distillation"
+   ],
+   "needs_llm": "yes",
+   "needs_gpu_training": "no",
+   "cpu_or_mlx_feasible": "partial",
+   "compute_notes": "不训练网络。贝叶斯核心在 CPU 上运行：调温 SMC（例如 N_p=64 或 128 粒子）、bootstrap PF（128 粒子）、BIC、CMA-ES 或枚举。论文说在笔记本上跑，有时用 Modal。这部分在 M2 Max 96GB 上可行。M-open 扩展依赖云端前沿 LLM（GPT-5.6-Luna，经 OpenRouter），属于付费调用，需用户逐项批准。不用 LLM 时可退化为固定候选池（如 ChemBench 的 9 个经典机制），此时完全本地可行，但失去 M-open 能力。",
+   "red_flags": [
+    "单作者，五个版本大改：v4 修复物理和化学基准的提示泄漏并重跑；v5 删除 DiscoverPhysics、弱化 SMC^3 叙事，摘要中的 'new SOTA' 措辞也删掉了",
+    "93%/31% 只见于 v1–v4 附录和二手转述，当前 v5 已不含；同处还显示更强的代理把差距缩小到 81%",
+    "ChemBench 只在 171 个尝试的 world–seed 格中，取基线可评估的 115 格（54 个世界）做比较，是子集评测",
+    "没有算力对齐，作者明确只比样本效率",
+    "主文与附录用不同的 LLM（GPT-5.6-Luna 与 Claude-Opus-4.7），未系统研究 LLM 选择的影响",
+    "MDA 代理代码未公开，只有基准仓库（MIT）",
+    "v1 图注显示 VoI 与 LLM 选实验效果相近，VoI 的边际贡献证据有限"
+   ],
+   "how_to_borrow": "可借的部分：(1) 数学形式。m→θ→z 三层层级，候选机制的权重用边际似然或 BIC（自带 Occam 惩罚）；有限候选池加自适应收缩，收缩以置信度和拟合质量为门槛。(2) 协议。M-open 预测检查作为“机制不足”的触发条件（G7）。LLM 或教师只负责提出候选结构，后验、VoI 和预测一律由数值例程计算，正好对应 G6 中教师输出等于提案或带噪传感器、不能直接写 SLOW 的规则。(3) 实验设计。EIG 用模型分歧替代量；连续设计用 CMA-ES，离散设计枚举有限动作菜单；适合 SkillProposal 门禁下的受限实验。(4) 评测设计。按实验数画样本效率曲线，在保留的干预查询上评测；ICL+MDA 选实验与 ICL+LLM 选实验的对照可以把“实验设计”和“预测”的贡献分开。不借的部分：高频回路中的 LLM 调用、v1–v4 的旧数字、未做算力对齐的结论、Modal 云运行。MDA 代码未公开，只能按论文伪代码（Algorithm 2/4/6/12/14）自行复现。",
+   "access_log": [
+    "WebFetch 与 WebSearch 均报错（模型配置不可用），改用 curl 只读抓取",
+    "https://arxiv.org/abs/2608.09696（v5 元数据、版本史、CC BY 4.0、v5 comments）",
+    "https://arxiv.org/html/2608.09696v5（§3 方法、§4 基线与脚注4、§5、§6、附录算法）",
+    "https://arxiv.org/abs/2608.09696v1 至 v4（各版摘要与 comments：v4 提示泄漏修复）",
+    "https://arxiv.org/html/2608.09696v1 与 v4（核对 93%/31% 出处：ForceBench 表8/表7）",
+    "https://api.github.com/repos/murphyk/glucosebench 和 https://api.github.com/repos/murphyk/neuronbench（MIT）；https://github.com/murphyk?tab=repositories（未见 MDA 仓库）",
+    "X 帖未访问（无法核实帖子原文）"
+   ]
+  },
+  {
+   "key": "T2-z",
+   "title": "T2-z: Test-Time Optimization of Environment Latents for Robotic World Models",
+   "arxiv_id": "2610.22364",
+   "authors": "Chenyuan Zhou, Yining Hong, Huang Huang, Yunfan Jiang, Wenlong Huang, David Held, Vitor Campagnolo Guizilini, Yue Wang, Li Fei-Fei, Jiajun Wu, Leonidas Guibas, Yejin Choi",
+   "date": "2026-10-15（v1）",
+   "venue": "arXiv 预印本（cs.RO；未标会议）",
+   "claimed_ref": "arXiv 2610.22364（2026-10-15）",
+   "exists": "verified",
+   "primary_url": "https://arxiv.org/abs/2610.22364",
+   "paper_license": "CC BY 4.0",
+   "code_repo": "https://github.com/T2-z-latent-optimization/T2-z（项目页 https://t2-z-latent-optimization.github.io/）",
+   "code_license": "Apache-2.0（仓库 LICENSE 文件）。依赖的 Wan2.2-TI2V-5B 权重在 HF 标为 apache-2.0；BWM 初始化权重 BLM-Lab/Boundless-World-Model 的 HF 卡未声明许可。数据集与权重不随代码提供",
+   "code_status": "released",
+   "mechanism": "在动作条件视频世界模型（基于 BWM，骨干为 Wan2.2-TI2V-5B 视频扩散 DiT）上，为每个环境加一个 32 维可学习潜变量 z_e，作为条件输入。训练时两段交替：固定 z_e，训练共享世界模型；冻结世界模型，只按同一 flow-matching 预测损失优化各环境的 z_e。没有因子监督，也没有历史编码器。测试时冻结全部权重，新环境的 z_e 随机初始化，用 1 至 4 条交互轨迹做 40 步梯度优化，学习率由粗到细；查询结果不进入适应。",
+   "claims_checked": [
+    {
+     "claim": "测试时优化环境隐变量，冻结权重只更新低维环境变量",
+     "verdict": "supported",
+     "evidence": "摘要与附录 A：'At test time, the world model remains frozen and a newly initialized environment latent is optimized'；32 维，40 步，'all shared weights stay frozen. Query outcomes never enter this update.' 训练期世界模型并不冻结，是交替优化。https://arxiv.org/html/2610.22364v1"
+    },
+    {
+     "claim": "更新的是“环境信念”（带不确定性的分布）",
+     "verdict": "overstated",
+     "evidence": "论文中 z_e 是梯度优化得到的点估计，初始化于 U(0,1) 并截断到 [0,1]，没有后验或不确定性表示。“信念”一词夸大了。"
+    },
+    {
+     "claim": "可用于隐藏摩擦／弹性／质量／阻尼",
+     "verdict": "overstated",
+     "evidence": "实际评测过的因子：仿真中的摩擦、重力、碰撞质量、哑铃质量分布、质量×摩擦、人为规则（Light Switch）；真实任务中的球（未知质量）、门锁弹簧刚度、两端挂不同质量的棒、不同刚度的软管。弹性恢复系数和阻尼没有被单独测试。z_e 无量纲、无监督，只在 PCA 上与因子相关（如质量×摩擦呈二维结构），不给出可解释的物理参数值。"
+    }
+   ],
+   "fit_gaps": [
+    "G4_identifiability_active_experiment"
+   ],
+   "needs_llm": "no",
+   "needs_gpu_training": "yes",
+   "cpu_or_mlx_feasible": "unlikely",
+   "compute_notes": "骨干是 5B 参数视频扩散 DiT（Wan2.2-TI2V-5B），需 CUDA 12.8 和 NVIDIA 驱动。每个任务每种方法的训练预算为 2–4 张 H200 × 24–48 小时，bf16。测试时适应也要穿过 5B DiT 反向传播：在一张 H200 上，K=1 时适应加 5 条查询生成共 18.09 s。M2 Max 无 CUDA，训练不可行；推理侧的测试时优化在 MPS/MLX 上没有官方支持，即使能跑也会极慢。另需下载 5B 权重和数据集，超出本组只读权限。",
+   "red_flags": [
+    "摘要的 'object prediction error metric 15.20→7.00' 在正文中找不到。经核算，等于把仿真 7 项（12.86→4.80，混有像素、灯分数、角度三种单位）与真实 4 项（19.30→10.85 像素）按任务数加权平均，是混合单位的聚合指标",
+    "潜变量维度消融非单调且尖峰明显（Friction 单任务上：8 维 44%、16 维 64%、32 维 72%、64 维 64%、128 维 64%；ADE 32 维为 3.85，其余 6.86–8.92），没有报告多 seed 或方差，存在调参敏感的疑虑",
+    "BWM 初始化权重在 HF 卡上未声明许可；数据集与权重不随代码提供",
+    "潜变量无量纲、不可直接写成带单位的物理参数，与 AinerZero 中“SLOW 只写独立验证过的显式知识”的口径不兼容",
+    "重度依赖 GPU 与大视频模型，与本项目的本地低算力约束冲突"
+   ],
+   "how_to_borrow": "只借协议与评测设计，不借模型。(1) 每环境低维潜变量的交替优化（auto-decoder 式）和测试时冻结模型、只优化环境变量的流程，对应到 AinerZero 应改写为：冻结 F_prior 和 r_θ，只对式8中带量纲的显式 φ_hat（摩擦、质量、刚度等）做测试时拟合，并补上不确定性（例如借 EMPIRIC 或 MDA 的后验做法）。(2) 评测协议：K=1/2/4 条适应轨迹；查询结果严格不进入适应，防止泄漏；用 PCA 或线性探针检验潜变量与隐藏因子的对齐；设 LoRA-TTA、摊销上下文编码器、TTT 三类对照。(3) 若显式 φ 不足以解释残差，可把小维度无量纲潜变量留在 FAST/MID 层作临时补偿，但不得晋升 SLOW。不借的部分：Wan2.2 5B 视频骨干、BWM 权重（许可未声明）、H200 训练流程，以及摘要里的混合单位聚合数字。",
+   "access_log": [
+    "WebFetch 与 WebSearch 均报错（模型配置不可用），改用 curl 只读抓取",
+    "https://arxiv.org/abs/2610.22364（标题、12 位作者、2026-10-15、CC BY 4.0）",
+    "https://arxiv.org/html/2610.22364v1（方法、任务定义、实现细节、附录 A/B 训练预算、E.2 维度消融、E.4 计算效率）",
+    "https://github.com/T2-z-latent-optimization/T2-z（仓库结构）；https://raw.githubusercontent.com/T2-z-latent-optimization/T2-z/main/LICENSE（Apache-2.0）及 README（CUDA 12.8、权重与数据不随代码提供）",
+    "https://huggingface.co/api/models/Wan-AI/Wan2.2-TI2V-5B（apache-2.0）；https://huggingface.co/api/models/BLM-Lab/Boundless-World-Model 与其 README（未声明许可）"
+   ]
+  }
+ ]
+}

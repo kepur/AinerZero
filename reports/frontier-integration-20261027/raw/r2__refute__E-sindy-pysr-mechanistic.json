@@ -1,0 +1,139 @@
+{
+ "group": "E-sindy-pysr-mechanistic",
+ "verdicts": [
+  {
+   "key": "1-PySR-v2",
+   "identity_confirmed": true,
+   "identity_note": "astroautomata/PySR（MilesCranmer/PySR 重定向）确认：v2.0.0-beta.2 发布于 2026-08-18，正式版 v2.0.0 于 2026-08-26（prerelease=false），最新 v2.7.2（2026-10-19），pyproject version=2.7.2。方法论文 arXiv:2305.01582 已核：作者 Miles Cranmer，2023-05-02，标题 'Interpretable Machine Learning for Science with PySR and SymbolicRegression.jl'。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "量纲约束是软约束，不是硬门：sr.py 文档写 dimensional_constraint_penalty 为 'Additive penalty for if dimensional analysis of an expression fails'（默认 1000.0），v0.15.0 发布说明原文是 '(softly) constrain'。量纲不一致的表达式仍可能进 hall of fame，how_to_borrow (2) 的“量纲门”必须在搜索后对 Pareto 前沿另做一次硬性量纲检查。",
+    "guesses 机制属实：v2.0.0 说明写明每轮循环末按 fraction_replaced_guesses 比例把 guesses 混入各种群；should_optimize_constants=True 时，入群前先优化常数。注意 sr.py 默认 fraction_replaced_guesses=0.001，发布说明示例用的是 0.01。",
+    "TemplateExpressionSpec 的 combine 是 Julia 函数字符串，每个子式只能用它在 combine 中被调用时传入的变量，可另带 parameters 向量。因此“固定 F_prior、只搜残差子式”和“按子式设变量白名单”有一手依据。",
+    "方法论文 arXiv:2305.01582 的许可为 arXiv nonexclusive-distrib 1.0，不是 CC 许可，可补入 paper_license。",
+    "复现条件属实：deterministic 文档写明必须同时设 parallelism=\"serial\" 和固定 random_state。"
+   ],
+   "evidence": [
+    "https://api.github.com/repos/MilesCranmer/PySR → full_name astroautomata/PySR，license Apache-2.0",
+    "https://api.github.com/repos/astroautomata/PySR/releases → v2.0.0-beta.2 2026-08-18T14:08Z；v2.0.0 2026-08-26（非预发布）；v2.7.2 2026-10-19",
+    "https://api.github.com/repos/astroautomata/PySR/releases/tags/v2.0.0 → 列出任意元数算子、guesses（每轮循环末混入种群）、TypeSpec、可配置变异/交叉/搜索循环、自动分批",
+    "https://api.github.com/repos/astroautomata/PySR/releases/tags/v0.15.0 → 2023-07-28，'(softly) constrain ... X_units and y_units'",
+    "https://api.github.com/repos/astroautomata/PySR/releases/tags/v1.0.0 → 2024-12-01，引入 TemplateExpressionSpec",
+    "https://raw.githubusercontent.com/astroautomata/PySR/master/pysr/sr.py → dimensional_constraint_penalty 为加性罚项，默认 1000；deterministic 要求 serial 加 random_state",
+    "https://raw.githubusercontent.com/astroautomata/PySR/master/pysr/expression_specs.py → TemplateExpressionSpec(combine, expressions, variable_names, parameters)",
+    "https://raw.githubusercontent.com/astroautomata/PySR/master/pyproject.toml → juliacall>=0.9.36,<0.9.37；Apache classifier",
+    "https://export.arxiv.org/api/query?id_list=2305.01582 → Cranmer，2023-05-02",
+    "https://arxiv.org/abs/2305.01582 → 许可 nonexclusive-distrib 1.0"
+   ]
+  },
+  {
+   "key": "2-PySINDy",
+   "identity_confirmed": true,
+   "identity_note": "arXiv:2111.08481 已核：'PySINDy: A comprehensive Python package for robust sparse system identification'，2021-11-12。作者 Kaptanoglu, de Silva, Fasel, Kaheman, Goldschmidt, Callaham, Delahunt, Nicolaou, Champion, Loiseau, Kutz, Brunton。正式发表为 JOSS，DOI 10.21105/joss.03994，2022-01-29。记录的 authors 字段只写了 LICENSE 版权人，没有写论文作者。v2.1.0 于 2026-01-08 发布已核。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "TrappingSR3 不能写成“保证有界”。docstring 原文：默认 eta 'very large so that the algorithm default is to ignore the stability term'；PW_history_ 是 'the quantity we are attempting to make negative definite'；可证全局有界要求 alpha>>1、beta>>1 加等式约束，并且辨识后 A^S 须实际验证为负定。方法论文 2105.01843 的标题本身就是 'Promoting global stability'。",
+    "有界性保证的来源是 Schlegel–Noack trapping 定理，前提是整个连续时间 ODE 只含能量保持的二次非线性。它不覆盖离散步进或数值积分，也不能单独加在残差 r_θ 上：F_prior 不是二次能量保持形式时，残差的有界性推不出整个系统有界。how_to_borrow (2) 的“对二次残差保证有界”不能作为设计依据，只能写成“促进有界，事后用定理条件验证”。",
+    "SBR 的后验有前提：docstring 写明误差模型加在导数上而非状态上，噪声 sigma 'should not be interpreted'，系数取 NUTS 后验均值。因此后验依赖导数估计，作为不确定性证据时须注明这一前提。",
+    "包含概率：E-SINDy 方法论文 2111.10992 的摘要确实提出由集成统计得到 inclusion probabilities，但 PySINDy 的 EnsembleOptimizer 只保存 coef_list，不直接输出包含概率，须自行计算。原记录的判断成立。",
+    "v2.1.0 的核心依赖还包括 derivative>=0.6.2 和 typing_extensions，不只是 sklearn/numpy/scipy。可选依赖：gurobipy 对应 miosr，cvxpy 加 scs 对应 cvxpy，numpyro 加 jax 对应 sbr。",
+    "ConstrainedSR3 的不等式约束必须设 inequality_constraints=True，并通过 CVXPY 求解。",
+    "paper_license 可补为 CC BY 4.0（Crossref 的 JOSS 记录）。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2111.08481,2111.10992 → 标题、作者、日期；E-SINDy 摘要中有 'inclusion probabilities'",
+    "https://api.crossref.org/works/10.21105/joss.03994 → JOSS 2022-01-29，CC BY 4.0",
+    "https://api.github.com/repos/dynamicslab/pysindy/releases → v2.1.0 2026-01-08，v2.0.0 2025-08-22",
+    "https://raw.githubusercontent.com/dynamicslab/pysindy/main/LICENSE → MIT 全文，版权人 de Silva、Champion 及 sparsereg 的 Quade",
+    "https://raw.githubusercontent.com/dynamicslab/pysindy/v2.1.0/pysindy/optimizers/trapping_sr3.py → 默认忽略稳定项；'attempting to make negative definite'；可证有界的条件",
+    "https://arxiv.org/abs/2105.01843 → 'Promoting global stability in data-driven models of quadratic nonlinear dynamics'，适用于能量保持的二次系统",
+    "https://raw.githubusercontent.com/dynamicslab/pysindy/v2.1.0/pysindy/optimizers/base.py → EnsembleOptimizer 默认 median、replace=True、n_candidates_to_drop=1；无 inclusion/probability 属性",
+    "https://raw.githubusercontent.com/dynamicslab/pysindy/v2.1.0/pysindy/optimizers/sbr.py → 误差模型加在导数上，sigma 不应解读",
+    "https://raw.githubusercontent.com/dynamicslab/pysindy/main/pysindy/__init__.py 与 v2.1.0 版对比 → WeakSINDy 只在 main，v2.1.0 只有 WeakPDELibrary",
+    "https://pypi.org/pypi/pysindy/json → 2.1.0，MIT，requires_dist 含 derivative"
+   ]
+  },
+  {
+   "key": "3-MechanisticWorldModels-2607.12474",
+   "identity_confirmed": true,
+   "identity_note": "arXiv API 与摘要页一致：2607.12474v2，'From Observation to Insight: Mechanistic World Models and the Quest for Autonomous Discovery'，作者 Posner、Lei、Schölkopf；v1 2026-07-14，v2 2026-07-15；许可 CC BY 4.0。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "立场论文的定性成立：全文只有一张相关工作对照表（打勾表），没有实验、没有代码。'identifiab' 在正文出现两次，均为回顾或挑战，原记录驳回“可辨识性作为组织原则”成立。",
+    "四条设计原则和两种归纳压力（parsimony、compositionality）原文属实；机制定义为 'variable-transformation pairs'，原文属实。",
+    "需补充：论文的语义变量类型是与变量、机制、结构联合学习出来的，原文说是 'emergent functional roles ... rather than pre-specified semantic labels'。how_to_borrow (4) 若用预定义类型来规范知识条目 schema，那是 AinerZero 自己的改写，不是论文的主张。",
+    "“优先复用、必要时才新增机制”在论文中只是设计原则（原则 3），没有给出可操作的检验或判据。how_to_borrow (1) 的充分性检验流程是 AinerZero 自己的操作化，不能引为论文结论。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2607.12474 → 标题、三位作者、published 2026-07-14、updated 2026-07-15",
+    "https://arxiv.org/abs/2607.12474 → CC BY 4.0",
+    "https://arxiv.org/html/2607.12474v2 → §4.1 'four core design principles ... two principal inductive pressures'（parsimony、compositionality）",
+    "https://arxiv.org/html/2607.12474v2 → 原则 2 'Mechanisms, defined as variable-transformation pairs'；原则 3 提及 Sparse Mechanism Shift",
+    "https://arxiv.org/html/2607.12474v2 → §4.2 语义类型 'learned jointly ... rather than pre-specified semantic labels'；W=(T, Z, M, S)",
+    "https://arxiv.org/html/2607.12474v2 → §5.4 可辨识性列为挑战，'no existing theoretical framework can fully address'；全文无 LLM-IDEA"
+   ]
+  },
+  {
+   "key": "3b-LLM-IDEA-2610.11253",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2610.11253v1 已核：'LLM-IDEA: Identifiability-Driven Experimental Agent for Autonomous Discovery of Mechanistic World Models'，作者 Surya Shetty、Ulisses Braga-Neto，2026-10-08，CC BY 4.0。仓库 Suraskey/llm-idea 为 Apache-2.0，创建于 2026-10-07，标签 v1.0，0 star。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "partially",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "代码发布范围比记录说的窄。README 原文：'The live-agent experiments cannot be re-run without the proposer and a model provider'。v1.0 只含辨识引擎、Alien Universe 模拟器、评分器和运行记录，提议者 Agentic Council 没有发布。所以“完整闭环依赖云端 LLM”不是费用问题，而是根本无法从仓库运行；能复用的只有引擎。",
+    "引擎依赖：pyproject 声明 numpy、scipy、sympy、mpmath，外加 pysindy>=2.1（基准包会用到）。ODEBench 扫描还要另外克隆 external/LLM-ACES。README 注明 Michaelis–Menten 证书的结果依赖平台。",
+    "作为晋升门使用时须加限定。判定是局部的（在 θ 处）；Rothenberg 等价只在正则点成立；符号路径只检查作用于参数的对称，原文 'not ones that also transform states'。",
+    "论文自己记录了一次数值误判：中心差分的舍入误差让 RC 电路在条件数 2.4e7（低于 1e8 阈值）时被判为可辨识，改用前向敏感度方程和精确多参数符号检验后才得到正确判定。只用有限差分加 1e8 阈值作门并不可靠，必须用前向敏感度或符号检验，并加正则点检查。",
+    "claims_checked 第 2 条的 evidence 引错了句子（引的是“不含 LLM”那句）。三分判定本身见于摘要原文，结论不受影响。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2610.11253 → 标题、作者、2026-10-08，摘要含三分判定、60/62、15/15 对 5/9（p=0.012）、8/8 对 1/8",
+    "https://arxiv.org/abs/2610.11253 → CC BY 4.0",
+    "https://arxiv.org/html/2610.11253v1 → §3.3 '10^8' 条件数阈值；中心差分或前向敏感度；Rothenberg 只在正则点成立；'No language model participates in any of the four'",
+    "https://arxiv.org/html/2610.11253v1 → §5.8 中心差分舍入误差把 RC 电路误判为可辨识（2.4e7），改用前向敏感度后修正",
+    "https://arxiv.org/html/2610.11253v1 → 贡献 2 'a check that the switch works as designed rather than a capability measurement'；闭环 'five scored calls'；花名册含 Gemini 与 NVIDIA 托管 Llama",
+    "https://raw.githubusercontent.com/Suraskey/llm-idea/v1.0/README.md → 提议者未发布；引擎只需 numpy/scipy/sympy",
+    "https://raw.githubusercontent.com/Suraskey/llm-idea/v1.0/pyproject.toml → 依赖含 pysindy>=2.1；live_llm 测试 'none in this release'",
+    "https://api.github.com/repos/Suraskey/llm-idea → Apache-2.0，created 2026-10-07，0 star"
+   ]
+  },
+  {
+   "key": "4-AI-Newton-2504.01538",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2504.01538 已核：v1 2025-04-02，v2 2025-12-11，作者 Fang、Jian、Li、Ma。Crossref 显示 DOI 10.1103/dvvc-4rsr 刊于 Physical Review Research，2026-10-09，作者一致，许可为 APS default。arXiv 版为 CC BY 4.0。代码 Science-Discovery/AI-Newton 为 MIT。",
+   "mechanism_claim_holds": "partially",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "似然推理在原文中是 'adding simple terms to the original formulation via SR'，记录里的“最少项”是添加的修饰。",
+    "原文没有写修补后的定律要回到全部旧实验复验。普遍定律来自 'specific laws that also hold in multiple other experiments'，要求的是“多个”实验，不是“全部”。how_to_borrow (2) 的“回到全部旧实验复验”是 AinerZero 自加的、更严的规则，不能引为论文做法。",
+    "知识库结构：论文正文的表述是 'interconnected library of symbols, concepts, and laws'，分概念层和定律层，定律层再分特定定律与普遍定律。“三层”出自 README 的措辞，可以接受，但不是论文的原定义。",
+    "算力：8370C 是 128 线程，论文写 'configured with 64 cores'。README 还给出第二套配置 Xeon Silver 4314 加 RTX 4080，并有一个 10–20 分钟的最小示例 notebook，但同样要求 Linux、CUDA 和 Maple 2024。",
+    "needs_gpu_training=yes 宜改为“实现要求 CUDA”：正文没有说明 GPU 具体做什么，NN 只用于推荐引擎，规模和训练方式都没有给出。",
+    "数据是模拟数据（'simulated data with statistical errors'），不是真实实验测量。"
+   ],
+   "evidence": [
+    "https://export.arxiv.org/api/query?id_list=2504.01538 → 标题、四位作者，v1 2025-04-02，v2 2025-12-11，'6 pages, 3 figures'",
+    "https://api.crossref.org/works/10.1103/dvvc-4rsr → Physical Review Research，2026-10-09，aps-default-license",
+    "https://arxiv.org/abs/2504.01538 → CC BY 4.0",
+    "https://arxiv.org/html/2504.01538v2 → 概念层初始只有 'space-time coordinates'；推荐引擎为 UCB 加动态 NN；PCA-based differential polynomial regression；Rosenfeld–Gröbner；controlled-variable analysis",
+    "https://arxiv.org/html/2504.01538v2 → 似然推理为 'adding simple terms'；普遍定律来自 'hold in multiple other experiments'",
+    "https://arxiv.org/html/2504.01538v2 → 8370C（128 线程）加 A40，'configured with 64 cores'，max trials 1200，平均 48 小时，约 90 个概念、50 条普遍定律；LLM 仅作为未来设想",
+    "https://raw.githubusercontent.com/Science-Discovery/AI-Newton/main/README.md → 只支持 Linux，需要 CUDA、Rust 1.84.0、Maple 2024；完整用例要数天；第二套配置 4314 加 RTX 4080",
+    "https://raw.githubusercontent.com/Science-Discovery/AI-Newton/main/LICENSE → MIT，Copyright 2025 Science-Discovery"
+   ]
+  }
+ ]
+}

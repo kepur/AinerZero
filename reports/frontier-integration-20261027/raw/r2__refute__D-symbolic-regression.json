@@ -1,0 +1,75 @@
+{
+ "group": "D-symbolic-regression",
+ "verdicts": [
+  {
+   "key": "CoSR",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2603.13727 的 citation_title 为 'Data-driven Progressive Discovery of Physical Laws'，作者 Mingkun Xia、Weiwei Zhang；v1 提交于 2026-03-14 03:03 UTC，v2 于 2026-05-29 撤回（1 KB），comments 原文为 'This paper needs to be retracted due to methodological flaws found in RBC case'。APS 接收页的标题和作者一致，写明 'Accepted 6 October, 2026'，DOI 10.1103/f2kp-pp4q，接收页摘要仍保留 RBC 算例。CoSR 是方法名，不是论文标题。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "Buckingham Π：原文只陈述 p=n−k 定理，没有给出 Π 组的选取算法（未提量纲矩阵零空间），并在 SI 3.4 专门讨论“不同无量纲组选择对结果的影响”。因此 Π 基不唯一，结果对它敏感。how_to_borrow(1) 若要借用，必须自己固定一条确定性的选组规则。另外，万有引力算例用的是按参考量归一化，不是 Π。",
+    "隐式发现的 Loss_I = Var[log SR(x,y)] + P_sens + P_dim + P_rule（式14）。其中 P_sens 是扰动响应低于阈值 τ 时的指示计数惩罚；Var[log·] 要求 SR>0。它找的是静态表格数据上的约束流形 F(x,y)=Const，不是沿轨迹守恒的动力学量。把它用来“找守恒量、对接 G1”属于 AinerZero 自行外推，原文没有演示。",
+    "层级回归按式13 Loss_H=||y−F_poly(SR(x),β)||²，用 1–5 阶多项式评估中间变量。变量数“通常”逐层减少，原文举例为 3→2→1，并非硬规则。",
+    "“变换不降复杂度就省略”有原文依据：'if no reduction in complexity is achieved, transformation discovery may be omitted'。隐式步骤同理，没有隐式关系时可省略。两条都只是“可省略”的建议，不是自动判定门；协调三种模式靠经验策略，这一点作者自认。",
+    "万有引力 notebook 先用 F=m1·m2/(m1+m2)·R·4π²/T² 合成目标 F，Step 1.1 再“发现”这个向心力式，属于循环。正文称计算“独立于引力定律形式”，这只对最终一步成立。",
+    "计算开销：正文对 hour、CPU、runtime、minutes 均无匹配；“CPU 分钟级”只是推断。notebook 中 PySRRegressor 使用 deterministic=True、parallelism=\"serial\"，niterations 被注释掉、取默认值；数据文件 2.1–56.7 KB。不依赖 LLM 或 GPU 的结论成立。"
+   ],
+   "evidence": [
+    "https://arxiv.org/abs/2603.13727：标题、作者、v1 2026-03-14、v2 2026-05-29 撤回及撤回注释、cs.LG/physics.data-an、arXiv 非独占许可",
+    "https://journals.aps.org/prresearch/accepted/10.1103/f2kp-pp4q：Accepted 6 October 2026，标题和作者一致，摘要含 RBC",
+    "https://arxiv.org/html/2603.13727v1：Methods 中的式13–15、P_sens 定义、两处“可省略”条件；Discussion 中“候选选择有时依赖物理直觉、模式协调依赖经验策略”；Code Availability 指向 Alexia369 仓库",
+    "GitHub API repos/Alexia369/Chain-of-Symbolic-Regression：license=null，创建于 2026-02-26；2026-06-09 先删除再重传 RBC notebook；/LICENSE 返回 404；outputs_pysr 下有多个 checkpoint.pkl",
+    "raw notebook（仅按 JSON 解析，未执行）：Universal gravitation.ipynb 中 F 由向心力式合成；各 notebook 均为 deterministic、serial"
+   ]
+  },
+  {
+   "key": "PG-SR",
+   "identity_confirmed": true,
+   "identity_note": "arXiv 2602.13021 标题为 'Prior-Guided Symbolic Regression: Towards Scientific Consistency in Equation Discovery'，10 位作者与记录一致（国防科技大学）。v1 2026-02-13，v2 2026-02-16；comments 和 journal-ref 均为空；HTML 页标注 CC BY 4.0。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "式8–9 与记录一致：φ(t)=(B^t−1)/(B−1)，σ(t)=[1−ηφ]_+，δ(t)=αφ，t=N_curr/N_max（按已采样候选数计，不是时间）。违约分数为 σ(t)((1−β)+2β·S̃)−δ(t)，S̃ 为岛内 min-max 归一化值。“t→1 等价于硬门”只在排序意义上、并且只在默认超参（η=1.0、α=1.2、β=0.6、B=60）下成立：违约分数变为 −1.2，低于合规下限 0.4，但违约候选仍留在池中，不会被剔除。η<1 或 α 较小时则不等价。",
+    "B=60 时 φ(0.5)≈0.11、φ(0.9)≈0.66，约束收紧集中在采样后期。挪作 FAST→MID 日程时，要按自己的预算重新标定 B。",
+    "V(f,C) 是 LLM 生成的可执行程序。原文没有说明它是形式化证明还是数值抽查；“全局稳定”“有界轨迹”这类约束只能视为程序化的经验检查。约束程序本身必须先通过独立测试，这一点记录已写明，成立。",
+    "“阻尼与速度方向相反”只是阻尼项的符号约束，等同于“耗散/无源性（passivity）”是 AinerZero 的外推，强度不同，不能直接当作 G1 的无源证据。",
+    "Rademacher 结论：摘要称 'establishing a guarantee against pseudo-equations'，但附录 A.3 只证明了 H_C⊆H 推出 R_N(H_C)≤R_N(H)，Remark 承认不等式非严格。记录判 overstated 正确。结论还明说约束构建“仍依赖人工干预”。",
+    "数据集取自 LLM-SRBench；§4.2 写明所有方法都报告“多次运行中的最佳表现”。记录对此的判断成立。"
+   ],
+   "evidence": [
+    "https://arxiv.org/abs/2602.13021：标题、10 位作者、v1/v2 日期、cs.LG/cs.AI、CC BY 4.0",
+    "https://arxiv.org/html/2602.13021v2：§3.1 式3–4，§3.3.1 式8–9 与 LLM→人类专家→LLM 的约束流程，附录 A.3 证明及 Remark，附录 D 表3（无量纲、对称、渐近约束；“dimension”只在 PhyE2E 综述中出现一次，“asymptot”无匹配），附录 F（pace_alpha=1.2、pace_eta=1.0、pace_exp_base=60、beta=0.6、gpt-4o-mini、max_sample_num=10000），附录 I（i9-14900HX + RTX 4090，Oscillator1 约10小时，13.36M+4.49M token，约 $4.70）",
+    "GitHub search/repositories：'PG-SR symbolic regression' 0 条，'prior-guided symbolic regression' 只命中无关的 xingyaxuan/PhySR-Bio，未找到代码"
+   ]
+  },
+  {
+   "key": "PI-ADoK",
+   "identity_confirmed": true,
+   "identity_note": "Crossref 记录：DOI 10.1016/j.compchemeng.2026.109918，alternative-id S0098135426003704，标题 'Physics-informed symbolic regression for data-efficient kinetic model discovery'，Computers & Chemical Engineering vol 216 art 109918，issued 2027-01，created 2026-10-17，作者 8 人（含 Ammar Ali、Mehmet Mercangöz）。OpenAlex 的摘要写出 PI-ADoK 框架名。arXiv 2507.02730 题为 'Constraint-Guided Symbolic Regression for Data-Efficient Kinetic Model Discovery'，2025-07-03，摘要同样提出 PI-ADoK。arXiv 元数据把 'King Kuok (Mimi) Hii' 拆成了两个名字，属于元数据瑕疵。ScienceDirect 返回 403。",
+   "mechanism_claim_holds": "yes",
+   "compute_claim_holds": "yes",
+   "license_status": "confirmed_as_reported",
+   "refuted": false,
+   "corrections": [
+    "约束检查是在有限时间点上做的经验检查，不构成保证。例如“到达平衡”在算例中实现为 t=50h 与 t=60h 的浓度差趋于 0。how_to_borrow(1) 把“终态平衡”对应为“耗散”是 AinerZero 的外推：收敛到平衡不等于耗散或无源。",
+    "速率模型的约束是“基于 in-silico 数据推出的行为预测”，属于由数据反推的先验，存在与 PG-SR 相同的同源风险。借用时，约束来源必须独立于验证数据。",
+    "Hunter–Reiner MBDoE（式7）的设计变量只有初值 x0，在当前前两名模型之间做判别。借到 G4 时，只能视作“初值选择型”的受限实验，不能代表一般的干预设计。",
+    "强形式先拟合 GP 浓度代理，再数值微分得到速率，对噪声敏感。原文的说服力主要来自约束改善了初值附近的速率估计。",
+    "L-BFGS 使用 scipy 默认停止准则并多起点取最优。正文没有 runtime/CPU/GPU 报告，也没有种子或重复统计；Table 1 的 5/6/7 对 16/18/16 是单次 in-silico 结果，并且只与自家 ADoK-S 比较。记录对此的限定正确。",
+    "惩罚超参 λ_j 为人工调定，原文自述 'manually fine-tuned' 且主张按案例调。记录正确。"
+   ],
+   "evidence": [
+    "https://api.crossref.org/works/10.1016/j.compchemeng.2026.109918：标题、8 位作者、vol 216、art 109918、issued 2027-01、created 2026-10-17；VOR 许可为 CC BY 4.0，起始 2026-10-18（另有 Elsevier TDM 许可，起始 2027-01-01）",
+    "https://api.openalex.org/works/doi:10.1016/j.compchemeng.2026.109918：publication_date 2026-10-17，hybrid OA，cc-by，摘要含 PI-ADoK",
+    "https://arxiv.org/abs/2507.02730：7 位作者（元数据），2025-07-03，CC BY-NC-ND 4.0，cs.CE/cs.SC",
+    "https://arxiv.org/html/2507.02730v1：式1 惩罚约束与 λ_j 人工调定；四类约束可独立开关；AIC 不切分数据；式7 Hunter–Reiner 只优化 x0；MH 含 burn-in；表1 为 5/6/7 对 16/18/16；噪声 σ=0.2，每例 5 个实验×15 点；全文无代码链接",
+    "GitHub 搜索 'PI-ADoK' 0 条，'ADoK'/'ADoK-S' 只有无关仓库；www.sciencedirect.com/science/article/pii/S0098135426003704 返回 HTTP 403"
+   ]
+  }
+ ]
+}
