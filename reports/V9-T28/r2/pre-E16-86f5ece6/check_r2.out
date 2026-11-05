@@ -1,0 +1,58 @@
+PASS 差异路径全部在枚举范围内  []
+PASS 未改动: alignment
+PASS 未改动: estimation
+PASS 未改动: split
+PASS 未改动: failure_policy
+PASS 未改动: input_manifest_sha256
+PASS 未改动: lead_protocol_observed_sha256
+PASS 未改动: generator_sha256
+PASS 未改动: schema
+PASS 未改动: status
+PASS 未改动: execution_permitted
+PASS 未改动: task_id
+PASS 未改动: residual_vector.order/depth_component/dimension
+PASS 未改动: numerical_parity 容差/字段/规则
+PASS 未改动: negative_controls score/required_red/frames/boundary/unrelated
+PASS 未改动: budget 墙钟/RSS/常驻/重试
+PASS 未改动: profile 其余字段(process_res/尺寸/外参不提供)
+PASS known_intrinsics=false
+PASS 内参逆向控制已移除
+PASS 逆序控制保留且为唯一真实前向控制
+PASS DA3-SMALL 阶段=首帧/校准/逆序/CPU对拍（无内参逆向、无半精度）  ['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity']
+PASS DA3-SMALL 没有任何 float16 阶段
+PASS DA3-SMALL 算术 9 次/25 视图 == 声明
+PASS DA3-BASE 阶段=首帧/校准/逆序/CPU对拍（无内参逆向、无半精度）  ['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity']
+PASS DA3-BASE 没有任何 float16 阶段
+PASS DA3-BASE 算术 9 次/25 视图 == 声明
+PASS 合计 18 次/50 视图
+PASS 预留 64 不变，unallocated = 14
+PASS unallocated = 预留 - 计划
+PASS 配额口径标记为 OPEN
+PASS 墙钟上限不再是不可满足的 1200：null + wall_accounting OPEN
+PASS review_task=T39 且前提不再写 T29
+PASS K 块只比 fx/fy，主点单列排除
+PASS 对拍风险仅披露（只剩 argmin 一条），容差/规则与 r1 相等
+PASS 退役记录恰有一条 half_parity，容差键原值保留且标为未使用
+PASS 退役证据：cam_dec 行号/文件 SHA 与磁盘一致
+PASS 退役证据：pipeline 行号/文件 SHA 与磁盘一致（pipeline.py 未被本次修订改动）
+PASS 未引入替代 fp16 控制
+PASS 上一版 76f4c9fb 原样封存且 SHA 对得上
+PASS T39 复核版 0e15033a 仍在
+PASS 第二次批准逐字记录：删除 half_parity、cpu_parity 保持现状、配额未定
+PASS 相对上一版只动了 amendment/budget/numerical_parity/open_items  ['amendment', 'budget', 'numerical_parity', 'open_items']
+PASS numerical_parity 内只动了 known_risks 与 retired_stages  ['known_risks', 'retired_stages']
+PASS budget 内只动了 models/总数/unallocated/view_accounting  ['models', 'total_planned_forward_calls', 'total_planned_forward_views', 'unallocated_views', 'view_accounting']
+PASS DA3-SMALL：除删掉 half_parity 外，其余阶段逐字未变
+PASS DA3-BASE：除删掉 half_parity 外，其余阶段逐字未变
+PASS 复核历史已记录
+PASS 仍为 proposal_unapproved / 不可执行
+PASS 溯源指向 r1 SHA
+PASS 4 runner 读 r2：哈希绑定通过
+PASS 4 runner 读 r2：9 次/25 视图，阶段为首帧/校准/逆序/CPU对拍，不要求 K
+PASS 4 真实 DA3 的预检通过（协议现在可满足）  ['t28_hashes_bound', 'fixtures_match_split', 'outputs_are_fresh', 'protocol_satisfiable_by_teacher']
+PASS 4 假 teacher 按 r2 整条跑通且退出 0  []
+PASS 4 前向账目 == r2 计划（9 次/25 视图）
+PASS 4 逆序控制真实变红
+PASS 4 没有任何 float16 的 make()，每型号只加载 2 次（MPS/F32 一次 + CPU/F32 一次）  [('DA3-SMALL', 'mps', 'float32'), ('DA3-SMALL', 'cpu', 'float32'), ('DA3-BASE', 'mps', 'float32'), ('DA3-BASE', 'cpu', 'float32')]
+
+ALL PASS

@@ -1,0 +1,38 @@
+PASS 差异路径全部在枚举范围内  []
+PASS 未改动: alignment
+PASS 未改动: estimation
+PASS 未改动: split
+PASS 未改动: failure_policy
+PASS 未改动: input_manifest_sha256
+PASS 未改动: lead_protocol_observed_sha256
+PASS 未改动: generator_sha256
+PASS 未改动: schema
+PASS 未改动: status
+PASS 未改动: execution_permitted
+PASS 未改动: task_id
+PASS 未改动: residual_vector.order/depth_component/dimension
+PASS 未改动: numerical_parity 容差/字段/规则
+PASS 未改动: negative_controls score/required_red/frames/boundary/unrelated
+PASS 未改动: budget 墙钟/RSS/常驻/重试
+PASS 未改动: profile 其余字段(process_res/尺寸/外参不提供)
+PASS known_intrinsics=false
+PASS 内参逆向控制已移除
+PASS 逆序控制保留且为唯一真实前向控制
+PASS DA3-SMALL 阶段=首帧/校准/逆序/CPU对拍/半精度  ['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity', 'half_parity']
+PASS DA3-SMALL 算术 10 次/28 视图 == 声明
+PASS DA3-BASE 阶段=首帧/校准/逆序/CPU对拍/半精度  ['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity', 'half_parity']
+PASS DA3-BASE 算术 10 次/28 视图 == 声明
+PASS 合计 20 次/56 视图
+PASS unallocated = 预留 - 计划
+PASS 配额口径标记为 OPEN
+PASS 仍为 proposal_unapproved / 不可执行
+PASS 溯源指向 r1 SHA
+KNOWN-FAIL 4a 真实 runner 读 r2 抛 KeyError('intrinsics') —— T37 缺陷，需 T37 r2 修（补丁见 4b），不影响 r2 文件本身的检查
+PASS 4b[补丁] runner 读 r2：哈希绑定通过
+PASS 4b[补丁] runner 读 r2：10 次/28 视图，无内参阶段，不要求 K
+PASS 4b[补丁] 真实 DA3 的预检通过（协议现在可满足）  ['t28_hashes_bound', 'fixtures_match_split', 'outputs_are_fresh', 'protocol_satisfiable_by_teacher']
+PASS 4b[补丁] 假 teacher 按 r2 整条跑通且退出 0  []
+PASS 4b[补丁] 前向账目 == r2 计划
+PASS 4b[补丁] 逆序控制真实变红
+
+ALL PASS (file checks + patched-runner checks); 4a is a KNOWN T37 defect

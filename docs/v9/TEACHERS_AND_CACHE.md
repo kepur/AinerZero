@@ -343,6 +343,8 @@ GPU 浮点计算不一定逐位可复现，所以每个教师在 T4 类基准里
 
 上下文按 schema `$defs/trusted_context` 表示：`source_manifest` 以 manifest_id/source_id 唯一索引原始来源，保存 world_key、partition、完整 upstream 与 time_domain；`observation` 保存可信当前包身份、时间域和截止 tick/秒；`approval_registry` 保存冻结批准登记身份。每个 teacher_entry 以 `source.manifest_ref` 绑定原来源清单，world/partition 及 upstream 的 system/origin/actor/input_ref/eligibility 逐项相同，不借同 blob 的另一来源继承资格。AWZ → external_derived 是强制组合，actor=student 不能改变它。
 
+**F11/F12（T2 r2 / 一级裁定）**：盘上缓存记录一律视为**不可信提示**。训练准入五项交集中的「条目许可 / 教师许可 / 可复现等级」不得只读盘上字段；须登记进调用方固定 SHA 的可信上下文 `admission_bindings[]`（每项含 `entry_id`、`cache_key`、`entry_license`、`teacher_license`、`reproducibility`）。盘上与绑定不一致 → `store_problems` 报错且不准训练；无绑定则这三项按拒训（fail-closed）。契约扩展见 `contracts/v9/teacher_cache.v2_1.schema.json` 与 `docs/v9/TEACHERS_AND_CACHE_V2_1.md`；blob/entry 记录形状仍为 v2。
+
 上下文 source_id 必须唯一，manifest/source 不存在或错引拒绝。source / blob / 原来源 / Observation 的 time_domain 一致；每组 timestamps_ticks/timestamps_s 等长且逐项等于 tick/120（秒换算容差 1e-9）；source 与 blob 两组时间逐项相同。当前 cutoff 仅取可信 Observation；input 不能含未来帧，target 可含未来帧但仍绑定同一时间域及当前截止，未来标签不得当输入。未来 target 与等于截止边界都是正例。
 
 ### 10.2 批准与模型指纹

@@ -1,0 +1,592 @@
+{
+ "r1_sha256": "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a",
+ "r2_sha256": "0e15033a8b55c978f3f97318e5d1978e54b406afe8d28120aebd40a8e0db9db1",
+ "changed_paths": [
+  {
+   "path": "/amendment",
+   "r1": "<absent>",
+   "r2": {
+    "from": {
+     "protocol_id": "codex-da3-known-k-anchored-diagnostic-20261026-r1",
+     "proposal_sha256": "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a"
+    },
+    "approved_by_user": {
+     "date": "2026-10-27",
+     "where": "一级 claude-az 会话",
+     "verbatim": "按选项 A 修订 T28：known_intrinsics 改为 false（模型自估内参），去掉内参逆向控制，保留逆序控制和 CPU 边界守卫；请起草 T28 r2 并新建独立数学复核卡，配额口径我另行告知"
+    },
+    "option": "A",
+    "reason": "r1 requires known-K conditioning without extrinsics and an intrinsics-adverse control that must turn red. This DA3 build ignores intrinsics unless extrinsics are supplied.",
+    "evidence": {
+     "da3_forward_gate": {
+      "file": "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/da3.py",
+      "line": 126,
+      "sha256": "c7d5f88962e05c021cf7dab505840c8892e5e9d6880fb2901d20f4120ca173b3",
+      "text": "if extrinsics is not None: cam_token = self.cam_enc(extrinsics, intrinsics, x.shape[-2:]) else: cam_token = None"
+     },
+     "api_early_return": {
+      "file": "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/api.py",
+      "line": 350,
+      "sha256": "042ae8f6bfd1e5610100a585ebb00f8cbc3320f9aa9e03a07530fd4deda8d2d8",
+      "text": "_align_to_input_extrinsics_intrinsics returns the prediction unchanged when extrinsics is None"
+     },
+     "pipeline_has_no_k_parameter": "envs/teachers/t6/pipeline.py process_keyframes(images, timestamps_s, world_key, partition, output_dir, process_res)"
+    },
+    "changes": [
+     "E1 identity/supersedes/author/review_task",
+     "E2 profile.known_intrinsics=false + intrinsics_policy",
+     "E3 raw_metrics last entry",
+     "E4 numerical_parity.reference text",
+     "E5 negative_controls: remove intrinsics, add removed_controls",
+     "E6 budget: drop intrinsics_adverse stage, totals 20 calls / 56 views, view_accounting OPEN",
+     "E7 execution_prerequisites[3] replaced, two appended",
+     "E8 claims_forbidden appended",
+     "E9 this block",
+     "E10 open_items"
+    ],
+    "unchanged_by_construction": [
+     "alignment",
+     "residual_vector.order/depth_component",
+     "estimation",
+     "numerical_parity tolerances/fields/rule",
+     "negative_controls score/required_red/frames/boundary_rejection/unrelated_error",
+     "split",
+     "budget wall/RSS/resident-model limits",
+     "failure_policy",
+     "inputs and their SHAs"
+    ]
+   }
+  },
+  {
+   "path": "/author",
+   "r1": "codex",
+   "r2": "claude-az"
+  },
+  {
+   "path": "/budget/models[0]/forward_calls",
+   "r1": 11,
+   "r2": 10
+  },
+  {
+   "path": "/budget/models[0]/forward_views",
+   "r1": 31,
+   "r2": 28
+  },
+  {
+   "path": "/budget/models[0]/stages",
+   "r1": [
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 1,
+     "precision": "float32",
+     "stage": "first_frame",
+     "views": [
+      0
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 6,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "calibration",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00",
+      "t6-analytic-room-01",
+      "t6-analytic-room-02",
+      "t6-analytic-room-03",
+      "t6-analytic-room-04",
+      "t6-analytic-room-05"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "frame_order_adverse",
+     "views": [
+      2,
+      1,
+      0
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "intrinsics_adverse",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "cpu",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "cpu_parity",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float16",
+     "stage": "half_parity",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    }
+   ],
+   "r2": [
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 1,
+     "precision": "float32",
+     "stage": "first_frame",
+     "views": [
+      0
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 6,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "calibration",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00",
+      "t6-analytic-room-01",
+      "t6-analytic-room-02",
+      "t6-analytic-room-03",
+      "t6-analytic-room-04",
+      "t6-analytic-room-05"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "frame_order_adverse",
+     "views": [
+      2,
+      1,
+      0
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "cpu",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "cpu_parity",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float16",
+     "stage": "half_parity",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "/budget/models[1]/forward_calls",
+   "r1": 11,
+   "r2": 10
+  },
+  {
+   "path": "/budget/models[1]/forward_views",
+   "r1": 31,
+   "r2": 28
+  },
+  {
+   "path": "/budget/models[1]/stages",
+   "r1": [
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 1,
+     "precision": "float32",
+     "stage": "first_frame",
+     "views": [
+      0
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 6,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "calibration",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00",
+      "t6-analytic-room-01",
+      "t6-analytic-room-02",
+      "t6-analytic-room-03",
+      "t6-analytic-room-04",
+      "t6-analytic-room-05"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "frame_order_adverse",
+     "views": [
+      2,
+      1,
+      0
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "intrinsics_adverse",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "cpu",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "cpu_parity",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float16",
+     "stage": "half_parity",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    }
+   ],
+   "r2": [
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 1,
+     "precision": "float32",
+     "stage": "first_frame",
+     "views": [
+      0
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 6,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "calibration",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00",
+      "t6-analytic-room-01",
+      "t6-analytic-room-02",
+      "t6-analytic-room-03",
+      "t6-analytic-room-04",
+      "t6-analytic-room-05"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "frame_order_adverse",
+     "views": [
+      2,
+      1,
+      0
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "cpu",
+     "frames_per_call": 3,
+     "precision": "float32",
+     "stage": "cpu_parity",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    },
+    {
+     "calls": 1,
+     "device": "mps",
+     "frames_per_call": 3,
+     "precision": "float16",
+     "stage": "half_parity",
+     "views": [
+      0,
+      1,
+      2
+     ],
+     "worlds": [
+      "t6-analytic-room-00"
+     ]
+    }
+   ]
+  },
+  {
+   "path": "/budget/total_planned_forward_calls",
+   "r1": 22,
+   "r2": 20
+  },
+  {
+   "path": "/budget/total_planned_forward_views",
+   "r1": 62,
+   "r2": 56
+  },
+  {
+   "path": "/budget/unallocated_views",
+   "r1": 2,
+   "r2": 8
+  },
+  {
+   "path": "/budget/view_accounting",
+   "r1": "<absent>",
+   "r2": {
+    "status": "OPEN_pending_user_decision",
+    "note": "reserve_before_model_import_views and unallocated_views follow the r1 convention (central CLI per-job cap of 64). Whether the ledger counts dataset views (18) or forward views (56) is a user decision not yet made; the numbers here must be re-stated before registration."
+   }
+  },
+  {
+   "path": "/claims_forbidden",
+   "r1": [
+    "registered sensor-noise model",
+    "NEES 95 percent calibrated",
+    "blind intrinsic recovery",
+    "absolute metric pose/depth performance",
+    "Blender or real-world validation",
+    "capability pass, cache admission, training authorization"
+   ],
+   "r2": [
+    "registered sensor-noise model",
+    "NEES 95 percent calibrated",
+    "blind intrinsic recovery",
+    "absolute metric pose/depth performance",
+    "Blender or real-world validation",
+    "capability pass, cache admission, training authorization",
+    "any statement that the teacher was conditioned on ground-truth or known intrinsics"
+   ]
+  },
+  {
+   "path": "/execution_prerequisites",
+   "r1": [
+    "T26 and different-author T27 accepted",
+    "T29 independent math review and lead immutable SHA registration",
+    "central CLI/RunStore/shared lock/resource-power-swap guards before imports",
+    "known-K adapter accepts frozen K and records exact preprocessing and source SHA, different-author CPU review before execution",
+    "hash-bind all images/GT/manifest/protocol/adapter/upstream/packages/weights and stage-specific adverse associations before run",
+    "no final, no source downloads, one resident model, no auto fallback"
+   ],
+   "r2": [
+    "T26 and different-author T27 accepted",
+    "T29 independent math review and lead immutable SHA registration",
+    "central CLI/RunStore/shared lock/resource-power-swap guards before imports",
+    "teacher adapter records exact preprocessing (process_res=280), source SHA and the predicted intrinsics; supplies no K and no extrinsics; calibration runner reviewed by a different author (ainerzero.V9.T37 / T38) and bound by SHA",
+    "hash-bind all images/GT/manifest/protocol/adapter/upstream/packages/weights and stage-specific adverse associations before run",
+    "no final, no source downloads, one resident model, no auto fallback",
+    "da3_calibration_runner.py --preflight-only exits 0 against the real teacher (zero model, zero ledger) BEFORE any central reservation of views or wall time; the central CLI reserves before the worker starts",
+    "user states the view-accounting basis and approves the specific view/wall quota numbers for the run"
+   ]
+  },
+  {
+   "path": "/negative_controls/intrinsics",
+   "r1": "multiply only focal_x by1.5 and focal_y by0.75 for all3views; retain positive focal and principal point",
+   "r2": "<absent>"
+  },
+  {
+   "path": "/negative_controls/real_forward_controls",
+   "r1": "<absent>",
+   "r2": [
+    "frame_order_adverse"
+   ]
+  },
+  {
+   "path": "/negative_controls/removed_controls",
+   "r1": "<absent>",
+   "r2": [
+    {
+     "name": "intrinsics_adverse",
+     "reason": "unsatisfiable by construction in this DA3 build: intrinsics are ignored unless extrinsics are supplied, so the prediction cannot depend on K and S_bad == S_clean < S_clean + max(0.0001, 0.1*S_clean)",
+     "evidence": "see amendment.evidence",
+     "not_replaced": "no substitute control is introduced by this amendment; a K-sensitive control needs its own pre-registration"
+    }
+   ]
+  },
+  {
+   "path": "/negative_controls/same_clean_profile",
+   "r1": "all positive calls conditioned on exact frozen K; adverse K uses predeclared changed K",
+   "r2": "all positive calls use the same model-estimated-K profile; no K is supplied to any call"
+  },
+  {
+   "path": "/numerical_parity/reference",
+   "r1": "world00 known-K MPS-F32 calibration output",
+   "r2": "world00 MPS-F32 calibration output (model-estimated K)"
+  },
+  {
+   "path": "/open_items",
+   "r1": "<absent>",
+   "r2": [
+    "view_accounting: user to state whether the ledger counts dataset views or forward views (budget.view_accounting)",
+    "specific view and wall quota numbers for the next run: user approval pending (cumulative reserved wall already 1170/1200)",
+    "independent math review of this r2 (different author), then lead immutable SHA registration"
+   ]
+  },
+  {
+   "path": "/profile/assumption",
+   "r1": "known-K synthetic input, not blind intrinsic recovery, metric scale or Blender generalization",
+   "r2": "model-estimated-K synthetic input: the teacher is given neither intrinsics nor extrinsics; not known-K conditioned, not blind intrinsic recovery, not metric scale, not Blender generalization"
+  },
+  {
+   "path": "/profile/intrinsics_policy",
+   "r1": "<absent>",
+   "r2": {
+    "conditioning": "none",
+    "ground_truth_K": "recorded for the descriptive comparison only; never supplied to the teacher",
+    "predicted_vs_ground_truth_K": "report per view: predicted fx, fy, cx, cy at process_res and their ratios/offsets to the ground-truth K at the same resolution; descriptive only, not part of the 7-vector, the score, the fit statistics or any threshold"
+   }
+  },
+  {
+   "path": "/profile/known_intrinsics",
+   "r1": true,
+   "r2": false
+  },
+  {
+   "path": "/protocol_id",
+   "r1": "codex-da3-known-k-anchored-diagnostic-20261026-r1",
+   "r2": "da3-model-k-anchored-diagnostic-20261027-r2"
+  },
+  {
+   "path": "/residual_vector/raw_metrics[5]",
+   "r1": "predicted_intrinsics_and_source_known_K",
+   "r2": "predicted_intrinsics_vs_ground_truth_K_descriptive_only"
+  },
+  {
+   "path": "/review_task",
+   "r1": "ainerzero.V9.T29",
+   "r2": null
+  },
+  {
+   "path": "/supersedes",
+   "r1": null,
+   "r2": {
+    "protocol_id": "codex-da3-known-k-anchored-diagnostic-20261026-r1",
+    "proposal_sha256": "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a",
+    "reason": "r1 的已知 K 条件化与内参逆向控制在这版 DA3 上不可满足，见 amendment.evidence"
+   }
+  }
+ ]
+}

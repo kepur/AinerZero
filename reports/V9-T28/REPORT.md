@@ -1,0 +1,15 @@
+# T28：T6标定数学预登记候选
+- 作者codex；仅CPU方案，status=proposal_unapproved，execution_permitted=false；未替换当前一级统计协议，未自验收/放行真实模型。
+- 精确候选 `proposal.json` SHA `af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a`；推导/限制/主文档参考见 PROTOCOL.md。
+- 原manifest与18视图不变；按锚帧相对姿态、view2基线尺度、view0深度尺度评价view1，避免共线中心Sim3的不可辨识。
+- 明确known-K条件；holdout的0/2 GT用于规范对齐也如实披露，holdout从不参与fit的统计拟合，不宣称GT完全封闭或盲内参/米制能力。
+- 每型号3个fit世界/3个holdout世界，每世界一个7维诊断；完整样本协方差秩≤2，不求逆/伪逆/任意加岭，不冒称可用6DOF高斯噪声。
+- NEES/95%覆盖率/噪声登记均null或false；拟议真实标定只输出limited_aligned_diagnostic_candidate_unregistered，不替代完整T6能力验收。
+- 冻结拟议数值门槛、真实帧序/错K压力输入和“没变坏就失败”的规则；不得用无关runtime错误或边界哈希拒绝冒充模型负对照。
+- 两型号22次前向共62视图，6次串行加载，全段1200s/8GiB/64预留视图内；无自动重试或预算退款。
+- CPU数学例子验证规范不变性、0.1rad旋转扰动、坐标约定错误及低秩；不是教师观测。
+- 5组proposal字段故障真实子进程rc1，合法父脚本rc0；不是源码变异。精确argv/stdout/stderr、来源SHA见math-evidence.json和evidence-index.json。
+- 最终命令：relay exec T28 --agent codex -- env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 T6Python -I -B reports/V9-T28/check_math.py；绝对路径由math-evidence.json子命令及日志绑定。
+- 真实DA3/MLX/MPS/Blender/训练/下载/生产台账均0；CPU supervisor elapsed0.573s、组空，日志math-evidence-final.log。
+- 待T29不同作者独立推导与新fixture复核，之后当前一级决定精确SHA登记。候选known-K需适配器实现和不同作者CPU审查；T26/T27受控入口仍为真实模型前置。
+- 当前一级简版协议observed快照保留；本稿明确了其未规定的估计/对齐与小样本边界，不覆盖原文件或声称其已撤销。
