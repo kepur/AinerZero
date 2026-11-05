@@ -1,0 +1,65 @@
+{
+ "probes": [
+  {
+   "probe": "moved_pinned_checkpoint",
+   "exit": 1,
+   "fault": "moved artifacts/m0/m0-cpu-222513b47d0e/checkpoints/midpoint/tensors.safetensors to artifacts/pilot/moved-baseline.safetensors",
+   "problems": [
+    "missing",
+    "unexpected_new_file",
+    "policy_claim_unmet"
+   ],
+   "expect_red": true,
+   "passed": true
+  },
+  {
+   "probe": "same_size_byte_edit",
+   "exit": 1,
+   "fault": "flipped one byte at the end of artifacts/m0/m0-cpu-222513b47d0e/report.json (size unchanged)",
+   "problems": [
+    "sha256_changed"
+   ],
+   "expect_red": true,
+   "passed": true
+  },
+  {
+   "probe": "second_runstore_row_deleted",
+   "exit": 1,
+   "fault": "deleted one row from runs in artifacts/m0/control.sqlite3 (2 change)",
+   "problems": [
+    "runstore_entries_changed"
+   ],
+   "expect_red": true,
+   "passed": true
+  },
+  {
+   "probe": "manifest_entry_hidden",
+   "exit": 1,
+   "fault": "removed files[0] (artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/manifest.json) from the manifest copy",
+   "problems": [
+    "manifest_digest",
+    "unexpected_new_file",
+    "policy_claim_unmet"
+   ],
+   "expect_red": true,
+   "passed": true
+  },
+  {
+   "probe": "gridlab2d_tree_deleted",
+   "exit": 1,
+   "fault": "deleted the whole artifacts/gridlab2d tree",
+   "problems": [
+    "missing",
+    "missing",
+    "missing",
+    "missing",
+    "missing"
+   ],
+   "expect_red": true,
+   "passed": true
+  }
+ ],
+ "all_passed": true,
+ "tmpdir": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/v9-r3-probe-rtgu69p3"
+}
+EXIT=0

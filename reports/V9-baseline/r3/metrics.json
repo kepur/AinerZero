@@ -1,0 +1,124 @@
+{
+  "task_id": "ainerzero.V9.A2",
+  "round": "r3",
+  "agent": "deepseek-v4f-k2m9",
+  "timestamp": "2026-10-20T15:20:00+0300",
+  "manifest_schema": "ainerzero.v9.baseline_manifest.v3",
+  "manifest_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+  "source_sha256": {
+    "scripts/v9_baseline_manifest_r3.py": "f7160692854e6c659c4d17211338aa58002294324d791ba424cb1e8e0f8e3e41",
+    "reports/V9-baseline/r3/baseline_manifest.json": "2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b",
+    "reports/V9-baseline/r3/selftest.json": "2ee1d4a052d4b23d6dcca234bb20e9cb2450e707a32b56db01746c3291e03c40",
+    "reports/V9-baseline/r3/BASELINE_INVENTORY.md": "bd5e7501c820531296e383d9f77d2d6c38ed76464967eba353808fe458ba41c8",
+    "reports/V9-baseline/r3/extra_probes.json": "d07e77d19f78991686da611b562cbd6c21c6953e0dfc9f161c9c6e2a1ea0f6a1",
+    "reports/V9-baseline/r3/real_tree_integrity.json": "c4ef5ddc485321a3d6f0a0c0ff342232d18a6414b40b8b62abc43d68bb2badca"
+  },
+  "inputs_unchanged": {
+    "scripts/v9_baseline_manifest_r2.py": "2709475caac0ef8f3d92ac2023d94156c11cfd63ac13eb00c454ecdb715e529c",
+    "reports/V9-baseline/r2/baseline_manifest.json": "71e99efcc1ceb652df742396d3bbbfdbc72ac7cd5e46c980171e33065a2d674a",
+    "reports/V9-baseline/r2/report.md": "d39e5c75bcfb244c25b9a7eb76f99446b5228fdbcd017318f414d6358a83bb5d",
+    "matches_a4_recorded_values": true
+  },
+  "counts": {
+    "files_pinned": 497,
+    "bytes_pinned": 584888364,
+    "by_category": {
+      "checkpoint": {"files": 41, "bytes": 119999100},
+      "checkpoint.meta": {"files": 78, "bytes": 5668359},
+      "m0.run": {"files": 38, "bytes": 116112},
+      "probe.meta": {"files": 4, "bytes": 10077},
+      "run.config": {"files": 135, "bytes": 297566033},
+      "run.updates": {"files": 10, "bytes": 718632},
+      "registration": {"files": 88, "bytes": 78918526},
+      "dataset.c0": {"files": 8, "bytes": 492682},
+      "dataset.gridlab2d": {"files": 91, "bytes": 13237307},
+      "runstore.file": {"files": 4, "bytes": 68161536}
+    },
+    "excluded_with_reason": 89,
+    "transient": 4,
+    "volatile_checkpoints": 312,
+    "volatile_files": 46832,
+    "volatile_dirs": 30,
+    "out_of_scope_files_ignored": 4284,
+    "out_of_scope_pinned_inside": 49,
+    "unclassified": 0,
+    "total_files_in_artifacts": 51706
+  },
+  "coverage_delta_vs_r2": {
+    "pinned": {"r2": 453, "r3": 497, "added": 44,
+               "breakdown": {"m0.run": 38, "probe.meta": 4, "run.config": 2}},
+    "excluded_with_reason": {"r2": 86, "r3": 89, "added": 3,
+                             "breakdown": {"probe_teacher_cache": 2, "runtime_lock": 1}},
+    "transient_explicit": {"r2": 0, "r3": 4},
+    "volatile_explicit_files": {"r2_silently_ignored": 46520, "r3_classified": 46832},
+    "out_of_scope_declared": {"r2": "undeclared", "r3_files_ignored": 4284},
+    "unclassified": {"r2": "not defined", "r3": 0}
+  },
+  "verify": {
+    "exit": 0,
+    "files_pinned": 497,
+    "files_ok": 497,
+    "runstore_files_via_row_digest": 4,
+    "policy_globs_checked": 26,
+    "policy_matches_checked": 883,
+    "problems": 0,
+    "warnings": 0,
+    "verdict": "ok"
+  },
+  "selftest": {
+    "exit": 0,
+    "cases_total": 22,
+    "faults_injected": 17,
+    "faults_detected": 17,
+    "faults_missed": 0,
+    "controls_green": 5,
+    "controls_unexpectedly_red": 0,
+    "real_copy_cases": 22,
+    "symlink_cases": 0,
+    "real_tree_integrity_before": true,
+    "real_tree_integrity_after": true,
+    "real_tree_files_rehashed": 497
+  },
+  "extra_probes": {
+    "exit": 0,
+    "probes": 5,
+    "probes_passed": 5,
+    "cases": ["moved_pinned_checkpoint", "same_size_byte_edit",
+              "second_runstore_row_deleted", "manifest_entry_hidden",
+              "gridlab2d_tree_deleted"]
+  },
+  "runstore_ruling": {
+    "primary_identity": "row-level entries_digest",
+    "entries_digest_total": "18e491ef60fbb91a",
+    "identical_to_r2": true,
+    "vacuum_case": {"exit": 0, "problems": 0,
+                    "warnings": ["runstore_file_size_changed", "runstore_file_sha_changed"],
+                    "size_before": 63201280, "size_after": 63180800},
+    "forged_row_case": {"exit": 1, "problems": ["runstore_entries_changed"]}
+  },
+  "determinism": {
+    "build1_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "build2_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+    "payload_identical_except_generated_at": true
+  },
+  "runtime_seconds": {
+    "build": 8.65,
+    "verify": 7.88,
+    "selftest": 96.5,
+    "inventory": 0.1,
+    "integrity": 0.48,
+    "policy_check": 4.92,
+    "extra_probes": 20.0
+  },
+  "not_verified": [
+    "excluded files (teacher cache, episodes, lock) are not hashed: byte changes there stay green by design",
+    "artifacts/reports/** and artifacts/spacetime/** non-registration files are out of scope",
+    "volatile scratch is tracked by path only, never by bytes",
+    "no MLX/model/render/training/eval was run; checkpoint capability is not evaluated",
+    "concurrent RunStore writers, cross-filesystem VACUUM, crash recovery not tested",
+    "inventory run attribution uses path substring matching; M0 checkpoint dirs lack RunStore run_id"
+  ],
+  "gpu_used": false,
+  "downloads": 0,
+  "writes_to_artifact_tree": 0
+}

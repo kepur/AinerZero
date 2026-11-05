@@ -1255,6 +1255,58 @@ def main(argv: list[str] | None = None) -> int:
     smoke.add_argument("--output-dir", type=Path, default=Path("artifacts/m0"))
     smoke.add_argument("--device", choices=["cpu", "gpu"], default="gpu")
     smoke.add_argument("--steps", type=int, choices=range(8, 129), default=64, metavar="8..128")
+    s1 = commands.add_parser(
+        "s1-phase1",
+        help="S1 第一阶段入口：数据身份、预登记、资源门与无更新冒烟（本卡不训练）",
+    )
+    s1.add_argument(
+        "--mode",
+        required=True,
+        choices=("preregister", "data", "smoke", "freeze", "verify", "train", "eval", "final-eval"),
+        help="preregister=静态草稿；data=生成/校验数据集；smoke=无更新前向+损失实测；"
+        "freeze=冻结预登记+SHA256；verify=复验；train=单次 arm×seed 训练；eval=在 development 上评测预登记指标",
+    )
+    s1.add_argument(
+        "--arm",
+        choices=("arm1", "arm2", "arm3", "arm4"),
+        help="目标模型臂（train 模式必填 arm2..arm4；eval 模式必填 arm1..arm4）",
+    )
+    s1.add_argument(
+        "--seed",
+        type=int,
+        choices=(0, 1, 2),
+        help="随机种子（train 模式必填 0/1/2；eval 模式可选）",
+    )
+    s1.add_argument(
+        "--output-root",
+        type=Path,
+        default=Path("artifacts/v9/s1/phase1"),
+        help="运行账本根（notice #297：正式账本在 artifacts/v9/s1/phase1/）。r6 起 train/eval "
+        "只接受 canonical 根（解析后必须等于 artifacts/v9/s1/phase1），预算（同 arm×seed 尝试与"
+        "阶段总额）锚定在该根的中央 RunStore；中央账本缺失/不可识别时 fail closed，不会新建账本",
+    )
+    s1.add_argument(
+        "--limits-file",
+        type=Path,
+        help="可选的更紧资源线 JSON；只允许收紧，放宽会被拒绝",
+    )
+    s1.add_argument(
+        "--wall-budget-seconds",
+        type=float,
+        help="可选：只能收紧制作运行墙钟预算（不能超过登记值）",
+    )
+    s1.add_argument("--prereg", type=Path, help="冻结预登记文件（verify/train 用）")
+    s1.add_argument(
+        "--smoke-metrics",
+        type=Path,
+        help="freeze 用哪份冒烟实测（默认运行根下的 smoke_metrics.json；冻结文件会记下来源与 SHA）",
+    )
+    s1.add_argument(
+        "--research-log",
+        type=Path,
+        help="一级批准行所在的 RESEARCH_LOG.md（verify 用它做诊断；train 只认仓库根的 "
+        "spec.RESEARCH_LOG，指向别处一律 exit 3，不会改读）",
+    )
     e1 = commands.add_parser(
         "e1-phase2",
         help="E1 第二阶段入口：物理+残差动力学实验（verify/generate-data/train/eval/final-eval）",
@@ -1325,6 +1377,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
+        if args.command == "s1-phase1":
+            from ainerzero.v9.experiments.s1.commands import s1_phase1_command
+
+            report, exit_code = s1_phase1_command(args)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return exit_code
         if args.command == "e1-phase2":
             from ainerzero.v9.experiments.e1.commands import e1_phase2_command
 
