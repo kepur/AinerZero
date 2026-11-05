@@ -9,6 +9,11 @@ import numpy as np
 
 from .lie import SE2, SE3, vector
 
+# Direction-only tolerance for the horizontal reference. The guard rejects a
+# reference whose normalized angle to the gravity axis has |sin theta| below
+# this value; it is independent of the reference's length.
+HORIZONTAL_SIN_TOL = 1e-9
+
 
 @dataclass(frozen=True)
 class GravityFrame:
@@ -17,15 +22,23 @@ class GravityFrame:
     horizontal_reference: np.ndarray
 
     def __post_init__(self):
+        # vector() rejects wrong shapes and non-finite values before any arithmetic.
         g, u, h = (vector(x, 3).copy() for x in (self.gravity, self.up, self.horizontal_reference))
         if np.linalg.norm(g) == 0 or np.linalg.norm(u) == 0:
             raise ValueError("gravity and up must be nonzero")
         u /= np.linalg.norm(u)
         if not np.allclose(g / np.linalg.norm(g), -u, atol=1e-10, rtol=0):
             raise ValueError("gravity must point opposite the declared up direction")
+        h_norm = float(np.linalg.norm(h))
+        if h_norm == 0:
+            raise ValueError("horizontal reference must be nonzero")
         x = h - u * (u @ h)
-        if np.linalg.norm(x) < 1e-12:
-            raise ValueError("horizontal reference must not be parallel to gravity")
+        # Direction-only decision: |sin theta| between the normalized reference
+        # and the gravity axis; the same direction gives the same verdict at any
+        # nonzero length. The message states exactly this criterion.
+        sin_theta = float(np.linalg.norm(x)) / h_norm
+        if sin_theta < HORIZONTAL_SIN_TOL:
+            raise ValueError("horizontal reference must not be parallel to gravity (|sin theta| < 1e-9)")
         x /= np.linalg.norm(x)
         basis = np.column_stack((x, np.cross(u, x), u))
         for name, value in [("gravity", g), ("up", u), ("horizontal_reference", h), ("basis", basis)]:

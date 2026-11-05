@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .belief import covariance
+from .belief import covariance, psd_tolerance
 from .lie import boxplus
 
 
@@ -56,6 +56,13 @@ def solve_pose_graph(group, initial_poses, factors, *, anchor=None, fixed_rotati
         z = np.array(group.validate(f.measurement), copy=True)
         info = covariance(f.information, group.dof, semidefinite=True)
         eig, basis = np.linalg.eigh(info)
+        # The semidefinite path accepts round-off negatives down to -psd_tolerance(info).
+        # Clamp exactly those to zero before the square root so a rank-deficient PSD
+        # information matrix (partial constraint) never produces NaN.
+        negative = eig < 0
+        if np.any(negative):
+            assert np.all(eig[negative] >= -psd_tolerance(info)), "negative eigenvalue outside semidefinite tolerance"
+            eig = np.where(negative, 0.0, eig)
         root = np.diag(np.sqrt(eig)) @ basis.T
         prepared.append((f.i, f.j, group.inverse(z), root))
     nodes = [i for i in range(len(poses)) if i != anchor]

@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ainerzero:v9/ability_registry_entry.v0",
+  "title": "AbilityRegistryEntry/v0（能力登记条目草案，reports/V9-B1/COORDINATOR_DECISIONS.md 裁决 5）",
+  "description": "门禁的唯一依据。每个 ability_id 由 AWZ 登记；本文件只是 AinerZero 侧写出门禁所需的最小条目形状，是草案，不是登记表本身，也不构成任何能力授权：正式登记表归 AWZ。条目至少给出参数 schema、效果类别（运行/编辑）、可作用的目标种类、最大动作数、最大持续 tick、TTL 上限与前置条件；前置条件只能用观察可得的量来表达（封闭的 observable 枚举），不得引用世界真值、隐藏接触或世界实体。路由由 effect_class 推导：run 走运行路线，edit 走编辑路线；v1 已登记的编辑类能力集合为空，任何 edit 条目被引用一律 effect_class_not_registered（裁决 1）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "ability_id",
+    "ability_version",
+    "effect_class",
+    "param_schema",
+    "target_kinds",
+    "max_actions",
+    "max_duration_ticks",
+    "max_ttl_ticks",
+    "preconditions",
+    "observable_names"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ability_registry_entry.v0"
+    },
+    "ability_id": {
+      "type": "string",
+      "pattern": "^abil-[a-z0-9][a-z0-9_.-]{2,63}$"
+    },
+    "ability_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "effect_class": {
+      "enum": [
+        "run",
+        "edit"
+      ],
+      "description": "run：学生在运行中的 AWZ 回合里用身体和能力做动作；edit：效果类别是改世界或改场景，门禁须编译成 E3 信封，v1 已登记集合为空。"
+    },
+    "param_schema": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "properties",
+        "additionalProperties"
+      ],
+      "properties": {
+        "type": {
+          "const": "object"
+        },
+        "additionalProperties": {
+          "const": false
+        }
+      },
+      "description": "对该 ability_id 的 params 做的 JSON Schema（Draft 2020-12），必须是封闭对象 schema（additionalProperties 恰为 false）。v0 明确拒绝动态分支（r4 F1）：patternProperties、additionalProperties 为 schema、unevaluatedProperties、propertyNames、$ref/$dynamicRef/$recursiveRef、if/then/else、dependentSchemas、oneOf/anyOf/allOf/not、items/prefixItems 一律视为未支持，对应登记条目直接拒收；本草案不承诺判定任意 JSON Schema 的静态语义。拒绝清单与参考核对的 UNSUPPORTED_PARAM_SCHEMA_KEYWORDS 逐项一致。"
+    },
+    "observable_names": {
+      "type": "array",
+      "minItems": 0,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/observable_ref"
+      },
+      "description": "该能力可声明/预测的可观察量名（r4 F6）。expected_outcomes[].quantity 必须落在被引用条目声明的 observable_names 里，并与提案 schema 的有限允许表求交；空数组表示该能力不产生预期结果。"
+    },
+    "target_kinds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "handle",
+          "ego_relative_pose"
+        ]
+      },
+      "description": "可作用的目标种类；空数组表示该能力不吃目标。"
+    },
+    "max_actions": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_duration_ticks": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_ttl_ticks": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "提案 ttl_ticks 的上限（裁决 4）；超出即 budget_exceeded。"
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/condition"
+      },
+      "description": "只能用观察可得的量表达（裁决 5）；observable 是封闭枚举，写不进世界真值或隐藏接触。"
+    }
+  },
+  "$defs": {
+    "observable_ref": {
+      "description": "ObservationPacket/v1.1 里模型可见的量，按 payload 字段名与通道名给出；此外一律不可引用。本枚举与 skill_proposal.v1 的 $defs/observable_quantity 及参考核对的 OBSERVABLE_QUANTITIES 逐项一致（r4 F6）。",
+      "enum": [
+        "channel.symbol8",
+        "channel.egocentric_grid",
+        "channel.rgb",
+        "channel.depth",
+        "channel.relative_objects",
+        "channel.ego_motion",
+        "channel.audio_events",
+        "channel.semantic_mask",
+        "time.sim_hz",
+        "time.t_ticks",
+        "time.dt_ticks",
+        "time.dt_s",
+        "episode_start",
+        "pose_sensor_if_allowed",
+        "pose_sensor.frame",
+        "pose_sensor.position_m",
+        "pose_sensor.yaw_deg",
+        "visibility.fov_deg",
+        "visibility.range_m",
+        "detection.handle",
+        "detection.appearance_class",
+        "detection.rel_position_m",
+        "detection.rel_yaw_deg",
+        "detection.confidence",
+        "audio_events.type",
+        "audio_events.bearing_deg",
+        "audio_events.loudness",
+        "ego_motion.delta.dx_m",
+        "ego_motion.delta.dy_m",
+        "ego_motion.delta.dz_m",
+        "ego_motion.delta.dyaw_deg",
+        "semantic_mask.class_vocab_sha256",
+        "symbol8.slots",
+        "symbol8.spec_sha256",
+        "rgb.width",
+        "rgb.height",
+        "rgb.intrinsics.fx",
+        "rgb.intrinsics.fy",
+        "rgb.intrinsics.cx",
+        "rgb.intrinsics.cy",
+        "depth.width",
+        "depth.height",
+        "depth.unit",
+        "egocentric_grid.shape",
+        "egocentric_grid.cell_m",
+        "last_action_result.status",
+        "last_action_result.reason_code",
+        "task_instruction.goal",
+        "task_instruction.text",
+        "sensor_noise.model"
+      ]
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "observable"
+          ],
+          "properties": {
+            "kind": {
+              "const": "exists"
+            },
+            "observable": {
+              "$ref": "#/$defs/observable_ref"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "observable",
+            "op",
+            "value"
+          ],
+          "properties": {
+            "kind": {
+              "const": "compare"
+            },
+            "observable": {
+              "$ref": "#/$defs/observable_ref"
+            },
+            "op": {
+              "enum": [
+                "lt",
+                "le",
+                "gt",
+                "ge",
+                "eq",
+                "ne"
+              ]
+            },
+            "value": {
+              "type": [
+                "number",
+                "boolean",
+                "string"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "handle"
+          ],
+          "properties": {
+            "kind": {
+              "const": "handle_present"
+            },
+            "handle": {
+              "type": "string",
+              "pattern": "^h-[0-9]+$"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ainerzero:v9/skill_proposal.v1",
+  "title": "SkillProposal/v1（reports/V9-B1/COORDINATOR_DECISIONS.md 裁决 1–11）",
+  "description": "世界脑经分层规划产出的提案，唯一入口是 AWZ 能力门禁。v1 只开运行路线：提案引用 ability_id，路由（运行/编辑）与效果类别由 AWZ 能力登记条目的 effect_class 推导，提案自身不声明路由，也不声明效果类别。目标只用所依据 ObservationPacket/v1.1 里的检测句柄 h-<n>，或用智能体自身坐标系下的相对位姿加不确定性；任何世界侧标识字段都不允许出现。evidence_version 是 basis 的 RFC 8785（JCS）摘要，门禁重算，不一致即拒。schema 只做结构；句柄解析、能力登记核对、TTL 判断与幂等由报告目录参考核对及未来 AWZ 门禁实现负责。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "proposal_id",
+    "actor",
+    "basis",
+    "evidence_version",
+    "ability_id",
+    "params",
+    "targets",
+    "action_budget",
+    "ttl_ticks",
+    "expected_outcomes"
+  ],
+  "dependentRequired": {
+    "calibration": [
+      "confidence"
+    ],
+    "confidence": [
+      "calibration"
+    ]
+  },
+  "properties": {
+    "schema_version": {
+      "const": "skill_proposal.v1"
+    },
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^prop-[a-z0-9][a-z0-9-]{2,63}$",
+      "description": "在（回合、actor）内唯一；同 ID 同摘要返回原决定，同 ID 不同摘要为 duplicate_proposal（裁决 10）。"
+    },
+    "actor": {
+      "$ref": "#/$defs/actor"
+    },
+    "basis": {
+      "$ref": "#/$defs/basis"
+    },
+    "evidence_version": {
+      "$ref": "#/$defs/sha256",
+      "description": "basis 的 JCS（RFC 8785）摘要，小写十六进制；门禁重算，不一致即 evidence_mismatch（裁决 3）。"
+    },
+    "ability_id": {
+      "type": "string",
+      "pattern": "^abil-[a-z0-9][a-z0-9_.-]{2,63}$",
+      "description": "必须在 AWZ 能力登记表里；未登记即 ability_unknown（裁决 5）。"
+    },
+    "params": {
+      "type": "object",
+      "propertyNames": {
+        "not": {
+          "$ref": "#/$defs/world_id_key"
+        }
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/param_value"
+      },
+      "description": "按登记条目的 param_schema 校验；结构本身必须只含可观察量，禁止世界侧标识键（裁决 2、5）。"
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/target"
+      },
+      "description": "只允许句柄目标或自身坐标系下的相对位姿目标；句柄必须在所依据的包里、未因遮挡重发失效、且世界侧可解析（裁决 2）。"
+    },
+    "action_budget": {
+      "$ref": "#/$defs/action_budget"
+    },
+    "ttl_ticks": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "有效窗为 [basis.t_ticks, basis.t_ticks + ttl_ticks]（含两端）；上限由能力登记条目 max_ttl_ticks 给出（裁决 4）。"
+    },
+    "expected_outcomes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/expected_outcome"
+      },
+      "description": "对未来观察的预测，只用于事后比对学习进展与好奇心；不得写世界真值字段、事件类型或隐藏接触（裁决 7）。"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "只作参考，不作任何门禁依据；调到 1.0 也不能越过任何一道门（裁决 6）。"
+    },
+    "calibration": {
+      "$ref": "#/$defs/calibration",
+      "description": "出现 confidence 时必须声明；uncalibrated 或无登记校准引用都不影响门禁判定（裁决 6）。"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "observable_quantity": {
+      "description": "有限允许表（r4 F6）：只含 AnimeWorldZero ObservationPacket/v1.1 里模型可见的通道名与 payload 字段名（通道、时间、可见性、检测、音频事件、自运动、语义掩码、符号槽、图像尺寸/内参、位姿传感器、上一动作结果、任务指令）。世界 ID、隐藏接触、接触标识及其规范化别名都不在表内。此表与参考核对的 OBSERVABLE_QUANTITIES 逐项一致，并与可信能力登记条目的 observable_names 求交后才算被授权（见 docs/v9/SKILL_PROPOSAL.md §5、§7）。",
+      "enum": [
+        "channel.symbol8",
+        "channel.egocentric_grid",
+        "channel.rgb",
+        "channel.depth",
+        "channel.relative_objects",
+        "channel.ego_motion",
+        "channel.audio_events",
+        "channel.semantic_mask",
+        "time.sim_hz",
+        "time.t_ticks",
+        "time.dt_ticks",
+        "time.dt_s",
+        "episode_start",
+        "pose_sensor_if_allowed",
+        "pose_sensor.frame",
+        "pose_sensor.position_m",
+        "pose_sensor.yaw_deg",
+        "visibility.fov_deg",
+        "visibility.range_m",
+        "detection.handle",
+        "detection.appearance_class",
+        "detection.rel_position_m",
+        "detection.rel_yaw_deg",
+        "detection.confidence",
+        "audio_events.type",
+        "audio_events.bearing_deg",
+        "audio_events.loudness",
+        "ego_motion.delta.dx_m",
+        "ego_motion.delta.dy_m",
+        "ego_motion.delta.dz_m",
+        "ego_motion.delta.dyaw_deg",
+        "semantic_mask.class_vocab_sha256",
+        "symbol8.slots",
+        "symbol8.spec_sha256",
+        "rgb.width",
+        "rgb.height",
+        "rgb.intrinsics.fx",
+        "rgb.intrinsics.fy",
+        "rgb.intrinsics.cx",
+        "rgb.intrinsics.cy",
+        "depth.width",
+        "depth.height",
+        "depth.unit",
+        "egocentric_grid.shape",
+        "egocentric_grid.cell_m",
+        "last_action_result.status",
+        "last_action_result.reason_code",
+        "task_instruction.goal",
+        "task_instruction.text",
+        "sensor_noise.model"
+      ]
+    },
+    "world_id_key": {
+      "description": "世界侧标识键名，任何层级都不允许（裁决 2）。第一层 schema 正则：11 族标识词（world/entity/scene/event/instance/landmark/object/actor/agent/truth/hidden）与其复数（含不规则复数 entities/objects/actors/scenes/events/instances/landmarks/agents/truths 与 worlds）、id/ids/idx/identifier(s) 后缀、常见别名前缀（gt/raw/my/src）与尾缀（value(s)/map(s)/list(s)/set(s)/ref(s)/table(s)/dict(s)/array(s)/vector(s)）、id 前缀形式与 hidden_contact/contact_id。第二层是参考核对的规范化判定（check_skill_proposal.py 的 is_forbidden_world_id_key），覆盖任意层级、任意分隔符与前后缀别名，并独立复跑 B5 的 1131 条探针作为回归输入；schema 正则给不合规提案快速结构拒绝，不是完整防线（已知边界：identity 因以 entity+id 结尾会被本正则拒绝；gate 层不拒该键，见 docs/v9/SKILL_PROPOSAL.md 闭合矩阵）。",
+      "pattern": "^(?i:ids?)$|(^|[^a-z0-9])((?i:gt|raw|my|src)?(?i:world|entity|scene|event|instance|landmark|object|actor|agent|truth|hidden)s?|(?i:worlds|entities|scenes|events|instances|landmarks|objects|actors|agents|truths|hiddens))[._-]?(?i:ids?|idx|identifiers?)([._-]?(?i:value|values|map|maps|list|lists|set|sets|ref|refs|table|tables|dict|dicts|array|arrays|vector|vectors))?$|(^|[^a-z0-9])((?i:gt|raw|my|src)?(?i:world|entity|scene|event|instance|landmark|object|actor|agent|truth|hidden)s?|(?i:worlds|entities|scenes|events|instances|landmarks|objects|actors|agents|truths|hiddens))(?i:ids?|idx|identifiers?)([._-]?(?i:value|values|map|maps|list|lists|set|sets|ref|refs|table|tables|dict|dicts|array|arrays|vector|vectors))?$|(^|[^a-z0-9])(?i:ids?)[._-]?((?i:gt|raw|my|src)?(?i:world|entity|scene|event|instance|landmark|object|actor|agent|truth|hidden)s?|(?i:worlds|entities|scenes|events|instances|landmarks|objects|actors|agents|truths|hiddens))$|(?i:hidden)[._-]?(?i:contacts?)$|(^|[^a-z0-9])(?i:contacts?)[._-](?i:ids?|idx|identifiers?)"
+    },
+    "param_value": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/param_value"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "not": {
+              "$ref": "#/$defs/world_id_key"
+            }
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/param_value"
+          }
+        }
+      ]
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "run_id",
+        "agent_id",
+        "policy_revision"
+      ],
+      "description": "世界脑的运行与智能体身份。门禁从会话取 actor，自带 actor 与会话不符即拒（裁决 10）；这只是世界侧日志的拒绝原因。",
+      "properties": {
+        "kind": {
+          "const": "world_brain"
+        },
+        "run_id": {
+          "type": "string",
+          "pattern": "^run-[a-z0-9][a-z0-9-]{2,63}$"
+        },
+        "agent_id": {
+          "type": "string",
+          "pattern": "^agent-[a-z0-9]{4,32}$"
+        },
+        "policy_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "time_domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clock",
+        "episode_id",
+        "epoch_id",
+        "tick_hz"
+      ],
+      "description": "与 docs/v9/TEACHERS_AND_CACHE.md r3 的 observation_time_domain 同口径。与当前回合不一致直接拒，不做换算（裁决 4）。",
+      "properties": {
+        "clock": {
+          "const": "episode_relative"
+        },
+        "episode_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tick_hz": {
+          "const": 120
+        }
+      }
+    },
+    "observation_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "pattern": "^awz://observation/[A-Za-z0-9][A-Za-z0-9._~/-]*$",
+          "not": {
+            "pattern": "(^|/)(private|truth|eval|future)(/|$)"
+          },
+          "description": "只许允许的命名空间，且按截至本包 t_ticks 解析（ARCHITECTURE_V9 §8.6，F2）。"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "brain_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_version",
+        "encoder_version",
+        "planner_version"
+      ],
+      "properties": {
+        "model_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "encoder_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "planner_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
+    "basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packet_ref",
+        "t_ticks",
+        "time_domain",
+        "belief_sha256",
+        "brain"
+      ],
+      "description": "提案所依据的观察与信念（裁决 3）；evidence_version 即本对象的 JCS 摘要。",
+      "properties": {
+        "packet_ref": {
+          "$ref": "#/$defs/observation_ref"
+        },
+        "t_ticks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "time_domain": {
+          "$ref": "#/$defs/time_domain"
+        },
+        "belief_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "brain": {
+          "$ref": "#/$defs/brain_versions"
+        }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sigma"
+      ],
+      "description": "不确定性必须严格为正：0 等于声称知道真值。",
+      "properties": {
+        "sigma": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "units": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "not": {
+            "pattern": "(^|[^a-z0-9])((?i:gt|raw|my|src)?(?i:world|entity|scene|event|instance|landmark|object|actor|agent|truth|hidden)s?|(?i:worlds|entities|scenes|events|instances|landmarks|objects|actors|agents|truths|hiddens))([._-]?)(?i:ids?|idx|identifiers?)$|^ids?$|(?i:hidden)[._-]?(?i:contacts?)$|(^|[^a-z0-9])(?i:contacts?)[._-]?(?i:ids?|idx|identifiers?)$"
+          },
+          "description": "单位名，不是标识（r4 F6 同口径）：不得写成 entity_id 这类标识别名。"
+        }
+      }
+    },
+    "target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "handle"
+          ],
+          "properties": {
+            "kind": {
+              "const": "handle"
+            },
+            "handle": {
+              "type": "string",
+              "pattern": "^h-[0-9]+$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "rel_position_m",
+            "uncertainty"
+          ],
+          "properties": {
+            "kind": {
+              "const": "ego_relative_pose"
+            },
+            "rel_position_m": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "items": {
+                "type": "number"
+              }
+            },
+            "rel_yaw_deg": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": -180,
+              "maximum": 180
+            },
+            "uncertainty": {
+              "$ref": "#/$defs/uncertainty"
+            }
+          }
+        }
+      ]
+    },
+    "action_budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_actions",
+        "max_duration_ticks"
+      ],
+      "description": "提案自己声明的动作数与持续时长上限；门禁与登记条目的 max_actions / max_duration_ticks 比对（裁决 5）。",
+      "properties": {
+        "max_actions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_duration_ticks": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "outcome_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_offset_ticks",
+        "end_offset_ticks"
+      ],
+      "description": "相对 basis.t_ticks 的 tick 偏移窗，闭区间；语义约束 0 <= start <= end <= ttl_ticks 由门禁核对（裁决 7）。",
+      "properties": {
+        "start_offset_ticks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end_offset_ticks": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "expected_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "channel",
+        "quantity",
+        "predicted_value",
+        "uncertainty",
+        "window"
+      ],
+      "properties": {
+        "channel": {
+          "enum": [
+            "symbol8",
+            "egocentric_grid",
+            "rgb",
+            "depth",
+            "relative_objects",
+            "ego_motion",
+            "audio_events",
+            "semantic_mask"
+          ],
+          "description": "只能是 ObservationPacket/v1.1 observation.channels 已有的通道；pose_sensor_if_allowed 不是通道，不在其列。"
+        },
+        "quantity": {
+          "$ref": "#/$defs/observable_quantity",
+          "description": "被预测的可观察量名，取有限允许表（裁决 7 的具体化，r4 F6）：允许表从 AnimeWorldZero ObservationPacket/v1.1 的通道与 payload 字段名导出，并与可信能力登记条目的 observable_names 求交；学生自填的新名字不是授权。值本身也不得是世界标识或隐藏接触（裁决 2、7）。"
+        },
+        "predicted_value": {
+          "type": "number"
+        },
+        "uncertainty": {
+          "$ref": "#/$defs/uncertainty"
+        },
+        "window": {
+          "$ref": "#/$defs/outcome_window"
+        }
+      }
+    },
+    "calibration": {
+      "oneOf": [
+        {
+          "const": "uncalibrated"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "calibration_ref"
+          ],
+          "properties": {
+            "calibration_ref": {
+              "type": "string",
+              "pattern": "^cal-[a-z0-9][a-z0-9_.-]{2,63}$"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

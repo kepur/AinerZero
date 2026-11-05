@@ -13,6 +13,18 @@ import numpy as np
 
 from .lie import SE2, SE3, boxplus, skew, tangent_jacobian, vector
 
+# Relative eigenvalue tolerance for the semidefinite path. Exact PSD inputs such
+# as outer([1, 2, 2]) or an integer J^T J have float64 eigenvalues a few ulps
+# below zero; they are accepted when min(eig) >= -PSD_RELATIVE_TOL * max(1, ||M||_2).
+# The strictly-positive-definite path keeps its exact `> 0` requirement.
+PSD_RELATIVE_TOL = 1e-12
+
+
+def psd_tolerance(matrix):
+    """Absolute spectral tolerance used by the semidefinite guard."""
+    m = np.asarray(matrix, dtype=float)
+    return PSD_RELATIVE_TOL * max(1.0, float(np.linalg.norm(m, 2)))
+
 
 def covariance(value, n, *, semidefinite=False):
     p = np.array(value, dtype=float, copy=True)
@@ -22,8 +34,11 @@ def covariance(value, n, *, semidefinite=False):
         raise ValueError("covariance must be symmetric")
     p = (p + p.T) / 2
     smallest = np.linalg.eigvalsh(p)[0]
-    if (smallest < 0 if semidefinite else smallest <= 0):
-        raise ValueError("covariance must be positive semidefinite" if semidefinite else "covariance must be positive definite")
+    if semidefinite:
+        if smallest < -psd_tolerance(p):
+            raise ValueError("covariance must be positive semidefinite")
+    elif smallest <= 0:
+        raise ValueError("covariance must be positive definite")
     return p
 
 
