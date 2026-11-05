@@ -1,0 +1,892 @@
+....................................................F..........s........ [ 48%]
+............F........F.......F.s..............F.F..........F.F...FF.FFFF [ 97%]
+.F.                                                                      [100%]
+=================================== FAILURES ===================================
+__________ test_upstream_da3_still_gates_intrinsics_behind_extrinsics __________
+
+    def test_upstream_da3_still_gates_intrinsics_behind_extrinsics():
+        """漂移探测：上游若改成能只靠内参条件化，这条会失败，提醒重新评估 REAL_DA3_CONDITIONS_ON_INTRINSICS_ONLY。"""
+>       src = (REPO / "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/da3.py").read_text()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_da3_calibration_runner.py:235: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/f037a730-4890-42da-85bd-417637fa585c/scratchpad/gb/tree_b5_teachers/envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/da3.py')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/f037a730-4890-42da-85bd-417637fa585c/scratchpad/gb/tree_b5_teachers/envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/da3.py'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+___________________ test_linewide_budget_refusal_end_to_end ____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_linewide_budget_refusal_e0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10917d580>
+
+    def test_linewide_budget_refusal_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """End-to-end: Pre-existing runs under T33 count towards line-wide budget and cause refusal when exceeding cap."""
+        from ainerzero.v9.teachers import t28_registration
+        from ainerzero.v9.teachers.da3_controlled import (
+            FakeDA3BenchmarkAdapter,
+            execute_guarded_da3_benchmark,
+        )
+    
+        clean_repo = tmp_path / "clean_repo"
+        clean_repo.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(t28_registration, "REPO_ROOT", clean_repo)
+    
+        store_path = tmp_path / "quota_refusal.db"
+        lock_path = tmp_path / "quota_refusal.lock"
+        research_log = _make_valid_research_log(tmp_path)
+        protocol_path = _make_valid_protocol(tmp_path)
+        weights_root = Path("artifacts/teachers/da3")
+    
+        # Seed RunStore with a T33 run using 1150s (out of 1200s default cap)
+        with RunStore(store_path) as store:
+            _create_consumed_run(
+                store,
+                {"task": "ainerzero.V9.T33", "model": "da3-small", "views": 18, "budget": {"timezone": "UTC"}},
+                request_id="req-t33-prior",
+                run_id="run-t33-prior",
+                active_seconds=1150.0,
+            )
+    
+        # Now attempt a new run requesting 100s: 1150 + 100 = 1250 > 1200
+        spec = DA3RunSpec(
+            model="da3-small",
+            wall_budget_seconds=100.0,
+            views=4,
+            research_log_path=research_log,
+            store_path=store_path,
+            lock_path=lock_path,
+            weights_root=weights_root,
+            statistical_protocol_path=protocol_path,
+        )
+    
+        with pytest.raises(BenchmarkBudgetRefused) as exc_info:
+>           execute_guarded_da3_benchmark(spec, adapter=FakeDA3BenchmarkAdapter())
+
+tests/test_da3_linewide_quota.py:311: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/da3_controlled.py:1036: in execute_guarded_da3_benchmark
+    check_da3_weights_manifest(spec.weights_root, model_norm)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+weights_root = PosixPath('artifacts/teachers/da3'), model_id = 'da3-small'
+
+    def check_da3_weights_manifest(
+        weights_root: Path,
+        model_id: str,
+    ) -> dict[str, Any]:
+        """Check DA3 model weights and configuration on disk against exact approved manifest."""
+        canonical_model = normalize_da3_model_name(model_id)
+        target_models = (
+            APPROVED_DA3_MODELS.values()
+            if canonical_model == "da3-all"
+            else [APPROVED_DA3_MODELS[canonical_model]]
+        )
+    
+        verified_models: list[dict[str, Any]] = []
+    
+        for spec in target_models:
+            model_dir = Path(weights_root) / spec.model_id.upper()
+            if not model_dir.is_dir():
+                model_dir = Path(weights_root) / spec.model_id
+            if not model_dir.is_dir():
+>               raise BenchmarkRefusalError(
+                    f"Model weights directory not found for {spec.model_id} under {weights_root}",
+                    details={"model_id": spec.model_id, "weights_root": str(weights_root)},
+                )
+E               ainerzero.v9.teachers.benchmark_protocol.BenchmarkRefusalError: Model weights directory not found for da3-small under artifacts/teachers/da3
+
+src/ainerzero/v9/teachers/da3_controlled.py:577: BenchmarkRefusalError
+____________________ test_lazy_worker_real_pipeline_routing ____________________
+
+test_env = {'tmp_path': PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_lazy_wo.../test_lazy_worker_real_pipeline0/statistical_protocol.json'), 'weights_root': PosixPath('artifacts/teachers/da3'), ...}
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_lazy_worker_real_pipeline0')
+
+    def test_lazy_worker_real_pipeline_routing(test_env, tmp_path: Path):
+        """Verify da3_worker.py --action real_pipeline routes through pipeline.py and reports model_runs=0."""
+        spec = test_env["spec"]
+        output_json = tmp_path / "worker_pipeline_out.json"
+        spec_json = tmp_path / "worker_spec.json"
+        spec_json.write_text(json.dumps(spec.to_dict()), encoding="utf-8")
+    
+        res = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "ainerzero.v9.teachers.da3_worker",
+                "--spec-file",
+                str(spec_json),
+                "--output-file",
+                str(output_json),
+                "--action",
+                "real_pipeline",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        # Exits 3 because model forward pass is blocked by governance
+>       assert res.returncode == 3
+E       AssertionError: assert 2 == 3
+E        +  where 2 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-m', 'ainerzero.v9.teachers.da3_worker'...low-AinerZero/f037a730-4890-42da-85bd-417637fa585c/scratchpad/gb/tree_b5_teachers/envs/teachers/.venv-t6/bin/python\n').returncode
+
+tests/test_da3_supervision.py:351: AssertionError
+____________________ test_new_run_config_records_card_field ____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_new_run_config_records_ca0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106358fb0>
+
+    def test_new_run_config_records_card_field(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """新建 run 的 config 增加 card 字段，取环境变量 DA3_TASK_ID（未设置时为 null），只作记录，不参与记账。"""
+        db_path = tmp_path / "card_test.db"
+        lock_path = tmp_path / "card_test.lock"
+    
+        # Make valid approval & protocol
+        log_file = tmp_path / "RESEARCH_LOG.md"
+        log_file.write_text(
+            "# Research Log\n## R20261026-T6：批准 T6 有界 DA3 标定入口\n- 批准对象：ainerzero.V9.T6。关键字：批准 T6。\n- 统计协议：见 statistical_protocol.json\n",
+            encoding="utf-8",
+        )
+        proto_file = tmp_path / "statistical_protocol.json"
+        proto_file.write_text(
+            json.dumps({
+                "protocol_id": "az.v9.da3.calibration.v1",
+                "metrics": ["rotation_error_deg"],
+                "calibration_inputs": {"n_worlds": 4},
+                "tolerance": {"max_rotation_deg": 1.0},
+            }),
+            encoding="utf-8",
+        )
+    
+        clean_repo = tmp_path / "clean_repo_defaults"
+        clean_repo.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(t28_registration, "REPO_ROOT", clean_repo)
+    
+        # 1. With DA3_TASK_ID set
+        monkeypatch.setenv("DA3_TASK_ID", "ainerzero.V9.T56")
+        spec1 = DA3RunSpec(
+            model="da3-small",
+            wall_budget_seconds=10.0,
+            views=4,
+            research_log_path=log_file,
+            store_path=db_path,
+            lock_path=lock_path,
+            weights_root=Path("artifacts/teachers/da3"),
+            statistical_protocol_path=proto_file,
+        )
+>       res1 = DC.execute_guarded_da3_benchmark(spec1, adapter=DC.FakeDA3BenchmarkAdapter())
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_da3_t56_features.py:242: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/da3_controlled.py:1036: in execute_guarded_da3_benchmark
+    check_da3_weights_manifest(spec.weights_root, model_norm)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+weights_root = PosixPath('artifacts/teachers/da3'), model_id = 'da3-small'
+
+    def check_da3_weights_manifest(
+        weights_root: Path,
+        model_id: str,
+    ) -> dict[str, Any]:
+        """Check DA3 model weights and configuration on disk against exact approved manifest."""
+        canonical_model = normalize_da3_model_name(model_id)
+        target_models = (
+            APPROVED_DA3_MODELS.values()
+            if canonical_model == "da3-all"
+            else [APPROVED_DA3_MODELS[canonical_model]]
+        )
+    
+        verified_models: list[dict[str, Any]] = []
+    
+        for spec in target_models:
+            model_dir = Path(weights_root) / spec.model_id.upper()
+            if not model_dir.is_dir():
+                model_dir = Path(weights_root) / spec.model_id
+            if not model_dir.is_dir():
+>               raise BenchmarkRefusalError(
+                    f"Model weights directory not found for {spec.model_id} under {weights_root}",
+                    details={"model_id": spec.model_id, "weights_root": str(weights_root)},
+                )
+E               ainerzero.v9.teachers.benchmark_protocol.BenchmarkRefusalError: Model weights directory not found for da3-small under artifacts/teachers/da3
+
+src/ainerzero/v9/teachers/da3_controlled.py:577: BenchmarkRefusalError
+_________________ test_wall_budget_gate_single_run_120_vs_121 __________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_wall_budget_gate_single_r0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10645df70>
+
+    def test_wall_budget_gate_single_run_120_vs_121(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """When run_wall_budget_s is 120s, 120s is accepted but 121s is refused."""
+        reg_dir = tmp_path / "reports/V9-T28"
+        reg_dir.mkdir(parents=True, exist_ok=True)
+    
+        proposal_content = {
+            "budget": {
+                "cumulative_wall_seconds_max": 1290,
+                "view_accounting": {"charge_per_complete_run": 50},
+                "wall_accounting": {"approved_run_wall_budget_seconds": 120},
+            }
+        }
+        proposal_file = reg_dir / "proposal.json"
+        raw_bytes = json.dumps(proposal_content).encode("utf-8")
+        proposal_file.write_bytes(raw_bytes)
+        sha256 = hashlib.sha256(raw_bytes).hexdigest()
+    
+        reg_file = reg_dir / "REGISTERED.json"
+        reg_file.write_text(
+            json.dumps({"proposal_path": "reports/V9-T28/proposal.json", "sha256": sha256}),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(t28_registration, "REPO_ROOT", tmp_path)
+    
+        # Setup test env
+        log_file = tmp_path / "RESEARCH_LOG.md"
+        log_file.write_text(
+            """# Research Log
+    ## R20261026-T6：批准 T6 有界 DA3 标定入口
+    - 批准对象：ainerzero.V9.T6。关键字：批准 T6。
+    - 统计协议：见 statistical_protocol.json
+    """,
+            encoding="utf-8",
+        )
+        proto_file = tmp_path / "statistical_protocol.json"
+        proto_file.write_text(
+            json.dumps(
+                {
+                    "protocol_id": "az.v9.da3.calibration.v1",
+                    "metrics": ["rotation_error_deg", "translation_rel_error"],
+                    "calibration_inputs": {"n_worlds": 4},
+                    "tolerance": {"max_rotation_deg": 1.0},
+                }
+            ),
+            encoding="utf-8",
+        )
+    
+        store_path = tmp_path / "runs.db"
+        lock_path = tmp_path / "worker.lock"
+        weights_root = Path("artifacts/teachers/da3")
+    
+        # 120.0 seconds: passes
+        spec_120 = DA3RunSpec(
+            model="da3-small",
+            wall_budget_seconds=120.0,
+            views=4,
+            research_log_path=log_file,
+            store_path=store_path,
+            lock_path=lock_path,
+            weights_root=weights_root,
+            statistical_protocol_path=proto_file,
+        )
+>       res = execute_guarded_da3_benchmark(spec_120, adapter=FakeDA3BenchmarkAdapter())
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_t28_registration_and_quota.py:249: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/da3_controlled.py:1036: in execute_guarded_da3_benchmark
+    check_da3_weights_manifest(spec.weights_root, model_norm)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+weights_root = PosixPath('artifacts/teachers/da3'), model_id = 'da3-small'
+
+    def check_da3_weights_manifest(
+        weights_root: Path,
+        model_id: str,
+    ) -> dict[str, Any]:
+        """Check DA3 model weights and configuration on disk against exact approved manifest."""
+        canonical_model = normalize_da3_model_name(model_id)
+        target_models = (
+            APPROVED_DA3_MODELS.values()
+            if canonical_model == "da3-all"
+            else [APPROVED_DA3_MODELS[canonical_model]]
+        )
+    
+        verified_models: list[dict[str, Any]] = []
+    
+        for spec in target_models:
+            model_dir = Path(weights_root) / spec.model_id.upper()
+            if not model_dir.is_dir():
+                model_dir = Path(weights_root) / spec.model_id
+            if not model_dir.is_dir():
+>               raise BenchmarkRefusalError(
+                    f"Model weights directory not found for {spec.model_id} under {weights_root}",
+                    details={"model_id": spec.model_id, "weights_root": str(weights_root)},
+                )
+E               ainerzero.v9.teachers.benchmark_protocol.BenchmarkRefusalError: Model weights directory not found for da3-small under artifacts/teachers/da3
+
+src/ainerzero/v9/teachers/da3_controlled.py:577: BenchmarkRefusalError
+______________ test_real_pipeline_calibration_views_gate_dynamic _______________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_real_pipeline_calibration0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10645d130>
+
+    def test_real_pipeline_calibration_views_gate_dynamic(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """When registered proposal dictates 50 views, real_pipeline execution requires views == 50."""
+        reg_dir = tmp_path / "reports/V9-T28"
+        reg_dir.mkdir(parents=True, exist_ok=True)
+    
+        proposal_content = {
+            "budget": {
+                "cumulative_wall_seconds_max": 1290,
+                "view_accounting": {"charge_per_complete_run": 50},
+                "wall_accounting": {"approved_run_wall_budget_seconds": 120},
+            }
+        }
+        proposal_file = reg_dir / "proposal.json"
+        raw_bytes = json.dumps(proposal_content).encode("utf-8")
+        proposal_file.write_bytes(raw_bytes)
+        sha256 = hashlib.sha256(raw_bytes).hexdigest()
+    
+        reg_file = reg_dir / "REGISTERED.json"
+        reg_file.write_text(
+            json.dumps({"proposal_path": "reports/V9-T28/proposal.json", "sha256": sha256}),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(t28_registration, "REPO_ROOT", tmp_path)
+    
+        log_file = tmp_path / "RESEARCH_LOG.md"
+        log_file.write_text(
+            """# Research Log
+    ## R20261026-T6：批准 T6 有界 DA3 标定入口
+    - 批准对象：ainerzero.V9.T6。关键字：批准 T6。
+    - 统计协议：见 statistical_protocol.json
+    """,
+            encoding="utf-8",
+        )
+        proto_file = tmp_path / "statistical_protocol.json"
+        proto_file.write_text(
+            json.dumps(
+                {
+                    "protocol_id": "az.v9.da3.calibration.v1",
+                    "metrics": ["rotation_error_deg"],
+                    "calibration_inputs": {"n_worlds": 4},
+                    "tolerance": {"max_rotation_deg": 1.0},
+                }
+            ),
+            encoding="utf-8",
+        )
+    
+        store_path = tmp_path / "runs.db"
+        lock_path = tmp_path / "worker.lock"
+        weights_root = Path("artifacts/teachers/da3")
+    
+        # views=18 was old default, but with registration active, 18 != 50 -> refused
+        spec_old_views = DA3RunSpec(
+            model="da3-small",
+            wall_budget_seconds=120.0,
+            views=18,
+            research_log_path=log_file,
+            store_path=store_path,
+            lock_path=lock_path,
+            weights_root=weights_root,
+            statistical_protocol_path=proto_file,
+        )
+        with pytest.raises(BenchmarkRefusalError) as exc:
+            execute_guarded_da3_benchmark(
+                spec_old_views,
+                worker_action="real_pipeline",
+                allow_custom_paths=True,
+                coordinator_release=True,
+            )
+>       assert "Real DA3 pipeline execution requires views == 50" in str(exc.value)
+E       AssertionError: assert 'Real DA3 pipeline execution requires views == 50' in 'Model weights directory not found for da3-small under artifacts/teachers/da3'
+E        +  where 'Model weights directory not found for da3-small under artifacts/teachers/da3' = str(BenchmarkRefusalError('Model weights directory not found for da3-small under artifacts/teachers/da3'))
+E        +    where BenchmarkRefusalError('Model weights directory not found for da3-small under artifacts/teachers/da3') = <ExceptionInfo BenchmarkRefusalError('Model weights directory not found for da3-small under artifacts/teachers/da3') tblen=3>.value
+
+tests/test_t28_registration_and_quota.py:384: AssertionError
+____________ test_cumulative_budget_and_non_refundable_reservation _____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_cumulative_budget_and_non0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_cumulative_budget_and_non0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_cumulative_budget_and_non0/protocol.json')
+
+    def test_cumulative_budget_and_non_refundable_reservation(
+        tmp_path: Path,
+        valid_t6_research_log: Path,
+        valid_statistical_protocol: Path,
+    ):
+        """RunStore cumulative budget (1200.0s) must be enforced and failed runs are not refunded."""
+        store_path = tmp_path / "cumulative.db"
+        lock_path = tmp_path / "cumulative.lock"
+        weights_root = Path("artifacts/teachers/da3")
+    
+        # Run 1: 700.0s (succeeds)
+        spec1 = DA3RunSpec(
+            model="da3-small",
+            wall_budget_seconds=700.0,
+            views=4,
+            research_log_path=valid_t6_research_log,
+            store_path=store_path,
+            lock_path=lock_path,
+            weights_root=weights_root,
+            statistical_protocol_path=valid_statistical_protocol,
+        )
+        adapter1 = FakeDA3BenchmarkAdapter(should_fail=False)
+>       res1 = execute_guarded_da3_benchmark(spec1, adapter=adapter1)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_teacher_da3_controlled.py:293: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/da3_controlled.py:1036: in execute_guarded_da3_benchmark
+    check_da3_weights_manifest(spec.weights_root, model_norm)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+weights_root = PosixPath('artifacts/teachers/da3'), model_id = 'da3-small'
+
+    def check_da3_weights_manifest(
+        weights_root: Path,
+        model_id: str,
+    ) -> dict[str, Any]:
+        """Check DA3 model weights and configuration on disk against exact approved manifest."""
+        canonical_model = normalize_da3_model_name(model_id)
+        target_models = (
+            APPROVED_DA3_MODELS.values()
+            if canonical_model == "da3-all"
+            else [APPROVED_DA3_MODELS[canonical_model]]
+        )
+    
+        verified_models: list[dict[str, Any]] = []
+    
+        for spec in target_models:
+            model_dir = Path(weights_root) / spec.model_id.upper()
+            if not model_dir.is_dir():
+                model_dir = Path(weights_root) / spec.model_id
+            if not model_dir.is_dir():
+>               raise BenchmarkRefusalError(
+                    f"Model weights directory not found for {spec.model_id} under {weights_root}",
+                    details={"model_id": spec.model_id, "weights_root": str(weights_root)},
+                )
+E               ainerzero.v9.teachers.benchmark_protocol.BenchmarkRefusalError: Model weights directory not found for da3-small under artifacts/teachers/da3
+
+src/ainerzero/v9/teachers/da3_controlled.py:577: BenchmarkRefusalError
+______________________ test_worker_lock_mutual_exclusion _______________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_worker_lock_mutual_exclus0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_worker_lock_mutual_exclus0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_worker_lock_mutual_exclus0/protocol.json')
+
+    def test_worker_lock_mutual_exclusion(
+        tmp_path: Path,
+        valid_t6_research_log: Path,
+        valid_statistical_protocol: Path,
+    ):
+        """When lock is held, competing execution must immediately exit with code 4 (LOCK_BUSY)."""
+        lock_path = tmp_path / "test_busy.lock"
+        store_path = tmp_path / "test_busy.db"
+    
+        # Acquire lock in parent context
+        with worker_lock(lock_path):
+            spec = DA3RunSpec(
+                model="da3-small",
+                wall_budget_seconds=100.0,
+                views=4,
+                research_log_path=valid_t6_research_log,
+                store_path=store_path,
+                lock_path=lock_path,
+                weights_root=Path("artifacts/teachers/da3"),
+                statistical_protocol_path=valid_statistical_protocol,
+            )
+    
+            args = argparse.Namespace(
+                mode="run",
+                teacher="t6",
+                model="da3-small",
+                wall_budget_seconds=100.0,
+                views=4,
+                research_log=valid_t6_research_log,
+                store_path=store_path,
+                lock_path=lock_path,
+                weights_root=Path("artifacts/teachers/da3"),
+                statistical_protocol=valid_statistical_protocol,
+            )
+    
+            report, code = da3_benchmark_command(args, adapter=FakeDA3BenchmarkAdapter())
+>           assert code == EXIT_LOCK_BUSY
+E           assert 1 == 4
+
+tests/test_teacher_da3_controlled.py:410: AssertionError
+____________________ test_coordinator_release_gate_and_cli _____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_coordinator_release_gate_0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_coordinator_release_gate_0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_coordinator_release_gate_0/protocol.json')
+
+    def test_coordinator_release_gate_and_cli(
+        tmp_path: Path,
+        valid_t6_research_log: Path,
+        valid_statistical_protocol: Path,
+    ):
+        """Coordinator release switch (--coordinator-release / --allow-model-execution) gate."""
+        env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"))
+    
+        # 1. Without release or test substitute, run is refused before reservation (exit 1)
+        res_unreleased = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "ainerzero.cli",
+                "teacher-da3",
+                "--mode",
+                "run",
+                "--research-log",
+                str(valid_t6_research_log),
+                "--statistical-protocol",
+                str(valid_statistical_protocol),
+                "--wall-budget-seconds",
+                "10.0",
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=_isolated_cwd(tmp_path),
+        )
+        assert res_unreleased.returncode == 1
+        data_unreleased = json.loads(res_unreleased.stdout)
+>       assert "coordinator execution release authorization not granted" in data_unreleased["error"]
+E       AssertionError: assert 'coordinator execution release authorization not granted' in 'Model weights directory not found for da3-small under artifacts/teachers/da3'
+
+tests/test_teacher_da3_controlled.py:548: AssertionError
+___ test_test_substitute_never_selects_the_real_pipeline_even_when_released ____
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_test_substitute_never_sel0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_test_substitute_never_sel0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_test_substitute_never_sel0/protocol.json')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1091f0b30>
+
+    def test_test_substitute_never_selects_the_real_pipeline_even_when_released(
+        tmp_path: Path, valid_t6_research_log: Path, valid_statistical_protocol: Path, monkeypatch
+    ):
+        """V9.T40：放行 + 授权 + views=18 + test_substitute。旧代码把 action 选成 real_pipeline，等于在单元测试里启动真实 DA3 前向
+        （test_coordinator_release_gate_and_cli 没真跑，纯粹因为 views=4 被 worker 的 views==18 魔数挡住）。
+        探针截获 worker_action，**不调用任何真实 worker**；走不到探针就失败（用 seen["action"]，没有默认值可以空过）。"""
+        from ainerzero.v9.teachers import da3_controlled as DC
+    
+        seen = {}
+    
+        def spy(spec, worker_action="real_pipeline", **kw):
+            seen["action"] = worker_action
+            if worker_action != "mock_run":
+                raise AssertionError(f"test substitute reached worker_action={worker_action!r}")
+            return {"status": "completed", "model_runs": 0, "is_mock": True}, {
+                "violation": None, "peak_rss_bytes": 0, "empty_group_proven": True, "pgid": 1, "worker_pid": 1,
+                "elapsed_seconds": 0.0, "returncode": 0, "stdout": "", "stderr": "", "confirmed_empty": True}
+    
+        monkeypatch.setattr(DC, "run_supervised_da3_worker", spy)
+        spec = DA3RunSpec(
+            model="da3-small", wall_budget_seconds=10.0, views=18, research_log_path=valid_t6_research_log,
+            store_path=tmp_path / "runs.db", lock_path=tmp_path / "t.lock", weights_root=Path("artifacts/teachers/da3"),
+            statistical_protocol_path=valid_statistical_protocol, coordinator_release=True, allow_model_execution=True,
+        )
+>       DC.execute_guarded_da3_benchmark(spec=spec, test_substitute=True, allow_custom_paths=True)
+
+tests/test_teacher_da3_controlled.py:600: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/da3_controlled.py:1036: in execute_guarded_da3_benchmark
+    check_da3_weights_manifest(spec.weights_root, model_norm)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+weights_root = PosixPath('artifacts/teachers/da3'), model_id = 'da3-small'
+
+    def check_da3_weights_manifest(
+        weights_root: Path,
+        model_id: str,
+    ) -> dict[str, Any]:
+        """Check DA3 model weights and configuration on disk against exact approved manifest."""
+        canonical_model = normalize_da3_model_name(model_id)
+        target_models = (
+            APPROVED_DA3_MODELS.values()
+            if canonical_model == "da3-all"
+            else [APPROVED_DA3_MODELS[canonical_model]]
+        )
+    
+        verified_models: list[dict[str, Any]] = []
+    
+        for spec in target_models:
+            model_dir = Path(weights_root) / spec.model_id.upper()
+            if not model_dir.is_dir():
+                model_dir = Path(weights_root) / spec.model_id
+            if not model_dir.is_dir():
+>               raise BenchmarkRefusalError(
+                    f"Model weights directory not found for {spec.model_id} under {weights_root}",
+                    details={"model_id": spec.model_id, "weights_root": str(weights_root)},
+                )
+E               ainerzero.v9.teachers.benchmark_protocol.BenchmarkRefusalError: Model weights directory not found for da3-small under artifacts/teachers/da3
+
+src/ainerzero/v9/teachers/da3_controlled.py:577: BenchmarkRefusalError
+_ test_pre_consume_calibration_views_check_rejects_non_calibration_views_before_consume _
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_pre_consume_calibration_v0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_pre_consume_calibration_v0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_pre_consume_calibration_v0/protocol.json')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10645c170>
+
+    def test_pre_consume_calibration_views_check_rejects_non_calibration_views_before_consume(
+        tmp_path: Path,
+        valid_t6_research_log: Path,
+        valid_statistical_protocol: Path,
+        monkeypatch,
+    ):
+        """V9.T42 (1): consume 前预检。
+        对 worker_action=real_pipeline，在 store.consume 之前校验视图数是否等于当前登记标定口径 (REGISTERED_CALIBRATION_VIEWS=18)。
+        非 18 必须直接拒绝、零扣账、零 worker 启动。"""
+        from ainerzero.v9.teachers.da3_worker import REGISTERED_CALIBRATION_VIEWS
+        import ainerzero.v9.teachers.da3_controlled as DC
+    
+        worker_called = []
+        def spy_worker(*args, **kwargs):
+            worker_called.append(True)
+            return {"status": "completed", "model_runs": 1}, {"violation": None}
+    
+        monkeypatch.setattr(DC, "run_supervised_da3_worker", spy_worker)
+    
+        store_file = tmp_path / "test_runs.db"
+        spec_invalid_views = DA3RunSpec(
+            model="da3-small",
+            wall_budget_seconds=10.0,
+            views=4,  # 不等于 REGISTERED_CALIBRATION_VIEWS (18)
+            research_log_path=valid_t6_research_log,
+            store_path=store_file,
+            lock_path=tmp_path / "test.lock",
+            weights_root=Path("artifacts/teachers/da3"),
+            statistical_protocol_path=valid_statistical_protocol,
+            coordinator_release=True,
+            allow_model_execution=True,
+        )
+    
+        # 1. 直接抛出 BenchmarkRefusalError
+>       with pytest.raises(BenchmarkRefusalError, match="Real DA3 pipeline execution requires views == 18"):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'Real DA3 pipeline execution requires views == 18'
+E         Actual message: 'Model weights directory not found for da3-small under artifacts/teachers/da3'
+
+tests/test_teacher_da3_controlled.py:688: AssertionError
+____ test_cli_substitute_with_release_selects_mock_run_and_defense_in_depth ____
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_cli_substitute_with_relea0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_cli_substitute_with_relea0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_cli_substitute_with_relea0/protocol.json')
+
+    def test_cli_substitute_with_release_selects_mock_run_and_defense_in_depth(
+        tmp_path: Path,
+        valid_t6_research_log: Path,
+        valid_statistical_protocol: Path,
+    ):
+        """V9.T42 (3): CLI 在 --test-substitute --coordinator-release 下应直接选 mock_run，
+        不再先选 real_pipeline 再被守卫拒；守卫本身保留（纵深防御），两层测试全覆盖。"""
+        env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"))
+    
+        # 层级 1 (CLI 层面)：--test-substitute 与 --coordinator-release 同时给出，CLI 必须选 mock_run 并成功完成
+        res_cli = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "ainerzero.cli",
+                "teacher-da3",
+                "--mode",
+                "run",
+                "--test-substitute",
+                "--coordinator-release",
+                "--allow-model-execution",
+                "--research-log",
+                str(valid_t6_research_log),
+                "--statistical-protocol",
+                str(valid_statistical_protocol),
+                "--store-path",
+                str(tmp_path / "cli_substitute.db"),
+                "--lock-path",
+                str(tmp_path / "cli_substitute.lock"),
+                "--wall-budget-seconds",
+                "10.0",
+                "--views",
+                "4",
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+            cwd=_isolated_cwd(tmp_path),
+        )
+>       assert res_cli.returncode == 0, f"CLI failed: {res_cli.stderr}\n{res_cli.stdout}"
+E       AssertionError: CLI failed: 
+E         {
+E           "status": "refused",
+E           "mode": "run",
+E           "error": "Model weights directory not found for da3-small under artifacts/teachers/da3",
+E           "details": {
+E             "model_id": "da3-small",
+E             "weights_root": "artifacts/teachers/da3"
+E           },
+E           "exit_code": 1
+E         }
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-m', 'ainerzero.cli', 'teacher-da3', '-...{\n    "model_id": "da3-small",\n    "weights_root": "artifacts/teachers/da3"\n  },\n  "exit_code": 1\n}\n', stderr='').returncode
+
+tests/test_teacher_da3_controlled.py:744: AssertionError
+_____ test_derived_real_pipeline_path_also_hits_the_calibration_views_gate _____
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_derived_real_pipeline_pat0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_derived_real_pipeline_pat0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_derived_real_pipeline_pat0/protocol.json')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095f2d20>
+
+    def test_derived_real_pipeline_path_also_hits_the_calibration_views_gate(
+        tmp_path: Path,
+        valid_t6_research_log: Path,
+        valid_statistical_protocol: Path,
+        monkeypatch,
+    ):
+        """V9.T44 (F-1)：派生路径也必须过 views 门。
+    
+        这里**不传** `worker_action`（默认 None），让 `action` 由 `is_released` 派生成
+        `real_pipeline`；`views=4 != REGISTERED_CALIBRATION_VIEWS(18)` 必须被拒，且拒因是
+        views（不是配额）、零扣账、零 worker 启动。
+    
+        靶子：T43 变异 **M-A**（把门改成只看显式 `worker_action`）。若门退化为"只在显式传时生效"，
+        这条派生路径就会一路走到 consume 与 worker，本测试因 `pytest.raises` 落空而变红。
+        """
+        import ainerzero.v9.teachers.da3_controlled as DC
+        from ainerzero.v9.teachers.da3_worker import REGISTERED_CALIBRATION_VIEWS
+    
+        worker_called: list = []
+    
+        def spy_worker(*args, **kwargs):
+            worker_called.append(True)
+            return {"status": "completed", "model_runs": 1}, {"violation": None}
+    
+        monkeypatch.setattr(DC, "run_supervised_da3_worker", spy_worker)
+    
+        store_file = tmp_path / "derived_path_runs.db"
+        spec = DA3RunSpec(
+            model="da3-small",
+            wall_budget_seconds=10.0,
+            views=4,  # != REGISTERED_CALIBRATION_VIEWS
+            research_log_path=valid_t6_research_log,
+            store_path=store_file,
+            lock_path=tmp_path / "derived_path.lock",
+            weights_root=Path("artifacts/teachers/da3"),
+            statistical_protocol_path=valid_statistical_protocol,
+            coordinator_release=True,
+            allow_model_execution=True,
+        )
+    
+>       with pytest.raises(BenchmarkRefusalError, match="Real DA3 pipeline execution requires views == 18") as caught:
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'Real DA3 pipeline execution requires views == 18'
+E         Actual message: 'Model weights directory not found for da3-small under artifacts/teachers/da3'
+
+tests/test_teacher_da3_controlled.py:813: AssertionError
+_____ test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason _____
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_views_gate_precedes_the_q0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_views_gate_precedes_the_q0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_views_gate_precedes_the_q0/protocol.json')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1095f3fb0>
+
+    def test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason(
+        tmp_path: Path,
+        valid_t6_research_log: Path,
+        valid_statistical_protocol: Path,
+        monkeypatch,
+    ):
+        """V9.T44 (项 1)：views 预检必须排在**累计配额**检查之前。
+    
+        用探针把台账投影成 T43 P2 的真实场景（累计 81 视图 / 上限 82），再请求 views=17：
+        配额会算出 81+17=98>82，而 views 口径也不符（17 != 18）。正确顺序下拒因必须是 views 口径，
+        不能是配额——否则运维会去查配额，而真原因是口径配错。
+        """
+        import ainerzero.v9.teachers.da3_controlled as DC
+    
+        monkeypatch.setattr(DC, "run_supervised_da3_worker", lambda *a, **k: (_ for _ in ()).throw(AssertionError("worker must not start")))
+        monkeypatch.setattr(DC, "get_effective_t6_max_views", lambda store_path: 82)
+        monkeypatch.setattr(DC, "query_t6_ledger_read_only", lambda store_path: (1320.0, 81))
+    
+        spec = DA3RunSpec(
+            model="da3-small",
+            wall_budget_seconds=10.0,
+            views=17,  # <= 单次配额 64，但 != 标定口径 18；且 81+17 > 82
+            research_log_path=valid_t6_research_log,
+            store_path=tmp_path / "quota_overlap_runs.db",
+            lock_path=tmp_path / "quota_overlap.lock",
+            weights_root=Path("artifacts/teachers/da3"),
+            statistical_protocol_path=valid_statistical_protocol,
+            coordinator_release=True,
+            allow_model_execution=True,
+        )
+        with pytest.raises(BenchmarkRefusalError) as caught:
+            DC.execute_guarded_da3_benchmark(spec=spec, worker_action="real_pipeline", allow_custom_paths=True)
+        message = str(caught.value)
+>       assert "Real DA3 pipeline execution requires views == 18" in message, message
+E       AssertionError: Model weights directory not found for da3-small under artifacts/teachers/da3
+E       assert 'Real DA3 pipeline execution requires views == 18' in 'Model weights directory not found for da3-small under artifacts/teachers/da3'
+
+tests/test_teacher_da3_controlled.py:860: AssertionError
+_ test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation _
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_released_non_substitute_r0')
+valid_t6_research_log = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_released_non_substitute_r0/RESEARCH_LOG.md')
+valid_statistical_protocol = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-146/test_released_non_substitute_r0/protocol.json')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10961bcb0>
+
+    def test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation(
+        tmp_path: Path,
+        valid_t6_research_log: Path,
+        valid_statistical_protocol: Path,
+        monkeypatch,
+    ):
+        """V9.T44 r2 纵深防御：即使有人绕过 CLI 直接调 execute_guarded，已放行的非替身运行也不能是 mock_run / simulate_*。
+    
+        零台账、零锁、零 worker：用 tmp 路径，断言 runs.db 与锁文件都没有被创建，worker 探针从未被调用。
+        """
+        from ainerzero.v9.teachers import da3_controlled as DC
+    
+        started: list = []
+        monkeypatch.setattr(DC, "run_supervised_da3_worker", lambda *a, **k: started.append((a, k)))
+        spec = DA3RunSpec(
+            model="da3-small", wall_budget_seconds=10.0, views=18, research_log_path=valid_t6_research_log,
+            store_path=tmp_path / "runs.db", lock_path=tmp_path / "t.lock", weights_root=Path("artifacts/teachers/da3"),
+            statistical_protocol_path=valid_statistical_protocol, coordinator_release=True, allow_model_execution=True,
+        )
+        for action in ("mock_run", "simulate_timeout", "simulate_high_rss", "simulate_grandchild_leak"):
+>           with pytest.raises(BenchmarkRefusalError, match="must execute the real pipeline"):
+E           AssertionError: Regex pattern did not match.
+E             Expected regex: 'must execute the real pipeline'
+E             Actual message: 'Model weights directory not found for da3-small under artifacts/teachers/da3'
+
+tests/test_teacher_da3_controlled.py:928: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_da3_calibration_runner.py::test_upstream_da3_still_gates_intrinsics_behind_extrinsics
+FAILED tests/test_da3_linewide_quota.py::test_linewide_budget_refusal_end_to_end
+FAILED tests/test_da3_supervision.py::test_lazy_worker_real_pipeline_routing
+FAILED tests/test_da3_t56_features.py::test_new_run_config_records_card_field
+FAILED tests/test_t28_registration_and_quota.py::test_wall_budget_gate_single_run_120_vs_121
+FAILED tests/test_t28_registration_and_quota.py::test_real_pipeline_calibration_views_gate_dynamic
+FAILED tests/test_teacher_da3_controlled.py::test_cumulative_budget_and_non_refundable_reservation
+FAILED tests/test_teacher_da3_controlled.py::test_worker_lock_mutual_exclusion
+FAILED tests/test_teacher_da3_controlled.py::test_coordinator_release_gate_and_cli
+FAILED tests/test_teacher_da3_controlled.py::test_test_substitute_never_selects_the_real_pipeline_even_when_released
+FAILED tests/test_teacher_da3_controlled.py::test_pre_consume_calibration_views_check_rejects_non_calibration_views_before_consume
+FAILED tests/test_teacher_da3_controlled.py::test_cli_substitute_with_release_selects_mock_run_and_defense_in_depth
+FAILED tests/test_teacher_da3_controlled.py::test_derived_real_pipeline_path_also_hits_the_calibration_views_gate
+FAILED tests/test_teacher_da3_controlled.py::test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason
+FAILED tests/test_teacher_da3_controlled.py::test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation
+SKIPPED [1] tests/test_da3_calibration_runner.py:350: T35 r2 saved real DA3 predictions not present
+SKIPPED [1] tests/test_da3_t56_features.py:291: .venv-t6 python not found at /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/f037a730-4890-42da-85bd-417637fa585c/scratchpad/gb/tree_b5_teachers/envs/teachers/.venv-t6/bin/python
+15 failed, 130 passed, 2 skipped in 88.63s (0:01:28)
+
+--- stderr ---

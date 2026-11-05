@@ -1,0 +1,383 @@
+........................................................................ [  1%]
+........................................................................ [  3%]
+........................................................................ [  5%]
+.............................F.......................................... [  7%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+................F.F..................................................... [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 31%]
+........................................................................ [ 33%]
+........................................................................ [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+.....sssssss.............s..............s..ss....ss...s................. [ 40%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 50%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 56%]
+.....................................................................F.. [ 58%]
+........................................................................ [ 60%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 66%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 71%]
+........................................................................ [ 73%]
+........................................................................ [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 85%]
+...........................s.....s...................................... [ 87%]
+........................................................................ [ 89%]
+...................................F.................................... [ 91%]
+........................................................................ [ 93%]
+..F..................................................................... [ 95%]
+...................................F.................................... [ 97%]
+........................................................................ [ 99%]
+....................................                                     [100%]
+=================================== FAILURES ===================================
+____________ test_identity_file_is_not_frozen_by_the_implementation ____________
+
+    def test_identity_file_is_not_frozen_by_the_implementation():
+        """Rejection fix: the identity file belongs to the tier-1 freeze; the
+        implementation must not write `registered_by` or claim a frozen status."""
+        identity = ROOT / cli.FULLPROJ_IDENTITY_PATH
+        if identity.exists():
+            record = json.loads(identity.read_text())
+>           assert "registered_by" not in record, "实现者不得代一级写 registered_by"
+E           AssertionError: 实现者不得代一级写 registered_by
+E           assert 'registered_by' not in {'baseline': {'condition_sha256': 'f5a1e45febb65ca28f2c3b1772e24173cb04aab87d5d6f7868ec2f759dbad519', 'name': 'M2n-M6'...62ca69dee7eae6', 'design_registration_sha256': '0a1f8dd020d6760024d2afff545291202f49e95076eaa6a4571c1f9a48ee1c03', ...}
+
+tests/test_action_preservation_fullproj.py:463: AssertionError
+___________________ test_native_module_inventory_is_complete ___________________
+
+    def test_native_module_inventory_is_complete():
+        found = {p.name for p in TESTS.glob("test_*.py") if _module_level_mlx(p)}
+>       assert found == set(conftest.NATIVE_MODULES)
+E       AssertionError: assert {'test_dynami...tion.py', ...} == {'test_dynami...odel.py', ...}
+E         
+E         Extra items in the left set:
+E         'test_e1_train_runner.py'
+E         'test_e1_p87_geometry.py'
+E         'test_e1_p93_revision.py'
+E         'test_e1_arms_net.py'
+E         Use -v to get more diff
+
+tests/test_cpu_collection.py:46: AssertionError
+____________________ test_default_collection_imports_no_mlx ____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-140/test_default_collection_import0')
+
+    def test_default_collection_imports_no_mlx(tmp_path):
+        (tmp_path / "sitecustomize.py").write_text(SENTINEL)
+        log = tmp_path / "mlx-attempts.jsonl"
+        env = dict(os.environ, A39_SENTINEL_LOG=str(log), PYTHONDONTWRITEBYTECODE="1",
+                   PYTHONPATH=os.pathsep.join([str(tmp_path), str(ROOT / "src")]))
+        env.pop("PYTEST_ADDOPTS", None)
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider",
+             "tests"], cwd=ROOT, env=env, capture_output=True, text=True, timeout=600)
+>       assert result.returncode == 0, result.stdout[-3000:] + result.stderr[-3000:]
+E       AssertionError: t-140/test_default_collection_import0/sitecustomize.py:9: in find_spec
+E             raise RuntimeError("A39 sentinel: real MLX import blocked: " + name)
+E         E   RuntimeError: A39 sentinel: real MLX import blocked: mlx
+E         _______ ERROR collecting tests/v9/experiments/test_s1_r7_d_candidate.py ________
+E         tests/v9/experiments/test_s1_r7_d_candidate.py:26: in <module>
+E             from ainerzero.v9.experiments.s1 import arms, identity as identity_module, spec, worker
+E         src/ainerzero/v9/experiments/s1/arms.py:26: in <module>
+E             import mlx.core as mx
+E         <frozen importlib._bootstrap>:1360: in _find_and_load
+E             ???
+E         <frozen importlib._bootstrap>:1322: in _find_and_load_unlocked
+E             ???
+E         <frozen importlib._bootstrap>:1262: in _find_spec
+E             ???
+E         /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-140/test_default_collection_import0/sitecustomize.py:9: in find_spec
+E             raise RuntimeError("A39 sentinel: real MLX import blocked: " + name)
+E         E   RuntimeError: A39 sentinel: real MLX import blocked: mlx
+E         =========================== short test summary info ============================
+E         ERROR tests/test_e1_analysis.py - RuntimeError: A39 sentinel: real MLX import...
+E         ERROR tests/test_e1_arms_net.py - RuntimeError: A39 sentinel: real MLX import...
+E         ERROR tests/test_e1_arms_nonnet.py - RuntimeError: A39 sentinel: real MLX imp...
+E         ERROR tests/test_e1_calendar_window.py - RuntimeError: A39 sentinel: real MLX...
+E         ERROR tests/test_e1_contact_geometry.py - RuntimeError: A39 sentinel: real ML...
+E         ERROR tests/test_e1_data_runner.py - RuntimeError: A39 sentinel: real MLX imp...
+E         ERROR tests/test_e1_entry.py - RuntimeError: A39 sentinel: real MLX import bl...
+E         ERROR tests/test_e1_eval_runner.py - RuntimeError: A39 sentinel: real MLX imp...
+E         ERROR tests/test_e1_export.py - RuntimeError: A39 sentinel: real MLX import b...
+E         ERROR tests/test_e1_final_entry.py - RuntimeError: A39 sentinel: real MLX imp...
+E         ERROR tests/test_e1_identity.py - RuntimeError: A39 sentinel: real MLX import...
+E         ERROR tests/test_e1_metrics.py - RuntimeError: A39 sentinel: real MLX import ...
+E         ERROR tests/test_e1_p87_geometry.py - RuntimeError: A39 sentinel: real MLX im...
+E         ERROR tests/test_e1_p93_revision.py - RuntimeError: A39 sentinel: real MLX im...
+E         ERROR tests/test_e1_prereg.py - RuntimeError: A39 sentinel: real MLX import b...
+E         ERROR tests/test_e1_prior.py - RuntimeError: A39 sentinel: real MLX import bl...
+E         ERROR tests/test_e1_prior_box.py - RuntimeError: A39 sentinel: real MLX impor...
+E         ERROR tests/test_e1_train_runner.py - RuntimeError: A39 sentinel: real MLX im...
+E         ERROR tests/test_e1_wiring.py - RuntimeError: A39 sentinel: real MLX import b...
+E         ERROR tests/v9/experiments/test_s1_no_update.py - RuntimeError: A39 sentinel:...
+E         ERROR tests/v9/experiments/test_s1_pacer_duty.py - RuntimeError: A39 sentinel...
+E         ERROR tests/v9/experiments/test_s1_r7_d_candidate.py - RuntimeError: A39 sent...
+E         !!!!!!!!!!!!!!!!!!! Interrupted: 22 errors during collection !!!!!!!!!!!!!!!!!!!
+E         3432/3437 tests collected (5 deselected), 22 errors in 3.18s
+E         
+E       assert 2 == 0
+E        +  where 2 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-m', 'pytest', '--collect-only', '-q', ...rors during collection !!!!!!!!!!!!!!!!!!!\n3432/3437 tests collected (5 deselected), 22 errors in 3.18s\n', stderr='').returncode
+
+tests/test_cpu_collection.py:63: AssertionError
+__________________ test_run_when_quiet_preflight_integration ___________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-140/test_run_when_quiet_preflight_0')
+
+    def test_run_when_quiet_preflight_integration(tmp_path):
+        import importlib.util
+    
+        script_path = Path(__file__).resolve().parents[1] / "artifacts/reports/E24-mixed/run_when_quiet.py"
+        spec = importlib.util.spec_from_file_location("rwq", script_path)
+        rwq = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rwq)
+    
+        # The registered E24 anchors stay the old freeze. Success uses a temp snapshot.
+        assert rwq.REGISTERED_FROZEN_DIGESTS["src/ainerzero/cli.py"] == (
+            "544a512241fd26d974d747c6c5636ccb6be36ac0b569a445c966d09ee35fac51"
+        )
+        snapshot = {}
+        for index in range(13):
+            path = tmp_path / f"snapshot-{index}.bin"
+            path.write_bytes(f"known-snapshot-{index}".encode())
+            snapshot[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
+    
+        # Normal lightweight preflight check passes
+        mock_free_gpu = {"state": "free", "busy_reasons": [], "policy_revision": POLICY_REVISION}
+        res = rwq.preflight_check(frozen_digests=snapshot, external_gpu_obs=mock_free_gpu)
+        assert res["status"] == "passed"
+        assert res["available_gib"] >= 16.0
+        assert res["verified_identities_count"] == 13
+        assert res["is_heavy"] is False
+        assert res["gpu_observation"]["state"] == "free"
+    
+        # Lightweight check allows busy GPU
+        mock_busy_gpu = {"state": "busy", "busy_reasons": ["busy"], "policy_revision": POLICY_REVISION}
+        res_light_busy = rwq.preflight_check(frozen_digests=snapshot, external_gpu_obs=mock_busy_gpu, is_heavy=False)
+        assert res_light_busy["status"] == "passed"
+    
+        # Heavy check rejects busy GPU
+        with pytest.raises(PreflightError, match="External GPU policy rejected launch"):
+            rwq.preflight_check(frozen_digests=snapshot, external_gpu_obs=mock_busy_gpu, is_heavy=True)
+    
+        with pytest.raises(PreflightError, match="below required"):
+            rwq.preflight_check(min_memory_gib=999999.0, frozen_digests=snapshot)
+    
+        bad = dict(snapshot)
+        bad[next(iter(bad))] = "bad" * 16
+        with pytest.raises(PreflightError, match="Frozen identity digest mismatch detected"):
+            rwq.preflight_check(frozen_digests=bad)
+    
+        missing = dict(snapshot)
+        missing[str(tmp_path / "absent.bin")] = "ab" * 32
+        with pytest.raises(PreflightError, match="does not exist"):
+            rwq.preflight_check(frozen_digests=missing)
+    
+        with pytest.raises(PreflightError, match="Frozen identity digest mismatch detected"):
+            rwq.preflight_check()
+    
+        with pytest.raises(PreflightError, match="Working tree git status changed"):
+>           rwq.preflight_check(frozen_digests=snapshot, expected_git_sha="outdated_git_status_sha")
+
+tests/test_preflight.py:217: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+artifacts/reports/E24-mixed/run_when_quiet.py:131: in preflight_check
+    verified = verify_frozen_identities(
+src/ainerzero/runtime/preflight.py:215: in verify_frozen_identities
+    actual_git = get_git_status_sha256(cwd=cwd)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/ainerzero/runtime/preflight.py:175: in get_git_status_sha256
+    proc = subprocess.run(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+input = None, capture_output = True, timeout = None, check = True
+popenargs = (['git', 'status', '--porcelain=v1'],)
+kwargs = {'cwd': PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/f037a730-4890-42da-85bd-417637fa585c/scratchpad/gb/tree_final_env'), 'text': True, 'stdout': -1, 'stderr': -1}
+
+    def run(*popenargs,
+            input=None, capture_output=False, timeout=None, check=False, **kwargs):
+        """Run command with arguments and return a CompletedProcess instance.
+    
+        The returned instance will have attributes args, returncode, stdout and
+        stderr. By default, stdout and stderr are not captured, and those attributes
+        will be None. Pass stdout=PIPE and/or stderr=PIPE in order to capture them,
+        or pass capture_output=True to capture both.
+    
+        If check is True and the exit code was non-zero, it raises a
+        CalledProcessError. The CalledProcessError object will have the return code
+        in the returncode attribute, and output & stderr attributes if those streams
+        were captured.
+    
+        If timeout is given, and the process takes too long, a TimeoutExpired
+        exception will be raised.
+    
+        There is an optional argument "input", allowing you to
+        pass bytes or a string to the subprocess's stdin.  If you use this argument
+        you may not also use the Popen constructor's "stdin" argument, as
+        it will be used internally.
+    
+        By default, all communication is in bytes, and therefore any "input" should
+        be bytes, and the stdout and stderr will be bytes. If in text mode, any
+        "input" should be a string, and stdout and stderr will be strings decoded
+        according to locale encoding, or by "encoding" if set. Text mode is
+        triggered by setting any of text, encoding, errors or universal_newlines.
+    
+        The other arguments are the same as for the Popen constructor.
+        """
+        if input is not None:
+            if kwargs.get('stdin') is not None:
+                raise ValueError('stdin and input arguments may not both be used.')
+            kwargs['stdin'] = PIPE
+    
+        if capture_output:
+            if kwargs.get('stdout') is not None or kwargs.get('stderr') is not None:
+                raise ValueError('stdout and stderr arguments may not be used '
+                                 'with capture_output.')
+            kwargs['stdout'] = PIPE
+            kwargs['stderr'] = PIPE
+    
+        with Popen(*popenargs, **kwargs) as process:
+            try:
+                stdout, stderr = process.communicate(input, timeout=timeout)
+            except TimeoutExpired as exc:
+                process.kill()
+                if _mswindows:
+                    # Windows accumulates the output in a single blocking
+                    # read() call run on child threads, with the timeout
+                    # being done in a join() on those threads.  communicate()
+                    # _after_ kill() is required to collect that and add it
+                    # to the exception.
+                    exc.stdout, exc.stderr = process.communicate()
+                else:
+                    # POSIX _communicate already populated the output so
+                    # far into the TimeoutExpired exception.
+                    process.wait()
+                raise
+            except:  # Including KeyboardInterrupt, communicate handled that.
+                process.kill()
+                # We don't call process.wait() as .__exit__ does that for us.
+                raise
+            retcode = process.poll()
+            if check and retcode:
+>               raise CalledProcessError(retcode, process.args,
+                                         output=stdout, stderr=stderr)
+E               subprocess.CalledProcessError: Command '['git', 'status', '--porcelain=v1']' returned non-zero exit status 128.
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py:571: CalledProcessError
+_ test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original _
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-140/test_the_real_ledger_copy_repr0')
+
+    def test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original(
+        tmp_path,
+    ):
+        """Byte-isolated copy: the age rule blows the 4 h cap, the r7 rule does not."""
+        import hashlib
+    
+        real = Path(spec.REGISTERED_HOST_LEDGER)
+        before = hashlib.sha256(real.read_bytes()).hexdigest()
+        copy = tmp_path / "control-copy.sqlite3"
+        shutil.copyfile(real, copy)
+        before_copy = hashlib.sha256(copy.read_bytes()).hexdigest()
+    
+        connection = sqlite3.connect(f"file:{copy}?mode=ro", uri=True)
+        try:
+            raw = list(
+                connection.execute(
+                    "SELECT run_id, state, created_at, updated_at, active_seconds FROM runs"
+                )
+            )
+        finally:
+            connection.close()
+        runs = [
+            SimpleNamespace(
+                run_id=run_id,
+                state=state,
+                created_at=created_at,
+                updated_at=updated_at,
+                reserved_active_seconds=active_seconds,
+            )
+            for run_id, state, created_at, updated_at, active_seconds in raw
+        ]
+        now = time.time()
+        conservative = worker.phase_total_wall_seconds(runs, instant=now)
+        age_based = 0.0
+        reserved_based = 0.0
+        for run in runs:
+            created = worker._parse_timestamp(run.created_at)
+            age_based += max(0.0, now - created)
+            reserved_based += max(0.0, float(run.reserved_active_seconds or 0.0))
+    
+        assert age_based > spec.TIMING["phase_wall_max_seconds"], "the r6 bug must be reproducible"
+>       assert conservative == pytest.approx(reserved_based)
+E       assert 21361.23151628515 == 8040.877581480831 ± 0.00804088
+E         
+E         comparison failed
+E         Obtained: 21361.23151628515
+E         Expected: 8040.877581480831 ± 0.00804088
+
+tests/v9/experiments/test_s1_r7_phase_accounting.py:271: AssertionError
+____________________________ test_cpu_only_imports _____________________________
+
+    def test_cpu_only_imports():
+        forbidden = {"mlx", "torch", "onnxruntime", "tensorflow", "jax"}
+>       assert not any(name.split(".")[0] in forbidden for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_cpu_only_imports.<locals>.<genexpr> at 0x10ddaac00>)
+
+tests/v9/geometry/test_canonical.py:116: AssertionError
+__________________________ test_imports_are_cpu_only ___________________________
+
+    def test_imports_are_cpu_only():
+>       assert not any(name.split('.')[0] in {'mlx', 'torch', 'onnxruntime', 'tensorflow'} for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_imports_are_cpu_only.<locals>.<genexpr> at 0x10c467100>)
+
+tests/v9/geometry/test_geometry.py:260: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_action_preservation_fullproj.py::test_identity_file_is_not_frozen_by_the_implementation
+FAILED tests/test_cpu_collection.py::test_native_module_inventory_is_complete
+FAILED tests/test_cpu_collection.py::test_default_collection_imports_no_mlx
+FAILED tests/test_preflight.py::test_run_when_quiet_preflight_integration - s...
+FAILED tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original
+FAILED tests/v9/geometry/test_canonical.py::test_cpu_only_imports - assert no...
+FAILED tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only - assert...
+SKIPPED [1] tests/test_gridlab_b3_bypass.py:31: closeout root not found
+SKIPPED [1] tests/test_gridlab_b3_bypass.py:52: r2 root not found
+SKIPPED [1] tests/test_gridlab_b3_bypass.py:77: closeout root not found
+SKIPPED [1] tests/test_gridlab_b3_bypass.py:97: r2 root not found
+SKIPPED [1] tests/test_gridlab_b3_bypass.py:122: r2 root not found
+SKIPPED [1] tests/test_gridlab_b3_bypass.py:165: closeout root not found
+SKIPPED [1] tests/test_gridlab_b3_bypass.py:184: r2 root not found
+SKIPPED [1] tests/test_gridlab_s06.py:195: S06 sample not generated
+SKIPPED [1] tests/test_gridlab_s07.py:192: S07 sample not generated
+SKIPPED [1] tests/test_gridlab_s07_r1.py:28: closeout not generated
+SKIPPED [1] tests/test_gridlab_s07_r1.py:44: closeout not generated
+SKIPPED [1] tests/test_gridlab_s07_r2.py:41: S07-R2 output not generated
+SKIPPED [1] tests/test_gridlab_s07_r2.py:56: S07-R2 output not generated
+SKIPPED [1] tests/test_gridlab_s07_r2.py:141: S07-R2 output not generated
+SKIPPED [1] tests/v9/experiments/test_s1_r12_registration.py:159: the r11 artifacts are not present in this checkout
+SKIPPED [1] tests/v9/experiments/test_s1_r13_registration.py:154: the r12 artifacts are not present in this checkout
+7 failed, 3685 passed, 16 skipped, 5 deselected in 270.37s (0:04:30)
+
+--- stderr ---

@@ -2365,3 +2365,27 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
 - **保留：** `artifacts/v9/e1/phase2/`、`artifacts/v9/e1/phase2-r2/` 与各报告目录都作为已交付证据保留，不删除。
 - **对架构：** 只记录证据，见结论 §5，不改 ARCHITECTURE_V9；是否修订由用户决定。
 - **推迟：** 两处会改登记源码的小修，见结论 §8。
+
+## R20261106-git-batch-intake：工作树分批入库（Claude，2026-11-06 北京时间）
+
+- **用户授权（原话）：** 「你自动完成所有操作全权处理 保证模型准确与质量」。本次只提交，不推送，不改写历史。
+- **结果：** 12 批提交 `54ebf62`…`52f15b8`，另有一次收尾提交。方案与验证见 `reports/git-batch-commit-20261105/PLAN.md`，提交清单见同目录 `COMMITS.md`。
+- **验证：**
+  - 每批隔离树都能导入，测试要么通过，要么只剩已证实的既有失败或本机环境缺失。
+  - 最终树跑全量：3613 passed。叠加本机环境后 3685 passed / 7 failed，7 条均为既有问题。
+  - 已提交的树与验证树逐字节一致。
+- **不入库：**
+  - 5,772 个数据集、检查点、数组、大于 1 MB 的文件和符号链接，只登记 SHA256。
+  - envs 大件、`.tmp`、`.workbuddy-ai`、根目录 relay 残留，已写入 `.gitignore`。
+  - `probe.py` 去留待一级决定。
+- **规则 8 相关事件：**
+  - final --env 隔离验证时，旧证据库以符号链接叠加进树。M2 测试因此重写了 3 个实盘文件：`artifacts/reports/E25-weighted/source-compat/duty-migration.json`、`E25-weighted/source-full-chain/probe-log.json`、`E27-onestep/source-full-chain/probe-log.json`。
+  - 这 3 个文件大小不变，内容都是确定值。E27 与 10-14 登记的 SHA 一致；E25 与 10-13 A13 登记的字段一致。
+  - A2 基线 497 个钉住文件全部完好。详见 PLAN.md §3.1。
+- **待一级处理（PLAN.md §6）：**
+  - E1/S1 在模块级导入 MLX，但没有登记进 `NATIVE_MODULES`，默认 CPU 入口因此失败 2+2 条；
+  - M2 测试往 `artifacts/reports` 写输出；
+  - S1 r7 账本测试绑定实盘账本的当前状态；
+  - fullproj 身份断言已过时；
+  - E1/S1 测试写死了 `REGISTERED_HOST_ROOT`；
+  - A2 基线清单需要刷新。

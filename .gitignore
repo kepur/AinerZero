@@ -28,3 +28,30 @@ artifacts/
 *.bak
 *.bak-*
 *_backup_*
+
+# --- 2026-11-05 batch commit hygiene (see reports/git-batch-commit-20261105/PLAN.md) ---
+# scratch dirs and other tools' private state
+.tmp/
+.workbuddy-ai/
+# relay agent runtime files written at the repo root; authoritative copies live under reports/
+/.relay_profile_*.json
+/profile.json
+/profile-*.json
+/报告.md
+/指标.json
+/metrics.json
+# teacher environments: wheels, caches, weights and third-party checkouts stay local
+# (glue scripts under envs/teachers/t*/ are tracked; add new ones explicitly)
+envs/teachers/src/
+envs/teachers/t*/src/
+envs/teachers/t*/weights/
+envs/teachers/t4/wheelhouse-*/
+envs/teachers/t4/uv-cache/
+envs/teachers/t4/editables-wheel/
+envs/teachers/t6/Depth-Anything-3/
+# bulk evidence data stays on disk, fingerprinted in the batch-commit excluded manifest;
+# fixtures that tests read are tracked explicitly (git add -f for new ones)
+reports/**/datasets/
+reports/**/checkpoints/
+reports/**/*.npy
+reports/**/*.npz
