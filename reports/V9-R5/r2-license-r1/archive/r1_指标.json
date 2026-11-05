@@ -1,0 +1,51 @@
+{
+  "task_id": "ainerzero.V9.R9",
+  "agent": "glm-4xq7",
+  "params": "v0 ({} 照用未改)",
+  "scope": {
+    "changed": ["reports/V9-R5/validate_registry_r5.py", "reports/V9-R5/r6-license-guard/ (新增)"],
+    "untouched": ["docs/research/adapter_registry.json", "docs/research/ADAPTER_REGISTRY.md", "许可政策/训练资格"],
+    "no_network_download_model_run": true,
+    "no_commit_push_deploy": true
+  },
+  "shas": {
+    "old_validator_archived": "077238dfa8952d830cea0cdc820b0276dc0c20ef540c031f4f5fa2af7d79f0d9",
+    "new_validator": "a90c0ccb8e20dc76faef85471802cc9f9f30d1d493f3b82755f28b3d2e56e071",
+    "probe_old_miss": "7ba2905e2e85625ab3859d9b598b0f111642b113bbd4ad8431683025643e1301",
+    "registry_json_unchanged": "5c1564b0332f1d4ccf82e13c342490b716c88683fb1633db5f64d34e6958b6b5",
+    "registry_md_unchanged": "332c503632953c3cb66fb9ee3f4993d0319fd935be8141920740ed642e334ca1"
+  },
+  "archive": {
+    "dir": "reports/V9-R5/r6-license-guard/archive/",
+    "items": {"validate_registry_r5_old.py": "077238df…", "报告.md": "1146d636…", "指标.json": "d803f2d8…", "SHA256SUMS.txt": "73b64d09…"},
+    "manifest": "reports/V9-R5/r6-license-guard/ARCHIVE_MANIFEST.json（双层 SHA 核对一致）"
+  },
+  "stages": {
+    "baseline_old_positive": {"rc": 0, "log": "baseline-old-positive.log", "note": "51 条全过"},
+    "baseline_old_mutate": {"rc": 0, "log": "baseline-old-mutate.log", "note": "M01–M18 18/18 红"},
+    "old_leak_probe": {
+      "rc": 0, "log": "probe-old-miss.log", "miss_count": 4,
+      "note": "旧校验器对 dino-wm/pldm/pushforward/slotssms 的 MIT→Apache 篡改 4/4 未捕获——缺口复现成立"
+    },
+    "new_positive": {"rc": 0, "log": "new-positive.log", "tail": "…R9-LIC 四条 MIT 代码许可定点通过"},
+    "new_mutate": {
+      "rc": 0, "log": "new-mutate.log", "mutations": 22, "red": 22, "leak": 0,
+      "m19_22_captured_by": ["R9-LIC[dino-wm]", "R9-LIC[pldm]", "R9-LIC[pushforward]", "R9-LIC[slotssms]"],
+      "exclusive_capture_enforced": "驱动对 idx 19–22 校验 AssertionError 必含对应 marker，否则 exit 1；未触发"
+    },
+    "guard_closed_leak_mode": {
+      "rc": 0, "log": "leak-mode.log", "env": "AINER_V9_R9_DISABLE_R9LIC=1",
+      "red_for_m01_m18": 18, "leak_ok_for_m19_m22": 4,
+      "conclusion": "守卫关闭时四条篡改不再变红且无他处规则顺带捕获；旧 18 项合同未破坏"
+    }
+  },
+  "targets": {
+    "dino-wm": {"license": "MIT", "status": "verified", "repo": "github.com/gaoyuezhou/dino_wm"},
+    "pldm": {"license": "MIT", "status": "verified", "repo": "github.com/vladisai/PLDM"},
+    "pushforward": {"license": "MIT", "status": "verified", "repo": "github.com/brandstetter-johannes/MP-Neural-PDE-Solve"},
+    "slotssms": {"license": "MIT", "status": "verified", "repo": "github.com/JindongJiang/SlotSSMs"}
+  },
+  "worktree_note": "git status 中 docs/research/* 的 M 与 reports/V9-R5/ 的 ?? 为此前验收会话遗留（mtime 早于本会话），非本次改动",
+  "leftover_processes": "无（探针/校验均为前台同步短命进程）",
+  "verdict": "完成"
+}

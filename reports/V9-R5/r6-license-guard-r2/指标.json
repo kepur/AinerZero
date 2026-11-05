@@ -1,0 +1,78 @@
+{
+  "task_id": "ainerzero.V9.R9",
+  "round": "r2 收口（按 R10 打回修正；agent glm-4xq7）",
+  "rejection_addressed": "R10 只读反例 12/12：r1 \"MIT\" in value 子串伪阳性（NOT-MIT / Apache-2.0 WITH MIT exception / MIT OR Apache-2.0 / [\"MIT\"]）",
+  "archive_r1": {
+    "dir": "reports/V9-R5/r2-license-r1/",
+    "manifest": "reports/V9-R5/r2-license-r1/ARCHIVE_MANIFEST.json",
+    "items": 12,
+    "key_shas": {
+      "r1_validator": "a90c0ccb8e20dc76faef85471802cc9f9f30d1d493f3b82755f28b3d2e56e071",
+      "r1_报告": "26d1996eb148d48a",
+      "r1_指标": "e10ea92db81ecb20"
+    },
+    "src_equal_archived": true,
+    "original_paths_untouched": true
+  },
+  "changes": {
+    "files": [
+      "reports/V9-R5/validate_registry_r5.py"
+    ],
+    "assert_now": "isinstance(value, str) and value == \"MIT\"（无 strip；非字符串一律拒）",
+    "mutations": {
+      "total": 26,
+      "kept": "M01–M22 原样",
+      "new": [
+        "M23 Apache-2.0 WITH MIT exception",
+        "M24 MIT OR Apache-2.0",
+        "M25 NOT-MIT",
+        "M26 [\"MIT\"] 列表"
+      ]
+    },
+    "exclusive_capture": "M19–M26 全部要求 R9-LIC[<id>] 专属捕获，他处顺带变红即 exit 1",
+    "guard_closed": "成功行打印『REGISTRY R5 LEAK-MODE【故意漏检模式】…不代表通过』；不再打印 R9-LIC 通过；--mutate 漏检核对对象 M19–M26",
+    "json_md_policy_scope_unchanged": true
+  },
+  "stages_r2": {
+    "positive": {
+      "rc": 0,
+      "log": "positive.log",
+      "tail": "…R9-LIC 四条 MIT（确切字符串 'MIT'，非字符串/子串一律拒）定点通过。"
+    },
+    "mutate": {
+      "rc": 0,
+      "log": "mutate.log",
+      "red": 26,
+      "leak": 0,
+      "tail": "=== 全部 26 项改坏变红对照均生效 ==="
+    },
+    "leak_mode_positive": {
+      "rc": 0,
+      "log": "positive-leak-mode.log",
+      "tail": "REGISTRY R5 LEAK-MODE【故意漏检模式】…不代表通过。监管盲区条目：dino-wm, pldm, pushforward, slotssms"
+    },
+    "leak_mode_mutate": {
+      "rc": 0,
+      "log": "leak-mode.log",
+      "red_for_m01_m18": 18,
+      "leak_ok_for_m19_m26": 8,
+      "tail": "=== 全部 18 项改坏变红对照均生效 ==="
+    }
+  },
+  "shas_after": {
+    "validator_r2": "6930c267b0fe9c93dc466848ceef0331c1d9abb9c3367b208f76c75e3b4a08f0",
+    "registry_json_unchanged": "5c1564b0332f1d4ccf82e13c342490b716c88683fb1633db5f64d34e6958b6b5",
+    "registry_md_unchanged": "332c503632953c3cb66fb9ee3f4993d0319fd935be8141920740ed642e334ca1"
+  },
+  "targets_unchanged": {
+    "dino-wm": "MIT",
+    "pldm": "MIT",
+    "pushforward": "MIT",
+    "slotssms": "MIT",
+    "note": "登记表四条许可值本轮零改动（字节不变）；r2 不做新许可推断/上游抓取"
+  },
+  "leftover_processes": "无（全部前台同步短命进程）",
+  "report_sha256": "56049968ec5e9def91a2a5975bb79904cfd0c76776297250663445c2a29d14f9（冻结本报告 reports/V9-R5/r6-license-guard-r2/报告.md 的最终 SHA）",
+  "verdict": "完成（待 R10 非作者复核）",
+  "author_scope_note": "作者自证口径：本棒只改校验器一个文件；登记表 JSON/MD 字节未动；正式复核由非作者 R10 按 SHA 现值独立执行"
+}
