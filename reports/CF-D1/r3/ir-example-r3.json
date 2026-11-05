@@ -1,0 +1,335 @@
+{
+  "schema": "awz.production_ir/v0",
+  "status": "approved",
+  "digest": "68e829733237f8bd07cd9323d3b080e10a7a907ea7777c510e437fbfbb562b1b",
+  "non_goals": [
+    "world_change_commit",
+    "blender_depsgraph",
+    "world_sparse_evaluation",
+    "scheduler",
+    "world_library"
+  ],
+  "plan_ref": {
+    "plan_id": "plan.a",
+    "revision": 3,
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "world_snapshot_ref": {
+    "world_version": "w.v1",
+    "scene_id": "scene.a",
+    "revision": 5,
+    "snapshot_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "source_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "performance_refs": [
+    {
+      "performance_id": "perf.body",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+  ],
+  "action_refs": [
+    {
+      "action_id": "act.walk",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "rig": "rig.mannequin.v1"
+    }
+  ],
+  "render_jobs": [
+    {
+      "job_id": "job.master",
+      "camera_id": "cam.main",
+      "fps": 24,
+      "frame_range": [
+        0,
+        360
+      ],
+      "output": "out/master"
+    }
+  ],
+  "order": [
+    "plan",
+    "snapshot@5",
+    "action.act.walk@5",
+    "performance.perf.body@5",
+    "solve@5",
+    "candidate@5.0",
+    "adopt@5",
+    "approved@6",
+    "render.job.master@6"
+  ],
+  "nodes": [
+    {
+      "node_id": "action.act.walk@5",
+      "kind": "action",
+      "generation": 5,
+      "deps": [
+        "snapshot@5"
+      ],
+      "ref": {
+        "action_id": "act.walk",
+        "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "rig": "rig.mannequin.v1"
+      },
+      "params": {},
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "94dcc65d52b157526e5f98f230f3838da2ced40a34405c2a9f12a324f59fc31f",
+      "dependency_digest": "982a9ee4456d1c72d7deaa2d445f37f137536783cd47e3f8ba3025c3a15a264d"
+    },
+    {
+      "node_id": "adopt@5",
+      "kind": "adopt",
+      "generation": 5,
+      "deps": [
+        "candidate@5.0",
+        "snapshot@5"
+      ],
+      "ref": {
+        "adoption_id": "adopt.a",
+        "observed_base": {
+          "world_version": "w.v1",
+          "scene_id": "scene.a",
+          "revision": 5,
+          "snapshot_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "source_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "approved_revision": 6
+      },
+      "params": {},
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "68805858557d5b31cda5195e52ad9d843da0c3b5579bf693c039577e090a252d",
+      "dependency_digest": "df741fd37252868df356666f8c5b0a5d8200f7532d1a206320366eb900740fa3"
+    },
+    {
+      "node_id": "approved@6",
+      "kind": "approved",
+      "generation": 6,
+      "deps": [
+        "adopt@5"
+      ],
+      "ref": {
+        "approved_id": "approved.a",
+        "revision": 6,
+        "payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "params": {},
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "381dff82dcdfaf72908659c6820f0b7a5a85c41e09c777a4b096d722ead06350",
+      "dependency_digest": "33db2492a6341ac8271431ce80180d6ac9361afc64960f65e7a282824a3d5557"
+    },
+    {
+      "node_id": "candidate@5.0",
+      "kind": "candidate",
+      "generation": 5,
+      "deps": [
+        "solve@5"
+      ],
+      "ref": {
+        "candidate_id": "cand.a",
+        "take": 0,
+        "base_revision": 5,
+        "payload_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "params": {},
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "9288aa2896c081e6a609f9e1c184d0620bb95b2f6fd6968b683b0c27f06834f7",
+      "dependency_digest": "d59195a8b6102c0127f413b5e5ab2b29e2dcb93bcb537b885d9cf7223a28e0a2"
+    },
+    {
+      "node_id": "performance.perf.body@5",
+      "kind": "performance",
+      "generation": 5,
+      "deps": [
+        "snapshot@5"
+      ],
+      "ref": {
+        "performance_id": "perf.body",
+        "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      "params": {
+        "tracks": [
+          "body",
+          "gaze"
+        ]
+      },
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "849081c7e494b847ca768c74407d341368720098c6d36850ce6a22717bec6caf",
+      "dependency_digest": "dbf0d7355fea748761c1667258e7fc39a700eb48e1da6f0176e594a7db45c20b"
+    },
+    {
+      "node_id": "plan",
+      "kind": "plan",
+      "generation": 0,
+      "deps": [],
+      "ref": {
+        "plan_id": "plan.a",
+        "revision": 3,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "params": {},
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "7adaaafe38a12ce351b830bdfff2f889a057feb7b73cd60e33534dd40a3e3b51",
+      "dependency_digest": "28c5ec19f2720cb8336a395b3fefef06c7a44229a72701b1d0ea07b3fcfac1f9"
+    },
+    {
+      "node_id": "render.job.master@6",
+      "kind": "render",
+      "generation": 6,
+      "deps": [
+        "approved@6"
+      ],
+      "ref": {
+        "job_id": "job.master",
+        "camera_id": "cam.main",
+        "fps": 24,
+        "frame_range": [
+          0,
+          360
+        ],
+        "output": "out/master"
+      },
+      "params": {},
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "cdbefc927c1fd9b622971b9946bbd56c49b80ca90a7653642c30850f00ec69f5",
+      "dependency_digest": "67d71924dac5017fe84afd6a0a2e068b5ce1bce446fabd09c22a0b3f36738b54"
+    },
+    {
+      "node_id": "snapshot@5",
+      "kind": "snapshot",
+      "generation": 5,
+      "deps": [
+        "plan"
+      ],
+      "ref": {
+        "world_version": "w.v1",
+        "scene_id": "scene.a",
+        "revision": 5,
+        "snapshot_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      "params": {},
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "fef38122b731d20efdf27beba00fb982b2da209ca00f3b782f672012313cc3eb",
+      "dependency_digest": "c2aba1e2b994fa8bab12e42f1ae243645664dc32004abb9bd4b06c1ff8fb651a"
+    },
+    {
+      "node_id": "solve@5",
+      "kind": "solve",
+      "generation": 5,
+      "deps": [
+        "action.act.walk@5",
+        "performance.perf.body@5",
+        "snapshot@5"
+      ],
+      "ref": {
+        "solver": "awz.solve/v0",
+        "seed": 11,
+        "params_digest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "params": {},
+      "writes": [],
+      "status": "ok",
+      "reject_reason": null,
+      "identity": "b06dd6f5a9f3d7c35309cd67f9a32fbe18f117839b4389409c6ede233ce11e03",
+      "dependency_digest": "b16edcd1f07be780dc4f2678a9c282d69e56df8a63fb7d422b4ce577a8821cbd"
+    }
+  ],
+  "dependency_summary": {
+    "action.act.walk@5": {
+      "identity": "94dcc65d52b157526e5f98f230f3838da2ced40a34405c2a9f12a324f59fc31f",
+      "dependency_digest": "982a9ee4456d1c72d7deaa2d445f37f137536783cd47e3f8ba3025c3a15a264d"
+    },
+    "adopt@5": {
+      "identity": "68805858557d5b31cda5195e52ad9d843da0c3b5579bf693c039577e090a252d",
+      "dependency_digest": "df741fd37252868df356666f8c5b0a5d8200f7532d1a206320366eb900740fa3"
+    },
+    "approved@6": {
+      "identity": "381dff82dcdfaf72908659c6820f0b7a5a85c41e09c777a4b096d722ead06350",
+      "dependency_digest": "33db2492a6341ac8271431ce80180d6ac9361afc64960f65e7a282824a3d5557"
+    },
+    "candidate@5.0": {
+      "identity": "9288aa2896c081e6a609f9e1c184d0620bb95b2f6fd6968b683b0c27f06834f7",
+      "dependency_digest": "d59195a8b6102c0127f413b5e5ab2b29e2dcb93bcb537b885d9cf7223a28e0a2"
+    },
+    "performance.perf.body@5": {
+      "identity": "849081c7e494b847ca768c74407d341368720098c6d36850ce6a22717bec6caf",
+      "dependency_digest": "dbf0d7355fea748761c1667258e7fc39a700eb48e1da6f0176e594a7db45c20b"
+    },
+    "plan": {
+      "identity": "7adaaafe38a12ce351b830bdfff2f889a057feb7b73cd60e33534dd40a3e3b51",
+      "dependency_digest": "28c5ec19f2720cb8336a395b3fefef06c7a44229a72701b1d0ea07b3fcfac1f9"
+    },
+    "render.job.master@6": {
+      "identity": "cdbefc927c1fd9b622971b9946bbd56c49b80ca90a7653642c30850f00ec69f5",
+      "dependency_digest": "67d71924dac5017fe84afd6a0a2e068b5ce1bce446fabd09c22a0b3f36738b54"
+    },
+    "snapshot@5": {
+      "identity": "fef38122b731d20efdf27beba00fb982b2da209ca00f3b782f672012313cc3eb",
+      "dependency_digest": "c2aba1e2b994fa8bab12e42f1ae243645664dc32004abb9bd4b06c1ff8fb651a"
+    },
+    "solve@5": {
+      "identity": "b06dd6f5a9f3d7c35309cd67f9a32fbe18f117839b4389409c6ede233ce11e03",
+      "dependency_digest": "b16edcd1f07be780dc4f2678a9c282d69e56df8a63fb7d422b4ce577a8821cbd"
+    }
+  },
+  "generations": [
+    {
+      "generation": 0,
+      "candidates": [],
+      "adopted": null,
+      "approved": null,
+      "renders": [],
+      "rejected": []
+    },
+    {
+      "generation": 5,
+      "candidates": [
+        {
+          "node_id": "candidate@5.0",
+          "take": 0,
+          "status": "ok",
+          "dependency_digest": "d59195a8b6102c0127f413b5e5ab2b29e2dcb93bcb537b885d9cf7223a28e0a2"
+        }
+      ],
+      "adopted": {
+        "node_id": "adopt@5",
+        "dependency_digest": "df741fd37252868df356666f8c5b0a5d8200f7532d1a206320366eb900740fa3"
+      },
+      "approved": null,
+      "renders": [],
+      "rejected": []
+    },
+    {
+      "generation": 6,
+      "candidates": [],
+      "adopted": null,
+      "approved": {
+        "node_id": "approved@6",
+        "dependency_digest": "33db2492a6341ac8271431ce80180d6ac9361afc64960f65e7a282824a3d5557"
+      },
+      "renders": [
+        {
+          "node_id": "render.job.master@6",
+          "job_id": "job.master"
+        }
+      ],
+      "rejected": []
+    }
+  ],
+  "rejections": []
+}
