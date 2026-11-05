@@ -1,0 +1,80 @@
+{
+  "task_id": "ainerzero.V9.P72",
+  "task_title": "E1-E2 入口第二半：e1-phase2 CLI（verify/generate-data/train/eval/final-eval）+ 中央台账 + 假时钟全程演练（零真实运行）",
+  "agent_id": "gemini-t8m4",
+  "timestamp_utc": "2026-10-29T06:30:00Z",
+  "pure_cpu": true,
+  "zero_training": true,
+  "zero_gpu": true,
+  "zero_real_data_generation": true,
+  "modes_supported": [
+    "verify",
+    "generate-data",
+    "train",
+    "eval",
+    "final-eval"
+  ],
+  "rehearsal_summary": {
+    "fake_clock_cells_total": 50,
+    "generate_data_cells": 1,
+    "training_cells": 18,
+    "dev_eval_cells": 30,
+    "final_eval_cells": 1,
+    "per_cell_deadline_reset": true,
+    "duplicate_call_rejected": true,
+    "phase_wall_ceiling_seconds": 115200.0,
+    "rehearsal_status": "ALL_COMPLETED"
+  },
+  "test_summary": {
+    "entry_tests_total": 9,
+    "entry_tests_passed": 9,
+    "entry_tests_failed": 0,
+    "entry_tests_duration_seconds": 2.23,
+    "all_e1_tests_total": 80,
+    "all_e1_tests_passed": 80,
+    "all_e1_tests_failed": 0,
+    "all_e1_duration_seconds": 5.05
+  },
+  "adversarial_mutants": [
+    {
+      "mutant_id": "mutant_1",
+      "description": "去掉批准检查 (Remove approval check)",
+      "target_test": "tests/test_e1_entry.py::test_verify_mode",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "AssertionError (expected EXIT_REFUSED_APPROVAL 3, got 0)"
+    },
+    {
+      "mutant_id": "mutant_2",
+      "description": "预算改成整个进程共用一个截止时间、不按格重置",
+      "target_test": "tests/test_e1_entry.py::test_fake_clock_full_schedule_rehearsal",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "AssertionError (failed on subsequent cell due to expired shared deadline)"
+    },
+    {
+      "mutant_id": "mutant_3",
+      "description": "允许重复训练 (Allow duplicate training)",
+      "target_test": "tests/test_e1_entry.py::test_duplicate_training_rejected",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "AssertionError (expected EXIT_FAILED 1, got 0)"
+    },
+    {
+      "mutant_id": "mutant_4",
+      "description": "final-eval 不标记只读一次 (final-eval does not mark read-once)",
+      "target_test": "tests/test_e1_entry.py::test_final_eval_read_once",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "AssertionError (read_once file missing / second run not refused)"
+    },
+    {
+      "mutant_id": "mutant_5",
+      "description": "拒绝发生在写台账之后 (Rejection occurs after writing to ledger)",
+      "target_test": "tests/test_e1_entry.py::test_preflight_refusal_leaves_ledger_sha_unchanged",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "AssertionError (ledger SHA256 was mutated on preflight refusal)"
+    }
+  ]
+}

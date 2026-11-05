@@ -1,0 +1,80 @@
+{
+  "task_id": "ainerzero.V9.P69",
+  "agent_id": "gemini-t8m4",
+  "device": "mlx.cpu",
+  "registered_parameter_count": 6150,
+  "parameter_counts": {
+    "arm2_pure_net": 6150,
+    "arm3_prior_residual": 6150,
+    "arm6_identify_residual": 6150,
+    "strictly_equal": true
+  },
+  "parameter_sha256": {
+    "seed_42": "f939cfdb6239f069788f1a239c8dc91e6b9bb6d1d2614588d05a71ea6ea5eea2",
+    "seed_999": "73e86699a4098b302ff988e3cc61ba2d8731919a738b04b5e41c0d1aaddfdd5a"
+  },
+  "test_results": {
+    "test_parameter_count_equality": {
+      "status": "PASSED",
+      "duration_sec": 0.003
+    },
+    "test_determinism_seed": {
+      "status": "PASSED",
+      "duration_sec": 0.004
+    },
+    "test_arm3_error_lower_than_prior_after_200_steps": {
+      "status": "PASSED",
+      "duration_sec": 0.074,
+      "num_steps": 120,
+      "step_budget_max": 200,
+      "error_prior_10_m": 0.00690276,
+      "error_arm3_10_m": 0.00078657,
+      "relative_error_reduction_pct": 88.60
+    },
+    "test_arm6_orthogonal_projection_inner_product": {
+      "status": "PASSED",
+      "duration_sec": 0.002,
+      "max_inner_product_project_true": 6.43745e-20,
+      "max_inner_product_project_false": 0.0010579,
+      "threshold": 1e-8
+    },
+    "test_arm6_predict_with_projection_and_diagnostic": {
+      "status": "PASSED",
+      "duration_sec": 0.012
+    },
+    "test_arm6_injected_identifier_fn": {
+      "status": "PASSED",
+      "duration_sec": 0.003
+    },
+    "test_observed_prefix_nan_isolation": {
+      "status": "PASSED",
+      "duration_sec": 0.003
+    },
+    "test_save_load_bitwise_consistency": {
+      "status": "PASSED",
+      "duration_sec": 0.004
+    }
+  },
+  "adversarial_mutations": {
+    "mutant_1_no_projection": {
+      "target_test": "test_arm6_orthogonal_projection_inner_product",
+      "status": "RED (FAILED)",
+      "exit_code": 1
+    },
+    "mutant_2_arm3_width_plus_1": {
+      "target_test": "test_parameter_count_equality",
+      "status": "RED (FAILED)",
+      "exit_code": 1
+    },
+    "mutant_3_no_seed_init": {
+      "target_test": "test_determinism_seed",
+      "status": "RED (FAILED)",
+      "exit_code": 1
+    },
+    "mutant_4_save_drops_param": {
+      "target_test": "test_save_load_bitwise_consistency",
+      "status": "RED (FAILED)",
+      "exit_code": 1
+    }
+  }
+}

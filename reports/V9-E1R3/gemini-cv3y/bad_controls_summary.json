@@ -1,0 +1,29 @@
+[
+  {
+    "name": "bad_control_1_only_seal_p_family",
+    "description": "Only seal P family final partition, leaving S unsealed",
+    "test_target": "tests/test_e1_data_runner.py::test_blender_smoke_generation_and_export",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "               ^^^^^^^^^^^^^^^^^^^^^\nE       KeyError: 'S_final'\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_data_runner.py:74: KeyError\n----------------------------- Captured stdout call -----------------------------\n\n[Blender Smoke] Completed in 12.12s (budget <= 120.0s)\n=========================== short test summary info ============================\nFAILED tests/test_e1_data_runner.py::test_blender_smoke_generation_and_export\n============================== 1 failed in 12.47s =============================="
+  },
+  {
+    "name": "bad_control_2_skip_generator_invocation",
+    "description": "Do not invoke generator subprocess, only attempt to export existing files",
+    "test_target": "tests/test_e1_data_runner.py::test_blender_smoke_generation_and_export",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": ">       assert exp_counts[\"P_train\"] == 1\nE       assert 0 == 1\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_data_runner.py:69: AssertionError\n----------------------------- Captured stdout call -----------------------------\n\n[Blender Smoke] Completed in 0.00s (budget <= 120.0s)\n=========================== short test summary info ============================\nFAILED tests/test_e1_data_runner.py::test_blender_smoke_generation_and_export\n============================== 1 failed in 0.48s ==============================="
+  },
+  {
+    "name": "bad_control_3_remove_budget_checks",
+    "description": "Remove budget and deadline fail-closed checks",
+    "test_target": "tests/test_e1_data_runner.py::test_zero_budget_immediately_stopped_without_calling_subprocess",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "    def mock_runner(raw_path: Path, norm_counts: Any):\n        nonlocal called\n        called = True\n>       pytest.fail(\"Generator runner must NOT be called when budget <= 0\")\nE       Failed: Generator runner must NOT be called when budget <= 0\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_data_runner.py:168: Failed\n=========================== short test summary info ============================\nFAILED tests/test_e1_data_runner.py::test_zero_budget_immediately_stopped_without_calling_subprocess\n============================== 1 failed in 0.74s ==============================="
+  }
+]

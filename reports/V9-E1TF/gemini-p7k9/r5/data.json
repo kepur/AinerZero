@@ -1,0 +1,94 @@
+{
+  "task_id": "ainerzero.V9.P79",
+  "round": "r5",
+  "agent_id": "gemini-p7k9",
+  "status": "completed",
+  "claude_r4_feedback_addressed": {
+    "silent_typeerror_fallbacks_removed": true,
+    "source_code_clean_of_except_typeerror": true,
+    "body_radii_construction_fixed_no_leak_or_aliasing": true,
+    "spy_identifier_probe_train_path_verified": true,
+    "spy_identifier_probe_eval_path_verified": true,
+    "radius_sensitive_bouncing_ball_precondition_verified": true,
+    "radius_sensitive_bouncing_ball_arm6_matches_arm5_within_1e9": true,
+    "arms_nonnet_unused_default_radius_removed": true
+  },
+  "probe_test_results": {
+    "train_path_spy": {
+      "ball_radius_received": 0.4,
+      "ball_radius_expected": 0.4,
+      "box_radius_received": 0.98488578,
+      "box_radius_expected": 0.98488578,
+      "passed": true
+    },
+    "eval_path_spy": {
+      "ball_radius_received": 0.4,
+      "ball_radius_expected": 0.4,
+      "box_radius_received": 0.98488578,
+      "box_radius_expected": 0.98488578,
+      "passed": true
+    }
+  },
+  "behavior_test_results": {
+    "bouncing_ball_identification_sensitivity": {
+      "phi_hat_r04_restitution": 0.6000836890695838,
+      "phi_hat_r05_restitution": 0.4392898280670262,
+      "restitution_delta": 0.16079386100255755,
+      "phi_hat_r04_friction": 0.14349989163315233,
+      "phi_hat_r05_friction": 0.17032128171609417,
+      "friction_delta": 0.02682139008294185,
+      "passed": true
+    },
+    "arm6_zeroed_weights_vs_arm5_prediction": {
+      "max_abs_diff_pos_m": 0.0,
+      "max_abs_diff_vel_mps": 0.0,
+      "threshold": 1.0e-09,
+      "passed": true
+    }
+  },
+  "bad_controls": [
+    {
+      "id": "mutant_i_make_arm6_identifier_array_rad_05",
+      "description": "make_arm6_identifier 数组路径改成 rad = 0.5、保留缺半径检查",
+      "file": "/tmp/e1_tf_r5_mutants/src/ainerzero/v9/experiments/e1/train_runner.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_r5_radius_sensitive_bouncing_ball_behavior",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": "AssertionError: make_arm6_identifier restitution 0.4392898280670262 != 0.6000836890695838"
+    },
+    {
+      "id": "mutant_ii_train_runner_body_radii_hardcodes_05",
+      "description": "训练侧 body_radii = {b_name: 0.5, 'body_0': 0.5}",
+      "file": "/tmp/e1_tf_r5_mutants/src/ainerzero/v9/experiments/e1/train_runner.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_r5_spy_identifier_probes_radii_in_train_and_eval",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": "AssertionError: Ball received radius 0.5 != 0.4 (assert 0.09999999999999998 < 1e-06)"
+    },
+    {
+      "id": "mutant_iii_arms_net_predict_radii_hardcodes_05",
+      "description": "arms_net 的 ⑥ predict 内传给辨识器的半径改成 0.5",
+      "file": "/tmp/e1_tf_r5_mutants/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_r5_spy_identifier_probes_radii_in_train_and_eval, tests/test_e1_arms_net.py::test_r5_radius_sensitive_bouncing_ball_behavior",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": "AssertionError: Ball in eval received radius 0.5 != 0.4; AssertionError: Arm 6 zeroed pos diff 0.012319184952907791 >= 1e-9"
+    }
+  ],
+  "unit_tests": {
+    "test_e1_analysis": 11,
+    "test_e1_arms_net": 18,
+    "test_e1_arms_nonnet": 11,
+    "test_e1_data_runner": 4,
+    "test_e1_entry": 11,
+    "test_e1_eval_runner": 8,
+    "test_e1_export": 10,
+    "test_e1_metrics": 16,
+    "test_e1_prereg": 14,
+    "test_e1_prior": 13,
+    "test_e1_train_runner": 9,
+    "test_e1_wiring": 8,
+    "total_full_e1_suite_passed": 133,
+    "failed": 0
+  }
+}

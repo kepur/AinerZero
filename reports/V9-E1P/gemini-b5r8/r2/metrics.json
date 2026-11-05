@@ -1,0 +1,55 @@
+{
+  "task_id": "ainerzero.V9.P67",
+  "card": "E1-P",
+  "agent": "gemini-b5r8",
+  "revision": "r2",
+  "tier": 2,
+  "status": "passed",
+  "tests_passed": 13,
+  "tests_failed": 0,
+  "test_duration_s": 0.14,
+  "e1_total_tests_passed": 29,
+  "bad_controls_verified": 5,
+  "all_bad_controls_red": true,
+  "analytical_cases": {
+    "free_fall_error_m": 0.003,
+    "ramp_pure_rolling_rel_error": 2.22e-15,
+    "ramp_slipping_rolling_rel_error": 0.00028,
+    "box_wall_restitution_rebound_error_mps": 0.01,
+    "quaternion_rotation_error_rad": 0.0
+  },
+  "constants": {
+    "default_fps": 60,
+    "default_substeps": 10,
+    "substep_dt": 0.0016666666666666668,
+    "gravity_accel": 9.81,
+    "bounce_velocity_threshold_mps": 0.05,
+    "default_biased_prior": {
+      "friction": 0.5,
+      "restitution": 0.45,
+      "mass": 2.6,
+      "linear_damping": 0.125,
+      "angular_damping": 0.125
+    },
+    "default_rel_step": 0.001,
+    "default_svd_rel_tol": 1e-06
+  },
+  "registered_structural_biases": {
+    "collision_geometry": "bounding_sphere: all active bodies modeled as outer bounding sphere",
+    "inertia_model": "solid_sphere: I = 2/5 * m * R^2",
+    "friction_combine_rule": "mean: 0.5 * (f1 + f2)",
+    "restitution_combine_rule": "min: min(e1, e2)",
+    "static_surface_defaults": "ground(mu=0.5, e=0.3), ramp(mu=0.25, e=0.25), table(mu=0.2, e=0.35), box(mu=0.5, e=0.3)",
+    "aerodynamic_drag": "zero air drag (Cd=0)",
+    "rolling_resistance": "zero rolling resistance coefficient (crr=0)",
+    "contact_dynamics": "single-point impulse response with Coulomb friction cone limit and torque coupling"
+  },
+  "modules": [
+    "src/ainerzero/v9/experiments/e1/prior.py",
+    "src/ainerzero/v9/experiments/e1/jacobian.py"
+  ],
+  "test_suite": "tests/test_e1_prior.py",
+  "pure_numpy": true,
+  "gpu_used": false,
+  "model_training": false
+}

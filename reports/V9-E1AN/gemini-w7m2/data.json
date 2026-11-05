@@ -1,0 +1,105 @@
+{
+  "task_id": "ainerzero.V9.P80",
+  "round": "r2",
+  "agent_id": "gemini-w7m2",
+  "status": "completed",
+  "module": "src/ainerzero/v9/experiments/e1/analysis.py",
+  "test_module": "tests/test_e1_analysis.py",
+  "sha256": {
+    "src/ainerzero/v9/experiments/e1/analysis.py": "ddb4599a62e6b58fc24857819009ffa3431f432ce6e88e1c5300505f8df82b03",
+    "tests/test_e1_analysis.py": "ac622c246b9399582332edae7c3707d4c148a53a984e50c64511aff2af434511"
+  },
+  "gate_specification": {
+    "primary_gate": "H-E1",
+    "baseline_selection": "min(error_arm1, error_arm2)",
+    "error_reduction_min": 0.10,
+    "f1_non_decreasing": true,
+    "family_isolation": "independent (Family P and Family S evaluated separately, never pooled)",
+    "diagnostic_arm4_excluded": true
+  },
+  "exploratory_hypotheses": {
+    "h_p": {
+      "family": "P",
+      "comparisons": ["Arm 5 vs Arm 4", "Arm 5 vs Arm 3"],
+      "similarity_definition": "CI contains 0 AND CI width <= 0.10 * |error_arm4 - error_arm1|"
+    },
+    "h_s": {
+      "family": "S",
+      "comparisons": ["Arm 6 vs Arm 5", "Arm 7 vs Arm 5"]
+    }
+  },
+  "schema_hardening_r2": {
+    "silent_f1_default_removed": true,
+    "silent_10_step_fallbacks_removed": true,
+    "eval_runner_schema_exact_match": true,
+    "integration_test_with_eval_runner": true
+  },
+  "unit_tests": {
+    "test_e1_analysis_passed": 11,
+    "test_e1_analysis_failed": 0,
+    "full_e1_suite_passed": 124,
+    "full_e1_suite_failed": 0
+  },
+  "bad_controls": [
+    {
+      "name": "mutant_1_silent_f1_default",
+      "description": "Restore silent .get('collision_f1', 0.0) in decide_h_e1, masking missing baseline F1",
+      "target_file": "/tmp/e1_an_r2_mutants/mutant_1_silent_f1_default/src/ainerzero/v9/experiments/e1/analysis.py",
+      "failing_test": "tests/test_e1_analysis.py::test_missing_collision_f1_loudly_raises_exception",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "FAILED tests/test_e1_analysis.py::test_missing_collision_f1_loudly_raises_exception",
+        "Failed: DID NOT RAISE <class 'KeyError'>"
+      ]
+    },
+    {
+      "name": "mutant_2_relaxed_reduction_threshold",
+      "description": "Relax PRIMARY_ERROR_REDUCTION_MIN threshold from 0.10 to 0.05",
+      "target_file": "/tmp/e1_an_r2_mutants/mutant_2_relaxed_reduction_threshold/src/ainerzero/v9/experiments/e1/analysis.py",
+      "failing_test": "tests/test_e1_analysis.py::test_h_e1_boundary_10_percent_pass_and_9_99_percent_fail",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "FAILED tests/test_e1_analysis.py::test_h_e1_boundary_10_percent_pass_and_9_99_percent_fail",
+        "assert dec_fail['error_threshold_met'] is False"
+      ]
+    },
+    {
+      "name": "mutant_3_removed_f1_condition",
+      "description": "Remove F1 non-decreasing requirement (f1_passed = True unconditionally)",
+      "target_file": "/tmp/e1_an_r2_mutants/mutant_3_removed_f1_condition/src/ainerzero/v9/experiments/e1/analysis.py",
+      "failing_test": "tests/test_e1_analysis.py::test_h_e1_f1_non_decreasing_condition",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "FAILED tests/test_e1_analysis.py::test_h_e1_f1_non_decreasing_condition",
+        "assert dec['passed'] is False"
+      ]
+    },
+    {
+      "name": "mutant_4_fixed_arm1_baseline",
+      "description": "Fix baseline strictly to Arm 1 (ignoring whether Arm 2 achieved lower error)",
+      "target_file": "/tmp/e1_an_r2_mutants/mutant_4_fixed_arm1_baseline/src/ainerzero/v9/experiments/e1/analysis.py",
+      "failing_test": "tests/test_e1_analysis.py::test_h_e1_baseline_selection_takes_min_of_arm1_and_arm2",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "FAILED tests/test_e1_analysis.py::test_h_e1_baseline_selection_takes_min_of_arm1_and_arm2",
+        "assert dec2['baseline_arm'] == 2"
+      ]
+    },
+    {
+      "name": "mutant_5_pooled_families",
+      "description": "Pool families by evaluating mean reduction across P and S instead of independent gating",
+      "target_file": "/tmp/e1_an_r2_mutants/mutant_5_pooled_families/src/ainerzero/v9/experiments/e1/analysis.py",
+      "failing_test": "tests/test_e1_analysis.py::test_h_e1_families_are_evaluated_independently_never_pooled",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "FAILED tests/test_e1_analysis.py::test_h_e1_families_are_evaluated_independently_never_pooled",
+        "assert summary['primary_gate_h_e1']['overall_passed'] is False"
+      ]
+    }
+  ]
+}

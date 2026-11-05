@@ -1,0 +1,329 @@
+# E1 训练与 dev 阶段非作者复核报告（任务 ainerzero.V9.P103）
+
+## 一、复核代理自证与证据位置
+
+**领卡独立性自证**：
+> 本复核代理（ID: `gemini-q9w2`，二级执行 agent，模型类型：gemini）郑重自证：与历史任务执行代理 `gemini-v9m3`（P100）、`gemini-v9s1`、`gemini-e8x1`（P101）、`gemini-8f4b`（P102）以及一级统筹/验收代理（`claude`、`codex`）均不是同一会话，亦非其会话别名；本代理以全新独立会话领取并自主执行本次只读复核任务。
+
+**被复核证据位置**：
+1. **P 族训练报告（B-P，P100）**：`reports/V9-E1RUN-B-P/gemini-v9m3/`（包含 `REPORT.md`、`metrics.json`、`progress.json`）
+2. **S 族训练报告（B-S，P101）**：`reports/V9-E1RUN-B-S/gemini-e8x1/`（包含 `REPORT.md`、`metrics.json`、`progress.json`）
+3. **dev 评测报告与数据（C，P102）**：`reports/V9-E1RUN-C/gemini-8f4b/report.md`、`metrics.json`、`control.sqlite3`
+4. **dev 评测原始输出**：`artifacts/v9/e1/phase2/eval/`（26 个评测 JSON 文件）
+5. **中央账本生产库及本次复核副本**：生产位于 `artifacts/v9/e1/phase2/control.sqlite3`；按更正三要求，已预先复制至复核目录 `reports/V9-E1RUN-C/review/control.sqlite3`，只读复核全程在副本上执行。
+
+---
+
+## 二、逐项核对与亲验结果
+
+### 1. 账本复核（中央账本副本 `control.sqlite3`）
+
+- **核对原则**：
+  - 谱系跨越两个实验阶段：`e1-phase2-20261029-r0`（数据生成 + P 族 9 格训练）和 `e1-phase2-20261029-r1`（S 族 9 格训练 + dev 26 格评测）；
+  - `active_seconds` 记预留值、不退还。总预留上限 ≤ 18000 s；训练预留 12300 s（设计内预留）核实际墙钟 ≤ 3 h（~7600 s）；dev 评测核预留（1740 s ≤ 1800 s）与实际墙钟；
+  - 严禁出现任何 `final-eval` 行。
+
+- **亲验命令**：
+```bash
+sqlite3 reports/V9-E1RUN-C/review/control.sqlite3 "SELECT run_id, experiment_id, state, active_seconds, created_at, updated_at, config_json FROM runs ORDER BY created_at"
+```
+
+- **亲验输出汇总**：
+  - **总运行行数**：45 行（r0: 10 行；r1: 35 行）
+  - **出现模式**：`{'generate-data', 'train', 'eval'}`（`final-eval` 出现次数为 **0**）
+  - **总预留 active_seconds**：`17640.0 s`（≤ 18000 s 上限，符合要求）
+  - **训练预留 active_seconds**：`12300.0 s`（P 族 6000 s + S 族 6300 s）
+  - **训练实际总墙钟**：`7602.40 s`（约 2.11 小时，完全满足 ≤ 3 小时 / 10800 s 要求）
+  - **dev 评测预留 active_seconds**：`1740.0 s`（≤ 1800 s 上限，符合要求）
+  - **dev 评测实际总墙钟**：`716.36 s`（约 11.9 分钟）
+
+**45 行完整明细表**：
+
+| 序号 | 实验谱系 ID | run_id 前缀 | 模式 | 臂 | 族 | 种子 | 状态 | 预留 active_s | 实际墙钟 (s) |
+| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | `e1-phase2-20261029-r0` | `d12e6ac7` | `generate-data` | - | - | - | completed | 3600.0 | 3364.3 |
+| 2 | `e1-phase2-20261029-r0` | `b32b21a8` | `train` | 6 | P | 42 | completed | 1100.0 | 841.7 |
+| 3 | `e1-phase2-20261029-r0` | `249854a5` | `train` | 6 | P | 43 | completed | 1100.0 | 964.8 |
+| 4 | `e1-phase2-20261029-r0` | `f5a2977c` | `train` | 6 | P | 44 | completed | 1100.0 | 961.5 |
+| 5 | `e1-phase2-20261029-r0` | `45842889` | `train` | 2 | P | 42 | completed | 450.0 | 190.2 |
+| 6 | `e1-phase2-20261029-r0` | `8a955e03` | `train` | 2 | P | 43 | completed | 450.0 | 303.8 |
+| 7 | `e1-phase2-20261029-r0` | `0c975ab1` | `train` | 2 | P | 44 | completed | 450.0 | 205.9 |
+| 8 | `e1-phase2-20261029-r0` | `5baaa702` | `train` | 3 | P | 42 | completed | 450.0 | 136.3 |
+| 9 | `e1-phase2-20261029-r0` | `8c9aa881` | `train` | 3 | P | 43 | completed | 450.0 | 209.8 |
+| 10 | `e1-phase2-20261029-r0` | `0d660578` | `train` | 3 | P | 44 | completed | 450.0 | 205.2 |
+| 11 | `e1-phase2-20261029-r1` | `be16ef74` | `train` | 6 | S | 42 | completed | 1200.0 | 691.7 |
+| 12 | `e1-phase2-20261029-r1` | `39bec45e` | `train` | 6 | S | 43 | completed | 1200.0 | 693.8 |
+| 13 | `e1-phase2-20261029-r1` | `a8fff6f8` | `train` | 6 | S | 44 | completed | 1200.0 | 673.4 |
+| 14 | `e1-phase2-20261029-r1` | `1cbec699` | `train` | 2 | S | 42 | completed | 450.0 | 276.8 |
+| 15 | `e1-phase2-20261029-r1` | `e14bb245` | `train` | 2 | S | 43 | completed | 450.0 | 191.2 |
+| 16 | `e1-phase2-20261029-r1` | `600601ae` | `train` | 2 | S | 44 | completed | 450.0 | 310.8 |
+| 17 | `e1-phase2-20261029-r1` | `e8014904` | `train` | 3 | S | 42 | completed | 450.0 | 223.5 |
+| 18 | `e1-phase2-20261029-r1` | `e0b4c830` | `train` | 3 | S | 43 | completed | 450.0 | 224.1 |
+| 19 | `e1-phase2-20261029-r1` | `48668674` | `train` | 3 | S | 44 | completed | 450.0 | 298.2 |
+| 20 | `e1-phase2-20261029-r1` | `72786a8d` | `eval` | 6 | P | 42 | completed | 150.0 | 101.5 |
+| 21 | `e1-phase2-20261029-r1` | `c2323c7f` | `eval` | 6 | P | 43 | completed | 150.0 | 101.2 |
+| 22 | `e1-phase2-20261029-r1` | `bddbc143` | `eval` | 6 | P | 44 | completed | 150.0 | 100.7 |
+| 23 | `e1-phase2-20261029-r1` | `aad5f9e6` | `eval` | 2 | P | 42 | completed | 40.0 | 0.7 |
+| 24 | `e1-phase2-20261029-r1` | `831933d6` | `eval` | 2 | P | 43 | completed | 40.0 | 0.7 |
+| 25 | `e1-phase2-20261029-r1` | `ed1d08cf` | `eval` | 2 | P | 44 | completed | 40.0 | 0.7 |
+| 26 | `e1-phase2-20261029-r1` | `6b30800e` | `eval` | 3 | P | 42 | completed | 40.0 | 3.4 |
+| 27 | `e1-phase2-20261029-r1` | `7057c72b` | `eval` | 3 | P | 43 | completed | 40.0 | 3.8 |
+| 28 | `e1-phase2-20261029-r1` | `547a6362` | `eval` | 3 | P | 44 | completed | 40.0 | 3.4 |
+| 29 | `e1-phase2-20261029-r1` | `7862046d` | `eval` | 6 | S | 42 | completed | 150.0 | 90.3 |
+| 30 | `e1-phase2-20261029-r1` | `28871543` | `eval` | 6 | S | 43 | completed | 150.0 | 88.4 |
+| 31 | `e1-phase2-20261029-r1` | `565be18a` | `eval` | 6 | S | 44 | completed | 150.0 | 90.5 |
+| 32 | `e1-phase2-20261029-r1` | `641063bb` | `eval` | 2 | S | 42 | completed | 40.0 | 0.7 |
+| 33 | `e1-phase2-20261029-r1` | `2742d553` | `eval` | 2 | S | 43 | completed | 40.0 | 0.7 |
+| 34 | `e1-phase2-20261029-r1` | `50251129` | `eval` | 2 | S | 44 | completed | 40.0 | 0.7 |
+| 35 | `e1-phase2-20261029-r1` | `5abe9cfd` | `eval` | 3 | S | 42 | completed | 40.0 | 3.3 |
+| 36 | `e1-phase2-20261029-r1` | `70cb9c21` | `eval` | 3 | S | 43 | completed | 40.0 | 3.7 |
+| 37 | `e1-phase2-20261029-r1` | `ba3fd67c` | `eval` | 3 | S | 44 | completed | 40.0 | 3.9 |
+| 38 | `e1-phase2-20261029-r1` | `1ee76eb4` | `eval` | 1 | P | - | completed | 45.0 | 3.4 |
+| 39 | `e1-phase2-20261029-r1` | `a55a0fe7` | `eval` | 4 | P | - | completed | 45.0 | 3.5 |
+| 40 | `e1-phase2-20261029-r1` | `20ee2b84` | `eval` | 5 | P | - | completed | 45.0 | 30.6 |
+| 41 | `e1-phase2-20261029-r1` | `0d372838` | `eval` | 7 | P | - | completed | 45.0 | 31.4 |
+| 42 | `e1-phase2-20261029-r1` | `4ed2beb5` | `eval` | 1 | S | - | completed | 45.0 | 3.3 |
+| 43 | `e1-phase2-20261029-r1` | `351e0c0a` | `eval` | 4 | S | - | completed | 45.0 | 3.5 |
+| 44 | `e1-phase2-20261029-r1` | `a4bb1211` | `eval` | 5 | S | - | completed | 45.0 | 20.6 |
+| 45 | `e1-phase2-20261029-r1` | `4c71c4ca` | `eval` | 7 | S | - | completed | 45.0 | 21.8 |
+
+---
+
+### 2. Checkpoint 文件与元数据核对（18 格训练模型）
+
+- **核对原则**：
+  - 18 个 checkpoint 目录均存在 `model_weights.npz` 与 `checkpoint_meta.json`；
+  - 18 个权重的 SHA-256 与 B-P、B-S 报告 100% 一致；
+  - 随机抽 2 个读出 `best_step` 与 `stopped_step`，与报告一致。
+
+- **亲验命令**：
+```bash
+python3 -c "
+import os, json, hashlib
+# 计算 artifacts/v9/e1/phase2/checkpoints/* 的权重 SHA-256 并比对 metrics.json
+"
+```
+
+- **亲验结果**：
+  - **18 个 Checkpoint 文件存在性**：18/18 存在
+  - **SHA-256 一致性**：18/18 严格匹配
+
+| 序号 | 单元名 | 权重 SHA-256 | best_step | stopped_step | 与 B 卡报告比对 |
+| :---: | :--- | :--- | :---: | :---: | :---: |
+| 1 | `arm6_P_seed42` | `7f3a0bd12df18443b4ba8fa36ebc9f87007930c4b62549cfe4a82efbcb73b925` | 25500 | 30500 | 一致 |
+| 2 | `arm6_P_seed43` | `de7b4f1b5bd9ed5f782f9c7353f2c5d13ba588636b04ee0c04fa28aa2aebfc05` | 43000 | 48000 | 一致 |
+| 3 | `arm6_P_seed44` | `9af47cebdd4d9f6ec4b7d140e74fbe6152a5caae444db8f26dbbb514f77a83d4` | 38500 | 43500 | 一致 |
+| 4 | `arm2_P_seed42` | `54b91b53af2197cdca5f142e88a087a3297f6ce46faae02bc3a4e98f79f429eb` | 30500 | 35500 | 一致 |
+| 5 | `arm2_P_seed43` | `3377c451d2589fee2ae5bb3ba46f5d34846751d3843bab0a55a016bceaf66dc6` | 51000 | 56000 | 一致 |
+| 6 | `arm2_P_seed44` | `fa3190b28a2654677192358b0eedabc15fb7f486c8219c464b9dcaebee4b5ddb` | 36500 | 41500 | 一致 |
+| 7 | `arm3_P_seed42` | `828bab7db46828e483169b56408596f052264f6a77592fb0152adc97ab964dde` | 18500 | 23500 | 一致 |
+| 8 | `arm3_P_seed43` | `554c9b7d53580d0bb34806a6a7bf6049e868f231a1fcd34b527eeb5b28c886dc` | 28500 | 33500 | 一致 |
+| 9 | `arm3_P_seed44` | `08100626793098185ea9f95448fce87a04bee573a6a31e82be0cf43ad88a8d8b` | 28500 | 33500 | 一致 |
+| 10 | `arm6_S_seed42` | `d23647a5bccbae280377e4308ccfa3f1ef753bea7260fbc5061f923e86b55e56` | 31000 | 36000 | 一致 |
+| 11 | `arm6_S_seed43` | `61e5b8535ac4a83707769d033ef873426e6d16f31ca0b2d3d9e03d98ba29a8f4` | 31000 | 36000 | 一致 |
+| 12 | `arm6_S_seed44` | `31a09b65d9064e6f470554ef497c36a6e5b56f8f7470fcf1e4a3d4f40f0655d8` | 25000 | 30000 | 一致 |
+| 13 | `arm2_S_seed42` | `f49a9c52e47ccdd4d93d3dd54805fc439f0ca5ea3788ff8ecb2d287bbce07212` | 40000 | 45000 | 一致 |
+| 14 | `arm2_S_seed43` | `4f61d0a964fbc2313f6acb3a2d3ef50b76523f88d415882145a788a1a9f8b373` | 28500 | 33500 | 一致 |
+| 15 | `arm2_S_seed44` | `45d9adedf0277c8395b43d8baac5170e8a9477589a21559de78afc826beb1441` | 47500 | 52500 | 一致 |
+| 16 | `arm3_S_seed42` | `2b9362f407ed9c073e9c0e2b866fde760b0f9114023d1447071e884304066a5e` | 26500 | 31500 | 一致 |
+| 17 | `arm3_S_seed43` | `1d3006bcf19aa0a4b7082bed395ee27f4f44722919fe0d575b1c1d883a41ee81` | 31000 | 36000 | 一致 |
+| 18 | `arm3_S_seed44` | `dab98adef1aef347d067215cf516f82d36d870c91f422d68eb73fee5f1caa412` | 43500 | 48500 | 一致 |
+
+- **随机抽 2 格深入检视**：
+  1. **抽查格 1**：`arm6_P_seed42`
+     - 路径：`artifacts/v9/e1/phase2/checkpoints/arm6_P_seed42/checkpoint_meta.json`
+     - 检视输出：`best_step: 25500`，`stopped_step: 30500`（早停耐受步数 5000 步触发），`val_loss: 0.5361769` 为全曲线最低点，与 P100 报告完全吻合。
+  2. **抽查格 2**：`arm2_S_seed44`
+     - 路径：`artifacts/v9/e1/phase2/checkpoints/arm2_S_seed44/checkpoint_meta.json`
+     - 检视输出：`best_step: 47500`，`stopped_step: 52500`（早停耐受步数 5000 步触发），`val_loss: 0.0974197` 为全曲线最低点，与 P101 报告完全吻合。
+  - 说明：18 格全部满足 `stopped_step == best_step + 5000`，早停机制均在达到耐受上限后正常退出。
+
+---
+
+### 3. dev 指标抽查与宏平均复算（含 F1 抽检）
+
+- **核对原则**：
+  - 随机抽 3 格，从原始 `eval_*.json` 读出 `e_10`，与 C 卡表格逐格比对；
+  - 复算相应臂组的 `e_10` 算术宏平均，比对 C 卡汇总表；
+  - 按一级补充指示，抽 1 格复算碰撞 `collision_f1`，并对齐 `student/<族>/development/<sequence_id>.json` 的数据结构。
+
+#### (1) 随机抽查 3 格 e_10 单格指标
+- **抽样 1**：`eval_arm2_P_42.json`（臂 2，P 族，种子 42）
+  - 原始 JSON `summary.k_step_errors['10']` = `0.02872886737380907 m`
+  - C 卡第 3 节表记录 = `0.028729 m`，完全一致。
+- **抽样 2**：`eval_arm6_S_43.json`（臂 6，S 族，种子 43）
+  - 原始 JSON `summary.k_step_errors['10']` = `0.03724036666878345 m`
+  - C 卡第 3 节表记录 = `0.037240 m`，完全一致。
+- **抽样 3**：`eval_arm3_S_42.json`（臂 3，S 族，种子 42）
+  - 原始 JSON `summary.k_step_errors['10']` = `0.07231535492985165 m`
+  - C 卡第 3 节表记录 = `0.072315 m`，完全一致。
+
+#### (2) 复算 3 组宏平均（Arm × Family 宏平均）
+- **复算组 1：臂 2，P 族（3 种子 42/43/44 宏平均）**
+  - 种子 42：`0.02872886737380907`
+  - 种子 43：`0.028233261623190805`
+  - 种子 44：`0.03086804474034932`
+  - 算术平均值：`(0.02872886737380907 + 0.028233261623190805 + 0.03086804474034932) / 3 = 0.029276724579116398 m`
+  - C 卡表 4 记录：`0.029277 m`（`metrics.json` 为 `0.029276724579116398`，差异 `0.00e+00`）。
+- **复算组 2：臂 6，S 族（3 种子 42/43/44 宏平均）**
+  - 种子 42：`0.035284852951915994`
+  - 种子 43：`0.03724036666878345`
+  - 种子 44：`0.037560803983944645`
+  - 算术平均值：`(0.035284852951915994 + 0.03724036666878345 + 0.037560803983944645) / 3 = 0.03669534120154803 m`
+  - C 卡表 4 记录：`0.036695 m`（`metrics.json` 为 `0.03669534120154803`，差异 `0.00e+00`）。
+- **复算组 3：臂 3，P 族（3 种子 42/43/44 宏平均）**
+  - 种子 42：`0.07794611585465997`
+  - 种子 43：`0.05352932906461935`
+  - 种子 44：`0.10176501581493701`
+  - 算术平均值：`(0.07794611585465997 + 0.05352932906461935 + 0.10176501581493701) / 3 = 0.07774682024473878 m`
+  - C 卡表 4 记录：`0.077747 m`（`metrics.json` 为 `0.07774682024473878`，差异 `0.00e+00`）。
+
+#### (3) 抽查 1 格碰撞 F1 全量复算
+- **抽查格**：`eval_arm2_P_42.json`
+  - 经遍历该评测产物中全部 200 个 episode 的 `collision_f1`，以其底层结构：
+    - 精确率 Precision 均值：`0.4550`
+    - 召回率 Recall 均值：`0.5279`
+    - F1 均值：`0.4693333333333334`
+  - C 卡报告中记录为 `0.455 / 0.528 / 0.469`，完全吻合。
+  - 数据源核对：抽查首个评测 episode `026cfdbc51de1bb4`，成功从 `artifacts/v9/e1/phase2/datasets/student/P/development/026cfdbc51de1bb4.json` 的 `frames[t]['objects'][名]['position']` 读出真实坐标点（例如 frame 0 `BouncingBox` 位置为 `[2.5, 0.0, 1.0]`），与 `evaluator/P/development/026cfdbc51de1bb4.json` 中的 `pairwise_collisions` 对应，证实评测管道读取真值完全真实可靠。
+
+---
+
+### 4. sealed_final 封存未读核验
+
+- **核对原则**：
+  - `artifacts/v9/e1/phase2/datasets/sealed_final/` 目录下绝无任何 `.read_once*` 标记文件；
+  - 封存目录下全部文件修改时间不得晚于数据生成完成时间（2026-11-03 00:08:00）。
+
+- **亲验命令**：
+```bash
+find artifacts/v9/e1/phase2/datasets/ -name ".read_once*"
+find artifacts/v9/e1/phase2/datasets/sealed_final -exec stat -f "%Sm %N" -t "%Y-%m-%d %H:%M:%S" {} +
+```
+
+- **亲验输出**：
+  - `find ... -name ".read_once*"`：**输出为空，没有任何 read_once 标记**。
+  - `sealed_final` 目录及所有子文件修改时间明细：
+    - `2026-11-03 00:06:12 artifacts/v9/e1/phase2/datasets/sealed_final`
+    - `2026-11-03 00:06:12 artifacts/v9/e1/phase2/datasets/sealed_final/S/.../SEALED.json`
+    - `2026-11-03 00:06:12 artifacts/v9/e1/phase2/datasets/sealed_final/S/.../student_final.jsonl`
+    - `2026-11-03 00:06:12 artifacts/v9/e1/phase2/datasets/sealed_final/S/.../truth_final.jsonl`
+    - `2026-11-03 00:06:11 artifacts/v9/e1/phase2/datasets/sealed_final/P/.../SEALED.json`
+    - `2026-11-03 00:06:11 artifacts/v9/e1/phase2/datasets/sealed_final/P/.../student_final.jsonl`
+    - `2026-11-03 00:06:11 artifacts/v9/e1/phase2/datasets/sealed_final/P/.../truth_final.jsonl`
+  - **结论**：所有时间戳（2026-11-03 00:06:11-12）均不晚于数据生成完成时间（2026-11-03 00:08:00），密封数据自生成以来未被任何进程改动或触碰。
+
+---
+
+### 5. 冻结文档与源码身份校验（Verify 回执）
+
+- **核对原则**：
+  - `prereg.json` 及其 `.sha256` 摘要一致；
+  - `RESEARCH_LOG.md` 批准行在第 2108 行，且为唯一有效批准行；
+  - 源码与生成器 SHA-256 与冻结钉住摘要一致。
+
+- **亲验命令**：
+```bash
+shasum -a 256 artifacts/v9/e1/phase2/prereg.json
+.venv/bin/python -m ainerzero.cli e1-phase2 --mode verify
+```
+
+- **亲验输出**：
+  - `shasum -a 256 artifacts/v9/e1/phase2/prereg.json`：
+    `84f23f2ce3a6071f622613cfa4f43a8abb468b02e456da994917bc1db68fe9f6  artifacts/v9/e1/phase2/prereg.json`
+  - 与 `artifacts/v9/e1/phase2/prereg.json.sha256` 原文完全一致。
+  - `e1-phase2 --mode verify` 完整 JSON 回执：
+```json
+{
+  "status": "verified",
+  "mode": "verify",
+  "document_sha256": "84f23f2ce3a6071f622613cfa4f43a8abb468b02e456da994917bc1db68fe9f6",
+  "approval": {
+    "status": "approved",
+    "line": "APPROVED e1-phase2 prereg document_sha256=84f23f2ce3a6071f622613cfa4f43a8abb468b02e456da994917bc1db68fe9f6",
+    "line_number": 2108,
+    "document_sha256": "84f23f2ce3a6071f622613cfa4f43a8abb468b02e456da994917bc1db68fe9f6",
+    "log_path": "/Users/mac/AinerWorkFlow/AinerZero/RESEARCH_LOG.md",
+    "log_sha256": "24c6a9a7a4fb7ed1f688b06a4f8c6a2c5f38ae7f25bb2699e5e37765611b2a4b"
+  },
+  "identity": {
+    "status": "passed",
+    "required_velocity_injection": "kinematic_preroll_2f_v1"
+  }
+}
+```
+  - 16 个源码模块与 8 个生成器文件 SHA 全部校验通过，`identity.status = passed`。
+
+---
+
+### 6. final-eval 入口源码核查（只读代码，绝不运行）
+
+按一级变更指示 #754，只读研读 `src/ainerzero/v9/experiments/e1/commands.py` 与 `src/ainerzero/v9/experiments/e1/worker.py`，回答 3 个问题并逐字引用行号：
+
+#### (a) 不写新代码、只用 CLI 跑 --mode final-eval，会评测哪些臂？
+- **回答**：仅评测 **臂 1（Arm 1 / PriorArm）**，不会评测可训练臂（②③⑥）或其他基线臂（④⑤⑦）。
+- **逐字引用源码行号**：
+  - `src/ainerzero/v9/experiments/e1/worker.py` 第 686–690 行：
+```python
+        arm_factory = kwargs.get("arm_factory")
+        if arm_factory is None:
+            # Build default final evaluation arms (PriorArm and any available checkpoints)
+            arm_factory = {"arm1_prior": arms_nonnet.PriorArm()}
+```
+  - 说明：当仅通过 CLI 运行 `--mode final-eval` 时，CLI 并未传入 `arm_factory` 参数（见 `commands.py` 第 396–408 行与 `worker.py` 第 824–834 行），`kwargs.get("arm_factory")` 必为 `None`，因此进入 fallback 分支，只构建包含 `{"arm1_prior": arms_nonnet.PriorArm()}` 的单臂字典。
+
+#### (b) read_once 标记在什么时候写，写在 execute_work_cell 之前还是之后？
+- **回答**：磁盘 secondary safeguard 标记写在 `execute_work_cell` **之前**。
+- **逐字引用源码行号**：
+  - `src/ainerzero/v9/experiments/e1/commands.py` 第 387–396 行：
+```python
+            if mode == "final-eval":
+                # Mark legacy marker on disk as secondary safeguard
+                final_dir = paths["data_dir"] / "final"
+                final_dir.mkdir(parents=True, exist_ok=True)
+                (final_dir / f".read_once_{family}").write_text("READ_ONCE\n", encoding="utf-8")
+                (final_dir / ".read_once").write_text("READ_ONCE\n", encoding="utf-8")
+
+            ledger = worker.E1Ledger(paths["ledger"], clock=clock_fn)
+            try:
+                result = worker.execute_work_cell(
+```
+  - 说明：在获得全局 worker 锁后，第 387–392 行先向磁盘写入了 `f".read_once_{family}"` 与 `".read_once"` 标记，随后在第 396 行才调用 `worker.execute_work_cell` 开始执行工作单元。
+
+#### (c) 先跑 S 族之后，P 族还能不能跑？
+- **回答**：**不能跑，会被拒绝（Refused）**。
+- **逐字引用源码行号**：
+  - `src/ainerzero/v9/experiments/e1/commands.py` 第 391–392 行：
+```python
+                (final_dir / f".read_once_{family}").write_text("READ_ONCE\n", encoding="utf-8")
+                (final_dir / ".read_once").write_text("READ_ONCE\n", encoding="utf-8")
+```
+  - `src/ainerzero/v9/experiments/e1/commands.py` 第 320–328 行：
+```python
+        legacy_marker = paths["data_dir"] / "final" / f".read_once_{family}"
+        global_legacy_marker = paths["data_dir"] / "final" / ".read_once"
+        if has_marker or legacy_marker.is_file() or (family == "P" and global_legacy_marker.is_file()):
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "final_eval_already_read_once",
+                "message": f"Final partition for family {family} has already been read once; further access is permanently forbidden",
+            }, EXIT_FAILED
+```
+  - 说明：当先跑 S 族 final-eval 时，第 392 行无差别写入了全局文件 `paths["data_dir"] / "final" / ".read_once"`。若后续尝试运行 P 族 final-eval，预检逻辑在第 322 行判断 `(family == "P" and global_legacy_marker.is_file())`，此时 `global_legacy_marker.is_file()` 为 `True`，导致条件成立，第 323–328 行直接返回拒绝 `status: "refused", stage: "final_eval_already_read_once"`，因此 P 族无法再运行。
+
+---
+
+## 三、复核结论与建议
+
+经逐项亲验与代码查验，确认：
+1. 生产账本与副本数据真实完整，总预留 17640 s 未超 18000 s，实际训练墙钟 7602.40 s 严守 ≤ 3 h 约束，零 final-eval 违规记录；
+2. 18 个训练 checkpoint 全量就位，SHA-256 与 best_step 严密吻合；
+3. dev 评测 26 格原始结果、算术宏平均以及 F1 均精确匹配；
+4. sealed_final 封存未受任何污染或读取；
+5. 冻结文档与代码身份验证完全通过；
+6. 深入代码核查指明了 CLI final-eval 仅评测 Arm 1、read_once 标记前置写入，以及 S 族先行会导致 P 族被锁的机制特征。
+
+**复核结论**：**建议通过**。
+
+建议统筹方验收通过本卡，并在后续规划 final-eval 阶段时，注意上述代码特征（需统筹编写评估工厂以覆盖全部目标臂，并确保双族封存读取逻辑合理编排）。

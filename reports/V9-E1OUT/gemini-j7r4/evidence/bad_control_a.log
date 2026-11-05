@@ -1,0 +1,73 @@
+__file__ arms_net: /private/tmp/e1_bad_controls_gemini_j7r4/src/ainerzero/v9/experiments/e1/arms_net.py
+__file__ eval_runner: /private/tmp/e1_bad_controls_gemini_j7r4/src/ainerzero/v9/experiments/e1/eval_runner.py
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/e1_bad_controls_gemini_j7r4
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collected 19 items / 18 deselected / 1 selected
+
+tests/test_e1_eval_runner.py F                                           [100%]
+
+=================================== FAILURES ===================================
+________ test_motion_ball_and_box_seven_arms_predictions_and_assertions ________
+
+    def test_motion_ball_and_box_seven_arms_predictions_and_assertions():
+        """Verify r3 requirements on an active moving episode (flying ball and sliding box, >= 40 frames):
+    
+        1. ① and ④ have e_1 < 1e-3 m.
+        2. ③ with zero network weights matches ① bitwise across all predicted frames.
+        3. ⑥ with zero network weights matches ⑤ bitwise across all predicted frames.
+        4. All seven arms return pred_positions with row count strictly equal to n_future.
+        5. A fake arm returning n_future + 1 rows triggers ValueError in evaluate_episode.
+        """
+        import mlx.core as mx
+        from ainerzero.v9.experiments.e1.arms_net import (
+            IdentifyResidualArm,
+            PriorResidualArm,
+            PureNetArm,
+        )
+        from ainerzero.v9.experiments.e1.arms_nonnet import (
+            ArmPrediction,
+            IdentifyArm,
+            PriorArm,
+            SymbolicResidualArm,
+            TrueParamArm,
+        )
+        from ainerzero.v9.experiments.e1.train_runner import make_arm6_identifier
+    
+        student_ep, truth_ep, traj, phi_map = synthesize_motion_sequence_ball_and_sliding_box(num_frames=50)
+    
+        # 1. Arm 1 PriorArm & Arm 4 TrueParamArm: e_1 < 1e-3 m
+        arm1 = PriorArm()
+        res1 = evaluate_episode(arm1, student_ep, truth_ep, arm_name="Arm 1 PriorArm")
+        e_1_arm1 = res1["position_errors"]["1"]["mean_error_m"]
+        assert e_1_arm1 < 1e-3, f"Arm 1 e_1 ({e_1_arm1:.6e} m) >= 1e-3 m"
+    
+        arm4 = TrueParamArm(true_params=phi_map)
+        res4 = evaluate_episode(arm4, student_ep, truth_ep, arm_name="Arm 4 TrueParamArm")
+        e_1_arm4 = res4["position_errors"]["1"]["mean_error_m"]
+        assert e_1_arm4 < 1e-3, f"Arm 4 e_1 ({e_1_arm4:.6e} m) >= 1e-3 m"
+    
+        # 2. Arm 3 with zero network weights vs Arm 1: bitwise identical
+        arm3 = PriorResidualArm(seed=42)
+        for mod in [arm3.net.fc1, arm3.net.fc2, arm3.net.out]:
+            mod.weight = mx.zeros_like(mod.weight)
+            mod.bias = mx.zeros_like(mod.bias)
+        res3 = evaluate_episode(arm3, student_ep, truth_ep, arm_name="Arm 3 PriorResidualArm")
+    
+        for bname in ["ball", "box"]:
+            arr3 = np.asarray(res3["pred_positions"][bname])
+            arr1 = np.asarray(res1["pred_positions"][bname])
+>           assert np.array_equal(arr3, arr1), f"Arm 3 zero-weight pred for {bname} is not bitwise identical to Arm 1!"
+E           AssertionError: Arm 3 zero-weight pred for ball is not bitwise identical to Arm 1!
+E           assert False
+E            +  where False = <function array_equal at 0x106fdbe70>(array([[0.225     , 0.        , 3.03841125],\n       [0.24997137, 0.        , 3.0290641 ],\n       [0.27489077, 0.      ...35, 0.        , 1.85354051],\n       [0.90490172, 0.        , 1.77315347],\n       [0.92845796, 0.        , 1.6902113 ]]), array([[0.24997137, 0.        , 3.0290641 ],\n       [0.27489077, 0.        , 3.01701396],\n       [0.2997583 , 0.      ...72, 0.        , 1.77315347],\n       [0.92845796, 0.        , 1.6902113 ],\n       [0.95196517, 0.        , 1.60471931]]))
+E            +    where <function array_equal at 0x106fdbe70> = np.array_equal
+
+tests/test_e1_eval_runner.py:889: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_e1_eval_runner.py::test_motion_ball_and_box_seven_arms_predictions_and_assertions
+======================= 1 failed, 18 deselected in 0.33s =======================

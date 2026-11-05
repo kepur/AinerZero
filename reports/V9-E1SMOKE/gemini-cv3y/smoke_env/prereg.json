@@ -1,0 +1,186 @@
+{
+  "arms": [
+    {
+      "arm_id": 1,
+      "description": "Fixed biased physical prior (F_prior) with median parameter values",
+      "name": "BiasedPriorArm",
+      "parameter_count": 0,
+      "tag": "prior",
+      "trainable": false
+    },
+    {
+      "arm_id": 2,
+      "description": "Pure MLX dynamics neural network (no prior inductive bias)",
+      "name": "PureNetArm",
+      "parameter_count": 6150,
+      "tag": "pure_neural",
+      "trainable": true
+    },
+    {
+      "arm_id": 3,
+      "description": "Biased prior F_prior + MLX residual network correction",
+      "name": "PriorResidualArm",
+      "parameter_count": 6150,
+      "tag": "prior_residual",
+      "trainable": true
+    },
+    {
+      "arm_id": 4,
+      "description": "Analytical prior with ground truth parameters (upper bound diagnostic only, out of competition)",
+      "name": "TrueParamArm",
+      "parameter_count": 0,
+      "tag": "diagnostic",
+      "trainable": false
+    },
+    {
+      "arm_id": 5,
+      "description": "Biased prior with online parameter identification (SMC / filter) without neural network",
+      "name": "IdentifiedPriorArm",
+      "parameter_count": 0,
+      "tag": "identification",
+      "trainable": false
+    },
+    {
+      "arm_id": 6,
+      "description": "Identified prior + MLX residual projected orthogonally onto ker(dF_prior/d_phi)^T",
+      "name": "IdentifyResidualArm",
+      "parameter_count": 6150,
+      "tag": "hybrid_projected",
+      "trainable": true
+    },
+    {
+      "arm_id": 7,
+      "description": "Identified prior + STLSQ sparse symbolic regression residual",
+      "name": "SymbolicResidualArm",
+      "parameter_count": 0,
+      "tag": "symbolic",
+      "trainable": false
+    }
+  ],
+  "budget_caps": {
+    "data_generation_max_seconds": 7200.0,
+    "dev_eval_nontrain_cell_max_seconds": 300.0,
+    "dev_eval_total_max_seconds": 14400.0,
+    "dev_eval_train_cell_max_seconds": 600.0,
+    "final_eval_max_seconds": 1800.0,
+    "phase_total_wall_ceiling_seconds": 115200.0,
+    "train_cell_compute_max_seconds": 1200.0,
+    "train_cell_wall_max_seconds": 4800.0,
+    "train_cells_count": 18,
+    "train_total_wall_max_seconds": 86400.0,
+    "training_duty_cycle": 0.25
+  },
+  "created_utc": "2026-10-29T08:59:44Z",
+  "experiment_id": "e1-phase2-20261029-r0",
+  "families": {
+    "descriptions": {
+      "P": "Parameter variation only (friction, restitution, mass, damping)",
+      "S": "Parameter variation + quadratic_drag_v1 drag field mechanism"
+    },
+    "names": [
+      "P",
+      "S"
+    ]
+  },
+  "hypotheses": {
+    "collision_f1_non_decreasing": true,
+    "exploratory_hypotheses": [
+      "H-P",
+      "H-S"
+    ],
+    "h_p_similarity_max_width_ratio": 0.1,
+    "primary_error_reduction_min": 0.1,
+    "primary_gate": "H-E1"
+  },
+  "metrics": {
+    "ballistic_min_frames": 5,
+    "bootstrap_confidence_level": 0.95,
+    "bootstrap_resamples": 10000,
+    "bootstrap_rng_seed": 42,
+    "collision_debounce_frames": 3,
+    "collision_match_tolerance_frames": 1,
+    "collision_rel_velocity_threshold_mps": 0.05,
+    "eval_k_steps": [
+      1,
+      5,
+      10,
+      30
+    ],
+    "eval_primary_k": 10,
+    "surface_contact_tolerance_m": 0.004
+  },
+  "parameter_equality": {
+    "registered_parameter_count": 6150,
+    "trainable_arms": [
+      2,
+      3,
+      6
+    ]
+  },
+  "partitions": {
+    "data_seed": 1001,
+    "dev_worlds_per_family": 200,
+    "final_worlds_per_family": 200,
+    "names": [
+      "train",
+      "development",
+      "final"
+    ],
+    "total_experiment_worlds": 2800,
+    "train_worlds_per_family": 1000
+  },
+  "prereg_draft_ref": {
+    "path": "reports/V9-P48/PREREG_DRAFT.md",
+    "sha256": "372e724bd6b028da9dde76d7f1fb52aa6e1497926b5a081a64032950662f2872",
+    "sha256_prefix": "372e724bd6b0"
+  },
+  "resource_limits": {
+    "disk_min_free_gib": 50.0,
+    "mlx_memory_gib": 4.0,
+    "process_memory_gib": 8.0,
+    "swap_growth_gib": 1.0,
+    "system_reserve_gib": 16.0,
+    "training_duty_cycle": 0.25
+  },
+  "schema": "ainerzero.v9.e1.preregistration.v1",
+  "simulation": {
+    "coordinate_system": "right_handed_z_up",
+    "fps_simulation": 60,
+    "gravity_vector": [
+      0.0,
+      0.0,
+      -9.81
+    ],
+    "jacobian_rel_step": 0.001,
+    "physics_ticks_per_sec": 120,
+    "prior_median_parameters": {
+      "angular_damping": 0.125,
+      "friction": 0.5,
+      "linear_damping": 0.125,
+      "mass": 2.6,
+      "restitution": 0.45
+    },
+    "substep_delta_t": 0.0016666666666666668,
+    "substeps_per_frame": 10,
+    "svd_rel_tolerance": 1e-06,
+    "ticks_per_frame_ratio": 2
+  },
+  "source_digests": {
+    "src/ainerzero/v9/experiments/e1/arms_net.py": "9e142a46827b77393413abcabc3ea8a060c7d21cbe722c60522b96e35bdbb751",
+    "src/ainerzero/v9/experiments/e1/arms_nonnet.py": "6ee0133ddc2238dd63ebb0644c94f10b82cbb465233eba8d29a9719f2264578b",
+    "src/ainerzero/v9/experiments/e1/export.py": "01e1266dcdd6671b40ce91bfe4c17a93eb5c52e8877fb515ce36ba492697de65",
+    "src/ainerzero/v9/experiments/e1/jacobian.py": "5a32b8893b8f6d9eda2265b27a69d1f719e686ea16efdadeadac730422bb3f5e",
+    "src/ainerzero/v9/experiments/e1/metrics.py": "f3a54a18c0b81de0c0911a646671dfd32098f119256d4c0f038d67a437eec4e3",
+    "src/ainerzero/v9/experiments/e1/prereg.py": "bdac5c15b4486c7b6e8c2a309c9fc11fc1d3f7d0f27d6f324578cedadc546d0f",
+    "src/ainerzero/v9/experiments/e1/prior.py": "5c6aebdddb705ddd4ab1c21ae3747d8327eed8d68128a70dcc359e228c300289",
+    "src/ainerzero/v9/experiments/e1/spec.py": "a36ae6c4f7ed187ef5784063fc05a895405cb367ce56ae8a5eb79217e4056f5c"
+  },
+  "spec_name": "e1-phase2-v1",
+  "status": "awaiting_coordinator_approval",
+  "task_id": "ainerzero.V9.P71",
+  "training_seeds": [
+    42,
+    43,
+    44
+  ]
+}

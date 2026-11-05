@@ -1,0 +1,61 @@
+{
+  "task_id": "ainerzero.V9.P87",
+  "agent_id": "gemini-b5x8",
+  "round": "r2",
+  "tier": 2,
+  "kind": "code",
+  "status": "completed",
+  "test_suite": {
+    "total": 184,
+    "passed": 184,
+    "failed": 0,
+    "skipped": 0,
+    "duration_seconds": 17.13
+  },
+  "source_integrity": {
+    "radii_by_body_in_src_count": 0,
+    "verified_clean": true
+  },
+  "r2_fixes": {
+    "removed_arm_name_check_in_eval_runner": true,
+    "is_arm_4_isinstance_only": true,
+    "invariance_test": "tests/test_e1_p87_geometry.py::test_truth_static_materials_no_leakage_to_other_arms",
+    "arms_1_2_3_5_6_7_bitwise_invariant": true,
+    "arm_4_truth_sensitive": true,
+    "spoofed_arm_name_rejected": true
+  },
+  "bad_controls": {
+    "r2_mutant_if_true_material_injection": {
+      "verified_red": true,
+      "failure_signature": "AssertionError: Arm 1 PriorArm predictions differ across truth episodes: truth material leaked!"
+    },
+    "a_box_half_extents_none": {
+      "verified_red": true,
+      "failure_signature": "Arm 1 PriorArm box z1=0.98486 != 0.5 (diff >= 1e-3)"
+    },
+    "b_no_static_materials_injection": {
+      "verified_red": true,
+      "failure_signature": "Arm 4 position error 0.04629093750000557 exceeds 1e-6"
+    },
+    "c_arm6_missing_half_extents": {
+      "verified_red": true,
+      "failure_signature": "assert received_geos[0].half_extents is not None"
+    }
+  },
+  "additional_requirements": {
+    "additional_req_1": {
+      "fixture_path": "tests/fixtures/e1_prior_sphere_regression.npz",
+      "sha256": "5eabd45b812c424826ce99b9a83e7cf5dc6d9c70ec8b2f6c8430f66e66e08604",
+      "independent_of_reports": true,
+      "verified_pass": true
+    },
+    "additional_req_2": {
+      "standard_dimensions_table_consistency_with_e0": "PASSED",
+      "tightened_ramp_boundaries": "PASSED"
+    },
+    "additional_req_3": {
+      "pure_dict_subspace_weights_and_dims": "PASSED",
+      "no_implicit_wrapper_classes": true
+    }
+  }
+}

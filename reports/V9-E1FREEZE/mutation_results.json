@@ -1,0 +1,114 @@
+[
+  {
+    "id": "MUT-1",
+    "name": "spec_sha_mutated_1_char",
+    "file": "src/ainerzero/v9/experiments/e1/spec.py",
+    "target_test": "test_e1_prereg.py::test_spec_constants",
+    "exit_code": 1,
+    "outcome": "RED (passed bad-control)",
+    "orig_sha": "415a449cfb2dced0",
+    "mutated_sha": "f700a8d05595efd9",
+    "restored_sha": "415a449cfb2dced0",
+    "error_snippet": [
+      "assert spec.PREREG_DRAFT_SHA256 == \"ef7856e7f757d6f44b8e11a9d1f4f63da9e043cc202e08d772a94ba67d04a20e\"",
+      "E   AssertionError: assert 'ef7856e7f757...94ba67d04a20f' == 'ef7856e7f757...94ba67d04a20e'",
+      "FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/e1_mutation_sandbox_bmdrhmfr/tests/test_e1_prereg.py::test_spec_constants"
+    ]
+  },
+  {
+    "id": "MUT-2",
+    "name": "default_train_steps_reverted_to_32000",
+    "file": "src/ainerzero/v9/experiments/e1/spec.py",
+    "target_test": "test_e1_prereg.py::test_spec_constants",
+    "exit_code": 1,
+    "outcome": "RED (passed bad-control)",
+    "orig_sha": "415a449cfb2dced0",
+    "mutated_sha": "a4e052552c812952",
+    "restored_sha": "415a449cfb2dced0",
+    "error_snippet": [
+      "assert spec.DEFAULT_TRAIN_STEPS == 64000",
+      "E   assert 32000 == 64000",
+      "FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/e1_mutation_sandbox_bmdrhmfr/tests/test_e1_prereg.py::test_spec_constants"
+    ]
+  },
+  {
+    "id": "MUT-3",
+    "name": "budget_caps_sum_equation_broken",
+    "file": "src/ainerzero/v9/experiments/e1/spec.py",
+    "target_test": "test_e1_prereg.py::test_spec_constants",
+    "exit_code": 1,
+    "outcome": "RED (passed bad-control)",
+    "orig_sha": "415a449cfb2dced0",
+    "mutated_sha": "625028b2171c7798",
+    "restored_sha": "415a449cfb2dced0",
+    "error_snippet": [
+      "assert caps[\"train_total_wall_max_seconds\"] == 10800.0",
+      "E   assert 10801.0 == 10800.0",
+      "FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/e1_mutation_sandbox_bmdrhmfr/tests/test_e1_prereg.py::test_spec_constants"
+    ]
+  },
+  {
+    "id": "MUT-4",
+    "name": "train_runner_empty_validation_guard_disabled",
+    "file": "src/ainerzero/v9/experiments/e1/train_runner.py",
+    "target_test": "test_e1_train_runner.py::test_compute_validation_loss_empty_windows_raises_value_error",
+    "exit_code": 1,
+    "outcome": "RED (passed bad-control)",
+    "orig_sha": "906929f9f8b789e7",
+    "mutated_sha": "15929addc57d72d1",
+    "restored_sha": "906929f9f8b789e7",
+    "error_snippet": [
+      "with pytest.raises(ValueError, match=\"Cannot compute validation loss on empty validation windows\"):",
+      "E   Failed: DID NOT RAISE ValueError",
+      "FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/e1_mutation_sandbox_bmdrhmfr/tests/test_e1_train_runner.py::test_compute_validation_loss_empty_windows_raises_value_error"
+    ]
+  },
+  {
+    "id": "MUT-5",
+    "name": "worker_runstore_optimizer_steps_reverted_to_100k",
+    "file": "src/ainerzero/v9/experiments/e1/worker.py",
+    "target_test": "test_e1_wiring.py::test_runstore_budget_derived_from_spec",
+    "exit_code": 1,
+    "outcome": "RED (passed bad-control)",
+    "orig_sha": "c7aa252398f12d89",
+    "mutated_sha": "d181259bcd77019b",
+    "restored_sha": "c7aa252398f12d89",
+    "error_snippet": [
+      "assert manifest[\"experiment_budget\"][\"max_optimizer_steps\"] == expected_exp_opt_steps",
+      "E   assert 100000 == 1382400",
+      "FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/e1_mutation_sandbox_bmdrhmfr/tests/test_e1_wiring.py::test_runstore_budget_derived_from_spec"
+    ]
+  },
+  {
+    "id": "MUT-6",
+    "name": "prereg_reverted_to_legacy_exact_equality",
+    "file": "src/ainerzero/v9/experiments/e1/prereg.py",
+    "target_test": "test_e1_prereg.py::test_isolated_subprocess_draft_and_freeze",
+    "exit_code": 1,
+    "outcome": "RED (passed bad-control)",
+    "orig_sha": "f2698be9ff690a95",
+    "mutated_sha": "9d71fa44e1a5c032",
+    "restored_sha": "f2698be9ff690a95",
+    "error_snippet": [
+      "raise SpecValidationError(\"Legacy equality failed\")",
+      "E   ainerzero.v9.experiments.e1.prereg.SpecValidationError: Legacy equality failed",
+      "FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/e1_mutation_sandbox_bmdrhmfr/tests/test_e1_prereg.py::test_isolated_subprocess_draft_and_freeze"
+    ]
+  },
+  {
+    "id": "MUT-7",
+    "name": "conftest_monkey_patch_re_injected",
+    "file": "tests/conftest.py",
+    "target_test": "test_e1_prereg.py::test_isolated_subprocess_draft_and_freeze",
+    "exit_code": 1,
+    "outcome": "RED (passed bad-control)",
+    "orig_sha": "95f1490c94d0909e",
+    "mutated_sha": "cd62b275041d7ee5",
+    "restored_sha": "95f1490c94d0909e",
+    "error_snippet": [
+      "assert direct_draft[\"budget_caps\"][\"train_cell_wall_max_seconds\"] == spec.BUDGET_CAPS[\"train_cell_wall_max_seconds\"], (",
+      "E   AssertionError: conftest patch detected! train_cell_wall_max_seconds was altered to 600.0",
+      "E   assert 600.0 == 1200.0"
+    ]
+  }
+]

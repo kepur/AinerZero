@@ -1,0 +1,83 @@
+=== BAD CONTROL (b) ===
+CWD: /tmp/e1_bad_controls_gemini_e2v7
+COMMAND: python3 -m pytest /tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py -k test_normalization_computed_strictly_from_train_subset -v -s
+EXIT CODE: 1
+
+--- STDOUT ---
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /tmp/e1_bad_controls_gemini_e2v7
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 7 items / 6 deselected / 1 selected
+
+../../../tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py::test_normalization_computed_strictly_from_train_subset FAILED
+
+=================================== FAILURES ===================================
+____________ test_normalization_computed_strictly_from_train_subset ____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-881/test_normalization_computed_st0')
+
+    def test_normalization_computed_strictly_from_train_subset(tmp_path: Path):
+        """Verify validation subset with extreme outlier does not contaminate normalization statistics."""
+        data_dir = tmp_path / "dataset"
+        data_dir.mkdir(parents=True, exist_ok=True)
+    
+        # Create 10 normal episodes
+        files = []
+        for i in range(10):
+            p = data_dir / f"seq_{i:02d}.json"
+            _create_synthetic_episode_file(p, f"seq_{i:02d}", offset=float(i) * 0.5)
+            files.append(p)
+    
+        # Determine which file lands in validation set for family "P"
+        train_files, val_files = split_episodes(files, family="P", val_fraction=0.1)
+        assert len(val_files) == 1
+        val_file = val_files[0]
+    
+        # Mutate the validation file into an extreme outlier (values on order of 1e9)
+        outlier_val_data = json.loads(val_file.read_text(encoding="utf-8"))
+        for fr in outlier_val_data["frames"]:
+            fr["objects"]["body_0"]["position"] = [1e9, 1e9, 1e9]
+            fr["objects"]["body_0"]["linear_velocity"] = [1e9, 1e9, 1e9]
+        val_file.write_text(json.dumps(outlier_val_data), encoding="utf-8")
+    
+        out_dir = tmp_path / "ckpt"
+        res = train_cell(
+            arm_id=2,
+            family="P",
+            seed=42,
+            student_dir=data_dir,
+            out_dir=out_dir,
+            steps=5,
+            batch_size=4,
+        )
+        assert res["status"] == "completed"
+    
+        loaded_arm = PureNetArm(seed=42)
+        loaded_arm.load(res["checkpoint_path"])
+    
+        # Verify input_mean and target_mean are completely unaffected by the 1e9 outlier
+>       assert np.all(np.abs(loaded_arm.input_mean) < 100.0), f"input_mean contaminated: {loaded_arm.input_mean}"
+E       AssertionError: input_mean contaminated: [1.0000001e+08 1.0000000e+08 1.0000000e+08 1.0000000e+08 1.0000000e+08
+E          1.0000000e+08 1.0000001e+08 1.0000000e+08 1.0000000e+08 1.0000000e+08
+E          1.0000000e+08 1.0000000e+08 1.0000001e+08 1.0000000e+08 1.0000000e+08
+E          1.0000000e+08 1.0000000e+08 1.0000000e+08 1.0000001e+08 1.0000000e+08
+E          1.0000000e+08 1.0000000e+08 1.0000000e+08 1.0000000e+08]
+E       assert np.False_
+E        +  where np.False_ = <function all at 0x1088fe2b0>(array([1.0000001e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000001e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000001e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000001e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08],\n      dtype=float32) < 100.0)
+E        +    where <function all at 0x1088fe2b0> = np.all
+E        +    and   array([1.0000001e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000001e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000001e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000001e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08],\n      dtype=float32) = <ufunc 'absolute'>(array([1.0000001e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000001e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000001e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000001e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08],\n      dtype=float32))
+E        +      where <ufunc 'absolute'> = np.abs
+E        +      and   array([1.0000001e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000001e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000001e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000001e+08, 1.0000000e+08,\n       1.0000000e+08, 1.0000000e+08, 1.0000000e+08, 1.0000000e+08],\n      dtype=float32) = <ainerzero.v9.experiments.e1.arms_net.PureNetArm object at 0x106956fc0>.input_mean
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_p93_revision.py:262: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py::test_normalization_computed_strictly_from_train_subset
+======================= 1 failed, 6 deselected in 0.29s ========================
+
+--- STDERR ---
+

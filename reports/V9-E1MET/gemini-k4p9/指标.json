@@ -1,0 +1,76 @@
+{
+  "task": "ainerzero.V9.P89",
+  "title": "【L2·gemini·代码】E1 修订 r2：位置误差改为单起点视野误差（替换拼接整轨迹的旧算法；不可用 k 不补值）",
+  "agent": "gemini-k4p9",
+  "tier": 2,
+  "date": "2026-10-29",
+  "revision": "r2",
+  "architecture_decision": "reports/V9-P48/E1_IMPLEMENTATION_PLAN.md § 架构裁定修订 r2",
+  "implementation": {
+    "metrics_function": "compute_horizon_position_errors",
+    "module": "src/ainerzero/v9/experiments/e1/metrics.py",
+    "single_origin_index": 9,
+    "target_frame_formula": "prefix_frames - 1 + k",
+    "pred_future_index": "k - 1",
+    "unavailable_policy": "Omit from position_errors dictionary and append to unavailable_k; no zero or NaN padding",
+    "endpoint_exclusion_rule": "exclude_endpoints and target_frame >= T - 1",
+    "legacy_function_status": "compute_k_step_position_errors preserved with updated docstring declaring sliding-window definition not used in E1",
+    "eval_runner_status": "evaluate_episode uses compute_horizon_position_errors directly; spliced full trajectory removed",
+    "aggregation_status": "evaluate_cell and evaluate_final_once report k_step_n_available and average only available episodes per k; analysis skips unavailable k without padding"
+  },
+  "analytic_tests": {
+    "analytic_increments": "PASSED (error < 1e-12 at 1mm, 5mm, 10mm)",
+    "perfect_prediction": "PASSED (all available horizons == 0.0)",
+    "constant_velocity_off_by_one": "PASSED (error matches |v| * dt)",
+    "endpoint_exclusion_40_frames": "PASSED (k=30 on T=40 is frame 39 = T-1, omitted and in unavailable_k)",
+    "unavailable_k_not_padded": "PASSED (k > n_future or target >= T-1 omitted from dict, no 0/NaN)"
+  },
+  "arm4_dev_episode_regression": {
+    "episode_id": "276b0365f2e34c09.json",
+    "scenario_type": "bounce_collision",
+    "old_spliced_e1_m": 0.047814,
+    "old_spliced_e1_mm": 47.814,
+    "new_horizon_e1_m": 0.000194,
+    "new_horizon_e1_mm": 0.194,
+    "regression_threshold_m": 0.001,
+    "status": "PASSED (e_1 < 1 mm)"
+  },
+  "dev_20_episodes_comparison": {
+    "num_episodes": 20,
+    "mean_e_1_old_mm": 62.01,
+    "mean_e_1_new_mm": 0.66,
+    "mean_e_5_old_mm": 68.52,
+    "mean_e_5_new_mm": 13.83,
+    "mean_e_10_old_mm": 78.86,
+    "mean_e_10_new_mm": 48.96,
+    "reduction_e1_pct": 98.94
+  },
+  "bad_controls": {
+    "isolation_directory": "/tmp/bad_controls_p89",
+    "control_a_revert_spliced_trajectory": {
+      "expected": "FAILED (turn RED)",
+      "exit_code": 1,
+      "result": "PASSED_TURNING_RED"
+    },
+    "control_b_off_by_one_target_frame": {
+      "expected": "FAILED (turn RED)",
+      "exit_code": 1,
+      "result": "PASSED_TURNING_RED"
+    },
+    "control_c_pad_unavailable_with_zero": {
+      "expected": "FAILED (turn RED)",
+      "exit_code": 1,
+      "result": "PASSED_TURNING_RED"
+    }
+  },
+  "test_suites": {
+    "test_e1_metrics": {"passed": 20, "failed": 0},
+    "test_e1_eval_runner": {"passed": 18, "failed": 0},
+    "test_e1_analysis": {"passed": 13, "failed": 0},
+    "targeted_total_passed": 51,
+    "targeted_total_failed": 0,
+    "full_e1_suite_passed": 191,
+    "full_e1_suite_failed": 1,
+    "full_e1_failure_note": "tests/test_e1_entry.py line 414 created a 20-frame synthetic episode fixture; under r2 single-origin horizon definition, frame 19 is T-1 and therefore excluded by exclude_endpoints=True, correctly marking k=10 unavailable. test_e1_entry.py is outside the permitted file scope for task P89."
+  }
+}

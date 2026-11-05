@@ -1,0 +1,81 @@
+{
+  "task_id": "ainerzero.V9.P72",
+  "revision": "r2",
+  "agent": "gemini-t8m4",
+  "timestamp": "2026-10-29T09:42:00+03:00",
+  "zero_training_verified": true,
+  "gpu_used": false,
+  "device": "cpu",
+  "test_summary": {
+    "test_e1_entry_count": 11,
+    "test_e1_entry_passed": 11,
+    "total_e1_test_count": 82,
+    "total_e1_test_passed": 82
+  },
+  "rehearsal": {
+    "schedule_cells_total": 50,
+    "data_generation_cells": 1,
+    "training_cells": 18,
+    "dev_eval_cells": 30,
+    "final_eval_cells": 1,
+    "simulated_wall_time_seconds": 1440.0,
+    "phase_ceiling_seconds": 115200.0,
+    "rehearsal_status": "PASS"
+  },
+  "production_runner_verification": {
+    "eval_runner_invokes_metrics_py": true,
+    "train_runner_saves_and_reloads_weights": true,
+    "hardcoded_mocks_removed": true,
+    "injection_point": "execute_work_cell(..., runner: CellRunner | None = None) defaults to DefaultCellRunner()"
+  },
+  "adversarial_mutants": [
+    {
+      "name": "mutant_1_remove_approval",
+      "description": "Bypasses prereg approval check",
+      "test": "test_verify_mode",
+      "returncode": 1,
+      "is_red": true,
+      "output_snippet": "ommands.EXIT_REFUSED_APPROVAL\n\ntests/test_e1_entry.py:216: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_entry.py::test_verify_mode - assert 0 == 3\n============================== 1 failed in 0.23s ==============================="
+    },
+    {
+      "name": "mutant_2_shared_deadline",
+      "description": "Shared global deadline across cells without per-cell reset",
+      "test": "test_fake_clock_full_schedule_rehearsal",
+      "returncode": 1,
+      "is_red": true,
+      "output_snippet": "IT_COMPLETED\n\ntests/test_e1_entry.py:526: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_entry.py::test_fake_clock_full_schedule_rehearsal - Asse...\n============================== 1 failed in 0.36s ==============================="
+    },
+    {
+      "name": "mutant_3_allow_duplicate_training",
+      "description": "Bypasses ledger check for duplicate completed training cells",
+      "test": "test_duplicate_training_rejected",
+      "returncode": 1,
+      "is_red": true,
+      "output_snippet": "s.EXIT_FAILED\n\ntests/test_e1_entry.py:316: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_entry.py::test_duplicate_training_rejected - assert 0 == 1\n============================== 1 failed in 0.31s ==============================="
+    },
+    {
+      "name": "mutant_4_final_eval_no_read_once",
+      "description": "Disables .read_once marker writing on final partition",
+      "test": "test_final_eval_read_once",
+      "returncode": 1,
+      "is_red": true,
+      "output_snippet": "0>).data_dir\n\ntests/test_e1_entry.py:332: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_entry.py::test_final_eval_read_once - AssertionError: as...\n============================== 1 failed in 0.27s ==============================="
+    },
+    {
+      "name": "mutant_5_preflight_ledger_changed",
+      "description": "Mutates ledger before preflight refusal",
+      "test": "test_preflight_refusal_leaves_ledger_sha_unchanged",
+      "returncode": 4,
+      "is_red": true,
+      "output_snippet": "inerzero/v9/experiments/e1/commands.py\", line 167\nE       if not ok:\nE   IndentationError: unexpected indent\n=========================== short test summary info ============================\nERROR tests/test_e1_entry.py\n=============================== 1 error in 0.17s ==============================="
+    },
+    {
+      "name": "mutant_6_eval_dummy_metrics",
+      "description": "Production eval runner returns hardcoded dummy metrics",
+      "test": "test_production_eval_runner_computes_real_metrics_on_synthetic_data",
+      "returncode": 1,
+      "is_red": true,
+      "output_snippet": "s/test_e1_entry.py:425: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_entry.py::test_production_eval_runner_computes_real_metrics_on_synthetic_data\n============================== 1 failed in 0.24s ==============================="
+    }
+  ]
+}

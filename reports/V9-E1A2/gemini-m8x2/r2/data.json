@@ -1,0 +1,92 @@
+{
+  "task_id": "ainerzero.V9.P69",
+  "round": "r2",
+  "agent_id": "gemini-m8x2",
+  "registered_parameter_count": 6150,
+  "parameter_counts": {
+    "arm2_pure_net": 6150,
+    "arm3_prior_residual": 6150,
+    "arm6_identify_residual": 6150
+  },
+  "parameter_sha256": {
+    "seed_42": "f939cfdb6239f069788f1a239c8dc91e6b9bb6d1d2614588d05a71ea6ea5eea2",
+    "seed_999": "73e86699a4098b302ff988e3cc61ba2d8731919a738b04b5e41c0d1aaddfdd5a"
+  },
+  "unit_tests": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "tests": {
+      "test_parameter_count_equality": {
+        "status": "PASSED",
+        "duration_seconds": 0.0011
+      },
+      "test_determinism_seed": {
+        "status": "PASSED",
+        "duration_seconds": 0.0033
+      },
+      "test_arm3_error_lower_than_prior_after_200_steps": {
+        "status": "PASSED",
+        "duration_seconds": 0.0475
+      },
+      "test_arm6_orthogonal_projection_inner_product": {
+        "status": "PASSED",
+        "duration_seconds": 0.0009
+      },
+      "test_arm6_predict_with_projection_and_diagnostic": {
+        "status": "PASSED",
+        "duration_seconds": 0.0086
+      },
+      "test_arm6_predict_path_applied_corrections_orthogonality": {
+        "status": "PASSED",
+        "duration_seconds": 0.0084
+      },
+      "test_arm6_injected_identifier_fn": {
+        "status": "PASSED",
+        "duration_seconds": 0.0021
+      },
+      "test_observed_prefix_nan_isolation": {
+        "status": "PASSED",
+        "duration_seconds": 0.0019
+      },
+      "test_save_load_bitwise_consistency": {
+        "status": "PASSED",
+        "duration_seconds": 0.0031
+      }
+    }
+  },
+  "bad_controls": [
+    {
+      "name": "mutant_1_predict_no_projection",
+      "mutation": "predict 中将 if self.project: 改为 if False:",
+      "target_file": "/tmp/e1_a2_r2_mutants/mutant_1_predict_no_projection/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "test_arm6_predict_path_applied_corrections_orthogonality",
+      "exit_code": 1,
+      "error_message": "AssertionError: Step 0: max |J^T c| = 0.00022576463146899617 >= 1e-8"
+    },
+    {
+      "name": "mutant_2_arm3_width_plus_1",
+      "mutation": "PriorResidualArm hidden_dim = 65 (宽度比 Arm 2 多 1)",
+      "target_file": "/tmp/e1_a2_r2_mutants/mutant_2_arm3_width_plus_1/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "test_parameter_count_equality",
+      "exit_code": 1,
+      "error_message": "AssertionError: assert 6311 == 6150"
+    },
+    {
+      "name": "mutant_3_no_seed_init",
+      "mutation": "BaseNetArm.__init__ 移除固定种子，采用时间戳随机种子",
+      "target_file": "/tmp/e1_a2_r2_mutants/mutant_3_no_seed_init/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "test_determinism_seed",
+      "exit_code": 1,
+      "error_message": "AssertionError: assert sha2_a1 == sha2_a2"
+    },
+    {
+      "name": "mutant_4_save_drops_param",
+      "mutation": "BaseNetArm.save 保存前剔除 fc3.bias 参数",
+      "target_file": "/tmp/e1_a2_r2_mutants/mutant_4_save_drops_param/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "test_save_load_bitwise_consistency",
+      "exit_code": 1,
+      "error_message": "RuntimeError: [read] Unable to read 8 bytes from file"
+    }
+  ]
+}

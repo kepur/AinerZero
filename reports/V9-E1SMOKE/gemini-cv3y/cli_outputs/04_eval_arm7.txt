@@ -1,0 +1,248 @@
+Command: /opt/homebrew/opt/python@3.12/bin/python3.12 -m ainerzero.cli e1-phase2 --mode eval --arm 7 --family P --output-root /Users/mac/AinerWorkFlow/AinerZero/reports/V9-E1SMOKE/gemini-cv3y/smoke_env/output --ledger /Users/mac/AinerWorkFlow/AinerZero/reports/V9-E1SMOKE/gemini-cv3y/smoke_env/control.sqlite3 --lock-file /Users/mac/AinerWorkFlow/AinerZero/reports/V9-E1SMOKE/gemini-cv3y/smoke_env/lock.lock --prereg /Users/mac/AinerWorkFlow/AinerZero/reports/V9-E1SMOKE/gemini-cv3y/smoke_env/prereg.json --research-log /Users/mac/AinerWorkFlow/AinerZero/reports/V9-E1SMOKE/gemini-cv3y/smoke_env/RESEARCH_LOG.md --data-dir /Users/mac/AinerWorkFlow/AinerZero/reports/V9-E1SMOKE/gemini-cv3y/smoke_env/datasets
+Exit Code: 0
+Wall Clock: 0.3443 s
+
+--- STDOUT ---
+{
+  "status": "completed",
+  "mode": "eval",
+  "result": {
+    "mode": "eval",
+    "arm": 7,
+    "family": "P",
+    "seed": null,
+    "partition": "development",
+    "summary": {
+      "num_episodes": 2,
+      "primary_error_m": 0.09293919384739625,
+      "k_step_errors": {
+        "1": 0.07306832406249422,
+        "5": 0.08075972659538835,
+        "10": 0.09293919384739625,
+        "30": 0.15465355770007597
+      },
+      "collision_precision": 0.5,
+      "collision_recall": 0.5,
+      "collision_f1": 0.5,
+      "mean_energy_drift": 0.04410954082667601,
+      "mean_latency_per_step_s": 0.0007194854338498165
+    },
+    "metrics": {
+      "num_episodes": 2,
+      "primary_error_m": 0.09293919384739625,
+      "k_step_errors": {
+        "1": 0.07306832406249422,
+        "5": 0.08075972659538835,
+        "10": 0.09293919384739625,
+        "30": 0.15465355770007597
+      },
+      "collision_precision": 0.5,
+      "collision_recall": 0.5,
+      "collision_f1": 0.5,
+      "mean_energy_drift": 0.04410954082667601,
+      "mean_latency_per_step_s": 0.0007194854338498165,
+      "position_error_10_step": 0.09293919384739625,
+      "ballistic_energy_drift": 0.04410954082667601
+    },
+    "episodes": [
+      {
+        "sequence_id": "b3b000c164515a70",
+        "scenario_type": "box_stack",
+        "prefix_frames": 10,
+        "n_future": 30,
+        "position_errors": {
+          "1": {
+            "mean_error_m": 0.1016060541026577,
+            "median_error_m": 0.028334339710160274,
+            "rmse_m": 0.17179354389904614,
+            "max_error_m": 0.5557065891786782,
+            "count": 126,
+            "k": 1,
+            "valid_target_frames": 42
+          },
+          "5": {
+            "mean_error_m": 0.11230142821872693,
+            "median_error_m": 0.04304758862228144,
+            "rmse_m": 0.18060912377624888,
+            "max_error_m": 0.5557065891786782,
+            "count": 114,
+            "k": 5,
+            "valid_target_frames": 38
+          },
+          "10": {
+            "mean_error_m": 0.12920320088043794,
+            "median_error_m": 0.09446137846372615,
+            "rmse_m": 0.1938060439254817,
+            "max_error_m": 0.5557065891786782,
+            "count": 99,
+            "k": 10,
+            "valid_target_frames": 33
+          },
+          "30": {
+            "mean_error_m": 0.20930721574260483,
+            "median_error_m": 0.15357310778610356,
+            "rmse_m": 0.2777463308891088,
+            "max_error_m": 0.5557065891786782,
+            "count": 39,
+            "k": 30,
+            "valid_target_frames": 13
+          },
+          "primary_k": 10,
+          "primary_error_m": 0.12920320088043794
+        },
+        "collision_f1": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "true_positives": 0,
+          "false_positives": 0,
+          "false_negatives": 2,
+          "num_pred_events": 0,
+          "num_true_events": 2
+        },
+        "energy_drift": {
+          "by_body": {
+            "BoxBottom": {
+              "segments_count": 0,
+              "max_drift": null,
+              "mean_drift": null,
+              "segments": []
+            },
+            "BoxTop": {
+              "segments_count": 1,
+              "max_drift": 0.0024938915685999946,
+              "mean_drift": 0.0011177212439188904,
+              "segments": [
+                {
+                  "start_frame": 0,
+                  "end_frame": 6,
+                  "length": 7,
+                  "h0": 14.753494767634107,
+                  "max_drift": 0.0024938915685999946,
+                  "mean_drift": 0.0011177212439188904,
+                  "final_drift": 0.001968704108445037
+                }
+              ]
+            },
+            "ImpactSphere": {
+              "segments_count": 1,
+              "max_drift": 0.5300049252552864,
+              "mean_drift": 0.07623204979201417,
+              "segments": [
+                {
+                  "start_frame": 0,
+                  "end_frame": 14,
+                  "length": 15,
+                  "h0": 11.751337801444016,
+                  "max_drift": 0.5300049252552864,
+                  "mean_drift": 0.07623204979201417,
+                  "final_drift": 0.5300049252552864
+                }
+              ]
+            }
+          },
+          "segments_count": 2,
+          "mean_drift": 0.03867488551796653,
+          "max_drift": 0.5300049252552864
+        },
+        "inference_latency": {
+          "predict_wall_clock_s": 0.0362145840190351,
+          "latency_per_step_s": 0.0012071528006345033
+        },
+        "num_active_bodies": 3
+      },
+      {
+        "sequence_id": "ee7c32609f6abbcc",
+        "scenario_type": "ramp_roll",
+        "prefix_frames": 10,
+        "n_future": 30,
+        "position_errors": {
+          "1": {
+            "mean_error_m": 0.04453059402233074,
+            "median_error_m": 0.013077924348834591,
+            "rmse_m": 0.07372519396391403,
+            "max_error_m": 0.20121415328681302,
+            "count": 42,
+            "k": 1,
+            "valid_target_frames": 42
+          },
+          "5": {
+            "mean_error_m": 0.049218024972049766,
+            "median_error_m": 0.02040559874882608,
+            "rmse_m": 0.07750839979109621,
+            "max_error_m": 0.20121415328681302,
+            "count": 38,
+            "k": 5,
+            "valid_target_frames": 38
+          },
+          "10": {
+            "mean_error_m": 0.05667518681435457,
+            "median_error_m": 0.03228671908329783,
+            "rmse_m": 0.08317323605007769,
+            "max_error_m": 0.20121415328681302,
+            "count": 33,
+            "k": 10,
+            "valid_target_frames": 33
+          },
+          "30": {
+            "mean_error_m": 0.09999989965754709,
+            "median_error_m": 0.11688115629354079,
+            "rmse_m": 0.12354771995271499,
+            "max_error_m": 0.20121415328681302,
+            "count": 13,
+            "k": 30,
+            "valid_target_frames": 13
+          },
+          "primary_k": 10,
+          "primary_error_m": 0.05667518681435457
+        },
+        "collision_f1": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "true_positives": 0,
+          "false_positives": 0,
+          "false_negatives": 0,
+          "num_pred_events": 0,
+          "num_true_events": 0
+        },
+        "energy_drift": {
+          "by_body": {
+            "RollingActor": {
+              "segments_count": 1,
+              "max_drift": 0.14070821521801902,
+              "mean_drift": 0.04954419613538549,
+              "segments": [
+                {
+                  "start_frame": 0,
+                  "end_frame": 29,
+                  "length": 30,
+                  "h0": 32.12747895011018,
+                  "max_drift": 0.14070821521801902,
+                  "mean_drift": 0.04954419613538549,
+                  "final_drift": 0.14070821521801902
+                }
+              ]
+            }
+          },
+          "segments_count": 1,
+          "mean_drift": 0.04954419613538549,
+          "max_drift": 0.14070821521801902
+        },
+        "inference_latency": {
+          "predict_wall_clock_s": 0.00695454201195389,
+          "latency_per_step_s": 0.0002318180670651297
+        },
+        "num_active_bodies": 1
+      }
+    ],
+    "episodes_evaluated": 2,
+    "diagnostic": false,
+    "run_id": "2317707589fe4f8492ebc34903f6fafe",
+    "elapsed_seconds": 0.051275014877319336,
+    "cell_wall_budget": 300.0
+  }
+}
+
+--- STDERR ---
+<frozen runpy>:128: RuntimeWarning: 'ainerzero.cli' found in sys.modules after import of package 'ainerzero', but prior to execution of 'ainerzero.cli'; this may result in unpredictable behaviour

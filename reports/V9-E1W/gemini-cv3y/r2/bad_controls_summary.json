@@ -1,0 +1,38 @@
+[
+  {
+    "name": "bad_control_1_revert_reservation_to_1s",
+    "description": "Revert central budget reservation from cell_wall_budget to hardcoded 1.0 s",
+    "test_target": "tests/test_e1_wiring.py::test_reserve_amount_equals_cell_wall_budget",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "            runner=runner,\n        )\n        run_id = res[\"run_id\"]\n        run_rec = ledger.store.get_run(run_id)\n>       assert run_rec.reserved_active_seconds == cell_budget\nE       AssertionError: assert 1.0 == 1200.0\nE        +  where 1.0 = RunRecord(run_id='aa2af442738a437f865481401ef21277', request_id='e1-phase2-20261029-r0:train:2:P:42:aa2af442', state='completed', resume_state=None, reason='finished_successfully', config_snapshot={'arm': 2, 'budget': {'max_daily_active_seconds': 115200.0, 'max_environment_steps': 1000000, 'max_model_transitions': 0, 'max_optimizer_steps': 20000, 'max_wall_seconds': 115200.0, 'timezone': 'Asia/Shanghai'}, 'cell_wall_budget_seconds': 1200.0, 'family': 'P', 'mode': 'train', 'power': {'battery_percent': 100, 'checked_at_unix': 1793263299.5030541, 'lid_closed': False, 'policy': 'R20261028-battery-policy', 'power_source': 'AC'}, 'runner_module_sha256': 'e7be889469602d123b934ff20052e35f5e45572eb2018f8b1e0d13acb045a0f5', 'runner_name': 'FakeCellRunner.run_train', 'seed': 42, 'spec': 'e1-phase2-v1'}, config_hash='218bf3cd6265a77bb64a0ff63b42f327f7192d92e61af6a42395c3792e35966c', created_at='1970-01-01T00:16:40+00:00', updated_at='1970-01-01T00:17:10+00:00', reserved_environment_steps=0, reserved_optimizer_steps=0, reserved_active_seconds=1.0, wall_seconds=30.0, remaining={'environment_steps': 1000000, 'optimizer_steps': 20000, 'model_transitions': 0, 'wall_seconds': 115170.0, 'daily_active_seconds': 115199.0, 'daily_date': '1970-01-01', 'daily_limit_seconds': 115200.0}, experiment_id='e1-phase2-20261029-r0', role='model', reserved_model_transitions=0).reserved_active_seconds\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_wiring.py:623: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_wiring.py::test_reserve_amount_equals_cell_wall_budget\n============================== 1 failed in 0.38s ==============================="
+  },
+  {
+    "name": "bad_control_2_ignore_runner_status_always_completed",
+    "description": "Ignore runner returned status and unconditionally finalize as completed",
+    "test_target": "tests/test_e1_wiring.py::test_runner_stopped_recorded_as_stopped_and_permits_rerun",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "        run_id = res[\"run_id\"]\n        run_rec = ledger.store.get_run(run_id)\n>       assert run_rec.state == \"stopped\"\nE       AssertionError: assert 'completed' == 'stopped'\nE         \nE         - stopped\nE         + completed\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_wiring.py:651: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_wiring.py::test_runner_stopped_recorded_as_stopped_and_permits_rerun\n============================== 1 failed in 0.37s ==============================="
+  },
+  {
+    "name": "bad_control_3_remove_runner_try_except",
+    "description": "Remove try/except around runner invocation leaving failed runs in work state",
+    "test_target": "tests/test_e1_wiring.py::test_runner_exception_recorded_as_failed",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "        runs = ledger.store.list_runs()\n        assert len(runs) == 1\n>       assert runs[0].state == \"failed\"\nE       AssertionError: assert 'training' == 'failed'\nE         \nE         - failed\nE         + training\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_wiring.py:715: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_wiring.py::test_runner_exception_recorded_as_failed - As...\n============================== 1 failed in 0.36s ==============================="
+  },
+  {
+    "name": "bad_control_4_anti_duplicate_counts_stopped_runs",
+    "description": "Modify check_cell_already_completed to count stopped runs as completed (blocks rerun)",
+    "test_target": "tests/test_e1_wiring.py::test_runner_stopped_recorded_as_stopped_and_permits_rerun",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "        # Rerun must NOT be blocked by check_cell_already_completed\n        is_done = worker.check_cell_already_completed(\n            ledger_path, mode=\"train\", arm=2, family=\"P\", seed=42\n        )\n>       assert not is_done, \"Stopped cell must not be considered already completed\"\nE       AssertionError: Stopped cell must not be considered already completed\nE       assert not True\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_wiring.py:658: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_wiring.py::test_runner_stopped_recorded_as_stopped_and_permits_rerun\n============================== 1 failed in 0.36s ==============================="
+  }
+]

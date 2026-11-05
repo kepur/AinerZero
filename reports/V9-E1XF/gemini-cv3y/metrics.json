@@ -1,0 +1,52 @@
+{
+  "task_id": "ainerzero.V9.P77",
+  "agent": "gemini-cv3y",
+  "tier": 2,
+  "role": "code",
+  "status": "completed",
+  "scope": [
+    "src/ainerzero/v9/experiments/e1/export.py",
+    "src/ainerzero/v9/experiments/e1/data_runner.py",
+    "tests/test_e1_export.py",
+    "tests/test_e1_data_runner.py",
+    "reports/V9-E1XF/gemini-cv3y/"
+  ],
+  "registered_constants": {
+    "NON_OBJECT_HIDDEN_KEYS": [
+      "mechanisms",
+      "paired_p_world_key"
+    ]
+  },
+  "workaround_removed": "adapt_s_sequence_for_export",
+  "e1_test_suite": {
+    "command": ".venv-ainerzero/bin/pytest tests/test_e1_*.py -k 'not entry' -v",
+    "passed": 92,
+    "deselected": 11,
+    "failed": 0
+  },
+  "export_and_data_runner_tests": {
+    "command": ".venv-ainerzero/bin/pytest tests/test_e1_export.py tests/test_e1_data_runner.py -v",
+    "passed": 14,
+    "failed": 0
+  },
+  "bad_controls": {
+    "total": 2,
+    "passed_red": 2,
+    "controls": [
+      {
+        "name": "bad_control_1_remove_non_object_keys_filtering",
+        "description": "Remove NON_OBJECT_HIDDEN_KEYS filtering in export_sequence (revert to treating all hidden_params as bodies)",
+        "result": "RED",
+        "exit_code": 1,
+        "exception": "AttributeError: 'list' object has no attribute 'get'"
+      },
+      {
+        "name": "bad_control_2_leak_mechanisms_into_student_view",
+        "description": "Inject mechanisms into student_view to verify assert_no_leakage intercepts forbidden key",
+        "result": "RED",
+        "exit_code": 1,
+        "exception": "LeakageError: Forbidden key 'mechanisms' found at $"
+      }
+    ]
+  }
+}

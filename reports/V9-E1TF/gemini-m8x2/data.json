@@ -1,0 +1,55 @@
+{
+  "task_id": "ainerzero.V9.P79",
+  "round": "r1",
+  "agent_id": "gemini-m8x2",
+  "status": "completed",
+  "training_targets": {
+    "arm2": "y = s_{t+1} - s_t",
+    "arm3": "y = s_{t+1} - F_prior(s_t; phi_0, statics)",
+    "arm6": "y = P_perp(phi_hat) * (s_{t+1} - F_prior(s_t; phi_hat, statics))"
+  },
+  "parameter_counts": {
+    "arm2_pure_net": 6150,
+    "arm3_prior_residual": 6150,
+    "arm6_identify_residual": 6150
+  },
+  "parameter_sha256_after_20_steps_seed_42": {
+    "arm2": "bb481872b499df2871b4fc2e2aaafc4d6f20bdc658e28e1df716d8a862398662",
+    "arm3": "95eb9ff35b80ee11db98877ae84639e4a8ea17b8f6c547849e7b2661e7fc3572",
+    "arm6": "4bdfc9725f7a07563ee9a98efca42371bfe96f9bf0df2272a089d7146522cbb5",
+    "pairwise_distinct": true
+  },
+  "unit_tests": {
+    "total_arms_net": 10,
+    "total_train_runner": 8,
+    "passed": 18,
+    "failed": 0,
+    "total_duration_s": 0.51
+  },
+  "bad_controls": [
+    {
+      "name": "mutant_1_arm3_target_reverted",
+      "description": "③ 的目标改回 s_{t+1} - s_t",
+      "target_file": "/tmp/e1_tf_mutants/mutant_1_arm3_target_reverted/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "test_arms_training_target_predict_roundtrip_consistency",
+      "exit_code": 1,
+      "is_red": true
+    },
+    {
+      "name": "mutant_2_arm6_no_projection",
+      "description": "⑥ 去掉投影（_apply_correction 直接返回未投影残差）",
+      "target_file": "/tmp/e1_tf_mutants/mutant_2_arm6_no_projection/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "test_arms_training_target_predict_roundtrip_consistency",
+      "exit_code": 1,
+      "is_red": true
+    },
+    {
+      "name": "mutant_3_runner_bypasses_arm_target",
+      "description": "train_runner 绕开 training_target（强制对所有臂使用 s_{t+1} - s_t）",
+      "target_file": "/tmp/e1_tf_mutants/mutant_3_runner_bypasses_arm_target/src/ainerzero/v9/experiments/e1/train_runner.py",
+      "failing_test": "test_training_20_steps_arms_parameter_sha_pairwise_different",
+      "exit_code": 1,
+      "is_red": true
+    }
+  ]
+}

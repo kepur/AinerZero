@@ -1,0 +1,108 @@
+=== BAD CONTROL (c) ===
+CWD: /tmp/e1_bad_controls_gemini_e2v7
+COMMAND: python3 -m pytest /tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py -k test_early_stopping_saves_best_step_weights -v -s
+EXIT CODE: 1
+
+--- STDOUT ---
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /tmp/e1_bad_controls_gemini_e2v7
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 7 items / 6 deselected / 1 selected
+
+../../../tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py::test_early_stopping_saves_best_step_weights FAILED
+
+=================================== FAILURES ===================================
+_________________ test_early_stopping_saves_best_step_weights __________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-882/test_early_stopping_saves_best0')
+
+    def test_early_stopping_saves_best_step_weights(tmp_path: Path):
+        """Verify early stopping preserves the weights from best_step (e.g. step 1500), not the final step."""
+        data_dir = tmp_path / "dataset_es"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        files = []
+        for i in range(10):
+            p = data_dir / f"ep_{i:02d}.json"
+            _create_synthetic_episode_file(p, f"ep_{i:02d}")
+            files.append(p)
+    
+        # Injected validation loss hook: minimum strictly at step 1500
+        def artificial_val_loss(step: int, raw_loss: float) -> float:
+            # Step 500: 1.0, Step 1000: 0.5, Step 1500: 0.1 (minimum), Step 2000+: increasing
+            if step == 500:
+                return 1.0
+            elif step == 1000:
+                return 0.5
+            elif step == 1500:
+                return 0.1
+            else:
+                return 0.1 + float(step - 1500) * 0.01
+    
+        captured_eval_weights: dict[int, dict[str, np.ndarray]] = {}
+    
+        def on_eval(step: int, model: Any) -> None:
+            captured_eval_weights[step] = {
+                k: np.array(v) for k, v in mlx.utils.tree_flatten(model.net.parameters())
+            }
+    
+        out_dir = tmp_path / "ckpt_es"
+        # Train 2000 steps with eval_every=500
+        res = train_cell(
+            arm_id=2,
+            family="P",
+            seed=42,
+            student_dir=data_dir,
+            out_dir=out_dir,
+            steps=2000,
+            batch_size=4,
+            eval_every=500,
+            patience=10,
+            val_loss_hook=artificial_val_loss,
+            val_eval_callback=on_eval,
+        )
+    
+        assert res["status"] == "completed"
+        assert res["best_step"] == 1500
+        assert res["stopped_step"] == 2000
+        assert len(res["val_loss_curve"]) == 4
+    
+        # Verify checkpoint_meta.json exists and records best_step
+        meta_path = out_dir / "checkpoint_meta.json"
+        assert meta_path.is_file()
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        assert meta["best_step"] == 1500
+        assert meta["stopped_step"] == 2000
+    
+        # Load model and verify its loaded weights match step 1500, NOT step 2000
+        loaded_arm = PureNetArm(seed=42)
+        loaded_arm.load(res["checkpoint_path"])
+        assert getattr(loaded_arm, "best_step", None) == 1500
+    
+        loaded_weights = {k: np.array(v) for k, v in mlx.utils.tree_flatten(loaded_arm.net.parameters())}
+        w_best = captured_eval_weights[1500]
+        w_last = captured_eval_weights[2000]
+    
+        # Verify weights actually evolved between step 1500 and step 2000
+        has_diff = any(not np.array_equal(w_best[k], w_last[k]) for k in w_best)
+        assert has_diff, "Expected weights to differ between step 1500 and step 2000"
+    
+        # Verify saved checkpoint strictly matches best_step (1500) and differs from final step (2000)
+        for k in w_best:
+>           assert np.array_equal(loaded_weights[k], w_best[k]), f"Weight {k} does not match best_step 1500"
+E           AssertionError: Weight fc1.weight does not match best_step 1500
+E           assert False
+E            +  where False = <function array_equal at 0x10c84f030>(array([[-0.03541283, -0.0263565 , -0.10418927, ...,  0.103306  ,\n         0.14175269, -0.00220306],\n       [ 0.00590781, -0.20409524, -0.20175232, ...,  0.06798193,\n        -0.11998209, -0.0266951 ],\n       [ 0.04888967,  0.01420853, -0.16394201, ..., -0.15394546,\n         0.02168562,  0.13090229],\n       ...,\n       [ 0.14851488,  0.09668615, -0.07015584, ..., -0.10655742,\n        -0.00937887,  0.19086021],\n       [ 0.04597008, -0.0462312 , -0.12736899, ..., -0.16722596,\n        -0.16993201, -0.15955192],\n       [ 0.03178215,  0.04084127,  0.19600573, ..., -0.17613803,\n        -0.1697483 ,  0.09867886]], shape=(64, 24), dtype=float32), array([[-0.03541283, -0.0263565 , -0.10418927, ...,  0.103306  ,\n         0.14175269, -0.00220306],\n       [ 0.00587877, -0.20409524, -0.20175232, ...,  0.06798193,\n        -0.11998209, -0.0266951 ],\n       [ 0.04889271,  0.01420853, -0.16394201, ..., -0.15394546,\n         0.02168562,  0.13090229],\n       ...,\n       [ 0.14852734,  0.09668615, -0.07015584, ..., -0.10655742,\n        -0.00937887,  0.19086021],\n       [ 0.045967  , -0.0462312 , -0.12736899, ..., -0.16722596,\n        -0.16993201, -0.15955192],\n       [ 0.03178309,  0.04084127,  0.19600573, ..., -0.17613803,\n        -0.1697483 ,  0.09867886]], shape=(64, 24), dtype=float32))
+E            +    where <function array_equal at 0x10c84f030> = np.array_equal
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_p93_revision.py:381: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py::test_early_stopping_saves_best_step_weights
+======================= 1 failed, 6 deselected in 8.70s ========================
+
+--- STDERR ---
+

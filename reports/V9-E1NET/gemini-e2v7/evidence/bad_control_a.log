@@ -1,0 +1,49 @@
+=== BAD CONTROL (a) ===
+CWD: /tmp/e1_bad_controls_gemini_e2v7
+COMMAND: python3 -m pytest /tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py -k test_zero_initialization_equivalence -v -s
+EXIT CODE: 1
+
+--- STDOUT ---
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /tmp/e1_bad_controls_gemini_e2v7
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 7 items / 6 deselected / 1 selected
+
+../../../tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py::test_zero_initialization_equivalence FAILED
+
+=================================== FAILURES ===================================
+_____________________ test_zero_initialization_equivalence _____________________
+
+    def test_zero_initialization_equivalence():
+        """Verify untrained ③ == ① bitwise, untrained ⑥ == ⑤ bitwise, untrained ② == motionless."""
+        prefix_dict, env, geo_map = _generate_moving_episode_prefix(num_frames=10)
+        n_future = 10
+    
+        # Arm 1 vs Untrained Arm 3
+        arm1 = PriorArm(geometry_by_body=geo_map)
+        arm3 = PriorResidualArm(seed=42, geometry_by_body=geo_map)
+    
+        pred1 = arm1.predict(prefix_dict, env, n_future=n_future, geometry_by_body=geo_map)
+        pred3 = arm3.predict(prefix_dict, env, n_future=n_future, geometry_by_body=geo_map)
+    
+        for name in ("ball", "box"):
+            traj1 = pred1[name] if isinstance(pred1, dict) else pred1.trajectories[name]
+            traj3 = pred3[name]
+>           assert np.array_equal(traj1, traj3), f"Untrained Arm 3 and Arm 1 diverged on {name}"
+E           AssertionError: Untrained Arm 3 and Arm 1 diverged on ball
+E           assert False
+E            +  where False = <function array_equal at 0x10c9171b0>(array([[ 0.24738778,  0.08246259,  3.19317915,  1.46907008,  0.48969003,\n         0.34050688,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.27184425,  0.09061475,  3.19734996,  1.46601239,  0.4886708 ,\n         0.17645135,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.29624981,  0.09874994,  3.19878963,  1.46296106,  0.48765369,\n         0.01273728,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.32060457,  0.10686819,  3.19750386,  1.45991608,  0.48663869,\n        -0.15063603,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.34490864,  0.11496955,  3.19349832,  1.45687744,  0.48562581,\n        -0.3136693 ,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.36916213,  0.12305404,  3.18677867,  1.45384512,  0.48461504,\n        -0.47636324,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.39336513,  0.13112171,  3.17735056,  1.45081911,  0.48360637,\n        -0.63871855,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.41751776,  0.13917259,  3.16521963,  1.4477994 ,  0.4825998 ,\n        -0.80073594,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.44162012,  0.14720671,  3.1503915 ,  1.44478598,  0.48159533,\n        -0.96241611,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.46567231,  0.1552241 ,  3.13287179,  1.44177883,  0.48059294,\n        -1.12375976,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ]]), array([[ 0.48016104,  0.1153479 ,  3.04665215,  1.61922512,  0.33340468,\n         0.39088815,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.7260701 ,  0.15733249,  2.90706312,  1.75586159,  0.1755905 ,\n         0.26475591,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 0.95053127,  0.19661825,  2.77067021,  1.87054335,  0.01350094,\n         0.12035173,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 1.15518837,  0.22943586,  2.63700264,  1.96878361, -0.1467432 ,\n        -0.03544487,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 1.34576875,  0.26626199,  2.51426895,  2.04978459, -0.30625791,\n        -0.20393834,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 1.50828869,  0.31285494,  2.4088779 ,  2.11348972, -0.46513622,\n        -0.37930299,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 1.63393817,  0.36558478,  2.32597261,  2.16512576, -0.62393564,\n        -0.55699852,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 1.72900697,  0.42686851,  2.26630507,  2.2037884 , -0.77903077,\n        -0.73485674,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 1.79831014,  0.50002254,  2.22178445,  2.22698497, -0.93724903,\n        -0.91170613,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ],\n       [ 1.84994843,  0.58102333,  2.1920084 ,  2.23401817, -1.10052811,\n        -1.08538005,  1.        ,  0.        ,  0.        ,  0.        ,\n         0.        ,  0.        ,  0.        ]]))
+E            +    where <function array_equal at 0x10c9171b0> = np.array_equal
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_p93_revision.py:118: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py::test_zero_initialization_equivalence
+======================= 1 failed, 6 deselected in 0.33s ========================
+
+--- STDERR ---
+

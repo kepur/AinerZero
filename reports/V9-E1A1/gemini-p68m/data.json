@@ -1,0 +1,62 @@
+{
+  "task_id": "ainerzero.V9.P68",
+  "agent_id": "gemini-p68m",
+  "device": "cpu.numpy",
+  "arm5_identification": {
+    "true_friction": 0.15,
+    "true_restitution": 0.75,
+    "prior_friction": 0.5,
+    "prior_restitution": 0.45,
+    "identified_friction": 0.052255049594373264,
+    "identified_restitution": 0.7233258101234574,
+    "err_prior": 0.4609772228646443,
+    "err_identified": 0.10131923674884387,
+    "error_reduction_pct": 78.02077158623649,
+    "error_ratio": 0.21979228413763516,
+    "identifiable_30_frames": true,
+    "identifiable_3_frames": false
+  },
+  "arm1_vs_arm4": {
+    "arm1_mean_error_m": 0.0036633611006969637,
+    "arm4_mean_error_m": 0.0,
+    "arm4_diagnostic_only": true
+  },
+  "arm7_symbolic_residual": {
+    "c_true": 0.35,
+    "c_recovered": 0.30877405029053484,
+    "c_relative_error": 0.11778842774132897,
+    "promoted_with_drag": true,
+    "promoted_without_drag": false,
+    "10_step_error_arm7_m": 0.0023496671390142226,
+    "10_step_error_arm5_m": 0.07691306225526655,
+    "promotion_gain": 0.9810042387303924
+  },
+  "test_suite": {
+    "total_tests": 7,
+    "passed": 7,
+    "failed": 0,
+    "duration_sec": 3.03
+  },
+  "adversarial_mutations": {
+    "mutant_1_arm5_direct_phi0": {
+      "target_test": "test_arm5_parameter_identification_restitution_and_friction",
+      "status": "RED (FAILED)",
+      "assertion": "assert 0.4609772228646443 < (0.5 * 0.4609772228646443)"
+    },
+    "mutant_2_arm7_promotion_gate_always_true": {
+      "target_test": "test_arm7_no_drag_rejected_promotion",
+      "status": "RED (FAILED)",
+      "assertion": "assert True is False"
+    },
+    "mutant_3_read_beyond_prefix": {
+      "target_test": "test_arms_read_only_prefix_nan_isolation",
+      "status": "RED (FAILED)",
+      "assertion": "IndexError: index 30 is out of bounds for axis 0 with size 30"
+    },
+    "mutant_4_remove_arm5_bounds": {
+      "target_test": "test_arm5_parameter_identification_restitution_and_friction",
+      "status": "RED (FAILED)",
+      "assertion": "assert 0.05 <= 0.027623784877248248"
+    }
+  }
+}

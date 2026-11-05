@@ -1,0 +1,64 @@
+{
+  "task_id": "ainerzero.V9.P76",
+  "agent_id": "gemini-w7m2",
+  "tier": 2,
+  "kind": "gemini",
+  "status": "completed",
+  "timestamp": "2026-10-29T11:18:00+03:00",
+  "summary": {
+    "fake_code_removed": [
+      "Hardcoded mock metrics in DefaultCellRunner.run_eval (0.05, 0.95, 0.01, 1.2)",
+      "Hardcoded mock metrics in DefaultCellRunner.run_final_eval (0.048, 0.96, 0.009)",
+      "Fake final_read_once: True state in worker.py",
+      "Mock/dummy fallback training loop evaluating truth against truth in metrics.evaluate_collision_f1",
+      "Missing checkpoint bypass in eval mode"
+    ],
+    "real_runners_wired": {
+      "generate-data": "data_runner.generate_and_export",
+      "train": "train_runner.train_cell",
+      "eval": "eval_runner.evaluate_cell",
+      "final-eval": "eval_runner.evaluate_final_once"
+    },
+    "ledger_protection": "All refusal paths halt in preflight BEFORE opening or mutating the ledger file; ledger SHA256 invariant verified",
+    "dual_family_final_eval": "Independent read-once channels for both P and S families supported",
+    "per_cell_deadline_reset": "Verified across 51-cell schedule rehearsal without shared timeout",
+    "tests": {
+      "wiring_tests_passed": 5,
+      "entry_tests_passed": 11,
+      "repository_e1_total_passed": 108,
+      "total_failed": 0
+    },
+    "bad_controls": [
+      {
+        "id": "bc1_eval_hardcoded",
+        "description": "eval 改回写死指标",
+        "proven_red": true,
+        "exit_code": 1
+      },
+      {
+        "id": "bc2_no_approval_check",
+        "description": "去掉批准检查",
+        "proven_red": true,
+        "exit_code": 1
+      },
+      {
+        "id": "bc3_write_ledger_before_refusal",
+        "description": "拒绝之前先写台账",
+        "proven_red": true,
+        "exit_code": 1
+      },
+      {
+        "id": "bc4_shared_global_deadline",
+        "description": "全程共用一个截止时间",
+        "proven_red": true,
+        "exit_code": 1
+      },
+      {
+        "id": "bc5_allow_duplicate_training",
+        "description": "允许重复训练",
+        "proven_red": true,
+        "exit_code": 1
+      }
+    ]
+  }
+}

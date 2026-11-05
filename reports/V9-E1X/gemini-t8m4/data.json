@@ -1,0 +1,72 @@
+{
+  "task_id": "ainerzero.V9.P70",
+  "agent_id": "gemini-t8m4",
+  "device": "pure_cpu",
+  "frozen_constants": {
+    "ticks_per_frame": 2,
+    "clock_hz": 120,
+    "source_fps": 60,
+    "coordinate_system": "identity_z_up"
+  },
+  "test_results": {
+    "test_tick_and_coordinate_mapping": {
+      "status": "PASSED",
+      "duration_sec": 0.001
+    },
+    "test_bounding_sphere_radius_calculation": {
+      "status": "PASSED",
+      "duration_sec": 0.001
+    },
+    "test_static_geometry_conversion_omits_friction_restitution": {
+      "status": "PASSED",
+      "duration_sec": 0.002
+    },
+    "test_hand_crafted_normal_velocity_vs_scalar_relative_speed": {
+      "status": "PASSED",
+      "duration_sec": 0.002,
+      "expected_normal_speed_mps": 3.6,
+      "scalar_relative_speed_mps": 3.741657
+    },
+    "test_leakage_guard_intercepts_all_prohibited_items": {
+      "status": "PASSED",
+      "duration_sec": 0.002
+    },
+    "test_s_and_p_pairing_and_decoupling": {
+      "status": "PASSED",
+      "duration_sec": 0.003
+    },
+    "test_final_partition_sealed_read_once": {
+      "status": "PASSED",
+      "duration_sec": 0.004
+    },
+    "test_read_only_integration_on_awz_pilot": {
+      "status": "PASSED",
+      "duration_sec": 0.042,
+      "train_sequences_exported": 6,
+      "development_sequences_exported": 6,
+      "final_partition_opened": false
+    }
+  },
+  "adversarial_mutations": {
+    "mutant_1_relative_speed_for_normal_speed": {
+      "target_test": "test_hand_crafted_normal_velocity_vs_scalar_relative_speed",
+      "status": "RED (FAILED)",
+      "exit_code": 1
+    },
+    "mutant_2_leak_family_tag": {
+      "target_test": "test_s_and_p_pairing_and_decoupling",
+      "status": "RED (FAILED)",
+      "exit_code": 1
+    },
+    "mutant_3_tick_1x_frame": {
+      "target_test": "test_tick_and_coordinate_mapping",
+      "status": "RED (FAILED)",
+      "exit_code": 1
+    },
+    "mutant_4_remove_leakage_guard": {
+      "target_test": "test_leakage_guard_intercepts_all_prohibited_items",
+      "status": "RED (FAILED)",
+      "exit_code": 1
+    }
+  }
+}

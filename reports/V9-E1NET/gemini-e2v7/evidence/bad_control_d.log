@@ -1,0 +1,54 @@
+=== BAD CONTROL (d) ===
+CWD: /tmp/e1_bad_controls_gemini_e2v7
+COMMAND: python3 -m pytest /tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py -k test_predict_denormalization_applied -v -s
+EXIT CODE: 1
+
+--- STDOUT ---
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /tmp/e1_bad_controls_gemini_e2v7
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 7 items / 6 deselected / 1 selected
+
+../../../tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py::test_predict_denormalization_applied FAILED
+
+=================================== FAILURES ===================================
+_____________________ test_predict_denormalization_applied _____________________
+
+    def test_predict_denormalization_applied():
+        """Verify predict_delta strictly denormalizes the network output using target_mean and target_std."""
+        arm = PureNetArm(seed=42)
+        custom_tar_mean = np.array([12.5, -8.0, 4.25, 0.5, -1.2, 3.1], dtype=np.float32)
+        custom_tar_std = np.array([2.5, 3.0, 1.5, 0.4, 0.8, 1.2], dtype=np.float32)
+    
+        arm.set_normalization(
+            input_mean=np.zeros(24, dtype=np.float32),
+            input_std=np.ones(24, dtype=np.float32),
+            target_mean=custom_tar_mean,
+            target_std=custom_tar_std,
+        )
+    
+        # With zero-initialized output layer, raw network output is 0
+        # With denormalization: out = 0 * std + mean = target_mean
+        # If denormalization is omitted: out = 0 != target_mean
+        hist = np.ones(24, dtype=np.float64)
+        delta = arm.predict_delta(hist)
+>       assert np.allclose(delta, custom_tar_mean, atol=1e-5), (
+            f"Denormalization missing in predict_delta: expected {custom_tar_mean}, got {delta}"
+        )
+E       AssertionError: Denormalization missing in predict_delta: expected [12.5  -8.    4.25  0.5  -1.2   3.1 ], got [0. 0. 0. 0. 0. 0.]
+E       assert False
+E        +  where False = <function allclose at 0x10a583470>(array([0., 0., 0., 0., 0., 0.]), array([12.5 , -8.  ,  4.25,  0.5 , -1.2 ,  3.1 ], dtype=float32), atol=1e-05)
+E        +    where <function allclose at 0x10a583470> = np.allclose
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_p93_revision.py:409: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../tmp/e1_bad_controls_gemini_e2v7/tests/test_e1_p93_revision.py::test_predict_denormalization_applied
+======================= 1 failed, 6 deselected in 0.21s ========================
+
+--- STDERR ---
+

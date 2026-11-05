@@ -1,0 +1,48 @@
+{
+  "task_id": "ainerzero.V9.P76",
+  "agent_id": "gemini-cv3y",
+  "tier": 2,
+  "kind": "gemini",
+  "round": "r2",
+  "status": "completed",
+  "timestamp": "2026-10-29T11:42:00+03:00",
+  "r2_fixes": {
+    "budget_reservation": "Reservation upfront equals full cell_wall_budget (先预留再干活); active_seconds records reserved budget",
+    "phase_budget_ceiling": "_check_phase_budget_ceiling queries sum of reserved active_seconds across all experiment runs against 32 h ceiling",
+    "lifecycle_terminal_state": "finish_run strictly mirrors runner status: completed -> completed, stopped -> stopped, failed -> failed; anti-duplicate only checks completed runs",
+    "runner_exception_handling": "Runner invocation wrapped in try/except: transitions to failed with error type and message, then re-raises",
+    "test_hook_purging": "Completely deleted simulated_duration and advance_clock_fn from execute_work_cell and commands.py; fake clock advances purely inside injected runner"
+  },
+  "tests": {
+    "wiring_tests_passed": 8,
+    "entry_tests_passed": 11,
+    "repository_e1_total_passed": 111,
+    "total_failed": 0
+  },
+  "bad_controls": [
+    {
+      "id": "bad_control_1_revert_reservation_to_1s",
+      "description": "预留改回 1 s",
+      "proven_red": true,
+      "exit_code": 1
+    },
+    {
+      "id": "bad_control_2_ignore_runner_status_always_completed",
+      "description": "忽略 runner 状态，一律记 completed",
+      "proven_red": true,
+      "exit_code": 1
+    },
+    {
+      "id": "bad_control_3_remove_runner_try_except",
+      "description": "去掉 try/except",
+      "proven_red": true,
+      "exit_code": 1
+    },
+    {
+      "id": "bad_control_4_anti_duplicate_counts_stopped_runs",
+      "description": "防重复也算上 stopped",
+      "proven_red": true,
+      "exit_code": 1
+    }
+  ]
+}

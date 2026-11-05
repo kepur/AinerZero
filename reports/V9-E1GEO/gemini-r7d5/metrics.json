@@ -1,0 +1,63 @@
+{
+  "task_id": "ainerzero.V9.P84",
+  "agent_id": "gemini-r7d5",
+  "status": "completed",
+  "test_suite": {
+    "e1_total_tests": 176,
+    "e1_passed_tests": 176,
+    "e1_failed_tests": 0,
+    "test_e1_export_count": 16,
+    "test_e1_export_passed": 16
+  },
+  "blender_budget": {
+    "budget_cap_seconds": 120.0,
+    "actual_blender_runtime_seconds": 2.45,
+    "budget_headroom_percent": 97.96
+  },
+  "geometric_accuracy": {
+    "table_slide": {
+      "table_z_top": 1.700000,
+      "expected_z_top": 1.700000,
+      "z_top_error_m": 0.0,
+      "z_top_tolerance_m": 1e-6,
+      "slider_bottom_z": 1.700000,
+      "slider_resting_error_m": 0.0,
+      "slider_resting_tolerance_m": 1e-3
+    },
+    "ramp_roll": {
+      "ramp_thickness_m": 0.40,
+      "point_center_distance_along_normal_m": 0.200000,
+      "expected_distance_along_normal_m": 0.200000,
+      "normal_distance_error_m": 1.3877787807814457e-16,
+      "normal_distance_tolerance_m": 1e-6,
+      "x_bounds": [-1.5, 1.5],
+      "y_bounds": [-2.227231725764274, 2.227231725764274]
+    }
+  },
+  "unit_tests": {
+    "missing_dimensions_raises": true,
+    "missing_matrix_world_raises": true,
+    "rotated_static_box_raises_not_implemented": true,
+    "missing_position_raises": true
+  },
+  "bad_controls": {
+    "bad_a_restore_z_top_center": {
+      "mutant_file": "/tmp/bad_controls_p84/bad_a/src/ainerzero/v9/experiments/e1/export.py",
+      "exit_code": 1,
+      "turned_red": true,
+      "failed_assertion": "assert 1.6 == 1.7"
+    },
+    "bad_b_restore_point_pos": {
+      "mutant_file": "/tmp/bad_controls_p84/bad_b/src/ainerzero/v9/experiments/e1/export.py",
+      "exit_code": 1,
+      "turned_red": true,
+      "failed_assertion": "Distance along normal 0.0 != half thickness 0.2"
+    },
+    "bad_c_restore_dimensions_fallback": {
+      "mutant_file": "/tmp/bad_controls_p84/bad_c/src/ainerzero/v9/experiments/e1/export.py",
+      "exit_code": 1,
+      "turned_red": true,
+      "failed_assertion": "Failed: DID NOT RAISE <class 'ValueError'>"
+    }
+  }
+}

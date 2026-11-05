@@ -1,0 +1,38 @@
+[
+  {
+    "name": "bad_control_1_f1_truth_vs_truth",
+    "description": "Collision F1 evaluated as truth vs truth instead of pred vs truth",
+    "test_target": "tests/test_e1_eval_runner.py::test_error_arm_nonzero_position_error_and_missed_collision",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "        assert pos_err[\"primary_error_m\"] == pytest.approx(1.0, abs=1e-6)\n    \n        f1_dict = res[\"collision_f1\"]\n>       assert f1_dict[\"f1\"] < 1.0\nE       assert 1.0 < 1.0\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_eval_runner.py:214: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_eval_runner.py::test_error_arm_nonzero_position_error_and_missed_collision\n============================== 1 failed in 0.32s ==============================="
+  },
+  {
+    "name": "bad_control_2_drift_truth_trajectory",
+    "description": "Ballistic energy drift evaluated on truth trajectory instead of arm prediction",
+    "test_target": "tests/test_e1_eval_runner.py::test_energy_drift_evaluated_on_prediction_not_truth",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "        res = evaluate_episode(arm, student_ep, truth_ep)\n        assert res[\"energy_drift\"][\"mean_drift\"] is not None\n>       assert res[\"energy_drift\"][\"mean_drift\"] > 0.5, \"DriftingArm must show large energy drift\"\nE       AssertionError: DriftingArm must show large energy drift\nE       assert 0.2972844777274797 > 0.5\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_eval_runner.py:195: AssertionError\n=========================== short test summary info ============================\nFAILED tests/test_e1_eval_runner.py::test_energy_drift_evaluated_on_prediction_not_truth\n============================== 1 failed in 0.32s ==============================="
+  },
+  {
+    "name": "bad_control_3_empty_dataset_default",
+    "description": "Empty dataset returns default dict instead of loudly raising ValueError",
+    "test_target": "tests/test_e1_eval_runner.py::test_evaluate_cell_rejects_empty_dataset",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "    \n        arm = PerfectArm(np.zeros((35, 13)))\n    \n>       with pytest.raises(ValueError, match=\"No valid paired episodes\"):\nE       Failed: DID NOT RAISE ValueError\n\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_eval_runner.py:314: Failed\n=========================== short test summary info ============================\nFAILED tests/test_e1_eval_runner.py::test_evaluate_cell_rejects_empty_dataset\n============================== 1 failed in 0.30s ==============================="
+  },
+  {
+    "name": "bad_control_4_final_bypasses_token",
+    "description": "Final partition evaluation bypasses open_sealed_final_once token",
+    "test_target": "tests/test_e1_eval_runner.py::test_evaluate_final_once_enforces_token_and_rejects_second_read",
+    "exit_code": 1,
+    "is_red": true,
+    "status": "RED (FAILED as expected)",
+    "stdout_tail": "        dataset_digest = expected_digest\n        nonce = \"bypassed_nonce\"\n>       sealed_dir = Path(sealed_dir)\n                          ^^^^^^^^^^\nE       NameError: name 'sealed_dir' is not defined\n\nsrc/ainerzero/v9/experiments/e1/eval_runner.py:575: NameError\n=========================== short test summary info ============================\nFAILED tests/test_e1_eval_runner.py::test_evaluate_final_once_enforces_token_and_rejects_second_read\n============================== 1 failed in 0.33s ==============================="
+  }
+]

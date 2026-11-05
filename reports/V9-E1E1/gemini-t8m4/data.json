@@ -1,0 +1,76 @@
+{
+  "task_id": "ainerzero.V9.P71",
+  "task_title": "E1-E1 入口第一半：spec 冻结常量 + prereg 冻结/校验/批准行查找（零训练）",
+  "agent_id": "gemini-t8m4",
+  "timestamp_utc": "2026-10-29T06:15:00Z",
+  "pure_cpu": true,
+  "zero_training": true,
+  "zero_gpu": true,
+  "spec": {
+    "spec_name": "e1-phase2-v1",
+    "experiment_id": "e1-phase2-20261029-r0",
+    "prereg_draft_sha256": "372e724bd6b028da9dde76d7f1fb52aa6e1497926b5a081a64032950662f2872",
+    "arms_count": 7,
+    "trainable_arm_ids": [2, 3, 6],
+    "trainable_parameters_per_arm": 6150,
+    "non_trainable_arm_ids": [1, 4, 5, 7],
+    "non_trainable_parameters_per_arm": 0,
+    "diagnostic_arm_id": 4,
+    "families": ["P", "S"],
+    "partitions": ["train", "development", "final"],
+    "train_worlds_per_family": 1000,
+    "dev_worlds_per_family": 200,
+    "final_worlds_per_family": 200,
+    "total_experiment_worlds": 2800,
+    "primary_gate": "H-E1",
+    "primary_error_reduction_min": 0.10,
+    "eval_primary_k": 10,
+    "collision_f1_non_decreasing": true,
+    "phase_total_wall_ceiling_seconds": 115200.0,
+    "budget_components_sum_seconds": 109800.0
+  },
+  "test_summary": {
+    "e1_prereg_tests_total": 14,
+    "e1_prereg_tests_passed": 14,
+    "e1_prereg_tests_failed": 0,
+    "e1_prereg_duration_seconds": 0.15,
+    "all_e1_tests_total": 71,
+    "all_e1_tests_passed": 71,
+    "all_e1_tests_failed": 0,
+    "all_e1_duration_seconds": 2.96
+  },
+  "adversarial_mutants": [
+    {
+      "mutant_id": "mutant_1",
+      "description": "validate ignores parameter count check",
+      "target_test": "tests/test_e1_prereg.py::test_validate_rejects_arm_parameter_mismatches",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "DID NOT RAISE SpecValidationError"
+    },
+    {
+      "mutant_id": "mutant_2",
+      "description": "find_approval allows multiple approval lines",
+      "target_test": "tests/test_e1_prereg.py::test_find_approval_rejects_multiple_lines_in_section",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "DID NOT RAISE ApprovalRefused"
+    },
+    {
+      "mutant_id": "mutant_3",
+      "description": "freeze does not sort keys (sort_keys=False)",
+      "target_test": "tests/test_e1_prereg.py::test_freeze_determinism_and_key_independence",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "AssertionError (hash mismatch)"
+    },
+    {
+      "mutant_id": "mutant_4",
+      "description": "budget validation is tautological (bypassed sum check)",
+      "target_test": "tests/test_e1_prereg.py::test_validate_rejects_budget_math_violations",
+      "result": "RED",
+      "exit_code": 1,
+      "failure_type": "DID NOT RAISE SpecValidationError"
+    }
+  ]
+}

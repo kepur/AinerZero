@@ -1,0 +1,97 @@
+{
+  "task_id": "ainerzero.V9.P79",
+  "round": "r4",
+  "agent_id": "gemini-h5q9",
+  "status": "completed",
+  "claude_r3_feedback_addressed": {
+    "stack_inspection_and_inspect_deleted": true,
+    "source_code_clean_of_currentframe_and_f_locals": true,
+    "eval_runner_explicit_radii_extraction": true,
+    "eval_runner_prefix_field_validation_raises_loudly": true,
+    "all_seven_arms_accept_radii_by_body": true,
+    "all_prior_based_arms_fail_loudly_without_radii": true,
+    "arm6_identifier_explicit_radii_enforced": true,
+    "arm6_identifier_missing_radii_raises_loudly": true,
+    "resting_ball_and_box_integration_passed": true,
+    "arm3_zeroed_weights_matches_arm1_within_1e9": true,
+    "arm6_zeroed_weights_matches_arm5_within_1e9": true,
+    "arm2_pure_net_invariant_to_radii": true
+  },
+  "integration_test_results": {
+    "resting_ball_r04": {
+      "true_resting_z": 0.4,
+      "prior_arm_pred_z1": 0.4,
+      "true_param_arm_pred_z1": 0.4,
+      "identify_arm_pred_z1": 0.4,
+      "symbolic_residual_arm_pred_z1": 0.4,
+      "error_m": 0.0,
+      "threshold_m": 0.001,
+      "passed": true
+    },
+    "resting_box_r0985": {
+      "true_resting_z": 0.98488578,
+      "prior_arm_pred_z1": 0.98488578,
+      "true_param_arm_pred_z1": 0.98488578,
+      "identify_arm_pred_z1": 0.98488578,
+      "symbolic_residual_arm_pred_z1": 0.98488578,
+      "error_m": 0.0,
+      "threshold_m": 0.001,
+      "passed": true
+    },
+    "arm3_zeroed_weights_vs_arm1": {
+      "max_abs_diff_m": 0.0,
+      "threshold": 1.0e-09,
+      "passed": true
+    },
+    "arm6_zeroed_weights_vs_arm5": {
+      "max_abs_diff_m": 0.0,
+      "threshold": 1.0e-09,
+      "passed": true
+    }
+  },
+  "bad_controls": [
+    {
+      "id": "mutant_a_restore_prior_default_radius",
+      "description": "恢复 PriorArm 的 default_radius 兜底 (默认0.5)",
+      "file": "/tmp/e1_tf_r4_mutants/mutant_a_restore_prior_default_radius/src/ainerzero/v9/experiments/e1/arms_nonnet.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_r4_missing_radii_loud_exceptions_across_all_paths",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": "Failed: DID NOT RAISE <class 'KeyError'>"
+    },
+    {
+      "id": "mutant_b_eval_runner_drops_radii_by_body",
+      "description": "让 evaluate_episode 不再传 radii_by_body",
+      "file": "/tmp/e1_tf_r4_mutants/mutant_b_eval_runner_drops_radii_by_body/src/ainerzero/v9/experiments/e1/eval_runner.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_r4_resting_ball_and_box_integration_evaluate_episode",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": "KeyError: 'radii_by_body is required for PriorArm.predict; none provided'"
+    },
+    {
+      "id": "mutant_c_make_arm6_identifier_hardcodes_05",
+      "description": "让 make_arm6_identifier 恢复写死 0.5",
+      "file": "/tmp/e1_tf_r4_mutants/mutant_c_make_arm6_identifier_hardcodes_05/src/ainerzero/v9/experiments/e1/train_runner.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_r4_missing_radii_loud_exceptions_across_all_paths",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": "Failed: DID NOT RAISE <class 'KeyError'>"
+    }
+  ],
+  "unit_tests": {
+    "test_e1_analysis": 11,
+    "test_e1_arms_net": 15,
+    "test_e1_arms_nonnet": 11,
+    "test_e1_data_runner": 4,
+    "test_e1_entry": 11,
+    "test_e1_eval_runner": 8,
+    "test_e1_export": 10,
+    "test_e1_metrics": 16,
+    "test_e1_prereg": 14,
+    "test_e1_prior": 13,
+    "test_e1_train_runner": 9,
+    "test_e1_wiring": 8,
+    "total_full_e1_suite_passed": 130,
+    "failed": 0
+  }
+}

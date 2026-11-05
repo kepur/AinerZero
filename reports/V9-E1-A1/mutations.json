@@ -1,0 +1,68 @@
+[
+  {
+    "mutation_id": "M1",
+    "description": "\u5b9e\u9a8c\u7ea7 max_wall_seconds \u6539\u56de phase_total_wall_ceiling_seconds",
+    "target_file": "src/ainerzero/v9/experiments/e1/worker.py",
+    "expected_red": [
+      "(a)",
+      "(e)"
+    ],
+    "case_a_exit_code": 1,
+    "case_a_tail": "/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_calendar_window.py:258: in test_case_a_gap_does_not_reject\n    assert code == commands.EXIT_COMPLETED, f\"Expected successful admission, got code {code}: {rep}\"\nE   AssertionError: Expected successful admission, got code 1: {'status': 'failed', 'mode': 'train', 'stage': 'execution_failed', 'message': 'Budget exhausted: experiment_wall_seconds_budget'}\nE   assert 1 == 0\nE    +  where 0 = commands.EXIT_COMPLETED\n=========================== short test summary info ============================\nFAILED tests/test_e1_calendar_window.py::test_case_a_gap_does_not_reject - As...\n1 failed in 0.51s",
+    "case_e_exit_code": 1,
+    "case_e_tail": "/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_calendar_window.py:453: in test_case_e_full_schedule_rehearsal_with_7_5h_gap\n    assert code == commands.EXIT_COMPLETED, f\"train arm {arm} S seed {seed} failed after gap: {rep}\"\nE   AssertionError: train arm 2 S seed 42 failed after gap: {'status': 'failed', 'mode': 'train', 'stage': 'execution_failed', 'message': 'Budget exhausted: experiment_wall_seconds_budget'}\nE   assert 1 == 0\nE    +  where 0 = commands.EXIT_COMPLETED\n=========================== short test summary info ============================\nFAILED tests/test_e1_calendar_window.py::test_case_e_full_schedule_rehearsal_with_7_5h_gap\n1 failed in 0.97s",
+    "restored_sha_matched": true,
+    "passed_bad_control": true
+  },
+  {
+    "mutation_id": "M2",
+    "description": "_check_phase_budget_ceiling \u53ea\u67e5 spec.EXPERIMENT_ID",
+    "target_file": "src/ainerzero/v9/experiments/e1/commands.py",
+    "expected_red": [
+      "(b)"
+    ],
+    "case_b_exit_code": 1,
+    "case_b_tail": "______________________ test_case_b_combined_phase_ceiling ______________________\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_calendar_window.py:326: in test_case_b_combined_phase_ceiling\n    assert code_exceed == commands.EXIT_REFUSED_RESOURCE\nE   assert 1 == 2\nE    +  where 2 = commands.EXIT_REFUSED_RESOURCE\n=========================== short test summary info ============================\nFAILED tests/test_e1_calendar_window.py::test_case_b_combined_phase_ceiling\n1 failed in 0.57s",
+    "restored_sha_matched": true,
+    "passed_bad_control": true
+  },
+  {
+    "mutation_id": "M3",
+    "description": "check_cell_already_completed \u53ea\u67e5\u5f53\u524d id",
+    "target_file": "src/ainerzero/v9/experiments/e1/worker.py",
+    "expected_red": [
+      "(c)"
+    ],
+    "case_c_exit_code": 1,
+    "case_c_tail": "___________________ test_case_c_cross_lineage_anti_duplicate ___________________\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_calendar_window.py:347: in test_case_c_cross_lineage_anti_duplicate\n    assert code_gen == commands.EXIT_FAILED\nE   assert 0 == 1\nE    +  where 1 = commands.EXIT_FAILED\n=========================== short test summary info ============================\nFAILED tests/test_e1_calendar_window.py::test_case_c_cross_lineage_anti_duplicate\n1 failed in 0.52s",
+    "restored_sha_matched": true,
+    "passed_bad_control": true
+  },
+  {
+    "mutation_id": "M4",
+    "description": "\u5220\u6389 validate \u91cc\u7684\u8c31\u7cfb\u68c0\u67e5",
+    "target_file": "src/ainerzero/v9/experiments/e1/prereg.py",
+    "expected_red": [
+      "(d)"
+    ],
+    "case_d_exit_code": 1,
+    "case_d_tail": "=================================== FAILURES ===================================\n_________________ test_case_d_prereg_validation_and_subprocess _________________\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_calendar_window.py:372: in test_case_d_prereg_validation_and_subprocess\n    with pytest.raises(prereg.SpecValidationError, match=\"ledger_experiment_ids\"):\nE   Failed: DID NOT RAISE SpecValidationError\n=========================== short test summary info ============================\nFAILED tests/test_e1_calendar_window.py::test_case_d_prereg_validation_and_subprocess\n1 failed in 0.46s",
+    "restored_sha_matched": true,
+    "passed_bad_control": true
+  },
+  {
+    "mutation_id": "M5",
+    "description": "LEDGER_EXPERIMENT_IDS \u53bb\u6389 r0",
+    "target_file": "src/ainerzero/v9/experiments/e1/spec.py",
+    "expected_red": [
+      "(b)",
+      "(c)"
+    ],
+    "case_b_exit_code": 1,
+    "case_b_tail": "______________________ test_case_b_combined_phase_ceiling ______________________\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_calendar_window.py:326: in test_case_b_combined_phase_ceiling\n    assert code_exceed == commands.EXIT_REFUSED_RESOURCE\nE   assert 1 == 2\nE    +  where 2 = commands.EXIT_REFUSED_RESOURCE\n=========================== short test summary info ============================\nFAILED tests/test_e1_calendar_window.py::test_case_b_combined_phase_ceiling\n1 failed in 0.55s",
+    "case_c_exit_code": 1,
+    "case_c_tail": "___________________ test_case_c_cross_lineage_anti_duplicate ___________________\n/Users/mac/AinerWorkFlow/AinerZero/tests/test_e1_calendar_window.py:347: in test_case_c_cross_lineage_anti_duplicate\n    assert code_gen == commands.EXIT_FAILED\nE   assert 0 == 1\nE    +  where 1 = commands.EXIT_FAILED\n=========================== short test summary info ============================\nFAILED tests/test_e1_calendar_window.py::test_case_c_cross_lineage_anti_duplicate\n1 failed in 0.51s",
+    "restored_sha_matched": true,
+    "passed_bad_control": true
+  }
+]

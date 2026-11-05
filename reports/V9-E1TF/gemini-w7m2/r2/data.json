@@ -1,0 +1,121 @@
+{
+  "task_id": "ainerzero.V9.P79",
+  "round": "r2",
+  "agent_id": "gemini-w7m2",
+  "status": "completed",
+  "training_targets": {
+    "arm2": "y = s_{t+1} - s_t",
+    "arm3": "y = s_{t+1} - F_prior(s_t; phi_0, statics)",
+    "arm6": "y = P_perp(phi_hat) * (s_{t+1} - F_prior(s_t; phi_hat, statics))"
+  },
+  "parameter_counts": {
+    "arm2_pure_net": 6150,
+    "arm3_prior_residual": 6150,
+    "arm6_identify_residual": 6150
+  },
+  "shared_prior_step": {
+    "function": "_prior_scene_step",
+    "multi_body_simulated": true,
+    "actual_radii_used": true,
+    "shared_by": [
+      "PureNetArm.predict",
+      "PureNetArm.scene_training_targets",
+      "PriorResidualArm.predict",
+      "PriorResidualArm.scene_training_targets",
+      "IdentifyResidualArm.predict",
+      "IdentifyResidualArm.scene_training_targets"
+    ]
+  },
+  "parameter_sha256_after_20_steps_seed_42": {
+    "arm2": "ce4d185c06f7332355d404b4be794d02c661b8ffcfb46a1d50a1ae7ea75ce2c7",
+    "arm3": "66b6adbcbeba75d0bbaddba21d06802277f48f6d1d38d08cce84a6ab3f65e4e5",
+    "arm6": "8d0502cfbb51219a1affd7e5dc52cecd942e7cd20404fc8d7e621e911055b89a",
+    "pairwise_distinct": true
+  },
+  "roundtrip_errors": {
+    "arm2_body_a": 8.64e-09,
+    "arm2_body_b": 4.75e-08,
+    "arm3_body_a": 9.81e-10,
+    "arm3_body_b": 7.74e-10,
+    "arm6_body_a": 2.51e-10,
+    "arm6_body_b": 6.63e-10,
+    "arm6_orthogonality_max_inner_product": 8.84e-10,
+    "threshold": 1.0e-06,
+    "orthogonality_threshold": 1.0e-08,
+    "passed": true
+  },
+  "unit_tests": {
+    "test_e1_arms_net": 10,
+    "test_e1_train_runner": 8,
+    "total_arms_and_runner_passed": 18,
+    "total_full_e1_suite_passed": 113,
+    "failed": 0
+  },
+  "bad_controls": [
+    {
+      "name": "mutant_1_single_body_advance",
+      "description": "training_target 改回单物体推进（忽略多物体间碰撞）",
+      "target_file": "/tmp/e1_tf_r2_mutants/mutant_1_single_body_advance/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_arms_training_target_predict_roundtrip_consistency",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "tests/test_e1_arms_net.py::test_arms_training_target_predict_roundtrip_consistency FAILED",
+        "assert np.allclose(tar2_a, targets2[\"body_a\"], atol=1e-6)",
+        "assert err2_a < 1e-6, f\"Arm 2 body_a roundtrip error {err2_a} >= 1e-6\""
+      ]
+    },
+    {
+      "name": "mutant_2_radius_hardcoded_01",
+      "description": "半径改回 0.1（忽略实际包围球半径）",
+      "target_file": "/tmp/e1_tf_r2_mutants/mutant_2_radius_hardcoded_01/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_arms_training_target_predict_roundtrip_consistency",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "tests/test_e1_arms_net.py::test_arms_training_target_predict_roundtrip_consistency FAILED",
+        "assert np.allclose(tar2_a, targets2[\"body_a\"], atol=1e-6)",
+        "assert err2_a < 1e-6, f\"Arm 2 body_a roundtrip error {err2_a} >= 1e-6\""
+      ]
+    },
+    {
+      "name": "mutant_3_arm3_target_reverted_to_delta",
+      "description": "③ 的目标改回 s_{t+1} - s_t",
+      "target_file": "/tmp/e1_tf_r2_mutants/mutant_3_arm3_target_reverted_to_delta/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_arms_training_target_predict_roundtrip_consistency",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "tests/test_e1_arms_net.py::test_arms_training_target_predict_roundtrip_consistency FAILED",
+        "assert np.allclose(tar2_a, targets2[\"body_a\"], atol=1e-6)",
+        "assert err2_a < 1e-6, f\"Arm 2 body_a roundtrip error {err2_a} >= 1e-6\""
+      ]
+    },
+    {
+      "name": "mutant_4_arm6_no_projection",
+      "description": "⑥ 去掉投影（_apply_correction 直接返回未投影残差）",
+      "target_file": "/tmp/e1_tf_r2_mutants/mutant_4_arm6_no_projection/src/ainerzero/v9/experiments/e1/arms_net.py",
+      "failing_test": "tests/test_e1_arms_net.py::test_arms_training_target_predict_roundtrip_consistency",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "tests/test_e1_arms_net.py::test_arms_training_target_predict_roundtrip_consistency FAILED",
+        "assert np.allclose(tar2_a, targets2[\"body_a\"], atol=1e-6)",
+        "assert err2_a < 1e-6, f\"Arm 2 body_a roundtrip error {err2_a} >= 1e-6\""
+      ]
+    },
+    {
+      "name": "mutant_5_train_runner_bypasses_arm_target",
+      "description": "train_runner 绕开 training_target（强制对所有臂使用 s_{t+1} - s_t）",
+      "target_file": "/tmp/e1_tf_r2_mutants/mutant_5_train_runner_bypasses_arm_target/src/ainerzero/v9/experiments/e1/train_runner.py",
+      "failing_test": "tests/test_e1_train_runner.py::test_training_20_steps_arms_parameter_sha_pairwise_different",
+      "exit_code": 1,
+      "is_red": true,
+      "evidence": [
+        "tests/test_e1_train_runner.py::test_training_20_steps_arms_parameter_sha_pairwise_different FAILED",
+        "assert res2[\"status\"] == \"completed\"",
+        "assert res3[\"status\"] == \"completed\""
+      ]
+    }
+  ]
+}
