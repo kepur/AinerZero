@@ -20,6 +20,10 @@ from ainerzero.runtime.hardware import collect_hardware
 from ainerzero.runtime.lifecycle import TERMINAL_STATES, RunStore
 
 
+class WorkerLockBusy(RuntimeError):
+    """Another worker already holds the project-wide shared lock."""
+
+
 @contextmanager
 def worker_lock(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -27,7 +31,7 @@ def worker_lock(path: Path):
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
-            raise RuntimeError("A worker is already running in this project") from exc
+            raise WorkerLockBusy("A worker is already running in this project") from exc
         try:
             yield
         finally:
@@ -1251,8 +1255,82 @@ def main(argv: list[str] | None = None) -> int:
     smoke.add_argument("--output-dir", type=Path, default=Path("artifacts/m0"))
     smoke.add_argument("--device", choices=["cpu", "gpu"], default="gpu")
     smoke.add_argument("--steps", type=int, choices=range(8, 129), default=64, metavar="8..128")
+    e1 = commands.add_parser(
+        "e1-phase2",
+        help="E1 第二阶段入口：物理+残差动力学实验（verify/generate-data/train/eval/final-eval）",
+    )
+    e1.add_argument(
+        "--mode",
+        required=True,
+        choices=("verify", "generate-data", "train", "eval", "final-eval"),
+        help="verify=只读核验；generate-data=数据生成与导出；train=训练可训练臂；eval=dev评测；final-eval=final封存只读一次",
+    )
+    e1.add_argument(
+        "--arm",
+        type=int,
+        choices=range(1, 8),
+        help="目标模型臂 (1..7)",
+    )
+    e1.add_argument(
+        "--family",
+        choices=("P", "S"),
+        help="世界族 (P / S)",
+    )
+    e1.add_argument(
+        "--seed",
+        type=int,
+        help="随机种子（train 必选 42/43/44；eval 可选）",
+    )
+    e1.add_argument(
+        "--output-root",
+        type=Path,
+        help="输出根目录（默认 artifacts/v9/e1/phase2-r2，r2 登记根；数据只读复用 phase2/datasets）",
+    )
+    e1.add_argument(
+        "--ledger",
+        type=Path,
+        help="中央 RunStore 账本路径",
+    )
+    e1.add_argument(
+        "--lock-file",
+        type=Path,
+        help="共享锁路径（默认 artifacts/locks/m0-worker.lock）",
+    )
+    e1.add_argument(
+        "--prereg",
+        type=Path,
+        help="预登记 JSON 文件",
+    )
+    e1.add_argument(
+        "--research-log",
+        type=Path,
+        help="RESEARCH_LOG.md 路径",
+    )
+    e1.add_argument(
+        "--data-dir",
+        type=Path,
+        help="数据根目录",
+    )
+    e1.add_argument(
+        "--wall-budget-seconds",
+        type=float,
+        help="可选更紧的每格墙钟预算（不能超过登记值）",
+    )
+    e1.add_argument(
+        "--steps",
+        "--train-steps",
+        dest="steps",
+        type=int,
+        help="训练步数（可选覆盖，如测试时≤5步）",
+    )
     args = parser.parse_args(argv)
     try:
+        if args.command == "e1-phase2":
+            from ainerzero.v9.experiments.e1.commands import e1_phase2_command
+
+            report, exit_code = e1_phase2_command(args)
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            return exit_code
         if args.command in {
             "train-pilot",
             "diagnose-pilot",
