@@ -1,0 +1,115 @@
+{
+  "task": "ainerzero.V9.T29",
+  "reviewed_task": "ainerzero.V9.T28",
+  "reviewed_author": "codex",
+  "reviewer": "gemini-kzer",
+  "timestamp": "2026-10-26T17:12:00Z",
+  "status": "COMPLETED",
+  "verdict": "recommend_immutable_sha_registration_as_unapproved_proposal",
+  "proposal_sha256": "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a",
+  "acceptance_criteria_verification": {
+    "1_relative_pose_and_scale_gauge_freedom": {
+      "status": "PASSED",
+      "clean_gauge_residual_max": 3.00685e-16,
+      "measured_rotation_error_rad": 0.25,
+      "expected_rotation_error_rad": 0.25,
+      "measured_translation_error_norm": 0.15,
+      "expected_translation_error_norm": 0.15,
+      "mathematical_soundness": "SE(3) global transform and positive scale invariance independently verified"
+    },
+    "2_collinear_sim3_degeneracy": {
+      "status": "PASSED",
+      "collinear_point_cloud_rank": 1,
+      "axis_rotation_ambiguity_verified": true,
+      "anchor_formulation_solves_degeneracy": true
+    },
+    "3_partition_independence_and_no_holdout_leakage": {
+      "status": "PASSED",
+      "fit_worlds": [
+        "t6-analytic-room-00",
+        "t6-analytic-room-01",
+        "t6-analytic-room-02"
+      ],
+      "holdout_worlds": [
+        "t6-analytic-room-03",
+        "t6-analytic-room-04",
+        "t6-analytic-room-05"
+      ],
+      "overlap_count": 0,
+      "holdout_in_fit_statistics": false,
+      "gt_assisted_gauge_disclosure": true
+    },
+    "4_covariance_rank_and_nees_limitations": {
+      "status": "PASSED",
+      "dimension": 7,
+      "fit_worlds_count": 3,
+      "covariance_rank_ceiling": 2,
+      "zero_eigenvalues_count": 5,
+      "direct_inversion_singular": true,
+      "nees_claimed": false,
+      "coverage_95_claimed": false,
+      "regularization": "none; no inverse or pseudoinverse"
+    },
+    "5_calls_views_and_budget_consistency": {
+      "status": "PASSED",
+      "planned_forward_calls": 22,
+      "planned_forward_views": 62,
+      "views_quota_max": 64,
+      "unallocated_views": 2,
+      "cumulative_wall_max_s": 1200,
+      "rss_max_bytes": 8589934592,
+      "model_loads": 6
+    },
+    "6_status_and_claim_discipline": {
+      "status": "PASSED",
+      "proposal_status": "proposal_unapproved",
+      "execution_permitted": false,
+      "no_automatic_t6_release": true,
+      "claims_forbidden_enforced": true
+    },
+    "7_intentional_sabotage_controls": {
+      "status": "PASSED",
+      "controls_count": 5,
+      "all_exited_nonzero": true,
+      "records": [
+        {
+          "sabotage": "sabotage_gauge",
+          "returncode": 1,
+          "assertion": "AssertionError: Ground-truth baseline to view 2 is zero"
+        },
+        {
+          "sabotage": "sabotage_leakage",
+          "returncode": 1,
+          "assertion": "AssertionError: Holdout leakage detected: t6-analytic-room-00"
+        },
+        {
+          "sabotage": "sabotage_views",
+          "returncode": 1,
+          "assertion": "AssertionError: Views overcommit: 66 > 64"
+        },
+        {
+          "sabotage": "sabotage_covariance",
+          "returncode": 1,
+          "assertion": "AssertionError: Covariance is rank-deficient (rank 2 < 7), cannot claim full-rank noise model"
+        },
+        {
+          "sabotage": "sabotage_approval",
+          "returncode": 1,
+          "assertion": "AssertionError: Unapproved proposal claiming approved"
+        }
+      ]
+    },
+    "8_file_scope_respected": {
+      "status": "PASSED",
+      "allowed_dir": "reports/V-V9-T28/",
+      "violations": []
+    },
+    "9_unverified_items": {
+      "status": "DISCLOSED",
+      "items": [
+        "未运行真实模型推理/训练/渲染（纯 CPU 数学与独立矩阵校验）",
+        "真实模型工作需待统筹在 RESEARCH_LOG.md 登记不可变 SHA 并完成前置审批"
+      ]
+    }
+  }
+}

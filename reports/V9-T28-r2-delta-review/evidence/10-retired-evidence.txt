@@ -1,0 +1,22 @@
+==============================================================================
+retired_stages.evidence 独立核验
+==============================================================================
+
+[stage] half_parity  (tolerance_key=mps_float16)
+  cam_dec: envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/cam_dec.py
+      line 37/45  内容: out_t = self.fc_t(feat.float()).reshape(B, N, 3)
+      sha256 声明=f7bc81d846b786e3… 实测=f7bc81d846b786e3… 一致=True
+      行号在范围内=True  与期望 marker('self.fc_t(feat.float())') 相符=True
+  pipeline: envs/teachers/t6/pipeline.py
+      line 268/381  内容: class ExplicitPrecisionDA3(DepthAnything3):
+      sha256 声明=67357ea4ec322e59… 实测=67357ea4ec322e59… 一致=True
+      行号在范围内=True  与期望 marker('class ExplicitPrecisionDA3') 相符=True
+  reproduction: 不是文件型证据 -> reports/V9-T40/DECISIONS_FOR_USER.md section 1 (no DA3 weights involved)
+
+[交叉一致性]
+  tolerance_key=mps_float16 在容差表里=True 声明未使用=True
+  retired stage 'half_parity' 仍在 budget 里=False
+
+==============================================================================
+FAILS=0 => PASS
+==============================================================================

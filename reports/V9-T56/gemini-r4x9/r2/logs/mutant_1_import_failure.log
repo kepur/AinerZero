@@ -1,0 +1,72 @@
+Return Code: 1
+
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python3
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /Users/mac/AinerWorkFlow/AinerZero
+configfile: pyproject.toml
+collecting ... collected 1 item
+
+tests/test_da3_t56_features.py::test_real_venv_t6_runner_script_execution_without_pythonpath FAILED [100%]
+
+=================================== FAILURES ===================================
+_________ test_real_venv_t6_runner_script_execution_without_pythonpath _________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-335/test_real_venv_t6_runner_scrip0')
+
+    def test_real_venv_t6_runner_script_execution_without_pythonpath(tmp_path: Path):
+        """集成测试：用 envs/teachers/.venv-t6/bin/python，不带 PYTHONPATH，以脚本方式跑 --preflight-only。"""
+        import os
+        import subprocess
+    
+        t6_python = REPO_ROOT / "envs/teachers/.venv-t6/bin/python"
+        if not t6_python.is_file():
+            pytest.skip(f".venv-t6 python not found at {t6_python}")
+    
+        custom_runner = os.environ.get("DA3_RUNNER_SCRIPT")
+        runner_script = Path(custom_runner) if custom_runner else REPO_ROOT / "src/ainerzero/v9/teachers/da3_calibration_runner.py"
+        r1_proposal = REPO_ROOT / "reports/V9-T28/proposal.json"
+        pre_e18_proposal = REPO_ROOT / "reports/V9-T28/r2/pre-E18-1694ed30/proposal.json"
+    
+        # Base clean env without PYTHONPATH
+        clean_env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    
+        # 1. Default (reads registered proposal, i.e. r2) -> exit code 0
+        out1 = tmp_path / "out1.json"
+        pred1 = tmp_path / "pred1"
+        res1 = subprocess.run(
+            [str(t6_python), str(runner_script), "--preflight-only", "--output", str(out1), "--predictions-dir", str(pred1)],
+            cwd=str(REPO_ROOT),
+            env=clean_env,
+            capture_output=True,
+            text=True,
+        )
+>       assert res1.returncode == 0, f"Default preflight in .venv-t6 failed: {res1.stdout}\n{res1.stderr}"
+E       AssertionError: Default preflight in .venv-t6 failed: 
+E         Traceback (most recent call last):
+E           File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py", line 534, in <module>
+E             raise SystemExit(main())
+E                              ^^^^^^
+E           File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py", line 514, in main
+E             target_proposal = a.proposal if a.proposal is not None else get_default_proposal_path()
+E                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py", line 67, in get_default_proposal_path
+E             reg = _load_registration()
+E                   ^^^^^^^^^^^^^^^^^^^^
+E           File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py", line 53, in _load_registration
+E             from ainerzero.v9.teachers import t28_registration
+E         ModuleNotFoundError: No module named 'ainerzero'
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/envs/teachers/.venv-t6/bin/python', '/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py', '--preflight-only', '--output', '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-335/test_real_venv_t6_runner_scrip0/out1.json', '--predictions-dir', '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-335/test_real_venv_t6_runner_scrip0/pred1'], returncode=1, stdout='', stderr='Traceback (most recent call last):\n  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py", line 534, in <module>\n    raise SystemExit(main())\n                     ^^^^^^\n  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py", line 514, in main\n    target_proposal = a.proposal if a.proposal is not None else get_default_proposal_path()\n                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py", line 67, in get_default_proposal_path\n    reg = _load_registration()\n          ^^^^^^^^^^^^^^^^^^^^\n  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py", line 53, in _load_registration\n    from ainerzero.v9.teachers import t28_registration\nModuleNotFoundError: No module named \'ainerzero\'\n').returncode
+
+tests/test_da3_t56_features.py:311: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_da3_t56_features.py::test_real_venv_t6_runner_script_execution_without_pythonpath
+============================== 1 failed in 0.32s ===============================
+
+
+STDERR:
+

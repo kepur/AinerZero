@@ -1,0 +1,346 @@
+{
+  "verifier_task": "ainerzero.V9.T3",
+  "verified_task": "ainerzero.V9.T2",
+  "normal": [
+    {
+      "case": "C01",
+      "theme": "元数据伪造",
+      "title": "blob.reproducibility 篡改提升训练准入",
+      "poison": "store_problems_off",
+      "mode": "normal",
+      "metrics": {
+        "honest_eligible": false,
+        "forged_eligible": false,
+        "store_problems_after_forgery": [],
+        "entry_id_stable": true,
+        "delta_fields": 1
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "C02",
+      "theme": "元数据伪造",
+      "title": "entry/blob 许可篡改提升训练准入",
+      "poison": "store_problems_off",
+      "mode": "normal",
+      "metrics": {
+        "honest_eligible": false,
+        "entry_license_false_eligible": false,
+        "entry_license_forged_true_eligible": false,
+        "teacher_license_false_eligible": false,
+        "teacher_license_forged_true_eligible": false,
+        "store_problems_all_states": [
+          [],
+          [],
+          []
+        ],
+        "entry_id_stable": true
+      },
+      "violations": [
+        "前提失效：契约正例 3d7b 的诚实训练准入应为 True，实际 False"
+      ],
+      "control_violations": [],
+      "verdict": "FAIL(finding)",
+      "exit": 1
+    },
+    {
+      "case": "C03",
+      "mode": "normal",
+      "harness_error": "achers/cache.py\", line 380, in write_entry\n    raise SchemaValidationError(\"entry schema invalid: \" + \"; \".join(errs[:5]))\nainerzero.v9.teachers.cache.SchemaValidationError: entry schema invalid: $.source: Additional properties are not allowed ('store' was unexpected); $.provenance.upstream.actor: 'kind' is a required property; $.provenance.upstream.actor: 'policy_revision' is a required property\n",
+      "exit": 2
+    },
+    {
+      "case": "C04",
+      "theme": "元数据伪造",
+      "title": "write_blob 产物不通过契约 schema",
+      "poison": "validate_schema_off",
+      "mode": "normal",
+      "metrics": {
+        "schema_errors": 0,
+        "first_errors": [],
+        "written_keys": [
+          "cache_key",
+          "confidence",
+          "generation",
+          "key_material",
+          "output",
+          "record_type",
+          "reproducibility",
+          "schema_version",
+          "teacher_license",
+          "tolerance"
+        ],
+        "t2_schema_test_assert_count": 3
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "C05",
+      "mode": "normal",
+      "harness_error": "achers/cache.py\", line 380, in write_entry\n    raise SchemaValidationError(\"entry schema invalid: \" + \"; \".join(errs[:5]))\nainerzero.v9.teachers.cache.SchemaValidationError: entry schema invalid: $.source: Additional properties are not allowed ('store' was unexpected); $.provenance.upstream.actor: 'kind' is a required property; $.provenance.upstream.actor: 'policy_revision' is a required property\n",
+      "exit": 2
+    },
+    {
+      "case": "C06",
+      "theme": "跨模型混写",
+      "title": "blob.key_material 被换模型后读路径不核验",
+      "poison": "store_problems_off",
+      "mode": "normal",
+      "metrics": {
+        "cache_key_matches_sha_key_material": false,
+        "delta": 1,
+        "read_raised": "HashMismatchError",
+        "broken_flag": null
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "C07",
+      "theme": "跨模型混写",
+      "title": "契约合法内容块被实现误判 broken",
+      "poison": "read_verify_off",
+      "mode": "normal",
+      "metrics": {
+        "contract_blob_schema_errors": 0,
+        "read_raised": null,
+        "broken_flag": null
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "C08",
+      "theme": "模式绕过",
+      "title": "Train Mode 下常驻教师句柄仍可产出",
+      "poison": "mode_check_off",
+      "mode": "normal",
+      "metrics": {
+        "mode_after_switch": "train",
+        "bytes_produced_in_train_mode": "ModeViolationError",
+        "resident_teacher": false
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "C09",
+      "theme": "模式绕过",
+      "title": "World Mode TTL 过期后句柄不失效",
+      "poison": "mode_check_off",
+      "mode": "normal",
+      "metrics": {
+        "ttl_s": 0.05,
+        "elapsed_s": 0.12,
+        "guard_still_marks_loaded": true,
+        "bytes_produced_after_ttl": "ModeViolationError"
+      },
+      "violations": [
+        "TTL(0.05s) 过 0.12s 后守卫仍标记 teacher_loaded=True、句柄仍产出 ModeViolationError 字节：TTL 只在下一次 check/set_mode 时惰性过期，且过期不使已加载句柄失效（§1.4「超时自动卸载」）"
+      ],
+      "control_violations": [],
+      "verdict": "FAIL(finding)",
+      "exit": 1
+    },
+    {
+      "case": "C10",
+      "theme": "模式绕过",
+      "title": "模式切换无内存回落检查 unload_incomplete",
+      "poison": "set_mode_off",
+      "mode": "normal",
+      "metrics": {
+        "mode_py_memory_check_refs": 47,
+        "refs": [
+          "RSS",
+          "Rss",
+          "getrusage",
+          "rss",
+          "unload_incomplete"
+        ]
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "C11",
+      "mode": "normal",
+      "harness_error": "\"/Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-T2/r2/adversarial_suite.py\", line 900, in run_one\n    metrics, violations = case_fn()\n                          ^^^^^^^^^\n  File \"/Users/mac/AinerWorkFlow/AinerZero/reports/V-V9-T2/r2/adversarial_suite.py\", line 751, in case_c11\n    consistent = actual == rec[\"output_sha256\"]\n                           ~~~^^^^^^^^^^^^^^^^^\nKeyError: 'output_sha256'\n",
+      "exit": 2
+    },
+    {
+      "case": "C12",
+      "mode": "normal",
+      "harness_error": "achers/cache.py\", line 380, in write_entry\n    raise SchemaValidationError(\"entry schema invalid: \" + \"; \".join(errs[:5]))\nainerzero.v9.teachers.cache.SchemaValidationError: entry schema invalid: $.source: Additional properties are not allowed ('store' was unexpected); $.provenance.upstream.actor: 'kind' is a required property; $.provenance.upstream.actor: 'policy_revision' is a required property\n",
+      "exit": 2
+    }
+  ],
+  "poison": [
+    {
+      "case": "C01",
+      "theme": "元数据伪造",
+      "title": "blob.reproducibility 篡改提升训练准入",
+      "poison": "store_problems_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：篡改 partition 后 store_problems=[] 未含 original_source_binding_mismatch"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C02",
+      "theme": "元数据伪造",
+      "title": "entry/blob 许可篡改提升训练准入",
+      "poison": "store_problems_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：篡改 eligibility 后 store_problems=[] 未含 original_source_binding_mismatch"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C03",
+      "theme": "元数据伪造",
+      "title": "同 entry_id 不同内容被静默覆盖",
+      "poison": "write_entry_meta_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：期望 MetadataIncompleteError，实际 KeyError"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C04",
+      "theme": "元数据伪造",
+      "title": "write_blob 产物不通过契约 schema",
+      "poison": "validate_schema_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：删掉 schema_version 后 validate_schema 返回空"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C05",
+      "theme": "跨模型混写",
+      "title": "条目 derivation 换模型后写入/读取放行",
+      "poison": "store_problems_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：store_problems=[] 未含 derivation_teacher_mismatch"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C06",
+      "theme": "跨模型混写",
+      "title": "blob.key_material 被换模型后读路径不核验",
+      "poison": "store_problems_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：store_problems=[] 未含 cache_key_mismatch"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C07",
+      "theme": "跨模型混写",
+      "title": "契约合法内容块被实现误判 broken",
+      "poison": "read_verify_off",
+      "mode": "poison",
+      "control_violations": [],
+      "poison_turned_red": false,
+      "exit": 0
+    },
+    {
+      "case": "C08",
+      "theme": "模式绕过",
+      "title": "Train Mode 下常驻教师句柄仍可产出",
+      "poison": "mode_check_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：Train Mode 构造教师期望 ModeViolationError，实际 None"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C09",
+      "theme": "模式绕过",
+      "title": "World Mode TTL 过期后句柄不失效",
+      "poison": "mode_check_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：World Mode 加载 feature 教师期望 ModeViolationError，实际 None"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C10",
+      "theme": "模式绕过",
+      "title": "模式切换无内存回落检查 unload_incomplete",
+      "poison": "set_mode_off",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：set_mode('not_a_mode') 期望 ValueError，实际 TypeError"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C11",
+      "theme": "并发写入",
+      "title": "并发同键不同输出丢失 nondeterministic 拒绝",
+      "poison": "write_blob_overwrite",
+      "mode": "poison",
+      "control_violations": [
+        "对照失效：顺序重写不同输出期望 nondeterministic_output，实际 None"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "C12",
+      "mode": "poison",
+      "harness_error": "achers/cache.py\", line 380, in write_entry\n    raise SchemaValidationError(\"entry schema invalid: \" + \"; \".join(errs[:5]))\nainerzero.v9.teachers.cache.SchemaValidationError: entry schema invalid: $.source: Additional properties are not allowed ('store' was unexpected); $.provenance.upstream.actor: 'kind' is a required property; $.provenance.upstream.actor: 'policy_revision' is a required property\n",
+      "exit": 2
+    }
+  ],
+  "findings": [
+    "C02",
+    "C09"
+  ],
+  "control_failures_normal": [],
+  "poison_not_red": [
+    "C07",
+    "C12"
+  ],
+  "cases_total": 12,
+  "themes": [
+    "元数据伪造",
+    "并发写入",
+    "模式绕过",
+    "跨模型混写"
+  ],
+  "exit": 1
+}

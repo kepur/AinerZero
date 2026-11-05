@@ -1,0 +1,208 @@
+{
+  "verifier_task": "ainerzero.V9.T20",
+  "verified_task": "ainerzero.V9.T2",
+  "normal": [
+    {
+      "case": "N01",
+      "theme": "可信上下文",
+      "title": "未知 context schema_version 准入检测",
+      "poison": "p_n01",
+      "mode": "normal",
+      "metrics": {
+        "problems": [
+          "trusted_context_identity"
+        ],
+        "train_eligible": false
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "N02",
+      "theme": "可信上下文",
+      "title": "v2.1 绑定条目缺失 fail-closed 准入",
+      "poison": "p_n02",
+      "mode": "normal",
+      "metrics": {
+        "entry_id": "3d7bf07a98b894212cd0694f2258eaedfd676276f1701440d050687d76dd14da",
+        "train_eligible": false
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "N03",
+      "theme": "缓存读路径",
+      "title": "output.bin 损坏被捕获并置 broken",
+      "poison": "p_n03",
+      "mode": "normal",
+      "metrics": {
+        "caught": true,
+        "exc": "Blob 503c2bc43ff1ba02... output hash mismatch (marked broken)",
+        "broken": true,
+        "reason": "output_hash_mismatch"
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "N04",
+      "theme": "模式守卫",
+      "title": "release_teacher 后句柄失效",
+      "poison": "p_n04",
+      "mode": "normal",
+      "metrics": {
+        "caught": true,
+        "exc": "Teacher da3-small not loaded (released, TTL expired, or mode switched)"
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "N05",
+      "theme": "模式守卫",
+      "title": "探针缺失下模式切换 fail-closed",
+      "poison": "p_n05",
+      "mode": "normal",
+      "metrics": {
+        "caught": true,
+        "exc": "unload_incomplete: RSS probe unavailable (fail-closed)"
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "N06",
+      "theme": "写路径原子性",
+      "title": "畸形 schema 条目在写盘前被拒且零残留",
+      "poison": "p_n06",
+      "mode": "normal",
+      "metrics": {
+        "caught": true,
+        "exc": "entry schema invalid: $.provenance.upstream: 'system' is a required property; $.provenance.upstream.origin: 'external_derived' was expected",
+        "leftover_files": 0
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    },
+    {
+      "case": "N07",
+      "theme": "跨模式互斥",
+      "title": "World 模式拒绝 feature 教师",
+      "poison": "p_n07",
+      "mode": "normal",
+      "metrics": {
+        "caught": true,
+        "exc": "World Mode: only geometry teachers allowed, got feature"
+      },
+      "violations": [],
+      "control_violations": [],
+      "verdict": "PASS",
+      "exit": 0
+    }
+  ],
+  "poison": [
+    {
+      "case": "N01",
+      "theme": "可信上下文",
+      "title": "未知 context schema_version 准入检测",
+      "poison": "p_n01",
+      "mode": "poison",
+      "control_violations": [
+        "对照失败：非空 approval_registry 未能被检测出，实际: []"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "N02",
+      "theme": "可信上下文",
+      "title": "v2.1 绑定条目缺失 fail-closed 准入",
+      "poison": "p_n02",
+      "mode": "poison",
+      "control_violations": [
+        "对照失败：正例绑定应该准入，实际 train_eligible=False"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "N03",
+      "theme": "缓存读路径",
+      "title": "output.bin 损坏被捕获并置 broken",
+      "poison": "p_n03",
+      "mode": "poison",
+      "control_violations": [
+        "对照失败：未被篡改的 blob 被误标 broken"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "N04",
+      "theme": "模式守卫",
+      "title": "release_teacher 后句柄失效",
+      "poison": "p_n04",
+      "mode": "poison",
+      "control_violations": [
+        "对照失败：有效状态下 extract 产出长度应为 16，实际 0"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "N05",
+      "theme": "模式守卫",
+      "title": "探针缺失下模式切换 fail-closed",
+      "poison": "p_n05",
+      "mode": "poison",
+      "control_violations": [
+        "对照失败：正常回落的模式切换应该成功"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "N06",
+      "theme": "写路径原子性",
+      "title": "畸形 schema 条目在写盘前被拒且零残留",
+      "poison": "p_n06",
+      "mode": "poison",
+      "control_violations": [
+        "对照失败：正例 entry 写入与读出失败"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    },
+    {
+      "case": "N07",
+      "theme": "跨模式互斥",
+      "title": "World 模式拒绝 feature 教师",
+      "poison": "p_n07",
+      "mode": "poison",
+      "control_violations": [
+        "对照失败：World 模式加载 geometry 教师应该成功"
+      ],
+      "poison_turned_red": true,
+      "exit": 1
+    }
+  ],
+  "findings_count": 0,
+  "control_failures_count": 0,
+  "poison_not_red_count": 0,
+  "all_controls_turn_red": true,
+  "all_attacks_rejected": true,
+  "exit": 0
+}

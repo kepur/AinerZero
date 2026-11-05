@@ -1,0 +1,50 @@
+[
+  {
+    "path": "Python API execute_guarded_da3_benchmark(test_substitute=False, released, worker_action=None)",
+    "selects": "real_pipeline",
+    "test_substitute_can_reach": false,
+    "notes": "intended production path"
+  },
+  {
+    "path": "Python API execute_guarded(..., test_substitute=True, worker_action=None)",
+    "selects": "mock_run",
+    "test_substitute_can_reach": false,
+    "notes": "T40 fix: prefers mock when substitute"
+  },
+  {
+    "path": "Python API execute_guarded(..., test_substitute=True, worker_action='real_pipeline')",
+    "selects": "BenchmarkRefusalError before worker",
+    "test_substitute_can_reach": false,
+    "notes": "T40 explicit refuse"
+  },
+  {
+    "path": "CLI teacher-da3/teacher-benchmark --mode run --test-substitute (no release)",
+    "selects": "mock_run via benchmark_commands worker_action",
+    "test_substitute_can_reach": false,
+    "notes": "benchmark_commands: mock when substitute and not release"
+  },
+  {
+    "path": "CLI teacher-da3/teacher-benchmark --mode run --test-substitute --coordinator-release",
+    "selects": "real_pipeline selected THEN refused in execute_guarded",
+    "test_substitute_can_reach": false,
+    "notes": "CLI still SELECTS real_pipeline; guard blocks before run_supervised"
+  },
+  {
+    "path": "CLI teacher-da3/teacher-benchmark --mode run without --test-substitute + release",
+    "selects": "real_pipeline",
+    "test_substitute_can_reach": false,
+    "notes": "formal path"
+  },
+  {
+    "path": "Direct run_supervised_da3_worker(worker_action default)",
+    "selects": "real_pipeline (default arg)",
+    "test_substitute_can_reach": "N/A — no test_substitute param; bypasses execute_guarded",
+    "notes": "tests call with mock_run explicitly; production should go through execute_guarded"
+  },
+  {
+    "path": "python -m ainerzero.v9.teachers.da3_worker --action real_pipeline",
+    "selects": "real_pipeline inside worker",
+    "test_substitute_can_reach": "N/A",
+    "notes": "worker entry; views==18 magic still gates calibration runner"
+  }
+]

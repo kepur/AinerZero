@@ -1,0 +1,168 @@
+ainerzero.V9.T2  [待验收]  【代码】教师特征缓存与运行模式守卫（纯 CPU，假教师）
+层级 2 · 类型 implement · 执行者 composer-a7k2 · 作者 composer-a7k2 · 第 0/3 次 · 参数 v0
+需要：code
+前置：ainerzero.V9.T1(accepted)、awz.V9.A10(accepted)
+最新进度：交报告中
+── 结果摘要 ──
+# ainerzero.V9.T2 执行报告
+角色：executor；负责人：composer-a7k2；时间：2026-10-20
+任务状态：reported；实验状态：completed（纯 CPU 库级实现与测试；无训练/下载/MLX）
+任务依据：ainerzero.V9.T2；D-021 放行；TEACHERS_AND_CACHE r3；contracts/v9/teacher_cache.v2.schema.json；T1 r1/r2/r3 参考核对
+输入身份：见 `reports/V9-T2/metrics.json` → `source_sha256`
+修改文件：
+- `src/ainerzero/v9/teachers/{__init__,cache,mode,fake}.py`：缓存两层写入/读核验、store_problems/train_eligible（r3）、WorkerLock、ModeGuard、假教师
+- `tests/v9/teachers/{test_cache,test_mode}.py`：复现性、元数据拒写、跨分区、broken、模式违例、真实双进程临时锁
+- `reports/V9-T2/{REPORT.md,metrics.json}`：本报告与指标
+
+## 相对上一棒（opencode-de3b）的改动
+上一棒留下未测通骨架：`WorkerLock` 用模块级路径但实例读 `self.LOCK_PATH`、World 模式不拒绝第二教师、`cache.py` 重复 ModeGuard、测试缺 fixture、双进程测会碰/依赖错误路径。本棒整段重写为可注入 root/lock 的库，对齐 r3 `store_problems`/`train_eligible`，并加 `FakeTeacher`。
+
+## 实际执行
+```bash
+cd /Users/mac/AinerWorkFlow/AinerZero
+python3 -m pytest tests/v9/teachers/ -v --tb=short
+PYTHONPATH=src python3 src/ainerzero/v9/teachers/mode.py --verify-locks
+PYTHONPATH=src python3 src/ainerzero/v9/teachers/mode.py --verify-mode-guard
+```
+临时目录：pytest/`tempfile` 内锁与缓存；**未写入** `artifacts/locks/m0-worker.lock`。
+
+## 验证结果
+- pytest：**23 passed**，约 3.3s；峰值 RSS 约 19 MB（见 metrics）
+- 锁协议双进程：`all_mutually_exclusive=true`；早释/晚取两类破坏可检出
+- ModeGuard 捆绑自检：`all_passed=true`
+- 故意改坏：Train 加载教师 → 捕获 `ModeViolationError`，脚本 exit 2（变红）
+- 缓存：同输入假教师特征字节级可复现；缺元数据拒写；跨分区拒写；输出篡改 → `broken`
+- 无 `mlx`/`torch`/`coremltools` 导入
+
+…（共 44 行，--full 看全文）
+── 数据 ──
+{
+  "pytest_exit": 0,
+  "pytest_stdout_tail": [
+    ".......................                                                  [100%]",
+    "23 passed in 3.27s"
+  ],
+  "pytest_seconds": 3.517,
+  "peak_rss_mb_approx": 19.36,
+  "lock_verify_exit": 0,
+  "mode_guard_verify_exit": 0,
+  "mode_guard_verify": {
+    "tests": [
+      [
+        "train_rejects_teacher",
+        true,
+        ""
+      ],
+      [
+        "teacher_allows_one_rejects_second",
+        true,
+        "first=True, second=False"
+      ],
+      [
+        "world_allows_geometry_rejects_feature",
+        true,
+        "geom=True, feat=False"
+      ],
+      [
+        "world_allows_one_geometry",
+        true,
+        "first=True, second=False"
+      ],
+      [
+        "world_release_reacquire",
+        true,
+        ""
+      ],
+      [
+        "world_ttl_auto_unload",
+        true,
+        ""
+      ]
+    ],
+    "all_passed": true
+  },
+  "sabotage_mode_train_exit": 2,
+  "sabotage_mode_train_stdout": "SABOTAGE_CAUGHT",
+  "source_sha256": {
+    "src/ainerzero/v9/teachers/__init__.py": "a3a81634d9ef056536f785404aab966adcc352d7b39b0411c70846a4d1abefd0",
+    "src/ainerzero/v9/teachers/cache.py": "c0e34ec3157eeafe6e721787b23beae5019c80566d6426511167ba30212f6613",
+    "src/ainerzero/v9/teachers/mode.py": "c6c28628ffd98c9382ed06c77386418d1496c9c13620379158b87bfcd1603315",
+    "src/ainerzero/v9/teachers/fake.py": "2cb2751e52f1538ea70cfe88ca9d643923c14a1dd203317effc388e36480eee2",
+    "tests/v9/teachers/test_cache.py": "6749d11adc03c6986ed66da1c9e70e620ae9c68650d6a27377cc869f8760d54e",
+    "tests/v9/teachers/test_mode.py": "1fe17cdc443f20a034e672a6932c85e1227c60ab935c6c9e105163c7093c35de",
+    "contracts/v9/teacher_cache.v2.schema.json": "e8ca43e9e1359a6d8315c3c72e642de476e1495d19a2bb713f665cec81fe9f76",
+    "docs/v9/TEACHERS_AND_CACHE.md": "a5b5d07556e899905add48158e6252a206e0b19daddf4b7ffa8e96125f36e636"
+  },
+  "no_mlx_torch_imports": true,
+  "tmp_lock_note": "dual-process tests use tempfile TemporaryDirectory locks; never artifacts/locks",
+  "lock_verify_ok": true
+}
+── 执行记录 ──
+#1 opencode-de3b  10-20 14:11  用时 20.2 分  心跳 0 次  → stalled（20 分钟没有心跳）
+#2 composer-a7k2  10-20 14:45  用时 6.4 分  心跳 5 次  → reported
+── 完整结果 ──
+# ainerzero.V9.T2 执行报告
+角色：executor；负责人：composer-a7k2；时间：2026-10-20
+任务状态：reported；实验状态：completed（纯 CPU 库级实现与测试；无训练/下载/MLX）
+任务依据：ainerzero.V9.T2；D-021 放行；TEACHERS_AND_CACHE r3；contracts/v9/teacher_cache.v2.schema.json；T1 r1/r2/r3 参考核对
+输入身份：见 `reports/V9-T2/metrics.json` → `source_sha256`
+修改文件：
+- `src/ainerzero/v9/teachers/{__init__,cache,mode,fake}.py`：缓存两层写入/读核验、store_problems/train_eligible（r3）、WorkerLock、ModeGuard、假教师
+- `tests/v9/teachers/{test_cache,test_mode}.py`：复现性、元数据拒写、跨分区、broken、模式违例、真实双进程临时锁
+- `reports/V9-T2/{REPORT.md,metrics.json}`：本报告与指标
+
+## 相对上一棒（opencode-de3b）的改动
+上一棒留下未测通骨架：`WorkerLock` 用模块级路径但实例读 `self.LOCK_PATH`、World 模式不拒绝第二教师、`cache.py` 重复 ModeGuard、测试缺 fixture、双进程测会碰/依赖错误路径。本棒整段重写为可注入 root/lock 的库，对齐 r3 `store_problems`/`train_eligible`，并加 `FakeTeacher`。
+
+## 实际执行
+```bash
+cd /Users/mac/AinerWorkFlow/AinerZero
+python3 -m pytest tests/v9/teachers/ -v --tb=short
+PYTHONPATH=src python3 src/ainerzero/v9/teachers/mode.py --verify-locks
+PYTHONPATH=src python3 src/ainerzero/v9/teachers/mode.py --verify-mode-guard
+```
+临时目录：pytest/`tempfile` 内锁与缓存；**未写入** `artifacts/locks/m0-worker.lock`。
+
+## 验证结果
+- pytest：**23 passed**，约 3.3s；峰值 RSS 约 19 MB（见 metrics）
+- 锁协议双进程：`all_mutually_exclusive=true`；早释/晚取两类破坏可检出
+- ModeGuard 捆绑自检：`all_passed=true`
+- 故意改坏：Train 加载教师 → 捕获 `ModeViolationError`，脚本 exit 2（变红）
+- 缓存：同输入假教师特征字节级可复现；缺元数据拒写；跨分区拒写；输出篡改 → `broken`
+- 无 `mlx`/`torch`/`coremltools` 导入
+
+## 产物
+- 库：`src/ainerzero/v9/teachers/`
+- 测试：`tests/v9/teachers/`
+- 指标：`reports/V9-T2/metrics.json`
+
+## 失败与限制
+- 未跑真实教师权重；假教师仅确定性伪随机特征
+- World TTL 默认未定（规范 §7），实现为可选 `world_ttl_s`
+- `store_problems` 对完整 schema 记录依赖调用方提供可信上下文；库测对记录本体用 `disabled=("schema",)` 聚焦绑定规则（与 T1 破坏开关同思路）
+- 未提交、未推送、未下载、未训练
+
+## 交回统筹
+- 实现可做 T3+ 教师接入前置；真实模型路径仍受下载/预算门控
+- 若需把 `store_problems` 与 r3 suite 夹具做端到端对接，建议另开卡（本卡文件范围已覆盖库与单测）
+
+── 事件 ──
+2026-10-16T01:34:47+03:00 claude created：【代码】教师特征缓存与运行模式守卫（纯 CPU，假教师）
+2026-10-16T09:24:44+03:00 claude status_blocked：用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。
+2026-10-16T09:31:34+03:00 claude edited：prompt、context_files
+2026-10-16T09:46:39+03:00 claude edited：depends_on
+2026-10-16T09:50:11+03:00 claude edited：prompt
+2026-10-16T11:49:01+03:00 codex edited：prompt
+2026-10-20T13:38:07+03:00 claude edited：prompt
+2026-10-20T13:38:07+03:00 claude status_ready：D-021：D-019 代码门已开，一级核对原依赖/授权/文件范围后放行（无下载）
+2026-10-20T14:11:34+03:00 opencode-de3b claimed：opencode-de3b 领取（第 1 次）
+2026-10-20T14:31:44+03:00 relay stalled：opencode-de3b 20 分钟没有心跳，收回并放回列表，等别的 agent 领（不计失败次数）
+2026-10-20T14:32:02+03:00 claude message：一级提示（claude）：上一棒 opencode-de3b 20 分钟无心跳被收回，没留接力点。工作树里有未提交半成品：src/ainerzero/v9/teachers/{__init__.py,cache.py,mode.py}（14:21–14:22 写入，约 38 KB），tests/v9/teachers/ 与 reports/V9-T2/ 尚无文件。接手者先读这三个文件判断可续用还是
+2026-10-20T14:44:42+03:00 user reserved：复制预留给 拿到这条复制的人，900 秒
+2026-10-20T14:45:05+03:00 composer-a7k2 claimed：composer-a7k2 领取（第 1 次）
+2026-10-20T14:45:14+03:00 composer-a7k2 progress：已领取，读规格与上一棒代码
+2026-10-20T14:45:34+03:00 composer-a7k2 progress：对照T1契约与规格，准备修锁/模式/测试
+2026-10-20T14:49:19+03:00 composer-a7k2 progress：重写实现完成，开始跑 pytest
+2026-10-20T14:50:50+03:00 composer-a7k2 progress：23 tests passed，写报告
+2026-10-20T14:51:31+03:00 composer-a7k2 progress：交报告中
+2026-10-20T14:51:31+03:00 composer-a7k2 reported：# ainerzero.V9.T2 执行报告

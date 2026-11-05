@@ -1,0 +1,168 @@
+[
+  {
+    "id": "MUT-01",
+    "name": "approval_gate_sabotage",
+    "description": "Bypasses RESEARCH_LOG approval keyword check",
+    "baseline_healthy": true,
+    "positive_legal_passed": true,
+    "target_bad_turned_red": true,
+    "unrelated_bad_retained_rejection": true,
+    "inverse_sha_restored": true,
+    "overall_mutation_passed": true,
+    "details": {
+      "baseline": {
+        "pos": {
+          "success": true,
+          "exit_code": 0
+        },
+        "target": {
+          "rejected": true,
+          "exit_code": 3
+        },
+        "unrelated": {
+          "rejected": true,
+          "exit_code": 5
+        }
+      },
+      "mutant": {
+        "pos": {
+          "success": true,
+          "exit_code": 0
+        },
+        "target": {
+          "rejected": false,
+          "exit_code": 0
+        },
+        "unrelated": {
+          "rejected": true,
+          "exit_code": 5
+        }
+      }
+    }
+  },
+  {
+    "id": "MUT-02",
+    "name": "per_run_budget_gate_sabotage",
+    "description": "Bypasses 600s per-run wall budget protection",
+    "baseline_healthy": true,
+    "positive_legal_passed": true,
+    "target_bad_turned_red": true,
+    "unrelated_bad_retained_rejection": true,
+    "inverse_sha_restored": true,
+    "overall_mutation_passed": true,
+    "details": {
+      "baseline": {
+        "pos": {
+          "success": true,
+          "exit_code": 0
+        },
+        "target": {
+          "rejected": true,
+          "exit_code": 5
+        },
+        "unrelated": {
+          "rejected": true,
+          "exit_code": 3
+        }
+      },
+      "mutant": {
+        "pos": {
+          "success": true,
+          "exit_code": 0
+        },
+        "target": {
+          "rejected": false,
+          "exit_code": 0
+        },
+        "unrelated": {
+          "rejected": true,
+          "exit_code": 3
+        }
+      }
+    }
+  },
+  {
+    "id": "MUT-03",
+    "name": "cumulative_budget_gate_sabotage",
+    "description": "Bypasses 1800s cumulative RunStore budget protection",
+    "baseline_healthy": true,
+    "positive_legal_passed": true,
+    "target_bad_turned_red": true,
+    "unrelated_bad_retained_rejection": true,
+    "inverse_sha_restored": true,
+    "overall_mutation_passed": true,
+    "details": {
+      "baseline": {
+        "pos": {
+          "success": true,
+          "exit_code": 0
+        },
+        "target": {
+          "rejected": true,
+          "exit_code": 5,
+          "error": "Cumulative wall budget exceeded: 1500.0s reserved + 400.0s requested > 1800.0s limit"
+        },
+        "unrelated": {
+          "rejected": true,
+          "exit_code": 3
+        }
+      },
+      "mutant": {
+        "pos": {
+          "success": true,
+          "exit_code": 0
+        },
+        "target": {
+          "rejected": false,
+          "exit_code": 5,
+          "error": "Budget exhausted: daily_active_time_budget"
+        },
+        "unrelated": {
+          "rejected": true,
+          "exit_code": 3
+        }
+      }
+    }
+  },
+  {
+    "id": "MUT-04",
+    "name": "resource_gate_sabotage",
+    "description": "Bypasses 32 GiB process RSS protection",
+    "baseline_healthy": true,
+    "positive_legal_passed": true,
+    "target_bad_turned_red": true,
+    "unrelated_bad_retained_rejection": true,
+    "inverse_sha_restored": true,
+    "overall_mutation_passed": true,
+    "details": {
+      "baseline": {
+        "pos": {
+          "success": true,
+          "exit_code": 0
+        },
+        "target": {
+          "rejected": true,
+          "exit_code": 2
+        },
+        "unrelated": {
+          "rejected": true,
+          "exit_code": 3
+        }
+      },
+      "mutant": {
+        "pos": {
+          "success": true,
+          "exit_code": 0
+        },
+        "target": {
+          "rejected": false,
+          "exit_code": 0
+        },
+        "unrelated": {
+          "rejected": true,
+          "exit_code": 3
+        }
+      }
+    }
+  }
+]

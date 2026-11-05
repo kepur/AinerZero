@@ -1,0 +1,219 @@
+==============================================================================
+新版 r2 (86f5ece6) vs 上一版 76f4c9fb
+A = ../V9-T28/r2/pre-half-parity-removal-76f4c9fb/proposal.json
+B = ../V9-T28/r2/proposal.json
+==============================================================================
+
+叶子总数: A=300  B=306  变化叶子=59
+变化的顶层键: ['amendment', 'budget', 'numerical_parity', 'open_items[0]', 'open_items[2]', 'open_items[3]', 'open_items[4]']
+
+--- 1) 叶子级差异（完全显式）---
+/amendment/changes[5]
+    A: "E6 budget: drop intrinsics_adverse stage, totals 20 calls / 56 views, view_accounting OPEN"
+    B: "E6 budget: drop intrinsics_adverse stage (and, by E15, half_parity), view_accounting OPEN"
+/budget/models[0]/forward_calls
+    A: 10
+    B: 9
+/budget/models[0]/forward_views
+    A: 28
+    B: 25
+/budget/models[0]/stages[4]/calls
+    A: 1
+    B: "<absent>"
+/budget/models[0]/stages[4]/device
+    A: "mps"
+    B: "<absent>"
+/budget/models[0]/stages[4]/frames_per_call
+    A: 3
+    B: "<absent>"
+/budget/models[0]/stages[4]/precision
+    A: "float16"
+    B: "<absent>"
+/budget/models[0]/stages[4]/stage
+    A: "half_parity"
+    B: "<absent>"
+/budget/models[0]/stages[4]/views[0]
+    A: 0
+    B: "<absent>"
+/budget/models[0]/stages[4]/views[1]
+    A: 1
+    B: "<absent>"
+/budget/models[0]/stages[4]/views[2]
+    A: 2
+    B: "<absent>"
+/budget/models[0]/stages[4]/worlds[0]
+    A: "t6-analytic-room-00"
+    B: "<absent>"
+/budget/models[1]/forward_calls
+    A: 10
+    B: 9
+/budget/models[1]/forward_views
+    A: 28
+    B: 25
+/budget/models[1]/stages[4]/calls
+    A: 1
+    B: "<absent>"
+/budget/models[1]/stages[4]/device
+    A: "mps"
+    B: "<absent>"
+/budget/models[1]/stages[4]/frames_per_call
+    A: 3
+    B: "<absent>"
+/budget/models[1]/stages[4]/precision
+    A: "float16"
+    B: "<absent>"
+/budget/models[1]/stages[4]/stage
+    A: "half_parity"
+    B: "<absent>"
+/budget/models[1]/stages[4]/views[0]
+    A: 0
+    B: "<absent>"
+/budget/models[1]/stages[4]/views[1]
+    A: 1
+    B: "<absent>"
+/budget/models[1]/stages[4]/views[2]
+    A: 2
+    B: "<absent>"
+/budget/models[1]/stages[4]/worlds[0]
+    A: "t6-analytic-room-00"
+    B: "<absent>"
+/budget/total_planned_forward_calls
+    A: 20
+    B: 18
+/budget/total_planned_forward_views
+    A: 56
+    B: 50
+/budget/unallocated_views
+    A: 8
+    B: 14
+/budget/view_accounting/note
+    A: "reserve_before_model_import_views and unallocated_views follow the r1 convention (central CLI per-job cap of 64). Whether the ledger counts dataset views (18) or forward views (56) is a user decision not yet made; the numbers here must be re-stated before registration."
+    B: "reserve_before_model_import_views and unallocated_views follow the r1 convention (central CLI per-job cap of 64). Whether the ledger counts dataset views (18) or forward views (50) is a user decision not yet made; the numbers here must be re-stated before registration."
+/numerical_parity/known_risks[0]
+    A: "reference-view selection is discrete: with no cam_token DA3 picks the reference view by an argmin over 3 views and reorders. A flip of that argmin between CPU/MPS or fp32/fp16 changes the output frame and fails the elementwise gate by O(1) regardless of tolerance"
+    B: "reference-view selection is discrete: with no cam_token DA3 picks the reference view by an argmin over 3 views and reorders. A flip of that argmin between CPU and MPS changes the output frame and fails the elementwise gate by O(1) regardless of tolerance; the user decided on 2026-10-28 to keep the cpu_parity rule as written, so a red cpu_parity is reported as is (exit 5, evidence retained)"
+/numerical_parity/known_risks[1]
+    A: "the fp16 elementwise-all gate over ~3.5e5 elements is expected to be marginal; the tolerances are NOT relaxed by this amendment"
+    B: "<absent>"
+/open_items[0]
+    A: "view_accounting: user to state whether the ledger counts dataset views or forward views (budget.view_accounting)"
+    B: "view_accounting: user to state whether the ledger counts dataset views (18) or forward views (50) (budget.view_accounting)"
+/open_items[2]
+    A: "independent math review of this r2: done by ainerzero.V9.T39 (accept_with_changes, applied here); then lead immutable SHA registration"
+    B: "independent review: T39 reviewed r2 before E15 (accept_with_changes, applied); the E15 delta (half_parity removal) needs its own small different-author delta review; then lead immutable SHA registration of the final r2 SHA"
+/open_items[3]
+    A: "numerical_parity structural risk (numerical_parity.known_risks): user decision whether to amend the parity rule before the run; as written, a red parity gate exits 5 but the calibration evidence is retained"
+    B: "runner: ainerzero.V9.T40 (reviewed by T41) already reads this r2 through --proposal; its default PROPOSAL_PATH still points at r1 and is switched only after registration; ainerzero.V9.T42 follow-ups (pre-consume rejection of non-calibration views) pending"
+/open_items[4]
+    A: "runner (ainerzero.V9.T37) cannot yet read this r2: load_plan parses the removed negative_controls.intrinsics; fix and T38 re-review pending"
+    B: "<absent>"
+/amendment/approved_by_user_second/date
+    A: "<absent>"
+    B: "2026-10-28"
+/amendment/approved_by_user_second/decisions[0]
+    A: "<absent>"
+    B: "remove half_parity (E15)"
+/amendment/approved_by_user_second/decisions[1]
+    A: "<absent>"
+    B: "keep cpu_parity rule unchanged (known_risks discloses the structural argmin risk)"
+/amendment/approved_by_user_second/decisions[2]
+    A: "<absent>"
+    B: "view/wall quota basis and numbers: still to be stated by the user"
+/amendment/approved_by_user_second/option
+    A: "<absent>"
+    B: "A"
+/amendment/approved_by_user_second/verbatim
+    A: "<absent>"
+    B: "选 A：从 T28 r2 删除 half_parity（每型号 9 次/25 视图，合计 18 次/50 视图），你修订 r2 并做差异复核；cpu_parity 保持现状。配额口径我另行告知。"
+/amendment/approved_by_user_second/where
+    A: "<absent>"
+    B: "一级 claude-az 会话"
+/amendment/changes[14]
+    A: "<absent>"
+    B: "E15 (2026-10-28, user option A) remove half_parity stage: 9 calls/25 views per variant, 18/50 total; numerical_parity.retired_stages added, known_risks reduced to the argmin risk; mps_float16 tolerance key kept unchanged and unused"
+/amendment/previous_revisions[0]/kept_at
+    A: "<absent>"
+    B: "reports/V9-T28/r2/reviewed-0e15033a/"
+/amendment/previous_revisions[0]/note
+    A: "<absent>"
+    B: "draft reviewed by ainerzero.V9.T39"
+/amendment/previous_revisions[0]/sha256
+    A: "<absent>"
+    B: "0e15033a8b55c978f3f97318e5d1978e54b406afe8d28120aebd40a8e0db9db1"
+/amendment/previous_revisions[1]/kept_at
+    A: "<absent>"
+    B: "reports/V9-T28/r2/pre-half-parity-removal-76f4c9fb/"
+/amendment/previous_revisions[1]/note
+    A: "<absent>"
+    B: "after applying T39; before E15"
+/amendment/previous_revisions[1]/sha256
+    A: "<absent>"
+    B: "76f4c9fbbf8b0889736904c8408dec11f62c2b9c7a3d60a2210c969ef2a922b4"
+/numerical_parity/retired_stages[0]/evidence/cam_dec/file
+    A: "<absent>"
+    B: "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/cam_dec.py"
+/numerical_parity/retired_stages[0]/evidence/cam_dec/line
+    A: "<absent>"
+    B: 37
+/numerical_parity/retired_stages[0]/evidence/cam_dec/sha256
+    A: "<absent>"
+    B: "f7bc81d846b786e314c03eaaf809126505fa0c82eb5177b95eadbfad5beefd63"
+/numerical_parity/retired_stages[0]/evidence/pipeline/file
+    A: "<absent>"
+    B: "envs/teachers/t6/pipeline.py"
+/numerical_parity/retired_stages[0]/evidence/pipeline/line
+    A: "<absent>"
+    B: 268
+/numerical_parity/retired_stages[0]/evidence/pipeline/sha256
+    A: "<absent>"
+    B: "67357ea4ec322e5995325cc5f5cf16530ee86b04781dfb0169411f4375f7b956"
+/numerical_parity/retired_stages[0]/evidence/reproduction
+    A: "<absent>"
+    B: "reports/V9-T40/DECISIONS_FOR_USER.md section 1 (no DA3 weights involved)"
+/numerical_parity/retired_stages[0]/not_replaced
+    A: "<absent>"
+    B: "no substitute fp16 control is introduced; option B (autocast-based fp16 in pipeline.py) was not chosen, so pipeline.py is unchanged and its SHA bindings remain valid"
+/numerical_parity/retired_stages[0]/reason
+    A: "<absent>"
+    B: "it cannot complete in this build: pipeline.py ExplicitPrecisionDA3 disables autocast and casts the whole network to float16, while upstream CameraDec.forward hard-codes self.fc_t(feat.float()). The fp32 input meets an fp16 Linear: CPU raises 'mat1 and mat2 must have the same dtype'; MPS aborts the process in a Metal assertion (SIGABRT, exit 134), after the authorization has been consumed and befo
+/numerical_parity/retired_stages[0]/stage
+    A: "<absent>"
+    B: "half_parity"
+/numerical_parity/retired_stages[0]/tolerance_kept_unchanged_and_unused
+    A: "<absent>"
+    B: true
+/numerical_parity/retired_stages[0]/tolerance_key
+    A: "<absent>"
+    B: "mps_float16"
+
+--- 2) 最大整块变化节点（作者 diff 粒度）---
+count=20
+/open_items[2]
+/open_items[3]
+/open_items[0]
+/open_items[4]
+/amendment/changes[5]
+/amendment/changes[14]
+/budget/unallocated_views
+/budget/models[1]/stages[4]
+/budget/models[0]/stages[4]
+/budget/view_accounting/note
+/amendment/previous_revisions
+/numerical_parity/known_risks
+/budget/models[1]/forward_calls
+/budget/models[0]/forward_calls
+/budget/models[0]/forward_views
+/budget/models[1]/forward_views
+/numerical_parity/retired_stages
+/amendment/approved_by_user_second
+/budget/total_planned_forward_views
+/budget/total_planned_forward_calls
+
+--- 3) 变化叶子所属的顶层键分布 ---
+  /amendment: 15
+  /budget: 26
+  /numerical_parity: 14
+  /open_items[0]: 1
+  /open_items[2]: 1
+  /open_items[3]: 1
+  /open_items[4]: 1

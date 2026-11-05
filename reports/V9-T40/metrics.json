@@ -1,0 +1,64 @@
+{
+ "task": "ainerzero.V9.T40",
+ "agent": "claude-az",
+ "author": "claude-az",
+ "reviewer_must_exclude": [
+  "claude-az",
+  "antigravity-66bc",
+  "antigravity-r8ia",
+  "antigravity-u2a7",
+  "gemini-9e5a"
+ ],
+ "tests": {
+  "runner_tests": 34,
+  "da3_teacher_suite_passed": 60,
+  "da3_teacher_suite_failed": 0,
+  "ran_on_ac": true
+ },
+ "mutation": {
+  "file_mutants": 9,
+  "file_mutants_caught": 9,
+  "first_round_uncaught": [
+   "T40-c"
+  ],
+  "worker_refusal_mutant_caught": true,
+  "da3_controlled_mutant_caught": true
+ },
+ "new_finding": "test_substitute could select real_pipeline when released; masked only by the views==18 magic number in the worker",
+ "runner": {
+  "reads_r2": true,
+  "proposal_flag": true,
+  "proposal_env": "T6_PROPOSAL_PATH",
+  "default_proposal": "r1 (unchanged until r2 registered)",
+  "incremental_evidence": true,
+  "hard_abort_tested": [
+   "last_stage",
+   "before_first_stage"
+  ]
+ },
+ "worker": {
+  "refuses_when_not_run": true,
+  "exit_code": 4,
+  "status": "refused_no_calibration"
+ },
+ "no_model_loaded": true,
+ "runs_db_sha_prefix_unchanged": "64b668050dfbab7a",
+ "lock_mtime_unchanged": true,
+ "pipeline_py_untouched": true,
+ "t28_files_untouched": true,
+ "needs_user": [
+  "half_parity must-crash on MPS (SIGABRT 134) / CPU RuntimeError",
+  "views==18 gate numeric value depends on ledger accounting basis",
+  "r2 SHA registration",
+  "quota numbers"
+ ],
+ "files_sha256": {
+  "src/ainerzero/v9/teachers/da3_calibration_math.py": "9a80aa736a5de2e6116b6f0f92bedc200fd57b1bec35b33ab3036d1df3e1ec2b",
+  "src/ainerzero/v9/teachers/da3_calibration_runner.py": "d6d2416eb15d75e30542f174698da823cb7f5f74f130f6b33c7f3a6bec67410d",
+  "src/ainerzero/v9/teachers/da3_worker.py": "0062a707164a0facb42c9f2a3a21b9dd1cf485c3b6f82c953d123690a4fde6ce",
+  "src/ainerzero/v9/teachers/da3_controlled.py": "006d9005b15f9b4bf25859ef99f6b617394075df88d1ebb9639ffc1667ded5bc",
+  "tests/test_da3_calibration_runner.py": "6a82fc17af3278428b7ca24edd9d50ed245d26958693ad152acd914a4384827b",
+  "tests/test_teacher_da3_controlled.py": "a62ab2d819a1acda0ef549880fcb83436c1de9ffa7a2ba8323ae159bf6909043",
+  "tests/test_da3_supervision.py": "fb9ac1bbe763403c2b5ceb1c33febcc14d97e6950886604444631d91e13f4c49"
+ }
+}

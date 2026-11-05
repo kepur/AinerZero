@@ -1,0 +1,57 @@
+{
+  "task_id": "ainerzero.V9.T8",
+  "agent": "opencode-de3b",
+  "timestamp": "2026-10-20T14:30:00+0300",
+  "source_files": {
+    "src/ainerzero/v9/tokenization/rlt.py": {
+      "sha256": "6514aa80a66ab1ff3f92bcc8dce3a59c3ea0da9c2d49bbadea675afa63526167",
+      "lines": 134
+    },
+    "tests/v9/tokenization/test_rlt.py": {
+      "sha256": "58957951c50e008b453059da5da2c4e505fc555140f879f87a2c416593c69314",
+      "lines": 275
+    }
+  },
+  "test_results": {
+    "total_tests": 18,
+    "passed": 18,
+    "failed": 0,
+    "duration_seconds": 0.09,
+    "test_categories": {
+      "basic": 4,
+      "synthetic_segments": 6,
+      "deliberate_errors": 3,
+      "edge_cases": 3
+    }
+  },
+  "retention_rates_tau_05": {
+    "one_beat": 0.375,
+    "one_beat_two": 0.4375,
+    "local_action": 0.2,
+    "camera_pan": 0.99,
+    "still_image": 0.125,
+    "pseudo_still": "tau-dependent"
+  },
+  "tau_sensitivity": {
+    "tau_0.0": {"one_beat": 1.0, "one_beat_two": 1.0, "local_action": 1.0, "camera_pan": 1.0, "still_image": 1.0, "pseudo_still": 1.0},
+    "tau_0.1": {"one_beat": 0.375, "one_beat_two": 0.4375, "local_action": 0.2, "camera_pan": 0.99, "still_image": 0.125, "pseudo_still": 0.95},
+    "tau_0.5": {"one_beat": 0.375, "one_beat_two": 0.4375, "local_action": 0.2, "camera_pan": 0.99, "still_image": 0.125, "pseudo_still": 0.125},
+    "tau_1.0": {"one_beat": 0.375, "one_beat_two": 0.4375, "local_action": 0.2, "camera_pan": 0.99, "still_image": 0.125, "pseudo_still": 0.125}
+  },
+  "deliberate_error_tests": {
+    "wrong_direction_comparison": "passed - error > tau detected",
+    "run_length_off_by_one": "passed - sum mismatch detected",
+    "ignore_first_frame": "passed - frame 0 always kept verified"
+  },
+  "runtime_seconds": {
+    "test_suite": 0.09,
+    "single_rlt_call": 0.001
+  },
+  "verification": {
+    "no_mlx_import": true,
+    "no_torch_import": true,
+    "no_onnxruntime_import": true,
+    "pure_cpu": true,
+    "deterministic": true
+  }
+}

@@ -1,0 +1,35 @@
+# T44 变异自证（M-A / M-B / M-C，来源：reports/V9-T43/报告.md §0）
+# 仓库：/Users/mac/AinerWorkFlow/AinerZero
+
+## 0. 副本基线
+src/*.py 与仓内逐字节一致（131 个文件）
+副本优先于 venv 安装：/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/t44-mut-0dc5fdm3/work/ainerzero/v9/teachers/da3_controlled.py
+
+## 1. 控制组（未变异 -> 新测试必须绿）
+- PASS  M-A  test_derived_real_pipeline_path_also_hits_the_calibration_views_gate
+- PASS  M-D  test_cli_allow_model_execution_alone_is_refused_before_any_reservation
+- PASS  M-E  test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation
+- PASS  M-C  test_write_atomic_keeps_the_temp_file_in_the_target_directory
+
+## 2. 注入变异（必须变红）
+- M-A  T43 F-1（门只在显式传 worker_action 时生效）
+    文件 ainerzero/v9/teachers/da3_controlled.py  SHA ab4021bdf164 -> 2b59611cde1f -> ab4021bdf164
+    靶子 test_derived_real_pipeline_path_also_hits_the_calibration_views_gate
+    结果 RED (expected)  (FAILED tests/test_teacher_da3_controlled.py::test_derived_real_pipeline_path_also_hits_the_calibration_views_gate | 1 failed in 1.13s)
+- M-D  修复后新增：拆掉 CLI 的「只给 allow 即拒绝」守卫
+    文件 ainerzero/v9/teachers/benchmark_commands.py  SHA 25a8a8dc410b -> a70e7731cf46 -> 25a8a8dc410b
+    靶子 test_cli_allow_model_execution_alone_is_refused_before_any_reservation
+    结果 RED (expected)  (FAILED tests/test_teacher_da3_controlled.py::test_cli_allow_model_execution_alone_is_refused_before_any_reservation | 1 failed in 0.23s)
+- M-E  修复后新增：拆掉 execute_guarded 的「已放行非替身只能 real_pipeline」纵深防御
+    文件 ainerzero/v9/teachers/da3_controlled.py  SHA ab4021bdf164 -> bb3df9f913cf -> ab4021bdf164
+    靶子 test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation
+    结果 RED (expected)  (FAILED tests/test_teacher_da3_controlled.py::test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation | 1 failed in 0.64s)
+- M-C  T43 F-2（临时文件写到系统 /tmp）
+    文件 ainerzero/v9/teachers/da3_calibration_runner.py  SHA 5c12b934789d -> fbf9c7aee7bf -> 5c12b934789d
+    靶子 test_write_atomic_keeps_the_temp_file_in_the_target_directory
+    结果 RED (expected)  (FAILED tests/test_da3_calibration_runner.py::test_write_atomic_keeps_the_temp_file_in_the_target_directory | 1 failed in 0.27s)
+
+## 3. 还原校验
+仓内源码、副本、还原后副本三方 SHA 全部一致（未污染工作树）
+
+## 结论：4/4 个变异被抓（3/3 才合格）

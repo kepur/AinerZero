@@ -1,0 +1,56 @@
+{
+  "task": "ainerzero.V9.T35",
+  "agent": "antigravity-u2a7",
+  "round": "r1",
+  "timestamp": "2026-10-27T01:50:00+03:00",
+  "status": "BUDGET_BLOCKED_RETRYABLE",
+  "reason": "Central RunStore daily_active_time_budget exhausted on UTC date 2026-10-26 (reserved: 1260.0s / 1200.0s limit). Per frozen protocol and user instruction, wall clock was not relaxed. View quota override to 82 passed. Fail-closed without retry.",
+  "views_quota_override": {
+    "status": "PASSED",
+    "old_max_views": 64,
+    "new_max_views": 82,
+    "views_requested": 18,
+    "cumulative_views_before_run": 64,
+    "projected_views": 82,
+    "metadata_key": "t6_views_override_20261027",
+    "research_log_section": "R20261027-T6-views-82",
+    "user_words": "批准 T6 视图配额从 64 加到 82，只用于一次冻结的 18 视图完整标定，由 L3 名单内的代理经中央入口持锁运行。"
+  },
+  "pre_change_backup": {
+    "path": "reports/V9-T35/runs-db-before-views-override.sqlite3",
+    "sha256": "787cef223e595174099cdf0253131c3f1cb7766ce01ad0c90a97def069c872b8"
+  },
+  "central_run": {
+    "command": "python3 -m ainerzero.cli teacher-da3 --mode run --statistical-protocol reports/V9-T6/r2-calib-fixtures/statistical_protocol.json --wall-budget-seconds 60.0 --views 18 --allow-model-execution --coordinator-release",
+    "run_id": "55e5cf1a44644584b94a9ca3ba46bbf5",
+    "request_id": "t6-da3-55e5cf1a44644584b94a9ca3ba46bbf5",
+    "state": "failed",
+    "exit_code": 5,
+    "exit_name": "EXIT_REFUSED_BUDGET",
+    "refusal_reason": "Budget exhausted: daily_active_time_budget",
+    "pgid": 67829,
+    "confirmed_empty": true,
+    "elapsed_s": 1.265,
+    "lock_path": "artifacts/locks/m0-worker.lock"
+  },
+  "hardware_and_environment": {
+    "power_source": "AC attached",
+    "pmset_batt_verified": true,
+    "ps_and_killpg_verified": true,
+    "l3_grade_verified": "antigravity-u2a7 in deep list until 2026-11-03"
+  },
+  "unit_tests": {
+    "test_teacher_da3_controlled": "13 passed",
+    "test_da3_views_82": "2 passed",
+    "test_da3_supervision": "10 passed"
+  },
+  "verdict": {
+    "view_quota_raised_to_82": true,
+    "single_true_forward_attempted": true,
+    "lock_and_pgid_supervised": true,
+    "budget_exhausted_fail_closed": true,
+    "retry_attempted": false,
+    "candidate_unregistered": true,
+    "capability_promoted": false
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "task": "ainerzero.V9.T43",
+  "agent": "deepseek-q7m2",
+  "kind": "review",
+  "verdict": "accept",
+  "verdict_note": "4 项改动实现正确、范围克制、证据可复现；另有 3 条测试强度跟进（F-1/F-2/F-3）与 1 处死代码（N-1），均不阻塞",
+  "reviewed_task": "ainerzero.V9.T42",
+  "reviewed_author": "gemini-f8a2",
+  "upstream_review": "ainerzero.V9.T41",
+  "checks": {
+    "sha_table_match": "9/9",
+    "baseline_reconstruction": "7/7 (T40 终态由 t37-to-t40.diff 回放重建，SHA 与 T40 SHA.txt 逐字节相同)",
+    "files_changed_in_window": 6,
+    "files_claimed_by_author": 6,
+    "out_of_scope_files_changed": 0,
+    "pipeline_py_mtime": "2026-10-26T23:51:34 (未动)",
+    "proposal_json_mtime": "2026-10-26T17:04:54 (未动)",
+    "runs_db_sha_before_after": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+    "runs_db_unchanged": true,
+    "lock_mtime_before_after": 1790110663,
+    "lock_mtime_unchanged": true,
+    "magic_number_removed": "代码零命中；仅剩 da3_controlled.py:942 一处 T40 遗留注释",
+    "worker_internal_gate_present": "da3_worker.py:209 views == REGISTERED_CALIBRATION_VIEWS",
+    "named_constant_value": 18,
+    "numeric_constants_diff": "仅新增 REGISTERED_CALIBRATION_VIEWS = 18，无既有常量改值",
+    "refusal_exit_code": "BenchmarkRefusalError.exit_code = EXIT_FAILED = 1（与既有 refusal 一致）"
+  },
+  "probes": {
+    "pre_consume": {
+      "cases": 6,
+      "zero_deduction_verified": true,
+      "zero_worker_start_verified": true,
+      "zero_lock_verified": true,
+      "store_not_created_on_refusal": true,
+      "positive_control_views18_completes": true,
+      "positive_control_consumed": {"active_seconds": 10.0, "views": 18},
+      "ordering_note": "新门在配额检查(Step 6)之后、worker_lock(Step 9)之前"
+    },
+    "concurrent_write": {
+      "rounds": 3,
+      "writers": 2,
+      "processes": true,
+      "parses_ok": [144373, 145991, 146100],
+      "bad_parse": 0,
+      "truncated_reads": 0,
+      "tmp_residue": 0,
+      "tmp_names_observed": 60,
+      "distinct_pids_observed": 2
+    }
+  },
+  "own_mutants": {
+    "total": 4,
+    "caught_by_suite": 1,
+    "not_caught_by_suite": 3,
+    "all_restored_sha_match": true,
+    "detail": {
+      "M-A": "item1 门只在显式 worker_action 时生效 -> 套件绿；派生路径退化为 returned（我的探针可观测）",
+      "M-B": "item3 CLI real 分支加 or allow_model_execution -> 套件绿",
+      "M-C": "item4 临时文件写到系统临时目录（名字仍含 pid/uuid）-> 套件绿（只断言文件名不断言目录）",
+      "M-D": "item2 preflight 放行 status=in_progress -> 套件红（抓到）"
+    }
+  },
+  "ledger": {
+    "runs_total": 14,
+    "active_seconds_total": 1320.0,
+    "t6_views_used": 81,
+    "t6_effective_max_views": 82,
+    "next_real_18_view_run": "会被配额拒（81+18=99>82），需新的用户 override；T42 不改变该口径"
+  },
+  "followups": [
+    "F-1 补 worker_action=None（派生路径）用例：M-A 未被抓，退化后果正是本卡要消灭的『误配 views 烧配额』",
+    "F-2 断言临时文件与目标同目录（Path(src).parent == target.parent）：卡面明确要求同目录 os.replace，M-C 未被抓",
+    "F-3 钉住『CLI 只按 coordinator_release 选 real_pipeline』：M-B 未被抓，否则门语义可被静默放宽"
+  ],
+  "notes": [
+    "N-1 CALIBRATION_VIEWS_REQUIRED 是无人使用的别名（da3_worker.py:28 定义、da3_controlled.py:66 导入未用）",
+    "观察1 新门排在配额检查之后，中央账本 81/82 时新门当前不可达（两条路都零成本，非缺陷）",
+    "观察2 substitute+release 由『拒绝(零消耗)』变为『完成(消耗 10s/18 views)』，mock 也记账应写进 T6 操作口径"
+  ],
+  "runs": {
+    "model_forward": 0,
+    "real_pipeline": 0,
+    "runs_db_writes": 0,
+    "lock_touched": 0,
+    "downloads": 0,
+    "installs": 0,
+    "paid_calls": 0
+  },
+  "evidence": [
+    "reports/V9-T43/evidence/01-sha.txt",
+    "reports/V9-T43/evidence/02-diff.txt",
+    "reports/V9-T43/evidence/probe-pre-consume.json",
+    "reports/V9-T43/evidence/own-mutations.json",
+    "reports/V9-T43/evidence/probe-concurrent-write.json",
+    "reports/V9-T43/evidence/probe-tmp-names.json"
+  ],
+  "deliverables": ["reports/V9-T43/报告.md", "reports/V9-T43/指标.json"],
+  "probe_location": "/tmp/t43/probes/ (仓外，未入库)",
+  "readonly": true,
+  "file_scope_respected": "仅新增 reports/V9-T43/；源码变异已按字节还原并校验 SHA"
+}

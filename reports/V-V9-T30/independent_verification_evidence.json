@@ -1,0 +1,90 @@
+{
+  "task": "ainerzero.V9.T31",
+  "verified_target": "ainerzero.V9.T30",
+  "verifier_agent": "gemini-7a2b",
+  "author_agent": "antigravity-h4d8",
+  "timestamp": "2026-10-26T14:29:13Z",
+  "dimension_1_sha256": {
+    "src/ainerzero/cli.py": {
+      "status": "MATCH",
+      "expected": "60a6c7f099649212c1fc35ff27cbe74dcb48f3b5cb1d3ad3199ce6020082afc3",
+      "actual": "60a6c7f099649212c1fc35ff27cbe74dcb48f3b5cb1d3ad3199ce6020082afc3"
+    },
+    "src/ainerzero/v9/teachers/benchmark.py": {
+      "status": "MATCH",
+      "expected": "aa83e7db9fb4a57b7ed20dddff450b67c5c25a9350f2cace23606bd29e97a5eb",
+      "actual": "aa83e7db9fb4a57b7ed20dddff450b67c5c25a9350f2cace23606bd29e97a5eb"
+    },
+    "src/ainerzero/v9/teachers/benchmark_commands.py": {
+      "status": "MATCH",
+      "expected": "d9a711fca64fa7944fade8f2256079737fdaa3ccf63dec50161614fefe793383",
+      "actual": "d9a711fca64fa7944fade8f2256079737fdaa3ccf63dec50161614fefe793383"
+    },
+    "src/ainerzero/v9/teachers/benchmark_protocol.py": {
+      "status": "MATCH",
+      "expected": "6e27c41cd54bc0977ac7d087f603fd983af1f225d32b3945e7580634f62f1bd4",
+      "actual": "6e27c41cd54bc0977ac7d087f603fd983af1f225d32b3945e7580634f62f1bd4"
+    },
+    "src/ainerzero/v9/teachers/da3_controlled.py": {
+      "status": "MATCH",
+      "expected": "93016b3d5e6313db6aa82900cc598db59805ff2c1841da8c30c28646e08c7c18",
+      "actual": "93016b3d5e6313db6aa82900cc598db59805ff2c1841da8c30c28646e08c7c18"
+    },
+    "src/ainerzero/v9/teachers/da3_worker.py": {
+      "status": "MATCH",
+      "expected": "7046723dc08b1ac819b6a46e80959889602034fb2fee9f7ff94142cfb103d205",
+      "actual": "7046723dc08b1ac819b6a46e80959889602034fb2fee9f7ff94142cfb103d205"
+    },
+    "tests/test_teacher_da3_controlled.py": {
+      "status": "MATCH",
+      "expected": "f8f863a6a1e04cfc0df80f64a5b4aa361a43b3ebca1a14798af821ba40c69ef7",
+      "actual": "f8f863a6a1e04cfc0df80f64a5b4aa361a43b3ebca1a14798af821ba40c69ef7"
+    },
+    "tests/test_da3_supervision.py": {
+      "status": "MATCH",
+      "expected": "63b3d92193c605d400f0432a5f52a51f6e2f8ecc243355fbd310c68abd419383",
+      "actual": "63b3d92193c605d400f0432a5f52a51f6e2f8ecc243355fbd310c68abd419383"
+    }
+  },
+  "dimension_2_supervised_worker": {
+    "status": "PASSED"
+  },
+  "dimension_3_pre_reservation_rejection": {
+    "status": "PASSED"
+  },
+  "dimension_4_cumulative_views_quota": {
+    "status": "PASSED"
+  },
+  "dimension_5_readonly_inspect_and_fail_closed": {
+    "status": "PASSED"
+  },
+  "dimension_6_mutation_controls": {
+    "mutation_1_timeout_gate": {
+      "region": "run_supervised_da3_worker:timeout_check",
+      "case_a": "DOUBLE_GREEN",
+      "case_b": "BASELINE_RED_MUTANT_GREEN",
+      "case_c": "DOUBLE_RED"
+    },
+    "mutation_2_rss_gate": {
+      "region": "run_supervised_da3_worker:rss_limit",
+      "case_a": "DOUBLE_GREEN",
+      "case_b": "BASELINE_RED_MUTANT_GREEN",
+      "case_c": "DOUBLE_RED"
+    },
+    "mutation_3_prereservation_gate": {
+      "region": "execute_guarded_da3_benchmark:prereservation_check",
+      "case_a": "DOUBLE_GREEN",
+      "case_b": "BASELINE_RED_MUTANT_GREEN",
+      "case_c": "DOUBLE_RED"
+    },
+    "mutation_4_views_quota_gate": {
+      "region": "check_t6_views_quota:cumulative_check",
+      "case_a": "DOUBLE_GREEN",
+      "case_b": "BASELINE_RED_MUTANT_GREEN",
+      "case_c": "DOUBLE_RED"
+    }
+  },
+  "dimension_7_cli_subprocess": {
+    "status": "PASSED"
+  }
+}

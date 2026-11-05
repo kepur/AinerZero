@@ -1,0 +1,182 @@
+{
+  "task": "ainerzero.V9.T6",
+  "timestamp": "2026-10-26T17:17:13Z",
+  "torch_version": "2.14.1",
+  "mps_available": true,
+  "models": {
+    "da3_small": {
+      "variant": "DA3-SMALL",
+      "device": "mps",
+      "load_time_s": 1.9748,
+      "first_frame_latency_s": 0.1469,
+      "median_sequence_latency_s": 0.1079,
+      "steady_state_fps": 18.41,
+      "mps_allocated_mb": 131.61,
+      "total_views_evaluated": 18
+    },
+    "da3_base": {
+      "variant": "DA3-BASE",
+      "device": "mps",
+      "load_time_s": 0.8391,
+      "first_frame_latency_s": 0.1188,
+      "median_sequence_latency_s": 0.2178,
+      "steady_state_fps": 12.47,
+      "mps_allocated_mb": 521.61,
+      "total_views_evaluated": 18
+    }
+  },
+  "calibration": {
+    "da3_small": {
+      "calibration_id": "nc-da3-small-pose-indoor-analytic@1.0",
+      "fit_stats": {
+        "views": 9,
+        "rot_error_deg_mean": 179.8078,
+        "rot_error_deg_max": 180.0,
+        "trans_rel_error_mean": 0.9986,
+        "trans_rel_error_max": 1.0199,
+        "depth_abs_rel_mean": 0.10504,
+        "depth_delta1_mean": 0.91727
+      },
+      "holdout_stats": {
+        "views": 9,
+        "rot_error_deg_mean": 179.8285,
+        "rot_error_deg_max": 179.963,
+        "trans_rel_error_mean": 1.0017,
+        "trans_rel_error_max": 1.0102,
+        "depth_abs_rel_mean": 0.12311,
+        "depth_delta1_mean": 0.78612
+      },
+      "noise_model": {
+        "family": "gaussian",
+        "dim": 6,
+        "covariance_diagonal": [
+          9.47908634151278e-06,
+          9.47908634151278e-06,
+          9.47908634151278e-06,
+          8.270226722900862e-05,
+          8.270226722900862e-05,
+          8.270226722900862e-05
+        ],
+        "covariance_matrix": [
+          [
+            9.47908634151278e-06,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            9.47908634151278e-06,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            9.47908634151278e-06,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            8.270226722900862e-05,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            8.270226722900862e-05,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            8.270226722900862e-05
+          ]
+        ],
+        "covariance_rank_disclosure": "Deficient rank due to 18-view synthetic setup; candidate registration only"
+      }
+    },
+    "da3_base": {
+      "calibration_id": "nc-da3-base-pose-indoor-analytic@1.0",
+      "fit_stats": {
+        "views": 9,
+        "rot_error_deg_mean": 179.8758,
+        "rot_error_deg_max": 180.0,
+        "trans_rel_error_mean": 1.003,
+        "trans_rel_error_max": 1.0164,
+        "depth_abs_rel_mean": 0.02514,
+        "depth_delta1_mean": 0.99961
+      },
+      "holdout_stats": {
+        "views": 9,
+        "rot_error_deg_mean": 179.8294,
+        "rot_error_deg_max": 179.9588,
+        "trans_rel_error_mean": 1.0073,
+        "trans_rel_error_max": 1.0197,
+        "depth_abs_rel_mean": 0.0258,
+        "depth_delta1_mean": 0.99948
+      }
+    }
+  },
+  "consistency": {
+    "mps_vs_cpu": {
+      "max_depth_abs_diff": 3.814697265625e-06,
+      "max_pose_abs_diff": 3.702371031977236e-08,
+      "passed": true
+    },
+    "fp32_vs_fp16": {
+      "max_depth_abs_diff": 0.0,
+      "max_pose_abs_diff": 0.0,
+      "passed": true
+    }
+  },
+  "negative_controls": [
+    {
+      "name": "non_monotonic_timestamps",
+      "clean_exit": false,
+      "error_caught": true,
+      "error_msg": "timestamps must be strictly increasing"
+    },
+    {
+      "name": "zero_or_negative_depth",
+      "clean_exit": false,
+      "error_caught": true,
+      "error_msg": "zero valid depth pixels; no perfect-score substitute"
+    },
+    {
+      "name": "non_so3_rotation",
+      "clean_exit": false,
+      "error_caught": true,
+      "error_msg": "rotation is not SO(3); no silent repair"
+    },
+    {
+      "name": "unauthorized_partition_final",
+      "clean_exit": false,
+      "error_caught": true,
+      "error_msg": "final/unknown partitions unavailable through this adapter"
+    }
+  ],
+  "total_wall_seconds": 7.64,
+  "supervisor_stats": {
+    "peak_monitored_rss_bytes": 1549713408,
+    "peak_monitored_rss_gib": 1.4433,
+    "wall_elapsed_s": 8.85,
+    "exit_code": 0
+  },
+  "run_id": "6893f63306fd43f2b382a126dda39bac",
+  "cumulative_reserved_seconds": 910.0
+}

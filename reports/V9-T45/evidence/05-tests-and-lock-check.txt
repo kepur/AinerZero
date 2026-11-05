@@ -1,0 +1,24 @@
+# T45 证据 05：测试套件回归结果、runs.db 校验与锁 mtime 对照
+
+## 1. DA3 主测试套件 (67 passed)
+命令: /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/pytest tests/test_teacher_da3_controlled.py tests/test_da3_calibration_runner.py tests/test_da3_supervision.py -q
+退出码: 0
+输出: ....................................................................     [100%]
+68 passed in 78.17s (0:01:18)
+
+## 2. 关联基准与配额套件 (11 passed)
+命令: /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/pytest tests/test_da3_views_82.py tests/v9/teachers/test_benchmark_guard.py -q
+退出码: 0
+输出: ...........                                                              [100%]
+11 passed in 0.57s
+
+## 3. runs.db 中央台账完整性
+当前 SHA256: 64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f
+基线 SHA256: 64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f
+状态: MATCH (零写入，逐字节一致)
+
+## 4. m0-worker.lock 锁文件状态
+锁文件路径: /Users/mac/AinerWorkFlow/AinerZero/artifacts/locks/m0-worker.lock
+mtime 时间戳: 1790110663
+预期基线 mtime: 1790110663
+状态: MATCH (锁未被触碰，时间戳完全一致)

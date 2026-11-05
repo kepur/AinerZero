@@ -1,0 +1,63 @@
+{
+  "task_id": "ainerzero.V9.T56",
+  "round": "r2",
+  "agent_id": "gemini-r4x9",
+  "tier": 2,
+  "kind": "gemini",
+  "files_modified": [
+    "src/ainerzero/v9/teachers/da3_calibration_runner.py",
+    "src/ainerzero/v9/teachers/da3_controlled.py",
+    "tests/test_da3_t56_features.py",
+    "tests/test_da3_calibration_runner.py",
+    "tests/test_t28_registration_and_quota.py",
+    "tests/test_da3_linewide_quota.py",
+    "tests/test_teacher_da3_controlled.py",
+    "tests/test_da3_supervision.py"
+  ],
+  "zero_model_zero_ledger_verified": true,
+  "real_model_calls": 0,
+  "production_runs_db_modified": false,
+  "m0_worker_lock_acquired": false,
+  "r2_fixes_verified": {
+    "module_import_without_pythonpath": {
+      "mechanism": "_load_registration via importlib.util.spec_from_file_location",
+      "no_ainerzero_package_dependency": true,
+      "real_venv_t6_runner_script_tested": true,
+      "exit_code_default_r2": 0
+    },
+    "loud_failure_on_corrupt_registration": {
+      "no_swallowed_exceptions": true,
+      "preflight_error_raised": true,
+      "no_silent_fallback_to_r1": true
+    },
+    "real_venv_t6_integration_tests": {
+      "default_r2_registered_exit_code": 0,
+      "env_var_r1_exit_code": 2,
+      "flag_pre_e18_exit_code": 2
+    }
+  },
+  "test_results": {
+    "full_da3_suite_total": 105,
+    "full_da3_suite_passed": 105,
+    "full_da3_suite_failed": 0,
+    "test_da3_t56_features_passed": 9
+  },
+  "adversarial_mutant_controls": {
+    "mutant_1_from_ainerzero_import": {
+      "file": "reports/V9-T56/gemini-r4x9/r2/mutants/mutant_1_from_ainerzero_import/src/ainerzero/v9/teachers/da3_calibration_runner.py",
+      "target_test": "tests/test_da3_t56_features.py::test_real_venv_t6_runner_script_execution_without_pythonpath",
+      "failure_mode": "ModuleNotFoundError: No module named 'ainerzero'",
+      "turned_red": true,
+      "returncode": 1,
+      "log": "reports/V9-T56/gemini-r4x9/r2/logs/mutant_1_import_failure.log"
+    },
+    "mutant_2_no_sha_check": {
+      "file": "reports/V9-T56/gemini-r4x9/r2/mutants/mutant_2_no_sha_check/src/ainerzero/v9/teachers/da3_calibration_runner.py",
+      "target_test": "tests/test_da3_t56_features.py::test_real_venv_t6_runner_script_execution_without_pythonpath",
+      "failure_mode": "assert res2.returncode == 2 (got 6, loaded r1 without preflight exit 2)",
+      "turned_red": true,
+      "returncode": 1,
+      "log": "reports/V9-T56/gemini-r4x9/r2/logs/mutant_2_sha_failure.log"
+    }
+  }
+}

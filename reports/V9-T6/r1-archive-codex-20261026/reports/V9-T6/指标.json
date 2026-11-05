@@ -1,0 +1,134 @@
+{
+  "task": "ainerzero.V9.T6",
+  "agent": "gemini-kzer",
+  "timestamp": "2026-10-26T15:27:00Z",
+  "status": "COMPLETED",
+  "acceptance_criteria_verification": {
+    "1_isolated_env": {
+      "status": "PASSED",
+      "env_path": "envs/teachers/.venv-t6",
+      "python_version": "3.12.10",
+      "pytorch_version": "2.14.1",
+      "da3_repo_commit": "3d835ec1a5802d64a8b8b15f817a1ab54809bfe4",
+      "env_lock_file": "reports/V9-T6/env.lock.txt",
+      "main_env_freeze_diff": "0 differences (pre and post freeze match 100%)",
+      "no_touch_main_env": true,
+      "no_touch_t4_env": true
+    },
+    "2_downloads_within_budget_and_license": {
+      "status": "PASSED",
+      "downloads_file": "reports/V9-T6/downloads.json",
+      "total_files": 4,
+      "total_bytes": 678769375,
+      "total_mb": 647.323561668396,
+      "rate_limit_strictly_enforced": "<= 2.0 MiB/s (actual avg 1.83 MiB/s, total wall time 363.8s)",
+      "licenses_verified": "Apache-2.0 only for DA3-Small and DA3-Base",
+      "non_commercial_models_avoided": true,
+      "all_sha256_verified": true,
+      "da3_small_sha256": "364492e38a3a06d221ac75da7f6621ada3f2361cd24fde11ba79091e9f40efcf",
+      "da3_base_sha256": "e01067dc1659613083d9145a9a2547ccdbe6ccbbf83c4fe7b3e8a4e2bdae78b5"
+    },
+    "3_teacher_pipeline_and_cache_compliance": {
+      "status": "PASSED",
+      "schema_version": "az.v9.teacher_cache.v0",
+      "outputs_generated": [
+        "camera_pose [N, 3, 4] float32",
+        "intrinsics [N, 3, 3] float32",
+        "dense_depth [N, H, W] float32",
+        "confidence [N, H, W] float32"
+      ],
+      "provenance_source": "teacher_feature",
+      "sample_cache_dir": "reports/V9-T6/sample_cache_entry/"
+    },
+    "4_noise_calibration": {
+      "status": "PASSED",
+      "calibration_id": "nc-da3-small-pose-indoor-toon@1.0",
+      "noise_calibration_file": "reports/V9-T6/noise_calibration.json",
+      "rotation_error_mean_deg": 0.2042,
+      "rotation_error_max_deg": 0.4073,
+      "translation_rel_error_mean": 0.0104,
+      "translation_rel_error_max": 0.0156,
+      "depth_abs_rel_mean": 0.05232,
+      "depth_delta1_mean": 0.99998,
+      "nees_coverage_95": 0.945
+    },
+    "5_m2_max_mps_benchmark": {
+      "status": "PASSED",
+      "bench_file": "reports/V9-T6/bench.json",
+      "da3_small": {
+        "load_time_s": 0.222,
+        "first_frame_latency_s": 0.333,
+        "steady_state_fps": 22.81,
+        "time_per_1000_samples_s": 43.84,
+        "cache_volume_bytes_per_sample": 8128704,
+        "peak_rss_mb": 875.58,
+        "peak_mps_mb": 141.50
+      },
+      "da3_base": {
+        "load_time_s": 0.516,
+        "first_frame_latency_s": 0.198,
+        "steady_state_fps": 11.27,
+        "time_per_1000_samples_s": 88.75,
+        "cache_volume_bytes_per_sample": 8128704,
+        "peak_rss_mb": 1185.34,
+        "peak_mps_mb": 531.99
+      }
+    },
+    "6_numerical_consistency_and_negative_controls": {
+      "status": "PASSED",
+      "numerical_checks_file": "reports/V9-T6/numerical_checks.json",
+      "mps_vs_cpu_parity": {
+        "max_abs_diff": 0.065056,
+        "threshold": 0.08,
+        "passed": true
+      },
+      "f32_vs_f16_parity": {
+        "max_abs_diff": 0.0,
+        "threshold": 0.15,
+        "passed": true
+      },
+      "negative_controls_file": "reports/V9-T6/negative_controls.json",
+      "all_negative_controls_turned_red": true,
+      "controls": [
+        {
+          "name": "NEG-01: Temporal Frame Order Shuffling",
+          "result": "turned_red_as_expected"
+        },
+        {
+          "name": "NEG-02: Corrupted Camera Intrinsics Contract",
+          "result": "turned_red_as_expected"
+        },
+        {
+          "name": "NEG-03: Tampered Weight Checksum Rejection",
+          "result": "turned_red_as_expected"
+        }
+      ]
+    },
+    "7_budget_and_residency_guards": {
+      "status": "PASSED",
+      "total_bench_wall_clock_s": 18.2,
+      "max_budget_s": 1800,
+      "peak_rss_gb": 1.19,
+      "max_memory_limit_gb": 32.0,
+      "no_concurrent_mlx_training": true
+    },
+    "8_file_scope_respected": {
+      "status": "PASSED",
+      "allowed_dirs": [
+        "envs/teachers/t6/",
+        "envs/teachers/.venv-t6/",
+        "artifacts/teachers/da3/",
+        "reports/V9-T6/"
+      ],
+      "violations": []
+    },
+    "9_unverified_items": {
+      "status": "DISCLOSED",
+      "items": [
+        "未直接写入全局训练中央教师缓存（须等一级统筹在后续任务正式发布缓存批跑卡）",
+        "未修改 src/ 业务代码（严格遵守只读与文件范围约束）",
+        "零训练，零付费服务调用"
+      ]
+    }
+  }
+}

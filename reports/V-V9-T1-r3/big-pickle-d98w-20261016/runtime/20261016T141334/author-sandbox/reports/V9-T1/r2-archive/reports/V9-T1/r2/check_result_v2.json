@@ -1,0 +1,254 @@
+{
+  "counts": {
+    "valid_store": 1,
+    "eligibility": 4,
+    "invalid": 8,
+    "store_invalid": 6
+  },
+  "failures": [],
+  "sabotage_not_caught": [],
+  "rows": [
+    {
+      "set": "valid_store",
+      "name": "store",
+      "ok": true,
+      "errors": [],
+      "problems": []
+    },
+    {
+      "set": "eligibility",
+      "name": "awz:w1",
+      "ok": true,
+      "got": false,
+      "want": false
+    },
+    {
+      "set": "eligibility",
+      "name": "gridlab:w2",
+      "ok": true,
+      "got": true,
+      "want": true
+    },
+    {
+      "set": "eligibility",
+      "name": "gridlab:w3",
+      "ok": true,
+      "got": true,
+      "want": true
+    },
+    {
+      "set": "eligibility",
+      "name": "gridlab:w4",
+      "ok": true,
+      "got": false,
+      "want": false
+    },
+    {
+      "set": "invalid",
+      "name": "external_derived_claims_train",
+      "ok": true,
+      "expected": [
+        "const",
+        "train"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "revision_basis_without_ref",
+      "ok": true,
+      "expected": [
+        "type",
+        "revision_ref"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "default_deny_but_train",
+      "ok": true,
+      "expected": [
+        "const",
+        "train"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "old_v1_origin_native",
+      "ok": true,
+      "expected": [
+        "additionalProperties",
+        "provenance"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "upstream_missing_actor",
+      "ok": true,
+      "expected": [
+        "required",
+        "upstream"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "missing_as_of",
+      "ok": true,
+      "expected": [
+        "required",
+        ""
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "final_in_shared_store",
+      "ok": true,
+      "expected": [
+        "const",
+        "store"
+      ]
+    },
+    {
+      "set": "invalid",
+      "name": "partition_sim_truth",
+      "ok": true,
+      "expected": [
+        "enum",
+        "partition"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "input_after_as_of",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "input_after_as_of"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "cross_partition_blob",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "cross_partition_blob"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "derivation_teacher_wrong",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "derivation_mismatch"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "upstream_input_mismatch",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "entry_id_mismatch",
+        "input_mismatch"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "orphan_entry",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "orphan_entry"
+      ]
+    },
+    {
+      "set": "store_invalid",
+      "name": "feature_entry_with_noise",
+      "ok": true,
+      "schema_ok": true,
+      "problems": [
+        "feature_with_noise_model"
+      ]
+    }
+  ],
+  "sabotage": [
+    {
+      "sabotage": "external_derived_may_train",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/external_derived_claims_train"
+      ]
+    },
+    {
+      "sabotage": "revision_ref_optional",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/revision_basis_without_ref"
+      ]
+    },
+    {
+      "sabotage": "default_deny_unchecked",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/default_deny_but_train"
+      ]
+    },
+    {
+      "sabotage": "old_origin_native_allowed",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/old_v1_origin_native"
+      ]
+    },
+    {
+      "sabotage": "as_of_optional",
+      "turned_red": true,
+      "caught_by": [
+        "invalid/missing_as_of"
+      ]
+    },
+    {
+      "sabotage": "asof_check_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/input_after_as_of"
+      ]
+    },
+    {
+      "sabotage": "cross_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/cross_partition_blob"
+      ]
+    },
+    {
+      "sabotage": "derived_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/derivation_teacher_wrong"
+      ]
+    },
+    {
+      "sabotage": "input_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/upstream_input_mismatch"
+      ]
+    },
+    {
+      "sabotage": "noise_off",
+      "turned_red": true,
+      "caught_by": [
+        "store_invalid/feature_entry_with_noise"
+      ]
+    },
+    {
+      "sabotage": "intersection_off",
+      "turned_red": true,
+      "caught_by": [
+        "eligibility/awz:w1",
+        "eligibility/gridlab:w4"
+      ]
+    }
+  ]
+}

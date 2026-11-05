@@ -1,0 +1,92 @@
+{
+  "task": "ainerzero.V9.T32",
+  "intended_previous_holder": "gemini-7a2b",
+  "timestamp": "2026-10-26T14:24:29Z",
+  "status": "STOPPED_AND_HANDED_OVER",
+  "t6_execution_blocked": true,
+  "stop_request_acknowledged": "stop_request #614 / change_request #618 (coordinator claude)",
+  "blocking_reason": "T26 entrance defect: missing child process group supervision, adapter missing raises after reservation, view quota non-cumulative, lock/store path bypass. T6 blocked pending T30 fix and T31 non-author review.",
+  "weights_manifest_verified": {
+    "da3_small_config": {
+      "exists": true,
+      "bytes": 1202,
+      "sha256": "a486e29e82b7ab4a7d4cefc1ea4526cfe2ae438a572c8ca98917cfbcde7447d2"
+    },
+    "da3_small_weights": {
+      "exists": true,
+      "bytes": 137248940,
+      "sha256": "364492e38a3a06d221ac75da7f6621ada3f2361cd24fde11ba79091e9f40efcf"
+    },
+    "da3_base_config": {
+      "exists": true,
+      "bytes": 1205,
+      "sha256": "5e34115ebc17bd2d8d43033c5f72e9446ac8833fd61d3fa160b7e67e0bb5b7b5"
+    },
+    "da3_base_weights": {
+      "exists": true,
+      "bytes": 541518028,
+      "sha256": "e01067dc1659613083d9145a9a2547ccdbe6ccbbf83c4fe7b3e8a4e2bdae78b5"
+    }
+  },
+  "strict_load_evidence": {
+    "execution_environment": "envs/teachers/.venv-t6",
+    "torch_version": "2.14.1",
+    "backend": "Apple Silicon MPS",
+    "strict_load_results": {
+      "da3-small": {
+        "strict_matched": true,
+        "missing_keys": [],
+        "unexpected_keys": []
+      },
+      "da3-base": {
+        "strict_matched": true,
+        "missing_keys": [],
+        "unexpected_keys": []
+      }
+    }
+  },
+  "single_view_mps_test_evidence": {
+    "test_image": "reports/V9-T6/r2-calib-fixtures/t6-analytic-room-00/view-0/rgb.png",
+    "dimensions": [
+      280,
+      210
+    ],
+    "forward_pass_time_s": 2.7766,
+    "depth_shape": [
+      1,
+      378,
+      504
+    ],
+    "depth_range": [
+      0.30487728,
+      1.4642727
+    ],
+    "pose_3x4_shape": [
+      1,
+      3,
+      4
+    ],
+    "note": "Exploratory single-view forward test before stop_request #614 was received."
+  },
+  "worker_lock_state": {
+    "lock_path": "artifacts/locks/m0-worker.lock",
+    "held_by_gemini_7a2b": false,
+    "currently_free": true
+  },
+  "production_runs_db_state": {
+    "db_path": "artifacts/v9/teachers/benchmark/runs.db",
+    "mutated_by_gemini_7a2b": false,
+    "runs_created_by_gemini_7a2b": 0,
+    "active_seconds_consumed_by_gemini_7a2b": 0.0
+  },
+  "process_group_state": {
+    "active_worker_processes": 0,
+    "confirmed_empty": true
+  },
+  "unverified_items": [
+    "完整18视图多视角标定与噪声协方差模型登记：UNVERIFIED（因入口缺陷被统筹停止）",
+    "生产RunStore完成态条目：UNVERIFIED（未运行）",
+    "DA3教师缓存正式条目写入：UNVERIFIED（未运行）",
+    "DA3模型能力验收通过：UNVERIFIED（本卡仅记录停止与加载证据，不替代T6验收）"
+  ]
+}

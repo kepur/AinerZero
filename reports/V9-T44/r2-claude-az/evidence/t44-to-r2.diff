@@ -1,0 +1,144 @@
+--- /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/fb930306-eebf-424e-b388-73871acff0eb/scratchpad/t44-base/benchmark_commands.py	2026-10-28 01:26:30
++++ src/ainerzero/v9/teachers/benchmark_commands.py	2026-10-28 01:44:19
+@@ -111,6 +111,14 @@
+                     raise BenchmarkRefusalError(
+                         "Formal run must use central RunStore and central worker lock; custom paths are restricted to CPU testing with explicit isolation."
+                     )
++            # V9.T44 r2（一级 claude-az 打回后）：只给 `--allow-model-execution`、没给显式 `--coordinator-release`
++            # 时，`coordinator_release` 已被折算为 True，内层发布门会放行并**预扣视图/墙钟**；若此时选路是 mock_run，
++            # 就是「配额照扣、跑的是 mock、model_runs=0」。所以在任何预扣之前直接拒绝，并说明要补哪个 flag。
++            if not test_substitute and allow_model_execution and not explicit_coordinator_release:
++                raise BenchmarkRefusalError(
++                    "--allow-model-execution alone cannot start a real DA3 run: also pass the explicit --coordinator-release. "
++                    "Refused before reservation; nothing was reserved, consumed or started."
++                )
+             # V9.T42: CLI 在 test_substitute 下恒选 mock_run，即使带有 coordinator_release 亦同。
+             # V9.T44 (F-3): real 分支只认显式 --coordinator-release；`or allow_model_execution`
+             # 这一条**故意不写**——它是 T43 变异 M-B 的写法，写上去就等于静默放宽 CLI 门。
+--- /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/fb930306-eebf-424e-b388-73871acff0eb/scratchpad/t44-base/da3_controlled.py	2026-10-28 01:26:05
++++ src/ainerzero/v9/teachers/da3_controlled.py	2026-10-28 01:44:19
+@@ -914,6 +914,16 @@
+         raise BenchmarkRefusalError("test substitute mode must never reach the real pipeline worker")
+     action = worker_action or ("mock_run" if test_substitute else ("real_pipeline" if is_released else "mock_run"))
+     effective_allow_model = allow_model_execution or is_released
++
++    # V9.T44 r2：已放行（授权会被消耗）的**非替身**运行只能执行真实管线。否则就是「预扣视图/墙钟、启动 mock、记 completed、
++    # model_runs=0」——T37/T40 关掉的那个陷阱。放在配额检查与任何扣账之前：零台账读写、零锁、零 worker。
++    # 测试替身（test_substitute=True）与未放行的请求不受影响（后者在 Step 7 被拒）。
++    if not test_substitute and is_released and action != "real_pipeline":
++        raise BenchmarkRefusalError(
++            f"A released (authorized) run that is not a test substitute must execute the real pipeline, got worker_action={action!r}. "
++            "Refused before reservation; nothing was reserved, consumed or started.",
++            details={"action": action, "is_released": True, "test_substitute": False},
++        )
+ 
+     # Step 6b: Pre-consume calibration-views pre-check (V9.T42 门 / V9.T44 前移)
+     #
+--- /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/fb930306-eebf-424e-b388-73871acff0eb/scratchpad/t44-base/test_teacher_da3_controlled.py	2026-10-28 01:28:37
++++ tests/test_teacher_da3_controlled.py	2026-10-28 01:44:45
+@@ -850,57 +850,74 @@
+     assert "quota" not in message.lower(), "views 口径错误不得被配额错误覆盖"
+ 
+ 
+-def test_cli_real_branch_honours_only_the_explicit_coordinator_release(
++def test_cli_allow_model_execution_alone_is_refused_before_any_reservation(
+     tmp_path: Path,
+     valid_t6_research_log: Path,
+     valid_statistical_protocol: Path,
+     monkeypatch,
+ ):
+-    """V9.T44 (F-3)：`--allow-model-execution` 单独给时，CLI 绝不选出 real_pipeline。
++    """V9.T44 r2：`--allow-model-execution` 单独给时，CLI 必须在任何预扣之前拒绝。
+ 
+-    靶子：T43 变异 **M-B**（在 CLI 的 real 分支上加 `or allow_model_execution`）。
+-    探针截获传给 execute_guarded 的 `worker_action`，因此变异一旦让选路变成 real_pipeline，
+-    断言立刻变红——不需要、也不会启动任何真实 worker。
++    T44 初版把它悄悄选成 mock_run，而 `coordinator_release` 又已被折算为 True，所以 execute_guarded 会放行、预扣视图与墙钟、
++    启动 mock worker 并记 completed（model_runs=0）——配额被一个 mock 吃掉。探针替掉 execute_guarded：一旦被调用就说明
++    拒绝没有发生在预扣之前。与 `--test-substitute` 组合时仍允许（那是 CPU 测试替身，不消耗授权）。
+     """
+     import ainerzero.v9.teachers.benchmark_commands as BC
+ 
+     monkeypatch.setattr(BC, "DEFAULT_STORE_PATH", tmp_path / "cli_routing.db")
+     monkeypatch.setattr(BC, "DEFAULT_LOCK_PATH", tmp_path / "cli_routing.lock")
+ 
+-    seen: dict = {}
++    calls: list = []
+ 
+     def spy_execute(spec, **kwargs):
+-        seen["worker_action"] = kwargs.get("worker_action")
+-        seen["coordinator_release_kwarg"] = kwargs.get("coordinator_release")
+-        seen["allow_model_execution_kwarg"] = kwargs.get("allow_model_execution")
++        calls.append(kwargs.get("worker_action"))
+         return {"status": "completed", "model_runs": 0, "result": {"is_mock": True}}
+ 
+     monkeypatch.setattr(BC, "execute_guarded_da3_benchmark", spy_execute)
+ 
+-    args = argparse.Namespace(
+-        mode="run",
+-        model="da3-small",
+-        wall_budget_seconds=10.0,
+-        views=18,
+-        research_log=str(valid_t6_research_log),
+-        statistical_protocol=str(valid_statistical_protocol),
+-        coordinator_release=False,      # 显式未给 --coordinator-release
+-        allow_model_execution=True,     # 只给了 --allow-model-execution
+-        test_substitute=False,
+-    )
+-    report, code = BC.da3_benchmark_command(args)
++    def make_args(**over):
++        base = dict(
++            mode="run", model="da3-small", wall_budget_seconds=10.0, views=18,
++            research_log=str(valid_t6_research_log), statistical_protocol=str(valid_statistical_protocol),
++            coordinator_release=False, allow_model_execution=False, test_substitute=False,
++        )
++        base.update(over)
++        return argparse.Namespace(**base)
+ 
+-    assert code == BC.EXIT_COMPLETED
+-    assert seen["worker_action"] == "mock_run", (
+-        "只有显式 --coordinator-release 才能把 CLI 选路提升为 real_pipeline；"
+-        f"got worker_action={seen['worker_action']!r}"
++    report, code = BC.da3_benchmark_command(make_args(allow_model_execution=True))
++    assert report["status"] == "refused" and code != BC.EXIT_COMPLETED
++    assert "--coordinator-release" in report["error"] and "before reservation" in report["error"]
++    assert calls == [], "拒绝必须发生在调用 execute_guarded（即任何预扣）之前"
++
++    # 替身不消耗授权：仍然允许，且恒选 mock_run
++    report, code = BC.da3_benchmark_command(make_args(allow_model_execution=True, test_substitute=True))
++    assert code == BC.EXIT_COMPLETED and calls == ["mock_run"]
++
++
++def test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation(
++    tmp_path: Path,
++    valid_t6_research_log: Path,
++    valid_statistical_protocol: Path,
++    monkeypatch,
++):
++    """V9.T44 r2 纵深防御：即使有人绕过 CLI 直接调 execute_guarded，已放行的非替身运行也不能是 mock_run / simulate_*。
++
++    零台账、零锁、零 worker：用 tmp 路径，断言 runs.db 与锁文件都没有被创建，worker 探针从未被调用。
++    """
++    from ainerzero.v9.teachers import da3_controlled as DC
++
++    started: list = []
++    monkeypatch.setattr(DC, "run_supervised_da3_worker", lambda *a, **k: started.append((a, k)))
++    spec = DA3RunSpec(
++        model="da3-small", wall_budget_seconds=10.0, views=18, research_log_path=valid_t6_research_log,
++        store_path=tmp_path / "runs.db", lock_path=tmp_path / "t.lock", weights_root=Path("artifacts/teachers/da3"),
++        statistical_protocol_path=valid_statistical_protocol, coordinator_release=True, allow_model_execution=True,
+     )
+-    # 内层发布门仍认 allow_model_execution（能力没有被删掉，只是 CLI 不据此真跑）
+-    assert seen["coordinator_release_kwarg"] is True
+-    assert seen["allow_model_execution_kwarg"] is True
+-    # 选路结果在输出里可见，避免"以为真跑、实际 mock"的静默降级
+-    assert report["worker_action"] == "mock_run"
+-    assert report["result"]["is_mock"] is True
++    for action in ("mock_run", "simulate_timeout", "simulate_high_rss", "simulate_grandchild_leak"):
++        with pytest.raises(BenchmarkRefusalError, match="must execute the real pipeline"):
++            DC.execute_guarded_da3_benchmark(spec=spec, test_substitute=False, allow_custom_paths=True, worker_action=action)
++    assert started == []
++    assert not (tmp_path / "runs.db").exists() and not (tmp_path / "t.lock").exists()
+ 
+ 
+ def test_cli_real_branch_still_selects_real_pipeline_with_explicit_release(

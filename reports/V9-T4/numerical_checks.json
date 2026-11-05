@@ -1,0 +1,53 @@
+{
+  "vjepa2": {
+    "determinism_bit_exact": true,
+    "output_shape": [
+      1,
+      4608,
+      1024
+    ],
+    "output_shape_matches_config": true,
+    "batch_invariance": {
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0,
+      "passed": true,
+      "tolerance": 0.0001
+    },
+    "precision_similarity": {
+      "f32_vs_f16_cosine_similarity_mean": 0.9999987483024597,
+      "f32_vs_f16_cosine_similarity_min": 0.9997732639312744,
+      "f32_vs_bf16_cosine_similarity_mean": 0.9999762773513794,
+      "f32_vs_bf16_cosine_similarity_min": 0.9988715052604675,
+      "tolerance_threshold": 0.999,
+      "passed": true
+    }
+  },
+  "depth_anything_v2": {
+    "determinism_bit_exact": true,
+    "f16_vs_f32": {
+      "pearson_r": 0.9999473714341442,
+      "spearman_rho": 0.999920888406155,
+      "tolerance_threshold": 0.999,
+      "passed": true
+    },
+    "synthetic_ramp_ordering": {
+      "top_mean_far": 0.8683878779411316,
+      "bottom_mean_near": 0.42881083488464355,
+      "direction_correct": true,
+      "passed": true
+    }
+  },
+  "negative_controls": {
+    "vjepa_weight_scramble_turned_red": {
+      "clean_threshold": 0.999,
+      "corrupted_cosine_similarity": 0.7589883804321289,
+      "failed_threshold_as_expected": true
+    },
+    "da2_vertical_flip_turned_red": {
+      "flipped_top_mean": 0.2680411636829376,
+      "flipped_bottom_mean": 0.8784151077270508,
+      "ordering_inverted": true,
+      "passed_rejection": true
+    }
+  }
+}

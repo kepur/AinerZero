@@ -1,0 +1,32 @@
+=== Verification of T54 Run Integrity & Evidence ===
+
+1. Forward Accounting Verification:
+  Variant DA3-SMALL:
+    calls: planned=9, actual=9
+    views: planned=25, actual=25
+    complete: True
+  Variant DA3-BASE:
+    calls: planned=9, actual=9
+    views: planned=25, actual=25
+    complete: True
+Check passed: forward_accounting planned == actual (9 calls / 25 views), complete == true.
+
+2. Stages Verification:
+  Variant DA3-SMALL stages: ['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity']
+  Variant DA3-BASE stages: ['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity']
+Check passed: All stages present for both DA3-SMALL and DA3-BASE.
+
+3. Failures Verification:
+  Count: 1
+  Failures list: [
+  "DA3-SMALL/frame_order_adverse: adverse control did not turn red"
+]
+Check passed: failures contains exactly the single adverse control failure.
+
+4. Process Supervision Evidence in run.stderr.log:
+[relay exec] 墙钟监督证据：{"wall_s": null, "cap_s": null, "pgid": 68531, "timeout": false, "elapsed_s": 13.429, "kind": "exited", "confirmed_empty": true, "members_left": [], "confirmed_by": "ps", "attempts": [{"method": "ps", "outcome": "empty", "reason": "enumerated"}], "leader_returncode": 1, "confirmed_at_s": 13.4287}
+[relay exec] 归档耗时：{"archive_s": 0.019}
+
+  Parsed supervision data:
+    confirmed_empty=True, members_left=[]
+Check passed: Process supervision confirmed empty, no residual processes.

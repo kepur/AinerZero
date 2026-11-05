@@ -1,0 +1,81 @@
+==============================================================================
+子树逐字节相等断言: A=../V9-T28/proposal.json
+                    B=../V9-T28/r2/proposal.json
+==============================================================================
+  EQUAL       /numerical_parity/cpu_float32   (2 leaves)
+  EQUAL       /numerical_parity/mps_float16   (2 leaves)
+  EQUAL       /numerical_parity/fields   (4 leaves)
+  EQUAL       /numerical_parity/rule   (1 leaves)
+  EQUAL       /numerical_parity/require_same_shapes_and_finite   (1 leaves)
+  DIFF        /numerical_parity/reference   (1 leaves)
+      A="world00 known-K MPS-F32 calibration output"
+      B="world00 MPS-F32 calibration output (model-estimated K)"
+  DIFF        /negative_controls   (8 leaves)
+      A={"boundary_rejection":"record as boundary rejection, not real model-response negative-control proof","frames":"reverse RGB association [2,1,0], keep timestamp/GT score labels [0,1,2]","intrinsics":"multiply only focal_x by1.5 and focal_y by0.75 for all3views; retain positive focal and principal poin
+      B={"boundary_rejection":"record as boundary rejection, not real model-response negative-control proof","frame_order_adverse_meaning":"association-reversal control: it checks that the scoring pipeline is sensitive to a wrong RGB-to-label association (the anchor and scale slots receive different physica
+  EQUAL       /negative_controls/score   (1 leaves)
+  EQUAL       /negative_controls/required_red   (1 leaves)
+  EQUAL       /negative_controls/frames   (1 leaves)
+  EQUAL       /negative_controls/boundary_rejection   (1 leaves)
+  EQUAL       /negative_controls/unrelated_error   (1 leaves)
+  DIFF         /negative_controls/real_forward_controls   (one side absent: A=True B=False)
+  DIFF         /negative_controls/removed_controls   (one side absent: A=True B=False)
+  DIFF        /negative_controls/same_clean_profile   (1 leaves)
+      A="all positive calls conditioned on exact frozen K; adverse K uses predeclared changed K"
+      B="all positive calls use the same model-estimated-K profile; no K is supplied to any call"
+  DIFF         /negative_controls/frame_order_adverse_meaning   (one side absent: A=True B=False)
+  EQUAL       /split   (11 leaves)
+  EQUAL       /alignment   (12 leaves)
+  EQUAL       /estimation   (14 leaves)
+  EQUAL       /failure_policy   (3 leaves)
+  DIFF        /residual_vector   (15 leaves)
+      A={"depth_component":"mean(log((s_depth*D_pred_1)/D_gt_1))","dimension":7,"order":["rotation_x_rad","rotation_y_rad","rotation_z_rad","translation_x_per_anchor_baseline","translation_y_per_anchor_baseline","translation_z_per_anchor_baseline","mean_log_depth_ratio_target"],"raw_metrics":["rotation_deg"
+      B={"depth_component":"mean(log((s_depth*D_pred_1)/D_gt_1))","dimension":7,"order":["rotation_x_rad","rotation_y_rad","rotation_z_rad","translation_x_per_anchor_baseline","translation_y_per_anchor_baseline","translation_z_per_anchor_baseline","mean_log_depth_ratio_target"],"raw_metrics":["rotation_deg"
+  EQUAL       /budget/single_run_wall_seconds_max   (1 leaves)
+  EQUAL       /budget/reserve_before_model_import_seconds   (1 leaves)
+  EQUAL       /budget/rss_bytes_max   (1 leaves)
+  EQUAL       /budget/max_resident_models   (1 leaves)
+  EQUAL       /budget/retry_allowed   (1 leaves)
+  EQUAL       /budget/include_loads_postprocess_and_all_controls_in_wall   (1 leaves)
+  EQUAL       /budget/reserve_before_model_import_views   (1 leaves)
+  EQUAL       /input_manifest_sha256   (1 leaves)
+  EQUAL       /lead_protocol_observed_sha256   (1 leaves)
+  EQUAL       /generator_sha256   (1 leaves)
+  EQUAL       /schema   (1 leaves)
+  EQUAL       /task_id   (1 leaves)
+  EQUAL       /status   (1 leaves)
+  EQUAL       /execution_permitted   (1 leaves)
+
+--- 白名单：允许变化的顶层键 = ['amendment', 'budget', 'numerical_parity', 'open_items'] ---
+白名单外的变化顶层键: ['author', 'claims_forbidden', 'execution_prerequisites', 'negative_controls', 'profile', 'protocol_id', 'residual_vector', 'review_task', 'supersedes']
+  OFFENDER /author
+  OFFENDER /execution_prerequisites[1]
+  OFFENDER /execution_prerequisites[3]
+  OFFENDER /execution_prerequisites[6]
+  OFFENDER /execution_prerequisites[7]
+  OFFENDER /negative_controls/intrinsics
+  OFFENDER /negative_controls/same_clean_profile
+  OFFENDER /negative_controls/frame_order_adverse_meaning
+  OFFENDER /negative_controls/real_forward_controls[0]
+  OFFENDER /negative_controls/removed_controls[0]/evidence
+  OFFENDER /negative_controls/removed_controls[0]/name
+  OFFENDER /negative_controls/removed_controls[0]/not_replaced
+  OFFENDER /negative_controls/removed_controls[0]/reason
+  OFFENDER /profile/assumption
+  OFFENDER /profile/known_intrinsics
+  OFFENDER /profile/intrinsics_policy/conditioning
+  OFFENDER /profile/intrinsics_policy/ground_truth_K
+  OFFENDER /profile/intrinsics_policy/predicted_vs_ground_truth_K
+  OFFENDER /profile/intrinsics_policy/principal_point_excluded
+  OFFENDER /protocol_id
+  OFFENDER /residual_vector/raw_metrics[5]
+  OFFENDER /review_task
+  OFFENDER /supersedes
+  OFFENDER /supersedes/proposal_sha256
+  OFFENDER /supersedes/protocol_id
+  OFFENDER /supersedes/reason
+  OFFENDER /claims_forbidden[6]
+
+==============================================================================
+FAILS = 16  => FAIL
+==============================================================================

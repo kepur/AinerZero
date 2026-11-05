@@ -1,0 +1,369 @@
+# T43 证据 02：T40 基线重建 + T40→T42 全量 diff + 范围扫描（2026-10-27T22:06:15Z UTC）
+
+## A. 用 T40 自己的 t37-to-t40.diff 回放，重建 T40 终态
+$ rm -rf /tmp/t43/t40 && cp -r reports/V9-T40/evidence/t37-accepted → 临时树
+$ patch -p0 -d /tmp/t43/t40 -i reports/V9-T40/evidence/t37-to-t40.diff
+
+## B. 重建结果的 SHA（应与 reports/V9-T40/evidence/SHA.txt 7/7 相同）
+9a80aa736a5de2e6116b6f0f92bedc200fd57b1bec35b33ab3036d1df3e1ec2b  /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/da3_calibration_math.py
+d6d2416eb15d75e30542f174698da823cb7f5f74f130f6b33c7f3a6bec67410d  /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/da3_calibration_runner.py
+006d9005b15f9b4bf25859ef99f6b617394075df88d1ebb9639ffc1667ded5bc  /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/da3_controlled.py
+0062a707164a0facb42c9f2a3a21b9dd1cf485c3b6f82c953d123690a4fde6ce  /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/da3_worker.py
+6a82fc17af3278428b7ca24edd9d50ed245d26958693ad152acd914a4384827b  /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/test_da3_calibration_runner.py
+fb9ac1bbe763403c2b5ceb1c33febcc14d97e6950886604444631d91e13f4c49  /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/test_da3_supervision.py
+a62ab2d819a1acda0ef549880fcb83436c1de9ffa7a2ba8323ae159bf6909043  /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/test_teacher_da3_controlled.py
+
+## C. T40 → 现在 的 unified diff（6 个文件）
+########## src/ainerzero/v9/teachers/da3_calibration_runner.py ##########
+--- /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/da3_calibration_runner.py	2026-10-28 00:58:01
++++ src/ainerzero/v9/teachers/da3_calibration_runner.py	2026-10-28 00:53:54
+@@ -25,6 +25,7 @@
+ import re
+ import sys
+ import time
++import uuid
+ from dataclasses import dataclass, field
+ from pathlib import Path
+ from typing import Any, Callable, Mapping, Sequence
+@@ -241,12 +242,21 @@
+ 
+ # ───────────────────────────── 运行 ─────────────────────────────
+ def _write_atomic(path: Path, ev: Mapping[str, Any]) -> None:
+-    """临时文件 + rename：任何时刻读到的都是完整 JSON。"""
++    """临时文件 + rename：任何时刻读到的都是完整 JSON。含 pid/随机后缀唯一临时名，避免并发写互踩。"""
+     path = Path(path)
+     path.parent.mkdir(parents=True, exist_ok=True)
+-    tmp = path.with_name(path.name + ".tmp")
+-    tmp.write_text(json.dumps(ev, indent=2, ensure_ascii=False, default=float), encoding="utf-8")
+-    os.replace(tmp, path)
++    unique_suffix = f".tmp.{os.getpid()}.{uuid.uuid4().hex}"
++    tmp = path.with_name(path.name + unique_suffix)
++    try:
++        tmp.write_text(json.dumps(ev, indent=2, ensure_ascii=False, default=float), encoding="utf-8")
++        os.replace(tmp, path)
++    except Exception:
++        if tmp.exists():
++            try:
++                tmp.unlink()
++            except OSError:
++                pass
++        raise
+ 
+ 
+ class _Run:
+########## src/ainerzero/v9/teachers/da3_worker.py ##########
+--- /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/da3_worker.py	2026-10-28 00:58:01
++++ src/ainerzero/v9/teachers/da3_worker.py	2026-10-28 00:50:36
+@@ -23,7 +23,12 @@
+ from pathlib import Path
+ from typing import Any
+ 
++# V9.T42: 统一登记的标定视图口径常量。worker 与中央 execute_guarded 共用同一来源，避免写死魔数与口径错位。
++REGISTERED_CALIBRATION_VIEWS: int = 18
++CALIBRATION_VIEWS_REQUIRED: int = REGISTERED_CALIBRATION_VIEWS
+ 
++
++
+ def parse_args() -> argparse.Namespace:
+     parser = argparse.ArgumentParser(description="T6 DA3 benchmark worker process")
+     parser.add_argument("--spec-file", type=Path, required=True, help="Path to DA3 run spec JSON")
+@@ -201,7 +206,7 @@
+         task_id = os.environ.get("DA3_TASK_ID", spec_data.get("task", "ainerzero.V9.T35"))
+ 
+         runner_executed = False
+-        if views == 18 and args.allow_model_execution:
++        if views == REGISTERED_CALIBRATION_VIEWS and args.allow_model_execution:
+             runner_script = repo_root / "src/ainerzero/v9/teachers/da3_calibration_runner.py"
+             # 每次运行一个新目录：管线拒绝已存在的输出目录，而已交付的 reports/V9-T35/ 证据不得被覆盖或占用。
+             run_stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + f"-pid{pid}"
+@@ -241,12 +246,12 @@
+                 "real_forward_executed": False,
+                 "is_mock": False,
+                 "requested_views": views,
+-                "reason": ("authorized to execute, but no calibration was run: the calibration runner only starts for views == 18. "
++                "reason": (f"authorized to execute, but no calibration was run: the calibration runner only starts for views == {REGISTERED_CALIBRATION_VIEWS}. "
+                            "Nothing was executed and nothing should be counted as a run."),
+             }
+             args.output_file.parent.mkdir(parents=True, exist_ok=True)
+             args.output_file.write_text(json.dumps(refusal, indent=2), encoding="utf-8")
+-            sys.stderr.write(f"Real DA3 execution refused: no calibration was run for views={views} (runner requires views == 18).\n")
++            sys.stderr.write(f"Real DA3 execution refused: no calibration was run for views={views} (runner requires views == {REGISTERED_CALIBRATION_VIEWS}).\n")
+             return 4
+ 
+         result = {
+@@ -257,7 +262,7 @@
+             "worker_pgid": pgid,
+             "model_runs": 1 if runner_executed else 0,
+             "real_forward_executed": runner_executed,
+-            "note": None if runner_executed else "no real calibration executed: the runner only runs for views == 18",
++            "note": None if runner_executed else f"no real calibration executed: the runner only runs for views == {REGISTERED_CALIBRATION_VIEWS}",
+             "is_mock": False,
+             "pipeline_verified": True,
+             "source_identity_sha256": source_id.get("upstream_files_sha256"),
+########## src/ainerzero/v9/teachers/da3_controlled.py ##########
+--- /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/da3_controlled.py	2026-10-28 00:58:01
++++ src/ainerzero/v9/teachers/da3_controlled.py	2026-10-28 00:53:52
+@@ -61,6 +61,10 @@
+     BenchmarkResourceRefused,
+     DA3RunSpec,
+     TeacherModelSpec,
++)
++from ainerzero.v9.teachers.da3_worker import (
++    CALIBRATION_VIEWS_REQUIRED,
++    REGISTERED_CALIBRATION_VIEWS,
+ )
+ 
+ SYSTEM_RESERVE_GIB = 16.0
+@@ -941,6 +945,21 @@
+     action = worker_action or ("mock_run" if test_substitute else ("real_pipeline" if is_released else "mock_run"))
+     effective_allow_model = allow_model_execution or is_released
+ 
++    # V9.T42 (1): consume 前预检：
++    # 对 worker_action=real_pipeline（即真实管线请求），在进入 RunStore 与 store.consume 之前校验视图数
++    # 是否等于当前登记的标定视图口径（REGISTERED_CALIBRATION_VIEWS = 18）；不符直接拒绝、零扣账、零 worker 启动。
++    if action == "real_pipeline" and spec.views != REGISTERED_CALIBRATION_VIEWS:
++        raise BenchmarkRefusalError(
++            f"Real DA3 pipeline execution requires views == {REGISTERED_CALIBRATION_VIEWS} "
++            f"(current registered calibration views specification), but got views={spec.views}. "
++            "Refused before reservation and consumption.",
++            details={
++                "requested_views": spec.views,
++                "required_views": REGISTERED_CALIBRATION_VIEWS,
++                "action": action,
++            },
++        )
++
+     # Step 9: CLI worker_lock acquisition
+     try:
+         with worker_lock(spec.lock_path):
+########## tests/test_da3_calibration_runner.py ##########
+--- /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/test_da3_calibration_runner.py	2026-10-28 00:58:01
++++ tests/test_da3_calibration_runner.py	2026-10-28 00:53:16
+@@ -9,6 +9,7 @@
+ import hashlib
+ import importlib.util
+ import json
++import os
+ import re
+ import shutil
+ from pathlib import Path
+@@ -512,4 +513,72 @@
+     np.testing.assert_allclose(st["covariance"], np.cov(x.T, ddof=1), atol=1e-12)
+     np.testing.assert_allclose(st["mean"], x.mean(axis=0), atol=1e-12)
+     assert st["n_fit"] == 5 and st["rank_ceiling"] == 4
++
++
++def test_preflight_rejects_existing_in_progress_evidence_and_ignores_tmp_residue(tmp_path, data, plan):
++    """V9.T42 (2): 补测 in_progress 覆盖拒绝 (抓出变异 T41-4)。
++    已存在 status='in_progress' 的证据文件必须被拒绝，绝不放行覆盖；残留 .tmp 不得被当成证据已存在。"""
++    # 1. 存在 in_progress 状态证据：必须抛 PreflightError 拒绝
++    ev_in_progress = tmp_path / "in_progress_ev.json"
++    ev_in_progress.write_text(json.dumps({"status": "in_progress", "task": "ainerzero.V9.T35"}))
++    with pytest.raises(R.PreflightError, match="already exists"):
++        R.preflight(plan, FakeFactory(data), tmp_path / "fresh_preds_1", ev_in_progress)
++
++    # 2. 残留 .tmp 文件存在（旧版固定 .tmp 或新版带 pid/随机后缀 .tmp），但目标 JSON 不存在时：必须放行
++    ev_target = tmp_path / "fresh_ev.json"
++    legacy_tmp = tmp_path / "fresh_ev.json.tmp"
++    unique_tmp = tmp_path / f"fresh_ev.json.tmp.{os.getpid()}.deadbeef1234"
++    legacy_tmp.write_text("residual tmp data")
++    unique_tmp.write_text("residual tmp data")
++    assert not ev_target.exists()
++    checks = R.preflight(plan, FakeFactory(data), tmp_path / "fresh_preds_2", ev_target)
++    assert "outputs_are_fresh" in checks
+ 
++
++def test_write_atomic_uses_unique_tmp_and_concurrent_writers_do_not_clobber(tmp_path, monkeypatch):
++    """V9.T42 (4): 临时文件名唯一（含 pid 与随机后缀），并发两写者不互踩，残留 .tmp 不泄露。"""
++    import concurrent.futures
++
++    # 1. 验证临时文件名格式包含 pid 与随机后缀，同目录原子替换
++    observed_tmps = []
++    real_replace = os.replace
++
++    def spy_replace(src, dst):
++        observed_tmps.append(Path(src).name)
++        real_replace(src, dst)
++
++    monkeypatch.setattr(os, "replace", spy_replace)
++
++    target_probe = tmp_path / "probe_atomic.json"
++    R._write_atomic(target_probe, {"test": "probe"})
++    assert len(observed_tmps) == 1
++    tmp_name = observed_tmps[0]
++    expected_pattern = rf"^probe_atomic\.json\.tmp\.{os.getpid()}\.[0-9a-f]{{32}}$"
++    assert re.match(expected_pattern, tmp_name), f"临时文件名必须包含 pid 和随机十六进制后缀，实际为: {tmp_name}"
++
++    # 2. 并发两写者同时高频写入同一文件，验证不互踩、最终可被正常解析
++    target = tmp_path / "concurrent_ev.json"
++    payload1 = {"writer": 1, "items": list(range(200))}
++    payload2 = {"writer": 2, "items": list(range(200))}
++
++    def worker(payload):
++        for _ in range(15):
++            R._write_atomic(target, payload)
++
++    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
++        f1 = pool.submit(worker, payload1)
++        f2 = pool.submit(worker, payload2)
++        f1.result()
++        f2.result()
++
++    assert target.exists()
++    data = json.loads(target.read_text(encoding="utf-8"))
++    assert data["writer"] in (1, 2)
++    assert len(data["items"]) == 200
++
++    # 验证未遗留任何 .tmp 临时文件
++    tmp_files = list(tmp_path.glob("*.tmp*"))
++    assert tmp_files == []
++
++
++
+########## tests/test_teacher_da3_controlled.py ##########
+--- /tmp/t43/t40/reports/V9-T40/evidence/t37-accepted/test_teacher_da3_controlled.py	2026-10-28 00:58:01
++++ tests/test_teacher_da3_controlled.py	2026-10-28 00:51:56
+@@ -638,3 +638,122 @@
+             raise BenchmarkResourceRefused("Exceeded 8.0 GiB")
+     # Mutant: relaxed limit of 64.0 GiB accepts 9.0 GiB
+     assert 9.0 <= 64.0
++
++
++def test_pre_consume_calibration_views_check_rejects_non_calibration_views_before_consume(
++    tmp_path: Path,
++    valid_t6_research_log: Path,
++    valid_statistical_protocol: Path,
++    monkeypatch,
++):
++    """V9.T42 (1): consume 前预检。
++    对 worker_action=real_pipeline，在 store.consume 之前校验视图数是否等于当前登记标定口径 (REGISTERED_CALIBRATION_VIEWS=18)。
++    非 18 必须直接拒绝、零扣账、零 worker 启动。"""
++    from ainerzero.v9.teachers.da3_worker import REGISTERED_CALIBRATION_VIEWS
++    import ainerzero.v9.teachers.da3_controlled as DC
++
++    worker_called = []
++    def spy_worker(*args, **kwargs):
++        worker_called.append(True)
++        return {"status": "completed", "model_runs": 1}, {"violation": None}
++
++    monkeypatch.setattr(DC, "run_supervised_da3_worker", spy_worker)
++
++    store_file = tmp_path / "test_runs.db"
++    spec_invalid_views = DA3RunSpec(
++        model="da3-small",
++        wall_budget_seconds=10.0,
++        views=4,  # 不等于 REGISTERED_CALIBRATION_VIEWS (18)
++        research_log_path=valid_t6_research_log,
++        store_path=store_file,
++        lock_path=tmp_path / "test.lock",
++        weights_root=Path("artifacts/teachers/da3"),
++        statistical_protocol_path=valid_statistical_protocol,
++        coordinator_release=True,
++        allow_model_execution=True,
++    )
++
++    # 1. 直接抛出 BenchmarkRefusalError
++    with pytest.raises(BenchmarkRefusalError, match="Real DA3 pipeline execution requires views == 18"):
++        DC.execute_guarded_da3_benchmark(
++            spec=spec_invalid_views,
++            worker_action="real_pipeline",
++            allow_custom_paths=True,
++        )
++
++    # 2. 验证 worker 零启动
++    assert len(worker_called) == 0
++
++    # 3. 验证 store 零扣账（甚至未创建数据库/未建 run）
++    if store_file.exists():
++        with RunStore(store_file) as store:
++            runs = store.list_runs()
++            assert len(runs) == 0
++
++
++def test_cli_substitute_with_release_selects_mock_run_and_defense_in_depth(
++    tmp_path: Path,
++    valid_t6_research_log: Path,
++    valid_statistical_protocol: Path,
++):
++    """V9.T42 (3): CLI 在 --test-substitute --coordinator-release 下应直接选 mock_run，
++    不再先选 real_pipeline 再被守卫拒；守卫本身保留（纵深防御），两层测试全覆盖。"""
++    env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[1] / "src"))
++
++    # 层级 1 (CLI 层面)：--test-substitute 与 --coordinator-release 同时给出，CLI 必须选 mock_run 并成功完成
++    res_cli = subprocess.run(
++        [
++            sys.executable,
++            "-m",
++            "ainerzero.cli",
++            "teacher-da3",
++            "--mode",
++            "run",
++            "--test-substitute",
++            "--coordinator-release",
++            "--allow-model-execution",
++            "--research-log",
++            str(valid_t6_research_log),
++            "--statistical-protocol",
++            str(valid_statistical_protocol),
++            "--store-path",
++            str(tmp_path / "cli_substitute.db"),
++            "--lock-path",
++            str(tmp_path / "cli_substitute.lock"),
++            "--wall-budget-seconds",
++            "10.0",
++            "--views",
++            "4",
++        ],
++        capture_output=True,
++        text=True,
++        env=env,
++        cwd=_isolated_cwd(tmp_path),
++    )
++    assert res_cli.returncode == 0, f"CLI failed: {res_cli.stderr}\n{res_cli.stdout}"
++    data_cli = json.loads(res_cli.stdout)
++    assert data_cli["status"] == "completed"
++    assert data_cli["model_runs"] == 0
++    assert data_cli["result"]["is_mock"] is True
++
++    # 层级 2 (execute_guarded 纵深防御守卫)：直接传 worker_action="real_pipeline" + test_substitute=True 必须被拦截拒绝
++    spec = DA3RunSpec(
++        model="da3-small",
++        wall_budget_seconds=10.0,
++        views=18,
++        research_log_path=valid_t6_research_log,
++        store_path=tmp_path / "defense_guard.db",
++        lock_path=tmp_path / "defense_guard.lock",
++        weights_root=Path("artifacts/teachers/da3"),
++        statistical_protocol_path=valid_statistical_protocol,
++        coordinator_release=True,
++        allow_model_execution=True,
++    )
++    with pytest.raises(BenchmarkRefusalError, match="test substitute mode must never reach the real pipeline worker"):
++        execute_guarded_da3_benchmark(
++            spec=spec,
++            test_substitute=True,
++            worker_action="real_pipeline",
++            allow_custom_paths=True,
++        )
++
+########## tests/test_da3_supervision.py ##########
+########## src/ainerzero/v9/teachers/benchmark_commands.py ##########
+（无登记基线 SHA：T40/T41 的 7 文件表未包含该文件，无法逐字节 diff；只能做 mtime + 内容核对）
+109:            # V9.T42: CLI 在 test_substitute 下恒选 mock_run，即使带有 coordinator_release 亦同。
+110-            worker_action = "mock_run" if test_substitute else ("real_pipeline" if coordinator_release else "mock_run")
+111-            report = execute_guarded_da3_benchmark(
+112-                spec,
+
+## D. T42 工作时段（00:40–01:00）内被改动的文件扫描
+src/ainerzero/v9/teachers/da3_calibration_runner.py
+src/ainerzero/v9/teachers/benchmark_commands.py
+src/ainerzero/v9/teachers/da3_controlled.py
+src/ainerzero/v9/teachers/da3_worker.py
+tests/test_teacher_da3_controlled.py
+tests/test_da3_calibration_runner.py
+
+## E. 卡面禁止改动的对象
+-rw-r--r--@ 1 mac  staff      0 Sep 22 23:57:43 2026 artifacts/locks/m0-worker.lock
+-rw-r--r--@ 1 mac  staff  81920 Oct 27 11:14:39 2026 artifacts/v9/teachers/benchmark/runs.db
+-rw-r--r--@ 1 mac  staff  20391 Oct 26 23:51:34 2026 envs/teachers/t6/pipeline.py
+-rw-r--r--@ 1 mac  staff   7549 Oct 26 17:04:54 2026 reports/V9-T28/proposal.json

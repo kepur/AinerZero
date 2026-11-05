@@ -1,0 +1,52 @@
+=====================================================================
+Independent Non-Author CPU Verification for ainerzero.V9.T30
+=====================================================================
+
+--- Dimension 1: SHA-256 Checksums Verification ---
+  [PASS] src/ainerzero/cli.py: 60a6c7f099649212...
+  [PASS] src/ainerzero/v9/teachers/benchmark.py: aa83e7db9fb4a57b...
+  [PASS] src/ainerzero/v9/teachers/benchmark_commands.py: d9a711fca64fa794...
+  [PASS] src/ainerzero/v9/teachers/benchmark_protocol.py: 6e27c41cd54bc097...
+  [PASS] src/ainerzero/v9/teachers/da3_controlled.py: 93016b3d5e6313db...
+  [PASS] src/ainerzero/v9/teachers/da3_worker.py: 7046723dc08b1ac8...
+  [PASS] tests/test_teacher_da3_controlled.py: f8f863a6a1e04cfc...
+  [PASS] tests/test_da3_supervision.py: 63b3d92193c605d4...
+
+--- Dimension 2: Product Supervised Worker Integration ---
+  [PASS] Case 2.1 Normal run completed. Empty group proven: True
+  [PASS] Case 2.2 Timeout supervisor killed child process group cleanly.
+  [PASS] Case 2.3 High RSS supervisor killed child process group cleanly.
+  [PASS] Case 2.4 Orphan grandchild detected and killed cleanly. Group empty proven.
+
+--- Dimension 3: Pre-reservation Rejection Order (0 DB Writes) ---
+  Caught expected pre-reservation refusal: No executable DA3 runner authorized. Real model execution requires coordinator T6 release authorization; for CPU testing, specify an explicit test adapter or worker action.
+  [PASS] Zero DB writes on pre-reservation rejection.
+
+--- Dimension 4: Cumulative Lifetime View Quota (<= 64 views) ---
+  Run 1: 30 views recorded. Cumulative views: 30
+  Run 2: 30 views recorded. Cumulative views: 60
+  [PASS] Run 3 correctly refused on cumulative views quota: Cumulative views (60 + 10 = 70) exceeds T6 lifetime quota of 64 views
+
+--- Dimension 5: Read-only Inspect & Damaged Ledger Fail-Closed ---
+  [PASS] Inspect mode does not create or write DB file.
+  [PASS] Damaged DB correctly failed closed: Abnormal or corrupted RunStore ledger query on /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpms_kqq04/corrupt.db: file is not a database
+
+--- Dimension 6: Four Source Single-Region Mutation Controls ---
+  Testing Mutation Control 1: Wall Clock Timeout Supervision Gate...
+    [PASS] Mutation Control 1 verified.
+  Testing Mutation Control 2: Process Group RSS Gate...
+    [PASS] Mutation Control 2 verified.
+  Testing Mutation Control 3: Pre-reservation Worker Check...
+    [PASS] Mutation Control 3 verified.
+  Testing Mutation Control 4: Cumulative Views Quota Gate...
+    [PASS] Mutation Control 4 verified.
+
+--- Dimension 7: CLI Subprocess Execution ---
+  `teacher-da3 --mode inspect`: rc=0
+  `teacher-da3 --mode run` (unapproved): rc=3 (expected 3)
+  `teacher-da3 --mode run --views 100`: rc=2 (expected 2)
+  `teacher-da3 --mode run --wall-budget-seconds 2000`: rc=5 (expected 5)
+
+=====================================================================
+ALL INDEPENDENT VERIFICATION DIMENSIONS FOR T30 PASSED!
+=====================================================================

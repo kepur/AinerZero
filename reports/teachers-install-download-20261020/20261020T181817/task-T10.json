@@ -1,0 +1,113 @@
+{
+  "id": "ainerzero.V9.T10",
+  "project_id": "ainerzero",
+  "track_id": "ainerzero.V9.T",
+  "seq": 10,
+  "title": "【代码·环境·GPU】V9.T10 对象与点跟踪教师：SAM 2.1 + TAPNext/BootsTAPIR（草稿：下载与环境待批准）",
+  "kind": "code",
+  "tier": 2,
+  "status": "draft",
+  "prompt": "**草稿**：S4 对象阶段之前，用户批准下载与运行环境后，一级改写发布。批准前不下载、不安装。\n\n拟定范围：\n1. 对象掩码教师 SAM 2.1（`facebookresearch/sam2`，Apache 2.0）：只下一个小号检查点（型号批准时定），输出视频对象掩码与跟踪 ID。\n2. 点跟踪教师 TAPNext / BootsTAPIR（`google-deepmind/tapnet`，代码 Apache 2.0）：下载前先核检查点许可；优先 PyTorch 版检查点，免得再装 JAX。\n3. 在 Blender 合成场景上标定，按场景类型登记：\n   - 对象 ID 切换次数；\n   - 遮挡后重新检出率；\n   - 掩码 IoU；\n   - 点跟踪误差。\n4. 输出写入教师缓存（来源 `teacher_feature`），作为 S4 的对象/运动带噪观测和“遮挡后身份保持”的考题来源。考场仍只给受限观察，真值封存。\n5. 基准同 T4；一次只常驻一个模型。\n\n## 通用约束（v9，ADR-0012 修订四）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。\n",
+  "params": {},
+  "params_version": 0,
+  "acceptance": "待批准后补全",
+  "context_files": [
+    "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+    "/Users/mac/AinerWorkFlow/AinerZero/docs/research/V9_FRONTIER_COST_SURVEY.md",
+    "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md"
+  ],
+  "file_scope": [
+    "envs/teachers/t10/",
+    "envs/teachers/.venv-t10/",
+    "artifacts/teachers/sam2/",
+    "artifacts/teachers/tapnet/",
+    "reports/V9-T10/"
+  ],
+  "depends_on": [
+    "ainerzero.V9.T2"
+  ],
+  "verifies": [],
+  "needs_gpu": true,
+  "dedupe_key": "v9-r3-ainerzero.V9.T10",
+  "max_attempts": 3,
+  "attempts": 0,
+  "assignee": null,
+  "author": null,
+  "lease_until": null,
+  "lease_s": 1200,
+  "progress": null,
+  "last_message": null,
+  "result": null,
+  "result_data": null,
+  "callback_url": null,
+  "created_by": "claude",
+  "created_at": "2026-10-16T02:15:53+03:00",
+  "updated_at": "2026-10-18T21:04:42+03:00",
+  "workdirs": null,
+  "claimed_at": null,
+  "last_beat_at": null,
+  "beats": 0,
+  "stalls": 0,
+  "max_stalls": 5,
+  "needs": [
+    "code"
+  ],
+  "reserve_until": null,
+  "reserve_for": null,
+  "reserve_for_kind": null,
+  "reserve_by": null,
+  "reserve_reason": null,
+  "reserve_mode": null,
+  "ready_since": null,
+  "recovery": null,
+  "module": "3.2",
+  "gpu_level": 1,
+  "deps": [
+    {
+      "id": "ainerzero.V9.T2",
+      "status": "accepted",
+      "ok": true
+    }
+  ],
+  "deps_ok": true,
+  "waiting_questions": [],
+  "display_state": "draft",
+  "display_label": "草稿",
+  "recovery_pending": false,
+  "lease_left_s": null,
+  "elapsed_s": null,
+  "idle_s": null,
+  "health": null,
+  "reserved": false,
+  "reserve_left_s": null,
+  "reserve_label": "",
+  "events": [
+    {
+      "id": 7874,
+      "at": "2026-10-20T18:17:06+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.T10",
+      "actor": "codex",
+      "type": "message",
+      "message": "用户2026-10-20当前会话已批准既有任务下载与安装，原话/边界见 /Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261019-parallel/resume-20261020-downloads/AUTHORIZATION.md。不再等待此类人工批准；原模型/字节/运行冻结预算不变，付费仍未授权。T4安装下载",
+      "data": {
+        "message_id": 245,
+        "kind": "notice",
+        "blocking": false,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 4446,
+      "at": "2026-10-16T02:15:53+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.T10",
+      "actor": "claude",
+      "type": "created",
+      "message": "【代码·环境·GPU】V9.T10 对象与点跟踪教师：SAM 2.1 + TAPNext/BootsTAPIR（草稿：下载与环境待批准）",
+      "data": null
+    }
+  ],
+  "attempt_log": [],
+  "waiters": []
+}

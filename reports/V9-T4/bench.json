@@ -1,0 +1,247 @@
+{
+  "hardware": {
+    "platform": "darwin",
+    "device": "Apple M2 Max",
+    "power_source": "AC Power",
+    "budget_max_wall_clock_s": 1800,
+    "single_run_max_s": 600,
+    "memory_limit_bytes": 34359738368
+  },
+  "benchmarks": {
+    "vjepa2_1_vitl_mlx": {
+      "model_name": "V-JEPA 2.1 ViT-L (RoPE)",
+      "framework": "MLX 0.32.4",
+      "weights_format": "safetensors",
+      "precision": "float32",
+      "input_resolution": [
+        384,
+        384
+      ],
+      "input_frames": 16,
+      "input_tubelet_size": 2,
+      "input_shape": [
+        1,
+        3,
+        16,
+        384,
+        384
+      ],
+      "output_shape": [
+        1,
+        4608,
+        1024
+      ],
+      "load_duration_s": 0.005530118942260742,
+      "first_inference_latency_s": 0.6508698463439941,
+      "steady_state": {
+        "repetitions": 5,
+        "durations_s": [
+          0.6327428817749023,
+          0.6334750652313232,
+          0.8994979858398438,
+          1.258310079574585,
+          1.1339011192321777
+        ],
+        "median_duration_s": 0.8994979858398438,
+        "min_duration_s": 0.6327428817749023,
+        "max_duration_s": 1.258310079574585,
+        "throughput_clip_per_s_median": 1.1117312275761457,
+        "throughput_clip_per_s_range": [
+          0.7947166729667178,
+          1.5804207819689846
+        ],
+        "throughput_frames_per_s_median": 17.78769964121833,
+        "throughput_frames_per_s_range": [
+          12.715466767467484,
+          25.286732511503754
+        ]
+      },
+      "extrapolated_time_per_1k_samples_s": 899.4979858398438,
+      "extrapolated_note": "Extrapolated from steady-state median inference latency",
+      "storage": {
+        "single_sample_feature_bytes": 18874368,
+        "single_sample_feature_mb": 18.0,
+        "cache_volume_per_1k_samples_bytes": 18874368000,
+        "cache_volume_per_1k_samples_gb": 17.578125
+      },
+      "memory": {
+        "rss_baseline_bytes": 3036528640,
+        "rss_after_load_bytes": 3036528640,
+        "rss_peak_bytes": 3036528640,
+        "rss_peak_mb": 2895.859375,
+        "mlx_peak_memory_bytes": 5537497172,
+        "mlx_peak_memory_mb": 5280.968830108643
+      }
+    },
+    "depth_anything_v2_small_coreml": {
+      "CPU_AND_NE": {
+        "compute_unit": "CPU_AND_NE",
+        "description": "Apple Neural Engine + CPU (Zero GPU contention with MLX Metal)",
+        "competes_with_mlx_gpu": false,
+        "recommended_for_world_mode": true,
+        "input_resolution": [
+          518,
+          392
+        ],
+        "output_resolution": [
+          518,
+          392
+        ],
+        "precision": "float16",
+        "load_duration_s": 10.03713321685791,
+        "first_inference_latency_s": 0.03587508201599121,
+        "steady_state": {
+          "repetitions": 10,
+          "durations_s": [
+            0.025954008102416992,
+            0.025768280029296875,
+            0.025967121124267578,
+            0.02594614028930664,
+            0.02598404884338379,
+            0.025918960571289062,
+            0.026012897491455078,
+            0.02581191062927246,
+            0.02573418617248535,
+            0.025656938552856445
+          ],
+          "median_duration_s": 0.02593255043029785,
+          "min_duration_s": 0.025656938552856445,
+          "max_duration_s": 0.026012897491455078,
+          "throughput_fps_median": 38.56157544888709,
+          "throughput_fps_range": [
+            38.442468791817134,
+            38.9758114725916
+          ]
+        },
+        "extrapolated_time_per_1k_samples_s": 25.93255043029785,
+        "extrapolated_note": "Extrapolated from steady-state median inference latency",
+        "storage": {
+          "single_sample_depth_bytes": 406112,
+          "single_sample_depth_kb": 396.59375,
+          "cache_volume_per_1k_samples_bytes": 406112000,
+          "cache_volume_per_1k_samples_mb": 387.298583984375
+        },
+        "memory": {
+          "rss_pre_load_bytes": 3036528640,
+          "rss_peak_bytes": 3036528640,
+          "rss_peak_mb": 2895.859375
+        }
+      },
+      "CPU_AND_GPU": {
+        "compute_unit": "CPU_AND_GPU",
+        "description": "Apple GPU + CPU (Shares GPU with MLX Metal)",
+        "competes_with_mlx_gpu": true,
+        "recommended_for_world_mode": false,
+        "input_resolution": [
+          518,
+          392
+        ],
+        "output_resolution": [
+          518,
+          392
+        ],
+        "precision": "float16",
+        "load_duration_s": 0.5295443534851074,
+        "first_inference_latency_s": 3.074686050415039,
+        "steady_state": {
+          "repetitions": 10,
+          "durations_s": [
+            0.03148818016052246,
+            0.02434706687927246,
+            0.0247800350189209,
+            0.02421402931213379,
+            0.024747848510742188,
+            0.02528691291809082,
+            0.0246579647064209,
+            0.025159358978271484,
+            0.025140047073364258,
+            0.024785995483398438
+          ],
+          "median_duration_s": 0.024783015251159668,
+          "min_duration_s": 0.02421402931213379,
+          "max_duration_s": 0.03148818016052246,
+          "throughput_fps_median": 40.350215252892085,
+          "throughput_fps_range": [
+            31.757948376252166,
+            41.29837240673093
+          ]
+        },
+        "extrapolated_time_per_1k_samples_s": 24.783015251159668,
+        "extrapolated_note": "Extrapolated from steady-state median inference latency",
+        "storage": {
+          "single_sample_depth_bytes": 406112,
+          "single_sample_depth_kb": 396.59375,
+          "cache_volume_per_1k_samples_bytes": 406112000,
+          "cache_volume_per_1k_samples_mb": 387.298583984375
+        },
+        "memory": {
+          "rss_pre_load_bytes": 3036528640,
+          "rss_peak_bytes": 3036528640,
+          "rss_peak_mb": 2895.859375
+        }
+      },
+      "ALL": {
+        "compute_unit": "ALL",
+        "description": "All Compute Units: NE + GPU + CPU",
+        "competes_with_mlx_gpu": true,
+        "recommended_for_world_mode": false,
+        "input_resolution": [
+          518,
+          392
+        ],
+        "output_resolution": [
+          518,
+          392
+        ],
+        "precision": "float16",
+        "load_duration_s": 1.28236722946167,
+        "first_inference_latency_s": 0.2100977897644043,
+        "steady_state": {
+          "repetitions": 10,
+          "durations_s": [
+            0.02954697608947754,
+            0.02982306480407715,
+            0.02944493293762207,
+            0.029465198516845703,
+            0.03028082847595215,
+            0.030939817428588867,
+            0.029860973358154297,
+            0.029400110244750977,
+            0.02950000762939453,
+            0.030350208282470703
+          ],
+          "median_duration_s": 0.029685020446777344,
+          "min_duration_s": 0.029400110244750977,
+          "max_duration_s": 0.030939817428588867,
+          "throughput_fps_median": 33.68702412696373,
+          "throughput_fps_range": [
+            32.3208112752464,
+            34.01347789770746
+          ]
+        },
+        "extrapolated_time_per_1k_samples_s": 29.685020446777344,
+        "extrapolated_note": "Extrapolated from steady-state median inference latency",
+        "storage": {
+          "single_sample_depth_bytes": 406112,
+          "single_sample_depth_kb": 396.59375,
+          "cache_volume_per_1k_samples_bytes": 406112000,
+          "cache_volume_per_1k_samples_mb": 387.298583984375
+        },
+        "memory": {
+          "rss_pre_load_bytes": 3036528640,
+          "rss_peak_bytes": 3036528640,
+          "rss_peak_mb": 2895.859375
+        }
+      }
+    }
+  },
+  "timing_summary": {
+    "total_benchmark_wall_s": 21.41950297355652,
+    "budget_wall_s": 1800,
+    "budget_respected": true,
+    "memory_limit_bytes": 34359738368,
+    "peak_rss_total_bytes": 3036528640,
+    "peak_rss_total_gb": 2.8279876708984375,
+    "memory_guard_respected": true
+  }
+}

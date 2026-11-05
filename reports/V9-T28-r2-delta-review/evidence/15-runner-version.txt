@@ -1,0 +1,48 @@
+=== 我实际跑的是哪个 runner 版本？ ===
+
+T40 报告声明 runner SHA: d6d2416eb15d75e30542f174698da823cb7f5f74f130f6b33c7f3a6bec67410d
+磁盘当前 runner SHA  : 5c12b934789dae36f5f98f0342a2897cfc0d935a1297d4cce56eb48d64bee85c
+mtime                : Oct 28 00:53:54 2026
+
+重建方法：把 reports/V9-T40/evidence/t37-to-t40.diff 的 runner 段 patch 到 t37-accepted 基线
+重建结果 SHA        : d6d2416eb15d75e30542f174698da823cb7f5f74f130f6b33c7f3a6bec67410d  <== 与 T40 声明一致
+=> T40 的 SHA 表没错；是 T42（gemini-f8a2）在 00:53 改了 _write_atomic 之后 SHA 变了。
+
+T40 版 vs 当前版 的全部差异（仅 2 个 hunk / 18 行，均在 _write_atomic 与一个 import）：
+
+--- /tmp/t46-recon/runner_t40.py	2026-10-28 01:46:32
++++ src/ainerzero/v9/teachers/da3_calibration_runner.py	2026-10-28 00:53:54
+@@ -25,6 +25,7 @@
+ import re
+ import sys
+ import time
++import uuid
+ from dataclasses import dataclass, field
+ from pathlib import Path
+ from typing import Any, Callable, Mapping, Sequence
+@@ -241,12 +242,21 @@
+ 
+ # ───────────────────────────── 运行 ─────────────────────────────
+ def _write_atomic(path: Path, ev: Mapping[str, Any]) -> None:
+-    """临时文件 + rename：任何时刻读到的都是完整 JSON。"""
++    """临时文件 + rename：任何时刻读到的都是完整 JSON。含 pid/随机后缀唯一临时名，避免并发写互踩。"""
+     path = Path(path)
+     path.parent.mkdir(parents=True, exist_ok=True)
+-    tmp = path.with_name(path.name + ".tmp")
+-    tmp.write_text(json.dumps(ev, indent=2, ensure_ascii=False, default=float), encoding="utf-8")
+-    os.replace(tmp, path)
++    unique_suffix = f".tmp.{os.getpid()}.{uuid.uuid4().hex}"
++    tmp = path.with_name(path.name + unique_suffix)
++    try:
++        tmp.write_text(json.dumps(ev, indent=2, ensure_ascii=False, default=float), encoding="utf-8")
++        os.replace(tmp, path)
++    except Exception:
++        if tmp.exists():
++            try:
++                tmp.unlink()
++            except OSError:
++                pass
++        raise
+ 
+ 
+ class _Run:

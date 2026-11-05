@@ -1,0 +1,302 @@
+{
+  "task": "ainerzero.V9.T9",
+  "verified_task": "ainerzero.V9.T8",
+  "verifier": "deepseek-flash-3tgx",
+  "author": "opencode-de3b",
+  "verifier_is_author": false,
+  "impl_sha256": "6514aa80a66ab1ff3f92bcc8dce3a59c3ea0da9c2d49bbadea675afa63526167",
+  "tests_sha256": "58957951c50e008b453059da5da2c4e505fc555140f879f87a2c416593c69314",
+  "identity_matches_author_report": true,
+  "import_purity": {
+    "ast_import_roots": [
+      "numpy"
+    ],
+    "ast_ok": true,
+    "loaded_forbidden_modules": "",
+    "import_ok": true,
+    "command": "/opt/homebrew/opt/python@3.12/bin/python3.12 -c '<import ainerzero.v9.tokenization.rlt and scan sys.modules>' (cwd=temp, PYTHONPATH cleared)"
+  },
+  "results": [
+    {
+      "label": "impl",
+      "case": "periodic_flicker_above_tau",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "periodic_flicker_below_tau",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "single_pixel_change",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "tau_boundary_equal",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "tau_boundary_below",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "long_static_1000",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "first_last_frame_change",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "single_frame_T1",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "tau_zero_no_dropping",
+      "check": "all_structural_checks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "label": "impl",
+      "case": "mixed_length_batch_fail_closed",
+      "check": "expected_fail_closed",
+      "ok": true,
+      "detail": "raised AttributeError (API is single-tensor only)"
+    },
+    {
+      "label": "impl",
+      "case": "negative_tau_rejected",
+      "check": "expected_error",
+      "ok": true,
+      "detail": "raised AssertionError"
+    }
+  ],
+  "case_metrics": [
+    {
+      "case": "periodic_flicker_above_tau",
+      "desc": "alternating +0.6 every frame with tau=0.5: everything is motion",
+      "T": 6,
+      "ph": 2,
+      "pw": 2,
+      "D": 3,
+      "tau": 0.5,
+      "total_tokens": 24,
+      "K_impl": 24,
+      "K_oracle": 24,
+      "retention_rate_impl": 1.0,
+      "retention_rate_oracle": 1.0,
+      "expected_shape": [
+        6,
+        2,
+        2,
+        3
+      ]
+    },
+    {
+      "case": "periodic_flicker_below_tau",
+      "desc": "alternating +0.49 < tau=0.5: must merge after frame 0",
+      "T": 6,
+      "ph": 2,
+      "pw": 2,
+      "D": 3,
+      "tau": 0.5,
+      "total_tokens": 24,
+      "K_impl": 4,
+      "K_oracle": 4,
+      "retention_rate_impl": 0.16666666666666666,
+      "retention_rate_oracle": 0.16666666666666666,
+      "expected_shape": [
+        6,
+        2,
+        2,
+        3
+      ]
+    },
+    {
+      "case": "single_pixel_change",
+      "desc": "one 1x1 patch changes by 0.7 for one frame only",
+      "T": 5,
+      "ph": 3,
+      "pw": 3,
+      "D": 2,
+      "tau": 0.5,
+      "total_tokens": 45,
+      "K_impl": 11,
+      "K_oracle": 11,
+      "retention_rate_impl": 0.24444444444444444,
+      "retention_rate_oracle": 0.24444444444444444,
+      "expected_shape": [
+        5,
+        3,
+        3,
+        2
+      ]
+    },
+    {
+      "case": "tau_boundary_equal",
+      "desc": "diff exactly == tau: kept, not merged",
+      "T": 3,
+      "ph": 1,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.5,
+      "total_tokens": 6,
+      "K_impl": 4,
+      "K_oracle": 4,
+      "retention_rate_impl": 0.6666666666666666,
+      "retention_rate_oracle": 0.6666666666666666,
+      "expected_shape": [
+        3,
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "tau_boundary_below",
+      "desc": "diff = tau - 1e-9 < tau: must merge",
+      "T": 3,
+      "ph": 1,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.5,
+      "total_tokens": 6,
+      "K_impl": 2,
+      "K_oracle": 2,
+      "retention_rate_impl": 0.3333333333333333,
+      "retention_rate_oracle": 0.3333333333333333,
+      "expected_shape": [
+        3,
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "long_static_1000",
+      "desc": "T=1000 identical frames, tau=0.1: rate must be 1/T per position",
+      "T": 1000,
+      "ph": 2,
+      "pw": 3,
+      "D": 4,
+      "tau": 0.1,
+      "total_tokens": 6000,
+      "K_impl": 6,
+      "K_oracle": 6,
+      "retention_rate_impl": 0.001,
+      "retention_rate_oracle": 0.001,
+      "expected_shape": [
+        1000,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "case": "first_last_frame_change",
+      "desc": "first frame unique and last frame changes; both edges must be kept correctly",
+      "T": 4,
+      "ph": 2,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.5,
+      "total_tokens": 16,
+      "K_impl": 6,
+      "K_oracle": 6,
+      "retention_rate_impl": 0.375,
+      "retention_rate_oracle": 0.375,
+      "expected_shape": [
+        4,
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "single_frame_T1",
+      "desc": "T=1: no frames to merge",
+      "T": 1,
+      "ph": 2,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.5,
+      "total_tokens": 4,
+      "K_impl": 4,
+      "K_oracle": 4,
+      "retention_rate_impl": 1.0,
+      "retention_rate_oracle": 1.0,
+      "expected_shape": [
+        1,
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "tau_zero_no_dropping",
+      "desc": "tau=0 must retain every (frame, position) token",
+      "T": 4,
+      "ph": 2,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.0,
+      "total_tokens": 16,
+      "K_impl": 16,
+      "K_oracle": 16,
+      "retention_rate_impl": 1.0,
+      "retention_rate_oracle": 1.0,
+      "expected_shape": [
+        4,
+        2,
+        2,
+        1
+      ]
+    }
+  ],
+  "summary": {
+    "checks": 11,
+    "failed_checks": 0,
+    "cases": 11,
+    "case_names": [
+      "first_last_frame_change",
+      "long_static_1000",
+      "mixed_length_batch_fail_closed",
+      "negative_tau_rejected",
+      "periodic_flicker_above_tau",
+      "periodic_flicker_below_tau",
+      "single_frame_T1",
+      "single_pixel_change",
+      "tau_boundary_below",
+      "tau_boundary_equal",
+      "tau_zero_no_dropping"
+    ],
+    "failures": [],
+    "ok": true
+  },
+  "python": "3.12.4",
+  "numpy": "2.4.2"
+}

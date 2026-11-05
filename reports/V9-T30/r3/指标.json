@@ -1,0 +1,85 @@
+{
+  "task": "ainerzero.V9.T30",
+  "agent": "antigravity-h4d8",
+  "round": "r3",
+  "status": "completed",
+  "timestamp": "2026-10-26T20:00:00+03:00",
+  "test_summary": {
+    "test_files": [
+      "tests/test_teacher_da3_controlled.py",
+      "tests/test_da3_supervision.py"
+    ],
+    "total_tests": 23,
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "wall_clock_seconds": 72.27
+  },
+  "defects_addressed": {
+    "coordinator_release_gate": {
+      "fixed": true,
+      "mechanism": "Explicit coordinator release switch (--coordinator-release / --allow-model-execution) integrated into teacher-benchmark and teacher-da3 CLIs, command dispatch, and execute_guarded_da3_benchmark. Fails closed (exit 1 / BenchmarkRefusalError) before touching RunStore by default; when explicitly authorized by coordinator, routes to real_pipeline under parent supervision without hardcoded refusal."
+    },
+    "supervision": {
+      "fixed": true,
+      "mechanism": "Child process group via subprocess.Popen(start_new_session=True), continuous parent supervision loop monitoring timeout, RSS, swap, grandchildren, os.killpg termination, and POSIX empty group proof."
+    },
+    "pre_reservation_rejection": {
+      "fixed": true,
+      "mechanism": "Approval, statistical protocol JSON, weights manifest, views quota, cumulative budget, and coordinator release prerequisite checked BEFORE touching RunStore."
+    },
+    "readonly_inspect": {
+      "fixed": true,
+      "mechanism": "Direct SQLite URI mode=ro query avoiding RunStore initialization, DDL execution, or table metadata mutations."
+    },
+    "ledger_query_and_fail_closed": {
+      "fixed": true,
+      "mechanism": "Corrected column to active_seconds; damaged/abnormal ledgers fail closed with BenchmarkRefusalError instead of returning 0.0."
+    },
+    "cumulative_views_accounting": {
+      "fixed": true,
+      "mechanism": "Enforced lifetime 64-view cumulative quota across all derived jobs in RunStore; double-checked both before and inside worker_lock."
+    }
+  },
+  "mutation_controls": [
+    {
+      "name": "Control 1: Wall Clock Timeout Supervision Gate",
+      "baseline": "Normal execution within budget -> returncode=0, violation=None",
+      "mutated": "Runaway worker (sleep > budget) -> killed by supervisor, violation=timeout, empty_group_proven=True",
+      "status": "VERIFIED"
+    },
+    {
+      "name": "Control 2: Process Group RSS Protection Gate",
+      "baseline": "Normal memory allocation (5 MiB <= 150 MiB) -> returncode=0",
+      "mutated": "Runaway memory (200 MiB > 80 MiB limit) -> killed by supervisor, violation=rss_limit, empty_group_proven=True",
+      "status": "VERIFIED"
+    },
+    {
+      "name": "Control 3: Orphan Grandchild Leak Detection Gate",
+      "baseline": "Clean child subprocess -> returncode=0, empty_group_proven=True",
+      "mutated": "Group leader exits early leaving background grandchild -> killed by supervisor, violation=grandchild_leak, empty_group_proven=True",
+      "status": "VERIFIED"
+    },
+    {
+      "name": "Control 4: Corrupt Ledger Fail-Closed Protection Gate",
+      "baseline": "Valid SQLite ledger -> read-only inspect computes accurate active_seconds and cumulative_views",
+      "mutated": "Corrupted or non-SQLite file -> fails closed raising BenchmarkRefusalError, strictly no fallback to 0.0",
+      "status": "VERIFIED"
+    }
+  ],
+  "delivered_file_hashes": {
+    "src/ainerzero/cli.py": "19765ba486d016b1794cf3b45429817da901d56f9ca6b66bcd03bf3d73321c0e",
+    "src/ainerzero/v9/teachers/benchmark.py": "aa83e7db9fb4a57b7ed20dddff450b67c5c25a9350f2cace23606bd29e97a5eb",
+    "src/ainerzero/v9/teachers/benchmark_commands.py": "ccabc73d0f38cf95f06c3796b0d0e45c4d61ca7decb60327bea675fb7b4ed3ae",
+    "src/ainerzero/v9/teachers/benchmark_protocol.py": "d7d3c35bfc82af406da9af51d275da467499a9bac96b8e4de6ccc5fad6bf49d7",
+    "src/ainerzero/v9/teachers/da3_controlled.py": "17c7c5f9cca46b823c30eca8acf612c4ab2fd0a301b782ff09a4b117ce4cd927",
+    "src/ainerzero/v9/teachers/da3_worker.py": "eec5fd03c1fe54f485eb2dff466cfd04939dbc895a00f33ecfb42e6672bd5e43",
+    "tests/test_teacher_da3_controlled.py": "88450e662b61439983ae2c5b6848233673bde88b3add9170307f974efa6e4ab6",
+    "tests/test_da3_supervision.py": "d8c3b08121cf7717a7b74924677fbd2ac9f885c1ef983724456fb97082357a55"
+  },
+  "archive_manifests": {
+    "t26_archive": "reports/V9-T30/archive/archive_manifest.txt",
+    "r1_archive": "reports/V9-T30/archive/r1/r1_manifest.txt",
+    "r2_archive": "reports/V9-T30/archive/r2/r2_manifest.txt"
+  }
+}

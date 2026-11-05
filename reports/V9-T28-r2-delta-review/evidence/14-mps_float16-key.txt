@@ -1,0 +1,11 @@
+问题：把 numerical_parity.mps_float16 删掉会怎样？（不真改文件，只在 /tmp 副本上试）
+  load_plan 抛 KeyError: 'mps_float16'
+  => 删键会让 runner 直接读不了 r2；要删必须同时改 runner（另需一次复核）。
+
+当前 r2 里该键的状态：
+  mps_float16 = {'atol': 0.01, 'rtol': 0.01}
+  cpu_float32 = {'atol': 0.001, 'rtol': 0.001}
+  retired_stages[0].tolerance_key = mps_float16
+  retired_stages[0].tolerance_kept_unchanged_and_unused = True
+  有任何阶段的 precision 是 float16 吗: False
+  runner 里仍存在的 half_parity 分支: da3_calibration_runner.py:356 `elif name in ("cpu_parity", "half_parity")`（死代码，但若阶段被加回就会用 0.01 容差）

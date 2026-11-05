@@ -1,0 +1,28 @@
+{
+  "controls": [
+    {
+      "control_name": "NEG-01: Temporal Frame Order Shuffling",
+      "description": "Assert trajectory continuity across keyframes (clean passes, shuffled fails/turns red)",
+      "clean_delta_trans": 0.04587,
+      "clean_trajectory_valid": true,
+      "shuffled_delta_trans": 0.18368,
+      "shuffled_trajectory_valid": false,
+      "turned_red_as_expected": true
+    },
+    {
+      "control_name": "NEG-02: Corrupted Camera Intrinsics Contract",
+      "description": "Assert camera intrinsics adhere to physical pinhole bounds (clean passes, negative/OOB turns red)",
+      "clean_intrinsics_valid": true,
+      "corrupted_intrinsics_valid": false,
+      "turned_red_as_expected": true
+    },
+    {
+      "control_name": "NEG-03: Tampered Weight Checksum Rejection",
+      "description": "Assert that weights deviating from official HF LFS SHA256 are refused",
+      "expected_sha": "364492e38a3a06d2...",
+      "tampered_sha": "5e082a43da1fc582...",
+      "turned_red_as_expected": true
+    }
+  ],
+  "all_passed": true
+}

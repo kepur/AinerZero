@@ -1,0 +1,59 @@
+仓外临时目录: /tmp/t46-adv-ap2s8eni
+
+==============================================================================
+[case 1] A 放宽 cpu_float32 容差 0.001 -> 0.01
+==============================================================================
+  subtree_equality.py -> 被抓到（退出码 1）
+      | DIFF        /numerical_parity/cpu_float32   (2 leaves)
+      | FAILS = 1  => FAIL
+
+==============================================================================
+[case 2] B 放宽逆序控制常数 0.0001 -> 0.00001
+==============================================================================
+  subtree_equality.py -> 被抓到（退出码 1）
+      | DIFF        /negative_controls   (13 leaves)
+      | DIFF        /negative_controls/required_red   (1 leaves)
+      | OFFENDER /negative_controls/required_red
+      | FAILS = 3  => FAIL
+
+==============================================================================
+[case 3] C 把 half_parity 加回 budget 并把总数改成看起来对的 10/28、20/56、unallocated 8
+==============================================================================
+  budget_audit.py -> 被抓到（退出码 1）
+      | 阶段名=['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity', 'half_parity']  期望=['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity']  一致=False
+      | DA3-SMALL/half_parity: <== 未登记的阶段名
+      | DA3-BASE/half_parity: <== 未登记的阶段名
+      | retired_stages=['half_parity']  重新出现在 budget.stages 里=['half_parity']
+      | FAILS=4 => FAIL
+
+==============================================================================
+[case 4] D 只删 half_parity 的假象：实则把 calibration 里 room-03 的 views 改成 [0,1,1]
+==============================================================================
+  budget_audit.py -> 被抓到（退出码 1）
+      | DA3-SMALL/calibration: |worlds|=6 唯一=6 views=[0, 1, 1] 期望 [0, 1, 2] 覆盖全部 6 世界=True -> False
+      | DA3-BASE/calibration: |worlds|=6 唯一=6 views=[0, 1, 1] 期望 [0, 1, 2] 覆盖全部 6 世界=True -> False
+      | retired_stages=['half_parity']  重新出现在 budget.stages 里=[]
+      | FAILS=2 => FAIL
+
+==============================================================================
+[case 5] E 把 retired_stages 的行号与 SHA 改成不对的值
+==============================================================================
+  verify_retired_evidence.py -> 被抓到（退出码 1）
+      | sha256 声明=0000000000000000… 实测=f7bc81d846b786e3… 一致=False
+      | FAILS=1 => FAIL
+
+==============================================================================
+[附] case C 的算术自洽性（说明为什么必须靠阶段名/退役表交叉检查）
+  DA3-SMALL: 自算 10 次/28 视图  声明 10/28 一致=True
+  DA3-BASE: 自算 10 次/28 视图  声明 10/28 一致=True
+  合计 20/56 与 unallocated 64-56=8 也自洽 —— 算术检查全绿，只能靠语义检查抓
+
+==============================================================================
+  CAUGHT  A 放宽 cpu_float32 容差 0.001 -> 0.01
+  CAUGHT  B 放宽逆序控制常数 0.0001 -> 0.00001
+  CAUGHT  C 把 half_parity 加回 budget 并把总数改成看起来对的 10/28、20/56、unallocated 8
+  CAUGHT  D 只删 half_parity 的假象：实则把 calibration 里 room-03 的 views 改成 [0,1,1]
+  CAUGHT  E 把 retired_stages 的行号与 SHA 改成不对的值
+
+5/5 个自建对抗用例被抓住
+==============================================================================

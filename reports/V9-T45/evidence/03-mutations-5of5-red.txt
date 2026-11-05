@@ -1,0 +1,45 @@
+# T45 变异复核与攻击自证日志（生成时间：2026-10-28）
+# 仓库：/Users/mac/AinerWorkFlow/AinerZero
+
+## 0. 隔离副本基线
+src/*.py 逐字节一致（共 131 个文件），隔离加载验证通过。
+
+## 1. 控制组（未变异 -> 全部测试节点必须绿）
+- [PASS] M-A -> test_derived_real_pipeline_path_also_hits_the_calibration_views_gate
+- [PASS] M-B-r2 -> test_cli_allow_model_execution_alone_is_refused_before_any_reservation
+- [PASS] M-C -> test_write_atomic_keeps_the_temp_file_in_the_target_directory
+- [PASS] M-X1 -> test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation
+- [PASS] M-X2 -> test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason
+
+## 2. 注入承重变异（必须变红）
+- M-A: T43 F-1：预检门只在显式传 worker_action 时生效（派生路径退化）
+    目标文件: ainerzero/v9/teachers/da3_controlled.py (SHA: ab4021bdf1 -> 2b59611cde -> ab4021bdf1)
+    靶子测试: test_derived_real_pipeline_path_also_hits_the_calibration_views_gate
+    判定结果: RED (CAUGHT) (FAILED tests/test_teacher_da3_controlled.py::test_derived_real_pipeline_path_also_hits_the_calibration_views_gate | 1 failed in 0.93s)
+- M-B-r2: T43 F-3 / T44 r2：CLI 单独传 --allow-model-execution 时的预扣前直接拒绝门失效
+    目标文件: ainerzero/v9/teachers/benchmark_commands.py (SHA: 25a8a8dc41 -> 298f137a24 -> 25a8a8dc41)
+    靶子测试: test_cli_allow_model_execution_alone_is_refused_before_any_reservation
+    判定结果: RED (CAUGHT) (FAILED tests/test_teacher_da3_controlled.py::test_cli_allow_model_execution_alone_is_refused_before_any_reservation | 1 failed in 0.25s)
+- M-C: T43 F-2：_write_atomic 临时文件写入系统 /tmp（跨卷破坏原子性）
+    目标文件: ainerzero/v9/teachers/da3_calibration_runner.py (SHA: 5c12b93478 -> fbf9c7aee7 -> 5c12b93478)
+    靶子测试: test_write_atomic_keeps_the_temp_file_in_the_target_directory
+    判定结果: RED (CAUGHT) (FAILED tests/test_da3_calibration_runner.py::test_write_atomic_keeps_the_temp_file_in_the_target_directory | 1 failed in 0.28s)
+- M-X1: T45 自有变异 1：da3_controlled 中已放行非替身必须真跑的纵深防御门失效
+    目标文件: ainerzero/v9/teachers/da3_controlled.py (SHA: ab4021bdf1 -> 1884213da8 -> ab4021bdf1)
+    靶子测试: test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation
+    判定结果: RED (CAUGHT) (FAILED tests/test_teacher_da3_controlled.py::test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation | 1 failed in 0.64s)
+- M-X2: T45 自有变异 2：views 预检门失效或后移（81/82 账本下被配额错误覆盖真因）
+    目标文件: ainerzero/v9/teachers/da3_controlled.py (SHA: ab4021bdf1 -> 11de02d649 -> ab4021bdf1)
+    靶子测试: test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason
+    判定结果: RED (CAUGHT) (FAILED tests/test_teacher_da3_controlled.py::test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason | 1 failed in 0.32s)
+
+## 3. T43 原版 M-B 死代码变异对照实验
+- 原版 M-B 注入: T43 原始 M-B：在 real 分支三元表达式加 or allow_model_execution（r2 门禁下不可达）
+    注入结果: pytest 运行全套测试套件返回码 0 (STILL GREEN)
+    审计解释: 在 T44 r2 行 116 的直接拒绝门拦截下，--allow-model-execution 永远无法到达行 125，因此原版 M-B 已成死代码变异。
+    真正承重的守卫是行 116 拒绝门（即上方测试的 M-B-r2，已被严格抓红）。
+
+## 4. 源码还原校验
+三方 SHA 校验一致，工作区零污染。
+
+## 结论：5/5 个有效变异被抓（5/5 变红通过）。

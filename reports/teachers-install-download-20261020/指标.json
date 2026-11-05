@@ -1,0 +1,99 @@
+{
+  "task": "ainerzero.V9.T21",
+  "agent": "workbuddy-x9m2",
+  "kind": "二级执行层",
+  "status": "stage1_completed_and_verified",
+  "scope_executed": "原T4隔离安装/下载（已获用户授权）+ T6/T10/T12只读官方清单",
+  "scope_deferred": "T4数值检查与GPU基准、T6/T10/T12实际下载（均为草稿/未批准，本轮不下其他权重）",
+  "t4_environment": {
+    "venv": "envs/teachers/.venv-t4",
+    "python": "3.12.2 (CPython)",
+    "isolated_from_main": true,
+    "main_env_changed": false,
+    "src_vjepa2_mlx_changed": false,
+    "models_loaded": 0,
+    "inference_calls": 0,
+    "training_updates": 0,
+    "package_count_in_freeze": 38,
+    "forbidden_pkgs_torch_jax_present": false,
+    "build_fix": "上一棒在 core-editable-install 失败：vjepa2-core-mlx 的 hatchling editable 构建需 editables 模块（未安装且未声明）。本次在 t4 venv 内离线装入 editables==0.6（已校验 sha256 d70e4698...），未修改 src/vjepa2-mlx（固定 commit 不变），未触碰其他 venv。这是相比原白名单的唯一偏差，体积极小（5438 字节），预算内。",
+    "editables_added": "editables==0.6 (build-only; 非运行时依赖，但因 --no-build-isolation 需常驻 venv)"
+  },
+  "t4_downloads": {
+    "repos": [
+      {"repo": "dgrauet/vjepa-2.1-vitl-mlx", "revision": "b0674736bad10eb16bd765942a9065e7e2ee9a54", "license": "mit", "files": 5, "bytes": 1310663844,
+       "files_list": ["README.md","config.json","split_model.json","encoder.safetensors","predictor.safetensors"]},
+      {"repo": "apple/coreml-depth-anything-v2-small", "revision": "cfef6f6f2a70783dedc0bfae40cecbc2052285d3", "license": "apache-2.0", "files": 7, "bytes": 149011972,
+       "files_list": ["README.md","DepthAnythingV2SmallF16.mlpackage/...","DepthAnythingV2SmallF32.mlpackage/..."]}
+    ],
+    "total_files": 12,
+    "model_bytes": 1459675816,
+    "total_transferred_bytes": 1655306028,
+    "budget_bytes": 2000000000,
+    "budget_ok": true,
+    "rate_limit_mib_s": 2,
+    "serial": true,
+    "destination": "artifacts/teachers/t4-approved/<revision>/",
+    "sha_verified": true,
+    "weights_limited_to_2mib_s": true
+  },
+  "disk": {
+    "free_before_bytes": 3426922752880,
+    "free_after_bytes": 3395093061632,
+    "guard_min_bytes": 53687091200,
+    "guard_ok": true
+  },
+  "verification": {
+    "script": "envs/teachers/t4/verify_stage1_20261020.py",
+    "assertions": "passed",
+    "model_files": 12,
+    "transferred_payload_bytes": 1655306028,
+    "no_model_execution_by_script": true,
+    "main_freezes_unchanged": true,
+    "source_files_unchanged": true,
+    "dependency_check_rc": 0
+  },
+  "runner_note": "relay exec 对本任务的复杂/绝对路径命令在本环境异常（1–4s 无输出失败），故长命令改由后台进程执行并每 ~10 分钟心跳；runner 进程本身健康（pid 9106，无活动作业）。未自行重启 runner。",
+  "t6_t10_t12_readonly_checklist": {
+    "note": "T6/T10/T12 仍为草稿、未批准下载；本轮仅做只读官方元数据清单，不下权重。SAM2/TAPNet 在本环境经 API(401) 与 WebFetch(404) 均被拦截（facebookresearch/*、google-deepmind/* 组织出口受限），其信息依任务卡记录；下载前须按卡要求复核许可/检查点/字节。",
+    "T6_DA3": {
+      "intended_repos": ["depth-anything/DA3-SMALL", "depth-anything/DA3-BASE"],
+      "verified": {
+        "depth-anything/DA3-SMALL": {"revision": "e08cab65ca0ec38e7826075418411ab90cab4da3", "license": "apache-2.0", "gated": false, "files": ["config.json", "model.safetensors(LFS)"]},
+        "depth-anything/DA3-BASE": {"revision": "f4a6c9b3c95e41c82048423d3493a81ec3fa810e", "license": "apache-2.0", "gated": false, "files": ["config.json", "model.safetensors(LFS)"]}
+      },
+      "env": "envs/teachers/.venv-t6：PyTorch(MPS) + ByteDance-Seed/Depth-Anything-3 代码，独立于 t4",
+      "staging": "下载前在 HF 页面复核许可与文件清单，记录 revision 与 SHA256；只下 SMALL/BASE；不下 Large/Giant/Nested(CC-BY-NC-4.0)"
+    },
+    "T10_SAM2_TAPNET": {
+      "intended_repos": ["facebookresearch/sam2 (Apache-2.0)", "google-deepmind/tapnet (code Apache-2.0)"],
+      "verified_this_session": false,
+      "reason": "本环境对 facebookresearch/* 与 google-deepmind/* 组织出口受限：API 返回 401、WebFetch 返回 404。均为公开仓库（任务卡已记 Apache-2.0）。",
+      "small_checkpoint_candidate": "SAM2：sam2_hiera_tiny / sam2_hiera_small（下载前确认检查点许可与大小）；TAPNet：优先 PyTorch 检查点以免再装 JAX",
+      "env": "envs/teachers/.venv-t10，独立于 t4/t6",
+      "staging": "只下 1 个小号 SAM2 检查点（型号由批准者定）；复核 TAPNet 检查点许可；不下未批准变体"
+    },
+    "T12_MAPANYTHING": {
+      "intended_repos": ["facebookresearch/map-anything (code, Apache-2.0)", "facebook/map-anything-apache (weights, Apache-2.0)"],
+      "verified": {
+        "facebook/map-anything-apache": {"revision": "00f9c245bbcb60522d1ed7f9e9d88462c6e3f38a", "license": "apache-2.0", "gated": false, "files": ["config.json", "model.safetensors(LFS)"]}
+      },
+      "code_repo_status": "facebookresearch/map-anything 本环境 API 401；按卡使用 facebook/map-anything-apache 权重",
+      "env": "envs/teachers/.venv-t12，独立于其他",
+      "staging": "仅 Apache 版权重；不拉 VGGT 等未批准模型"
+    }
+  },
+  "out_of_scope": [
+    "T4 数值检查（无 PyTorch 对照 / 确定性 / 故意改坏）——属原 T4 后续阶段，待真实 CLI/共享锁/RunStore 与资源门",
+    "T4 M2 Max GPU 基准——同上，未启动（无 GPU 闸门/资源门）",
+    "T6/T10/T12 实际权重下载——草稿未批准，本轮只读清单"
+  ],
+  "artifacts": {
+    "report_dir": "reports/teachers-install-download-20261020/20261020T181817/",
+    "stage1_complete": "reports/teachers-install-download-20261020/20261020T181817/stage1-complete.json",
+    "downloads_manifest": "reports/teachers-install-download-20261020/20261020T181817/downloads.json",
+    "verify_output": "assertions passed (见上)",
+    "weights": "artifacts/teachers/t4-approved/b0674736.../ 与 cfef6f6f.../",
+    "scripts_written": ["envs/teachers/t4/continue_build_20261020.py", "envs/teachers/t4/continue_download_20261020.py"]
+  }
+}

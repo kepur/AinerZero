@@ -1,0 +1,54 @@
+{
+  "task": "ainerzero.V9.T51",
+  "project": "AinerZero",
+  "agent": "gemini-k8f3",
+  "tier": 2,
+  "date": "2026-10-28",
+  "status": "completed",
+  "summary": "Derived DA3 calibration views (50), cumulative wall clock cap (1290s), and single-run budget limit (120s) dynamically from registered T28 proposal with date-based metadata override and bad controls verification.",
+  "quota_derivation": {
+    "unregistered_fallback": {
+      "calibration_views": 18,
+      "cumulative_wall_cap_s": 1200.0,
+      "run_wall_budget_s": null
+    },
+    "registered_t28_r2": {
+      "calibration_views": 50,
+      "cumulative_wall_cap_s": 1290.0,
+      "run_wall_budget_s": 120.0
+    }
+  },
+  "test_results": {
+    "total": 81,
+    "passed": 81,
+    "failed": 0,
+    "duration_seconds": 77.84,
+    "suites": [
+      "tests/test_t28_registration_and_quota.py (11 passed)",
+      "tests/test_da3_supervision.py (10 passed)",
+      "tests/test_teacher_da3_controlled.py (21 passed)",
+      "tests/test_da3_views_82.py (2 passed)",
+      "tests/test_da3_calibration_runner.py (37 passed)"
+    ]
+  },
+  "bad_controls": {
+    "mutation_1_sha_always_true": {
+      "target": "src/ainerzero/v9/teachers/t28_registration.py",
+      "expected_outcome": "RED (FAILED)",
+      "actual_outcome": "FAILED: DID NOT RAISE ValueError",
+      "test_name": "test_sha_mismatch_refused"
+    },
+    "mutation_2_override_fetchone": {
+      "target": "src/ainerzero/v9/teachers/da3_controlled.py",
+      "expected_outcome": "RED (FAILED)",
+      "actual_outcome": "FAILED: AssertionError: assert 82 == 131",
+      "test_name": "test_metadata_views_override_by_date"
+    },
+    "mutation_3_no_single_run_120s_check": {
+      "target": "src/ainerzero/v9/teachers/da3_controlled.py",
+      "expected_outcome": "RED (FAILED)",
+      "actual_outcome": "FAILED: DID NOT RAISE BenchmarkBudgetRefused",
+      "test_name": "test_wall_budget_gate_single_run_120_vs_121"
+    }
+  }
+}

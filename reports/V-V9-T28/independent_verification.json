@@ -1,0 +1,99 @@
+{
+  "task": "ainerzero.V9.T29",
+  "reviewer": "gemini-kzer",
+  "reviewed_task": "ainerzero.V9.T28",
+  "reviewed_author": "codex",
+  "proposal_sha256": "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a",
+  "proposal_sha256_verified": true,
+  "verdict": "recommend_immutable_sha_registration_as_unapproved_proposal",
+  "tests": {
+    "gauge_invariance": {
+      "status": "passed",
+      "clean_gauge_residual_max": 3.006854025026466e-16,
+      "measured_rotation_error_rad": 0.25,
+      "expected_rotation_error_rad": 0.25,
+      "measured_translation_error_norm": 0.1500000000000001,
+      "expected_translation_error_norm": 0.15
+    },
+    "collinear_sim3_degeneracy": {
+      "status": "passed",
+      "collinear_point_cloud_rank": 1,
+      "rotation_around_axis_residual": 0.0,
+      "degeneracy_verified": true,
+      "note": "Proves that point-only Sim(3) on 3 collinear views has an unconstrained rotational degree of freedom; T28 anchor formulation correctly avoids this by using camera rotation matrices directly."
+    },
+    "split_and_covariance_rank": {
+      "status": "passed",
+      "fit_worlds_count": 3,
+      "holdout_worlds_count": 3,
+      "partition_overlap": 0,
+      "covariance_dimension": 7,
+      "sample_covariance_rank": 2,
+      "zero_eigenvalues_count": 5,
+      "direct_inversion_singular": true,
+      "nees_unclaimed": true,
+      "coverage_unclaimed": true
+    },
+    "budget_and_views": {
+      "status": "passed",
+      "total_calls": 22,
+      "total_views": 62,
+      "views_quota_max": 64,
+      "unallocated_views": 2,
+      "cumulative_wall_max_s": 1200,
+      "rss_max_bytes": 8589934592,
+      "model_breakdown": [
+        {
+          "variant": "DA3-SMALL",
+          "calls": 11,
+          "views": 31,
+          "stages_count": 6
+        },
+        {
+          "variant": "DA3-BASE",
+          "calls": 11,
+          "views": 31,
+          "stages_count": 6
+        }
+      ]
+    },
+    "intentional_sabotages": [
+      {
+        "sabotage": "sabotage_gauge",
+        "description": "Corrupted rotation gauge factor violates identity on clean inputs",
+        "returncode": 1,
+        "stderr_tail": "AssertionError: Ground-truth baseline to view 2 is zero",
+        "passed_red_test": true
+      },
+      {
+        "sabotage": "sabotage_leakage",
+        "description": "Fit/holdout overlap leakage injected into proposal",
+        "returncode": 1,
+        "stderr_tail": "AssertionError: Holdout leakage detected: t6-analytic-room-00",
+        "passed_red_test": true
+      },
+      {
+        "sabotage": "sabotage_views",
+        "description": "Views budget overcommit (> 64 views) injected into proposal",
+        "returncode": 1,
+        "stderr_tail": "AssertionError: Views overcommit: 66 > 64",
+        "passed_red_test": true
+      },
+      {
+        "sabotage": "sabotage_covariance",
+        "description": "Attempting to invert rank-deficient covariance without regularization",
+        "returncode": 1,
+        "stderr_tail": "AssertionError: Covariance is rank-deficient (rank 2 < 7), cannot claim full-rank noise model",
+        "passed_red_test": true
+      },
+      {
+        "sabotage": "sabotage_approval",
+        "description": "Falsely claiming approved status and execution_permitted=true",
+        "returncode": 1,
+        "stderr_tail": "AssertionError: Unapproved proposal claiming approved",
+        "passed_red_test": true
+      }
+    ]
+  },
+  "all_independent_checks_passed": true
+}

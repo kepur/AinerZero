@@ -1,0 +1,46 @@
+Return Code: 1
+
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python3
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /Users/mac/AinerWorkFlow/AinerZero
+configfile: pyproject.toml
+collecting ... collected 1 item
+
+tests/test_da3_t56_features.py::test_runner_registered_sha_mismatch_refused_via_proposal_flag FAILED [100%]
+
+=================================== FAILURES ===================================
+________ test_runner_registered_sha_mismatch_refused_via_proposal_flag _________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-326/test_runner_registered_sha_mis0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1046242f0>
+
+    def test_runner_registered_sha_mismatch_refused_via_proposal_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """SHA 不一致 → --proposal 显式传入非登记的 proposal 时拒绝（退出码非 0）。"""
+        fake_repo = _make_isolated_repo_with_registration(tmp_path, R2_PROPOSAL)
+        monkeypatch.setattr(t28_registration, "REPO_ROOT", fake_repo)
+    
+        # Pass R1 proposal (which has different SHA than registered R2)
+        args = [
+            "--preflight-only",
+            "--output", str(tmp_path / "out.json"),
+            "--predictions-dir", str(tmp_path / "preds"),
+            "--proposal", str(R1_PROPOSAL),
+        ]
+        code = R.main(args)
+>       assert code == R.EXIT_PREFLIGHT
+E       assert 6 == 2
+E        +  where 2 = R.EXIT_PREFLIGHT
+
+tests/test_da3_t56_features.py:87: AssertionError
+----------------------------- Captured stderr call -----------------------------
+PROTOCOL UNSATISFIABLE (no model work done): T28 requires known-K conditioning without supplying extrinsics, plus an adverse-intrinsics control that must turn red (S_bad >= S_clean + max(1e-4, 0.1*S_clean)). This DA3 build ignores intrinsics unless extrinsics are supplied (model/da3.py: `if extrinsics is not None:` gates cam_enc), so predictions cannot depend on K and the control is unsatisfiable by construction (S_bad == S_clean). A coordinator/user amendment of the frozen protocol is required before any real run.
+=========================== short test summary info ============================
+FAILED tests/test_da3_t56_features.py::test_runner_registered_sha_mismatch_refused_via_proposal_flag
+============================== 1 failed in 0.24s ===============================
+
+
+STDERR:
+

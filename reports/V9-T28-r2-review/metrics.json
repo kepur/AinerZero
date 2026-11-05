@@ -1,0 +1,154 @@
+{
+  "task": "ainerzero.V9.T39",
+  "reviewer": "deepseek-v41f-t3k9",
+  "reviewer_model": "DeepSeek-V4.1-Flash",
+  "tier": 2,
+  "reviewed_proposal_sha256": "0e15033a8b55c978f3f97318e5d1978e54b406afe8d28120aebd40a8e0db9db1",
+  "r1_proposal_sha256": "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a",
+  "r1_protocol_sha256": "b8d903c03e414dfb9e88bdbc6ff23aa492eca8466534cfeb9b7415cd3b2102ad",
+  "relation_to_r1": "none: not the r1 author (codex), not the r1 reviewer (gemini-kzer), not the r2 author (claude-az), not any T35/T37/T38 executor",
+  "independence_ok": true,
+
+  "own_diff_matches_author": true,
+  "own_diff_leaf_paths": 38,
+  "author_declared_paths": 27,
+  "diff_granularity_note": "author counts whole lists (stages/claims_forbidden/execution_prerequisites) as one path; my leaf expansion splits the stage-index shift into 6 extra leaves per model. All 38 leaves fall under the 27 declared paths; no phantom author paths.",
+  "unlisted_differences": [],
+  "r1_files_unchanged": true,
+  "cleared_false_positive": "generator_sha256 unchanged (f97d723f...) is the FIXTURE generator (same sha in V9-T6/r2-calib-fixtures/manifest.json), not the proposal builder; correct to leave unchanged",
+
+  "k_consumers_found": [
+    "model/da3.py:126-130  if extrinsics is not None: cam_token = self.cam_enc(extrinsics, intrinsics, ...) else cam_token=None  [ONLY real entry, gated]",
+    "model/cam_enc.py:69-76 -> model/utils/transform.py:19-38  extri_intri_to_pose_encoding uses intrinsics[...,1,1] and [...,0,0] for fov_h/fov_w  [called only from the gated branch]",
+    "model/da3.py:146 -> _process_gs_head(..., extrinsics, intrinsics): the `intrinsics` PARAMETER IS NEVER READ in the body (only output.intrinsics, i.e. predicted K)  [double-unreachable: infer_gs=False and unused anyway]",
+    "api.py:196-198 / 285-291 -> InputProcessor: ixts_list=None, _resize_ixt/_crop_ixt(None) return None  [unreachable]",
+    "api.py:319-323  in_t = None  [unreachable]",
+    "api.py:341-351  _align_to_input_extrinsics_intrinsics: `if extrinsics is None: return prediction` (does not even write input K back)  [unreachable]",
+    "model/da3.py:211-228  _process_camera_estimation: cam_dec(feats) -> pose_encoding_to_extri_intri, purely predicted  [this is the active path]",
+    "model/da3.py:181-203  _process_ray_pose_estimation: uses output.ray/ray_conf only  [inactive, use_ray_pose=False]",
+    "model/da3.py:374-383  _apply_metric_scaling uses output.intrinsics (PREDICTED)  [belongs to NestedDepthAnything3Net; da3-small.yaml builds DepthAnything3Net]",
+    "model/dinov2/vision_transformer.py:314-331  cam_token=None -> reference-view selection, x[:,:,0]=learned camera_token  [no input K]",
+    "utils/io/output_processor.py:120-133  reads model_output['intrinsics'] (predicted)  [no input K]"
+  ],
+  "k_can_influence_prediction_without_extrinsics": false,
+  "premise_confirmed": true,
+  "premise_evidence_beyond_author": "author cited 2 sites; I enumerated 11 and additionally proved _process_gs_head's intrinsics parameter is dead code, and that the active net is DepthAnything3Net (da3-small.yaml/da3-base.yaml __object__.name), not the nested metric net",
+  "pipeline_call_site": "pipeline.py:335  self.model.inference(frames, process_res=process_res, export_format='mini_npz')  -> extrinsics=None, intrinsics=None, infer_gs=False, use_ray_pose=False (all defaults)",
+
+  "residual_definitions_reference_K": false,
+  "residuals_well_defined_under_r2": true,
+  "units_unchanged": true,
+  "k_error_effect_selfconsistent_model": "EXACTLY ZERO (a wrong K in an internally consistent model is precisely a similarity-gauge reparameterisation; z-depth is untouched because K only scales x/z and y/z)",
+  "k_error_effect_inconsistent_model": "anisotropic lateral stretch diag(1/alpha,1/alpha,1); depth residual unaffected (z-typed), rotation unaffected, translation residual laterally scaled => only channel, and it is COMMON-MODE across all 6 worlds",
+  "systematic_bias_breaks_mean_covariance": false,
+  "systematic_bias_note": "common-mode shift enters the mean only, not the (mean-removed) covariance, so covariance would under-report dispersion; but r2 already forbids using it as a noise model (rank<=2, no inverse, sensor_noise_registration_allowed=false, nees=null), so nothing is lost. What it does change: the fit mean cannot be read as a pure geometric-error estimate.",
+  "rank_ceiling_still_2": true,
+  "rank_ceiling_reason": "rank<=min(n-1,d)=min(2,7)=2 depends only on (n=3 fit worlds, d=7); r2 changed neither. 6x6 pose subblock inherits rank<=2. No inverse/pseudo-inverse/ridge still NECESSARY because rank 2 < 7.",
+
+  "frame_order_control_satisfiable_in_principle": true,
+  "frame_order_control_necessary": false,
+  "frame_order_margin": {
+    "oracle_pose_aware_noiseless": {"S_clean": 0.0, "S_bad": 1.1095, "required": 0.0001, "red_worlds": "6/6"},
+    "oracle_pose_aware_noisy": {"S_clean": 0.1521, "S_bad": 1.1815, "required": 0.1674, "red_worlds": "6/6"},
+    "prior_dominated_permutation_invariant": {"S_clean": 0.0642, "S_bad": 0.0642, "red_worlds": "0/6"},
+    "slotwise_depth_fixed_prior_pose": {"S_clean": 0.0555, "S_bad": "0.0555-0.0562", "red_worlds": "0/6"}
+  },
+  "frame_order_degeneracy": {
+    "rotation_term_zero_iff": "R0 == R2",
+    "translation_term_zero_iff": "c0 == c2",
+    "simultaneous_degeneracy": "implies b_gt = ||c2-c0|| = 0 => hits alignment.gt_baseline_min_metres=1e-6 rejection => never reaches statistics",
+    "rotation_only_degeneracy_still_red": "S = 1.0000 (rot 0.000deg, trans 1.0000)",
+    "fixture_not_degenerate": "all 6 worlds strictly collinear (sin angle ~1e-15), strictly equally spaced 0.35/0.70 m, angle(R0,R2)=6.35-6.36 deg"
+  },
+  "frame_order_order_insensitive_counterexample": "T1 is itself order-insensitive (each slot's output depends only on its own image, zero cross-view reasoning) yet turns red 6/6. The redness comes from the protocol's own slot alignment (anchor slot 0 and scale slot 2 get different physical cameras while GT labels stay [0,1,2]), not from temporal reasoning.",
+  "frame_order_depth_channel_inert": true,
+  "frame_order_depth_channel_note": "s_depth = median(D_gt_0/D_pred_0) re-estimates the global scale from the SWAPPED anchor, so the whole-scale part of the association swap is absorbed; T1 gives absrel = 0.0000 under reversal. Redness is driven by rotation (6.36 deg) + translation (1.0) only.",
+
+  "descriptive_k_block_isolated": true,
+  "descriptive_k_block_evidence": "intrinsics_policy.conditioning='none' and text says descriptive only; residual_vector.dimension==7, order and depth_component equal r1; estimation block strictly equal r1; negative_controls.score contains no K",
+  "processed_size_280": [3, 210, 280],
+  "processed_size_batch": [1, 3, 210, 280],
+  "processed_size_method": "envs/teachers/.venv-t6/bin/python, CPU, no model loaded, upstream InputProcessor only; source 210x280 -> process_res=280 gives no scaling and no cropping; passing GT K through leaves K bit-identical",
+  "ground_truth_K": {"fx": 220.0, "fy": 220.0, "cx": 139.5, "cy": 104.5, "note": "pixel-centre convention (W-1)/2,(H-1)/2; identical across all 18 views"},
+  "predicted_K_degrees_of_freedom": 2,
+  "predicted_K_principal_point": "HARDCODED cx=W/2=140.0, cy=H/2=105.0 in model/utils/transform.py:61-62, not learned; constant +0.5 px offset vs ground truth is a CONVENTION difference, not a model error",
+
+  "budget_recomputed": {
+    "per_variant": {"DA3-SMALL": {"calls": 10, "views": 28, "stages": 5}, "DA3-BASE": {"calls": 10, "views": 28, "stages": 5}},
+    "total": {"calls": 20, "views": 56},
+    "declared": {"calls": 20, "views": 56},
+    "reserve_views": 64,
+    "unallocated_views": 8,
+    "unallocated_check": "64-56=8 OK",
+    "cross_check": "sum(calls*frames_per_call) == sum(calls*len(views)) == 28 per variant",
+    "matches_t37_runner": true,
+    "runner_evidence": "da3_calibration_runner.py:142 calls_per_variant=models[0].forward_calls, views_per_variant=models[0].forward_views; :353 asserts (calls,views)==(10,28); stage dispatch 1/1 + 6x3 + 1x3 + 1x3 + 1x3 = 10/28",
+    "view_accounting_status": "OPEN_pending_user_decision (correctly marked; not a reject reason per task instruction)",
+    "open_items_complete": true,
+    "open_items_gap": "budget.cumulative_wall_seconds_max is still 1200 while T37 records 1170 s already reserved and >=1230 s needed; disclosed only in prose open_items[1], not fixed in the machine field"
+  },
+
+  "stale_r1_wording_found": true,
+  "stale_r1_wording": [
+    "execution_prerequisites[1] still says 'T29 independent math review...' but the r2 review card is T39",
+    "review_task is null (r1 had 'ainerzero.V9.T29'); contradicts amendment.changes E1 which claims review_task was updated"
+  ],
+  "stale_r1_wording_cleared": [
+    "generator_sha256 unchanged = fixture generator, correct",
+    "PROTOCOL.md 'r1 当时是 T29', '不称已知 K 条件化', 'r1 的错K负对照已移除', '11次/31视图 -> 10次/28视图' are deliberate negations/historical comparisons, correct",
+    "claims_forbidden still lists 'blind intrinsic recovery' - still should be forbidden"
+  ],
+
+  "own_adversarial_cases": [
+    {"id": "A1", "construction": "relax numerical_parity tolerances 1e-3->1e-1 (both), required_red 0.1->0.01, known_intrinsics back to true", "caught": true, "caught_by": ["C3 unlisted diffs (5)", "C5 required_red + 4 tolerances", "C7 known_intrinsics not false", "C4 phantom path"]},
+    {"id": "A2", "construction": "tamper negative_controls.frames GT label association AND delete that path from diff_r1_r2.json so the diff looks within approved scope", "caught": true, "caught_by": ["C3 unlisted diff negative_controls.frames", "C5 frames changed"]},
+    {"id": "A3", "construction": "stealth edit inside amendment.unchanged_by_construction: drop 's*' from alignment.pose_translation AND delete /alignment from the author diff", "caught": true, "caught_by": ["C3 unlisted diff alignment.pose_translation", "C5 alignment declared unchanged but changed"]},
+    {"id": "A4", "construction": "budget arithmetic tamper: one stage calls +1 without updating totals", "caught": true, "caught_by": ["C6 declared 10/28 != recomputed 11/31", "C6 total 21/59", "C6 unallocated arithmetic"]},
+    {"id": "A5", "construction": "semantically null rewrite (top-level key order reversed, 0.001 written as 0.0010) - must NOT false-positive", "caught": false, "note": "zero C3/C5/C6 warnings; rc=1 only because it inherits the two real C8 defects"},
+    {"id": "A6", "construction": "fix only the two C8 items (review_task->T39, drop T29 from live fields) - must pass", "caught": false, "note": "rc=0 PASS, proving the only blockers are the two text defects and they are mechanically fixable"}
+  ],
+
+  "unsatisfiable_gates_found": [
+    {"gate": "cpu_parity / half_parity elementwise-all gate vs discrete reference-view argmin", "severity": "high", "structural": true, "detail": "with cam_token=None and S=3 == THRESH_FOR_REF_SELECTION=3, select_reference_view('saddle_balanced') does balance_score.argmin over 3 views then reorder_by_reference / restore_original_order. A flip of that discrete argmin between CPU and MPS (or fp32/fp16) permutes the outputs and fails the elementwise gate by O(1) regardless of atol/rtol. balance_score is a sum of three |.|-0.5 terms over min-max-normalised triples, so near-ties are structurally likely."},
+    {"gate": "half_parity fp16 numerics", "severity": "high", "structural": false, "detail": "ExplicitPrecisionDA3 disables autocast and casts input to fp16, forcing LayerNorm/softmax/torch.quantile/torch.linalg.inv into fp16. fp16 u=4.88e-4; gate is max over ~353k elements (~4.5 sigma); needs per-element sigma <~2e-3 while a deep ViT in fp16 typically sits at 1e-3-1e-2. Roughly a coin flip. Also LayerNorm eps=1e-6 underflows to 0 in fp16."},
+    {"gate": "cpu_parity fp32 numerics", "severity": "medium", "structural": false, "detail": "same precision, different backend (Accelerate vs Metal); typical per-element relative diff 1e-5-1e-4, max over 353k elements ~1e-4-5e-4 vs rtol=1e-3. Probably passes with 2-10x margin but not roomy."},
+    {"gate": "budget.cumulative_wall_seconds_max=1200", "severity": "high", "structural": true, "detail": "T37 records 1170 s already reserved and >=1230 s needed for the next run; the machine field still says 1200, so the ledger arithmetic cannot accommodate the run. Fix before SHA registration."},
+    {"gate": "da3_calibration_runner.py:131 unconditionally parses p['negative_controls']['intrinsics']", "severity": "high", "structural": true, "detail": "KeyError on r2, so --preflight-only cannot even start; execution_prerequisites[6] is unsatisfiable until T38's fix lands. Runner-side, not an r2 defect, but it blocks registration->run."},
+    {"gate": "frame_order_adverse", "severity": "low", "structural": false, "detail": "margin ~1.1e4x for a content-tracking pose estimator; only fails if DA3's pose head is prior-dominated (T2-type), which r2 already discloses as an empirical result."}
+  ],
+
+  "overclaims_found": [
+    "'测的是模型自估内参条件下的相对位姿与相对深度' (PROTOCOL.md:13, profile.assumption): intrinsics are not an input, the depth head never reads them, the principal point is not estimated at all, and in the self-consistent limit the residual is EXACTLY invariant to K. Should read: no camera parameters supplied; the teacher emits a focal readout that is descriptive only and not a conditioning.",
+    "'帧序负对照' as a name: redness is driven by the anchor/scale slot swap, not by temporal sensitivity; a zero-temporal-reasoning teacher (T1) passes it and a prior-dominated teacher fails it. Should be named an association-reversal control and PROTOCOL should state it does not test temporal sensitivity.",
+    "intrinsics_policy 'ratios/offsets to the ground-truth K': the cx/cy offset is a constant +0.5 px convention difference (GT uses (W-1)/2, DA3 uses W/2), not a model property; must be labelled or it will be misread as a 0.5 px principal-point estimation error."
+  ],
+
+  "recommendation": "accept_with_changes",
+  "required_changes": [
+    {"n": 1, "severity": "must", "what": "execution_prerequisites[1]: 'T29' -> 'T39'"},
+    {"n": 2, "severity": "must", "what": "review_task: null -> 'ainerzero.V9.T39'"},
+    {"n": 3, "severity": "must", "what": "budget.cumulative_wall_seconds_max: raise to a sufficient value, or annotate in-field that the cap will be raised on user quota approval (currently 1170/1200 used, >=1230 needed)"},
+    {"n": 4, "severity": "recommended", "what": "PROTOCOL.md: add (a) the control tests association not temporal order, (b) residuals are exactly K-invariant in the self-consistent limit and only the translation residual carries a lateral common mode otherwise, (c) predicted K's principal point is hardcoded W/2,H/2 and the constant 0.5 px offset is a convention difference"},
+    {"n": 5, "severity": "must-process", "what": "after the edits the proposal SHA changes: regenerate proposal.sha256, SHA256SUMS.txt and the SHA quoted in AMENDMENT.md, then lead registers the new SHA"}
+  ],
+  "required_changes_touch_run_semantics": false,
+  "post_fix_requires_new_math_review": false,
+
+  "red_lines_respected": {
+    "read_only_on_r1_r2": true,
+    "models_loaded": 0,
+    "touched_m0_worker_lock": false,
+    "touched_runs_db": false,
+    "modified_runner": false,
+    "pushed_or_downloaded": false,
+    "paid_services": false,
+    "write_scope": ["reports/V9-T28-r2-review/", ".tmp/t39-review/"]
+  },
+  "scripts_written_by_reviewer": [
+    ".tmp/t39-review/own_diff.py",
+    ".tmp/t39-review/own_check_r2.py",
+    ".tmp/t39-review/adversarial.py",
+    ".tmp/t39-review/check_inputproc.py",
+    ".tmp/t39-review/frame_order.py"
+  ]
+}

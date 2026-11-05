@@ -1,0 +1,1870 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ainerzero:v9/teacher_cache.v2",
+  "title": "v9 教师特征缓存 v2 候选 r3：可信来源、观察时间与批准/指纹绑定",
+  "description": "T1 r3 / T19：AWZ origin 固定 external_derived；条目绑定调用方独立冻结的原来源清单、Observation 时间上下文和 ADR-0005 批准登记。当前获批例外集合为空。schema 只做结构；跨记录/可信身份/时间/指纹由报告目录参考检查及未来 T2/Forge 消费者核对。v2 尚未采用，本轮修订候选，旧 r2 已归档。",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/teacher_blob"
+    },
+    {
+      "$ref": "#/$defs/teacher_entry"
+    },
+    {
+      "$ref": "#/$defs/noise_calibration"
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "partition": {
+      "enum": [
+        "train",
+        "development",
+        "final",
+        "quarantine"
+      ]
+    },
+    "file_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uri",
+        "sha256"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "license_id",
+        "source_url",
+        "verified_at",
+        "scope",
+        "approval_ref"
+      ],
+      "properties": {
+        "license_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "verified_at": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reference",
+            "train",
+            "eval",
+            "commercial_output",
+            "redistribute"
+          ],
+          "properties": {
+            "reference": {
+              "type": "boolean"
+            },
+            "train": {
+              "type": "boolean"
+            },
+            "eval": {
+              "type": "boolean"
+            },
+            "commercial_output": {
+              "type": "boolean"
+            },
+            "redistribute": {
+              "type": "boolean"
+            }
+          }
+        },
+        "approval_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "teacher": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "teacher_id",
+        "variant",
+        "teacher_kind",
+        "weights",
+        "code_revision",
+        "runtime"
+      ],
+      "properties": {
+        "teacher_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "maxLength": 64
+        },
+        "variant": {
+          "type": "string",
+          "minLength": 1
+        },
+        "teacher_kind": {
+          "enum": [
+            "feature",
+            "geometry"
+          ]
+        },
+        "weights": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "file",
+              "sha256"
+            ],
+            "properties": {
+              "file": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sha256": {
+                "$ref": "#/$defs/sha256"
+              }
+            }
+          }
+        },
+        "code_revision": {
+          "type": "string",
+          "minLength": 7
+        },
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "framework",
+            "framework_version",
+            "compute_units",
+            "dtype"
+          ],
+          "properties": {
+            "framework": {
+              "enum": [
+                "mlx",
+                "coreml",
+                "pytorch_mps",
+                "pytorch_cpu",
+                "jax_cpu"
+              ]
+            },
+            "framework_version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "compute_units": {
+              "enum": [
+                "gpu",
+                "cpu",
+                "CPU_ONLY",
+                "CPU_AND_NE",
+                "CPU_AND_GPU",
+                "ALL"
+              ]
+            },
+            "dtype": {
+              "enum": [
+                "float32",
+                "float16",
+                "bfloat16"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "token_policy": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "tau",
+            "norm",
+            "patch"
+          ],
+          "properties": {
+            "kind": {
+              "const": "rlt"
+            },
+            "tau": {
+              "type": "number",
+              "minimum": 0
+            },
+            "norm": {
+              "const": "linf"
+            },
+            "patch": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    },
+    "key_material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "teacher",
+        "preprocess",
+        "input"
+      ],
+      "properties": {
+        "teacher": {
+          "$ref": "#/$defs/teacher"
+        },
+        "preprocess": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "spec_sha256",
+            "resolution",
+            "frames",
+            "normalization",
+            "token_policy"
+          ],
+          "properties": {
+            "spec_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "resolution": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "frames": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "normalization": {
+              "type": "string",
+              "minLength": 1
+            },
+            "token_policy": {
+              "$ref": "#/$defs/token_policy"
+            }
+          }
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sha256",
+            "media_type",
+            "timestamps_s",
+            "time_domain",
+            "timestamps_ticks"
+          ],
+          "properties": {
+            "sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "media_type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timestamps_s": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "number",
+                "minimum": 0
+              },
+              "description": "逐项等于 timestamps_ticks / 120，非故事 world_time；库级核对，容差 1e-9 秒。"
+            },
+            "time_domain": {
+              "$ref": "#/$defs/observation_time_domain"
+            },
+            "timestamps_ticks": {
+              "$ref": "#/$defs/ticks"
+            }
+          }
+        }
+      }
+    },
+    "file_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "bytes",
+        "sha256",
+        "media_type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "teacher_blob": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "record_type",
+        "cache_key",
+        "key_material",
+        "output",
+        "confidence",
+        "reproducibility",
+        "tolerance",
+        "teacher_license",
+        "generation"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "az.v9.teacher_cache.v2"
+        },
+        "record_type": {
+          "const": "teacher_blob"
+        },
+        "cache_key": {
+          "$ref": "#/$defs/sha256",
+          "description": "sha256(canonical(key_material))；只由推理内容决定，不含世界、分区或用途"
+        },
+        "key_material": {
+          "$ref": "#/$defs/key_material"
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "files",
+            "shape",
+            "dtype",
+            "scale",
+            "coordinate_frame",
+            "time_stride_s",
+            "token_stats"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "video_latent",
+                "dense_feature",
+                "depth_relative",
+                "depth_metric",
+                "camera_pose",
+                "pointmap",
+                "point_track",
+                "object_mask"
+              ]
+            },
+            "files": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/file_entry"
+              }
+            },
+            "shape": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "dtype": {
+              "enum": [
+                "float32",
+                "float16",
+                "bfloat16",
+                "int32",
+                "uint8",
+                "bool"
+              ]
+            },
+            "scale": {
+              "enum": [
+                "relative",
+                "up_to_scale",
+                "metric",
+                "not_applicable"
+              ]
+            },
+            "coordinate_frame": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "camera_convention",
+                "to_world"
+              ],
+              "properties": {
+                "camera_convention": {
+                  "enum": [
+                    "opencv",
+                    "none"
+                  ]
+                },
+                "to_world": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "matrix",
+                        "det_sign"
+                      ],
+                      "properties": {
+                        "matrix": {
+                          "type": "array",
+                          "minItems": 4,
+                          "maxItems": 4,
+                          "items": {
+                            "type": "array",
+                            "minItems": 4,
+                            "maxItems": 4,
+                            "items": {
+                              "type": "number"
+                            }
+                          }
+                        },
+                        "det_sign": {
+                          "enum": [
+                            1,
+                            -1
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "time_stride_s": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "exclusiveMinimum": 0
+            },
+            "token_stats": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kept",
+                    "total",
+                    "run_length_hist"
+                  ],
+                  "properties": {
+                    "kept": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "run_length_hist": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "video_latent",
+                      "dense_feature"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "scale": {
+                    "const": "not_applicable"
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "scale": {
+                    "enum": [
+                      "relative",
+                      "up_to_scale",
+                      "metric"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "confidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "file"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "none",
+                "per_pixel",
+                "per_token",
+                "per_point",
+                "scalar"
+              ]
+            },
+            "file": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "none"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "file": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        "reproducibility": {
+          "enum": [
+            "bitwise",
+            "numeric",
+            "unverified"
+          ]
+        },
+        "tolerance": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "metric",
+                "value"
+              ],
+              "properties": {
+                "metric": {
+                  "enum": [
+                    "cosine_min",
+                    "max_abs"
+                  ]
+                },
+                "value": {
+                  "type": "number"
+                }
+              }
+            }
+          ]
+        },
+        "teacher_license": {
+          "$ref": "#/$defs/license"
+        },
+        "generation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "mode",
+            "argv",
+            "started_at",
+            "wall_s",
+            "peak_memory_bytes",
+            "host",
+            "lease"
+          ],
+          "properties": {
+            "mode": {
+              "enum": [
+                "teacher",
+                "world"
+              ]
+            },
+            "argv": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            },
+            "started_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "wall_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "peak_memory_bytes": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "mlx",
+                "rss"
+              ],
+              "properties": {
+                "mlx": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 0
+                },
+                "rss": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1
+            },
+            "lease": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "lock",
+                "held_from_start_to_end"
+              ],
+              "description": "§1.2：整段占用区间持有计算租约锁",
+              "properties": {
+                "lock": {
+                  "const": "artifacts/locks/m0-worker.lock"
+                },
+                "held_from_start_to_end": {
+                  "const": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "reproducibility": {
+                "const": "numeric"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "tolerance": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "key_material": {
+                "properties": {
+                  "preprocess": {
+                    "properties": {
+                      "token_policy": {
+                        "properties": {
+                          "kind": {
+                            "const": "rlt"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "output": {
+                "properties": {
+                  "token_stats": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "output": {
+                "properties": {
+                  "token_stats": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "teacher_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "record_type",
+        "entry_id",
+        "cache_key",
+        "source",
+        "as_of_t_s",
+        "provenance",
+        "license",
+        "noise_model_ref",
+        "store",
+        "as_of_t_ticks"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "az.v9.teacher_cache.v2"
+        },
+        "record_type": {
+          "const": "teacher_entry"
+        },
+        "entry_id": {
+          "$ref": "#/$defs/sha256",
+          "description": "sha256(canonical({cache_key, world_key, partition, input_sha256, use}))"
+        },
+        "cache_key": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "world_key",
+            "partition",
+            "timestamps_s",
+            "time_domain",
+            "timestamps_ticks",
+            "manifest_ref"
+          ],
+          "properties": {
+            "world_key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "partition": {
+              "$ref": "#/$defs/partition"
+            },
+            "timestamps_s": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "time_domain": {
+              "$ref": "#/$defs/observation_time_domain"
+            },
+            "timestamps_ticks": {
+              "$ref": "#/$defs/ticks"
+            },
+            "manifest_ref": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "manifest_id",
+                "source_id"
+              ],
+              "properties": {
+                "manifest_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "source_id": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_type",
+            "upstream",
+            "derivation"
+          ],
+          "properties": {
+            "source_type": {
+              "const": "teacher_feature"
+            },
+            "upstream": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "system",
+                "origin",
+                "actor",
+                "input_ref",
+                "eligibility"
+              ],
+              "description": "教师变换的输入从哪里来；原样保留原系统枚举，教师变换不改变它",
+              "properties": {
+                "system": {
+                  "enum": [
+                    "awz",
+                    "ainerzero"
+                  ]
+                },
+                "origin": {
+                  "enum": [
+                    "observed",
+                    "external_derived"
+                  ]
+                },
+                "actor": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "actor_id",
+                    "policy_revision"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "student",
+                        "baseline",
+                        "system",
+                        "human_teacher",
+                        "llm_teacher"
+                      ]
+                    },
+                    "actor_id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "policy_revision": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "input_ref": {
+                  "$ref": "#/$defs/file_ref"
+                },
+                "eligibility": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "train",
+                    "basis",
+                    "revision_ref"
+                  ],
+                  "properties": {
+                    "train": {
+                      "type": "boolean"
+                    },
+                    "basis": {
+                      "enum": [
+                        "admit_training",
+                        "adr_0005_default_deny",
+                        "adr_0005_revision",
+                        "not_train_partition"
+                      ]
+                    },
+                    "revision_ref": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "derivation": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "teacher_id",
+                "use",
+                "weights_sha256",
+                "preprocess_spec_sha256"
+              ],
+              "properties": {
+                "teacher_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "use": {
+                  "enum": [
+                    "input",
+                    "target"
+                  ]
+                },
+                "weights_sha256": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "$ref": "#/$defs/sha256"
+                  }
+                },
+                "preprocess_spec_sha256": {
+                  "$ref": "#/$defs/sha256"
+                }
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "upstream": {
+                    "properties": {
+                      "origin": {
+                        "const": "external_derived"
+                      },
+                      "eligibility": {
+                        "properties": {
+                          "basis": {
+                            "not": {
+                              "const": "adr_0005_revision"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "upstream": {
+                    "properties": {
+                      "eligibility": {
+                        "properties": {
+                          "train": {
+                            "const": false
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "upstream": {
+                    "properties": {
+                      "eligibility": {
+                        "properties": {
+                          "basis": {
+                            "const": "adr_0005_revision"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "upstream": {
+                    "properties": {
+                      "eligibility": {
+                        "properties": {
+                          "revision_ref": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "upstream": {
+                    "properties": {
+                      "eligibility": {
+                        "properties": {
+                          "basis": {
+                            "enum": [
+                              "adr_0005_default_deny",
+                              "not_train_partition"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "upstream": {
+                    "properties": {
+                      "eligibility": {
+                        "properties": {
+                          "train": {
+                            "const": false
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "description": "upstream 整体逐项匹配独立可信来源清单；教师 actor 不可改写 origin。ADR revision_ref 非空只满足结构，不构成批准。"
+        },
+        "license": {
+          "$ref": "#/$defs/license",
+          "description": "教师许可与输入许可的交集"
+        },
+        "noise_model_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "store": {
+          "enum": [
+            "shared",
+            "sealed_eval"
+          ]
+        },
+        "as_of_t_s": {
+          "type": "number",
+          "minimum": 0,
+          "description": "只作可核对副本，必须等于可信当前 Observation.t_ticks/120；调用方固定上下文身份，条目不得自行推进截止。"
+        },
+        "as_of_t_ticks": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "properties": {
+                  "partition": {
+                    "const": "final"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "store": {
+                "const": "sealed_eval"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "store": {
+                "const": "shared"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "noise_calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "record_type",
+        "calibration_id",
+        "version",
+        "teacher_family",
+        "quantity",
+        "scene_layer",
+        "data",
+        "alignment",
+        "model",
+        "validation",
+        "status"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "az.v9.teacher_cache.v2"
+        },
+        "record_type": {
+          "const": "noise_calibration"
+        },
+        "calibration_id": {
+          "type": "string",
+          "pattern": "^nc-[a-z0-9][a-z0-9-]*$",
+          "maxLength": 64
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$"
+        },
+        "teacher_family": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "teacher_id",
+            "weights_sha256",
+            "preprocess_spec_sha256"
+          ],
+          "properties": {
+            "teacher_id": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]*$"
+            },
+            "weights_sha256": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/sha256"
+              }
+            },
+            "preprocess_spec_sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "quantity": {
+          "enum": [
+            "camera_pose",
+            "depth_relative",
+            "depth_metric",
+            "point_track",
+            "object_mask"
+          ]
+        },
+        "scene_layer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "setting",
+            "lighting",
+            "shading",
+            "camera_motion",
+            "held_frame_ratio_bin",
+            "occlusion_bin"
+          ],
+          "properties": {
+            "setting": {
+              "enum": [
+                "indoor",
+                "outdoor"
+              ]
+            },
+            "lighting": {
+              "type": "string",
+              "minLength": 1
+            },
+            "shading": {
+              "enum": [
+                "toon",
+                "realistic"
+              ]
+            },
+            "camera_motion": {
+              "enum": [
+                "static",
+                "moving"
+              ]
+            },
+            "held_frame_ratio_bin": {
+              "type": "string",
+              "minLength": 1
+            },
+            "occlusion_bin": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "partition",
+            "world_list_sha256",
+            "n_worlds",
+            "n_samples"
+          ],
+          "properties": {
+            "partition": {
+              "const": "development"
+            },
+            "world_list_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "n_worlds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "n_samples": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "alignment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "params_recorded"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "none",
+                "affine_depth",
+                "se3",
+                "sim3"
+              ]
+            },
+            "params_recorded": {
+              "const": true
+            }
+          }
+        },
+        "model": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "family",
+            "dim",
+            "bias",
+            "cov",
+            "dof",
+            "table_ref"
+          ],
+          "properties": {
+            "family": {
+              "enum": [
+                "gaussian",
+                "student_t",
+                "lookup_table",
+                "association_stats"
+              ]
+            },
+            "dim": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "bias": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "number"
+              }
+            },
+            "cov": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              }
+            },
+            "dof": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "exclusiveMinimum": 2
+            },
+            "table_ref": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "family": {
+                    "const": "student_t"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "dof": {
+                    "type": "number"
+                  },
+                  "cov": {
+                    "type": "array"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "family": {
+                    "const": "gaussian"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "cov": {
+                    "type": "array"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "family": {
+                    "enum": [
+                      "lookup_table",
+                      "association_stats"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "table_ref": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "nees_coverage_95",
+            "n_holdout_worlds"
+          ],
+          "properties": {
+            "nees_coverage_95": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "n_holdout_worlds": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "status": {
+          "enum": [
+            "registered",
+            "insufficient",
+            "failed"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "registered"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "data": {
+                "properties": {
+                  "n_worlds": {
+                    "minimum": 30
+                  }
+                }
+              },
+              "validation": {
+                "properties": {
+                  "n_holdout_worlds": {
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "registered"
+              },
+              "model": {
+                "properties": {
+                  "family": {
+                    "enum": [
+                      "gaussian",
+                      "student_t",
+                      "lookup_table"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "validation": {
+                "properties": {
+                  "nees_coverage_95": {
+                    "type": "number",
+                    "minimum": 0.9,
+                    "maximum": 0.99
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "quantity": {
+                "enum": [
+                  "point_track",
+                  "object_mask"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "model": {
+                "properties": {
+                  "family": {
+                    "const": "association_stats"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "model": {
+                "properties": {
+                  "family": {
+                    "enum": [
+                      "gaussian",
+                      "student_t",
+                      "lookup_table"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "observation_time_domain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "clock",
+        "episode_id",
+        "epoch_id",
+        "tick_hz"
+      ],
+      "properties": {
+        "clock": {
+          "const": "episode_relative"
+        },
+        "episode_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "epoch_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tick_hz": {
+          "const": 120
+        }
+      }
+    },
+    "ticks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "source_manifest_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "world_key",
+        "partition",
+        "upstream",
+        "time_domain"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "world_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "partition": {
+          "$ref": "#/$defs/partition"
+        },
+        "upstream": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "system",
+            "origin",
+            "actor",
+            "input_ref",
+            "eligibility"
+          ],
+          "description": "教师变换的输入从哪里来；原样保留原系统枚举，教师变换不改变它",
+          "properties": {
+            "system": {
+              "enum": [
+                "awz",
+                "ainerzero"
+              ]
+            },
+            "origin": {
+              "enum": [
+                "observed",
+                "external_derived"
+              ]
+            },
+            "actor": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "actor_id",
+                "policy_revision"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "student",
+                    "baseline",
+                    "system",
+                    "human_teacher",
+                    "llm_teacher"
+                  ]
+                },
+                "actor_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "policy_revision": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "input_ref": {
+              "$ref": "#/$defs/file_ref"
+            },
+            "eligibility": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "train",
+                "basis",
+                "revision_ref"
+              ],
+              "properties": {
+                "train": {
+                  "type": "boolean"
+                },
+                "basis": {
+                  "enum": [
+                    "admit_training",
+                    "adr_0005_default_deny",
+                    "adr_0005_revision",
+                    "not_train_partition"
+                  ]
+                },
+                "revision_ref": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "time_domain": {
+          "$ref": "#/$defs/observation_time_domain"
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision_ref",
+        "user_decision_ref",
+        "status",
+        "source_scopes"
+      ],
+      "properties": {
+        "revision_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "user_decision_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "approved",
+            "pending",
+            "rejected"
+          ]
+        },
+        "source_scopes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "manifest_id",
+              "source_id",
+              "world_key",
+              "partition",
+              "input_sha256"
+            ],
+            "properties": {
+              "manifest_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "world_key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "partition": {
+                "$ref": "#/$defs/partition"
+              },
+              "input_sha256": {
+                "$ref": "#/$defs/sha256"
+              }
+            }
+          }
+        }
+      }
+    },
+    "trusted_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "context_id",
+        "synthetic",
+        "source_manifest",
+        "observation",
+        "approval_registry"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "az.v9.teacher_cache.context.v1"
+        },
+        "context_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "synthetic": {
+          "type": "boolean"
+        },
+        "source_manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "manifest_id",
+            "sources"
+          ],
+          "properties": {
+            "manifest_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sources": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/source_manifest_item"
+              }
+            }
+          }
+        },
+        "observation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "packet_ref",
+            "time_domain",
+            "t_ticks",
+            "t_s"
+          ],
+          "properties": {
+            "packet_ref": {
+              "$ref": "#/$defs/file_ref"
+            },
+            "time_domain": {
+              "$ref": "#/$defs/observation_time_domain"
+            },
+            "t_ticks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "t_s": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "approval_registry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "registry_id",
+            "entries"
+          ],
+          "properties": {
+            "registry_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "entries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/approval"
+              }
+            }
+          }
+        }
+      },
+      "description": "独立于待验缓存记录，由调用方固定预期 SHA256（规范 JSON）；schema 合法或自行重算摘要不构成可信。合成夹具 synthetic=true 不是真实来源认证或授权。当前批准登记 entries=[]。"
+    }
+  }
+}

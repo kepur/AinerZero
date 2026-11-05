@@ -1,0 +1,39 @@
+=== Numerical Consistency & Log Verbatim Verification ===
+Current proposal.json SHA256: 31eef66689f82ea79ab50dd4cca7a15b8430c7d44aaf0dbcf0abf98fb989d278
+Declared proposal.sha256: 31eef66689f82ea79ab50dd4cca7a15b8430c7d44aaf0dbcf0abf98fb989d278
+Sealed pre-E18 proposal.json SHA256: 1694ed305c1a80d14ec0bfcf4117e16b246ce82b85c51fab16394e530dda9ff5
+
+1. View Accounting Verification:
+  ledger_views_used_before_run: 199
+  charge_per_complete_run: 50
+  cumulative_view_cap: 249
+  ledger_views_after_this_run: 249
+  scope: line_wide_all_da3_runs_in_central_runstore
+  models forward_views sum: 50, total_planned_forward_views: 50
+
+2. Wall Accounting Verification:
+  ledger_reserved_s: 1320.0
+  approved_run_wall_budget_seconds: 120
+  cumulative_wall_seconds_max: 1440.0
+  wall_accounting cumulative_cap_s: 1440.0
+  ledger_reserved_after_this_run_s: 1440.0
+  single_run_wall_seconds_max: 1200
+  Check passed: approved_run_wall_budget_seconds (120) <= single_run_wall_seconds_max (1200)
+
+3. Execution & Safety Controls:
+  retry_allowed: False
+  status: proposal_unapproved
+  execution_permitted: False
+
+4. E17 Historical Numbers Preservation:
+  view_accounting.e17_t6_counter_figures: {'cumulative_view_cap': 131, 'ledger_views_used_before_run': 81}
+  wall_accounting.e17_t6_counter_figures: {'cumulative_cap_s': 1290, 'ledger_reserved_s': 1170}
+  Found E17 in previous_revisions: {'kept_at': 'reports/V9-T28/r2/pre-E18-1694ed30/', 'note': 'after E17; reviewed by V9.T50 (pass); before E18', 'sha256': '1694ed305c1a80d14ec0bfcf4117e16b246ce82b85c51fab16394e530dda9ff5'}
+
+5. Verbatim and Proposal Text Verification with RESEARCH_LOG.md:
+  amendment verbatim: 'Whole line, 249/1440'
+  view_accounting verbatim: 'Whole line, 249/1440'
+  Found exact verbatim quote '「Whole line, 249/1440」' in RESEARCH_LOG.md
+  approved_proposal text:
+    Which counter should the DA3 quota use? | option: DA3 配额按全线合计记账：累计视图上限 249（已用 199 + 50）、累计墙钟上限 1440 s（已用 1320 + 120），单次 120 s，只跑一次不重试；并修掉 sitecustomize 按任务 ID 分账的漏洞。
+  All approved proposal items verified in RESEARCH_LOG.md (lines 1500-1506).

@@ -1,0 +1,202 @@
+{
+  "task": "ainerzero.V9.T9",
+  "mode": "deliberate-break-controls",
+  "mutations": [
+    "M1-merge-boundary-le",
+    "M2-retention-denominator",
+    "M3-no-restoration-propagation",
+    "M4-drop-first-frame"
+  ],
+  "controls": [
+    {
+      "mutation": "M1-merge-boundary-le",
+      "sha256": "de2631920b082d3669d09fb3b65cad53af496c9e0d2546e3d7a5e7b6413096d7",
+      "ok": true,
+      "turned_red": true,
+      "failed_checks": 42,
+      "expected_case": "tau_boundary_equal",
+      "expected_check": "retained_values",
+      "expected_hit": true,
+      "sample_failures": [
+        {
+          "label": "M1-merge-boundary-le",
+          "case": "tau_boundary_equal",
+          "check": "retained_count",
+          "ok": false,
+          "detail": "impl K=2 oracle K=4"
+        },
+        {
+          "label": "M1-merge-boundary-le",
+          "case": "tau_boundary_equal",
+          "check": "artifact_lengths",
+          "ok": false,
+          "detail": "K mismatch: retained=2 runs=2 positions=2"
+        },
+        {
+          "label": "M1-merge-boundary-le",
+          "case": "tau_boundary_equal",
+          "check": "positions_order",
+          "ok": false,
+          "detail": "retained token spatial order differs from oracle row-major order"
+        },
+        {
+          "label": "M1-merge-boundary-le",
+          "case": "tau_boundary_equal",
+          "check": "retained_values",
+          "ok": false,
+          "detail": "retained feature vectors differ from oracle"
+        },
+        {
+          "label": "M1-merge-boundary-le",
+          "case": "tau_boundary_equal",
+          "check": "run_lengths",
+          "ok": false,
+          "detail": "run lengths differ from oracle"
+        }
+      ]
+    },
+    {
+      "mutation": "M2-retention-denominator",
+      "sha256": "64b69dde968a8285fe0415e97ff878e81385dbca1c74f0e7977882ac5cb05616",
+      "ok": true,
+      "turned_red": true,
+      "failed_checks": 18,
+      "expected_case": "long_static_1000",
+      "expected_check": "retention_rate",
+      "expected_hit": true,
+      "sample_failures": [
+        {
+          "label": "M2-retention-denominator",
+          "case": "periodic_flicker_above_tau",
+          "check": "retention_rate",
+          "ok": false,
+          "detail": "impl rate=0.96 oracle=1.0"
+        },
+        {
+          "label": "M2-retention-denominator",
+          "case": "periodic_flicker_above_tau",
+          "check": "recompute_from_artifacts",
+          "ok": false,
+          "detail": "K=24 rate=1.0 reported=0.96"
+        },
+        {
+          "label": "M2-retention-denominator",
+          "case": "periodic_flicker_below_tau",
+          "check": "retention_rate",
+          "ok": false,
+          "detail": "impl rate=0.16 oracle=0.16666666666666666"
+        },
+        {
+          "label": "M2-retention-denominator",
+          "case": "periodic_flicker_below_tau",
+          "check": "recompute_from_artifacts",
+          "ok": false,
+          "detail": "K=4 rate=0.16666666666666666 reported=0.16"
+        },
+        {
+          "label": "M2-retention-denominator",
+          "case": "single_pixel_change",
+          "check": "retention_rate",
+          "ok": false,
+          "detail": "impl rate=0.2391304347826087 oracle=0.24444444444444444"
+        }
+      ]
+    },
+    {
+      "mutation": "M3-no-restoration-propagation",
+      "sha256": "2d2cb2e26a99ee79ab63b979851b8b52202c1c228b6271350525366312c3c980",
+      "ok": true,
+      "turned_red": true,
+      "failed_checks": 16,
+      "expected_case": "periodic_flicker_below_tau",
+      "expected_check": "restoration_merged_token",
+      "expected_hit": true,
+      "sample_failures": [
+        {
+          "label": "M3-no-restoration-propagation",
+          "case": "periodic_flicker_below_tau",
+          "check": "restoration_merged_token",
+          "ok": false,
+          "detail": "merged (1,0,0) not filled from token"
+        },
+        {
+          "label": "M3-no-restoration-propagation",
+          "case": "periodic_flicker_below_tau",
+          "check": "restoration_merged_token",
+          "ok": false,
+          "detail": "merged (3,0,0) not filled from token"
+        },
+        {
+          "label": "M3-no-restoration-propagation",
+          "case": "periodic_flicker_below_tau",
+          "check": "restoration_merged_token",
+          "ok": false,
+          "detail": "merged (5,0,0) not filled from token"
+        },
+        {
+          "label": "M3-no-restoration-propagation",
+          "case": "periodic_flicker_below_tau",
+          "check": "restoration_merged_token",
+          "ok": false,
+          "detail": "merged (1,0,1) not filled from token"
+        },
+        {
+          "label": "M3-no-restoration-propagation",
+          "case": "periodic_flicker_below_tau",
+          "check": "restoration_merged_token",
+          "ok": false,
+          "detail": "merged (3,0,1) not filled from token"
+        }
+      ]
+    },
+    {
+      "mutation": "M4-drop-first-frame",
+      "sha256": "9fcfe9763a8ac5c094b0bc066780d7adb3736b7fa31e57eb4fe1e1a512886016",
+      "ok": true,
+      "turned_red": true,
+      "failed_checks": 153,
+      "expected_case": "single_frame_T1",
+      "expected_check": "retained_count",
+      "expected_hit": true,
+      "sample_failures": [
+        {
+          "label": "M4-drop-first-frame",
+          "case": "periodic_flicker_above_tau",
+          "check": "retained_count",
+          "ok": false,
+          "detail": "impl K=20 oracle K=24"
+        },
+        {
+          "label": "M4-drop-first-frame",
+          "case": "periodic_flicker_above_tau",
+          "check": "artifact_lengths",
+          "ok": false,
+          "detail": "K mismatch: retained=20 runs=20 positions=20"
+        },
+        {
+          "label": "M4-drop-first-frame",
+          "case": "periodic_flicker_above_tau",
+          "check": "positions_order",
+          "ok": false,
+          "detail": "retained token spatial order differs from oracle row-major order"
+        },
+        {
+          "label": "M4-drop-first-frame",
+          "case": "periodic_flicker_above_tau",
+          "check": "retained_values",
+          "ok": false,
+          "detail": "retained feature vectors differ from oracle"
+        },
+        {
+          "label": "M4-drop-first-frame",
+          "case": "periodic_flicker_above_tau",
+          "check": "run_lengths",
+          "ok": false,
+          "detail": "run lengths differ from oracle"
+        }
+      ]
+    }
+  ],
+  "all_controls_turned_red": true,
+  "tmp_root": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/v9t9-mutations-ku9hw8pw"
+}

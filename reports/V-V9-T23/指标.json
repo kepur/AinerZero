@@ -1,0 +1,126 @@
+{
+  "task_id": "ainerzero.V9.T24",
+  "verified_task_id": "ainerzero.V9.T23",
+  "verifier": "gemini-kzer",
+  "author_under_review": "gemini-w9p4",
+  "is_non_author": true,
+  "verdict": "accepted",
+  "pure_cpu": true,
+  "real_model_runs": 0,
+  "no_download_install": true,
+  "no_production_db": true,
+  "inspection_zero_side_effects": {
+    "verified": true,
+    "lock_files_created": 0,
+    "db_files_created": 0,
+    "mlx_loaded": false,
+    "coreml_loaded": false,
+    "weights_loaded": false
+  },
+  "concurrency_mutual_exclusion": {
+    "verified": true,
+    "flock_contention_exit_code": 4,
+    "flock_contention_status": "skipped_lock_busy"
+  },
+  "fail_closed_gates": {
+    "approval_gate": {
+      "verified": true,
+      "exit_code": 3,
+      "status": "refused_approval"
+    },
+    "per_run_budget_gate": {
+      "verified": true,
+      "limit_seconds": 600.0,
+      "exit_code": 5,
+      "status": "refused_budget"
+    },
+    "cumulative_budget_gate": {
+      "verified": true,
+      "limit_seconds": 1800.0,
+      "exit_code": 5,
+      "status": "refused_budget"
+    },
+    "resource_gate": {
+      "verified": true,
+      "max_rss_gib": 32.0,
+      "exit_code": 2,
+      "status": "refused_resource"
+    }
+  },
+  "pre_reservation_audit": {
+    "verified": true,
+    "atomic_consume_before_adapter": true,
+    "crash_refund_prohibited": true,
+    "failed_run_budget_retained": true
+  },
+  "model_manifest_audit": {
+    "verified": true,
+    "total_files": 12,
+    "total_disk_bytes": 1459675816,
+    "historical_transfer_payload_bytes": 1655306028,
+    "vjepa": {
+      "files_count": 5,
+      "disk_bytes": 1310663844,
+      "revision": "b0674736bad10eb16bd765942a9065e7e2ee9a54"
+    },
+    "depth_anything_v2": {
+      "files_count": 7,
+      "disk_bytes": 149011972,
+      "revision": "cfef6f6f2a70783dedc0bfae40cecbc2052285d3"
+    }
+  },
+  "isolated_source_mutations": {
+    "count": 4,
+    "all_passed_3_way": true,
+    "all_turned_red": true,
+    "all_inverse_sha_restored": true,
+    "mutations": [
+      {
+        "id": "MUT-01",
+        "name": "approval_gate_sabotage",
+        "gate": "approval",
+        "positive_legal_passed": true,
+        "target_bad_turned_red": true,
+        "unrelated_bad_retained": true,
+        "inverse_sha_restored": true
+      },
+      {
+        "id": "MUT-02",
+        "name": "per_run_budget_gate_sabotage",
+        "gate": "per_run_budget",
+        "positive_legal_passed": true,
+        "target_bad_turned_red": true,
+        "unrelated_bad_retained": true,
+        "inverse_sha_restored": true
+      },
+      {
+        "id": "MUT-03",
+        "name": "cumulative_budget_gate_sabotage",
+        "gate": "cumulative_budget",
+        "positive_legal_passed": true,
+        "target_bad_turned_red": true,
+        "unrelated_bad_retained": true,
+        "inverse_sha_restored": true
+      },
+      {
+        "id": "MUT-04",
+        "name": "resource_gate_sabotage",
+        "gate": "resource_rss",
+        "positive_legal_passed": true,
+        "target_bad_turned_red": true,
+        "unrelated_bad_retained": true,
+        "inverse_sha_restored": true
+      }
+    ]
+  },
+  "production_db_isolation": {
+    "runs_db_written": false,
+    "relay_db_written": false,
+    "only_isolated_temp_stores_used": true
+  },
+  "code_hygiene": {
+    "product_bypasses_found": 0,
+    "fake_backends_found": 0,
+    "ruff_check_passed": true
+  }
+}

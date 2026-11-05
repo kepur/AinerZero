@@ -1,0 +1,188 @@
+{
+  "task": "ainerzero.V9.T5",
+  "audited_task": "ainerzero.V9.T4",
+  "audited_author": "antigravity-h4d8",
+  "auditor": "gemini-7a2b",
+  "timestamp": "2026-10-26T15:27:38.944026+03:00",
+  "dimensions": {
+    "dimension_1_download_sha_and_budget": {
+      "passed": true,
+      "total_files": 12,
+      "total_bytes": 1459675816,
+      "total_gb": 1.3594290390610695,
+      "budget_limit_gb": 2.0,
+      "all_shas_matched": true
+    },
+    "dimension_2_licenses_and_revisions": {
+      "passed": true,
+      "vjepa": {
+        "expected_revision": "b0674736bad10eb16bd765942a9065e7e2ee9a54",
+        "api_revision": "b0674736bad10eb16bd765942a9065e7e2ee9a54",
+        "license": "mit",
+        "matched": true
+      },
+      "da2": {
+        "expected_revision": "cfef6f6f2a70783dedc0bfae40cecbc2052285d3",
+        "api_revision": "cfef6f6f2a70783dedc0bfae40cecbc2052285d3",
+        "license": "apache-2.0",
+        "matched": true
+      }
+    },
+    "dimension_3_isolation_and_scope": {
+      "passed": true,
+      "checks": [
+        {
+          "check": "main_env_freeze_zero_diff",
+          "passed": true
+        },
+        {
+          "check": "no_torch_in_venv_t4",
+          "passed": true
+        },
+        {
+          "check": "no_jax_in_venv_t4",
+          "passed": true
+        },
+        {
+          "check": "src_teachers_unmodified_by_t4",
+          "passed": true
+        },
+        {
+          "check": "no_teacher_cache_written",
+          "passed": true
+        }
+      ]
+    },
+    "dimension_4_numerical_verification": {
+      "passed": true,
+      "checks": [
+        {
+          "check": "vjepa_bit_exact_determinism",
+          "passed": true
+        },
+        {
+          "check": "vjepa_output_shape_4608_1024",
+          "passed": true
+        },
+        {
+          "check": "vjepa_batch_invariance",
+          "passed": true,
+          "max_diff": 0.0
+        },
+        {
+          "check": "vjepa_f16_cosine_sim_gt_0.999",
+          "passed": true,
+          "cosine_sim": 0.9999987483024597
+        },
+        {
+          "check": "da2_f16_bit_exact_determinism",
+          "passed": true
+        },
+        {
+          "check": "da2_f16_f32_correlations",
+          "passed": true,
+          "pearson_r": 0.9999473714341442,
+          "spearman_rho": 0.999920888406155
+        },
+        {
+          "check": "da2_synthetic_ramp_ordering",
+          "passed": true,
+          "top_mean": 0.8683878779411316,
+          "bottom_mean": 0.42881083488464355
+        }
+      ]
+    },
+    "dimension_6_counterexamples": {
+      "passed": true,
+      "count": 7
+    }
+  },
+  "benchmark_spot_check": {
+    "da2_small_coreml_cpu_and_ne": {
+      "reported_median_s": 0.02593255043029785,
+      "spot_median_s": 0.026189565658569336,
+      "reported_fps": 38.56157544888709,
+      "spot_fps": 38.18314564803772,
+      "percentage_deviation": 0.9910912116503783,
+      "durations_s": [
+        0.026007890701293945,
+        0.026469945907592773,
+        0.025985002517700195,
+        0.026139259338378906,
+        0.02780890464782715,
+        0.026675939559936523,
+        0.026239871978759766,
+        0.026078224182128906,
+        0.026244163513183594,
+        0.02603292465209961
+      ]
+    },
+    "vjepa2_1_vitl_mlx_gpu": {
+      "reported_median_s": 0.8994979858398438,
+      "spot_median_s": 1.2009670734405518,
+      "reported_fps": 17.78769964121833,
+      "spot_fps": 13.322596725456357,
+      "percentage_deviation": 33.51525988345957,
+      "durations_s": [
+        0.7800352573394775,
+        1.2988781929016113,
+        1.2298588752746582,
+        1.1792750358581543,
+        1.2009670734405518
+      ]
+    }
+  },
+  "counterexamples": [
+    {
+      "id": "CE1_TAMPERED_FILE_SHA_TURNS_RED",
+      "description": "Mutating bytes of downloaded asset causes SHA-256 integrity check to turn red",
+      "expected_sha": "3424969988eab48453eafd1fbc4fadb1b1dff79ad89f44b819a845a8c1dd2529",
+      "tampered_sha": "6ebc0cbe288b0a4caaa143590f1809f3444d01653a37408fb2c2094a6cfdadb4",
+      "turned_red": true,
+      "passed": true
+    },
+    {
+      "id": "CE2_UNAUTHORIZED_TORCH_PACKAGE_IN_MAIN_ENV_TURNS_RED",
+      "description": "Injecting unauthorized torch package into main env freeze comparison turns red",
+      "turned_red": true,
+      "passed": true
+    },
+    {
+      "id": "CE3_FLIPPED_RAMP_TURNS_RED",
+      "description": "Inverting synthetic ramp vertically causes depth ordering assertion (top > bottom) to turn red",
+      "top_mean": 0.2680411636829376,
+      "bottom_mean": 0.8784151077270508,
+      "turned_red": true,
+      "passed": true
+    },
+    {
+      "id": "CE4_SCRAMBLED_VJEPA_WEIGHT_TURNS_RED",
+      "description": "Scrambling V-JEPA MLP weights drops cosine similarity to ~0.75, turning >= 0.999 check red",
+      "cosine_similarity": 0.7589883804321289,
+      "threshold": 0.999,
+      "turned_red": true,
+      "passed": true
+    },
+    {
+      "id": "CE5_WRONG_INPUT_FRAMES_TURNS_RED",
+      "description": "Feeding 15 frames instead of 16 causes output shape to diverge from [1, 4608, 1024], turning check red",
+      "turned_red": true,
+      "passed": true
+    },
+    {
+      "id": "CE6_UNIFORM_NOISE_DEPTH_CORRELATION_TURNS_RED",
+      "description": "Corrupted depth array has near-zero Pearson correlation (~0.00), turning > 0.999 check red",
+      "measured_correlation": 0.0010929558819428328,
+      "threshold": 0.999,
+      "turned_red": true,
+      "passed": true
+    },
+    {
+      "id": "CE7_ALTERED_HF_REVISION_TURNS_RED",
+      "description": "Tampered repository revision string turns online HF revision check red",
+      "turned_red": true,
+      "passed": true
+    }
+  ],
+  "verdict": "recommend_accept"
+}

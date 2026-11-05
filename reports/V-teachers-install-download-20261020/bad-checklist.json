@@ -1,0 +1,76 @@
+{
+  "bad_cases": [
+    {
+      "id": "BAD1_wrong_revision",
+      "description": "把 vjepa revision 改成 deadbeef…，要求与原 T4/T21 固定 revision 不一致即失败",
+      "independent_ok": false,
+      "independent_reasons_sample": [
+        "rev:README.md",
+        "revpath:README.md",
+        "rev:config.json",
+        "revpath:config.json",
+        "rev:encoder.safetensors",
+        "revpath:encoder.safetensors",
+        "rev:predictor.safetensors",
+        "revpath:predictor.safetensors"
+      ],
+      "independent_reason_count": 10,
+      "author_verify_rc": 1,
+      "author_verify_nonzero": true,
+      "pass_as_bad": true,
+      "author_tail": "Traceback (most recent call last):\n  File \"/Users/mac/AinerWorkFlow/AinerZero/envs/teachers/t4/verify_stage1_20261020.py\", line 17, in <module>\n    assert item['revision'] in item['path']\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "id": "BAD2_wrong_hash",
+      "description": "把 README.md 声明 sha256 改为全 0，与磁盘真实内容不符即失败",
+      "independent_ok": false,
+      "independent_reasons_sample": [
+        "sha:README.md"
+      ],
+      "independent_reason_count": 1,
+      "author_verify_rc": 1,
+      "author_verify_nonzero": true,
+      "pass_as_bad": true,
+      "author_tail": "ceback (most recent call last):\n  File \"/Users/mac/AinerWorkFlow/AinerZero/envs/teachers/t4/verify_stage1_20261020.py\", line 14, in <module>\n    path=Path(item['path']);assert path.is_file() and path.stat().st_size==item['bytes'];assert sha(path)==item['sha256']\n                                                                                                ^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "id": "BAD3_over_budget_bytes",
+      "description": "伪造 payload_bytes=2000000001（>2GB）与 network-live，预算守卫必须失败",
+      "independent_ok": false,
+      "independent_reasons_sample": [
+        "budget:2000000001>2000000000"
+      ],
+      "independent_reason_count": 1,
+      "author_verify_rc": 1,
+      "author_verify_nonzero": true,
+      "pass_as_bad": true,
+      "author_tail": "Traceback (most recent call last):\n  File \"/Users/mac/AinerWorkFlow/AinerZero/envs/teachers/t4/verify_stage1_20261020.py\", line 19, in <module>\n    assert actual==complete['payload_bytes']<=2_000_000_000\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+    },
+    {
+      "id": "BAD4_out_of_scope_file",
+      "description": "清单加入未批准的 DepthAnythingV2LargeF16…（T4 明确不下其他变体），白名单/存在性必须失败",
+      "independent_ok": false,
+      "independent_reasons_sample": [
+        "missing:DepthAnythingV2LargeF16.mlpackage/Data/com.apple.CoreML/weights/weight.bin"
+      ],
+      "independent_reason_count": 1,
+      "author_verify_rc": 1,
+      "author_verify_nonzero": true,
+      "pass_as_bad": true,
+      "author_tail": "Traceback (most recent call last):\n  File \"/Users/mac/AinerWorkFlow/AinerZero/envs/teachers/t4/verify_stage1_20261020.py\", line 14, in <module>\n    path=Path(item['path']);assert path.is_file() and path.stat().st_size==item['bytes'];assert sha(path)==item['sha256']\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError\n"
+    }
+  ],
+  "bad_pass_count": 4,
+  "bad_required": 4,
+  "all_four_bad_nonzero": true,
+  "good_independent_ok": true,
+  "good_reasons": [],
+  "disk_guard_fixed": {
+    "ok": true,
+    "free_before_bytes": 3426762874880,
+    "free_after_bytes": 3395093061632,
+    "free_now_bytes": 3394836602880
+  },
+  "originals_untouched": true,
+  "note": "坏清单仅在临时目录/内存中变异清单，未改 T21 产物或权重文件"
+}

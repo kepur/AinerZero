@@ -1,0 +1,70 @@
+{
+  "task": "ainerzero.V9.T6",
+  "agent": "gemini-kzer",
+  "round": "r4",
+  "timestamp": "2026-10-26T23:01:00+03:00",
+  "status": "RESOURCE_BLOCKED_RETRYABLE",
+  "reason": "Host running on Battery Power (AC disconnected) and cumulative views quota reached 63/64 views in central RunStore. Per coordinator ruling, power gate spoofing is prohibited. Ready for continuation card upon AC connection.",
+  "acceptance_criteria_verification": {
+    "1_isolated_env": {
+      "status": "PASSED",
+      "env_path": "envs/teachers/.venv-t6",
+      "python_version": "3.12.10",
+      "pytorch_version": "2.14.1",
+      "da3_repo_commit": "3d835ec1a5802d64a8b8b15f817a1ab54809bfe4",
+      "no_touch_main_env": true,
+      "no_touch_t4_env": true
+    },
+    "2_bounded_guarded_execution": {
+      "status": "REFUSED_RESOURCE",
+      "central_cli_entry": "python3 -m ainerzero.cli teacher-da3",
+      "exit_code": 2,
+      "quota_check": {
+        "cumulative_views": 63,
+        "requested_views": 18,
+        "projected_views": 81,
+        "max_views_ceiling": 64,
+        "status": "refused_quota_exceeded"
+      },
+      "hardware_check": {
+        "power_source": "battery",
+        "ac_connected": false,
+        "battery_percent": 84,
+        "status": "refused_ac_required"
+      }
+    },
+    "3_predictions_archived": {
+      "status": "PASSED",
+      "predictions_root": "reports/V9-T6/r4/predictions/",
+      "manifest_path": "reports/V9-T6/r4/predictions/predictions_manifest.json",
+      "total_files": 60,
+      "total_bytes": 109777368,
+      "manifest_sha256": "7d5b700703927322e60b3647f60af170f3b0be271d9baa46fac6faf27cb369ec"
+    },
+    "4_noise_calibration": {
+      "status": "candidate_unregistered",
+      "registration_decision": "candidate_only_not_certified",
+      "convention_disclosure": {
+        "rotation_offset_deg": 180.0,
+        "covariance_rank": 2,
+        "covariance_rank_ceiling": 2
+      }
+    },
+    "5_unit_tests_and_mutations": {
+      "status": "PASSED",
+      "unit_tests_ran": 21,
+      "unit_tests_passed": 21,
+      "source_controls_passed": 4
+    },
+    "6_file_scope_respected": {
+      "status": "PASSED",
+      "allowed_dirs": [
+        "envs/teachers/t6/",
+        "envs/teachers/.venv-t6/",
+        "artifacts/teachers/da3/",
+        "reports/V9-T6/"
+      ],
+      "violations": []
+    }
+  }
+}

@@ -1,0 +1,455 @@
+### src/ainerzero/v9/teachers/da3_calibration_runner.py
+--- reports/V9-T40/evidence/t37-accepted/da3_calibration_runner.py	2026-10-28 00:02:45
++++ src/ainerzero/v9/teachers/da3_calibration_runner.py	2026-10-28 00:03:42
+@@ -21,6 +21,7 @@
+ import gc
+ import hashlib
+ import json
++import os
+ import re
+ import sys
+ import time
+@@ -51,7 +52,8 @@
+ REPO_ROOT = Path(__file__).resolve().parents[4]
+ T6_ENV_DIR = REPO_ROOT / "envs/teachers/t6"
+ FIXTURES_DIR = REPO_ROOT / "reports/V9-T6/r2-calib-fixtures"
+-PROPOSAL_PATH = REPO_ROOT / "reports/V9-T28/proposal.json"
++# 默认仍指向 r1；r2 登记（一级对精确 SHA 签字）之前不切换。由 --proposal 或环境变量 T6_PROPOSAL_PATH 显式指定。
++PROPOSAL_PATH = Path(os.environ["T6_PROPOSAL_PATH"]) if os.environ.get("T6_PROPOSAL_PATH") else REPO_ROOT / "reports/V9-T28/proposal.json"
+ GENERATOR_PATH = T6_ENV_DIR / "prepare_calibration_fixtures.py"
+ 
+ EXIT_OK, EXIT_ERROR, EXIT_PREFLIGHT, EXIT_STAGE_FAILED, EXIT_UNSATISFIABLE = 0, 1, 2, 5, 6
+@@ -128,9 +130,10 @@
+     for m in models[1:]:
+         if [s["stage"] for s in m["stages"]] != [s["stage"] for s in stages0]:
+             raise PreflightError("T28 stage lists differ between variants; refusing to guess")
+-    m_adv = re.search(r"focal_x by\s*([0-9.]+)\s*and focal_y by\s*([0-9.]+)", p["negative_controls"]["intrinsics"])
++    adv_text = p["negative_controls"].get("intrinsics")          # r2 去掉了内参逆向控制
++    m_adv = re.search(r"focal_x by\s*([0-9.]+)\s*and focal_y by\s*([0-9.]+)", adv_text) if adv_text is not None else None
+     m_red = re.search(r"max\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\*\s*S_clean\s*\)", p["negative_controls"]["required_red"])
+-    if not (m_adv and m_red):
++    if not m_red or (adv_text is not None and not m_adv):
+         raise PreflightError("cannot parse T28 adverse-intrinsics / required_red rule")
+     par = p["numerical_parity"]
+     return Plan(
+@@ -141,7 +144,7 @@
+         variants=tuple(m["variant"] for m in models), stages=tuple(stages0),
+         calls_per_variant=int(models[0]["forward_calls"]), views_per_variant=int(models[0]["forward_views"]),
+         known_intrinsics=bool(p["profile"]["known_intrinsics"]),
+-        focal_scale=(float(m_adv.group(1)), float(m_adv.group(2))),
++        focal_scale=(float(m_adv.group(1)), float(m_adv.group(2))) if m_adv else (1.0, 1.0),
+         red_floor=float(m_red.group(1)), red_rel=float(m_red.group(2)),
+         parity_fields=tuple(par["fields"]),
+         parity_cpu=(float(par["cpu_float32"]["atol"]), float(par["cpu_float32"]["rtol"])),
+@@ -237,11 +240,21 @@
+ 
+ 
+ # ───────────────────────────── 运行 ─────────────────────────────
++def _write_atomic(path: Path, ev: Mapping[str, Any]) -> None:
++    """临时文件 + rename：任何时刻读到的都是完整 JSON。"""
++    path = Path(path)
++    path.parent.mkdir(parents=True, exist_ok=True)
++    tmp = path.with_name(path.name + ".tmp")
++    tmp.write_text(json.dumps(ev, indent=2, ensure_ascii=False, default=float), encoding="utf-8")
++    os.replace(tmp, path)
++
++
+ class _Run:
+     def __init__(self, plan, data, factory, pred_dir, task_id, round_):
+         self.plan, self.data, self.factory, self.pred_dir = plan, data, factory, Path(pred_dir)
+         self.task_id, self.round = task_id, round_
+         self.failures: list[str] = []
++        self.checkpoint: Callable[[], None] = lambda: None   # 由 run_full_calibration 接上：每阶段后原子落盘
+         self.ev: dict[str, Any] = {"calibration": {}, "numerical_parity": {}, "negative_controls": {}, "stages": {},
+                                    "forward_accounting": {}}
+ 
+@@ -281,6 +294,7 @@
+ 
+     def run_variant(self, variant: str) -> None:
+         plan, st = self.plan, {}
++        self.ev["stages"][variant] = st          # 同一个 dict，阶段一完成就可见
+         cur, t = None, None
+         acc = {"calls": 0, "views": 0}
+         load_s: dict[str, float] = {}
+@@ -316,6 +330,7 @@
+                 calib = {"per_world": per_world, "fit": M.fit_statistics(fit),
+                          "holdout_residual_mean": np.mean(np.asarray(hold), axis=0).tolist()}
+                 st[name] = {"ok": True, "worlds": list(per_world)}
++                self.ev["calibration"][variant] = calib
+             elif name in ("frame_order_adverse", "intrinsics_adverse"):
+                 w = stage["worlds"][0]
+                 if s_clean is None:
+@@ -341,6 +356,11 @@
+             else:
+                 raise RuntimeError(f"unknown T28 stage {name!r}")
+             st[name]["wall_s"] = round(time.time() - t_stage, 3)
++            self.ev["forward_accounting"][variant] = {
++                "calls_so_far": acc["calls"] + (t.calls if t else 0), "views_so_far": acc["views"] + (t.views if t else 0),
++                "calls_planned": plan.calls_per_variant, "views_planned": plan.views_per_variant, "complete": False}
++            self.ev["failures"] = list(self.failures)
++            self.checkpoint()                       # MPS fp16 的 dtype 错误是 SIGABRT(134)，进程直接消失：之前每个阶段的证据必须已经在盘上
+         if t is not None:
+             acc["calls"] += t.calls
+             acc["views"] += t.views
+@@ -349,7 +369,7 @@
+         self.ev["calibration"][variant] = calib
+         planned = {"calls_planned": plan.calls_per_variant, "views_planned": plan.views_per_variant}
+         actual = {"calls_actual": acc["calls"], "views_actual": acc["views"], "load_s": load_s}
+-        self.ev["forward_accounting"][variant] = {**planned, **actual}
++        self.ev["forward_accounting"][variant] = {**planned, **actual, "complete": True}
+         if (acc["calls"], acc["views"]) != (plan.calls_per_variant, plan.views_per_variant):
+             self.failures.append(f"{variant}: forward accounting {acc} != T28 plan "
+                                  f"({plan.calls_per_variant} calls, {plan.views_per_variant} views)")
+@@ -394,6 +414,11 @@
+                             "protocol_sha256": plan.shas["protocol"], "generator_sha256": plan.shas["generator"],
+                             "process_res": plan.process_res, "variants": list(plan.variants)},
+                "preflight_checks": checks, "claims_forbidden": list(plan.claims_forbidden)})
++    ev["protocol"]["proposal_path"] = str(Path(proposal_path).resolve())
++    ev["status"] = "in_progress"
++    ev["failures"] = []
++    run.checkpoint = lambda: _write_atomic(out_json, ev)
++    run.checkpoint()                                  # 硬中止（SIGABRT 等）时至少留下这份：status 仍为 in_progress
+     code = EXIT_OK
+     try:
+         for variant in plan.variants:
+@@ -412,8 +437,7 @@
+     ev["status"] = plan.output_status if not run.failures else "failed"
+     ev["registration"] = "none; no noise-model registration, no NEES, no capability claim"
+     ev["total_wall_seconds"] = round(time.time() - t0, 2)
+-    out_json.parent.mkdir(parents=True, exist_ok=True)
+-    out_json.write_text(json.dumps(ev, indent=2, ensure_ascii=False, default=float), encoding="utf-8")
++    _write_atomic(out_json, ev)
+     return ev, code
+ 
+ 
+@@ -423,17 +447,20 @@
+     ap.add_argument("--predictions-dir", type=Path, required=True)
+     ap.add_argument("--task", default="ainerzero.V9.T35")
+     ap.add_argument("--round", default="unbound")
++    ap.add_argument("--proposal", type=Path, default=None,
++                    help="T28 proposal.json 路径；默认 T6_PROPOSAL_PATH 或 r1。证据会记录路径与 SHA")
+     ap.add_argument("--preflight-only", action="store_true",
+                     help="zero model work, zero ledger: verify hashes, outputs and protocol satisfiability, then exit")
+     a = ap.parse_args(argv)
+     try:
+         if a.preflight_only:
+-            plan = load_plan()
++            plan = load_plan(a.proposal or PROPOSAL_PATH)
+             load_fixtures(FIXTURES_DIR, plan)
+             checks = preflight(plan, RealTeacherFactory(), a.predictions_dir, a.output)
+             print(json.dumps({"preflight": "ok", "checks": checks}))
+             return EXIT_OK
+-        ev, code = run_full_calibration(a.output, a.predictions_dir, a.task, round_=a.round)
++        ev, code = run_full_calibration(a.output, a.predictions_dir, a.task, round_=a.round,
++                                        proposal_path=a.proposal or PROPOSAL_PATH)
+         print(f"calibration status={ev['status']} failures={len(ev['failures'])} wall={ev['total_wall_seconds']}s")
+         return code
+     except PreflightError as e:
+### src/ainerzero/v9/teachers/da3_calibration_math.py
+### src/ainerzero/v9/teachers/da3_worker.py
+--- reports/V9-T40/evidence/t37-accepted/da3_worker.py	2026-10-28 00:02:45
++++ src/ainerzero/v9/teachers/da3_worker.py	2026-10-28 00:04:09
+@@ -227,6 +227,27 @@
+             if runner_proc.returncode != 0:
+                 sys.stderr.write(f"Real DA3 calibration runner failed with exit code {runner_proc.returncode}\n")
+                 return runner_proc.returncode
++
++        if not runner_executed:
++            # 已授权真实执行、中央账本多半已按 spec.views 预扣，但标定 runner 一次都没启动：必须大声拒绝，
++            # 不能返回 completed。T37 只把 model_runs 改成了如实的 0，仍会出现"预扣视图、零前向、rc=0"的陷阱（T38 §3.2）。
++            refusal = {
++                "status": "refused_no_calibration",
++                "mode": "real_pipeline",
++                "task": task_id,
++                "worker_pid": pid,
++                "worker_pgid": pgid,
++                "model_runs": 0,
++                "real_forward_executed": False,
++                "is_mock": False,
++                "requested_views": views,
++                "reason": ("authorized to execute, but no calibration was run: the calibration runner only starts for views == 18. "
++                           "Nothing was executed and nothing should be counted as a run."),
++            }
++            args.output_file.parent.mkdir(parents=True, exist_ok=True)
++            args.output_file.write_text(json.dumps(refusal, indent=2), encoding="utf-8")
++            sys.stderr.write(f"Real DA3 execution refused: no calibration was run for views={views} (runner requires views == 18).\n")
++            return 4
+ 
+         result = {
+             "status": "completed",
+@@ -234,7 +255,6 @@
+             "task": task_id,
+             "worker_pid": pid,
+             "worker_pgid": pgid,
+-            # 如实：只有标定 runner 真的跑过才算一次模型运行。此前 views != 18 时也写 model_runs=1，实际一次前向都没有。
+             "model_runs": 1 if runner_executed else 0,
+             "real_forward_executed": runner_executed,
+             "note": None if runner_executed else "no real calibration executed: the runner only runs for views == 18",
+### src/ainerzero/v9/teachers/da3_controlled.py
+--- reports/V9-T40/evidence/t37-accepted/da3_controlled.py	2026-10-28 00:13:58
++++ src/ainerzero/v9/teachers/da3_controlled.py	2026-10-28 00:11:11
+@@ -934,7 +934,11 @@
+     )
+ 
+     # Resolve effective worker action
+-    action = worker_action or ("real_pipeline" if is_released else "mock_run")
++    # V9.T40：CPU 测试替身永远不得走真实管线。此前这里不看 test_substitute，只要同时给了放行/授权标志，"测试替身"照样走 real_pipeline；
++    # 单元测试 test_coordinator_release_gate_and_cli 没真跑模型，纯粹因为 views=4 被 worker 的 views==18 魔数挡住了。
++    if test_substitute and worker_action == "real_pipeline":
++        raise BenchmarkRefusalError("test substitute mode must never reach the real pipeline worker")
++    action = worker_action or ("mock_run" if test_substitute else ("real_pipeline" if is_released else "mock_run"))
+     effective_allow_model = allow_model_execution or is_released
+ 
+     # Step 9: CLI worker_lock acquisition
+### tests/test_da3_calibration_runner.py
+--- reports/V9-T40/evidence/t37-accepted/test_da3_calibration_runner.py	2026-10-28 00:02:45
++++ tests/test_da3_calibration_runner.py	2026-10-28 00:12:00
+@@ -74,7 +74,10 @@
+         c2w, depth = [], []
+         for k, (_, v) in enumerate(idx):
+             g = views[v]["c2w"]
+-            r = self.Q @ g[:3, :3] @ _rot("y", k * extra)
++            # pose_noise>0：每个世界、每个位置给不同的绕 z 小转角，使 7 维残差在各世界之间真的不同（否则协方差恒≈0，
++            # 无法区分分母 N 与 N-1、也看不出 holdout 是否混入 fit）。
++            wnoise = self.f.pose_noise * (int(str(world_key)[-1]) + 1) * k
++            r = self.Q @ g[:3, :3] @ _rot("y", k * extra) @ _rot("z", wnoise)
+             c2w.append(np.vstack([np.hstack([r, (self.scale * (self.Q @ g[:3, 3]) + self.t0)[:, None]]), [0, 0, 0, 1]]))
+             depth.append(views[v]["depth"] * self.scale)
+         depth = np.stack(depth).astype(np.float32)
+@@ -86,13 +89,16 @@
+                "intrinsics": np.stack([views[v]["K"] for _, v in idx]).astype(np.float32)}
+         eps = {("cpu", "float32"): self.f.cpu_eps, ("mps", "float16"): self.f.half_eps}.get((self.device, self.dtype), 0.0)
+         if eps:
+-            out = {k2: v2 * (1 + eps) for k2, v2 in out.items()}
++            only = self.f.eps_only_field          # None=全部字段；否则只扰动该字段（T38 NEW-5：对拍不能退化成只比 depth）
++            out = {k2: (v2 * (1 + eps) if only in (None, k2) else v2) for k2, v2 in out.items()}
+         out["pose_3x4"] = out["extrinsics"]
+         return out
+ 
+ 
+ class FakeFactory:
+-    def __init__(self, data, capable=True, by_content=True, k_effect=True, cpu_eps=5e-4, half_eps=5e-3, out_hw=None):
++    def __init__(self, data, capable=True, by_content=True, k_effect=True, cpu_eps=5e-4, half_eps=5e-3, out_hw=None,
++                 eps_only_field=None, pose_noise=0.0):
++        self.eps_only_field, self.pose_noise = eps_only_field, pose_noise
+         self.data, self.conditions_on_intrinsics_only = data, capable
+         self.by_content, self.k_effect, self.cpu_eps, self.half_eps, self.out_hw = by_content, k_effect, cpu_eps, half_eps, out_hw
+         self.calls, self.made, self.live, self.max_live = [], [], 0, 0
+@@ -278,7 +284,7 @@
+         cal = ev["calibration"][v]
+         assert set(cal["per_world"]) == set(plan.fit_worlds) | set(plan.holdout_worlds)
+         assert max(abs(x) for w in cal["per_world"].values() for x in w["residual_7d"]) < 1e-3
+-        assert cal["fit"]["rank"] == cal["fit"]["rank_ceiling"] == 2 or cal["fit"]["rank"] <= 2
++        assert cal["fit"]["n_fit"] == 3 and cal["fit"]["rank_ceiling"] == 2 and cal["fit"]["rank"] <= 2
+         for adv in ("frame_order_adverse", "intrinsics_adverse"):
+             s = ev["stages"][v][adv]
+             assert s["turned_red"] and s["S_bad"] >= s["S_clean"] + s["required_margin"]
+@@ -361,6 +367,7 @@
+     这里的修订版只是测试夹具，不是已登记的协议。"""
+     p = json.loads(T28.read_text())
+     p["profile"]["known_intrinsics"] = False
++    del p["negative_controls"]["intrinsics"]      # r2 真的删了这个键；漏删正是 T40 之前 load_plan 在 r2 上 KeyError 却没被抓到的原因
+     for m in p["budget"]["models"]:
+         m["stages"] = [s for s in m["stages"] if s["stage"] != "intrinsics_adverse"]
+         m["forward_calls"], m["forward_views"] = 10, 28          # 1+6 次校准+逆序+CPU+半精度；1+18+3+3+3
+@@ -375,3 +382,134 @@
+         assert (acc["calls_actual"], acc["views_actual"]) == (10, 28)
+         assert "intrinsics_adverse" not in ev["stages"][v]
+     assert all(c[5] is False for c in f.calls), "未知 K 的协议下不得传入 intrinsics"
++
++
++# ═════════════════════════ V9.T40：r2 驱动、证据落盘、统计口径、CLI 参数 ═════════════════════════
++import subprocess  # noqa: E402
++import sys  # noqa: E402
++
++R2_PROPOSAL = REPO / "reports/V9-T28/r2/proposal.json"
++needs_r2 = pytest.mark.skipif(not R2_PROPOSAL.is_file(), reason="T28 r2 draft not present")
++
++
++@needs_r2
++def test_real_r2_proposal_drives_the_runner_end_to_end(tmp_path, data):
++    """用磁盘上真实的 r2 proposal.json（而不是测试里拼出来的）整条跑通。T38 之前这里 load_plan 抛 KeyError('intrinsics')。"""
++    plan2 = R.load_plan(R2_PROPOSAL)
++    assert plan2.known_intrinsics is False and "intrinsics_adverse" not in [s["stage"] for s in plan2.stages]
++    f = FakeFactory(data, capable=False)                       # 与真实 DA3 相同的能力位
++    ev, code = R.run_full_calibration(tmp_path / "ev.json", tmp_path / "preds", "t40-r2", teacher_factory=f, proposal_path=R2_PROPOSAL)
++    assert code == 0 and ev["failures"] == []
++    for v in plan2.variants:
++        acc = ev["forward_accounting"][v]
++        assert acc["complete"] is True
++        assert (acc["calls_actual"], acc["views_actual"]) == (plan2.calls_per_variant, plan2.views_per_variant)
++    assert ev["protocol"]["proposal_path"].endswith("reports/V9-T28/r2/proposal.json")
++    assert ev["protocol"]["proposal_sha256"] == plan2.shas["proposal"]
++    assert all(c[5] is False for c in f.calls), "r2 不给 teacher 任何内参"
++
++
++@needs_r2
++def test_proposal_selection_by_flag_and_env_and_preflight_exit_codes(tmp_path):
++    """默认仍是 r1（不可满足 → 6）；--proposal 指向 r2 则预检通过（0）；环境变量 T6_PROPOSAL_PATH 同样生效。零模型。"""
++    args = ["--preflight-only", "--output", str(tmp_path / "e.json"), "--predictions-dir", str(tmp_path / "p")]
++    assert R.main(args) == R.EXIT_UNSATISFIABLE
++    assert R.main(args + ["--proposal", str(R2_PROPOSAL)]) == R.EXIT_OK
++    code = ("import importlib.util,sys;"
++            f"s=importlib.util.spec_from_file_location('r',{str(REPO / 'src/ainerzero/v9/teachers/da3_calibration_runner.py')!r});"
++            "m=importlib.util.module_from_spec(s);sys.modules['r']=m;s.loader.exec_module(m);print(m.PROPOSAL_PATH)")
++    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
++                         env={**__import__("os").environ, "T6_PROPOSAL_PATH": str(R2_PROPOSAL)})
++    assert out.stdout.strip() == str(R2_PROPOSAL), out.stderr[-300:]
++
++
++def _run_with_hard_abort(tmp_path, abort_at):
++    """子进程里跑 runner；在第一次或最后一个阶段的 make() 里 os._exit(134)，复现 Metal 断言的 SIGABRT（无异常、进程直接消失）。"""
++    plan2 = R.load_plan(R2_PROPOSAL)
++    last = plan2.stages[-1]
++    cond = "True" if abort_at == "first" else f"(device, dtype) == ({last['device']!r}, {last['precision']!r})"
++    script = tmp_path / "abort_run.py"
++    script.write_text(f"""
++import importlib.util, os, sys
++spec = importlib.util.spec_from_file_location("t_mod", {str(REPO / 'tests/test_da3_calibration_runner.py')!r})
++T = importlib.util.module_from_spec(spec); sys.modules["t_mod"] = T; spec.loader.exec_module(T)
++R = T.R
++plan = R.load_plan({str(R2_PROPOSAL)!r})
++data = R.load_fixtures(R.FIXTURES_DIR, plan)
++f = T.FakeFactory(data, capable=False)
++real_make = f.make
++def make(variant, device, dtype):
++    if {cond}:
++        os._exit(134)
++    return real_make(variant, device, dtype)
++f.make = make
++R.run_full_calibration({str(tmp_path / 'ev.json')!r}, {str(tmp_path / 'preds')!r}, "abort-test", teacher_factory=f, proposal_path={str(R2_PROPOSAL)!r})
++""")
++    r = subprocess.run([sys.executable, str(script)], capture_output=True, text=True)
++    assert r.returncode == 134, (r.returncode, r.stderr[-500:])
++    return plan2, json.loads((tmp_path / "ev.json").read_text())
++
++
++@needs_r2
++def test_hard_abort_in_the_last_stage_keeps_every_finished_stage(tmp_path):
++    """MPS fp16 的 dtype 错误是 SIGABRT(134)。旧实现只在最后写证据，会什么都不留。"""
++    plan2 = R.load_plan(R2_PROPOSAL)
++    assert (plan2.stages[-1]["device"], plan2.stages[-1]["precision"]) != (plan2.stages[-2]["device"], plan2.stages[-2]["precision"]), \
++        "最后一个阶段必须触发一次新的 make()"
++    plan2, ev = _run_with_hard_abort(tmp_path, "last")
++    assert ev["status"] == "in_progress"
++    assert list(ev["stages"][plan2.variants[0]]) == [s["stage"] for s in plan2.stages[:-1]]
++    assert plan2.variants[1] not in ev["stages"], "中止发生在第一个型号的最后阶段，第二个型号还没开始"
++    assert ev["calibration"][plan2.variants[0]]["per_world"], "已完成阶段的结果必须已经在盘上"
++    assert ev["forward_accounting"][plan2.variants[0]]["complete"] is False
++    assert not (tmp_path / "ev.json.tmp").exists()
++
++
++@needs_r2
++def test_hard_abort_before_the_first_stage_still_leaves_an_in_progress_record(tmp_path):
++    """第一次加载模型就中止（例如 MPS 初始化失败）：此时没有任何阶段完成，开始时写的那份 in_progress 是唯一的痕迹。"""
++    plan2, ev = _run_with_hard_abort(tmp_path, "first")
++    assert ev["status"] == "in_progress" and ev["stages"] == {} and ev["failures"] == []
++    assert ev["protocol"]["proposal_sha256"] == plan2.shas["proposal"]
++
++
++def test_atomic_evidence_write_never_leaves_a_partial_file(tmp_path):
++    out = tmp_path / "sub" / "ev.json"
++    R._write_atomic(out, {"a": 1})
++    R._write_atomic(out, {"a": 2, "b": [1, 2]})
++    assert json.loads(out.read_text()) == {"a": 2, "b": [1, 2]} and not list(out.parent.glob("*.tmp"))
++
++
++# ── T38 NEW-5：对拍不能退化成只比 depth ──
++@pytest.mark.parametrize("field", ["depth", "confidence", "extrinsics", "intrinsics"])
++def test_cpu_parity_catches_a_violation_in_each_single_field(tmp_path, data, field):
++    ev, code = _run(tmp_path, FakeFactory(data, cpu_eps=0.05, eps_only_field=field))
++    assert code == R.EXIT_STAGE_FAILED, f"只有 {field} 越界时对拍必须失败"
++    fields = ev["numerical_parity"]["DA3-SMALL"]["cpu_parity"]["fields"]
++    assert fields[field]["pass"] is False and fields[field]["failed_elements"] > 0
++    assert all(fields[f]["pass"] for f in fields if f != field), "未被扰动的字段不应失败"
++
++
++# ── T38 NEW-6 / NEW-8：fit 统计只来自 fit 世界，且协方差用 ddof=1 ──
++def test_fit_statistics_use_only_fit_worlds_and_unbiased_covariance(tmp_path, data, plan):
++    ev, code = _run(tmp_path, FakeFactory(data, pose_noise=0.01))
++    assert code == 0, ev["failures"]
++    for v in plan.variants:
++        cal = ev["calibration"][v]
++        fit = np.array([cal["per_world"][w]["residual_7d"] for w in plan.fit_worlds])
++        hold = np.array([cal["per_world"][w]["residual_7d"] for w in plan.holdout_worlds])
++        assert np.abs(fit).max() > 1e-3, "噪声必须真的进入残差，否则这条测试什么也区分不了"
++        assert cal["fit"]["n_fit"] == 3
++        np.testing.assert_allclose(cal["fit"]["mean"], fit.mean(axis=0), atol=1e-12)
++        np.testing.assert_allclose(cal["fit"]["covariance"], np.cov(fit.T, ddof=1), atol=1e-12, rtol=1e-9)
++        np.testing.assert_allclose(cal["holdout_residual_mean"], hold.mean(axis=0), atol=1e-12)
++        assert not np.allclose(cal["fit"]["mean"], np.vstack([fit, hold]).mean(axis=0), atol=1e-6), "holdout 混入 fit 会让均值变化"
++
++
++def test_fit_statistics_unit_matches_numpy_ddof1():
++    x = np.random.default_rng(3).normal(size=(5, 7))
++    st = M.fit_statistics(list(x))
++    np.testing.assert_allclose(st["covariance"], np.cov(x.T, ddof=1), atol=1e-12)
++    np.testing.assert_allclose(st["mean"], x.mean(axis=0), atol=1e-12)
++    assert st["n_fit"] == 5 and st["rank_ceiling"] == 4
++
+### tests/test_da3_supervision.py
+--- reports/V9-T40/evidence/t37-accepted/test_da3_supervision.py	2026-10-28 00:02:45
++++ tests/test_da3_supervision.py	2026-10-28 00:05:58
+@@ -376,15 +376,15 @@
+         capture_output=True,
+         text=True,
+     )
+-    assert res_released.returncode == 0
++    # V9.T40：已授权但 views != 18，标定 runner 一次都没启动。此前这里期望 rc=0/status=completed——那是在把"什么都没做"
++    # 报成"完成"，中央账本却已预扣视图。语义更正为大声拒绝（rc=4），不是放宽。
++    assert res_released.returncode == 4
+     assert output_released_json.is_file()
+     data_released = json.loads(output_released_json.read_text())
+-    assert data_released["status"] == "completed"
+-    assert data_released["coordinator_released"] is True
+-    assert data_released["pipeline_verified"] is True
+-    # V9.T37：views != 18 时 worker 一次前向都没做，不得再谎报 model_runs=1。
++    assert data_released["status"] == "refused_no_calibration"
+     assert data_released["model_runs"] == 0
+     assert data_released["real_forward_executed"] is False
++    assert "no calibration was run" in data_released["reason"]
+ 
+ 
+ # ==============================================================================
+### tests/test_teacher_da3_controlled.py
+--- reports/V9-T40/evidence/t37-accepted/test_teacher_da3_controlled.py	2026-10-28 00:13:58
++++ tests/test_teacher_da3_controlled.py	2026-10-28 00:12:00
+@@ -560,8 +560,38 @@
+         allow_custom_paths=True,
+     )
+     assert res["status"] == "completed"
++
++
++def test_test_substitute_never_selects_the_real_pipeline_even_when_released(
++    tmp_path: Path, valid_t6_research_log: Path, valid_statistical_protocol: Path, monkeypatch
++):
++    """V9.T40：放行 + 授权 + views=18 + test_substitute。旧代码把 action 选成 real_pipeline，等于在单元测试里启动真实 DA3 前向
++    （test_coordinator_release_gate_and_cli 没真跑，纯粹因为 views=4 被 worker 的 views==18 魔数挡住）。
++    探针截获 worker_action，**不调用任何真实 worker**；走不到探针就失败（用 seen["action"]，没有默认值可以空过）。"""
++    from ainerzero.v9.teachers import da3_controlled as DC
++
++    seen = {}
++
++    def spy(spec, worker_action="real_pipeline", **kw):
++        seen["action"] = worker_action
++        if worker_action != "mock_run":
++            raise AssertionError(f"test substitute reached worker_action={worker_action!r}")
++        return {"status": "completed", "model_runs": 0, "is_mock": True}, {
++            "violation": None, "peak_rss_bytes": 0, "empty_group_proven": True, "pgid": 1, "worker_pid": 1,
++            "elapsed_seconds": 0.0, "returncode": 0, "stdout": "", "stderr": "", "confirmed_empty": True}
+ 
++    monkeypatch.setattr(DC, "run_supervised_da3_worker", spy)
++    spec = DA3RunSpec(
++        model="da3-small", wall_budget_seconds=10.0, views=18, research_log_path=valid_t6_research_log,
++        store_path=tmp_path / "runs.db", lock_path=tmp_path / "t.lock", weights_root=Path("artifacts/teachers/da3"),
++        statistical_protocol_path=valid_statistical_protocol, coordinator_release=True, allow_model_execution=True,
++    )
++    DC.execute_guarded_da3_benchmark(spec=spec, test_substitute=True, allow_custom_paths=True)
++    assert seen["action"] == "mock_run"
++    with pytest.raises(BenchmarkRefusalError, match="never reach the real pipeline"):
++        DC.execute_guarded_da3_benchmark(spec=spec, test_substitute=True, allow_custom_paths=True, worker_action="real_pipeline")
+ 
++
+ def test_four_source_mutation_controls(
+     tmp_path: Path,
+     valid_t6_research_log: Path,

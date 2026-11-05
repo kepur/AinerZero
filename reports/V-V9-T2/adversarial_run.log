@@ -1,0 +1,43 @@
+[normal ] C01 exit=1 FAIL(finding)  blob.reproducibility 篡改提升训练准入
+[normal ] C02 exit=1 FAIL(finding)  entry/blob 许可篡改提升训练准入
+[normal ] C03 exit=1 FAIL(finding)  同 entry_id 不同内容被静默覆盖
+[normal ] C04 exit=1 FAIL(finding)  write_blob 产物不通过契约 schema
+[normal ] C05 exit=1 FAIL(finding)  条目 derivation 换模型后写入/读取放行
+[normal ] C06 exit=1 FAIL(finding)  blob.key_material 被换模型后读路径不核验
+[normal ] C07 exit=1 FAIL(finding)  契约合法内容块被实现误判 broken
+[normal ] C08 exit=1 FAIL(finding)  Train Mode 下常驻教师句柄仍可产出
+[normal ] C09 exit=1 FAIL(finding)  World Mode TTL 过期后句柄不失效
+[normal ] C10 exit=1 FAIL(finding)  模式切换无内存回落检查 unload_incomplete
+[normal ] C11 exit=1 FAIL(finding)  并发同键不同输出丢失 nondeterministic 拒绝
+[normal ] C12 exit=1 FAIL(finding)  并发同键跨分区写入 TOCTOU
+[poison ] C01 exit=1 RED  blob.reproducibility 篡改提升训练准入
+[poison ] C02 exit=1 RED  entry/blob 许可篡改提升训练准入
+[poison ] C03 exit=1 RED  同 entry_id 不同内容被静默覆盖
+[poison ] C04 exit=1 RED  write_blob 产物不通过契约 schema
+[poison ] C05 exit=1 RED  条目 derivation 换模型后写入/读取放行
+[poison ] C06 exit=1 RED  blob.key_material 被换模型后读路径不核验
+[poison ] C07 exit=1 RED  契约合法内容块被实现误判 broken
+[poison ] C08 exit=1 RED  Train Mode 下常驻教师句柄仍可产出
+[poison ] C09 exit=1 RED  World Mode TTL 过期后句柄不失效
+[poison ] C10 exit=1 RED  模式切换无内存回落检查 unload_incomplete
+[poison ] C11 exit=1 RED  并发同键不同输出丢失 nondeterministic 拒绝
+[poison ] C12 exit=1 RED  并发同键跨分区写入 TOCTOU
+--- findings=12 control_failures=0 poison_not_red=0 exit=1
+        9.38 real        11.20 user         2.92 sys
+            33226752  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+              384171  page reclaims
+                8192  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                 565  voluntary context switches
+                5832  involuntary context switches
+           997975020  instructions retired
+           403684238  cycles elapsed
+            21725712  peak memory footprint

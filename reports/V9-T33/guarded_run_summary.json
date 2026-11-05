@@ -1,0 +1,40 @@
+{
+  "task": "ainerzero.V9.T33",
+  "round": "r2",
+  "timestamp": "2026-10-26T23:23:00+03:00",
+  "status": "RESOURCE_BUDGET_BLOCKED_RETRYABLE",
+  "reason": "Host on real AC power. Code fixes complete (safetensors metadata embedded to eliminate SHA duplication; redundant DA3-SMALL loads eliminated; lock path verified as artifacts/locks/m0-worker.lock). Central RunStore intercepted execution: daily_active_time_budget reached 1200.0/1200.0s for 2026-10-26 (rc=5), and cumulative views reached 72/64 views (rc=2).",
+  "hardware_status": {
+    "power_source": "ac",
+    "ac_attached": true,
+    "battery_spoofing": false
+  },
+  "lock_evidence": {
+    "lock_path": "artifacts/locks/m0-worker.lock",
+    "status": "verified"
+  },
+  "ledger_interceptions": {
+    "daily_budget": {
+      "local_date": "2026-10-26",
+      "limit_seconds": 1200.0,
+      "reserved_seconds": 1200.0,
+      "available_seconds": 0.0,
+      "exit_code": 5,
+      "interception": "EXIT_REFUSED_BUDGET"
+    },
+    "views_quota": {
+      "cumulative_views": 54,
+      "requested_views": 18,
+      "projected_views": 72,
+      "max_views": 64,
+      "exit_code": 2,
+      "interception": "EXIT_REFUSED_RESOURCE"
+    }
+  },
+  "pipeline_improvements": {
+    "safetensors_metadata": true,
+    "redundant_model_loads_removed": 3,
+    "worker_latency_target_s": 3.5,
+    "single_resident_model_respected": true
+  }
+}

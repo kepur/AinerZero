@@ -1,0 +1,27 @@
+# T45 视图预检顺序与派生路径探针日志
+# 仓库：/Users/mac/AinerWorkFlow/AinerZero
+
+## 0. 账本初始状态
+中央账本副本路径: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/t45-probe-2x5hemy8/runs.db
+累计预留墙钟: 1170.0s
+累计已用视图: 81 / 82 (距上限仅剩 1 视图)
+账本 SHA256: 64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f
+
+## 1. 执行派生请求 (views=17, worker_action=None, coordinator_release=True)
+捕获异常类型: BenchmarkRefusalError
+异常消息: Real DA3 pipeline execution requires views == 18 (current registered calibration views specification), but got views=17. Refused before reservation and consumption.
+异常 details: {'requested_views': 17, 'required_views': 18, 'action': 'real_pipeline', 'derived_from_release': True}
+
+## 2. 预检门先行性验证结论
+- 错误类型为 BenchmarkRefusalError（标定视图口径拒绝），而非 BenchmarkResourceRefused/BenchmarkBudgetRefused（配额错误）。
+- 错误消息不含 'quota'，真因准确报告为 views != 18。
+- details 包含 derived_from_release=True，确认派生路径正确被拦截。
+
+## 3. 零副作用核对
+- 账本视图数: 81 -> 81 (完全未变)
+- 账本墙钟数: 1170.0s -> 1170.0s (完全未变)
+- 账本 SHA256: 64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f -> 64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f (逐字节未变)
+- Worker 调用次数: 0 (未启动)
+- 锁文件存在: False (未创建)
+
+## 结论：验证完全通过！视图预检先于配额检查，且保持零扣账、零启动、零锁。

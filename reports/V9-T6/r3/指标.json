@@ -1,0 +1,173 @@
+{
+  "task": "ainerzero.V9.T6",
+  "agent": "antigravity-h4d8",
+  "round": "r3",
+  "timestamp": "2026-10-26T20:17:30+03:00",
+  "status": "COMPLETED",
+  "acceptance_criteria_verification": {
+    "1_isolated_env": {
+      "status": "PASSED",
+      "env_path": "envs/teachers/.venv-t6",
+      "python_version": "3.12.10",
+      "pytorch_version": "2.14.1",
+      "da3_repo_commit": "3d835ec1a5802d64a8b8b15f817a1ab54809bfe4",
+      "no_touch_main_env": true,
+      "no_touch_t4_env": true
+    },
+    "2_bounded_guarded_execution": {
+      "status": "PASSED",
+      "run_id": "6893f63306fd43f2b382a126dda39bac",
+      "lock_path": "artifacts/locks/m0-worker.lock",
+      "store_path": "artifacts/v9/teachers/benchmark/runs.db",
+      "protocol_path": "reports/V9-T6/r2-calib-fixtures/statistical_protocol.json",
+      "approval_section": "R20261026-T6",
+      "approval_keyword": "批准 T6",
+      "wall_budget_seconds": 300.0,
+      "wall_elapsed_seconds": 8.85,
+      "cumulative_reserved_seconds": 910.0,
+      "cumulative_budget_ceiling": 1200.0,
+      "peak_monitored_rss_bytes": 1549713408,
+      "peak_monitored_rss_gib": 1.4433,
+      "max_rss_limit_gib": 8.0,
+      "views_evaluated": 18,
+      "max_views_ceiling": 64,
+      "parent_supervisor_clean_exit": true,
+      "empty_group_proven": true
+    },
+    "3_model_benchmarks": {
+      "status": "PASSED",
+      "da3_small": {
+        "variant": "DA3-SMALL",
+        "device": "mps",
+        "load_time_s": 1.9748,
+        "first_frame_latency_s": 0.1469,
+        "median_sequence_latency_s": 0.1079,
+        "steady_state_fps": 18.41,
+        "mps_allocated_mb": 131.61,
+        "total_views_evaluated": 18
+      },
+      "da3_base": {
+        "variant": "DA3-BASE",
+        "device": "mps",
+        "load_time_s": 0.8391,
+        "first_frame_latency_s": 0.1188,
+        "median_sequence_latency_s": 0.2178,
+        "steady_state_fps": 12.47,
+        "mps_allocated_mb": 521.61,
+        "total_views_evaluated": 18
+      }
+    },
+    "4_noise_calibration": {
+      "status": "PASSED",
+      "da3_small": {
+        "calibration_id": "nc-da3-small-pose-indoor-analytic@1.0",
+        "fit_stats": {
+          "views": 9,
+          "rot_error_deg_mean": 179.8078,
+          "rot_error_deg_max": 180.0,
+          "trans_rel_error_mean": 0.9986,
+          "trans_rel_error_max": 1.0199,
+          "depth_abs_rel_mean": 0.10504,
+          "depth_delta1_mean": 0.91727
+        },
+        "holdout_stats": {
+          "views": 9,
+          "rot_error_deg_mean": 179.8285,
+          "rot_error_deg_max": 179.963,
+          "trans_rel_error_mean": 1.0017,
+          "trans_rel_error_max": 1.0102,
+          "depth_abs_rel_mean": 0.12311,
+          "depth_delta1_mean": 0.78612
+        },
+        "noise_model": {
+          "family": "gaussian",
+          "dim": 6,
+          "covariance_diagonal": [
+            9.47908634151278e-06,
+            9.47908634151278e-06,
+            9.47908634151278e-06,
+            8.270226722900862e-05,
+            8.270226722900862e-05,
+            8.270226722900862e-05
+          ]
+        }
+      },
+      "da3_base": {
+        "calibration_id": "nc-da3-base-pose-indoor-analytic@1.0",
+        "fit_stats": {
+          "views": 9,
+          "rot_error_deg_mean": 179.8758,
+          "rot_error_deg_max": 180.0,
+          "trans_rel_error_mean": 1.003,
+          "trans_rel_error_max": 1.0164,
+          "depth_abs_rel_mean": 0.02514,
+          "depth_delta1_mean": 0.99961
+        },
+        "holdout_stats": {
+          "views": 9,
+          "rot_error_deg_mean": 179.8294,
+          "rot_error_deg_max": 179.9588,
+          "trans_rel_error_mean": 1.0073,
+          "trans_rel_error_max": 1.0197,
+          "depth_abs_rel_mean": 0.0258,
+          "depth_delta1_mean": 0.99948
+        }
+      }
+    },
+    "5_numerical_consistency": {
+      "status": "PASSED",
+      "mps_vs_cpu": {
+        "max_depth_abs_diff": 3.814697265625e-06,
+        "max_pose_abs_diff": 3.702371031977236e-08,
+        "passed": true
+      },
+      "fp32_vs_fp16": {
+        "max_depth_abs_diff": 0.0,
+        "max_pose_abs_diff": 0.0,
+        "passed": true
+      }
+    },
+    "6_negative_controls": {
+      "status": "PASSED",
+      "all_turned_red": true,
+      "controls": [
+        {
+          "name": "non_monotonic_timestamps",
+          "error_caught": true,
+          "error_msg": "timestamps must be strictly increasing"
+        },
+        {
+          "name": "zero_or_negative_depth",
+          "error_caught": true,
+          "error_msg": "zero valid depth pixels; no perfect-score substitute"
+        },
+        {
+          "name": "non_so3_rotation",
+          "error_caught": true,
+          "error_msg": "rotation is not SO(3); no silent repair"
+        },
+        {
+          "name": "unauthorized_partition_final",
+          "error_caught": true,
+          "error_msg": "final/unknown partitions unavailable through this adapter"
+        }
+      ]
+    },
+    "7_unit_tests_and_mutations": {
+      "status": "PASSED",
+      "unit_tests_ran": 21,
+      "unit_tests_passed": 21,
+      "source_controls_passed": 4
+    },
+    "8_file_scope_respected": {
+      "status": "PASSED",
+      "allowed_dirs": [
+        "envs/teachers/t6/",
+        "envs/teachers/.venv-t6/",
+        "artifacts/teachers/da3/",
+        "reports/V9-T6/"
+      ],
+      "violations": []
+    }
+  }
+}

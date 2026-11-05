@@ -1,0 +1,573 @@
+==============================================================================
+新版 r2 (86f5ece6) vs r1 (af3131a5)
+A = ../V9-T28/proposal.json
+B = ../V9-T28/r2/proposal.json
+==============================================================================
+
+叶子总数: A=238  B=306  变化叶子=166
+变化的顶层键: ['amendment', 'author', 'budget', 'claims_forbidden[6]', 'execution_prerequisites[1]', 'execution_prerequisites[3]', 'execution_prerequisites[6]', 'execution_prerequisites[7]', 'negative_controls', 'numerical_parity', 'open_items[0]', 'open_items[1]', 'open_items[2]', 'open_items[3]', 'profile', 'protocol_id', 'residual_vector', 'review_task', 'supersedes']
+
+--- 1) 叶子级差异（完全显式）---
+/author
+    A: "codex"
+    B: "claude-az"
+/budget/cumulative_wall_seconds_max
+    A: 1200
+    B: null
+/budget/models[0]/forward_calls
+    A: 11
+    B: 9
+/budget/models[0]/forward_views
+    A: 31
+    B: 25
+/budget/models[0]/stages[3]/device
+    A: "mps"
+    B: "cpu"
+/budget/models[0]/stages[3]/stage
+    A: "intrinsics_adverse"
+    B: "cpu_parity"
+/budget/models[0]/stages[4]/calls
+    A: 1
+    B: "<absent>"
+/budget/models[0]/stages[4]/device
+    A: "cpu"
+    B: "<absent>"
+/budget/models[0]/stages[4]/frames_per_call
+    A: 3
+    B: "<absent>"
+/budget/models[0]/stages[4]/precision
+    A: "float32"
+    B: "<absent>"
+/budget/models[0]/stages[4]/stage
+    A: "cpu_parity"
+    B: "<absent>"
+/budget/models[0]/stages[4]/views[0]
+    A: 0
+    B: "<absent>"
+/budget/models[0]/stages[4]/views[1]
+    A: 1
+    B: "<absent>"
+/budget/models[0]/stages[4]/views[2]
+    A: 2
+    B: "<absent>"
+/budget/models[0]/stages[4]/worlds[0]
+    A: "t6-analytic-room-00"
+    B: "<absent>"
+/budget/models[0]/stages[5]/calls
+    A: 1
+    B: "<absent>"
+/budget/models[0]/stages[5]/device
+    A: "mps"
+    B: "<absent>"
+/budget/models[0]/stages[5]/frames_per_call
+    A: 3
+    B: "<absent>"
+/budget/models[0]/stages[5]/precision
+    A: "float16"
+    B: "<absent>"
+/budget/models[0]/stages[5]/stage
+    A: "half_parity"
+    B: "<absent>"
+/budget/models[0]/stages[5]/views[0]
+    A: 0
+    B: "<absent>"
+/budget/models[0]/stages[5]/views[1]
+    A: 1
+    B: "<absent>"
+/budget/models[0]/stages[5]/views[2]
+    A: 2
+    B: "<absent>"
+/budget/models[0]/stages[5]/worlds[0]
+    A: "t6-analytic-room-00"
+    B: "<absent>"
+/budget/models[1]/forward_calls
+    A: 11
+    B: 9
+/budget/models[1]/forward_views
+    A: 31
+    B: 25
+/budget/models[1]/stages[3]/device
+    A: "mps"
+    B: "cpu"
+/budget/models[1]/stages[3]/stage
+    A: "intrinsics_adverse"
+    B: "cpu_parity"
+/budget/models[1]/stages[4]/calls
+    A: 1
+    B: "<absent>"
+/budget/models[1]/stages[4]/device
+    A: "cpu"
+    B: "<absent>"
+/budget/models[1]/stages[4]/frames_per_call
+    A: 3
+    B: "<absent>"
+/budget/models[1]/stages[4]/precision
+    A: "float32"
+    B: "<absent>"
+/budget/models[1]/stages[4]/stage
+    A: "cpu_parity"
+    B: "<absent>"
+/budget/models[1]/stages[4]/views[0]
+    A: 0
+    B: "<absent>"
+/budget/models[1]/stages[4]/views[1]
+    A: 1
+    B: "<absent>"
+/budget/models[1]/stages[4]/views[2]
+    A: 2
+    B: "<absent>"
+/budget/models[1]/stages[4]/worlds[0]
+    A: "t6-analytic-room-00"
+    B: "<absent>"
+/budget/models[1]/stages[5]/calls
+    A: 1
+    B: "<absent>"
+/budget/models[1]/stages[5]/device
+    A: "mps"
+    B: "<absent>"
+/budget/models[1]/stages[5]/frames_per_call
+    A: 3
+    B: "<absent>"
+/budget/models[1]/stages[5]/precision
+    A: "float16"
+    B: "<absent>"
+/budget/models[1]/stages[5]/stage
+    A: "half_parity"
+    B: "<absent>"
+/budget/models[1]/stages[5]/views[0]
+    A: 0
+    B: "<absent>"
+/budget/models[1]/stages[5]/views[1]
+    A: 1
+    B: "<absent>"
+/budget/models[1]/stages[5]/views[2]
+    A: 2
+    B: "<absent>"
+/budget/models[1]/stages[5]/worlds[0]
+    A: "t6-analytic-room-00"
+    B: "<absent>"
+/budget/total_planned_forward_calls
+    A: 22
+    B: 18
+/budget/total_planned_forward_views
+    A: 62
+    B: 50
+/budget/unallocated_views
+    A: 2
+    B: 14
+/execution_prerequisites[1]
+    A: "T29 independent math review and lead immutable SHA registration"
+    B: "T39 independent math review of r2 (different author) and lead immutable SHA registration of the final r2 SHA"
+/execution_prerequisites[3]
+    A: "known-K adapter accepts frozen K and records exact preprocessing and source SHA, different-author CPU review before execution"
+    B: "teacher adapter records exact preprocessing (process_res=280), source SHA and the predicted intrinsics; supplies no K and no extrinsics; calibration runner reviewed by a different author (ainerzero.V9.T37 / T38) and bound by SHA"
+/negative_controls/intrinsics
+    A: "multiply only focal_x by1.5 and focal_y by0.75 for all3views; retain positive focal and principal point"
+    B: "<absent>"
+/negative_controls/same_clean_profile
+    A: "all positive calls conditioned on exact frozen K; adverse K uses predeclared changed K"
+    B: "all positive calls use the same model-estimated-K profile; no K is supplied to any call"
+/numerical_parity/reference
+    A: "world00 known-K MPS-F32 calibration output"
+    B: "world00 MPS-F32 calibration output (model-estimated K)"
+/profile/assumption
+    A: "known-K synthetic input, not blind intrinsic recovery, metric scale or Blender generalization"
+    B: "no camera parameters are supplied to the teacher (neither intrinsics nor extrinsics); the teacher's own focal readout is descriptive only and is not a conditioning; not known-K conditioned, not blind intrinsic recovery, not metric scale, not Blender generalization"
+/profile/known_intrinsics
+    A: true
+    B: false
+/protocol_id
+    A: "codex-da3-known-k-anchored-diagnostic-20261026-r1"
+    B: "da3-model-k-anchored-diagnostic-20261027-r2"
+/residual_vector/raw_metrics[5]
+    A: "predicted_intrinsics_and_source_known_K"
+    B: "predicted_intrinsics_vs_ground_truth_K_descriptive_only"
+/review_task
+    A: "ainerzero.V9.T29"
+    B: "ainerzero.V9.T39"
+/supersedes
+    A: null
+    B: "<absent>"
+/amendment/approved_by_user/date
+    A: "<absent>"
+    B: "2026-10-27"
+/amendment/approved_by_user/verbatim
+    A: "<absent>"
+    B: "按选项 A 修订 T28：known_intrinsics 改为 false（模型自估内参），去掉内参逆向控制，保留逆序控制和 CPU 边界守卫；请起草 T28 r2 并新建独立数学复核卡，配额口径我另行告知"
+/amendment/approved_by_user/where
+    A: "<absent>"
+    B: "一级 claude-az 会话"
+/amendment/approved_by_user_second/date
+    A: "<absent>"
+    B: "2026-10-28"
+/amendment/approved_by_user_second/decisions[0]
+    A: "<absent>"
+    B: "remove half_parity (E15)"
+/amendment/approved_by_user_second/decisions[1]
+    A: "<absent>"
+    B: "keep cpu_parity rule unchanged (known_risks discloses the structural argmin risk)"
+/amendment/approved_by_user_second/decisions[2]
+    A: "<absent>"
+    B: "view/wall quota basis and numbers: still to be stated by the user"
+/amendment/approved_by_user_second/option
+    A: "<absent>"
+    B: "A"
+/amendment/approved_by_user_second/verbatim
+    A: "<absent>"
+    B: "选 A：从 T28 r2 删除 half_parity（每型号 9 次/25 视图，合计 18 次/50 视图），你修订 r2 并做差异复核；cpu_parity 保持现状。配额口径我另行告知。"
+/amendment/approved_by_user_second/where
+    A: "<absent>"
+    B: "一级 claude-az 会话"
+/amendment/changes[0]
+    A: "<absent>"
+    B: "E1 identity/supersedes/author/review_task"
+/amendment/changes[1]
+    A: "<absent>"
+    B: "E2 profile.known_intrinsics=false + intrinsics_policy"
+/amendment/changes[2]
+    A: "<absent>"
+    B: "E3 raw_metrics last entry"
+/amendment/changes[3]
+    A: "<absent>"
+    B: "E4 numerical_parity.reference text"
+/amendment/changes[4]
+    A: "<absent>"
+    B: "E5 negative_controls: remove intrinsics, add removed_controls"
+/amendment/changes[5]
+    A: "<absent>"
+    B: "E6 budget: drop intrinsics_adverse stage (and, by E15, half_parity), view_accounting OPEN"
+/amendment/changes[6]
+    A: "<absent>"
+    B: "E7 execution_prerequisites[1] and [3] replaced, two appended"
+/amendment/changes[7]
+    A: "<absent>"
+    B: "E8 claims_forbidden appended"
+/amendment/changes[8]
+    A: "<absent>"
+    B: "E9 this block"
+/amendment/changes[9]
+    A: "<absent>"
+    B: "E10 open_items"
+/amendment/changes[10]
+    A: "<absent>"
+    B: "E11 (post-T39) budget.cumulative_wall_seconds_max null + wall_accounting"
+/amendment/changes[11]
+    A: "<absent>"
+    B: "E12 (post-T39) numerical_parity.known_risks"
+/amendment/changes[12]
+    A: "<absent>"
+    B: "E13 (post-T39) negative_controls.frame_order_adverse_meaning"
+/amendment/changes[13]
+    A: "<absent>"
+    B: "E14 (post-T39) profile K-block wording"
+/amendment/changes[14]
+    A: "<absent>"
+    B: "E15 (2026-10-28, user option A) remove half_parity stage: 9 calls/25 views per variant, 18/50 total; numerical_parity.retired_stages added, known_risks reduced to the argmin risk; mps_float16 tolerance key kept unchanged and unused"
+/amendment/evidence/api_early_return/file
+    A: "<absent>"
+    B: "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/api.py"
+/amendment/evidence/api_early_return/line
+    A: "<absent>"
+    B: 350
+/amendment/evidence/api_early_return/sha256
+    A: "<absent>"
+    B: "042ae8f6bfd1e5610100a585ebb00f8cbc3320f9aa9e03a07530fd4deda8d2d8"
+/amendment/evidence/api_early_return/text
+    A: "<absent>"
+    B: "_align_to_input_extrinsics_intrinsics returns the prediction unchanged when extrinsics is None"
+/amendment/evidence/da3_forward_gate/file
+    A: "<absent>"
+    B: "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/da3.py"
+/amendment/evidence/da3_forward_gate/line
+    A: "<absent>"
+    B: 126
+/amendment/evidence/da3_forward_gate/sha256
+    A: "<absent>"
+    B: "c7d5f88962e05c021cf7dab505840c8892e5e9d6880fb2901d20f4120ca173b3"
+/amendment/evidence/da3_forward_gate/text
+    A: "<absent>"
+    B: "if extrinsics is not None: cam_token = self.cam_enc(extrinsics, intrinsics, x.shape[-2:]) else: cam_token = None"
+/amendment/evidence/pipeline_has_no_k_parameter
+    A: "<absent>"
+    B: "envs/teachers/t6/pipeline.py process_keyframes(images, timestamps_s, world_key, partition, output_dir, process_res)"
+/amendment/from/proposal_sha256
+    A: "<absent>"
+    B: "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a"
+/amendment/from/protocol_id
+    A: "<absent>"
+    B: "codex-da3-known-k-anchored-diagnostic-20261026-r1"
+/amendment/option
+    A: "<absent>"
+    B: "A"
+/amendment/previous_revisions[0]/kept_at
+    A: "<absent>"
+    B: "reports/V9-T28/r2/reviewed-0e15033a/"
+/amendment/previous_revisions[0]/note
+    A: "<absent>"
+    B: "draft reviewed by ainerzero.V9.T39"
+/amendment/previous_revisions[0]/sha256
+    A: "<absent>"
+    B: "0e15033a8b55c978f3f97318e5d1978e54b406afe8d28120aebd40a8e0db9db1"
+/amendment/previous_revisions[1]/kept_at
+    A: "<absent>"
+    B: "reports/V9-T28/r2/pre-half-parity-removal-76f4c9fb/"
+/amendment/previous_revisions[1]/note
+    A: "<absent>"
+    B: "after applying T39; before E15"
+/amendment/previous_revisions[1]/sha256
+    A: "<absent>"
+    B: "76f4c9fbbf8b0889736904c8408dec11f62c2b9c7a3d60a2210c969ef2a922b4"
+/amendment/reason
+    A: "<absent>"
+    B: "r1 requires known-K conditioning without extrinsics and an intrinsics-adverse control that must turn red. This DA3 build ignores intrinsics unless extrinsics are supplied."
+/amendment/review_history[0]/applied[0]
+    A: "<absent>"
+    B: "review_task -> T39"
+/amendment/review_history[0]/applied[1]
+    A: "<absent>"
+    B: "execution_prerequisites[1] T29 -> T39"
+/amendment/review_history[0]/applied[2]
+    A: "<absent>"
+    B: "budget.cumulative_wall_seconds_max -> null + wall_accounting OPEN"
+/amendment/review_history[0]/applied[3]
+    A: "<absent>"
+    B: "descriptive K block compares fx/fy only; principal point excluded (hard-coded W/2,H/2)"
+/amendment/review_history[0]/applied[4]
+    A: "<absent>"
+    B: "profile.assumption no longer claims a model-estimated-intrinsics conditioning"
+/amendment/review_history[0]/applied[5]
+    A: "<absent>"
+    B: "numerical_parity.known_risks (disclosure only, no tolerance changed)"
+/amendment/review_history[0]/applied[6]
+    A: "<absent>"
+    B: "negative_controls.frame_order_adverse_meaning (association reversal, not temporal reasoning)"
+/amendment/review_history[0]/review_task
+    A: "<absent>"
+    B: "ainerzero.V9.T39"
+/amendment/review_history[0]/reviewed_sha256
+    A: "<absent>"
+    B: "0e15033a8b55c978f3f97318e5d1978e54b406afe8d28120aebd40a8e0db9db1"
+/amendment/review_history[0]/reviewer
+    A: "<absent>"
+    B: "deepseek-v41f-t3k9"
+/amendment/review_history[0]/reviewer_says_new_math_review_needed
+    A: "<absent>"
+    B: false
+/amendment/review_history[0]/verdict
+    A: "<absent>"
+    B: "accept_with_changes"
+/amendment/unchanged_by_construction[0]
+    A: "<absent>"
+    B: "alignment"
+/amendment/unchanged_by_construction[1]
+    A: "<absent>"
+    B: "residual_vector.order/depth_component"
+/amendment/unchanged_by_construction[2]
+    A: "<absent>"
+    B: "estimation"
+/amendment/unchanged_by_construction[3]
+    A: "<absent>"
+    B: "numerical_parity tolerances/fields/rule"
+/amendment/unchanged_by_construction[4]
+    A: "<absent>"
+    B: "negative_controls score/required_red/frames/boundary_rejection/unrelated_error"
+/amendment/unchanged_by_construction[5]
+    A: "<absent>"
+    B: "split"
+/amendment/unchanged_by_construction[6]
+    A: "<absent>"
+    B: "budget wall/RSS/resident-model limits"
+/amendment/unchanged_by_construction[7]
+    A: "<absent>"
+    B: "failure_policy"
+/amendment/unchanged_by_construction[8]
+    A: "<absent>"
+    B: "inputs and their SHAs"
+/budget/view_accounting/note
+    A: "<absent>"
+    B: "reserve_before_model_import_views and unallocated_views follow the r1 convention (central CLI per-job cap of 64). Whether the ledger counts dataset views (18) or forward views (50) is a user decision not yet made; the numbers here must be re-stated before registration."
+/budget/view_accounting/status
+    A: "<absent>"
+    B: "OPEN_pending_user_decision"
+/budget/wall_accounting/ledger_note
+    A: "<absent>"
+    B: "2026-10-27 the failed V9.T35 run (407dae53dfe943c19f48e60b02830b21) reserved 60 s although it ran 7 s"
+/budget/wall_accounting/ledger_reserved_s
+    A: "<absent>"
+    B: 1170
+/budget/wall_accounting/next_run_minimum_cap_s
+    A: "<absent>"
+    B: 1230
+/budget/wall_accounting/note
+    A: "<absent>"
+    B: "The r1 cap of 1200 s is unsatisfiable for a further run (1170 s already reserved, a run needs at least ~60 s). cumulative_wall_seconds_max is deliberately null until the user states the quota; a consumer that reads null must fail loudly."
+/budget/wall_accounting/r1_cap_s
+    A: "<absent>"
+    B: 1200
+/budget/wall_accounting/status
+    A: "<absent>"
+    B: "OPEN_pending_user_decision"
+/claims_forbidden[6]
+    A: "<absent>"
+    B: "any statement that the teacher was conditioned on ground-truth or known intrinsics"
+/execution_prerequisites[6]
+    A: "<absent>"
+    B: "da3_calibration_runner.py --preflight-only exits 0 against the real teacher (zero model, zero ledger) BEFORE any central reservation of views or wall time; the central CLI reserves before the worker starts"
+/execution_prerequisites[7]
+    A: "<absent>"
+    B: "user states the view-accounting basis and approves the specific view/wall quota numbers for the run"
+/negative_controls/frame_order_adverse_meaning
+    A: "<absent>"
+    B: "association-reversal control: it checks that the scoring pipeline is sensitive to a wrong RGB-to-label association (the anchor and scale slots receive different physical cameras). It does NOT test temporal or cross-view reasoning of the teacher"
+/negative_controls/real_forward_controls[0]
+    A: "<absent>"
+    B: "frame_order_adverse"
+/negative_controls/removed_controls[0]/evidence
+    A: "<absent>"
+    B: "see amendment.evidence"
+/negative_controls/removed_controls[0]/name
+    A: "<absent>"
+    B: "intrinsics_adverse"
+/negative_controls/removed_controls[0]/not_replaced
+    A: "<absent>"
+    B: "no substitute control is introduced by this amendment; a K-sensitive control needs its own pre-registration"
+/negative_controls/removed_controls[0]/reason
+    A: "<absent>"
+    B: "unsatisfiable by construction in this DA3 build: intrinsics are ignored unless extrinsics are supplied, so the prediction cannot depend on K and S_bad == S_clean < S_clean + max(0.0001, 0.1*S_clean)"
+/numerical_parity/known_risks[0]
+    A: "<absent>"
+    B: "reference-view selection is discrete: with no cam_token DA3 picks the reference view by an argmin over 3 views and reorders. A flip of that argmin between CPU and MPS changes the output frame and fails the elementwise gate by O(1) regardless of tolerance; the user decided on 2026-10-28 to keep the cpu_parity rule as written, so a red cpu_parity is reported as is (exit 5, evidence retained)"
+/numerical_parity/retired_stages[0]/evidence/cam_dec/file
+    A: "<absent>"
+    B: "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/cam_dec.py"
+/numerical_parity/retired_stages[0]/evidence/cam_dec/line
+    A: "<absent>"
+    B: 37
+/numerical_parity/retired_stages[0]/evidence/cam_dec/sha256
+    A: "<absent>"
+    B: "f7bc81d846b786e314c03eaaf809126505fa0c82eb5177b95eadbfad5beefd63"
+/numerical_parity/retired_stages[0]/evidence/pipeline/file
+    A: "<absent>"
+    B: "envs/teachers/t6/pipeline.py"
+/numerical_parity/retired_stages[0]/evidence/pipeline/line
+    A: "<absent>"
+    B: 268
+/numerical_parity/retired_stages[0]/evidence/pipeline/sha256
+    A: "<absent>"
+    B: "67357ea4ec322e5995325cc5f5cf16530ee86b04781dfb0169411f4375f7b956"
+/numerical_parity/retired_stages[0]/evidence/reproduction
+    A: "<absent>"
+    B: "reports/V9-T40/DECISIONS_FOR_USER.md section 1 (no DA3 weights involved)"
+/numerical_parity/retired_stages[0]/not_replaced
+    A: "<absent>"
+    B: "no substitute fp16 control is introduced; option B (autocast-based fp16 in pipeline.py) was not chosen, so pipeline.py is unchanged and its SHA bindings remain valid"
+/numerical_parity/retired_stages[0]/reason
+    A: "<absent>"
+    B: "it cannot complete in this build: pipeline.py ExplicitPrecisionDA3 disables autocast and casts the whole network to float16, while upstream CameraDec.forward hard-codes self.fc_t(feat.float()). The fp32 input meets an fp16 Linear: CPU raises 'mat1 and mat2 must have the same dtype'; MPS aborts the process in a Metal assertion (SIGABRT, exit 134), after the authorization has been consumed and befo
+/numerical_parity/retired_stages[0]/stage
+    A: "<absent>"
+    B: "half_parity"
+/numerical_parity/retired_stages[0]/tolerance_kept_unchanged_and_unused
+    A: "<absent>"
+    B: true
+/numerical_parity/retired_stages[0]/tolerance_key
+    A: "<absent>"
+    B: "mps_float16"
+/open_items[0]
+    A: "<absent>"
+    B: "view_accounting: user to state whether the ledger counts dataset views (18) or forward views (50) (budget.view_accounting)"
+/open_items[1]
+    A: "<absent>"
+    B: "specific view and wall quota numbers for the next run: user approval pending (cumulative reserved wall already 1170/1200)"
+/open_items[2]
+    A: "<absent>"
+    B: "independent review: T39 reviewed r2 before E15 (accept_with_changes, applied); the E15 delta (half_parity removal) needs its own small different-author delta review; then lead immutable SHA registration of the final r2 SHA"
+/open_items[3]
+    A: "<absent>"
+    B: "runner: ainerzero.V9.T40 (reviewed by T41) already reads this r2 through --proposal; its default PROPOSAL_PATH still points at r1 and is switched only after registration; ainerzero.V9.T42 follow-ups (pre-consume rejection of non-calibration views) pending"
+/profile/intrinsics_policy/conditioning
+    A: "<absent>"
+    B: "none"
+/profile/intrinsics_policy/ground_truth_K
+    A: "<absent>"
+    B: "recorded for the descriptive comparison only; never supplied to the teacher"
+/profile/intrinsics_policy/predicted_vs_ground_truth_K
+    A: "<absent>"
+    B: "report per view: predicted fx and fy and their ratios to the ground-truth fx and fy at the same resolution (process_res=280 gives 210x280, no rescale or crop); descriptive only, not part of the 7-vector, the score, the fit statistics or any threshold"
+/profile/intrinsics_policy/principal_point_excluded
+    A: "<absent>"
+    B: "DA3's camera decoder hard-codes the predicted principal point at (W/2, H/2); it is not estimated. The ground truth uses the pixel-centre convention ((W-1)/2, (H-1)/2), so the two differ by a constant 0.5 px convention offset that is not a model error. cx and cy are therefore excluded from the comparison."
+/supersedes/proposal_sha256
+    A: "<absent>"
+    B: "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a"
+/supersedes/protocol_id
+    A: "<absent>"
+    B: "codex-da3-known-k-anchored-diagnostic-20261026-r1"
+/supersedes/reason
+    A: "<absent>"
+    B: "r1 的已知 K 条件化与内参逆向控制在这版 DA3 上不可满足，见 amendment.evidence"
+
+--- 2) 最大整块变化节点（作者 diff 粒度）---
+count=41
+/author
+/amendment
+/supersedes
+/open_items
+/protocol_id
+/review_task
+/profile/assumption
+/claims_forbidden[6]
+/budget/view_accounting
+/budget/wall_accounting
+/budget/unallocated_views
+/profile/known_intrinsics
+/profile/intrinsics_policy
+/execution_prerequisites[6]
+/execution_prerequisites[1]
+/execution_prerequisites[7]
+/budget/models[0]/stages[5]
+/execution_prerequisites[3]
+/budget/models[1]/stages[4]
+/budget/models[0]/stages[4]
+/numerical_parity/reference
+/budget/models[1]/stages[5]
+/numerical_parity/known_risks
+/negative_controls/intrinsics
+/residual_vector/raw_metrics[5]
+/budget/models[0]/forward_views
+/budget/models[1]/forward_views
+/budget/models[1]/forward_calls
+/budget/models[0]/forward_calls
+/numerical_parity/retired_stages
+/budget/models[1]/stages[3]/stage
+/budget/models[0]/stages[3]/stage
+/budget/models[0]/stages[3]/device
+/budget/models[1]/stages[3]/device
+/budget/cumulative_wall_seconds_max
+/negative_controls/removed_controls
+/budget/total_planned_forward_calls
+/budget/total_planned_forward_views
+/negative_controls/same_clean_profile
+/negative_controls/real_forward_controls
+/negative_controls/frame_order_adverse_meaning
+
+--- 3) 变化叶子所属的顶层键分布 ---
+  /amendment: 65
+  /author: 1
+  /budget: 56
+  /claims_forbidden[6]: 1
+  /execution_prerequisites[1]: 1
+  /execution_prerequisites[3]: 1
+  /execution_prerequisites[6]: 1
+  /execution_prerequisites[7]: 1
+  /negative_controls: 8
+  /numerical_parity: 14
+  /open_items[0]: 1
+  /open_items[1]: 1
+  /open_items[2]: 1
+  /open_items[3]: 1
+  /profile: 6
+  /protocol_id: 1
+  /residual_vector: 1
+  /review_task: 1
+  /supersedes: 4

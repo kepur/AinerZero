@@ -1,0 +1,109 @@
+{
+  "task": "ainerzero.V9.T4",
+  "agent": "antigravity-h4d8",
+  "timestamp": "2026-10-26T15:20:00Z",
+  "status": "COMPLETED",
+  "acceptance_criteria_verification": {
+    "1_isolated_env": {
+      "status": "PASSED",
+      "env_path": "envs/teachers/.venv-t4",
+      "python_version": "3.12.2",
+      "env_lock_file": "reports/V9-T4/env.lock.txt",
+      "main_env_freeze_diff": "0 differences (pre and post freeze match 100%)",
+      "no_torch_no_jax": true
+    },
+    "2_downloads_within_budget": {
+      "status": "PASSED",
+      "downloads_file": "reports/V9-T4/downloads.json",
+      "total_files": 12,
+      "total_bytes": 1459675816,
+      "total_gb": 1.3594297841191292,
+      "budget_gb": 2.0,
+      "vjepa_revision": "b0674736bad10eb16bd765942a9065e7e2ee9a54",
+      "da2_revision": "cfef6f6f2a70783dedc0bfae40cecbc2052285d3",
+      "all_sha256_verified": true
+    },
+    "3_numerical_checks_and_negative_controls": {
+      "status": "PASSED",
+      "numerical_checks_file": "reports/V9-T4/numerical_checks.json",
+      "vjepa_determinism_bit_exact": true,
+      "vjepa_batch_invariance_diff": 0.0,
+      "vjepa_f16_cosine_sim": 0.9999987483024597,
+      "vjepa_bf16_cosine_sim": 0.9999762773513794,
+      "vjepa_output_shape": [1, 4608, 1024],
+      "vjepa_negative_control_scrambled_cos_sim": 0.7589883804321289,
+      "vjepa_negative_control_turned_red": true,
+      "da2_determinism_bit_exact": true,
+      "da2_f16_vs_f32_pearson_r": 0.9999473714341442,
+      "da2_f16_vs_f32_spearman_rho": 0.999920888406155,
+      "da2_ramp_direction_correct": true,
+      "da2_negative_control_flip_turned_red": true
+    },
+    "4_m2_max_inference_benchmark": {
+      "status": "PASSED",
+      "bench_file": "reports/V9-T4/bench.json",
+      "vjepa2_1_vitl_mlx": {
+        "load_time_s": 0.005530118942260742,
+        "first_inference_latency_s": 0.6508698463439941,
+        "median_latency_s": 0.8994979858398438,
+        "steady_throughput_fps": 17.78769964121833,
+        "steady_throughput_clip_per_s": 1.1117312275761457,
+        "extrapolated_time_per_1k_samples_s": 899.4979858398438,
+        "single_sample_feature_mb": 18.0,
+        "cache_volume_1k_samples_gb": 17.578125,
+        "peak_rss_mb": 2895.859375,
+        "mlx_peak_memory_mb": 5280.968830108643
+      },
+      "depth_anything_v2_small_coreml": {
+        "CPU_AND_NE": {
+          "load_time_s": 10.03713321685791,
+          "first_inference_latency_s": 0.03587508201599121,
+          "median_latency_ms": 25.93255043029785,
+          "steady_throughput_fps": 38.56157544888709,
+          "extrapolated_time_per_1k_samples_s": 25.93255043029785,
+          "competes_with_mlx_gpu": false,
+          "recommended_for_world_mode": true
+        },
+        "CPU_AND_GPU": {
+          "load_time_s": 0.5295443534851074,
+          "first_inference_latency_s": 3.074686050415039,
+          "median_latency_ms": 24.783015251159668,
+          "steady_throughput_fps": 40.350215252892085,
+          "extrapolated_time_per_1k_samples_s": 24.783015251159668,
+          "competes_with_mlx_gpu": true
+        },
+        "ALL": {
+          "load_time_s": 1.28236722946167,
+          "first_inference_latency_s": 0.2100977897644043,
+          "median_latency_ms": 29.68902587890625,
+          "steady_throughput_fps": 33.68248033282247,
+          "extrapolated_time_per_1k_samples_s": 29.68902587890625,
+          "competes_with_mlx_gpu": true
+        },
+        "single_sample_depth_kb": 396.59375,
+        "cache_volume_1k_samples_mb": 387.298583984375
+      }
+    },
+    "5_budget_and_residency_guards": {
+      "status": "PASSED",
+      "total_bench_wall_clock_s": 21.4,
+      "max_budget_s": 1800,
+      "peak_rss_gb": 2.89,
+      "max_memory_limit_gb": 32.0,
+      "single_model_residency_enforced": true
+    },
+    "6_file_scope_respected": {
+      "status": "PASSED",
+      "allowed_dirs": ["envs/teachers/", "artifacts/teachers/", "reports/V9-T4/"],
+      "violations": []
+    },
+    "7_unverified_items": {
+      "status": "DISCLOSED",
+      "items": [
+        "未对照官方 PyTorch 参考（本机恪守无 PyTorch/无 CUDA 约束，无法运行官方 PyTorch 逐位对照，列为未验证）",
+        "未写入 T2 缓存（待一级单独发卡）",
+        "未修改 src/ 业务代码（T2 正在使用）"
+      ]
+    }
+  }
+}

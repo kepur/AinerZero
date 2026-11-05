@@ -1,0 +1,187 @@
+{
+  "registered_views_constant": 18,
+  "real_db_sha_before": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+  "real_db_ledger_before": {
+    "exists": true,
+    "runs": 14,
+    "active_seconds": 1320.0,
+    "views": 199,
+    "t6_runs": 7
+  },
+  "cases": {
+    "P1_derived_views17_fresh": {
+      "views": 17,
+      "worker_action": null,
+      "expect": "requires views == 18",
+      "outcome": "raised",
+      "exc_type": "BenchmarkRefusalError",
+      "exc_msg": "Real DA3 pipeline execution requires views == 18 (current registered calibration views specification), but got views=17. Refused before reservation and consumption.",
+      "exc_details": {
+        "requested_views": 17,
+        "required_views": 18,
+        "action": "real_pipeline"
+      },
+      "store_sha_before": "<absent>",
+      "store_sha_after": "<absent>",
+      "store_bytes_unchanged": true,
+      "ledger_before": {
+        "exists": false
+      },
+      "ledger_after": {
+        "exists": false
+      },
+      "ledger_unchanged": true,
+      "worker_started": false,
+      "lock_created": false,
+      "match_expect": true
+    },
+    "P2_derived_views17_ledger_copy": {
+      "views": 17,
+      "worker_action": null,
+      "expect": "",
+      "outcome": "raised",
+      "exc_type": "BenchmarkResourceRefused",
+      "exc_msg": "Cumulative views (81 + 17 = 98) exceeds T6 lifetime quota of 82 views",
+      "exc_details": {
+        "requested_views": 17,
+        "cumulative_views": 81,
+        "projected_views": 98,
+        "max_views": 82
+      },
+      "store_sha_before": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+      "store_sha_after": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+      "store_bytes_unchanged": true,
+      "ledger_before": {
+        "exists": true,
+        "runs": 14,
+        "active_seconds": 1320.0,
+        "views": 199,
+        "t6_runs": 7
+      },
+      "ledger_after": {
+        "exists": true,
+        "runs": 14,
+        "active_seconds": 1320.0,
+        "views": 199,
+        "t6_runs": 7
+      },
+      "ledger_unchanged": true,
+      "worker_started": false,
+      "lock_created": false,
+      "match_expect": true
+    },
+    "P3_explicit_views4_fresh": {
+      "views": 4,
+      "worker_action": "real_pipeline",
+      "expect": "requires views == 18",
+      "outcome": "raised",
+      "exc_type": "BenchmarkRefusalError",
+      "exc_msg": "Real DA3 pipeline execution requires views == 18 (current registered calibration views specification), but got views=4. Refused before reservation and consumption.",
+      "exc_details": {
+        "requested_views": 4,
+        "required_views": 18,
+        "action": "real_pipeline"
+      },
+      "store_sha_before": "<absent>",
+      "store_sha_after": "<absent>",
+      "store_bytes_unchanged": true,
+      "ledger_before": {
+        "exists": false
+      },
+      "ledger_after": {
+        "exists": false
+      },
+      "ledger_unchanged": true,
+      "worker_started": false,
+      "lock_created": false,
+      "match_expect": true
+    },
+    "P4a_views0_fresh": {
+      "views": 0,
+      "worker_action": "real_pipeline",
+      "expect": "requires views == 18",
+      "outcome": "raised",
+      "exc_type": "BenchmarkRefusalError",
+      "exc_msg": "Requested views must be a positive integer",
+      "exc_details": {},
+      "store_sha_before": "<absent>",
+      "store_sha_after": "<absent>",
+      "store_bytes_unchanged": true,
+      "ledger_before": {
+        "exists": false
+      },
+      "ledger_after": {
+        "exists": false
+      },
+      "ledger_unchanged": true,
+      "worker_started": false,
+      "lock_created": false,
+      "match_expect": false
+    },
+    "P4b_views19_fresh": {
+      "views": 19,
+      "worker_action": "real_pipeline",
+      "expect": "requires views == 18",
+      "outcome": "raised",
+      "exc_type": "BenchmarkRefusalError",
+      "exc_msg": "Real DA3 pipeline execution requires views == 18 (current registered calibration views specification), but got views=19. Refused before reservation and consumption.",
+      "exc_details": {
+        "requested_views": 19,
+        "required_views": 18,
+        "action": "real_pipeline"
+      },
+      "store_sha_before": "<absent>",
+      "store_sha_after": "<absent>",
+      "store_bytes_unchanged": true,
+      "ledger_before": {
+        "exists": false
+      },
+      "ledger_after": {
+        "exists": false
+      },
+      "ledger_unchanged": true,
+      "worker_started": false,
+      "lock_created": false,
+      "match_expect": true
+    },
+    "P5_positive_views18_fresh": {
+      "views": 18,
+      "worker_action": null,
+      "expect": "<success>",
+      "outcome": "returned",
+      "result": {
+        "status": "completed",
+        "model_runs": 1,
+        "views": 18,
+        "run_id": "84f28a47dd944bd6b59d980d9444072a"
+      },
+      "store_sha_before": "<absent>",
+      "store_sha_after": "b16e1179a592ecfd3d7cddfe766196c05ebbc4b4c4f642ce02cb3a07029af4e1",
+      "store_bytes_unchanged": false,
+      "ledger_before": {
+        "exists": false
+      },
+      "ledger_after": {
+        "exists": true,
+        "runs": 1,
+        "active_seconds": 10.0,
+        "views": 18,
+        "t6_runs": 1
+      },
+      "ledger_unchanged": false,
+      "worker_started": true,
+      "lock_created": true,
+      "match_expect": true
+    }
+  },
+  "real_db_sha_after": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+  "real_db_ledger_after": {
+    "exists": true,
+    "runs": 14,
+    "active_seconds": 1320.0,
+    "views": 199,
+    "t6_runs": 7
+  },
+  "real_db_unchanged": true,
+  "central_lock_exists": true
+}

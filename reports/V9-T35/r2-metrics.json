@@ -1,0 +1,121 @@
+{
+ "task": "ainerzero.V9.T35",
+ "agent": "claude-az",
+ "round": "r2",
+ "status": "FAILED_CODE_DEFECT",
+ "timestamp_utc": "2026-10-27T08:14:39Z",
+ "preconditions": {
+  "ac_power": true,
+  "ps_and_killpg_verified": true,
+  "l3_basis": "一级会话 auto_deep_families",
+  "inspect_before_run": {
+   "can_run": true,
+   "cumulative_views_before": 63,
+   "max_views": 82,
+   "cumulative_reserved_s_before": 1110.0,
+   "remaining_cumulative_s_before": 90.0
+  },
+  "pre_run_backup": {
+   "path": "reports/V9-T35/runs-db-before-run-r2.sqlite3",
+   "sha256": "f84337f59a14ac163b30e5fe5b404fa15f8d798c5dcb50d79e82e8b445ff3a1f"
+  }
+ },
+ "central_run": {
+  "run_id": "407dae53dfe943c19f48e60b02830b21",
+  "state": "failed",
+  "exit_code": 1,
+  "command": "python -m ainerzero.cli teacher-da3 --mode run --statistical-protocol reports/V9-T6/r2-calib-fixtures/statistical_protocol.json --wall-budget-seconds 60.0 --views 18 --allow-model-execution --coordinator-release",
+  "worker_pid": 12140,
+  "worker_pgid": 12140,
+  "empty_group_proven": true,
+  "elapsed_s": 7.11,
+  "peak_rss_bytes": 914997248,
+  "violation": null
+ },
+ "real_forward_executed": true,
+ "failure": {
+  "type": "ValueError",
+  "message": "paired depth shapes must agree",
+  "where": "src/ainerzero/v9/teachers/da3_calibration_runner.py:240 -> envs/teachers/t6/noise_calibration.py:42",
+  "root_cause": "DA3 输出深度 378x504 (process_res=504)，真值深度 210x280；compute_depth_metrics 要求严格同形，而 runner 在 compute_t28_7d_residual 里有 resize 逻辑(行100-108)却没有用在 compute_depth_metrics 调用上。第 240 与 392 行两处同样缺陷。",
+  "test_coverage": "全仓库无任何测试引用 da3_calibration_runner / run_full_calibration；本次真跑是该代码路径首次被执行。"
+ },
+ "quota_after": {
+  "cumulative_views": 81,
+  "max_views": 82,
+  "views_remaining": 1,
+  "cumulative_reserved_s": 1170.0,
+  "max_cumulative_s": 1200.0,
+  "wall_remaining_s": 30.0,
+  "note": "18 视图与 60 秒已被这次失败的前向消耗。再跑一次 18 视图需要累计视图上限 >=99 且累计墙钟上限 >=1230，均需用户新批准。"
+ },
+ "predictions_preserved": "partial",
+ "predictions_note": "持锁 worker 子进程把 da3_small 第 1 个世界 t6-analytic-room-00 的 3 个视图预测写到 reports/V9-T35/predictions/ 后，在该世界的 compute_depth_metrics 处崩溃；其余 5 个世界与 da3_base 均未处理。已保存的 1/6 世界不足以做 fit3/holdout3 的 T28 统计。早先报告称'无预测原件'有误（我用 find -newer 查，而 start 文件被追加改写，时间戳反超，漏检）。",
+ "statistics": null,
+ "retry_attempted": false,
+ "verdict": {
+  "view_quota_override_active": true,
+  "single_true_forward_executed": true,
+  "calibration_completed": false,
+  "capability_promoted": false,
+  "noise_model_registered": false,
+  "conclusion": "not_completed_code_defect"
+ },
+ "artifacts": {
+  "runs-db-before-run-r2.sqlite3": {
+   "sha256": "f84337f59a14ac163b30e5fe5b404fa15f8d798c5dcb50d79e82e8b445ff3a1f",
+   "bytes": 81920
+  },
+  "run-r2.stdout.json": {
+   "sha256": "7afaca6e0c624b0e39077f83c6bbff7aebf15a055936f927b4552536c51efe2a",
+   "bytes": 3533
+  },
+  "run-r2.stderr.log": {
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "bytes": 0
+  },
+  "run-r2.rc": {
+   "sha256": "cf205dbb8cea84897b488abcc281bf96698d5e94b1096b16657b4caba9082a22",
+   "bytes": 7
+  },
+  "run-r2.start": {
+   "sha256": "ef37c78a6766e4520ccbfba7fdaa05cef3f4e4c1fd0e784eadafe1ad15c3fbd6",
+   "bytes": 52
+  }
+ },
+ "correction_of_prior_claims": [
+  "r1 metrics 的 single_true_forward_attempted=true 不准：r1 在门口被拒，未进入前向；r2 才是真正进入前向的一次。",
+  "一级此前通知(#687/#688)只提日预算，漏了累计墙钟上限 1200s（当时只剩 90s）；本次 60s 预算仍装得下，未造成后果。"
+ ],
+ "predictions_files": {
+  "predictions/da3_small/t6-analytic-room-00/candidate.json": {
+   "sha256": "1a0fff966a6aaee4dd11faf9170ebf1ddbc13dd28558b2c8556ef0aed713d238",
+   "bytes": 1811
+  },
+  "predictions/da3_small/t6-analytic-room-00/prediction.safetensors": {
+   "sha256": "a15cc40fa2d8211f670293fc30da47880df8b5ca7dd3cba130f9696b288c657c",
+   "bytes": 4573004
+  },
+  "predictions/da3_small/t6-analytic-room-00/view_0.safetensors": {
+   "sha256": "5c177338a4aa3f23eb22d7f2e7c3cd9879239a0487d16b9642e34254198a1577",
+   "bytes": 1524732
+  },
+  "predictions/da3_small/t6-analytic-room-00/view_1.safetensors": {
+   "sha256": "63d3ffb334a6df89fe05c65ef3d27763edd46e651ef4fb18a205ae4fcfca1541",
+   "bytes": 1524732
+  },
+  "predictions/da3_small/t6-analytic-room-00/view_2.safetensors": {
+   "sha256": "d6095121ae402eee98bd85b9d22a098ccdde2a84ef3fe63f4a08e20b44ae87ee",
+   "bytes": 1524732
+  }
+ },
+ "worlds_processed": {
+  "da3_small": [
+   "t6-analytic-room-00"
+  ],
+  "da3_base": [],
+  "total_worlds": 6,
+  "fit": 3,
+  "holdout": 3
+ }
+}

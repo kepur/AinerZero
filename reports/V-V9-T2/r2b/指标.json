@@ -1,0 +1,78 @@
+{
+  "task_id": "ainerzero.V9.T20",
+  "agent": "gemini-k8m2",
+  "revision": "r2b",
+  "verified_task": "ainerzero.V9.T2",
+  "verified_revision": "r2",
+  "verified_agent": "composer-lr94",
+  "verdict": "ACCEPT",
+  "verdict_reason": "T2 r2 严格满足全部 6 项复核标准：T3 的 12 个反例在 r2 架构下已全部转为拒绝，双进程 Barrier 并发写 3 类测试各 20 轮（共 60 轮）全部被拒且零双写零跨分区残留，写路径原子校验与 schema 统一完成，句柄代际守卫与 RSS 回落守卫严密生效，盘上许可不可信由可信上下文绑定收紧，r1-archive 与当前盘面 11 个文件 SHA 完全自洽，7 个新自建不利反例全部拦截且改坏对照 100% 变红。",
+  "pytest_exit": 0,
+  "pytest_passed": 33,
+  "pytest_seconds": 15.11,
+  "peak_rss_bytes_approx": 19005440,
+  "no_mlx_torch_imports": true,
+  "touched_artifacts_locks": false,
+  "lock_verify_exit": 0,
+  "mode_guard_verify_exit": 0,
+  "source_sha256": {
+    "src/ainerzero/v9/teachers/cache.py": "65d91940849caf22018deba8b48b6ab2db5d441133ec7ac80501963e1daca694",
+    "src/ainerzero/v9/teachers/mode.py": "0d1b7bebd9f33958a5c0330fe7f9c7e139727ccd788133430a12b48c79ffec9a",
+    "src/ainerzero/v9/teachers/fake.py": "bbb444d1f49659d6f808e91a316003f6966e6b034d1dfafeaa73334206d9b155",
+    "src/ainerzero/v9/teachers/__init__.py": "31e5b2f69de3574a452dd880b6b0458cd65733ac28f8c6dd8e3f67b5bbcba772",
+    "tests/v9/teachers/test_cache.py": "ba9b52e8e2499968ceb254200cc45b4eb860d9429d8f5b08cee0199a1dc29a44",
+    "tests/v9/teachers/test_mode.py": "f4365115000207292ddfc68b7f1d3cbe232d8e4b2f98072a29a53afc250893e6",
+    "contracts/v9/teacher_cache.v2.schema.json": "e8ca43e9e1359a6d8315c3c72e642de476e1495d19a2bb713f665cec81fe9f76",
+    "contracts/v9/teacher_cache.v2_1.schema.json": "42fa4c2e53de04d03ad9d84a478e7c12adabb8c54d74f884f06e1699809b8b4f",
+    "docs/v9/TEACHERS_AND_CACHE.md": "7da70dded6234ffa3b32f185ae9513db6146cef607139914991c97cfb9154c4e",
+    "docs/v9/TEACHERS_AND_CACHE_V2_1.md": "3302cc7647a781874141b06e74defa30d1c5ed890ef7d5b306c5462beda96c31",
+    "reports/V9-T2/r1-archive/LATE_OVERWRITE_NOTE.md": "6ae11f235d12e8c5e7fbef9684735a9cb81b815d8e624baa3faf3680223bd9dc"
+  },
+  "six_criteria_verdict": {
+    "item_1_t3_adversarial_all_rejected": {
+      "pass": true,
+      "details": "T3 的 12 个反例在 r2 盘面上复跑并做架构适配核算，全部转为拒绝（C01-C12 全部被拦截并抛出对应的严格异常或标记 broken/fail-closed）。"
+    },
+    "item_2_barrier_concurrency_20_rounds": {
+      "pass": true,
+      "details": "双进程 Barrier 并发写 3 类场景（跨分区、不同输出、同 entry_id 冲突内容）各跑 20 轮（共 60 轮 Barrier），双成功次数均为 0/20，全部互斥被拒。"
+    },
+    "item_3_schema_v2_compliant_write_validation": {
+      "pass": true,
+      "details": "写路径 write_blob / write_entry 执行 Draft202012 校验；畸形条目在写盘前抛 SchemaValidationError 拒绝，零磁盘残留；落盘 blob 结构完全符合 output.files[].sha256 契约。"
+    },
+    "item_4_handle_invalidation_and_rss_guard": {
+      "pass": true,
+      "details": "release_teacher、set_mode 切模式、World 模式 TTL 过期后代际递增，句柄立即失效抛 ModeViolationError；RSS 探针回落不足或探针缺失均抛 UnloadIncompleteError 拒绝切换。"
+    },
+    "item_5_untrusted_disk_licenses_admission_bindings": {
+      "pass": true,
+      "details": "训练准入收敛于固定 SHA 的 admission_bindings；盘上篡改许可或可复现等级直接触发 store_problems 报错且 train_eligible 返回 False；v2 上下文缺绑定时一律拒训（fail-closed）。"
+    },
+    "item_6_evidence_consistency_and_new_adverse_cases": {
+      "pass": true,
+      "details": "r1-archive 完备；metrics.json 登记的 11 个文件 SHA 与当前盘面 100% 一致；docs 改动仅 2 行；自建 7 个新不利反例全部通过正常模式拦截，改坏对照 7/7 变红。"
+    }
+  },
+  "concurrency_barrier_test": {
+    "rounds_per_scenario": 20,
+    "different_outputs_both_accepted": 0,
+    "cross_partition_both_accepted": 0,
+    "same_entry_id_conflict_both_accepted": 0,
+    "all_passed": true
+  },
+  "new_adversarial_suite": {
+    "total_cases": 7,
+    "normal_passed": 7,
+    "normal_findings": 0,
+    "poison_turned_red": 7,
+    "poison_not_red": 0,
+    "all_passed": true
+  },
+  "test_audit_r1_vs_r2": {
+    "r1_count": 44,
+    "r2_count": 33,
+    "loosened": false,
+    "reason": "r1 含 11 项简单字典键测试及 0 断言的空转 schema 测试；r2 重构合并为 33 项高强度测试（含 2 组 20 轮多进程 Barrier 并发测试、代际失效断言、RSS 探针回落与真实 schema 校验断言）。"
+  }
+}

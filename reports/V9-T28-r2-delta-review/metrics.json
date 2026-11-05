@@ -1,0 +1,353 @@
+{
+  "task": "ainerzero.V9.T46",
+  "kind": "delta_review",
+  "subject_task": "ainerzero.V9.T40",
+  "reviewer": "deepseek-q7m2",
+  "relation_to_r2_author": "not claude-az and not any of its session aliases; not the r2 author, not T37/T40 author, not the T35 r2 executor; not T39's reviewer (deepseek-v41f-t3k9). No shared session with the r2 author. Independent.",
+  "proposal_sha256": "86f5ece6d5127fedbce79015a4fbc0b7f83fa9001b61058b6566141e7ed8608a",
+  "previous_sha256": "76f4c9fbbf8b0889736904c8408dec11f62c2b9c7a3d60a2210c969ef2a922b4",
+  "r1_sha256": "af3131a51bf93ff12b43c08b4ca564124c1b1542cf9f9e196316cfa6e391cb4a",
+  "r1_protocol_sha256": "b8d903c03e414dfb9e88bdbc6ff23aa492eca8466534cfeb9b7415cd3b2102ad",
+
+  "own_diff_vs_prev_matches_author": true,
+  "own_diff_vs_prev_detail": {
+    "method": "own leaf-level flattening of both JSONs (list indices explicit); no author script imported",
+    "leaves_previous": 300,
+    "leaves_new": 306,
+    "leaves_changed": 59,
+    "changed_top_level_keys": ["amendment", "budget", "numerical_parity", "open_items"],
+    "matches_card_expectation": true,
+    "numerical_parity_subkeys_changed": ["known_risks", "retired_stages"],
+    "budget_subkeys_changed": ["models", "total_planned_forward_calls", "total_planned_forward_views", "unallocated_views", "view_accounting"],
+    "named_subtrees_byte_equal": 35,
+    "named_subtrees_failed": 0
+  },
+
+  "author_diff_r1_r2_entries": 32,
+  "author_diff_crosscheck": {
+    "coverage_missing_leaves": 0,
+    "over_claimed_paths": 0,
+    "value_mismatches": 0,
+    "declared_shas_match_disk": true,
+    "note": "my own maximal changed-subtree set is 41 (finer: list-index granularity), all of them fall under the author's 32 coarser paths"
+  },
+  "unlisted_differences": [],
+
+  "r1_and_sealed_files_unchanged": true,
+  "r1_and_sealed_detail": {
+    "r1_proposal_sha256_check": "OK (matches card expectation and r1 proposal.sha256)",
+    "sealed_76f4c9fb_sha256sums": "9/9 OK",
+    "reviewed_0e15033a_sha256sums": "6/6 present files OK; 3 files listed but absent (build_proposal_r2.py, build_docs_r2.py, check_r2.py) - snapshot incomplete, not tampering; those reviewed-version script SHAs (cbbff93f/9875dd88/bb65610d) are not preserved anywhere"
+  },
+
+  "cpu_dtype_error_reproduced": true,
+  "cpu_repro_detail": {
+    "device": "cpu only, no MPS touched",
+    "weights_loaded": false,
+    "subchecks_passed": 6,
+    "subchecks_total": 6,
+    "error_string": "RuntimeError: mat1 and mat2 must have the same dtype, but got Float and Half",
+    "error_string_matches_author_verbatim": true,
+    "control_half_input_works": true,
+    "control_autocast_on_works": true,
+    "all_three_cam_dec_float_calls_reproduce": ["fc_t", "fc_qvec", "fc_fov"],
+    "pos_embed_fp32_is_a_different_class": "elementwise add silently promotes to float32 (no error), then hits a downstream fp16 Linear; my first assertion was wrong and was rewritten per measurement",
+    "evidence": "evidence/06-fp16-dtype-repro.txt"
+  },
+
+  "mps_claim_evidence_strength": {
+    "level": "medium-weak",
+    "reproduced_by_me": false,
+    "why_weak": "single-source self-report; reports/V9-T40/DECISIONS_FOR_USER.md section 1 has prose only - no captured stderr, no exit code artifact, no crash dump",
+    "why_it_does_not_block": "the load-bearing claim is 'the stage cannot complete', which I reproduced independently on CPU; the SIGABRT/134 detail only affects wording and T40's incremental-evidence design (already implemented and tested)",
+    "suggested_hedge": "mark the MPS outcome as 'author reports' in PROTOCOL.md:82 and retired_stages.reason"
+  },
+
+  "fp32_stages_risk": {
+    "dtype_risk": "none",
+    "reasons": [
+      "with precision=float32 the upstream .float() call is a no-op (repro case F)",
+      "no float64/.double() anywhere in Depth-Anything-3/src -> no MPS float64 gap",
+      "no torch.linalg/torch.svd/.inverse()/torch.solve in the model tree -> no MPS op gap on the critical path",
+      "infer_gs=False and use_ray_pose=False keep the GS and ray branches out; the 'sky' key is never produced by the head in this build, so _process_mono_sky_estimation (torch.quantile) is a dead path",
+      "MPS/F32 forwards have actually run before (V9.T33, 10 views, 7.5 s)"
+    ],
+    "residual_risk": "numerical (device-to-device fp32 spread) plus the discrete argmin reference-view flip - not dtype"
+  },
+
+  "budget_recomputed": {
+    "per_variant_calls": 9,
+    "per_variant_views": 25,
+    "total_calls": 18,
+    "total_views": 50,
+    "unallocated_views": 14,
+    "reserve_before_model_import_views": 64,
+    "loads_per_variant": 2,
+    "loads_total": 4,
+    "matches_declared": true,
+    "matches_load_plan": true,
+    "all_stage_precisions": ["float32"],
+    "stage_names": ["first_frame", "calibration", "frame_order_adverse", "cpu_parity"],
+    "stage_structure_verified": {
+      "first_frame": "room-00, views=[0], 1 call, mps",
+      "calibration": "6 unique worlds == fit+holdout split, views=[0,1,2], 6 calls x 3 frames",
+      "frame_order_adverse": "room-00, views=[2,1,0], 1 call x 3 frames",
+      "cpu_parity": "room-00, views=[0,1,2], device=cpu, 1 call x 3 frames"
+    },
+    "view_accounting_status": "OPEN_pending_user_decision",
+    "wall_accounting_status": "OPEN_pending_user_decision",
+    "cumulative_wall_seconds_max": null,
+    "open_items_count": 4,
+    "evidence": "evidence/07-budget-audit.txt"
+  },
+
+  "stale_wording_found": [
+    {
+      "where": "PROTOCOL.md:85",
+      "text": "每型号 10 次/28 视图 -> 9 次/25 视图，合计 20 次/56 视图 -> 18 次/50 视图；每型号加载 3 次 -> 2 次，合计 6 -> 4",
+      "classification": "legitimate history (arrow left side is the pre-change value); 3->2 and 6->4 match dropping the mps/f16 load"
+    },
+    {
+      "where": "PROTOCOL.md:92",
+      "text": "每型号 11 次/31 视图 -> 9 次/25 视图，合计 62 -> 50",
+      "classification": "legitimate history (cumulative r1->r2 delta: drop intrinsics_adverse to 10/28, then E15 to 9/25)"
+    },
+    {
+      "where": "PROTOCOL.md:43",
+      "text": "r1 另有 MPS/F16 一致性阶段，atol/rtol 均0.01；r2 已按选项 A 删除该阶段；其容差键在机器文件中原值保留但无任何阶段使用",
+      "classification": "accurate, keep"
+    },
+    {
+      "where": "PROTOCOL.md:56 / :60 / :100",
+      "text": "MPS/F32六个世界 6 3 18 / 两型号合计 18 - 50 / 18 视图输入",
+      "classification": "not stale numbers: calibration stage 6x3=18 views, 18 calls & 50 views total, dataset 18 views"
+    },
+    {
+      "where": "proposal.json",
+      "text": "6 occurrences of half_parity",
+      "classification": "all required: amendment (verbatim approval + E15 change log) and retired_stages"
+    },
+    {
+      "where": "proposal.json / PROTOCOL.md / AMENDMENT.md",
+      "text": "unallocated_views=8, 31, 62, 56, 28, '20 次', '10 次' as CURRENT values",
+      "classification": "zero hits in the machine file; only inside the two arrow-style change sentences"
+    }
+  ],
+
+  "mps_float16_key_assessment": {
+    "verdict": "keep it",
+    "reason": "load_plan reads par['mps_float16'] unconditionally (da3_calibration_runner.py:152); on a /tmp copy with the key removed, load_plan raises KeyError('mps_float16'). Removing it would require a runner change plus another non-author review - disproportionate for a small delta card, especially right after T41 certified the runner.",
+    "anti_misreading_already_present": "PROTOCOL.md:43 says 'kept unchanged but used by no stage'; retired_stages[0] carries tolerance_key=mps_float16 and tolerance_kept_unchanged_and_unused=true",
+    "residual_hazard": "da3_calibration_runner.py:356 still has 'elif name in (\"cpu_parity\", \"half_parity\")' and parity_half is still parsed; if a half_parity stage were ever added back, the runner would silently use 0.01 tolerances with no code change. Suggested future hardening: make load_plan assert every tolerance key is used by at least one stage, turning a dead key into a preflight error.",
+    "evidence": "evidence/14-mps_float16-key.txt"
+  },
+
+  "runner_fake_run_ok": true,
+  "runner_fake_run_detail": {
+    "proposal": "reports/V9-T28/r2/proposal.json",
+    "exit_code": 0,
+    "failures": [],
+    "status": "limited_aligned_diagnostic_candidate_unregistered",
+    "stages_per_variant": ["first_frame", "calibration", "frame_order_adverse", "cpu_parity"],
+    "forward_accounting": "9 calls / 25 views per variant, complete=true",
+    "make_calls": "2 per variant, all float32, 4 total",
+    "half_parity_in_evidence": false,
+    "output_location": "/tmp (outside repo), removed after the run",
+    "real_preflight": "R.preflight(plan, RealTeacherFactory()) passed 4 checks with zero model import (torch/pipeline/depth_anything_3 all absent from sys.modules before and after)",
+    "evidence": ["evidence/09-fake-e2e.txt", "evidence/12-real-preflight.txt"]
+  },
+
+  "runner_version_used": {
+    "sha256_on_disk": "5c12b934789dae36f5f98f0342a2897cfc0d935a1297d4cce56eb48d64bee85c",
+    "sha256_declared_by_t40": "d6d2416eb15d75e30542f174698da823cb7f5f74f130f6b33c7f3a6bec67410d",
+    "t40_declaration_is_correct": true,
+    "reconstruction": "patched the runner section of reports/V9-T40/evidence/t37-to-t40.diff onto reports/V9-T40/evidence/t37-accepted/da3_calibration_runner.py -> reproduced d6d2416e exactly",
+    "why_it_differs": "V9.T42 (gemini-f8a2) changed _write_atomic at 2026-10-28 00:53:54 to use a unique same-directory temp name (.tmp.<pid>.<uuid>) plus cleanup on failure",
+    "diff_vs_t40_version": "2 hunks / 18 lines, only 'import uuid' and the _write_atomic body; load_plan, preflight, stage execution, parity and exit codes untouched",
+    "conclusion": "all runner-related findings in this review hold for 5c12b934, which differs from the T40/T41-certified version only by that atomic-write hardening",
+    "evidence": "evidence/15-runner-version.txt"
+  },
+
+  "hardcoded_numbers_in_runner_or_worker": {
+    "runner_numeric_magic": "none - 18/28/31/56/62/50/25/9/64 all zero hits; stages, tolerances, thresholds and split all come from the proposal",
+    "runner_half_parity_branch": "da3_calibration_runner.py:356 - dead branch, see mps_float16_key_assessment.residual_hazard",
+    "runner_parity_half_parsed": "da3_calibration_runner.py:152",
+    "worker_registered_calibration_views": "da3_worker.py:28 REGISTERED_CALIBRATION_VIEWS = 18, compared against spec.views at :209",
+    "worker_half_parity": "zero hits",
+    "consequence": "18 matches r2's dataset-view count, so the gate still admits an r2 run under the current ledger basis; if the quota basis switches to forward views (50) the worker would refuse with refused_no_calibration. Reported only, nothing changed."
+  },
+
+  "own_adversarial_cases": [
+    {
+      "id": "A",
+      "tamper": "widen numerical_parity.cpu_float32 atol/rtol 0.001 -> 0.01",
+      "caught": true,
+      "caught_by": "subtree_equality.py: DIFF /numerical_parity/cpu_float32 + whitelist"
+    },
+    {
+      "id": "B",
+      "tamper": "loosen negative_controls.required_red constant max(0.0001, 0.1*S_clean) -> max(0.00001, ...)",
+      "caught": true,
+      "caught_by": "subtree_equality.py: DIFF /negative_controls/required_red + OFFENDER"
+    },
+    {
+      "id": "C",
+      "tamper": "re-add half_parity to budget AND fix the totals to look right (10/28 per variant, 20/56 total, unallocated 8) - arithmetic fully self-consistent",
+      "caught": true,
+      "caught_by": "budget_audit.py: stage-name whitelist ('unregistered stage name') + retired_stages cross-check ('reappears in budget.stages')"
+    },
+    {
+      "id": "D",
+      "tamper": "fake 'only half_parity was deleted' while actually changing room-03 calibration views from [0,1,2] to [0,1,1] (frames_per_call stays 3, totals unchanged)",
+      "caught": true,
+      "caught_by": "budget_audit.py stage-structure check: 'views=[0,1,1] expected [0,1,2] -> False'"
+    },
+    {
+      "id": "E",
+      "tamper": "retired_stages.evidence.cam_dec line 37 -> 38 and sha256 -> all zeros",
+      "caught": true,
+      "caught_by": "verify_retired_evidence.py: sha mismatch + line-content marker mismatch"
+    }
+  ],
+  "adversarial_caught": 5,
+  "adversarial_total": 5,
+  "adversarial_note": "C and D have fully self-consistent budget arithmetic, so pure arithmetic checks cannot catch them; that is why the stage-name whitelist, the retired_stages cross-check and the stage-structure assertions were added.",
+  "evidence": "evidence/11-adversarial.txt",
+
+  "author_checker_assessment": {
+    "discriminative": [
+      ":99/:101 retired evidence line+sha vs disk",
+      ":115/:117/:119 canonical-JSON comparison against the previous version (complete at top level, one level drilled into budget/numerical_parity)",
+      ":121 per-stage dict equality (catches case D)",
+      ":66 stage-name identity, :70 arithmetic triple, :154-158 end-to-end with real runner + fake teacher and 'no float16 make(), exactly 4 loads'",
+      ":105-108 sealed/reviewed snapshot SHAs"
+    ],
+    "circular_or_weak": [
+      ":29-35 validates the author's own diff_r1_r2.json against a whitelist - if that diff omitted a path this check cannot see it (the only genuine circularity; my own leaf diff covers it)",
+      ":42-58 'unchanged' assertions enumerate fixed key names; keys outside the enumeration rely on :115's top-level comparison",
+      ":124 uses a walrus inside a conditional expression with a dead 'else False' branch",
+      "no check that stage contents agree with split (e.g. first_frame views [0] -> [1] would not break arithmetic)"
+    ]
+  },
+
+  "unsatisfiable_gates_found": [],
+  "unsatisfiable_note": "after removing half_parity there is no remaining stage that is impossible by construction.",
+  "high_risk_gates": [
+    {
+      "gate": "cpu_parity",
+      "verdict": "high probability red, not impossible",
+      "numbers": {
+        "ground_truth_depth_range": [2.5885, 9.6773],
+        "ground_truth_depth_median": 6.4413,
+        "per_element_tolerance_depth": [0.003675, 0.010677],
+        "elements_compared": 352863,
+        "elements_depth": 176400,
+        "elements_confidence": 176400,
+        "elements_extrinsics": 36,
+        "elements_intrinsics": 27,
+        "only_in_repo_mps_vs_cpu_fp32_measurement": 0.065056,
+        "that_measurements_threshold": 0.08,
+        "ratio_to_median_depth_tolerance": 8.7,
+        "ratio_to_max_depth_tolerance": 6.1
+      },
+      "structural_risk": "discrete argmin reference-view selection can flip between CPU and MPS; O(1) output change no tolerance survives (already disclosed in known_risks[0])",
+      "easiest_field": "intrinsics: fx=220 gives a 0.22 absolute allowance from the rtol term",
+      "honest_reporting_verified": "per-field max_abs / failed_elements / total_elements are recorded; failures only append (no raise) so both variants still finish and all calibration evidence is written; final exit code 5, status='failed'. No silent-pass branch exists."
+    },
+    {
+      "gate": "frame_order_adverse",
+      "verdict": "not unsatisfiable",
+      "evidence": "V9-T6 archive negative control NEG-01 (frame order shuffling) is recorded as turned_red_as_expected, so a real DA3 forward can turn this class of control red"
+    }
+  ],
+
+  "overclaims_found": [
+    {
+      "where": "PROTOCOL.md:84",
+      "quote": "这不是\"结果出来后为通过而改动\"：任何运行之前提出",
+      "problem": "'before any run' is literally false: the single authorized T35 run already happened (7 s, 60 s reserved, failed on a runner defect); open_items[1] itself records 1170/1200 s already reserved",
+      "fix": "say 'before any run that produces calibration results', and state that T35 produced no calibration result and that the E15 evidence comes from a weight-free dtype reproduction"
+    },
+    {
+      "where": "PROTOCOL.md:87",
+      "quote": "若以后要它，需要先改管线（autocast 方案）并另立预登记",
+      "problem": "presents autocast as a viable route; in the pinned torch 2.3.1, torch.autocast(device_type='mps') is a no-op (zero 'mps' mentions in torch/amp/autocast_mode.py), and da3.py:127/:139 already wrap the depth head and camera estimation in autocast(enabled=False). T6's f32_vs_f16 = 0.0 is the direct consequence. An autocast-based fp16 gate here would be vacuous - it could never turn red.",
+      "fix": "say it needs a torch upgrade or a change to the enabled=False blocks in da3.py, plus a new pre-registration"
+    },
+    {
+      "where": "PROTOCOL.md:82",
+      "quote": "而且它是每个型号最后一个阶段、整次运行的最后一步之前就会把授权耗光",
+      "problem": "garbled; the mechanism (authorization deducted once at reservation, non-refundable) is not stated",
+      "fix": "it is DA3-SMALL's last stage, it dies before DA3-BASE starts, and the reservation is already deducted and not refunded"
+    },
+    {
+      "where": "PROTOCOL.md:82 and numerical_parity.retired_stages[0].reason",
+      "quote": "MPS 没有 Python 异常，Metal 断言直接中止进程（SIGABRT，退出码 134）",
+      "problem": "stated as fact on a single-source self-report with no captured artifact",
+      "fix": "hedge with 'author reports' (non-blocking)"
+    },
+    {
+      "where": "open_items",
+      "quote": "(no entry about the worker gate)",
+      "problem": "open_items[0] covers the view-accounting basis but not its downstream consequence: da3_worker.py:28 REGISTERED_CALIBRATION_VIEWS=18 gates spec.views, so choosing forward-view accounting (50) would make the worker refuse the run",
+      "fix": "add one open_item line"
+    }
+  ],
+
+  "recommendation": "accept_with_changes",
+  "recommendation_note": "The E15 delta itself is clean, fully enumerable and matches the author's declaration exactly; all named invariants are byte-equal; budget arithmetic agrees three ways; load_plan + fake teacher runs end to end with exit 0; retired evidence verified independently; 5/5 adversarial cases caught. Only PROTOCOL.md prose must change.",
+
+  "required_changes": [
+    "PROTOCOL.md:84 - replace '任何运行之前提出' with '在任何产出标定结果的运行之前提出' and note that T35 produced no calibration result",
+    "PROTOCOL.md:87 - correct the 'autocast 方案' future route (torch 2.3.1 MPS autocast is a no-op; da3.py already forces enabled=False)",
+    "PROTOCOL.md:82 - rewrite the garbled authorization sentence"
+  ],
+  "suggested_changes": [
+    "PROTOCOL.md:82 and retired_stages.reason - hedge the MPS SIGABRT claim as 'author reports'",
+    "open_items - add the worker REGISTERED_CALIBRATION_VIEWS=18 consequence of switching to forward-view accounting",
+    "lead registration - note or restore the 3 missing build/check scripts in reviewed-0e15033a/"
+  ],
+  "required_changes_touch_machine_file": false,
+  "registration_sha_after_changes": "86f5ece6d5127fedbce79015a4fbc0b7f83fa9001b61058b6566141e7ed8608a",
+
+  "red_lines": {
+    "read_only": true,
+    "da3_weights_loaded": false,
+    "mps_used": false,
+    "runs_db_sha_before": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+    "runs_db_sha_after": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+    "lock_mtime_before": 1790110663,
+    "lock_mtime_after": 1790110663,
+    "lock_present": true,
+    "lock_size_bytes": 0,
+    "r1_r2_sealed_files_modified": false,
+    "runner_pipeline_modified": false,
+    "output_scope": "reports/V9-T28-r2-delta-review/ only; all run artifacts written to /tmp and removed",
+    "git_push_or_download_or_paid": false
+  },
+
+  "environment_notes": [
+    "card says .venv-t6; that path does not exist on this machine - the DA3/torch env is .venv (torch 2.3.1)",
+    "all torch runs used env -u PYTHONPATH -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy NO_PROXY=127.0.0.1,localhost,::1",
+    "BSD grep needs -E for alternation; plain grep with \\| silently returns nothing"
+  ],
+
+  "evidence_files": [
+    "evidence/00-before-after.txt",
+    "evidence/01-diff-vs-prev.txt",
+    "evidence/02-diff-vs-r1.txt",
+    "evidence/03-author-diff-crosscheck.txt",
+    "evidence/04-subtree-equality-vs-prev.txt",
+    "evidence/05-subtree-equality-vs-r1.txt",
+    "evidence/06-fp16-dtype-repro.txt",
+    "evidence/07-budget-audit.txt",
+    "evidence/08-stale-scan.txt",
+    "evidence/09-fake-e2e.txt",
+    "evidence/10-retired-evidence.txt",
+    "evidence/11-adversarial.txt",
+    "evidence/12-real-preflight.txt",
+    "evidence/13-q2-numerical.txt",
+    "evidence/14-mps_float16-key.txt",
+    "evidence/15-runner-version.txt"
+  ]
+}

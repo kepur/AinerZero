@@ -1,0 +1,108 @@
+{
+  "task": "ainerzero.V9.T27",
+  "verified_target": "ainerzero.V9.T26",
+  "verifier_agent": "gemini-7a2b",
+  "author_agent": "gemini-kzer",
+  "timestamp": "2026-10-26T14:04:10Z",
+  "overall_verdict": "ACCEPTED_CPU_ENGINEERING_ONLY",
+  "real_model_work_authorized": false,
+  "verification_dimensions": {
+    "1_source_sha256_integrity": {
+      "status": "PASSED",
+      "files_checked": 6,
+      "files_matched": 6,
+      "hashes": {
+        "src/ainerzero/cli.py": "aa1e42d6d426318db95be28068232859027d567541fd31dabf88cd72ae81db2b",
+        "src/ainerzero/v9/teachers/benchmark.py": "8d64e8865f1bea36216e31dbba30fd89b84ccef9ebda321d2977ee7f6929fc4c",
+        "src/ainerzero/v9/teachers/benchmark_commands.py": "b8278b83acf1493e925955430064c6a14de24eddacde99bb94b8f513edb2cb5f",
+        "src/ainerzero/v9/teachers/benchmark_protocol.py": "6e27c41cd54bc0977ac7d087f603fd983af1f225d32b3945e7580634f62f1bd4",
+        "src/ainerzero/v9/teachers/da3_controlled.py": "25874199f496647ca2960b6204906c910a42b06adfed77172d1eb8a6a082baeb",
+        "tests/test_teacher_da3_controlled.py": "8e288b80ce5ea3d03d44d259a1e29a7d170a2030e35813c071f6c8ef18e81326"
+      }
+    },
+    "2_inspect_zero_side_effects": {
+      "status": "PASSED",
+      "lock_acquired": false,
+      "ledger_written": false,
+      "models_loaded": 0,
+      "missing_prerequisites_reported": true
+    },
+    "3_runstore_task_segregation": {
+      "status": "PASSED",
+      "t4_budget_isolated": true,
+      "t6_budget_isolated": true,
+      "t4_reserved_seconds": 300.0,
+      "t6_reserved_seconds": 250.0
+    },
+    "4_rejection_gates_and_precedence": {
+      "status": "PASSED",
+      "unapproved_model_refused": true,
+      "view_quota_breach_refused": true,
+      "view_quota_limit": 64,
+      "per_run_budget_breach_refused": true,
+      "per_run_limit_seconds": 1200.0,
+      "missing_approval_exit_code": 3,
+      "missing_statistical_protocol_exit_code": 3
+    },
+    "5_worker_lock_mutual_exclusion": {
+      "status": "PASSED",
+      "lock_path": "artifacts/locks/m0-worker.lock",
+      "flock_collision_handled": true,
+      "exit_code_on_busy": 4
+    },
+    "6_pre_reservation_and_cumulative_cap": {
+      "status": "PASSED",
+      "atomic_pre_reservation": true,
+      "non_refundable_on_failure": true,
+      "cumulative_cap_seconds": 1200.0,
+      "cumulative_cap_refusal_exit_code": 5
+    },
+    "7_process_group_supervision": {
+      "status": "PASSED",
+      "parent_supervises_child_group": true,
+      "clean_group_termination": true
+    },
+    "8_cli_subprocess_execution": {
+      "status": "PASSED",
+      "cli_inspect_rc": 0,
+      "cli_routed_inspect_rc": 0,
+      "cli_unapproved_run_rc": 3,
+      "cli_view_quota_breach_rc": 2,
+      "cli_per_run_budget_breach_rc": 5
+    },
+    "9_four_source_mutation_controls": {
+      "status": "PASSED",
+      "total_controls": 4,
+      "mutation_1_approval_gate": {
+        "region": "verify_t6_approval_and_protocol",
+        "case_a": "DOUBLE_GREEN",
+        "case_b": "BASELINE_RED_MUTANT_GREEN",
+        "case_c": "DOUBLE_RED"
+      },
+      "mutation_2_views_quota": {
+        "region": "check_t6_views_quota",
+        "case_a": "DOUBLE_GREEN",
+        "case_b": "BASELINE_RED_MUTANT_GREEN",
+        "case_c": "DOUBLE_RED"
+      },
+      "mutation_3_cumulative_budget": {
+        "region": "execute_guarded_da3_benchmark",
+        "case_a": "DOUBLE_GREEN",
+        "case_b": "BASELINE_RED_MUTANT_GREEN",
+        "case_c": "DOUBLE_RED"
+      },
+      "mutation_4_resource_gate": {
+        "region": "check_t6_resource_limits",
+        "case_a": "DOUBLE_GREEN",
+        "case_b": "BASELINE_RED_MUTANT_GREEN",
+        "case_c": "DOUBLE_RED"
+      }
+    }
+  },
+  "unverified_items": [
+    "真实 DA3 权重推理/MPS/MLX 运行未在此复核卡中执行（本卡限纯 CPU 工程复核）",
+    "生产中央 RunStore (artifacts/v9/teachers/benchmark/runs.db) 保持零变动，未写入测试数据",
+    "生产共享锁 (artifacts/locks/m0-worker.lock) 保持零占用",
+    "真实 T6 模型执行需等待统筹者在 RESEARCH_LOG.md 登记批准段落及冻结统计协议后方可由后续独立任务申请启动"
+  ]
+}

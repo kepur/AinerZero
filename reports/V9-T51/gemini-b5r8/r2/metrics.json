@@ -1,0 +1,54 @@
+{
+  "task_id": "ainerzero.V9.T51",
+  "iteration": "r2",
+  "agent_id": "gemini-b5r8",
+  "status": "completed",
+  "model_runs": 0,
+  "zero_model_zero_ledger": true,
+  "mandatory_fixes": {
+    "fix_1_repo_root_only_registry": {
+      "status": "implemented",
+      "removed_env_var": "T28_REGISTERED_PATH",
+      "removed_cwd_candidate": true,
+      "allowed_source": "<repo_root>/reports/V9-T28/REGISTERED.json"
+    },
+    "fix_2_relative_path_containment": {
+      "status": "implemented",
+      "reject_absolute_path": true,
+      "reject_directory_traversal": true,
+      "allowed_containment_dir": "<repo_root>/reports/V9-T28/"
+    },
+    "fix_3_cleanup_stale_imports": {
+      "status": "implemented",
+      "cleaned_in": "src/ainerzero/v9/teachers/da3_controlled.py",
+      "removed_imports": [
+        "T6_MAX_CUMULATIVE_WALL_SECONDS",
+        "REGISTERED_CALIBRATION_VIEWS"
+      ]
+    },
+    "fix_4_new_security_tests": {
+      "status": "implemented",
+      "count": 5,
+      "tests": [
+        "test_security_scenario_a_env_var_bypass_refused",
+        "test_security_scenario_b_cwd_bypass_refused",
+        "test_security_reject_absolute_proposal_path",
+        "test_security_reject_directory_escape_proposal_path",
+        "test_security_reject_outside_directory_relative_path"
+      ]
+    },
+    "fix_5_bad_controls": {
+      "status": "verified",
+      "count": 4,
+      "test_file": "tests/test_t28_bad_controls_r2.py"
+    }
+  },
+  "test_results": {
+    "test_t28_registration_and_quota": "16 passed",
+    "test_t28_bad_controls_r2": "4 passed",
+    "test_teacher_da3_controlled": "21 passed",
+    "test_da3_views_82": "2 passed",
+    "test_da3_calibration_runner": "37 passed",
+    "total_teacher_suite_passed": 80
+  }
+}

@@ -1,0 +1,10 @@
+T41-1 _write_atomic 只写 .tmp 不做 os.replace
+    -> 3 条红: test_hard_abort_in_the_last_stage_keeps_every_fini, test_hard_abort_before_the_first_stage_still_leave, test_atomic_evidence_write_never_leaves_a_partial_
+T41-2 去掉 test_substitute 对显式 real_pipeline 的拒绝
+    -> 1 条红: test_test_substitute_never_selects_the_real_pipeli
+T41-3 worker refused_no_calibration 仍 rc=0（吞掉拒绝）
+    -> 1 条红: test_lazy_worker_real_pipeline_routing
+T41-4 preflight 放行已存在的 in_progress 证据（可覆盖崩溃残留）
+    -> !!! 没有任何测试抓到 !!! rc=0 out='.                                                                        [100%]\n1 passed, 33 deselected in 0.12s\n'
+T41-4 custom probe (in_progress file)
+    -> GAP_CONFIRMED: in_progress overwrite allowed

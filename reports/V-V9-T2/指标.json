@@ -1,0 +1,436 @@
+{
+  "task_id": "ainerzero.V9.T3",
+  "verifier": "mimo-d6c3",
+  "verified_task": "ainerzero.V9.T2",
+  "registered_author": "composer-a7k2",
+  "timestamp": "2026-10-20T16:49:20+03:00",
+  "role": "verify (independent, not the author of T2)",
+  "git_head": "2de6caef0820894520271a8943761cc0b3cf8c22",
+  "under_review_sha256": {
+    "src/ainerzero/v9/teachers/cache.py": "c0e34ec3157eeafe6e721787b23beae5019c80566d6426511167ba30212f6613",
+    "src/ainerzero/v9/teachers/mode.py": "c6c28628ffd98c9382ed06c77386418d1496c9c13620379158b87bfcd1603315",
+    "src/ainerzero/v9/teachers/fake.py": "2cb2751e52f1538ea70cfe88ca9d643923c14a1dd203317effc388e36480eee2",
+    "src/ainerzero/v9/teachers/__init__.py": "a3a81634d9ef056536f785404aab966adcc352d7b39b0411c70846a4d1abefd0",
+    "tests/v9/teachers/test_cache.py": "d091f1efd1eebd9a3fa228595a8ee214bcf7fa51da3e0b7722e09d7e24b7e0cf",
+    "tests/v9/teachers/test_mode.py": "1fe17cdc443f20a034e672a6932c85e1227c60ab935c6c9e105163c7093c35de",
+    "contracts/v9/teacher_cache.v2.schema.json": "e8ca43e9e1359a6d8315c3c72e642de476e1495d19a2bb713f665cec81fe9f76",
+    "docs/v9/TEACHERS_AND_CACHE.md": "a5b5d07556e899905add48158e6252a206e0b19daddf4b7ffa8e96125f36e636"
+  },
+  "inputs_sha256": {
+    "contracts/v9/examples/teacher_cache_v2/valid/valid_store.json": "9f105d91875354b6736967fe265713c496d0f0d9abbbeedc6a25529e9ea2847c",
+    "contracts/v9/examples/teacher_cache_v2/contexts/baseline.json": "3cc39cddf8b2947c4ff6d71b1e8255db8027b4df8813b6fc6a447061123b8473",
+    "contracts/v9/examples/teacher_cache_v2/expected-context-identities.json": "83533edd22bbfbb5d49252669cba2b91afe99f19ff8394511d72e09a992df17a"
+  },
+  "own_artifacts_sha256": {
+    "reports/V-V9-T2/adversarial_suite.py": "00f988deaeedd3159d42793d00ea73ade843982c178b8a8d5e89dc2c9c222134",
+    "reports/V-V9-T2/check_evidence_identity.py": "592c0a6487fc84e1f2ffb4e5bf542dfca0e1733d9f75991873ea9d0b059e4956"
+  },
+  "subject_rerun": {
+    "pytest_command": "python3 -B -m pytest tests/v9/teachers/ -q",
+    "pytest_exit": 0,
+    "pytest_passed": 44,
+    "pytest_seconds": 3.63,
+    "pytest_peak_rss_bytes": 45137920,
+    "mode_py_verify_locks_exit": 0,
+    "mode_py_verify_locks_ok": true,
+    "all_mutually_exclusive": true,
+    "sabotage_early_release_caught": true,
+    "sabotage_late_acquire_caught": true,
+    "mode_py_verify_mode_guard_exit": 0,
+    "mode_guard_all_passed": true,
+    "mode_guard_tests": 6,
+    "no_mlx_torch_onnx_coreml_imports": true
+  },
+  "adverse_counterexamples": {
+    "total": 12,
+    "themes": [
+      "元数据伪造",
+      "并发写入",
+      "模式绕过",
+      "跨模型混写"
+    ],
+    "all_failed_as_finding": true,
+    "findings": [
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "C06",
+      "C07",
+      "C08",
+      "C09",
+      "C10",
+      "C11",
+      "C12"
+    ],
+    "control_failures_normal": [],
+    "poison_all_turned_red": true,
+    "poison_real_nonzero_exits": 12,
+    "acceptance_criterion": "≥6 个新不利反例真实非零",
+    "acceptance_criterion_met": true,
+    "suite_exit": 1,
+    "details": [
+      {
+        "case": "C01",
+        "theme": "元数据伪造",
+        "title": "blob.reproducibility 篡改提升训练准入",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "honest_eligible": false,
+          "forged_eligible": true,
+          "store_problems_after_forgery": [],
+          "entry_id_stable": true,
+          "delta_fields": 1
+        },
+        "violation_count": 1,
+        "violation": "blob.reproducibility 由 unverified 篡改为 bitwise 后，train_eligible False→True，store_problems=[]：可复现等级（§2.3 要求实测登记）不受 entry_id/cache_key/可信上下文任一保护",
+        "control_ok_normal": true,
+        "poison": "store_problems_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：篡改 partition 后 store_problems=[] 未含 original_source_binding_mismatch"
+      },
+      {
+        "case": "C02",
+        "theme": "元数据伪造",
+        "title": "entry/blob 许可篡改提升训练准入",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "honest_eligible": true,
+          "entry_license_false_eligible": false,
+          "entry_license_forged_true_eligible": true,
+          "teacher_license_false_eligible": false,
+          "teacher_license_forged_true_eligible": true,
+          "store_problems_all_states": [
+            [],
+            [],
+            []
+          ],
+          "entry_id_stable": true
+        },
+        "violation_count": 2,
+        "violation": "entry.license.scope.train 由 False 抬高为 True 后 train_eligible False→True，store_problems=[]",
+        "control_ok_normal": true,
+        "poison": "store_problems_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：篡改 eligibility 后 store_problems=[] 未含 original_source_binding_mismatch"
+      },
+      {
+        "case": "C03",
+        "theme": "元数据伪造",
+        "title": "同 entry_id 不同内容被静默覆盖",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "forged_entry_id_stable": true,
+          "second_write_accepted": true,
+          "error": null,
+          "content_replaced": true,
+          "license_train_before": true,
+          "license_train_after": false,
+          "bytes_delta": 1
+        },
+        "violation_count": 1,
+        "violation": "同 entry_id、不同内容的第二次写入未被拒绝：原条目被静默覆盖（license.scope.train True→False），违反 §2.2「来源条目已存在：内容完全一致就跳过，否则拒绝」",
+        "control_ok_normal": true,
+        "poison": "write_entry_meta_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：期望 MetadataIncompleteError，实际 KeyError"
+      },
+      {
+        "case": "C04",
+        "theme": "元数据伪造",
+        "title": "write_blob 产物不通过契约 schema",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "schema_errors": 12,
+          "first_errors": [
+            "$: Additional properties are not allowed ('confidence_sha256', 'output_sha256' were unexpected)",
+            "$: 'schema_version' is a required property",
+            "$: 'output' is a required property",
+            "$: 'confidence' is a required property"
+          ],
+          "written_keys": [
+            "cache_key",
+            "confidence_sha256",
+            "generation",
+            "key_material",
+            "output_sha256",
+            "record_type",
+            "reproducibility",
+            "teacher_license"
+          ],
+          "t2_schema_test_assert_count": 0
+        },
+        "violation_count": 1,
+        "violation": "write_blob 落盘的 blob 记录有 12 项 schema 违例（缺 schema_version/output/confidence/tolerance，多了 output_sha256/confidence_sha256），与 contracts/v9/teacher_cache.v2.schema.json 不兼容；T2 自己的 test_validate_schema_blob 断言数=0（空转）",
+        "control_ok_normal": true,
+        "poison": "validate_schema_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：删掉 schema_version 后 validate_schema 返回空"
+      },
+      {
+        "case": "C05",
+        "theme": "跨模型混写",
+        "title": "条目 derivation 换模型后写入/读取放行",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "entry_id_stable_under_teacher_swap": true,
+          "write_accepted": true,
+          "write_error": null,
+          "read_back_teacher_id": "da3-small-FOREIGN",
+          "blob_teacher_id": "vjepa2.1-vitl"
+        },
+        "violation_count": 1,
+        "violation": "把条目 derivation.teacher_id/weights 换成另一个模型后 write_entry 与 read_entry 都放行，store 里同时存在同一 cache_key 指向两个模型的条目（§2.1：derived_by 必须等于块的 teacher_id）",
+        "control_ok_normal": true,
+        "poison": "store_problems_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：store_problems=[] 未含 derivation_teacher_mismatch"
+      },
+      {
+        "case": "C06",
+        "theme": "跨模型混写",
+        "title": "blob.key_material 被换模型后读路径不核验",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "cache_key_matches_sha_key_material": false,
+          "delta": 1,
+          "read_raised": null,
+          "broken_flag": null
+        },
+        "violation_count": 1,
+        "violation": "blob.key_material 被改成另一个模型后 read_blob 照常返回（不重算 cache_key=sha(key_material)，也不置 broken），内容块身份可在读路径被替换",
+        "control_ok_normal": true,
+        "poison": "store_problems_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：store_problems=[] 未含 cache_key_mismatch"
+      },
+      {
+        "case": "C07",
+        "theme": "跨模型混写",
+        "title": "契约合法内容块被实现误判 broken",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "contract_blob_schema_errors": 0,
+          "read_raised": "HashMismatchError: Blob 503c2bc43ff1ba02... output hash mismatch (marked broken)",
+          "broken_flag": null
+        },
+        "violation_count": 1,
+        "violation": "契约正例格式（output.files[].sha256）的合法内容块被 read_blob 判成 hash mismatch/broken：实现的落盘格式与 teacher_cache.v2.schema.json 是两套互不相认的格式（§6 要求用该 schema 校验每条记录）",
+        "control_ok_normal": true,
+        "poison": "read_verify_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：实现自格式内容块读取异常 broken=HashMismatchError"
+      },
+      {
+        "case": "C08",
+        "theme": "模式绕过",
+        "title": "Train Mode 下常驻教师句柄仍可产出",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "mode_after_switch": "train",
+          "bytes_produced_in_train_mode": 192,
+          "resident_teacher": false
+        },
+        "violation_count": 1,
+        "violation": "Train Mode 下常驻教师句柄仍产出 192 字节：守卫只在构造时检查一次，release_teacher()+set_mode('train') 之后不再复核（§1.1 Train 禁止任何教师常驻）",
+        "control_ok_normal": true,
+        "poison": "mode_check_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：Train Mode 构造教师期望 ModeViolationError，实际 None"
+      },
+      {
+        "case": "C09",
+        "theme": "模式绕过",
+        "title": "World Mode TTL 过期后句柄不失效",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "ttl_s": 0.05,
+          "elapsed_s": 0.12,
+          "guard_still_marks_loaded": true,
+          "bytes_produced_after_ttl": 64
+        },
+        "violation_count": 1,
+        "violation": "TTL(0.05s) 过 0.12s 后守卫仍标记 teacher_loaded=True、句柄仍产出 64 字节：TTL 只在下一次 check/set_mode 时惰性过期，且过期不使已加载句柄失效（§1.4「超时自动卸载」）",
+        "control_ok_normal": true,
+        "poison": "mode_check_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：World Mode 加载 feature 教师期望 ModeViolationError，实际 None"
+      },
+      {
+        "case": "C10",
+        "theme": "模式绕过",
+        "title": "模式切换无内存回落检查 unload_incomplete",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "mode_py_memory_check_refs": 0,
+          "refs": []
+        },
+        "violation_count": 1,
+        "violation": "§1.4 要求模式切换前记录内存并在回落不足时拒绝切换（记 unload_incomplete），但 mode.py 中 0 处引用 RSS/内存/unload_incomplete，该守卫未实现",
+        "control_ok_normal": true,
+        "poison": "set_mode_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：set_mode('not_a_mode') 期望 ValueError，实际 TypeError"
+      },
+      {
+        "case": "C11",
+        "theme": "并发写入",
+        "title": "并发同键不同输出丢失 nondeterministic 拒绝",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "rounds": 20,
+          "rounds_broken_rejection": 20,
+          "first_hit": {
+            "round": 0,
+            "accepted": 2,
+            "stored_matches_recorded_sha": true
+          },
+          "example_round": {
+            "round": 0,
+            "accepted": 2,
+            "stored_matches_recorded_sha": true
+          }
+        },
+        "violation_count": 1,
+        "violation": "20 轮并发同键不同输出写入中 20 轮拒绝失效（两进程都被接受，或盘上 output.bin 与 blob.json 记录的 sha 不一致）：§2.2「不一致就拒绝写入 nondeterministic_output」在并发下不成立，实现的 check-then-write 无互斥",
+        "control_ok_normal": true,
+        "poison": "write_blob_overwrite",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：顺序重写不同输出期望 nondeterministic_output，实际 None"
+      },
+      {
+        "case": "C12",
+        "theme": "并发写入",
+        "title": "并发同键跨分区写入 TOCTOU",
+        "verdict": "FAIL(finding)",
+        "normal_exit": 1,
+        "metrics": {
+          "rounds": 20,
+          "rounds_with_cross_partition_blob": 20,
+          "first_hit": {
+            "round": 0,
+            "results": [
+              [
+                1,
+                "accepted",
+                null
+              ],
+              [
+                0,
+                "accepted",
+                null
+              ]
+            ],
+            "partitions": [
+              "development",
+              "train"
+            ]
+          },
+          "example_round": {
+            "round": 0,
+            "results": [
+              [
+                1,
+                "accepted",
+                null
+              ],
+              [
+                0,
+                "accepted",
+                null
+              ]
+            ],
+            "partitions": [
+              "development",
+              "train"
+            ]
+          }
+        },
+        "violation_count": 1,
+        "violation": "20 轮并发同键跨分区写入中 20 轮双双成功，盘上分区出现 ['development', 'train']：§2.4「新条目拒绝写入」的写时扫描是 check-then-act 且无互斥，并发下 cross_partition_blob 照样产生",
+        "control_ok_normal": true,
+        "poison": "write_entry_scan_off",
+        "poison_turned_red": true,
+        "poison_exit": 1,
+        "poison_control_message": "对照失效：顺序跨分区写入期望 CrossPartitionError，实际 None"
+      }
+    ]
+  },
+  "evidence_identity": {
+    "normal_exit": 1,
+    "poison_exit": 1,
+    "findings": [
+      "tests/v9/teachers/test_cache.py: 接力台登记 6749d11adc03… 与盘上 d091f1efd1ee… 不一致",
+      "reports/V9-T2/metrics.json 自述行数与盘上文件不符：{\"src/ainerzero/v9/teachers/cache.py\": {\"claimed\": 620, \"actual\": 485}, \"src/ainerzero/v9/teachers/mode.py\": {\"claimed\": 452, \"actual\": 487}, \"src/ainerzero/v9/teachers/__init__.py\": {\"claimed\": 35, \"actual\": 61}, \"tests/v9/teachers/test_cache.py\": {\"claimed\": 565, \"actual\": 657}, \"tests/v9/teachers/test_mode.py\": {\"claimed\": 443, \"actual\": 173}}",
+      "盘上 reports/V9-T2/metrics.json 的 agent=opencode-de3b，接力台登记的执行者是 composer-a7k2（两份证据不同作者）",
+      "接力台登记的 composer-a7k2 报告声称 23 passed，当前工作树实际收集 44 个测试（登记结果与工作树不是同一份交付）",
+      "reports/V9-T2/REPORT.md 的 mtime 2026-10-20T14:57:17 晚于接力台登记的交付时刻 2026-10-20T14:51:31（交付后仍被改写）",
+      "reports/V9-T2/metrics.json 的 mtime 2026-10-20T14:55:48 晚于接力台登记的交付时刻 2026-10-20T14:51:31（交付后仍被改写）",
+      "盘上 reports/V9-T2/REPORT.md 署名 opencode-de3b，接力台登记执行者 composer-a7k2"
+    ],
+    "finding_count": 7,
+    "poison_finding_count": 8,
+    "poison_turned_red": true,
+    "reported_vs_disk": {
+      "tests/v9/teachers/test_cache.py": {
+        "reported": "6749d11adc03c6986ed66da1c9e70e620ae9c68650d6a27377cc869f8760d54e",
+        "on_disk": "d091f1efd1eebd9a3fa228595a8ee214bcf7fa51da3e0b7722e09d7e24b7e0cf",
+        "match": false
+      }
+    },
+    "matched_files": 7,
+    "claimed_tests_on_disk_metrics": 44,
+    "collected_tests": 44,
+    "relay_registered_passed": 23,
+    "file_mtimes": {
+      "REPORT.md": "2026-10-20T14:57:17",
+      "metrics.json": "2026-10-20T14:55:48"
+    }
+  },
+  "resources": {
+    "tmpdir": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T (tempfile.TemporaryDirectory, auto-cleaned)",
+    "touched_artifacts_locks": false,
+    "suite_seconds": 9.38,
+    "suite_peak_rss_bytes": 33226752,
+    "gpu_used": false,
+    "training": false,
+    "downloads": false,
+    "installs": false,
+    "git_commit_or_push": false
+  },
+  "verdict": {
+    "recommend_accept": false,
+    "recommendation": "打回（reject）：F1/F2/F3 违反规范明文，F4–F12 守卫缺口，F13 证据不一致需一级裁定",
+    "minimum_fix_set": [
+      "F1",
+      "F2",
+      "F3",
+      "F5",
+      "F6"
+    ],
+    "positive_findings": "锁协议 16 组合全互斥、ModeGuard 基本规则、store_problems/train_eligible 对契约正例成立、原子写、纯 CPU"
+  }
+}

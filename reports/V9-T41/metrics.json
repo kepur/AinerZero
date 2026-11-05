@@ -1,0 +1,126 @@
+{
+  "task": "ainerzero.V9.T41",
+  "agent": "composer-vyz0",
+  "reviewed_task": "ainerzero.V9.T40",
+  "author_of_reviewed": "claude-az",
+  "independence_ok": true,
+  "sha_table_from_command_output": {
+    "src/ainerzero/v9/teachers/da3_calibration_math.py": "9a80aa736a5de2e6116b6f0f92bedc200fd57b1bec35b33ab3036d1df3e1ec2b",
+    "src/ainerzero/v9/teachers/da3_calibration_runner.py": "d6d2416eb15d75e30542f174698da823cb7f5f74f130f6b33c7f3a6bec67410d",
+    "src/ainerzero/v9/teachers/da3_worker.py": "0062a707164a0facb42c9f2a3a21b9dd1cf485c3b6f82c953d123690a4fde6ce",
+    "src/ainerzero/v9/teachers/da3_controlled.py": "006d9005b15f9b4bf25859ef99f6b617394075df88d1ebb9639ffc1667ded5bc",
+    "tests/test_da3_calibration_runner.py": "6a82fc17af3278428b7ca24edd9d50ed245d26958693ad152acd914a4384827b",
+    "tests/test_teacher_da3_controlled.py": "a62ab2d819a1acda0ef549880fcb83436c1de9ffa7a2ba8323ae159bf6909043",
+    "tests/test_da3_supervision.py": "fb9ac1bbe763403c2b5ceb1c33febcc14d97e6950886604444631d91e13f4c49",
+    "command": "shasum -a 256 ...",
+    "matches_t40_sha_txt": true,
+    "matches_t40_metrics": true,
+    "raw_output_path": "reports/V9-T41/evidence/sha_and_paths.txt"
+  },
+  "diff_reviewed_lines": 271,
+  "baseline_reconstruction_credible": true,
+  "real_pipeline_reachable_from_test_substitute": false,
+  "real_pipeline_paths": [
+    {
+      "path": "execute_guarded(test_substitute=True, worker_action=None)",
+      "reaches_real_pipeline": false,
+      "selects": "mock_run"
+    },
+    {
+      "path": "execute_guarded(test_substitute=True, worker_action='real_pipeline')",
+      "reaches_real_pipeline": false,
+      "selects": "BenchmarkRefusalError"
+    },
+    {
+      "path": "CLI --test-substitute without release",
+      "reaches_real_pipeline": false,
+      "selects": "mock_run"
+    },
+    {
+      "path": "CLI --test-substitute --coordinator-release",
+      "reaches_real_pipeline": false,
+      "selects": "CLI picks real_pipeline then execute_guarded refuses before run_supervised"
+    },
+    {
+      "path": "CLI/API formal released without test_substitute",
+      "reaches_real_pipeline": true,
+      "selects": "real_pipeline (intended)"
+    },
+    {
+      "path": "run_supervised_da3_worker() default (bypass execute_guarded)",
+      "reaches_real_pipeline": true,
+      "selects": "default real_pipeline; no test_substitute param"
+    },
+    {
+      "path": "python -m da3_worker --action real_pipeline",
+      "reaches_real_pipeline": true,
+      "selects": "worker real_pipeline; gated by views==18"
+    }
+  ],
+  "magic_number_guards_found": [
+    {
+      "where": "da3_worker.py real_pipeline branch",
+      "guard": "views == 18",
+      "role": "only starts calibration runner when views==18; otherwise refused_no_calibration rc=4; previously masked test_substitute→real_pipeline when views=4"
+    }
+  ],
+  "own_mutants": [
+    {
+      "id": "T41-1",
+      "desc": "_write_atomic skips os.replace",
+      "caught": true,
+      "failed_tests": 3
+    },
+    {
+      "id": "T41-2",
+      "desc": "remove test_substitute explicit real_pipeline refusal",
+      "caught": true,
+      "failed_tests": 1
+    },
+    {
+      "id": "T41-3",
+      "desc": "refused_no_calibration returns rc=0",
+      "caught": true,
+      "failed_tests": 1
+    },
+    {
+      "id": "T41-4",
+      "desc": "preflight allows overwrite of in_progress evidence",
+      "caught": false,
+      "suite_blind_spot": true,
+      "custom_probe": "GAP_CONFIRMED: in_progress overwrite allowed"
+    }
+  ],
+  "adversarial_probes_passed": 14,
+  "adversarial_probes_total": 14,
+  "proposal_flag_overrides_env": true,
+  "default_proposal_still_r1": true,
+  "preflight_r1_exit": 6,
+  "preflight_r2_exit": 0,
+  "worker_refusal_rc4_verified_with_mock": true,
+  "cli_needs_views_preflight_before_consume": true,
+  "cli_preflight_judgment": "Yes: add views/calibration-eligibility check before store.consume (or refund on refused_no_calibration). Worker rc=4 alone cannot un-burn reserved views.",
+  "runs_db_sha_unchanged": true,
+  "runs_db_sha_prefix": "64b668050dfbab7a",
+  "lock_mtime_unchanged": true,
+  "lock_mtime": 1790110663,
+  "no_model_loaded": true,
+  "pipeline_py_untouched": true,
+  "t28_files_untouched": true,
+  "ran_on_ac": true,
+  "pytest_da3_suite_passed": 60,
+  "pytest_da3_suite_failed": 0,
+  "pytest_wall_seconds": 74.82,
+  "next_run_would_die_on_known_issue": "yes",
+  "next_run_would_die_basis": "half_parity still must-crash: CPU RuntimeError dtype Float/Half; MPS Metal assert SIGABRT 134. T40 incremental evidence keeps prior stages as in_progress JSON but does not prevent the crash.",
+  "half_parity_evidence_on_crash": "prior completed stages + status in_progress should survive; mid-stage crash may omit current stage; orphan .tmp not promoted",
+  "recommendation": "accept_with_changes",
+  "required_changes": [
+    "User decision: remove half_parity stage or change pipeline to autocast-fp16 (pipeline.py identity/cache-key policy first)",
+    "Register r2 SHA; decide when default PROPOSAL_PATH switches from r1",
+    "Ledger basis for views==18 vs forward-views 56; CLI/execute_guarded preflight before consume",
+    "Add test that in_progress evidence cannot be overwritten (T41-4 blind spot)",
+    "CLI benchmark_commands: test_substitute should select mock_run even with coordinator_release (do not select real_pipeline then refuse)",
+    "User approve quota numbers"
+  ]
+}

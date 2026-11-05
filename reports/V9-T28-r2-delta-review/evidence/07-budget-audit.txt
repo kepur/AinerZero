@@ -1,0 +1,61 @@
+==============================================================================
+预算自算: ../V9-T28/r2/proposal.json
+==============================================================================
+
+[DA3-SMALL]
+  first_frame            dev=mps  prec=float32  calls=1 frames/call=1 views=1   |views_list|=1 |worlds|=1
+  calibration            dev=mps  prec=float32  calls=6 frames/call=3 views=18  |views_list|=3 |worlds|=6
+  frame_order_adverse    dev=mps  prec=float32  calls=1 frames/call=3 views=3   |views_list|=3 |worlds|=1
+  cpu_parity             dev=cpu  prec=float32  calls=1 frames/call=3 views=3   |views_list|=3 |worlds|=1
+  自算: calls=9 views=25 loads=2
+  声明: calls=9 views=25
+  一致: True
+
+[DA3-BASE]
+  first_frame            dev=mps  prec=float32  calls=1 frames/call=1 views=1   |views_list|=1 |worlds|=1
+  calibration            dev=mps  prec=float32  calls=6 frames/call=3 views=18  |views_list|=3 |worlds|=6
+  frame_order_adverse    dev=mps  prec=float32  calls=1 frames/call=3 views=3   |views_list|=3 |worlds|=1
+  cpu_parity             dev=cpu  prec=float32  calls=1 frames/call=3 views=3   |views_list|=3 |worlds|=1
+  自算: calls=9 views=25 loads=2
+  声明: calls=9 views=25
+  一致: True
+
+[合计]
+  自算: calls=18 views=50 loads=4
+  声明: total_planned_forward_calls=18 total_planned_forward_views=50
+  一致: True
+  reserve_before_model_import_views=64 (常量核对: True)
+  unallocated_views 自算=14 声明=14 一致=True
+
+  阶段名=['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity']  期望=['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity']  一致=True
+  全部阶段 precision 集合={'float32'}  全 float32=True
+
+[阶段结构]
+  DA3-SMALL/first_frame: worlds=['t6-analytic-room-00'] views=[0] 期望首帧锚点 view=0 -> True
+  DA3-SMALL/calibration: |worlds|=6 唯一=6 views=[0, 1, 2] 期望 [0, 1, 2] 覆盖全部 6 世界=True -> True
+  DA3-SMALL/frame_order_adverse: views=[2, 1, 0] 期望逆序 [2, 1, 0] -> True
+  DA3-SMALL/cpu_parity: device=cpu views=[0, 1, 2] -> True
+  DA3-BASE/first_frame: worlds=['t6-analytic-room-00'] views=[0] 期望首帧锚点 view=0 -> True
+  DA3-BASE/calibration: |worlds|=6 唯一=6 views=[0, 1, 2] 期望 [0, 1, 2] 覆盖全部 6 世界=True -> True
+  DA3-BASE/frame_order_adverse: views=[2, 1, 0] 期望逆序 [2, 1, 0] -> True
+  DA3-BASE/cpu_parity: device=cpu views=[0, 1, 2] -> True
+
+  retired_stages=['half_parity']  重新出现在 budget.stages 里=[]
+
+[容差键使用情况]
+  cpu_float32: 映射精度=float32 有阶段使用=True 标记为已退役容差=False
+  mps_float16: 映射精度=float16 有阶段使用=False 标记为已退役容差=True
+
+[runner load_plan 对照]
+  load_plan: calls_per_variant=9 views_per_variant=25
+  load_plan: variants=('DA3-SMALL', 'DA3-BASE') stages=['first_frame', 'calibration', 'frame_order_adverse', 'cpu_parity']
+  load_plan: known_intrinsics=False focal_scale=(1.0, 1.0)
+  load_plan: parity_cpu=(0.001, 0.001) parity_half=(0.01, 0.01)
+  load_plan: red_floor=0.0001 red_rel=0.1
+  每型号自算=[('DA3-SMALL', 9, 25), ('DA3-BASE', 9, 25)]  各型号是否一致=True
+  与 load_plan(每型号口径)一致: True
+  两型号合计=18 calls / 50 views (= 每型号 × 2) 校验: True
+
+==============================================================================
+FAILS=0 => PASS
+==============================================================================

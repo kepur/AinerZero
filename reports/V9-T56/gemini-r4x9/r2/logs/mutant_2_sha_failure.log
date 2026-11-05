@@ -1,0 +1,73 @@
+Return Code: 1
+
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python3
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /Users/mac/AinerWorkFlow/AinerZero
+configfile: pyproject.toml
+collecting ... collected 1 item
+
+tests/test_da3_t56_features.py::test_real_venv_t6_runner_script_execution_without_pythonpath FAILED [100%]
+
+=================================== FAILURES ===================================
+_________ test_real_venv_t6_runner_script_execution_without_pythonpath _________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-336/test_real_venv_t6_runner_scrip0')
+
+    def test_real_venv_t6_runner_script_execution_without_pythonpath(tmp_path: Path):
+        """集成测试：用 envs/teachers/.venv-t6/bin/python，不带 PYTHONPATH，以脚本方式跑 --preflight-only。"""
+        import os
+        import subprocess
+    
+        t6_python = REPO_ROOT / "envs/teachers/.venv-t6/bin/python"
+        if not t6_python.is_file():
+            pytest.skip(f".venv-t6 python not found at {t6_python}")
+    
+        custom_runner = os.environ.get("DA3_RUNNER_SCRIPT")
+        runner_script = Path(custom_runner) if custom_runner else REPO_ROOT / "src/ainerzero/v9/teachers/da3_calibration_runner.py"
+        r1_proposal = REPO_ROOT / "reports/V9-T28/proposal.json"
+        pre_e18_proposal = REPO_ROOT / "reports/V9-T28/r2/pre-E18-1694ed30/proposal.json"
+    
+        # Base clean env without PYTHONPATH
+        clean_env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+    
+        # 1. Default (reads registered proposal, i.e. r2) -> exit code 0
+        out1 = tmp_path / "out1.json"
+        pred1 = tmp_path / "pred1"
+        res1 = subprocess.run(
+            [str(t6_python), str(runner_script), "--preflight-only", "--output", str(out1), "--predictions-dir", str(pred1)],
+            cwd=str(REPO_ROOT),
+            env=clean_env,
+            capture_output=True,
+            text=True,
+        )
+        assert res1.returncode == 0, f"Default preflight in .venv-t6 failed: {res1.stdout}\n{res1.stderr}"
+        assert "preflight" in res1.stdout
+    
+        # 2. T6_PROPOSAL_PATH pointing to r1 -> non-zero (exit 2)
+        out2 = tmp_path / "out2.json"
+        pred2 = tmp_path / "pred2"
+        env_r1 = dict(clean_env)
+        env_r1["T6_PROPOSAL_PATH"] = str(r1_proposal)
+        res2 = subprocess.run(
+            [str(t6_python), str(runner_script), "--preflight-only", "--output", str(out2), "--predictions-dir", str(pred2)],
+            cwd=str(REPO_ROOT),
+            env=env_r1,
+            capture_output=True,
+            text=True,
+        )
+        assert res2.returncode != 0, f"Expected non-zero exit for T6_PROPOSAL_PATH=r1, got {res2.returncode}"
+>       assert res2.returncode == 2
+E       AssertionError: assert 6 == 2
+E        +  where 6 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/envs/teachers/.venv-t6/bin/python', '/Users/mac/AinerWorkFlow/AinerZero/reports/V9-T56/gemini-r4x9/r2/mutants/mutant_2_no_sha_check/src/ainerzero/v9/teachers/da3_calibration_runner.py', '--preflight-only', '--output', '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-336/test_real_venv_t6_runner_scrip0/out2.json', '--predictions-dir', '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-336/test_real_venv_t6_runner_scrip0/pred2'], returncode=6, stdout='', stderr='PROTOCOL UNSATISFIABLE (no model work done): T28 requires known-K conditioning without supplying extrinsics, plus an adverse-intrinsics control that must turn red (S_bad >= S_clean + max(1e-4, 0.1*S_clean)). This DA3 build ignores intrinsics unless extrinsics are supplied (model/da3.py: `if extrinsics is not None:` gates cam_enc), so predictions cannot depend on K and the control is unsatisfiable by construction (S_bad == S_clean). A coordinator/user amendment of the frozen protocol is required before any real run.\n').returncode
+
+tests/test_da3_t56_features.py:327: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_da3_t56_features.py::test_real_venv_t6_runner_script_execution_without_pythonpath
+============================== 1 failed in 0.46s ===============================
+
+
+STDERR:
+

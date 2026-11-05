@@ -1,0 +1,274 @@
+{
+  "task": "ainerzero.V9.T9",
+  "verified_task": "ainerzero.V9.T8",
+  "author": "opencode-de3b",
+  "verifier": "deepseek-flash-3tgx",
+  "verifier_is_author": false,
+  "date": "2026-10-20",
+  "params_version": "v0",
+  "params": {},
+  "status": "reported",
+  "environment": {
+    "python": "3.12.4",
+    "numpy": "2.4.2",
+    "cpu_only": true,
+    "gpu": false,
+    "network": false
+  },
+  "checks": {
+    "identity_ok": true,
+    "verifier_checks": 11,
+    "verifier_failed": 0,
+    "cases": 11,
+    "numeric_cases": 9,
+    "retention_all_match": true,
+    "author_suite": "18 passed",
+    "mutations_all_red": true,
+    "mutations": [
+      {
+        "mutation": "M1-merge-boundary-le",
+        "ok": true,
+        "failed_checks": 42,
+        "expected_case": "tau_boundary_equal",
+        "expected_hit": true
+      },
+      {
+        "mutation": "M2-retention-denominator",
+        "ok": true,
+        "failed_checks": 18,
+        "expected_case": "long_static_1000",
+        "expected_hit": true
+      },
+      {
+        "mutation": "M3-no-restoration-propagation",
+        "ok": true,
+        "failed_checks": 16,
+        "expected_case": "periodic_flicker_below_tau",
+        "expected_hit": true
+      },
+      {
+        "mutation": "M4-drop-first-frame",
+        "ok": true,
+        "failed_checks": 153,
+        "expected_case": "single_frame_T1",
+        "expected_hit": true
+      }
+    ],
+    "purity": {
+      "ast_import_roots": [
+        "numpy"
+      ],
+      "ast_ok": true,
+      "loaded_forbidden_modules": "",
+      "import_ok": true,
+      "command": "/opt/homebrew/opt/python@3.12/bin/python3.12 -c '<import ainerzero.v9.tokenization.rlt and scan sys.modules>' (cwd=temp, PYTHONPATH cleared)"
+    }
+  },
+  "all_checks_passed": true,
+  "verdict": "建议验收（限范围：纯 CPU numpy 参考实现 + 合成片段；不含模型/GPU/精度损失实测）",
+  "case_metrics": [
+    {
+      "case": "periodic_flicker_above_tau",
+      "desc": "alternating +0.6 every frame with tau=0.5: everything is motion",
+      "T": 6,
+      "ph": 2,
+      "pw": 2,
+      "D": 3,
+      "tau": 0.5,
+      "total_tokens": 24,
+      "K_impl": 24,
+      "K_oracle": 24,
+      "retention_rate_impl": 1.0,
+      "retention_rate_oracle": 1.0,
+      "expected_shape": [
+        6,
+        2,
+        2,
+        3
+      ]
+    },
+    {
+      "case": "periodic_flicker_below_tau",
+      "desc": "alternating +0.49 < tau=0.5: must merge after frame 0",
+      "T": 6,
+      "ph": 2,
+      "pw": 2,
+      "D": 3,
+      "tau": 0.5,
+      "total_tokens": 24,
+      "K_impl": 4,
+      "K_oracle": 4,
+      "retention_rate_impl": 0.16666666666666666,
+      "retention_rate_oracle": 0.16666666666666666,
+      "expected_shape": [
+        6,
+        2,
+        2,
+        3
+      ]
+    },
+    {
+      "case": "single_pixel_change",
+      "desc": "one 1x1 patch changes by 0.7 for one frame only",
+      "T": 5,
+      "ph": 3,
+      "pw": 3,
+      "D": 2,
+      "tau": 0.5,
+      "total_tokens": 45,
+      "K_impl": 11,
+      "K_oracle": 11,
+      "retention_rate_impl": 0.24444444444444444,
+      "retention_rate_oracle": 0.24444444444444444,
+      "expected_shape": [
+        5,
+        3,
+        3,
+        2
+      ]
+    },
+    {
+      "case": "tau_boundary_equal",
+      "desc": "diff exactly == tau: kept, not merged",
+      "T": 3,
+      "ph": 1,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.5,
+      "total_tokens": 6,
+      "K_impl": 4,
+      "K_oracle": 4,
+      "retention_rate_impl": 0.6666666666666666,
+      "retention_rate_oracle": 0.6666666666666666,
+      "expected_shape": [
+        3,
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "tau_boundary_below",
+      "desc": "diff = tau - 1e-9 < tau: must merge",
+      "T": 3,
+      "ph": 1,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.5,
+      "total_tokens": 6,
+      "K_impl": 2,
+      "K_oracle": 2,
+      "retention_rate_impl": 0.3333333333333333,
+      "retention_rate_oracle": 0.3333333333333333,
+      "expected_shape": [
+        3,
+        1,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "long_static_1000",
+      "desc": "T=1000 identical frames, tau=0.1: rate must be 1/T per position",
+      "T": 1000,
+      "ph": 2,
+      "pw": 3,
+      "D": 4,
+      "tau": 0.1,
+      "total_tokens": 6000,
+      "K_impl": 6,
+      "K_oracle": 6,
+      "retention_rate_impl": 0.001,
+      "retention_rate_oracle": 0.001,
+      "expected_shape": [
+        1000,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "case": "first_last_frame_change",
+      "desc": "first frame unique and last frame changes; both edges must be kept correctly",
+      "T": 4,
+      "ph": 2,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.5,
+      "total_tokens": 16,
+      "K_impl": 6,
+      "K_oracle": 6,
+      "retention_rate_impl": 0.375,
+      "retention_rate_oracle": 0.375,
+      "expected_shape": [
+        4,
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "single_frame_T1",
+      "desc": "T=1: no frames to merge",
+      "T": 1,
+      "ph": 2,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.5,
+      "total_tokens": 4,
+      "K_impl": 4,
+      "K_oracle": 4,
+      "retention_rate_impl": 1.0,
+      "retention_rate_oracle": 1.0,
+      "expected_shape": [
+        1,
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "case": "tau_zero_no_dropping",
+      "desc": "tau=0 must retain every (frame, position) token",
+      "T": 4,
+      "ph": 2,
+      "pw": 2,
+      "D": 1,
+      "tau": 0.0,
+      "total_tokens": 16,
+      "K_impl": 16,
+      "K_oracle": 16,
+      "retention_rate_impl": 1.0,
+      "retention_rate_oracle": 1.0,
+      "expected_shape": [
+        4,
+        2,
+        2,
+        1
+      ]
+    }
+  ],
+  "unverified": [
+    "真实 V-JEPA 2.1 特征上的精度损失 vs 吞吐（GPU 实测不在本卡授权/范围）",
+    "真实视频/数据集上的保留率（只验证合成与对抗片段）",
+    "整数/半精度 dtype 行为（本卡用例均为 float64）",
+    "runtime 端到端接入与消费者兼容性",
+    "批次多长度输入的正式 API（当前 fail-closed，需另开卡设计）"
+  ],
+  "notes": [
+    "positions 数组只含 (h,w)，不含帧索引；帧索引需由 run_lengths 逐位置累加解码（我们已用该法独立验证可逆）。",
+    "长游程 restoration 误差可超过 tau（作者报告已说明；我们的语义检查确认 merged 帧相对上一帧 diff<tau，restoration 取该 run 的保留 token 值，符合登记语义）。",
+    "API 只接受单个 4D 张量；混合长度列表输入以 AttributeError 失败（fail-closed，不产生静默错误结果）。",
+    "实现用 assert 做 tau>=0 校验，python -O 会关闭断言（参考实现可接受，生产接口应改显式异常）；另 shape 解包发生在 ndim 断言之前，非 4D 输入抛 ValueError 而非 AssertionError。"
+  ],
+  "artifacts": {
+    "independent_verifier": "reports/V-V9-T8/verify_t9.py",
+    "case_results": "reports/V-V9-T8/case-results.json",
+    "mutation_results": "reports/V-V9-T8/mutation-results.json",
+    "verify_log": "reports/V-V9-T8/verify-t9.log",
+    "mutation_log": "reports/V-V9-T8/mutate-t9.log",
+    "author_pytest_log": "reports/V-V9-T8/pytest-author.log",
+    "input_identities": "reports/V-V9-T8/input-identities.json"
+  },
+  "report": "reports/V-V9-T8/REPORT.md"
+}

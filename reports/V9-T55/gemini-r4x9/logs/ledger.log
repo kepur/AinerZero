@@ -1,0 +1,48 @@
+=== Verification of Central runs.db Ledger ===
+Production runs.db SHA256 before: 61242c30ffb56621615107ce971c2ff7802e3a30b7491294297239df3c3e0d01
+Check passed: Production runs.db matches expected 61242c30... SHA256.
+
+Metadata keys added: {'t6_views_override_20261028'}
+Metadata override value:
+{
+  "task": "ainerzero.V9.T6 line (line-wide, every DA3 run)",
+  "research_log_section": "R20261027-T28-amendment-A 补记（用户定 DA3 配额按全线合计记账）",
+  "authorized_by": "user",
+  "user_words": "Whole line, 249/1440",
+  "accounting": "line_wide_all_da3_runs_in_central_runstore",
+  "old_max_views": 82,
+  "new_max_views": 249,
+  "views_used_before": 199,
+  "views_requested": 50,
+  "cumulative_wall_cap_s": 1440,
+  "wall_used_before_s": 1320.0,
+  "run_wall_budget_s": 120,
+  "single_run_only": true,
+  "t28_proposal_sha256": "31eef66689f82ea79ab50dd4cca7a15b8430c7d44aaf0dbcf0abf98fb989d278",
+  "written_by": "claude（一级，relay.P2.E46）",
+  "timestamp": "2026-10-29T01:14:59+0300"
+}
+Check passed: metadata key t6_views_override_20261028 has new_max_views=249.
+
+Runs added count: 1, removed count: 0
+New run_id: a7bcc4c9ee0e4a9f93cad49746b973a9
+New run details:
+  state: failed
+  active_seconds: 120.0 (Expected: 120.0)
+  views: 50 (Expected: 50)
+  task: ainerzero.V9.T6 (Expected: ainerzero.V9.T6)
+  model: da3-all (Expected: da3-all)
+Check passed: new run a7bcc4c9... has views=50, active_seconds=120.0, task=ainerzero.V9.T6.
+Check passed: all 14 prior runs are byte-for-byte identical.
+
+Line-wide DA3 aggregation across 15 runs:
+  Total views: 249 (Expected: 249)
+  Total active_seconds: 1440.0 (Expected: 1440.0)
+  Breakdown by task:
+    - ainerzero.V9.T33: views=82, active_seconds=140.0, runs=5
+    - ainerzero.V9.T33.r2: views=36, active_seconds=10.0, runs=2
+    - ainerzero.V9.T6: views=131, active_seconds=1290.0, runs=8
+Check passed: Line-wide DA3 cumulative accounting equals 249 views / 1440.0 s.
+
+Production runs.db SHA256 after check: 61242c30ffb56621615107ce971c2ff7802e3a30b7491294297239df3c3e0d01
+Check passed: Production runs.db strictly unmodified (SHA256 preserved).

@@ -1,0 +1,85 @@
+{
+  "task": "ainerzero.V9.T23",
+  "agent": "gemini-w9p4",
+  "tier": 2,
+  "kind": "implement",
+  "status": "completed",
+  "timestamp": "2026-10-26T10:30:00+03:00",
+  "parameters": {
+    "cpu_only": true,
+    "real_model_runs": 0,
+    "no_download_install": true,
+    "no_production_db": true,
+    "existing_T4_budget_seconds": 1800.0,
+    "existing_T4_per_run_seconds": 600.0
+  },
+  "cli": {
+    "subcommand": "teacher-benchmark",
+    "modes": ["inspect", "run"],
+    "supported_models": ["vjepa", "depth-anything-v2", "all"],
+    "exit_codes": {
+      "0": "EXIT_COMPLETED",
+      "1": "EXIT_FAILED",
+      "2": "EXIT_REFUSED_RESOURCE",
+      "3": "EXIT_REFUSED_APPROVAL",
+      "4": "EXIT_LOCK_BUSY",
+      "5": "EXIT_REFUSED_BUDGET"
+    }
+  },
+  "gates": {
+    "approval_gate": {
+      "section": "R20261016-T4",
+      "keyword": "批准 T4",
+      "target": "ainerzero.V9.T4",
+      "exit_code_on_refusal": 3
+    },
+    "budget_gate": {
+      "max_cumulative_wall_seconds": 1800.0,
+      "max_per_run_wall_seconds": 600.0,
+      "ledger": "RunStore (central runs.db)",
+      "pre_reservation": "conservative (consume before dispatch, no crash refunds)",
+      "exit_code_on_refusal": 5
+    },
+    "resource_gate": {
+      "max_resident_models": 1,
+      "max_process_rss_gib": 32.0,
+      "exit_code_on_refusal": 2
+    },
+    "lock_gate": {
+      "mechanism": "worker_lock (fcntl.flock exclusive non-blocking)",
+      "lock_path": "artifacts/locks/m0-worker.lock",
+      "exit_code_on_busy": 4
+    },
+    "inspect_mode": {
+      "zero_side_effects": true,
+      "created_dbs": 0,
+      "created_locks": 0,
+      "models_loaded": 0,
+      "exit_code": 0
+    }
+  },
+  "tests": {
+    "test_file": "tests/v9/teachers/test_benchmark_guard.py",
+    "passed": 9,
+    "failed": 0,
+    "total_teacher_suite": 42,
+    "total_teacher_suite_passed": 42
+  },
+  "sabotage": {
+    "script": "reports/V9-T23/verify_sabotage.py",
+    "bash_runner": "reports/V9-T23/sabotage_control.sh",
+    "all_mutations_turned_red": true,
+    "mutations_count": 4,
+    "isolated_in_tmp": true,
+    "main_repo_drift": false,
+    "results_file": "reports/V9-T23/sabotage_result.json"
+  },
+  "safety_and_hygiene": {
+    "no_production_test_switches": true,
+    "no_env_bypass_flags": true,
+    "pure_cpu_test": true,
+    "real_model_runs": 0,
+    "no_download_or_install": true,
+    "s1_production_db_untouched": true
+  }
+}

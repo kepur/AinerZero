@@ -1,0 +1,20 @@
+=== Adversarial Mutation Testing for E18 Verification ===
+
+--- [Adversarial Test 1] Mutating cumulative_view_cap to 250 ---
+Original cumulative_view_cap: 249
+Mutated cumulative_view_cap in scratch copy to: 250
+Evaluating consistency: used(199) + charge(50) == cap(250) == 249
+SUCCESS: Mutation 1 CAUGHT by Step 3 numerical consistency check: Arithmetic inconsistency caught: 199 + 50 = 249 != cap(250)
+
+--- [Adversarial Test 2] Deleting one T33 run in runs.db copy ---
+Selected T33 run for deletion: 0b5137b4049d... (views: 18, active_seconds: 0.0)
+Deleted run 0b5137b4049d48708c5df424b77dddc0 from scratch database.
+Recalculation on mutated database:
+  Mutated total views: 181 (expected 199)
+  Mutated total active_seconds: 1320.0 (expected 1320.0)
+  Mutated T33 breakdown: {'views': 64, 'active_seconds': 140.0} (expected views: 82, active_seconds: 140.0)
+SUCCESS: Mutation 2 CAUGHT by Step 2 independent recalculation check: Total views mismatch: 181 != 199 (deficit: 18)
+
+=== Adversarial Test Summary ===
+Test 1 (Cap changed to 250 detected by Step 3): PASS
+Test 2 (Deleted T33 run detected by Step 2): PASS

@@ -1,0 +1,139 @@
+{
+  "task_id": "ainerzero.V9.T38",
+  "reviewed_task_id": "ainerzero.V9.T37",
+  "reviewer_agent": "gemini-9e5a",
+  "reviewed_authors": [
+    "claude-az",
+    "deepseek-v41f-w3q7"
+  ],
+  "independent_reviewer": true,
+  "recommendation": "accept",
+  "tests_fail_when_fix_reverted": true,
+  "revert_verification": {
+    "full_r1_revert_without_math_module": {
+      "returncode": 2,
+      "outcome": "collection_error_missing_da3_calibration_math"
+    },
+    "runner_r1_revert_with_math_and_worker_present": {
+      "returncode": 1,
+      "passed": 6,
+      "failed": 4,
+      "errors": 13
+    }
+  },
+  "mutation_testing": {
+    "t37_original_mutations_total": 10,
+    "t37_original_mutations_caught": 10,
+    "t38_new_mutations_total": 8,
+    "t38_new_mutations_caught": 5,
+    "t38_new_mutations_survived_test_blind_spots": [
+      "NEW-5: da3_calibration_runner.py passing ('depth',) instead of plan.parity_fields to M.parity_compare (FakeFactory cpu_eps only perturbs depth)",
+      "NEW-6: da3_calibration_runner.py leaking holdout_worlds into fit covariance (test_da3_calibration_runner.py:281 short-circuits on rank <= 2 and omits n_samples == 4 assertion)",
+      "NEW-8: da3_calibration_math.py dividing sample_cov by N instead of N-1 (unit test checks rank and [7,7] shape only)"
+    ]
+  },
+  "own_world0_abs_rel": {
+    "bilinear_self_fitted_per_view": [
+      0.092604,
+      0.090442,
+      0.090454
+    ],
+    "bilinear_self_fitted_delta1_per_view": [
+      0.999252,
+      0.996871,
+      0.994932
+    ],
+    "bicubic_self_fitted_per_view": [
+      0.092726,
+      0.090602,
+      0.090575
+    ],
+    "t28_correct_w2c_inverted": {
+      "rotation_deg": 0.981224,
+      "translation_residual_norm": 0.083037,
+      "depth_abs_rel_anchor_scaled": 0.09235,
+      "depth_delta1_anchor_scaled": 0.997347,
+      "residual_7d": [
+        0.005587,
+        -0.016141,
+        -0.001245,
+        -0.036323,
+        0.033076,
+        0.066946,
+        -0.018013
+      ]
+    },
+    "t28_wrong_r1_w2c_as_c2w": {
+      "rotation_deg": 5.440713,
+      "translation_residual_norm": 1.046644,
+      "residual_7d": [
+        -0.00532,
+        -0.094436,
+        -0.008402,
+        1.041287,
+        -0.030755,
+        -0.101188,
+        -0.018013
+      ]
+    },
+    "da3_saddle_balanced_selected_ref_view_world0": 1
+  },
+  "d8_intrinsics_conditioning_audit": {
+    "upstream_bypass_exists": false,
+    "checked_paths": [
+      "model/da3.py:126 (cam_enc gated behind extrinsics is not None)",
+      "model/cam_enc.py:33,58,70 (joint 9D [T,quat,fov_h,fov_w] Linear(9,dim//2) requiring affine_inverse(ext))",
+      "model/da3.py:141,181 (use_ray_pose predicts pose/K from ray head, takes no input intrinsics)",
+      "model/da3.py:145,238 (_process_gs_head intrinsics arg unused; gs_head absent in small/base)",
+      "api.py:350 (_align_to_input_extrinsics_intrinsics returns early when extrinsics is None)",
+      "envs/teachers/t6/pipeline.py:306 (process_keyframes has no intrinsics parameter)"
+    ],
+    "amendment_option_a_sound": true
+  },
+  "other_assumptions_found": [
+    {
+      "id": "BLOCKER-FP16-PIPELINE",
+      "severity": "critical_run_killer",
+      "location": "envs/teachers/t6/pipeline.py:268-291 vs Depth-Anything-3 dualdpt.py:225 / head_utils.py:135,140,146 / cam_dec.py:37-40",
+      "summary": "ExplicitPrecisionDA3 disables torch.autocast and casts all model weights to float16 for dtype='float16', colliding with hardcoded float32 omega/emb.float() in DualDPT._add_pos_embed and feat.float() in CameraDec.forward; guaranteed RuntimeError at call #10 (DA3-SMALL/half_parity)."
+    },
+    {
+      "id": "BLOCKER-WORKER-VIEWS-GATE",
+      "severity": "high_quota_burn_trap",
+      "location": "src/ainerzero/v9/teachers/da3_worker.py:204 vs reports/V9-T37/AMENDMENT_PROPOSAL.md:48-49",
+      "summary": "da3_worker.py gates calibration behind 'views == 18'; if user approves forward-view accounting (--views 56) without updating da3_worker.py, CLI reserves 56 views in RunStore, skips execution, and exits rc=0 with model_runs=0."
+    },
+    {
+      "id": "TRAP-RUNSTORE-RESERVE-BEFORE-PREFLIGHT",
+      "severity": "medium_operational",
+      "location": "src/ainerzero/v9/teachers/da3_controlled.py:678,885",
+      "summary": "execute_guarded_da3_benchmark reserves RunStore quota before spawning worker and defaults to --model da3-small weight check; operators must run da3_calibration_runner.py --preflight-only before teacher-da3 --mode run."
+    },
+    {
+      "id": "MINOR-HARDCODED-VIEW-INDICES-AND-K-SUMMARY",
+      "severity": "low",
+      "location": "src/ainerzero/v9/teachers/da3_calibration_math.py:83,89,102 & da3_calibration_runner.py:303,310,313,323",
+      "summary": "Matches frozen T28 (views 0,1,2 and t6-analytic-room-00), but parsed plan.anchor_view/scored_view/scale_view are unused in math/runner, and Option A's descriptive predicted-vs-GT K deviation summary is not yet emitted in calibration-evidence.json."
+    }
+  ],
+  "fake_teacher_realistic": false,
+  "fake_teacher_gaps": [
+    "Does not exercise PyTorch/ExplicitPrecisionDA3 dtype='float16', masking the guaranteed RuntimeError in DualDPT and CameraDec",
+    "Accepts intrinsics= kwarg that real DA3GeometryTeacher.process_keyframes (pipeline.py:306) rejects with TypeError",
+    "Emits constant confidence=0.9 instead of DualDPT expp1 distribution ([1.0007, 6.9772] on world 0)",
+    "Uses fixed global similarity frame instead of view-dependent saddle_balanced reference selection (view 1 on world 0)",
+    "Returns exact scaled GT K without cache_key/key_material metadata instead of FOV-decoded K (+10.6% focal shift on world 0)"
+  ],
+  "cpu_test_suite": {
+    "command": "PYTHONPATH=src pytest -q tests/test_da3_calibration_runner.py tests/test_da3_supervision.py tests/test_teacher_da3_controlled.py tests/test_da3_views_82.py",
+    "passed": 48,
+    "failed": 0,
+    "duration_seconds": 73.65
+  },
+  "runs_db_sha256": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+  "runs_db_sha_unchanged": true,
+  "lock_mtime_ns_unchanged": 1790110663379635830,
+  "zero_run_respected": true,
+  "next_run_risk": "high",
+  "next_run_risk_reason": "high if run immediately after amending T28 alone: envs/teachers/t6/pipeline.py (outside T37 file scope) casts all DA3 weights to float16 with autocast(enabled=False), which will deterministically throw RuntimeError at call #10 (DA3-SMALL/half_parity) on DualDPT.make_sincos_pos_embed (float32 omega/emb) and CameraDec.forward (feat.float()); plus da3_worker.py:204 hardcodes views==18 (will no-op and burn quota if --views 56 is chosen). Drops to low once pipeline.py fp16 autocast and worker views gate are fixed before requesting new quota."
+}

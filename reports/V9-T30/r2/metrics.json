@@ -1,0 +1,100 @@
+{
+  "task": "ainerzero.V9.T30",
+  "round": "r2",
+  "agent": "antigravity-h4d8",
+  "status": "completed",
+  "timestamp": "2026-10-26T17:46:00+03:00",
+  "test_summary": {
+    "test_files": [
+      "tests/test_teacher_da3_controlled.py",
+      "tests/test_da3_supervision.py"
+    ],
+    "total_tests": 22,
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "wall_clock_seconds": 69.86
+  },
+  "defects_addressed_r2": {
+    "lazy_worker_routing": {
+      "fixed": true,
+      "details": "da3_worker.py --action real_pipeline integrates with envs/teachers/t6/pipeline.py and verifies upstream source tree identity & weights; blocks forward pass with model_runs=0 when unapproved"
+    },
+    "mock_model_runs_zero": {
+      "fixed": true,
+      "details": "mock_run strictly outputs model_runs=0 and is_mock=True, preventing false claims of real model execution"
+    },
+    "no_synchronous_adapter_bypass": {
+      "fixed": true,
+      "details": "Removed synchronous adapter bypass in parent; all executions strictly launch child process group via Popen(start_new_session=True) with continuous parent supervision and POSIX empty group proof"
+    },
+    "hardware_resource_guards": {
+      "fixed": true,
+      "details": "Reused hardware guards: AC power required (battery rejected), system RAM reserve >= 16 GiB, swap growth <= 1 GiB, process group RSS <= 8 GiB"
+    },
+    "central_paths_and_double_checked_locking": {
+      "fixed": true,
+      "details": "Locked formal run store/lock paths to central paths; cumulative views and cumulative budget are checked outside lock and re-checked inside worker_lock"
+    },
+    "production_cli_pre_reservation_rejection": {
+      "fixed": true,
+      "details": "Production CLI rejects before RunStore reservation with exit 1 if real model execution is unapproved; zero budget consumed, zero fake success"
+    },
+    "physical_source_mutations": {
+      "fixed": true,
+      "details": "4 physical mutated single-region files created in reports/V9-T30/r2/mutations/; 3-direction evidence captured"
+    }
+  },
+  "mutation_controls_3_directions": [
+    {
+      "name": "Control 1: Wall Clock Timeout Supervision Gate",
+      "mutation_file": "reports/V9-T30/r2/mutations/mutation_1_timeout/da3_controlled.py",
+      "direction_1_clean_pass": "Clean code + fast task (0.02s <= 1.0s) -> returncode=0, violation=None",
+      "direction_2_clean_catch": "Clean code + runaway task (3.0s > 0.2s) -> killed by supervisor, violation=timeout, empty_group_proven=True",
+      "direction_3_mutated_proof": "Mutated code (timeout guard disabled) + runaway task -> ignores timeout, violation=None, proves guard necessity",
+      "status": "VERIFIED_SENSITIVE"
+    },
+    {
+      "name": "Control 2: Process Group RSS Protection Gate",
+      "mutation_file": "reports/V9-T30/r2/mutations/mutation_2_rss/da3_controlled.py",
+      "direction_1_clean_pass": "Clean code + normal memory (5 MiB <= 150 MiB) -> returncode=0",
+      "direction_2_clean_catch": "Clean code + runaway memory (200 MiB > 80 MiB limit) -> killed by supervisor, violation=rss_limit, empty_group_proven=True",
+      "direction_3_mutated_proof": "Mutated code (RSS guard disabled) + runaway memory -> ignores RSS limit, violation=None, proves guard necessity",
+      "status": "VERIFIED_SENSITIVE"
+    },
+    {
+      "name": "Control 3: Orphan Grandchild Leak Detection Gate",
+      "mutation_file": "reports/V9-T30/r2/mutations/mutation_3_leak/da3_controlled.py",
+      "direction_1_clean_pass": "Clean code + clean child process -> returncode=0, empty_group_proven=True",
+      "direction_2_clean_catch": "Clean code + early exit with grandchild -> killed by supervisor, violation=grandchild_leak, empty_group_proven=True",
+      "direction_3_mutated_proof": "Mutated code (leak guard disabled) + early exit -> ignores leaked grandchild, violation=None, proves guard necessity",
+      "status": "VERIFIED_SENSITIVE"
+    },
+    {
+      "name": "Control 4: Corrupt Ledger Fail-Closed Protection Gate",
+      "mutation_file": "reports/V9-T30/r2/mutations/mutation_4_ledger/da3_controlled.py",
+      "direction_1_clean_pass": "Clean code + valid DB -> accurately computes active_seconds and cumulative_views (15 views)",
+      "direction_2_clean_catch": "Clean code + corrupt DB -> fails closed raising BenchmarkRefusalError, strictly no fallback to 0.0",
+      "direction_3_mutated_proof": "Mutated code (swallows error) + corrupt DB -> silently returns 0.0, 0, proves clean fail-closed necessity",
+      "status": "VERIFIED_SENSITIVE"
+    }
+  ],
+  "delivered_file_hashes": {
+    "src/ainerzero/cli.py": "60a6c7f099649212c1fc35ff27cbe74dcb48f3b5cb1d3ad3199ce6020082afc3",
+    "src/ainerzero/v9/teachers/benchmark.py": "aa83e7db9fb4a57b7ed20dddff450b67c5c25a9350f2cace23606bd29e97a5eb",
+    "src/ainerzero/v9/teachers/benchmark_commands.py": "fcd84832f6d46cf48910dd589a1b523ffb87ee669abe334d819877e711b1c760",
+    "src/ainerzero/v9/teachers/benchmark_protocol.py": "6e27c41cd54bc0977ac7d087f603fd983af1f225d32b3945e7580634f62f1bd4",
+    "src/ainerzero/v9/teachers/da3_controlled.py": "754d5f92a00a855c7731f82944a33ba2d965e8e7932f70e8253d100e43cfeb55",
+    "src/ainerzero/v9/teachers/da3_worker.py": "25e323c546988bb00d190c789c701b1c018cc7a48883aa9b2a0234962c13b28d",
+    "tests/test_teacher_da3_controlled.py": "f8f863a6a1e04cfc0df80f64a5b4aa361a43b3ebca1a14798af821ba40c69ef7",
+    "tests/test_da3_supervision.py": "994db3c43866c774f4a87876138644c3cd8a2c579c601bb3d744eab16b68a421",
+    "reports/V9-T30/r2/mutations/mutation_1_timeout/da3_controlled.py": "b9ec92b85b21db07c1e52500518f7e9e9ffb27e062402c08b47f753859c32925",
+    "reports/V9-T30/r2/mutations/mutation_2_rss/da3_controlled.py": "8aced6388071cf5b07acd82cc33844cb36df214e8d5d752d2ddd947caf8fb9ff",
+    "reports/V9-T30/r2/mutations/mutation_3_leak/da3_controlled.py": "2b970e2aee1c31681864a74dc3b545a71ce0939b8f6629b5b4435c7fb5cee5e8",
+    "reports/V9-T30/r2/mutations/mutation_4_ledger/da3_controlled.py": "dbbb291196b98a184aabedfa3e5925b3967bf158b2d86af2d2beb295dd5467ed"
+  },
+  "archive_manifest_paths": {
+    "t26_t27_archive": "reports/V9-T30/archive/archive_manifest.txt",
+    "r1_archive": "reports/V9-T30/archive/r1/r1_manifest.txt"
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "task": "ainerzero.V9.T30",
+  "agent": "antigravity-h4d8",
+  "status": "completed",
+  "timestamp": "2026-10-26T17:24:00+03:00",
+  "test_summary": {
+    "test_files": [
+      "tests/test_teacher_da3_controlled.py",
+      "tests/test_da3_supervision.py"
+    ],
+    "total_tests": 20,
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0,
+    "wall_clock_seconds": 4.45
+  },
+  "defects_addressed": {
+    "supervision": {
+      "fixed": true,
+      "mechanism": "True child process group via subprocess.Popen(start_new_session=True), periodic parent supervision loop, os.killpg termination (SIGTERM -> SIGKILL), POSIX empty group proof"
+    },
+    "pre_reservation_rejection": {
+      "fixed": true,
+      "mechanism": "Approval, statistical protocol JSON, weights manifest, views quota, cumulative budget, and worker runner prerequisites checked BEFORE touching RunStore"
+    },
+    "readonly_inspect": {
+      "fixed": true,
+      "mechanism": "Direct SQLite URI mode=ro query avoiding RunStore initialization, DDL execution, or table metadata mutations"
+    },
+    "ledger_query_and_fail_closed": {
+      "fixed": true,
+      "mechanism": "Corrected column to active_seconds; damaged/abnormal ledgers fail closed with BenchmarkRefusalError instead of returning 0.0"
+    },
+    "cumulative_views_accounting": {
+      "fixed": true,
+      "mechanism": "Enforced lifetime 64-view cumulative quota across all derived jobs in RunStore; rejects if cumulative_views + requested_views > 64"
+    }
+  },
+  "mutation_controls": [
+    {
+      "name": "Control 1: Wall Clock Timeout Supervision Gate",
+      "baseline": "Normal execution within budget -> returncode=0, violation=None",
+      "mutated": "Runaway worker (sleep 5.0s > 0.2s budget) -> killed by supervisor, violation=timeout, empty_group_proven=True",
+      "status": "VERIFIED"
+    },
+    {
+      "name": "Control 2: Process Group RSS Protection Gate",
+      "baseline": "Normal memory allocation (5 MiB <= 50 MiB) -> returncode=0",
+      "mutated": "Runaway memory (100 MiB > 30 MiB limit) -> killed by supervisor, violation=rss_limit, empty_group_proven=True",
+      "status": "VERIFIED"
+    },
+    {
+      "name": "Control 3: Orphan Grandchild Leak Detection Gate",
+      "baseline": "Clean child subprocess -> returncode=0, empty_group_proven=True",
+      "mutated": "Group leader exits early leaving background grandchild -> killed by supervisor, violation=grandchild_leak, empty_group_proven=True",
+      "status": "VERIFIED"
+    },
+    {
+      "name": "Control 4: Corrupt Ledger Fail-Closed Protection Gate",
+      "baseline": "Valid SQLite ledger -> read-only inspect computes accurate active_seconds and cumulative_views",
+      "mutated": "Corrupted or non-SQLite file -> fails closed raising BenchmarkRefusalError, strictly no fallback to 0.0",
+      "status": "VERIFIED"
+    }
+  ],
+  "delivered_file_hashes": {
+    "src/ainerzero/cli.py": "60a6c7f099649212c1fc35ff27cbe74dcb48f3b5cb1d3ad3199ce6020082afc3",
+    "src/ainerzero/v9/teachers/benchmark.py": "aa83e7db9fb4a57b7ed20dddff450b67c5c25a9350f2cace23606bd29e97a5eb",
+    "src/ainerzero/v9/teachers/benchmark_commands.py": "d9a711fca64fa7944fade8f2256079737fdaa3ccf63dec50161614fefe793383",
+    "src/ainerzero/v9/teachers/benchmark_protocol.py": "6e27c41cd54bc0977ac7d087f603fd983af1f225d32b3945e7580634f62f1bd4",
+    "src/ainerzero/v9/teachers/da3_controlled.py": "93016b3d5e6313db6aa82900cc598db59805ff2c1841da8c30c28646e08c7c18",
+    "src/ainerzero/v9/teachers/da3_worker.py": "7046723dc08b1ac819b6a46e80959889602034fb2fee9f7ff94142cfb103d205",
+    "tests/test_teacher_da3_controlled.py": "f8f863a6a1e04cfc0df80f64a5b4aa361a43b3ebca1a14798af821ba40c69ef7",
+    "tests/test_da3_supervision.py": "63b3d92193c605d400f0432a5f52a51f6e2f8ecc243355fbd310c68abd419383"
+  },
+  "archive_manifest_path": "reports/V9-T30/archive/archive_manifest.txt"
+}

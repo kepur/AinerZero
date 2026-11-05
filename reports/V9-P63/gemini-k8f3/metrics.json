@@ -1,0 +1,56 @@
+{
+  "task": "ainerzero.V9.P63",
+  "executor": "gemini-k8f3",
+  "tier": 2,
+  "user_instruction": "取消 DA3 基准与 AWZ Blender 渲染的接电守卫（用户 10-28：电池不影响训练）",
+  "modified_files": [
+    "src/ainerzero/v9/teachers/da3_controlled.py",
+    "tests/test_da3_supervision.py",
+    "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/render_backend/blender_npr.py"
+  ],
+  "tests": {
+    "ainerzero_venv": {
+      "cmd": ".venv/bin/python -m pytest tests/test_da3_supervision.py tests/test_teacher_da3_controlled.py tests/test_da3_views_82.py -q",
+      "passed": 33,
+      "failed": 0,
+      "status": "passed"
+    },
+    "ainerzero_venv_t6": {
+      "cmd": "envs/teachers/.venv-t6/bin/python -m pytest tests/test_da3_supervision.py tests/test_teacher_da3_controlled.py tests/test_da3_views_82.py -q",
+      "status": "failed_collection_no_pytest",
+      "note": "envs/teachers/.venv-t6 does not contain pytest (documented per instructions)"
+    },
+    "awz_blender_npr": {
+      "cmd": ".venv/bin/python -m pytest tests/render_backend/test_blender_npr.py -q",
+      "passed": 21,
+      "failed": 0,
+      "status": "passed"
+    },
+    "awz_all_render_backend": {
+      "cmd": ".venv/bin/python -m pytest tests/render_backend/ -q",
+      "passed": 130,
+      "failed": 0,
+      "status": "passed"
+    }
+  },
+  "bad_controls": {
+    "da3_bad_control": {
+      "status": "turned_red",
+      "failure_type": "BenchmarkResourceRefused",
+      "error": "Power source is battery; AC power required for benchmark execution (running on battery refused)"
+    },
+    "awz_bad_control": {
+      "status": "turned_red",
+      "failure_type": "RuntimeError",
+      "error": "非 AC 供电环境，依规停手: Now drawing from 'Battery Power'"
+    }
+  },
+  "guards_preserved": [
+    "memory_guards",
+    "swap_guards",
+    "disk_guards",
+    "worker_lock",
+    "blender_version_5.2.2"
+  ],
+  "status": "completed"
+}

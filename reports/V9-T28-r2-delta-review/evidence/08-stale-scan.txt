@@ -1,0 +1,130 @@
+==============================================================================
+残留旧数字 / 旧措辞扫描（新版 r2）
+==============================================================================
+
+### half_parity
+  [6 hit(s)] proposal.json
+      /amendment/approved_by_user_second/decisions[0]: remove half_parity (E15)
+      /amendment/approved_by_user_second/verbatim: 选 A：从 T28 r2 删除 half_parity（每型号 9 次/25 视图，合计 18 次/50 视图），你修订 r2 并做差异复核；cpu_parity 保持现状。配额口径我另行告知。
+      /amendment/changes[5]: E6 budget: drop intrinsics_adverse stage (and, by E15, half_parity), view_accounting OPEN
+      /amendment/changes[14]: E15 (2026-10-28, user option A) remove half_parity stage: 9 calls/25 views per variant, 18/50 total; numerical_parity.retired_stages added, known_risks reduced to the argmin risk; mps_float16 tolerance key kept unchanged and unused
+      /numerical_parity/retired_stages[0]/stage: half_parity
+      /open_items[2]: independent review: T39 reviewed r2 before E15 (accept_with_changes, applied); the E15 delta (half_parity removal) needs its own small different-author delta review; then lead immutable SHA registration of the final r2 SHA
+  [2 hit(s)] PROTOCOL.md
+      PROTOCOL.md:78: ## 2026-10-28 第二次修订（E15）：删除 half_parity
+      PROTOCOL.md:92: `known_intrinsics: true → false`；移除内参逆向控制；移除 half_parity 阶段（E15）；每型号 11 次/31 视图 → 9 次/25 视图，合计 62 → 50；
+  [4 hit(s)] AMENDMENT.md
+      AMENDMENT.md:27: 3. 预算：每型号移除 `intrinsics_adverse` 阶段（E15 再移除 `half_parity`，见下）→ 9 次/25 视图，合计 18 次/50 视图；`unallocated_views` 随预留数重算为 14。
+      AMENDMENT.md:44: 3. E15（删除 half_parity）的差异复核（不同作者，小卡）+ 一级对最终 SHA 的登记。T39 复核的是 E15 之前的版本。
+      AMENDMENT.md:54: > 选 A：从 T28 r2 删除 half_parity（每型号 9 次/25 视图，合计 18 次/50 视图），你修订 r2 并做差异复核；cpu_parity 保持现状。配额口径我另行告知。
+      AMENDMENT.md:56: 内容：删除 `half_parity` 阶段；`cpu_parity` 规则保持现状；配额口径仍待用户告知。理由、证据与影响见 PROTOCOL.md「第二次修订（E15）」与机器文件 `numerical_parity.retired_stages`。
+
+### MPS/F16
+  [none] proposal.json
+  [1 hit(s)] PROTOCOL.md
+      PROTOCOL.md:43: 两型号各以 world00 的 MPS/F32 正例作为引用，比较CPU/F32的depth/confidence/extrinsics/intrinsics；形状/有限值先过门，再逐元素 `|a-b| <= atol+rtol*|reference|`。CPU/F32的atol/rtol均0.001。（r1 另有 MPS/F16 一致性阶段，atol/rtol 均0.01；r2 已按用户 2026-10-28 批准的选项 A 删除该阶
+  [none] AMENDMENT.md
+
+### fp16/float16
+  [4 hit(s)] proposal.json
+      /amendment/changes[14]: E15 (2026-10-28, user option A) remove half_parity stage: 9 calls/25 views per variant, 18/50 total; numerical_parity.retired_stages added, known_risks reduced to the argmin risk; mps_float16 tolerance key kept unchanged and unused
+      /numerical_parity/retired_stages[0]/not_replaced: no substitute fp16 control is introduced; option B (autocast-based fp16 in pipeline.py) was not chosen, so pipeline.py is unchanged and its SHA bindings remain valid
+      /numerical_parity/retired_stages[0]/reason: it cannot complete in this build: pipeline.py ExplicitPrecisionDA3 disables autocast and casts the whole network to float16, while upstream CameraDec.forward hard-codes self.fc_t(feat.float()). The fp32 input meets an fp16 Linear: CPU raises 'mat1 and mat2 must have the same dtype'; MPS aborts the process in a Metal assertion (SIGABRT, exit 134), after the authorization has been consumed and before DA3-BASE starts
+      /numerical_parity/retired_stages[0]/tolerance_key: mps_float16
+  [5 hit(s)] PROTOCOL.md
+      PROTOCOL.md:81: `pipeline.py` 的 `ExplicitPrecisionDA3` 关掉 autocast 并把整网转成 float16，而上游 `CameraDec.forward` 写死 `self.fc_t(feat.float())`；
+      PROTOCOL.md:82: fp32 输入喂给 fp16 的 Linear，CPU 抛 `mat1 and mat2 must have the same dtype`，**MPS 没有 Python 异常，Metal 断言直接中止进程（SIGABRT，退出码 134）**，
+      PROTOCOL.md:85: 改动的全部内容：每型号 10 次/28 视图 → 9 次/25 视图，合计 20 次/56 视图 → 18 次/50 视图；每型号加载 3 次 → 2 次，合计 6 → 4；`numerical_parity.known_risks` 去掉 fp16 一条；
+      PROTOCOL.md:86: 新增 `numerical_parity.retired_stages`。**没有**引入替代的 fp16 控制，`pipeline.py` 未动（选项 B 未被选，所以其 SHA 绑定仍有效），`mps_float16` 容差键原值保留但不再被使用。
+      PROTOCOL.md:87: 丢掉的东西要如实说：本方案不再给出 fp16 一致性这一项。若以后要它，需要先改管线（autocast 方案）并另立预登记。
+  [none] AMENDMENT.md
+
+### 10 次 / 10 calls
+  [none] proposal.json
+  [1 hit(s)] PROTOCOL.md
+      PROTOCOL.md:85: 改动的全部内容：每型号 10 次/28 视图 → 9 次/25 视图，合计 20 次/56 视图 → 18 次/50 视图；每型号加载 3 次 → 2 次，合计 6 → 4；`numerical_parity.known_risks` 去掉 fp16 一条；
+  [none] AMENDMENT.md
+
+### 28 视图 / 28 views
+  [none] proposal.json
+  [1 hit(s)] PROTOCOL.md
+      PROTOCOL.md:85: 改动的全部内容：每型号 10 次/28 视图 → 9 次/25 视图，合计 20 次/56 视图 → 18 次/50 视图；每型号加载 3 次 → 2 次，合计 6 → 4；`numerical_parity.known_risks` 去掉 fp16 一条；
+  [none] AMENDMENT.md
+
+### 20 次 / 20 calls
+  [none] proposal.json
+  [1 hit(s)] PROTOCOL.md
+      PROTOCOL.md:85: 改动的全部内容：每型号 10 次/28 视图 → 9 次/25 视图，合计 20 次/56 视图 → 18 次/50 视图；每型号加载 3 次 → 2 次，合计 6 → 4；`numerical_parity.known_risks` 去掉 fp16 一条；
+  [none] AMENDMENT.md
+
+### 56 视图 / 56
+  [none] proposal.json
+  [1 hit(s)] PROTOCOL.md
+      PROTOCOL.md:85: 改动的全部内容：每型号 10 次/28 视图 → 9 次/25 视图，合计 20 次/56 视图 → 18 次/50 视图；每型号加载 3 次 → 2 次，合计 6 → 4；`numerical_parity.known_risks` 去掉 fp16 一条；
+  [none] AMENDMENT.md
+
+### 62
+  [none] proposal.json
+  [1 hit(s)] PROTOCOL.md
+      PROTOCOL.md:92: `known_intrinsics: true → false`；移除内参逆向控制；移除 half_parity 阶段（E15）；每型号 11 次/31 视图 → 9 次/25 视图，合计 62 → 50；
+  [none] AMENDMENT.md
+
+### 3 次加载 / 3 loads
+  [none] proposal.json
+  [none] PROTOCOL.md
+  [none] AMENDMENT.md
+
+### 6 次加载 / 6
+  [none] proposal.json
+  [4 hit(s)] PROTOCOL.md
+      PROTOCOL.md:35: 7×7样本协方差秩最多2，6×6位姿子块也最多2。因此**不求逆、不用伪逆、不补任意岭值**，不把该矩阵登记成 GeometryCore 可用噪声模型。输出完整奇异样本矩阵和对角样本方差作为描述统计；对角化不代表轴独立或高斯假设成立。本方案正则为none，不使用执行者临时选的regularizer。
+      PROTOCOL.md:56: | MPS/F32六个世界 | 6 | 3 | 18 |
+      PROTOCOL.md:69: 只有在 teacher 内部不自洽时，平移残差才会带一个对 6 个世界共同的横向各向异性拉伸（共模）。共模只进入 fit 均值而不进入去均值后的协方差，所以 fit 均值**不能**当作纯几何误差的估计。
+      PROTOCOL.md:85: 改动的全部内容：每型号 10 次/28 视图 → 9 次/25 视图，合计 20 次/56 视图 → 18 次/50 视图；每型号加载 3 次 → 2 次，合计 6 → 4；`numerical_parity.known_risks` 去掉 fp16 一条；
+  [1 hit(s)] AMENDMENT.md
+      AMENDMENT.md:30: 6. `claims_forbidden` 追加"任何声称 teacher 受真值/已知内参条件化"；新增 `amendment`、`open_items`、`supersedes`；作者/复核卡/协议 id 更新。
+
+### unallocated 8
+  [none] proposal.json
+  [none] PROTOCOL.md
+  [none] AMENDMENT.md
+
+### 31 视图
+  [none] proposal.json
+  [1 hit(s)] PROTOCOL.md
+      PROTOCOL.md:92: `known_intrinsics: true → false`；移除内参逆向控制；移除 half_parity 阶段（E15）；每型号 11 次/31 视图 → 9 次/25 视图，合计 62 → 50；
+  [none] AMENDMENT.md
+
+### 18 视图(dataset)
+  [4 hit(s)] proposal.json
+      /amendment/approved_by_user_second/verbatim: 选 A：从 T28 r2 删除 half_parity（每型号 9 次/25 视图，合计 18 次/50 视图），你修订 r2 并做差异复核；cpu_parity 保持现状。配额口径我另行告知。
+      /amendment/changes[14]: E15 (2026-10-28, user option A) remove half_parity stage: 9 calls/25 views per variant, 18/50 total; numerical_parity.retired_stages added, known_risks reduced to the argmin risk; mps_float16 tolerance key kept unchanged and unused
+      /budget/view_accounting/note: reserve_before_model_import_views and unallocated_views follow the r1 convention (central CLI per-job cap of 64). Whether the ledger counts dataset views (18) or forward views (50) is a user decision not yet made; the numbers here must be re-stated before registration.
+      /open_items[0]: view_accounting: user to state whether the ledger counts dataset views (18) or forward views (50) (budget.view_accounting)
+  [4 hit(s)] PROTOCOL.md
+      PROTOCOL.md:56: | MPS/F32六个世界 | 6 | 3 | 18 |
+      PROTOCOL.md:60: | 两型号合计 | 18 | — | 50 |
+      PROTOCOL.md:85: 改动的全部内容：每型号 10 次/28 视图 → 9 次/25 视图，合计 20 次/56 视图 → 18 次/50 视图；每型号加载 3 次 → 2 次，合计 6 → 4；`numerical_parity.known_risks` 去掉 fp16 一条；
+      PROTOCOL.md:100: **复核人不得导入或照抄这些脚本作自证**，应自建独立检查；r1 的所有文件和 18 视图输入均只读。
+  [2 hit(s)] AMENDMENT.md
+      AMENDMENT.md:27: 3. 预算：每型号移除 `intrinsics_adverse` 阶段（E15 再移除 `half_parity`，见下）→ 9 次/25 视图，合计 18 次/50 视图；`unallocated_views` 随预留数重算为 14。
+      AMENDMENT.md:54: > 选 A：从 T28 r2 删除 half_parity（每型号 9 次/25 视图，合计 18 次/50 视图），你修订 r2 并做差异复核；cpu_parity 保持现状。配额口径我另行告知。
+
+### 0.01 容差
+  [none] proposal.json
+  [none] PROTOCOL.md
+  [none] AMENDMENT.md
+
+==============================================================================
+总命中（含应保留的历史说明）: 43
+==============================================================================
+
+### 记账口径状态（卡面要求：明确标未决，不得因此 reject）
+  budget.view_accounting.status = 'OPEN_pending_user_decision'
+  budget.wall_accounting.status = 'OPEN_pending_user_decision'
+  budget.cumulative_wall_seconds_max = None
+  open_items 条数 = 4
+    [0] view_accounting: user to state whether the ledger counts dataset views (18) or forward views (50) (budget.view_accounting)
+    [1] specific view and wall quota numbers for the next run: user approval pending (cumulative reserved wall already 1170/1200)
+    [2] independent review: T39 reviewed r2 before E15 (accept_with_changes, applied); the E15 delta (half_parity removal) needs its own small different-author delta re
+    [3] runner: ainerzero.V9.T40 (reviewed by T41) already reads this r2 through --proposal; its default PROPOSAL_PATH still points at r1 and is switched only after reg

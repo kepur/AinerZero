@@ -1,0 +1,77 @@
+{
+  "task": "ainerzero.V9.T45",
+  "agent": "antigravity-9b2f",
+  "kind": "review",
+  "verdict": "accept",
+  "verdict_note": "T44 的 4 项改动在 src/ 与 tests/ 均严格正确落地，views 预检前置成立，68+11 passed，runs.db 与锁未动，零扣账零启动探针通过。审计发现 T44 在 r2 修改后遗留 stale 节点名致其自证脚本 exit 4，且原版 M-B 在 r2 门禁下成死代码变异；T45 已在 reports/V9-T45/mutations.py 中建立 5/5 变红完整闭环，判定 accept。",
+  "reviewed_task": "ainerzero.V9.T44",
+  "reviewed_author": "deepseek-q7m2",
+  "upstream_review": "ainerzero.V9.T43",
+  "checks": {
+    "sha_table_match": "9/9 与 T44 报告及 T43 基线完全吻合",
+    "files_changed": 5,
+    "out_of_scope_files_changed": 0,
+    "runs_db_sha_before_after": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+    "runs_db_unchanged": true,
+    "lock_mtime_before_after": 1790110663,
+    "lock_mtime_unchanged": true,
+    "tests_da3_suite_passed": 68,
+    "tests_extra_passed": 11,
+    "tests_failed": 0
+  },
+  "mutations": {
+    "total_tested": 6,
+    "active_caught_red": 5,
+    "dead_code_analyzed": 1,
+    "detail": {
+      "M-A": "RED (da3_controlled.py:934 门改回 worker_action -> test_derived_real_pipeline_path_also_hits_the_calibration_views_gate 变红)",
+      "M-B-r2": "RED (benchmark_commands.py:116 移除单独 allow_model 拒绝门 -> test_cli_allow_model_execution_alone_is_refused_before_any_reservation 变红)",
+      "M-C": "RED (da3_calibration_runner.py:246 临时文件写 /tmp -> test_write_atomic_keeps_the_temp_file_in_the_target_directory 变红)",
+      "M-X1": "RED (da3_controlled.py:921 移除非替身放行真跑纵深防御门 -> test_released_non_substitute_run_must_use_the_real_pipeline_before_any_reservation 变红)",
+      "M-X2": "RED (da3_controlled.py:934 移除 views 预检门 -> test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason 变红)",
+      "M-B-orig": "STILL GREEN (T43 原版 M-B 在 r2 行 116 拦截下为死代码变异，全套测试绿，分析已在报告 §3 详述)"
+    }
+  },
+  "probe_precheck_derived_views_81_82": {
+    "ledger_views_before": 81,
+    "ledger_max_views": 82,
+    "requested_views": 17,
+    "worker_action": null,
+    "derived_action": "real_pipeline",
+    "coordinator_release": true,
+    "exception_type": "BenchmarkRefusalError",
+    "contains_views_required_18": true,
+    "contains_quota_error": false,
+    "details_requested_views": 17,
+    "details_required_views": 18,
+    "details_action": "real_pipeline",
+    "details_derived_from_release": true,
+    "ledger_views_after": 81,
+    "ledger_seconds_after": 1170.0,
+    "ledger_db_sha_unchanged": true,
+    "worker_calls": 0,
+    "lock_file_created": false
+  },
+  "runs": {
+    "model_forward": 0,
+    "real_pipeline": 0,
+    "runs_db_writes": 0,
+    "lock_touched": 0,
+    "downloads": 0,
+    "installs": 0,
+    "paid_calls": 0
+  },
+  "deliverables": [
+    "reports/V9-T45/报告.md",
+    "reports/V9-T45/指标.json",
+    "reports/V9-T45/mutations.py",
+    "reports/V9-T45/probe_views_precheck.py",
+    "reports/V9-T45/evidence/01-sha-reconciliation.txt",
+    "reports/V9-T45/evidence/02-diff-t43-to-t44.txt",
+    "reports/V9-T45/evidence/03-mutations-5of5-red.txt",
+    "reports/V9-T45/evidence/04-probe-views-81-82.txt",
+    "reports/V9-T45/evidence/05-tests-and-lock-check.txt"
+  ],
+  "readonly": true,
+  "file_scope_respected": "严格限制在 reports/V9-T45/"
+}

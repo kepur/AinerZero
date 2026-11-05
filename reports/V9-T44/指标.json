@@ -1,0 +1,122 @@
+{
+  "task": "ainerzero.V9.T44",
+  "agent": "deepseek-q7m2",
+  "tier": 2,
+  "params": {
+    "level": "L2",
+    "zero_run": true
+  },
+  "verdict": "reported-ready-for-T45",
+  "items": {
+    "F-1_derived_path_and_precheck_order": {
+      "status": "done",
+      "code": "Step 6a/6b moved before quota gate",
+      "tests": [
+        "test_derived_real_pipeline_path_also_hits_the_calibration_views_gate",
+        "test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason"
+      ]
+    },
+    "F-2_same_directory_replace": {
+      "status": "done",
+      "tests": [
+        "test_write_atomic_keeps_the_temp_file_in_the_target_directory"
+      ]
+    },
+    "F-3_cli_explicit_release_only": {
+      "status": "done",
+      "semantic_change": true,
+      "tests": [
+        "test_cli_real_branch_honours_only_the_explicit_coordinator_release",
+        "test_cli_real_branch_still_selects_real_pipeline_with_explicit_release"
+      ]
+    },
+    "N-1_alias_cleanup": {
+      "status": "done",
+      "removed": [
+        "CALIBRATION_VIEWS_REQUIRED"
+      ],
+      "kept": "REGISTERED_CALIBRATION_VIEWS=18"
+    }
+  },
+  "mutations": {
+    "total": 3,
+    "caught": 3,
+    "detail": {
+      "M-A": "RED  (gate keyed on worker_action only)",
+      "M-B": "RED  (CLI real branch + or allow_model_execution)",
+      "M-C": "RED  (temp file in /tmp)"
+    },
+    "first_attempt_note": "M-C 首轮假绿：测试文件的 _load() 直连仓库绝对路径，改用正常 import 后变红"
+  },
+  "tests": {
+    "da3_suite": {
+      "files": [
+        "tests/test_teacher_da3_controlled.py",
+        "tests/test_da3_calibration_runner.py",
+        "tests/test_da3_supervision.py"
+      ],
+      "baseline_passed": 62,
+      "now_passed": 67,
+      "added": 5,
+      "seconds": 76.74
+    },
+    "extra_referencing_files": {
+      "files": [
+        "tests/test_da3_views_82.py",
+        "tests/v9/teachers/test_benchmark_guard.py"
+      ],
+      "passed": 11
+    },
+    "failed": 0
+  },
+  "zero_side_effects": {
+    "runs_db_sha_before": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+    "runs_db_sha_after": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+    "lock_before": "absent",
+    "lock_after": "absent",
+    "model_forward": 0,
+    "real_mlx_runs": 0
+  },
+  "sha_before_match_T43": true,
+  "changed_files": {
+    "src/ainerzero/v9/teachers/da3_controlled.py": {
+      "before": "d5d776672ea898a2c177346e75313023613eb128ee5d189a579459adc2369ba4",
+      "after": "535f0b80af9a17763825cb19abc7ad74b6663cd5c72595335892e5cd6c18561c"
+    },
+    "src/ainerzero/v9/teachers/da3_worker.py": {
+      "before": "307a32fcf2531126750496e0423ca1c5f36a2e164229a332f4cdc8197b8f5c7f",
+      "after": "7468e5fd10c8a1f41762ff686266a6ca4065e8d5c05dcca621e724967f692e5d"
+    },
+    "src/ainerzero/v9/teachers/benchmark_commands.py": {
+      "before": "1a43c4c2b0f5d3ead7ed2e52b8b51b04b90b533fbcaad6d093816292671b6c9d",
+      "after": "6b473ce857bc3ecb1bc07afd352a829a4c79ac2eb7d8683a855b666168aeb0ff"
+    },
+    "tests/test_teacher_da3_controlled.py": {
+      "before": "7b99b83c4d17d4780eee3ba616d52b75f43f1fa8066741ccb4d46dd3c69181a9",
+      "after": "9ed764c6bebdd69cfd29d8823fa2cb935dbe3477e0eccac9d24159de83560420"
+    },
+    "tests/test_da3_calibration_runner.py": {
+      "before": "70ef1d95567b2c6bf82b76599f44f62b839cb9d84a8aa76a1c32bfdcc1a0097c",
+      "after": "d8014c0a29ae18634cc77beeb2be5c81b4027395e87f240a11424479f27b530d"
+    }
+  },
+  "untouched_files": {
+    "src/ainerzero/v9/teachers/da3_calibration_runner.py": "5c12b934789dae36f5f98f0342a2897cfc0d935a1297d4cce56eb48d64bee85c",
+    "src/ainerzero/v9/teachers/da3_calibration_math.py": "9a80aa736a5de2e6116b6f0f92bedc200fd57b1bec35b33ab3036d1df3e1ec2b",
+    "tests/test_da3_supervision.py": "fb9ac1bbe763403c2b5ceb1c33febcc14d97e6950886604444631d91e13f4c49"
+  },
+  "findings_for_reviewer": [
+    "T43 F-3 前提不成立：benchmark_commands.py:76-79 把 allow_model_execution 折算进 coordinator_release，改动前单给 --allow-model-execution 确实会选 real_pipeline",
+    "因此 M-B 在原代码上是等价变异，任何测试都抓不到；为满足卡面 3/3 变红，CLI 选路收敛到显式 --coordinator-release（语义收紧，需 T45 拍板）",
+    "内层发布门仍认 --allow-model-execution，能力未删；输出新增 worker_action 字段避免静默降级"
+  ],
+  "evidence": {
+    "01-sha-before.txt": "87cc5473e1a5f319783d1dd13e79e41ea345c330a6b4c9f5352a1bf5deea07d2",
+    "02-changes.txt": "8eb129f8f6539b6feaec81fc75d20c44f2b483f6a040abf8947292ae1f0c6f5a",
+    "03-mutations.txt": "b39f348973041000553acb2bdeb1e0ef0f5656a749a90c7134dbd0aae8893137",
+    "04-tests.txt": "b1987cd0c9cc89dc7d0b51b553f1ed7e4efbab3e68ddc2ae67e2d796276d354e"
+  },
+  "scripts": {
+    "mutations": "0578c1669c4128f8547e8f0781812497a7c7649477f81c3449a893b7d98f113c"
+  }
+}

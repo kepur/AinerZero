@@ -1,0 +1,53 @@
+# T44 改动清单（2026-10-28T01:31:22+03:00）
+# 这三个源码目录/测试文件未入 git（??），因此没有 git diff；本文件用「改前改后 SHA + 精确改动块 + 行号」代替。
+
+## 1. 改前/改后 SHA
+改前（见 01-sha-before.txt）：
+307a32fcf2531126750496e0423ca1c5f36a2e164229a332f4cdc8197b8f5c7f  src/ainerzero/v9/teachers/da3_worker.py
+d5d776672ea898a2c177346e75313023613eb128ee5d189a579459adc2369ba4  src/ainerzero/v9/teachers/da3_controlled.py
+1a43c4c2b0f5d3ead7ed2e52b8b51b04b90b533fbcaad6d093816292671b6c9d  src/ainerzero/v9/teachers/benchmark_commands.py
+70ef1d95567b2c6bf82b76599f44f62b839cb9d84a8aa76a1c32bfdcc1a0097c  tests/test_da3_calibration_runner.py
+7b99b83c4d17d4780eee3ba616d52b75f43f1fa8066741ccb4d46dd3c69181a9  tests/test_teacher_da3_controlled.py
+
+改后：
+535f0b80af9a17763825cb19abc7ad74b6663cd5c72595335892e5cd6c18561c  src/ainerzero/v9/teachers/da3_controlled.py
+7468e5fd10c8a1f41762ff686266a6ca4065e8d5c05dcca621e724967f692e5d  src/ainerzero/v9/teachers/da3_worker.py
+6b473ce857bc3ecb1bc07afd352a829a4c79ac2eb7d8683a855b666168aeb0ff  src/ainerzero/v9/teachers/benchmark_commands.py
+9ed764c6bebdd69cfd29d8823fa2cb935dbe3477e0eccac9d24159de83560420  tests/test_teacher_da3_controlled.py
+d8014c0a29ae18634cc77beeb2be5c81b4027395e87f240a11424479f27b530d  tests/test_da3_calibration_runner.py
+
+未改（应与 01 完全一致）：
+5c12b934789dae36f5f98f0342a2897cfc0d935a1297d4cce56eb48d64bee85c  src/ainerzero/v9/teachers/da3_calibration_runner.py
+9a80aa736a5de2e6116b6f0f92bedc200fd57b1bec35b33ab3036d1df3e1ec2b  src/ainerzero/v9/teachers/da3_calibration_math.py
+fb9ac1bbe763403c2b5ceb1c33febcc14d97e6950886604444631d91e13f4c49  tests/test_da3_supervision.py
+64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f  artifacts/v9/teachers/benchmark/runs.db
+
+## 2. da3_controlled.py：Step 6a/6b 前移（行号）
+897:    # Step 6a: Resolve the effective worker action (V9.T44: 纯计算、无副作用，前移到配额检查之前)
+903:    is_released = (
+915:    action = worker_action or ("mock_run" if test_substitute else ("real_pipeline" if is_released else "mock_run"))
+918:    # Step 6b: Pre-consume calibration-views pre-check (V9.T42 门 / V9.T44 前移)
+933:                "derived_from_release": worker_action is None,
+
+## 3. benchmark_commands.py：CLI 选路只认显式 release
+85:    explicit_coordinator_release = bool(getattr(args, "coordinator_release", False))
+118:                "real_pipeline" if explicit_coordinator_release else "mock_run"
+131:                report.setdefault("worker_action", worker_action)
+
+## 4. da3_worker.py：别名删除
+27:# V9.T44 (N-1): 删除无人使用的别名 CALIBRATION_VIEWS_REQUIRED，只保留唯一来源 REGISTERED_CALIBRATION_VIEWS。
+28:REGISTERED_CALIBRATION_VIEWS: int = 18
+209:        if views == REGISTERED_CALIBRATION_VIEWS and args.allow_model_execution:
+249:                "reason": (f"authorized to execute, but no calibration was run: the calibration runner only starts for views == {REGISTERED_CALIBRATION_VIEWS}. "
+254:            sys.stderr.write(f"Real DA3 execution refused: no calibration was run for views={views} (runner requires views == {REGISTERED_CALIBRATION_VIEWS}).\n")
+265:            "note": None if runner_executed else f"no real calibration executed: the runner only runs for views == {REGISTERED_CALIBRATION_VIEWS}",
+
+## 5. N-1 全仓复查（排除 __pycache__ 与历史报告）
+src/ainerzero/v9/teachers/da3_worker.py:27:# V9.T44 (N-1): 删除无人使用的别名 CALIBRATION_VIEWS_REQUIRED，只保留唯一来源 REGISTERED_CALIBRATION_VIEWS。
+
+## 6. 新增测试（行号）
+762:def test_derived_real_pipeline_path_also_hits_the_calibration_views_gate(
+816:def test_views_gate_precedes_the_quota_gate_and_reports_the_views_reason(
+853:def test_cli_real_branch_honours_only_the_explicit_coordinator_release(
+906:def test_cli_real_branch_still_selects_real_pipeline_with_explicit_release(
+587:def test_write_atomic_keeps_the_temp_file_in_the_target_directory(tmp_path, monkeypatch):

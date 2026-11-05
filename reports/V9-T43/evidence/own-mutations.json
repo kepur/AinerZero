@@ -1,0 +1,62 @@
+{
+  "mutants": [
+    {
+      "id": "M-A",
+      "item": "1 consume 前预检",
+      "file": "src/ainerzero/v9/teachers/da3_controlled.py",
+      "mutation": "if worker_action and action == \"real_pipeline\" and spec.views != REGISTERED_CALIBRATION_VIEWS:",
+      "tests_run": [
+        "tests/test_teacher_da3_controlled.py::test_pre_consume_calibration_views_check_rejects_non_calibration_views_before_consume"
+      ],
+      "pytest_rc": 0,
+      "caught_by_suite": false,
+      "tail": ".                                                                        [100%] | 1 passed in 0.52s",
+      "probe_catches": true,
+      "probe_p1_outcome": "returned/None",
+      "restored_sha_matches": true,
+      "sha": "d5d776672ea898a2c177346e75313023613eb128ee5d189a579459adc2369ba4"
+    },
+    {
+      "id": "M-B",
+      "item": "3 CLI substitute+release",
+      "file": "src/ainerzero/v9/teachers/benchmark_commands.py",
+      "mutation": "worker_action = \"mock_run\" if test_substitute else (\"real_pipeline\" if (coordinator_release or allow_model_execution) el",
+      "tests_run": [
+        "tests/test_teacher_da3_controlled.py::test_cli_substitute_with_release_selects_mock_run_and_defense_in_depth"
+      ],
+      "pytest_rc": 0,
+      "caught_by_suite": false,
+      "tail": ".                                                                        [100%] | 1 passed in 2.03s",
+      "restored_sha_matches": true,
+      "sha": "1a43c4c2b0f5d3ead7ed2e52b8b51b04b90b533fbcaad6d093816292671b6c9d"
+    },
+    {
+      "id": "M-C",
+      "item": "4 唯一 .tmp",
+      "file": "src/ainerzero/v9/teachers/da3_calibration_runner.py",
+      "mutation": "    import tempfile\n    tmp = Path(tempfile.gettempdir()) / (path.name + unique_suffix)",
+      "tests_run": [
+        "tests/test_da3_calibration_runner.py::test_write_atomic_uses_unique_tmp_and_concurrent_writers_do_not_clobber"
+      ],
+      "pytest_rc": 0,
+      "caught_by_suite": false,
+      "tail": ".                                                                        [100%] | 1 passed in 0.12s",
+      "restored_sha_matches": true,
+      "sha": "5c12b934789dae36f5f98f0342a2897cfc0d935a1297d4cce56eb48d64bee85c"
+    },
+    {
+      "id": "M-D",
+      "item": "2 in_progress 覆盖拒绝",
+      "file": "src/ainerzero/v9/teachers/da3_calibration_runner.py",
+      "mutation": "        _ev_exists = Path(out_json).exists()\n        _ev_status = None\n        if _ev_exists:\n            try:\n         ",
+      "tests_run": [
+        "tests/test_da3_calibration_runner.py::test_preflight_rejects_existing_in_progress_evidence_and_ignores_tmp_residue"
+      ],
+      "pytest_rc": 1,
+      "caught_by_suite": true,
+      "tail": "=========================== short test summary info ============================ | FAILED tests/test_da3_calibration_runner.py::test_preflight_rejects_existing_in_progress_evidence_and_ignores_tmp_residue | 1 failed in 0.15s",
+      "restored_sha_matches": true,
+      "sha": "5c12b934789dae36f5f98f0342a2897cfc0d935a1297d4cce56eb48d64bee85c"
+    }
+  ]
+}

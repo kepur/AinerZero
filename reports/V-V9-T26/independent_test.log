@@ -1,0 +1,61 @@
+=====================================================================
+Independent Non-Author CPU Verification for ainerzero.V9.T26
+Executing under isolated environment; zero model run, zero DB write
+=====================================================================
+
+--- Dimension 1: SHA-256 Checksums Verification ---
+  [PASS] src/ainerzero/cli.py: aa1e42d6d426318d...
+  [PASS] src/ainerzero/v9/teachers/benchmark.py: 8d64e8865f1bea36...
+  [PASS] src/ainerzero/v9/teachers/benchmark_commands.py: b8278b83acf1493e...
+  [PASS] src/ainerzero/v9/teachers/benchmark_protocol.py: 6e27c41cd54bc097...
+  [PASS] src/ainerzero/v9/teachers/da3_controlled.py: 25874199f496647c...
+  [PASS] tests/test_teacher_da3_controlled.py: 8e288b80ce5ea3d0...
+
+--- Dimension 2: Zero Side-Effect Inspect Mode ---
+  [PASS] Inspect mode executed cleanly: zero lock, zero DB write, zero model import.
+
+--- Dimension 3: RunStore Task Segregation (T4 vs T6) ---
+  T4 cumulative reserved: 300.0s (expected 300.0s)
+  T6 cumulative reserved: 250.0s (expected 250.0s)
+  [PASS] T4 and T6 ledger entries strictly segregated.
+
+--- Dimension 4: Rejection Gates and Precedence ---
+  [PASS] Unapproved model refused: Unknown or unapproved DA3 model 'da3-huge'. Whitelisted models: ['da3-small', 'da3-base'] or 'da3-all'
+  [PASS] Views quota breach refused: Requested 65 views exceeds T6 registered quota of 64 views per job
+  [PASS] Per-run budget refused: Requested wall budget 1200.1s exceeds per-run limit 1200.0s
+  [PASS] Missing approval refused with exit code 3: T6 DA3 benchmark refused: approval or statistical protocol missing: T6 approval section with '批准 T6' not registered in RESEARCH_LOG.md; Frozen statistical evaluation protocol and paired calibration inputs not registered by coordinator
+  [PASS] Missing statistical protocol refused with exit code 3: T6 DA3 benchmark refused: approval or statistical protocol missing: Frozen statistical evaluation protocol and paired calibration inputs not registered by coordinator
+
+--- Dimension 5: Worker Lock Mutual Exclusion (flock) ---
+  [PASS] worker_lock correctly raised WorkerLockBusy when flock is held
+
+--- Dimension 6: Pre-work Reservation, Non-refundable Failure & Cumulative Cap ---
+  Caught expected simulated adapter failure: Crash inside model execution
+  Cumulative reserved after failed run: 400.0s (expected 400.0s)
+  Cumulative reserved after second run: 800.0s (expected 800.0s)
+  [PASS] Cumulative budget breach correctly refused: Cumulative wall budget exceeded for T6: 800.0s reserved + 500.0s requested > 1200.0s limit
+
+--- Dimension 7: Parent Process Group Supervision & Clean Termination ---
+  [PASS] Child process group 8101 cleanly terminated by parent.
+
+--- Dimension 8: CLI Subprocess Execution ---
+  `teacher-da3 --mode inspect`: rc=0
+  `teacher-benchmark --teacher t6 --mode inspect`: rc=0
+  `teacher-da3 --mode run` (unapproved): rc=3 (expected 3)
+  `teacher-da3 --mode run --views 100`: rc=2 (expected 2)
+  `teacher-da3 --mode run --wall-budget-seconds 2000`: rc=5 (expected 5)
+  [PASS] CLI subprocess execution and exit codes verified.
+
+--- Dimension 9: Four Source Single-Region Mutation Controls ---
+  Testing Mutation Control 1: Approval Gate (Statistical Protocol Enforcement)...
+    [PASS] Mutation Control 1 verified (Double Green / Baseline Red Mutant Green / Double Red)
+  Testing Mutation Control 2: View Quota Gate (Threshold 64)...
+    [PASS] Mutation Control 2 verified (Double Green / Baseline Red Mutant Green / Double Red)
+  Testing Mutation Control 3: Cumulative Budget Gate (Threshold 1200.0s)...
+    [PASS] Mutation Control 3 verified (Double Green / Baseline Red Mutant Green / Double Red)
+  Testing Mutation Control 4: Resource Gate (RSS <= 8.0 GiB)...
+    [PASS] Mutation Control 4 verified (Double Green / Baseline Red Mutant Green / Double Red)
+
+=====================================================================
+ALL 9 INDEPENDENT VERIFICATION DIMENSIONS PASSED SUCCESSFULLY!
+=====================================================================

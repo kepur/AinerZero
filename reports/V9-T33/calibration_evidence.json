@@ -1,0 +1,275 @@
+{
+  "task": "ainerzero.V9.T33",
+  "round": "r2",
+  "status": "candidate_unregistered",
+  "claim_scope": "remainder_probe_only_not_full_statistical_calibration",
+  "full_calibration_completed": false,
+  "views_declared": 10,
+  "views_consumed": 10,
+  "selected_record_ids": [
+    "t6-analytic-room-00/view-0",
+    "t6-analytic-room-00/view-1",
+    "t6-analytic-room-01/view-0",
+    "t6-analytic-room-01/view-1",
+    "t6-analytic-room-02/view-0",
+    "t6-analytic-room-03/view-0",
+    "t6-analytic-room-03/view-1",
+    "t6-analytic-room-04/view-0",
+    "t6-analytic-room-04/view-1",
+    "t6-analytic-room-05/view-0"
+  ],
+  "remainder_protocol": {
+    "path": "reports/V9-T33/remainder_protocol.json",
+    "sha256": "90ae94bc7e8f502eba4adfcc0d62de632c08836b73dfb52adddb762861ec4090"
+  },
+  "timestamp": "2026-10-26T21:13:48Z",
+  "torch_version": "2.14.1",
+  "mps_available": true,
+  "models": {
+    "da3_small": {
+      "variant": "DA3-SMALL",
+      "device": "mps",
+      "load_time_s": 2.3706,
+      "first_frame_latency_s": 0.319,
+      "median_sequence_latency_s": 0.0781,
+      "steady_state_fps": 9.32,
+      "mps_allocated_mb": 131.61,
+      "total_views_evaluated": 10
+    },
+    "da3_base": {
+      "variant": "DA3-BASE",
+      "device": "mps",
+      "load_time_s": 0.8252,
+      "first_frame_latency_s": 0.1252,
+      "median_sequence_latency_s": 0.142,
+      "steady_state_fps": 10.74,
+      "mps_allocated_mb": 521.61,
+      "total_views_evaluated": 10
+    }
+  },
+  "calibration": {
+    "da3_small": {
+      "calibration_id": "nc-da3-small-pose-indoor-analytic@1.0",
+      "status": "candidate_unregistered",
+      "registration_decision": "candidate_only_not_certified",
+      "convention_disclosure": {
+        "rotation_offset_deg": 180.0,
+        "reason": "OpenCV camera convention (Y-down, Z-forward) versus analytical synthetic room coordinate system, plus world_to_camera versus camera_to_world inversion offset produces ~180 deg rotation difference.",
+        "covariance_rank": 2,
+        "covariance_rank_ceiling": 2,
+        "reason_rank_deficient": "Camera centers in 3 fit worlds are collinear along horizontal offset axis, causing degenerate translation variance rank <= 2."
+      },
+      "fit_stats": {
+        "views": 5,
+        "rot_error_deg_mean": 179.7657,
+        "rot_error_deg_max": 179.8623,
+        "trans_rel_error_mean": 0.994,
+        "trans_rel_error_max": 1.0004,
+        "depth_abs_rel_mean": 0.09656,
+        "depth_delta1_mean": 0.952
+      },
+      "holdout_stats": {
+        "views": 5,
+        "rot_error_deg_mean": 179.7365,
+        "rot_error_deg_max": 179.9861,
+        "trans_rel_error_mean": 0.9995,
+        "trans_rel_error_max": 1.0004,
+        "depth_abs_rel_mean": 0.10048,
+        "depth_delta1_mean": 0.82947
+      },
+      "noise_model": {
+        "family": "gaussian",
+        "dim": 6,
+        "covariance_diagonal": [
+          3.324717536183355e-06,
+          3.324717536183355e-06,
+          3.324717536183355e-06,
+          6.941746888977139e-05,
+          6.941746888977139e-05,
+          6.941746888977139e-05
+        ],
+        "covariance_matrix": [
+          [
+            3.324717536183355e-06,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            3.324717536183355e-06,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            3.324717536183355e-06,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            6.941746888977139e-05,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            6.941746888977139e-05,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            6.941746888977139e-05
+          ]
+        ],
+        "covariance_rank_disclosure": "Deficient rank (rank <= 2) in the 10-view remainder subset; probe only, not full calibration"
+      }
+    },
+    "da3_base": {
+      "calibration_id": "nc-da3-base-pose-indoor-analytic@1.0",
+      "status": "candidate_unregistered",
+      "registration_decision": "candidate_only_not_certified",
+      "convention_disclosure": {
+        "rotation_offset_deg": 180.0,
+        "reason": "OpenCV camera convention (Y-down, Z-forward) versus analytical synthetic room coordinate system, plus world_to_camera versus camera_to_world inversion offset produces ~180 deg rotation difference.",
+        "covariance_rank": 2,
+        "covariance_rank_ceiling": 2,
+        "reason_rank_deficient": "Camera centers in 3 fit worlds are collinear along horizontal offset axis, causing degenerate translation variance rank <= 2."
+      },
+      "fit_stats": {
+        "views": 5,
+        "rot_error_deg_mean": 179.8619,
+        "rot_error_deg_max": 179.9527,
+        "trans_rel_error_mean": 0.9995,
+        "trans_rel_error_max": 1.0001,
+        "depth_abs_rel_mean": 0.02996,
+        "depth_delta1_mean": 0.99951
+      },
+      "holdout_stats": {
+        "views": 5,
+        "rot_error_deg_mean": 179.8063,
+        "rot_error_deg_max": 179.9375,
+        "trans_rel_error_mean": 0.9971,
+        "trans_rel_error_max": 1.0012,
+        "depth_abs_rel_mean": 0.03101,
+        "depth_delta1_mean": 0.99945
+      },
+      "noise_model": {
+        "family": "gaussian",
+        "dim": 6,
+        "covariance_diagonal": [
+          6.88869002410001e-07,
+          6.88869002410001e-07,
+          6.88869002410001e-07,
+          5.085048739830597e-07,
+          5.085048739830597e-07,
+          5.085048739830597e-07
+        ],
+        "covariance_matrix": [
+          [
+            6.88869002410001e-07,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            6.88869002410001e-07,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            6.88869002410001e-07,
+            0.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            5.085048739830597e-07,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            5.085048739830597e-07,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            5.085048739830597e-07
+          ]
+        ],
+        "covariance_rank_disclosure": "Deficient rank (rank <= 2) in the 10-view remainder subset; probe only, not full calibration"
+      }
+    }
+  },
+  "consistency": {
+    "status": "not_run_in_remainder_probe",
+    "reason": "No undeclared forward passes are permitted outside the 10 bound records."
+  },
+  "negative_controls": [
+    {
+      "name": "non_monotonic_timestamps",
+      "clean_exit": false,
+      "error_caught": true,
+      "error_msg": "timestamps must be strictly increasing"
+    },
+    {
+      "name": "zero_or_negative_depth",
+      "clean_exit": false,
+      "error_caught": true,
+      "error_msg": "zero valid depth pixels; no perfect-score substitute"
+    },
+    {
+      "name": "non_so3_rotation",
+      "clean_exit": false,
+      "error_caught": true,
+      "error_msg": "rotation is not SO(3); no silent repair"
+    },
+    {
+      "name": "unauthorized_partition_final",
+      "clean_exit": false,
+      "error_caught": true,
+      "error_msg": "final/unknown partitions unavailable through this adapter"
+    }
+  ],
+  "predictions_manifest": {
+    "path": "reports/V9-T33/predictions/predictions_manifest.json",
+    "total_files": 44,
+    "total_bytes": 61004840,
+    "manifest_sha256": "99679f8ba1c1f80fc0e64e00ade055ac0aaccd6950bfada5b5f5e4a40134a552"
+  },
+  "total_wall_seconds": 5.56
+}

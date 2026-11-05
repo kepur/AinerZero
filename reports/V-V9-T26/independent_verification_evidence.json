@@ -1,0 +1,185 @@
+{
+  "task": "ainerzero.V9.T27",
+  "verified_target": "ainerzero.V9.T26",
+  "agent": "gemini-7a2b",
+  "timestamp": "2026-10-26T14:04:07Z",
+  "dimension_1_sha256": {
+    "src/ainerzero/cli.py": {
+      "status": "MATCH",
+      "expected": "aa1e42d6d426318db95be28068232859027d567541fd31dabf88cd72ae81db2b",
+      "actual": "aa1e42d6d426318db95be28068232859027d567541fd31dabf88cd72ae81db2b"
+    },
+    "src/ainerzero/v9/teachers/benchmark.py": {
+      "status": "MATCH",
+      "expected": "8d64e8865f1bea36216e31dbba30fd89b84ccef9ebda321d2977ee7f6929fc4c",
+      "actual": "8d64e8865f1bea36216e31dbba30fd89b84ccef9ebda321d2977ee7f6929fc4c"
+    },
+    "src/ainerzero/v9/teachers/benchmark_commands.py": {
+      "status": "MATCH",
+      "expected": "b8278b83acf1493e925955430064c6a14de24eddacde99bb94b8f513edb2cb5f",
+      "actual": "b8278b83acf1493e925955430064c6a14de24eddacde99bb94b8f513edb2cb5f"
+    },
+    "src/ainerzero/v9/teachers/benchmark_protocol.py": {
+      "status": "MATCH",
+      "expected": "6e27c41cd54bc0977ac7d087f603fd983af1f225d32b3945e7580634f62f1bd4",
+      "actual": "6e27c41cd54bc0977ac7d087f603fd983af1f225d32b3945e7580634f62f1bd4"
+    },
+    "src/ainerzero/v9/teachers/da3_controlled.py": {
+      "status": "MATCH",
+      "expected": "25874199f496647ca2960b6204906c910a42b06adfed77172d1eb8a6a082baeb",
+      "actual": "25874199f496647ca2960b6204906c910a42b06adfed77172d1eb8a6a082baeb"
+    },
+    "tests/test_teacher_da3_controlled.py": {
+      "status": "MATCH",
+      "expected": "8e288b80ce5ea3d03d44d259a1e29a7d170a2030e35813c071f6c8ef18e81326",
+      "actual": "8e288b80ce5ea3d03d44d259a1e29a7d170a2030e35813c071f6c8ef18e81326"
+    }
+  },
+  "dimension_2_inspect_zero_side_effects": {
+    "mode": "inspect",
+    "task": "ainerzero.V9.T6",
+    "model": "da3-small",
+    "views": 4,
+    "views_quota": {
+      "status": "ok",
+      "views": 4,
+      "max_views": 64
+    },
+    "wall_budget_seconds": 100.0,
+    "can_run": false,
+    "approval": {
+      "status": "missing_registration",
+      "is_approved": false,
+      "section": "R20261026-T6",
+      "keyword": "批准 T6",
+      "target": "ainerzero.V9.T6",
+      "has_statistical_protocol": false,
+      "protocol_details": {},
+      "missing_items": [
+        "Frozen statistical evaluation protocol and paired calibration inputs not registered by coordinator"
+      ],
+      "max_cumulative_wall_seconds": 1200.0,
+      "max_per_run_wall_seconds": 1200.0,
+      "max_resident_models": 1,
+      "max_process_rss_gib": 8.0,
+      "max_views": 64
+    },
+    "resources_current": {
+      "status": "ok",
+      "rss_bytes": 52330496,
+      "rss_gib": 0.0487,
+      "max_rss_gib": 8.0
+    },
+    "budget": {
+      "max_cumulative_wall_seconds": 1200.0,
+      "max_per_run_wall_seconds": 1200.0,
+      "cumulative_reserved_seconds": 0.0,
+      "remaining_cumulative_seconds": 1200.0,
+      "requested_run_seconds": 100.0
+    },
+    "weights": {
+      "status": "unverified",
+      "error": "Model weights directory not found for da3-small under /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpmmx6xtoz/fake_weights"
+    },
+    "side_effects": {
+      "lock_acquired": false,
+      "ledger_written": false,
+      "models_loaded": 0
+    }
+  },
+  "dimension_3_task_segregation": {
+    "t4_reserved": 300.0,
+    "t6_reserved": 250.0
+  },
+  "dimension_4_rejection_gates": {
+    "status": "PASSED"
+  },
+  "dimension_5_worker_lock": {
+    "status": "PASSED"
+  },
+  "dimension_6_pre_reservation_and_budget_cap": {
+    "status": "PASSED"
+  },
+  "dimension_7_process_group_supervision": {
+    "status": "PASSED",
+    "child_pgid": 8101,
+    "exit_code": -15
+  },
+  "dimension_8_cli_subprocess": {
+    "status": "PASSED"
+  },
+  "dimension_9_mutation_controls": {
+    "mutation_1_approval_gate": {
+      "region": "verify_t6_approval_and_protocol:statistical_protocol",
+      "case_a_legitimate": {
+        "baseline": "GREEN (True)",
+        "mutant": "GREEN (True)",
+        "status": "DOUBLE_GREEN"
+      },
+      "case_b_targeted_bad": {
+        "baseline": "RED (False)",
+        "mutant": "GREEN (True)",
+        "status": "BASELINE_RED_MUTANT_GREEN"
+      },
+      "case_c_unrelated_bad": {
+        "baseline": "RED (Refused)",
+        "mutant": "RED (Refused)",
+        "status": "DOUBLE_RED"
+      }
+    },
+    "mutation_2_views_quota": {
+      "region": "check_t6_views_quota:max_views",
+      "case_a_legitimate": {
+        "baseline": "GREEN (ok)",
+        "mutant": "GREEN (ok)",
+        "status": "DOUBLE_GREEN"
+      },
+      "case_b_targeted_bad": {
+        "baseline": "RED (ResourceRefused)",
+        "mutant": "GREEN (ok)",
+        "status": "BASELINE_RED_MUTANT_GREEN"
+      },
+      "case_c_unrelated_bad": {
+        "baseline": "RED (RefusalError)",
+        "mutant": "RED (RefusalError)",
+        "status": "DOUBLE_RED"
+      }
+    },
+    "mutation_3_cumulative_budget": {
+      "region": "execute_guarded_da3_benchmark:cumulative_budget_cap",
+      "case_a_legitimate": {
+        "baseline": "GREEN (Allowed)",
+        "mutant": "GREEN (Allowed)",
+        "status": "DOUBLE_GREEN"
+      },
+      "case_b_targeted_bad": {
+        "baseline": "RED (BudgetRefused)",
+        "mutant": "GREEN (Allowed)",
+        "status": "BASELINE_RED_MUTANT_GREEN"
+      },
+      "case_c_unrelated_bad": {
+        "baseline": "RED (BudgetRefused)",
+        "mutant": "RED (BudgetRefused)",
+        "status": "DOUBLE_RED"
+      }
+    },
+    "mutation_4_resource_gate": {
+      "region": "check_t6_resource_limits:max_rss_gib",
+      "case_a_legitimate": {
+        "baseline": "GREEN (ok)",
+        "mutant": "GREEN (ok)",
+        "status": "DOUBLE_GREEN"
+      },
+      "case_b_targeted_bad": {
+        "baseline": "RED (ResourceRefused)",
+        "mutant": "GREEN (ok)",
+        "status": "BASELINE_RED_MUTANT_GREEN"
+      },
+      "case_c_unrelated_bad": {
+        "baseline": "RED (ResourceRefused)",
+        "mutant": "RED (ResourceRefused)",
+        "status": "DOUBLE_RED"
+      }
+    }
+  }
+}

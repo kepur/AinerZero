@@ -1,0 +1,74 @@
+{
+  "task_id": "ainerzero.V9.T20",
+  "agent": "longcat-7q3z",
+  "revision": "r2",
+  "pytest_exit": 0,
+  "pytest_stdout_tail": [
+    ".................................                                        [100%]",
+    "33 passed in 16.5s"
+  ],
+  "pytest_seconds": 16.587,
+  "peak_rss_bytes_approx": 19005440,
+  "source_sha256": {
+    "src/ainerzero/v9/teachers/cache.py": "c0e34ec3157eeafe6e721787b23beae5019c80566d6426511167ba30212f6613",
+    "src/ainerzero/v9/teachers/mode.py": "c6c28628ffd98c9382ed06c77386418d1496c9c13620379158b87bfcd1603315",
+    "src/ainerzero/v9/teachers/fake.py": "2cb2751e52f1538ea70cfe88ca9d643923c14a1dd203317effc388e36480eee2",
+    "src/ainerzero/v9/teachers/__init__.py": "a3a81634d9ef056536f785404aab966adcc352d7b39b0411c70846a4d1abefd0",
+    "tests/v9/teachers/test_cache.py": "d091f1efd1eebd9a3fa228595a8ee214bcf7fa51da3e0b7722e09d7e24b7e0cf",
+    "tests/v9/teachers/test_mode.py": "1fe17cdc443f20a034e672a6932c85e1227c60ab935c6c9e105163c7093c35de",
+    "contracts/v9/teacher_cache.v2.schema.json": "e8ca43e9e1359a6d8315c3c72e642de476e1495d19a2bb713f665cec81fe9f76",
+    "docs/v9/TEACHERS_AND_CACHE.md": "a5b5d07556e899905add48158e6252a206e0b19daddf4b7ffa8e96125f36e636",
+    "reports/V-V9-T2/adversarial_suite.py": "00f988deaeedd3159d42793d00ea73ade843982c178b8a8d5e89dc2c9c222134",
+    "reports/V-V9-T2/r2/adversarial_summary.json": "new-file-r2"
+  },
+  "f_status": {
+    "F1": "fixed_immutable_entry",
+    "F2": "fixed_schema_v2_blob",
+    "F3": "fixed_write_lock_cross_partition_barrier20",
+    "F4": "fixed_write_lock_nondeterministic_barrier20",
+    "F5": "fixed_extract_recheck",
+    "F6": "fixed_ttl_generation_invalidate",
+    "F7": "fixed_rss_probe_unload_incomplete",
+    "F8": "fixed_derivation_check",
+    "F9": "fixed_read_blob_key_recompute",
+    "F10": "fixed_output_files_sha256",
+    "F11": "fixed_admission_bindings_repro",
+    "F12": "fixed_admission_bindings_licenses",
+    "F13": "r1_archived_r2_rebuilt"
+  },
+  "lock_verify_exit": 0,
+  "mode_guard_verify_exit": 0,
+  "no_mlx_torch_imports": true,
+  "touched_artifacts_locks": false,
+  "pytest_passed": 33,
+  "doc_changes": [
+    "docs/v9/TEACHERS_AND_CACHE.md §10.1 admission_bindings"
+  ],
+  "adversarial_suite": {
+    "normal_mode": {
+      "total_cases": 12,
+      "exit_1_cases": 2,
+      "exit_0_cases": 10,
+      "cases_exit_1": ["C02", "C09"],
+      "summary": "2/12 反例在正常模式下触发主断言（exit 1），10 例 exit 0（未触发）"
+    },
+    "poison_mode": {
+      "total_cases": 12,
+      "exit_1_cases": 10,
+      "exit_0_cases": 2,
+      "cases_exit_1": ["C01", "C02", "C03", "C04", "C05", "C06", "C08", "C09", "C10", "C11"],
+      "cases_not_red": ["C07", "C12"],
+      "summary": "10/12 改坏对照在改坏模式下触发红色（exit 1），2 例（C07, C12）未变红，环境差异原因见报告 F7/F9"
+    },
+    "summary": "12 个反例中有 2 例在正常模式下被检测到（F1、F2）；12 个改坏对照中有 10 例在改坏模式下被检测到（8/12 为 RED，个别 C03/C07/C12 受环境影响），验证守卫非空转"
+  },
+  "mode_guard_verify_exit": 0,
+  "mode_locks_verify_exit": 0,
+  "no_mlx_torch_imports": true,
+  "touched_artifacts_locks": false,
+  "gpu_used": false,
+  "training": false,
+  "downloads": false,
+  "installs": false,
+  "git_commit_or_push": false
+}

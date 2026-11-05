@@ -1,0 +1,67 @@
+{
+  "task_id": "ainerzero.V9.T56",
+  "agent_id": "gemini-r4x9",
+  "tier": 2,
+  "kind": "gemini",
+  "files_modified": [
+    "src/ainerzero/v9/teachers/da3_calibration_runner.py",
+    "src/ainerzero/v9/teachers/da3_controlled.py",
+    "tests/test_da3_calibration_runner.py",
+    "tests/test_t28_registration_and_quota.py",
+    "tests/test_da3_linewide_quota.py",
+    "tests/test_teacher_da3_controlled.py",
+    "tests/test_da3_supervision.py",
+    "tests/test_da3_t56_features.py"
+  ],
+  "zero_model_zero_ledger_verified": true,
+  "real_model_calls": 0,
+  "production_runs_db_modified": false,
+  "m0_worker_lock_acquired": false,
+  "features_implemented": {
+    "runner_proposal_sha_check_against_registration": {
+      "implemented": true,
+      "exit_code_on_mismatch": 2,
+      "flag_tested": true,
+      "env_var_tested": true
+    },
+    "runner_default_proposal_selection": {
+      "registered": "reports/V9-T28/proposal.r2.json",
+      "unregistered_fallback": "reports/V9-T28/proposal.json"
+    },
+    "da3_controlled_missing_model_refusal": {
+      "implemented": true,
+      "exception": "BenchmarkRefusalError"
+    },
+    "da3_controlled_diagnostics_query": {
+      "function": "query_t6_ledger_with_diagnostics",
+      "non_da3_excluded_from_accounting": true,
+      "non_da3_returned_in_diagnostics": true,
+      "readonly_signature_preserved": true
+    },
+    "da3_controlled_card_field_recording": {
+      "field_name": "card",
+      "env_var": "DA3_TASK_ID",
+      "budget_impact": 0
+    }
+  },
+  "test_results": {
+    "full_da3_suite_total": 103,
+    "full_da3_suite_passed": 103,
+    "full_da3_suite_failed": 0,
+    "test_da3_t56_features_passed": 7
+  },
+  "adversarial_mutant_controls": {
+    "mutant_1_no_sha_check": {
+      "file": "reports/V9-T56/gemini-r4x9/mutants/mutant_1_no_sha_check/src/ainerzero/v9/teachers/da3_calibration_runner.py",
+      "target_test": "tests/test_da3_t56_features.py::test_runner_registered_sha_mismatch_refused_via_proposal_flag",
+      "turned_red": true,
+      "returncode": 1
+    },
+    "mutant_2_missing_model_allowed": {
+      "file": "reports/V9-T56/gemini-r4x9/mutants/mutant_2_missing_model_allowed/src/ainerzero/v9/teachers/da3_controlled.py",
+      "target_test": "tests/test_da3_t56_features.py::test_is_da3_ledger_run_missing_model_refuses",
+      "turned_red": true,
+      "returncode": 1
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "task": "ainerzero.V9.T42",
+  "agent": "gemini-f8a2",
+  "tier": 2,
+  "level": "L2",
+  "zero_run": true,
+  "ran_on_ac": true,
+  "runs_db_sha": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f",
+  "runs_db_sha_unchanged": true,
+  "lock_mtime": 1790110663,
+  "lock_mtime_unchanged": true,
+  "no_model_loaded": true,
+  "pipeline_py_untouched": true,
+  "t28_files_untouched": true,
+  "pytest_da3_suite_passed": 62,
+  "pytest_da3_suite_failed": 0,
+  "pytest_wall_seconds": 77.02,
+  "mutation_controls": {
+    "total": 4,
+    "caught": 4,
+    "results_file": "reports/V9-T42/evidence/mutation-results.txt"
+  },
+  "items": {
+    "item_1_pre_consume_views_check": {
+      "status": "completed",
+      "description": "execute_guarded rejects non-18 views for real_pipeline before RunStore reservation and consume",
+      "constant_defined": "REGISTERED_CALIBRATION_VIEWS = 18 in da3_worker.py, imported by da3_controlled.py",
+      "mutant_caught": true
+    },
+    "item_2_in_progress_overwrite_rejection": {
+      "status": "completed",
+      "description": "preflight rejects existing in_progress evidence files, closing T41-4 blind spot",
+      "tmp_residue_ignored": true,
+      "mutant_caught": true
+    },
+    "item_3_substitute_plus_release_selects_mock": {
+      "status": "completed",
+      "description": "CLI under --test-substitute --coordinator-release directly selects mock_run; defense-in-depth guard preserved",
+      "two_layers_tested": true,
+      "mutant_caught": true
+    },
+    "item_4_unique_tmp_atomic_write": {
+      "status": "completed",
+      "description": "_write_atomic uses unique tmp path (.tmp.<pid>.<uuid>) preventing concurrent clobbering",
+      "concurrent_writers_tested": true,
+      "mutant_caught": true
+    }
+  },
+  "sha_table": {
+    "src/ainerzero/v9/teachers/da3_calibration_math.py": "9a80aa736a5de2e6116b6f0f92bedc200fd57b1bec35b33ab3036d1df3e1ec2b",
+    "src/ainerzero/v9/teachers/da3_calibration_runner.py": "5c12b934789dae36f5f98f0342a2897cfc0d935a1297d4cce56eb48d64bee85c",
+    "src/ainerzero/v9/teachers/da3_worker.py": "307a32fcf2531126750496e0423ca1c5f36a2e164229a332f4cdc8197b8f5c7f",
+    "src/ainerzero/v9/teachers/da3_controlled.py": "d5d776672ea898a2c177346e75313023613eb128ee5d189a579459adc2369ba4",
+    "src/ainerzero/v9/teachers/benchmark_commands.py": "1a43c4c2b0f5d3ead7ed2e52b8b51b04b90b533fbcaad6d093816292671b6c9d",
+    "tests/test_da3_calibration_runner.py": "70ef1d95567b2c6bf82b76599f44f62b839cb9d84a8aa76a1c32bfdcc1a0097c",
+    "tests/test_teacher_da3_controlled.py": "7b99b83c4d17d4780eee3ba616d52b75f43f1fa8066741ccb4d46dd3c69181a9",
+    "tests/test_da3_supervision.py": "fb9ac1bbe763403c2b5ceb1c33febcc14d97e6950886604444631d91e13f4c49",
+    "artifacts/v9/teachers/benchmark/runs.db": "64b668050dfbab7ae1e5b9fe5280f44cecb12643fb820b6a752a6a693723107f"
+  }
+}

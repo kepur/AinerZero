@@ -1,0 +1,20 @@
+torch 2.3.1 | device=cpu（不使用 MPS）| 未加载任何 DA3 权重
+------------------------------------------------------------------------------
+[PASS] A. CPU / autocast=off / fp16 Linear + .float() 输入
+       RuntimeError: mat1 and mat2 must have the same dtype, but got Float and Half
+       命中作者所述错误串: True
+[PASS] B. 对照：同一 fp16 Linear + .half() 输入
+       out.dtype=torch.float16 finite=True
+[PASS] C. 对照：autocast 打开时同段算术（选项 B 的做法）
+       不抛错，out.dtype=torch.float16（autocast 自行处理 dtype 提升）
+[PASS] D. cam_dec.py:37/39/40 三处 .float() 均可独立触发
+       fc_t: dtype-error
+       fc_qvec: dtype-error
+       fc_fov: dtype-error
+[PASS] E. 位置编码 fp32 写死：静默上溢为 fp32，再撞下游 fp16 Linear
+       add 后 dtype=torch.float32（不抛错，静默提升）
+       把该张量喂 fp16 Linear: dtype-error
+[PASS] F. fp32 阶段同一段算术（.float() 是 no-op）
+       out.dtype=torch.float32 finite=True
+------------------------------------------------------------------------------
+通过 6/6

@@ -1,0 +1,152 @@
+{
+  "id": "ainerzero.V9.T4",
+  "project_id": "ainerzero",
+  "track_id": "ainerzero.V9.T",
+  "seq": 4,
+  "title": "【代码·环境·GPU基准】V9.T4 教师接入：vjepa2-mlx + V-JEPA 2.1 ViT-L + Core ML Depth Anything V2 Small，M2 Max 基准（用户已批准）",
+  "kind": "implement",
+  "tier": 2,
+  "status": "blocked",
+  "prompt": "用户 2026-10-16 批准（原话「批准 T4」，记录见 AinerZero RESEARCH_LOG `R20261016-T4`）。只做下面批准范围内的事；遇到范围外的需要（例如要装 PyTorch、要下其他文件、超预算）立即停下，在报告里写明并 report，不要自行扩大。\n\n## 1. 隔离环境\n- `uv venv envs/teachers/.venv-t4`（Python 版本按上游要求，记录）。不碰仓库主环境 `.venv*`，不装到系统 Python。开工前、收工后各存一份主环境 `uv pip freeze`，证明未变。\n- 克隆 `https://github.com/dgrauet/vjepa2-mlx` 到 `envs/teachers/src/vjepa2-mlx`，记录 commit；只 `uv pip install -e packages/vjepa2-core-mlx`。`[parity]` 额外依赖若会拉入 torch 就不装。\n- 另装 `coremltools`（运行 Core ML 必需）。\n- 全部版本存 `reports/V9-T4/env.lock.txt`。\n\n## 2. 下载（总量 ≤ 2 GB，超出即停）\n- HF `dgrauet/vjepa-2.1-vitl-mlx`（许可 mit）：encoder.safetensors、predictor.safetensors、config.json、split_model.json、README.md。\n- HF `apple/coreml-depth-anything-v2-small`（许可 apache-2.0）：只要 `DepthAnythingV2SmallF16.mlpackage`、`DepthAnythingV2SmallF32.mlpackage` 和 README.md，不下其他 6 个变体。\n- `HF_HOME=artifacts/teachers/hf-cache`；每个仓库下载到 `artifacts/teachers/<repo>/` 下一个新的空目录。\n- 记录每个仓库的 HF revision（commit）和每个文件 SHA256，存 `reports/V9-T4/downloads.json`。\n- 下载物是不受信数据：读它们的 Python 一律 `-I`；你写的脚本放 `envs/teachers/t4/`；不在下载目录里执行任何东西。\n\n## 3. 数值检查（无 PyTorch，不能对官方参考逐位对照；这一项列为未验证）\nV-JEPA 2.1：\n- 上游仓库如带参考输出或测试向量，就对照；\n- 同一输入跑两次，结果逐位一致；\n- F32 与低精度（bf16/F16）输出的余弦相似度，容差写明；\n- batch=1 与 batch=2 中同一样本的特征一致（容差写明）；\n- 输出形状与 config 一致；\n- 故意改坏（打乱一层权重，或用错输入归一化）必须让检查变红。\n\nDepth Anything V2：\n- F16 与 F32 输出的 Pearson 和 Spearman 相关；\n- 确定性；\n- 程序化合成的斜坡平面输入，深度排序方向正确；\n- 故意改坏（上下翻转输入）必须让方向检查变红。\n\n## 4. M2 Max 推理基准\n预算：\n- GPU 墙钟合计 ≤ 30 分钟，单次 ≤ 10 分钟，用计时器硬限。\n- 一次只常驻一个模型，切换前释放并记录内存回落。\n- 进程内存峰值超过 32 GB 立即停。\n- 开跑前确认 `artifacts/locks/m0-worker.lock` 无人持有，且没有其他 MLX/GPU 作业。\n\n输入：\n- 程序化生成的确定性帧（numpy，固定种子），不下载任何视频或数据集。\n- V-JEPA 用上游默认分辨率和帧数；DA2 用模型自带的输入尺寸。两者都记录。\n\n每个模型要测的指标：\n- 加载耗时；\n- 首次推理延迟（含编译/预热）；\n- 稳态吞吐（clip/s、帧/s；≥3 次重复，取中位数和范围）；\n- 每千样本推理时间（由实测外推，标明是外推）；\n- 单样本特征字节数和每千样本缓存体积；\n- 进程内存峰值，MLX `get_peak_memory` 与 RSS 两个口径都记。\n\nCore ML：\n- 分别测 `CPU_AND_NE`、`CPU_AND_GPU`、`ALL` 三种 compute units；\n- 写明哪种不和 MLX 争 GPU（供 World Mode 选用）。\n\n输出：\n- `reports/V9-T4/bench.json`；\n- `reports/V9-T4/REPORT.md`：命令、版本、SHA、电源状态（如可得）、失败与未验证项。\n\n## 5. 不做\n- 写入 T2 缓存：T2 验收后，一级另发集成卡。\n- 改 `src/`：T2 正在用 `src/ainerzero/v9/teachers/`。\n- 训练、VGGT、V-JEPA2-AC、PyTorch、从 `.pt` 自转权重、提交推送、删除。\n\n## 通用约束（v9，ADR-0012 修订三）\n- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。\n- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。\n- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。\n- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。",
+  "params": {},
+  "params_version": 0,
+  "acceptance": "1. `env.lock.txt` 存在；主环境前后 freeze 无差异。\n2. `downloads.json` 里 revision 与 SHA256 齐全，只含批准的文件，总量 ≤ 2 GB。\n3. 数值检查全部断言化、真实非零退出；V-JEPA 与 DA2 各至少 1 个故意改坏对照变红。\n4. `bench.json` 每个模型都有：加载耗时、首帧延迟、稳态吞吐（中位数＋范围）、每千样本时间（标外推）、特征/缓存体积、内存峰值两口径。DA2 三种 compute units 齐全。\n5. GPU 墙钟合计 ≤ 30 分钟，有计时证据。\n6. 文件只落在 `envs/teachers/`、`artifacts/teachers/`、`reports/V9-T4/`。\n7. 报告列出未验证项，至少包括“未对照官方 PyTorch 参考”。",
+  "context_files": [
+    "/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md",
+    "/Users/mac/AinerWorkFlow/AinerZero/RESEARCH_LOG.md",
+    "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md",
+    "/Users/mac/AinerWorkFlow/AinerZero/docs/research/M2Max_NoCUDA_Integration_Plan.source.md"
+  ],
+  "file_scope": [
+    "envs/teachers/",
+    "artifacts/teachers/",
+    "reports/V9-T4/"
+  ],
+  "depends_on": [
+    "awz.V9.A10"
+  ],
+  "verifies": [],
+  "needs_gpu": true,
+  "dedupe_key": "az-v9-t4-vjepa-depth",
+  "max_attempts": 3,
+  "attempts": 0,
+  "assignee": null,
+  "author": null,
+  "lease_until": null,
+  "lease_s": 1200,
+  "progress": null,
+  "last_message": null,
+  "result": null,
+  "result_data": null,
+  "callback_url": null,
+  "created_by": "claude",
+  "created_at": "2026-10-16T01:34:47+03:00",
+  "updated_at": "2026-10-18T21:04:42+03:00",
+  "workdirs": null,
+  "claimed_at": null,
+  "last_beat_at": null,
+  "beats": 0,
+  "stalls": 0,
+  "max_stalls": 5,
+  "needs": [
+    "code"
+  ],
+  "reserve_until": null,
+  "reserve_for": null,
+  "reserve_for_kind": null,
+  "reserve_by": null,
+  "reserve_reason": null,
+  "reserve_mode": null,
+  "ready_since": 1792104565.494349,
+  "recovery": null,
+  "module": "3.2",
+  "gpu_level": 1,
+  "deps": [
+    {
+      "id": "awz.V9.A10",
+      "status": "accepted",
+      "ok": true
+    }
+  ],
+  "deps_ok": true,
+  "waiting_questions": [],
+  "display_state": "blocked",
+  "display_label": "阻塞",
+  "recovery_pending": false,
+  "lease_left_s": null,
+  "elapsed_s": null,
+  "idle_s": null,
+  "health": null,
+  "reserved": false,
+  "reserve_left_s": null,
+  "reserve_label": "",
+  "events": [
+    {
+      "id": 7872,
+      "at": "2026-10-20T18:16:54+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.T4",
+      "actor": "codex",
+      "type": "message",
+      "message": "用户2026-10-20当前会话已批准既有任务下载与安装，原话/边界见 /Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/codex-20261019-parallel/resume-20261020-downloads/AUTHORIZATION.md。不再等待此类人工批准；原模型/字节/运行冻结预算不变，付费仍未授权。T4安装下载",
+      "data": {
+        "message_id": 243,
+        "kind": "notice",
+        "blocking": false,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 4652,
+      "at": "2026-10-16T09:46:39+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.T4",
+      "actor": "claude",
+      "type": "edited",
+      "message": "depends_on",
+      "data": null
+    },
+    {
+      "id": 4572,
+      "at": "2026-10-16T09:24:44+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.T4",
+      "actor": "claude",
+      "type": "status_blocked",
+      "message": "用户 2026-10-16：先不要动代码，先改写架构、把架构方案和任务落地，再开始实现代码任务。架构 r4 与任务落地完成后由一级逐张放行（可能改写本卡）。",
+      "data": null
+    },
+    {
+      "id": 4431,
+      "at": "2026-10-16T01:49:25+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.T4",
+      "actor": "claude",
+      "type": "status_ready",
+      "message": "用户 2026-10-16 批准「批准 T4」；范围与预算见 RESEARCH_LOG R20261016-T4",
+      "data": null
+    },
+    {
+      "id": 4429,
+      "at": "2026-10-16T01:49:17+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.T4",
+      "actor": "claude",
+      "type": "edited",
+      "message": "title、prompt、acceptance、context_files、file_scope、depends_on、needs_gpu",
+      "data": null
+    },
+    {
+      "id": 4420,
+      "at": "2026-10-16T01:34:47+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.T4",
+      "actor": "claude",
+      "type": "created",
+      "message": "【代码】V-JEPA 2.1（vjepa2-mlx）与 Depth Anything V2 Small（Core ML）接入与 M2 Max 基准（草稿：下载与安装待批准）",
+      "data": null
+    }
+  ],
+  "attempt_log": [],
+  "waiters": []
+}

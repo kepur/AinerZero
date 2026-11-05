@@ -1,0 +1,21 @@
+# V9.T6 r2：CPU 修复候选；真实运行与噪声登记仍未完成
+- 负责人：codex；2026-10-26。交回供 T25 非作者复核，不自验收，不宣称 T6 能力通过。
+- r1 的 21 文件先按原字节归档至 `reports/V9-T6/r1-archive-codex-20261026/`；归档 SHA 全匹配，旧报告与失败未覆盖。
+- 复用已存在的 Small/Base 权重和隔离环境；4 件权重/配置的固定字节数与 SHA 再核全部匹配，共 678,769,375 字节；无新增下载或安装。
+- 精确型号白名单；缺失/错 SHA/错配置在加载前拒绝；权重加载改为外层 DA3 包装器 strict=True，并检查返回的缺键/多键。
+- 显式精度前向禁用上游自动 AMP；CPU 测试只证明调用路径，不证明实际 FP16/MPS 可运行或数值一致。
+- 时间戳数量/单调性、几何四项必需字段、有限值、形状、正焦距均拒绝错误输入；不再补单位位姿、内参或置信度。
+- cache key 由完整 key_material 规范 SHA 计算，含权重、适配器、上游源码集合、包版本、帧 RGB/尺寸/时间戳及精度；只输出未准入 candidate，不冒称缓存 v2 条目。
+- 标定工具改为消费明确提供的教师预测/真值配对，统计实际样本及互斥世界划分；不生成伪教师噪声、不虚填 NEES 或噪声协方差。
+- 空有效深度拒绝；位姿约定及预对齐证据必填。配对来源认证仍 UNVERIFIED；工具输出仍 candidate_unregistered。
+- 基准工具统一以 frame 为单位；列出实测重复延迟分布和四数组体积；加载/RSS/MPS 峰值缺受控 worker 证据时留空。
+- CPU 测试最终 21/21 通过（1.120s），无失败/跳过；日志 `cpu-tests-2.log`。含模型替身，绝非真实教师推理证据。
+- 四组完整源码单区域变异全部通过：合法基线/变异 rc0；目标坏输入基线 rc1、变异 rc0；无关坏输入两者 rc1；保留源码、差异、全部子进程 stdout/stderr/rc。
+- 对照证据 `source-controls-d9lwoldd/results.json`；未修改产品源码来运行对照，无真实模型工作。
+- `collect_closeout.py` 经 relay exec 执行，rc0、进程组确认空；真实 CLI `--mode run` 子进程明确 rc3、models_loaded=0，原 stdout/stderr 保留。
+- 实际命令、源码 SHA、上游源码集合、4 件模型文件、21 件原归档核对见 `closeout-evidence.json`、`DETAILS.md`、`metrics.json`、`evidence-index.json`。
+- 本轮 DA3/MLX/MPS/Blender 加载与推理均 0；真实模型预算预留 0、实际消耗 0；CPU 监督用时与模型预算分别记录。
+- **未完成**：真实 strict 加载、CPU/MPS 与 F32/F16 数值一致、错帧序/错内参真实负对照、真教师配对噪声标定、缓存正式准入及实际性能/内存峰值。
+- **阻塞依据**：T6 params={}、acceptance=待批准后补全；现有 teacher-benchmark CLI 仅 T4 白名单，无 T6 中央 RunStore 路由；缺 T6 累计/单次预算和冻结配对输入/GT/统计登记。不得借用 T4 预算。
+- 已通过 #579 向当前 G1 统筹提交具体缺项；CPU 候选可独立复核，真实运行须由统筹补齐入口/预算/输入登记并正式扩展 src 范围。
+- T25 排除原作者 gemini-kzer、r2 作者 codex 及本会话全部子 agent；T7 的原 r1 负面审计继续有效，不用 T7 的 accepted 替代 r2 审查。

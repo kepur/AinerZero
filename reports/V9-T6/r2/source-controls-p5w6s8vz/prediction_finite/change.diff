@@ -1,0 +1,11 @@
+--- baseline.py
++++ mutant.py
+@@ -70,7 +70,7 @@
+         if value is None:
+             raise ValueError(f'required prediction missing: {field}; no synthetic substitute')
+         array = np.asarray(value)
+-        if not np.issubdtype(array.dtype, np.floating) or not np.isfinite(array).all():
++        if False:
+             raise ValueError(f'prediction must be finite floating point: {field}')
+         arrays[field] = array.astype(np.float32)
+     depth, conf, pose, intrinsics = (arrays[k] for k in ('depth', 'conf', 'extrinsics', 'intrinsics'))

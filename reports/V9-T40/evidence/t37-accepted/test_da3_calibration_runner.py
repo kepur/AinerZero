@@ -1,0 +1,377 @@
+"""V9.T37：DA3 标定 runner 与数学模块的测试。纯 CPU，不加载任何模型，不碰锁与台账。
+
+背景：T35 r2 的唯一一次授权真跑崩在 `paired depth shapes must agree`，而全仓库当时没有任何测试引用
+da3_calibration_runner。复核发现除尺寸外还有：w2c 被当成 c2w、用绝对位姿比较、写死的结论字段、
+未执行却写 verified 的逆向控制、T28 的内参控制在该 DA3 上不可满足。本文件每一类都有会失败的回归用例。
+"""
+from __future__ import annotations
+
+import hashlib
+import importlib.util
+import json
+import re
+import shutil
+from pathlib import Path
+
+import numpy as np
+import pytest
+from PIL import Image
+
+REPO = Path(__file__).resolve().parents[1]
+FIX = REPO / "reports/V9-T6/r2-calib-fixtures"
+T28 = REPO / "reports/V9-T28/proposal.json"
+pytestmark = pytest.mark.skipif(not (FIX / "manifest.json").is_file() or not T28.is_file(),
+                                reason="frozen T6/T28 fixtures not present")
+
+
+def _load(name):
+    path = REPO / "src/ainerzero/v9/teachers" / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    import sys
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+M = _load("da3_calibration_math")
+R = _load("da3_calibration_runner")
+
+
+# ───────────────────────────── 假 teacher ─────────────────────────────
+def _rot(axis, ang):
+    c, s = np.cos(ang), np.sin(ang)
+    return {"x": np.array([[1, 0, 0], [0, c, -s], [0, s, c]]), "y": np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]]),
+            "z": np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])}[axis]
+
+
+class FakeTeacher:
+    """从夹具 GT 出发的 teacher：全局相似变换 + 未知尺度（=真实 DA3 的坐标系性质）+ 受控扰动。"""
+
+    def __init__(self, f, variant, device, dtype):
+        self.f, self.variant, self.device, self.dtype = f, variant, device, dtype
+        self.Q, self.t0, self.scale = _rot("x", 0.7) @ _rot("y", -0.4), np.array([3.0, -1.0, 2.0]), 0.37
+
+    def process_keyframes(self, images, timestamps_s=None, world_key=None, partition="development",
+                          output_dir=None, process_res=504, intrinsics=None):
+        n = len(images)
+        if timestamps_s is None or len(timestamps_s) != n:
+            raise ValueError("one explicit timestamp per frame is required")
+        if output_dir is not None:
+            d = Path(output_dir)
+            if d.exists():
+                raise ValueError("output must be a new directory; never overwrite prior evidence")
+            d.mkdir(parents=True)
+            (d / "prediction.safetensors").write_bytes(b"fake" + bytes([n]))
+        self.f.calls.append((self.variant, self.device, self.dtype, n, process_res, intrinsics is not None))
+        views = self.f.data[world_key]
+        idx = ([self.f.lookup[hashlib.sha256(im.tobytes()).hexdigest()] for im in images]
+               if self.f.by_content else [(world_key, i) for i in range(n)])
+        extra = 0.0
+        if intrinsics is not None and self.f.k_effect:
+            gt_k = views[0]["K"]
+            extra = 0.2 * (intrinsics[0, 0, 0] / gt_k[0, 0] - 1) + 0.2 * (1 - intrinsics[0, 1, 1] / gt_k[1, 1])
+        c2w, depth = [], []
+        for k, (_, v) in enumerate(idx):
+            g = views[v]["c2w"]
+            r = self.Q @ g[:3, :3] @ _rot("y", k * extra)
+            c2w.append(np.vstack([np.hstack([r, (self.scale * (self.Q @ g[:3, 3]) + self.t0)[:, None]]), [0, 0, 0, 1]]))
+            depth.append(views[v]["depth"] * self.scale)
+        depth = np.stack(depth).astype(np.float32)
+        hw = self.f.out_hw
+        if hw is not None and tuple(hw) != depth.shape[1:]:
+            depth = np.stack([np.array(Image.fromarray(d).resize((hw[1], hw[0]))) for d in depth])
+        w2c = np.linalg.inv(np.stack(c2w))[:, :3, :4].astype(np.float32)
+        out = {"depth": depth, "confidence": np.full(depth.shape, 0.9, np.float32), "extrinsics": w2c,
+               "intrinsics": np.stack([views[v]["K"] for _, v in idx]).astype(np.float32)}
+        eps = {("cpu", "float32"): self.f.cpu_eps, ("mps", "float16"): self.f.half_eps}.get((self.device, self.dtype), 0.0)
+        if eps:
+            out = {k2: v2 * (1 + eps) for k2, v2 in out.items()}
+        out["pose_3x4"] = out["extrinsics"]
+        return out
+
+
+class FakeFactory:
+    def __init__(self, data, capable=True, by_content=True, k_effect=True, cpu_eps=5e-4, half_eps=5e-3, out_hw=None):
+        self.data, self.conditions_on_intrinsics_only = data, capable
+        self.by_content, self.k_effect, self.cpu_eps, self.half_eps, self.out_hw = by_content, k_effect, cpu_eps, half_eps, out_hw
+        self.calls, self.made, self.live, self.max_live = [], [], 0, 0
+        self.lookup = {hashlib.sha256(v["image"].tobytes()).hexdigest(): (w, i)
+                       for w, vs in data.items() for i, v in enumerate(vs)}
+
+    def make(self, variant, device, dtype):
+        self.made.append((variant, device, dtype))
+        self.live += 1
+        self.max_live = max(self.max_live, self.live)
+        return FakeTeacher(self, variant, device, dtype)
+
+    def release(self, teacher):
+        self.live -= 1
+
+
+@pytest.fixture(scope="module")
+def plan():
+    return R.load_plan()
+
+
+@pytest.fixture(scope="module")
+def data(plan):
+    return R.load_fixtures(FIX, plan)
+
+
+def _run(tmp_path, factory, **kw):
+    return R.run_full_calibration(tmp_path / "ev.json", tmp_path / "preds", "ainerzero.V9.T37-test",
+                                  teacher_factory=factory, **kw)
+
+
+# ───────────────────────────── 数学：每个已知缺陷一条 ─────────────────────────────
+def test_original_crash_shape_mismatch_is_loud_not_resampled():
+    """T35 r2 的原始崩溃：DA3 504 分辨率输出 378x504，真值 210x280。必须报错，且不得静默缩放。"""
+    g = np.ones((210, 280))
+    poses = [np.eye(4)] * 3
+    poses = [np.eye(4), np.vstack([np.hstack([np.eye(3), [[1.0], [0], [0]]]), [0, 0, 0, 1]]),
+             np.vstack([np.hstack([np.eye(3), [[2.0], [0], [0]]]), [0, 0, 0, 1]])]
+    with pytest.raises(ValueError, match="paired depth shapes must agree"):
+        M.anchored_residual(poses, poses, [g, g], [np.ones((378, 504)), np.ones((378, 504))])
+
+
+def test_w2c_must_be_inverted_before_use(data):
+    """r1 把 world_to_camera 当 camera_to_world 用。完美 teacher 在正确约定下残差≈0，在错误约定下必须明显非零。"""
+    v = data["t6-analytic-room-00"]
+    gt = [x["c2w"] for x in v]
+    d = [x["depth"] for x in v]
+    # 真实 DA3 的位姿在它自己的任意参考系里（朝向/原点/尺度都与 GT 房间系不同），用 GT 自己当预测放不大约定错误。
+    q, s, t0 = _rot("x", 0.7) @ _rot("y", -0.4), 0.37, np.array([3.0, -1.0, 2.0])
+    pred_c2w = [np.vstack([np.hstack([q @ g[:3, :3], (s * (q @ g[:3, 3]) + t0)[:, None]]), [0, 0, 0, 1]]) for g in gt]
+    w2c = np.stack([np.linalg.inv(p) for p in pred_c2w])
+    good = M.anchored_residual(gt, list(M.w2c_to_c2w(w2c[:, :3, :4])), d, d)
+    assert np.abs(good["residual_7d"][:6]).max() < 1e-9
+    bad = M.anchored_residual(gt, [x for x in w2c], d, d)       # 约定用错：把 w2c 当 c2w
+    assert good["translation_residual_norm"] < 1e-9
+    assert bad["translation_residual_norm"] > 0.2, "错误约定必须产生明显偏差，否则这个测试抓不到那类缺陷"
+
+
+def test_residual_invariant_to_pose_frame_and_scale(data):
+    """DA3 位姿在自己的参考系且尺度未知：锚点相对残差对全局刚体变换与尺度必须不变。"""
+    v = data["t6-analytic-room-01"]
+    gt = [x["c2w"] for x in v]
+    d = [x["depth"] for x in v]
+    q, s, t0 = _rot("x", 1.1) @ _rot("z", 0.3), 4.2, np.array([9.0, 8.0, -7.0])
+    pred = [np.vstack([np.hstack([q @ g[:3, :3], (s * (q @ g[:3, 3]) + t0)[:, None]]), [0, 0, 0, 1]]) for g in gt]
+    r = M.anchored_residual(gt, pred, d, [x * 0.2 for x in d])
+    assert np.abs(r["residual_7d"][:6]).max() < 1e-9
+    assert abs(r["depth_abs_rel"]) < 1e-6          # 夹具深度是 float32，乘 0.2 的舍入在 1e-8 量级
+
+
+def test_no_target_view_depth_refit(data):
+    """T28：用锚点视图的 s_depth 评分，不得对目标视图再拟合。目标视图深度整体偏 1.5 倍时 abs_rel 不能被拟合成 0。"""
+    v = data["t6-analytic-room-00"]
+    gt = [x["c2w"] for x in v]
+    d = [x["depth"] for x in v]
+    r = M.anchored_residual(gt, gt, d, [d[0], d[1] * 1.5])
+    assert r["depth_abs_rel"] == pytest.approx(0.5, rel=1e-6)
+    assert r["residual_7d"][6] == pytest.approx(np.log(1.5), rel=1e-6)
+
+
+def test_pi_branch_refused():
+    a = np.eye(4)
+    b = np.eye(4)
+    b[:3, :3] = _rot("z", np.pi)
+    c = np.eye(4)
+    c[0, 3] = 1.0
+    g = np.eye(4)
+    g[0, 3] = 1.0
+    with pytest.raises(ValueError, match="pi"):
+        M.anchored_residual([a, a, g], [a, b, c], [np.ones((2, 2))] * 2, [np.ones((2, 2))] * 2)
+
+
+def test_parity_rule_is_elementwise_with_reference_scaled_rtol():
+    ref = {"depth": np.array([1.0, 100.0])}
+    ok = M.parity_compare(ref, {"depth": np.array([1.0009, 100.09])}, ["depth"], 1e-3, 1e-3)
+    assert ok["pass"] and ok["fields"]["depth"]["failed_elements"] == 0
+    bad = M.parity_compare(ref, {"depth": np.array([1.0, 100.5])}, ["depth"], 1e-3, 1e-3)
+    assert not bad["pass"] and bad["fields"]["depth"]["failed_elements"] == 1
+    assert not M.parity_compare(ref, {"depth": np.array([1.0])}, ["depth"], 1, 1)["pass"]
+    assert not M.parity_compare(ref, {"depth": np.array([np.nan, 1.0])}, ["depth"], 1, 1)["pass"]
+    assert not M.parity_compare(ref, {}, ["depth"], 1, 1)["pass"]
+
+
+def test_required_red_boundary():
+    assert M.required_red(1.0, 1.1) and not M.required_red(1.0, 1.0999)
+    assert M.required_red(0.0, 1e-4) and not M.required_red(0.0, 9e-5)
+
+
+def test_fit_statistics_rank_ceiling_comes_from_sample_count_not_a_constant():
+    rng = np.random.default_rng(0)
+    s3 = M.fit_statistics(list(rng.normal(size=(3, 7))))
+    s5 = M.fit_statistics(list(rng.normal(size=(5, 7))))
+    assert s3["rank"] == s3["rank_ceiling"] == 2 and s5["rank"] == s5["rank_ceiling"] == 4
+    assert s3["regularization"] == "none"
+
+
+# ───────────────────────────── 预检：不可满足就不动模型 ─────────────────────────────
+def test_real_da3_cannot_satisfy_t28_and_runner_refuses_before_any_model_work(tmp_path, data):
+    f = FakeFactory(data, capable=False)               # 与真实 DA3 同样的能力位
+    with pytest.raises(R.ProtocolUnsatisfiable):
+        _run(tmp_path, f)
+    assert f.made == [] and f.calls == [], "不可满足时不得创建任何 teacher"
+    assert not (tmp_path / "preds").exists() and not (tmp_path / "ev.json").exists()
+
+
+def test_real_factory_declares_it_cannot_condition_on_intrinsics():
+    assert R.RealTeacherFactory.conditions_on_intrinsics_only is False
+
+
+def test_upstream_da3_still_gates_intrinsics_behind_extrinsics():
+    """漂移探测：上游若改成能只靠内参条件化，这条会失败，提醒重新评估 REAL_DA3_CONDITIONS_ON_INTRINSICS_ONLY。"""
+    src = (REPO / "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/model/da3.py").read_text()
+    m = re.search(r"if extrinsics is not None:\s*\n(?:.*\n){0,3}?.*self\.cam_enc\(extrinsics, intrinsics", src)
+    assert m, "da3.py forward no longer gates cam_enc on extrinsics; re-evaluate K conditioning"
+    api = (REPO / "envs/teachers/t6/Depth-Anything-3/src/depth_anything_3/api.py").read_text()
+    assert re.search(r"if extrinsics is None:\s*\n\s*return prediction", api)
+
+
+def test_preflight_rejects_existing_outputs(tmp_path, data, plan):
+    (tmp_path / "preds").mkdir()
+    (tmp_path / "preds" / "x").write_text("prior evidence")
+    with pytest.raises(R.PreflightError, match="non-empty"):
+        R.preflight(plan, FakeFactory(data), tmp_path / "preds", tmp_path / "ev.json")
+    (tmp_path / "ev.json").write_text("{}")
+    with pytest.raises(R.PreflightError):
+        R.preflight(plan, FakeFactory(data), tmp_path / "other", tmp_path / "ev.json")
+
+
+def test_default_output_dirs_must_not_be_the_delivered_t35_folder():
+    """r1 默认写进已交付的 reports/V9-T35/predictions，而管线拒绝已存在目录，下一枪会在第一个世界就崩。"""
+    src = (REPO / "src/ainerzero/v9/teachers/da3_worker.py").read_text()
+    assert 'reports/V9-T35/predictions"' not in src.replace("\\", ""), "worker 不得默认写入已交付的 T35 证据目录"
+
+
+def test_tampered_proposal_is_rejected(tmp_path):
+    for n in ("proposal.json", "proposal.sha256"):
+        shutil.copy(REPO / "reports/V9-T28" / n, tmp_path / n)
+    p = json.loads((tmp_path / "proposal.json").read_text())
+    p["numerical_parity"]["cpu_float32"]["atol"] = 0.5            # 事后放宽容差
+    (tmp_path / "proposal.json").write_text(json.dumps(p))
+    with pytest.raises(R.PreflightError, match="proposal.sha256"):
+        R.load_plan(tmp_path / "proposal.json")
+
+
+def test_plan_comes_from_t28_not_constants(plan):
+    assert plan.process_res == 280 and (plan.anchor_view, plan.scored_view, plan.scale_view) == (0, 1, 2)
+    assert plan.calls_per_variant == 11 and plan.views_per_variant == 31
+    assert plan.parity_cpu == (1e-3, 1e-3) and plan.parity_half == (1e-2, 1e-2)
+    assert plan.focal_scale == (1.5, 0.75) and (plan.red_floor, plan.red_rel) == (1e-4, 0.1)
+    assert [s["stage"] for s in plan.stages] == ["first_frame", "calibration", "frame_order_adverse",
+                                                 "intrinsics_adverse", "cpu_parity", "half_parity"]
+
+
+# ───────────────────────────── 整条流程（假 teacher） ─────────────────────────────
+def test_full_run_with_capable_teacher_follows_t28_and_reports_only_measured_values(tmp_path, data, plan):
+    f = FakeFactory(data)
+    ev, code = _run(tmp_path, f)
+    assert code == 0 and ev["status"] == plan.output_status and ev["failures"] == []
+    assert f.max_live == 1, "T28 max_resident_models=1"
+    for v in plan.variants:
+        acc = ev["forward_accounting"][v]
+        assert (acc["calls_actual"], acc["views_actual"]) == (11, 31) == (acc["calls_planned"], acc["views_planned"])
+        cal = ev["calibration"][v]
+        assert set(cal["per_world"]) == set(plan.fit_worlds) | set(plan.holdout_worlds)
+        assert max(abs(x) for w in cal["per_world"].values() for x in w["residual_7d"]) < 1e-3
+        assert cal["fit"]["rank"] == cal["fit"]["rank_ceiling"] == 2 or cal["fit"]["rank"] <= 2
+        for adv in ("frame_order_adverse", "intrinsics_adverse"):
+            s = ev["stages"][v][adv]
+            assert s["turned_red"] and s["S_bad"] >= s["S_clean"] + s["required_margin"]
+        assert all(p["pass"] for p in ev["numerical_parity"][v].values())
+    assert all(g["rejected"] for g in ev["negative_controls"]["boundary_guards"])
+    assert ev["predictions_manifest"]["total_files"] > 0
+    # 全部 positive 调用都按预登记用 process_res=280 并带已知 K
+    assert {c[4] for c in f.calls} == {280} and all(c[5] for c in f.calls)
+    # 不得再出现任何写死的结论字段
+    text = json.dumps(ev)
+    for banned in ("rotation_offset_deg", "full_calibration_completed", "reason_rank_deficient", "views_consumed"):
+        assert banned not in text
+    # 同一目录再跑必须被预检拒绝，且不动已有证据
+    before = (tmp_path / "ev.json").read_bytes()
+    with pytest.raises(R.PreflightError):
+        _run(tmp_path, FakeFactory(data))
+    assert (tmp_path / "ev.json").read_bytes() == before
+
+
+def test_parity_failure_exits_nonzero_retains_outputs_and_does_not_relax(tmp_path, data):
+    ev, code = _run(tmp_path, FakeFactory(data, cpu_eps=0.05))
+    assert code == R.EXIT_STAGE_FAILED and ev["status"] == "failed"
+    assert any("cpu_parity" in x for x in ev["failures"])
+    assert (tmp_path / "ev.json").is_file() and ev["predictions_manifest"]["total_files"] > 0
+
+
+def test_adverse_control_that_does_not_turn_red_is_a_failure_not_a_pass(tmp_path, data):
+    """逆序控制：若 teacher 对 RGB 顺序不敏感（按位置而非内容出结果），S_bad==S_clean，必须判失败。"""
+    ev, code = _run(tmp_path, FakeFactory(data, by_content=False))
+    assert code == R.EXIT_STAGE_FAILED
+    assert any("frame_order_adverse" in x for x in ev["failures"])
+    assert not ev["stages"]["DA3-SMALL"]["frame_order_adverse"]["turned_red"]
+
+
+def test_k_insensitive_teacher_fails_the_intrinsics_control(tmp_path, data):
+    """即便声称能被 K 条件化，只要输出不随 K 变，内参逆向控制就必须判失败。"""
+    ev, code = _run(tmp_path, FakeFactory(data, k_effect=False))
+    assert code == R.EXIT_STAGE_FAILED and any("intrinsics_adverse" in x for x in ev["failures"])
+
+
+def test_wrong_output_resolution_fails_loudly_and_keeps_evidence(tmp_path, data):
+    """原始崩溃场景：teacher 输出 378x504，必须报 'resampling is not allowed'，而不是被悄悄缩放。"""
+    ev, code = _run(tmp_path, FakeFactory(data, out_hw=(378, 504)))
+    assert code == R.EXIT_ERROR and (tmp_path / "ev.json").is_file()
+    assert any("resampling is not allowed" in x for x in ev["failures"])
+
+
+def test_runner_source_has_no_unexecuted_verified_flags():
+    """静态护栏：r1 的 `"verified": True` / `rotation_offset_deg` / `full_calibration_completed` 不得复活。"""
+    for name in ("da3_calibration_runner.py", "da3_calibration_math.py"):
+        src = (REPO / "src/ainerzero/v9/teachers" / name).read_text()
+        code = re.sub(r'"""(?:.|\n)*?"""|#.*', "", src)
+        for banned in ('"verified": True', "rotation_offset_deg", "full_calibration_completed", "views_consumed",
+                       "reason_rank_deficient"):
+            assert banned not in code, f"{name} contains hard-coded claim {banned!r}"
+
+
+# ───────────────────────────── 真实数据冒烟（只读；文件不在就跳过） ─────────────────────────────
+@pytest.mark.skipif(not (REPO / "reports/V9-T35/predictions/da3_small/t6-analytic-room-00/view_0.safetensors").is_file(),
+                    reason="T35 r2 saved real DA3 predictions not present")
+def test_real_da3_world0_smoke_with_correct_convention(data):
+    """T35 r2 真跑留下的 world-0 真实 DA3-SMALL 输出（process_res=504，378x504）：只用于验证约定，不是标定结论。"""
+    from safetensors.numpy import load_file
+    base = REPO / "reports/V9-T35/predictions/da3_small/t6-analytic-room-00"
+    p = [load_file(str(base / f"view_{i}.safetensors")) for i in range(3)]
+    v = data["t6-analytic-room-00"]
+    gt, gd = [x["c2w"] for x in v], [x["depth"] for x in v]
+    pred_c2w = list(M.w2c_to_c2w(np.stack([x["camera_pose"] for x in p])))
+    pd = [np.array(Image.fromarray(x["depth"].astype(np.float32)).resize((280, 210), Image.BILINEAR)) for x in p]
+    good = M.anchored_residual(gt, pred_c2w, gd, pd)             # 缩放仅用于这份 504 的历史原件
+    wrong = M.anchored_residual(gt, [np.vstack([x["camera_pose"], [0, 0, 0, 1]]) for x in p], gd, pd)
+    assert good["rotation_deg"] < 3.0 and good["translation_residual_norm"] < 0.3
+    assert wrong["translation_residual_norm"] > 3 * good["translation_residual_norm"]
+
+
+# ───────────────────────────── 修订协议后的可运行性 ─────────────────────────────
+def test_runner_is_ready_for_an_amended_protocol_without_known_k(tmp_path, data):
+    """T28 的"已知 K + 内参逆向控制"在这版 DA3 上不可满足。若协议被修订为"模型自估内参、去掉内参控制"，
+    runner 不需要再改：用与真实 DA3 相同的能力位（不能用 K 条件化）整条跑通，且前向账目与修订后的计划一致。
+    这里的修订版只是测试夹具，不是已登记的协议。"""
+    p = json.loads(T28.read_text())
+    p["profile"]["known_intrinsics"] = False
+    for m in p["budget"]["models"]:
+        m["stages"] = [s for s in m["stages"] if s["stage"] != "intrinsics_adverse"]
+        m["forward_calls"], m["forward_views"] = 10, 28          # 1+6 次校准+逆序+CPU+半精度；1+18+3+3+3
+    amended = tmp_path / "amended_proposal.json"
+    amended.write_text(json.dumps(p))
+    f = FakeFactory(data, capable=False)                          # 真实 DA3 的能力位
+    ev, code = R.run_full_calibration(tmp_path / "ev.json", tmp_path / "preds", "amended-test", teacher_factory=f,
+                                      proposal_path=amended, verify_hashes=False)
+    assert code == 0 and ev["failures"] == []
+    for v in ("DA3-SMALL", "DA3-BASE"):
+        acc = ev["forward_accounting"][v]
+        assert (acc["calls_actual"], acc["views_actual"]) == (10, 28)
+        assert "intrinsics_adverse" not in ev["stages"][v]
+    assert all(c[5] is False for c in f.calls), "未知 K 的协议下不得传入 intrinsics"

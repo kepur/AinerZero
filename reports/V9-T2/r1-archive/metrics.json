@@ -1,0 +1,77 @@
+{
+  "task_id": "ainerzero.V9.T2",
+  "agent": "opencode-de3b",
+  "timestamp": "2026-10-20T15:30:00+0300",
+  "source_files": {
+    "src/ainerzero/v9/teachers/cache.py": {
+      "sha256": "c0e34ec3157eeafe6e721787b23beae5019c80566d6426511167ba30212f6613",
+      "lines": 620
+    },
+    "src/ainerzero/v9/teachers/mode.py": {
+      "sha256": "c6c28628ffd98c9382ed06c77386418d1496c9c13620379158b87bfcd1603315",
+      "lines": 452
+    },
+    "src/ainerzero/v9/teachers/__init__.py": {
+      "sha256": "a3a81634d9ef056536f785404aab966adcc352d7b39b0411c70846a4d1abefd0",
+      "lines": 35
+    },
+    "tests/v9/teachers/test_cache.py": {
+      "sha256": "d091f1efd1eebd9a3fa228595a8ee214bcf7fa51da3e0b7722e09d7e24b7e0cf",
+      "lines": 565
+    },
+    "tests/v9/teachers/test_mode.py": {
+      "sha256": "1fe17cdc443f20a034e672a6932c85e1227c60ab935c6c9e105163c7093c35de",
+      "lines": 443
+    }
+  },
+  "test_results": {
+    "test_cache": {
+      "total_tests": 31,
+      "passed": 31,
+      "failed": 0,
+      "duration_seconds": 0.18,
+      "categories": {
+        "basic": 5,
+        "blob": 5,
+        "entry": 4,
+        "store_problems": 11,
+        "train_eligible": 6,
+        "schema": 2,
+        "compute_entry_id": 1
+      }
+    },
+    "test_mode": {
+      "total_tests": 13,
+      "passed": 13,
+      "failed": 0,
+      "duration_seconds": 3.16,
+      "categories": {
+        "worker_lock": 4,
+        "mode_guard": 4,
+        "interleaving": 2,
+        "deliberate_errors": 3
+      }
+    }
+  },
+  "deliberate_error_tests": {
+    "cache_wrong_direction": "N/A - cache tests don't have direction",
+    "lock_early_release": "passed - WorkerLock early release caught",
+    "lock_acquire_late": "passed - late acquisition caught",
+    "mode_guard_train_loads_teacher": "passed - Train Mode rejects teacher load",
+    "mode_guard_teacher_loads_second": "passed - Teacher Mode rejects second teacher",
+    "mode_guard_world_loads_feature": "passed - World Mode rejects feature teacher",
+    "mode_guard_no_mode": "passed - Mode not set rejection"
+  },
+  "verification": {
+    "no_mlx_import": true,
+    "no_torch_import": true,
+    "no_onnxruntime_import": true,
+    "pure_cpu": true,
+    "deterministic": true
+  },
+  "runtime_seconds": {
+    "test_cache": 0.18,
+    "test_mode": 3.16,
+    "total": 3.34
+  }
+}

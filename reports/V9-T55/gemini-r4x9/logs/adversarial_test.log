@@ -1,0 +1,17 @@
+=== Adversarial Mutation Testing for T55 Verification ===
+
+--- [Adversarial Test 1] Mutating DA3-SMALL S_bad in evidence copy ---
+Original DA3-SMALL S_bad: 0.6533851351973012, turned_red: False
+Mutated DA3-SMALL S_bad in scratch copy to: 1.5 (falsely claiming adverse control turned red)
+SUCCESS: Mutation 1 CAUGHT by adverse recalculation check: Discrepancy caught: Evidence S_bad (1.5) != recalculated S_bad (0.6533851351973012)
+
+--- [Adversarial Test 2] Tampering with views of T54 run in runs.db copy ---
+Original run views: 50
+Mutated run a7bcc4c9ee0e... views in scratch database to: 51
+Recalculated total DA3 views on mutated DB: 250 (Expected: 249)
+Target run views on mutated DB: 51 (Expected: 50)
+SUCCESS: Mutation 2 CAUGHT by ledger verification check: Run views mismatch caught: 51 != 50
+
+=== Adversarial Test Summary ===
+Test 1 (Tampered S_bad detected by Step 5): PASS
+Test 2 (Tampered ledger views detected by Step 3): PASS

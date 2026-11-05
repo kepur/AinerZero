@@ -1,0 +1,92 @@
+[project]
+name = "vjepa2-mlx"
+version = "0.1.0"
+description = "Pure MLX port of V-JEPA 2.1 video/image encoders for Apple Silicon — inference"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{ name = "dgrauet" }]
+keywords = ["mlx", "jepa", "v-jepa", "self-supervised", "video", "apple-silicon", "vision-transformer"]
+# NB: no "License ::" classifier — superseded by the SPDX `license` expression
+# above (PEP 639); keeping both breaks the setuptools build under newer tooling.
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "vjepa2-core-mlx",
+]
+
+[project.optional-dependencies]
+# PyTorch is an OPTIONAL dev dependency — only needed to run parity tests.
+parity = ["torch>=2.2", "numpy"]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.7.0",
+    "ty>=0.0.0a1",
+]
+all = ["vjepa2-mlx[parity,dev]"]
+
+[project.urls]
+Homepage = "https://github.com/dgrauet/vjepa2-mlx"
+Repository = "https://github.com/dgrauet/vjepa2-mlx"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+vjepa2-core-mlx = { workspace = true }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "E501",   # line length (formatter)
+    "E402",   # imports after pytest.importorskip / channels-last docstrings
+    "N801",   # class names mirror upstream (e.g. PatchEmbed3D, RoPEAttention)
+    "N803",   # uppercase tensor-dim arguments (B, C, H, W, T, N)
+    "N806",   # uppercase tensor-dim vars (B, C, H, W, T, N)
+    "N812",   # lowercase import aliased as non-lowercase (import torch.nn as nn ok)
+    "N814",   # camelcase imported as constant (framework module aliases)
+    "RUF001", # ambiguous unicode in strings (math: ×, √, ·)
+    "RUF002", # ambiguous unicode in docstrings (math symbols)
+    "RUF003", # ambiguous unicode in comments (math symbols)
+    "RUF059", # unused unpacked vars (shape destructuring)
+    "SIM108", # ternary
+    "RUF046", # int(round(...)) mirrors upstream crop/mask sizing 1:1 (do not drop int())
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["vjepa2_core_mlx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "parity: PyTorch vs MLX numerical parity (requires torch)",
+    "smoke: shape/config/e2e smoke tests (MLX only)",
+    "distributed: multi-rank tests launched via mlx.launch (requires mlx.launch + a backend)",
+]
+
+# Strict-mode opt-in for PYTHON_QU003 (intendant). torch is an optional parity
+# dep that ty cannot always resolve; those imports carry `# ty: ignore` inline.
+[tool.ty]
+
+# uv-workspace src layout: put the package source on ty's module-resolution
+# path so first-party `vjepa2_core_mlx.*` imports resolve (not installed).
+[tool.ty.environment]
+extra-paths = ["packages/vjepa2-core-mlx/src"]
+
+[tool.coverage.run]
+branch = true
+source = ["packages/vjepa2-core-mlx/src/vjepa2_core_mlx"]
+
+[tool.coverage.report]
+show_missing = true

@@ -1,0 +1,71 @@
+{
+  "task": "ainerzero.V9.T31",
+  "verified_target": "ainerzero.V9.T30",
+  "verifier_agent": "gemini-7a2b",
+  "author_agent": "antigravity-h4d8",
+  "timestamp": "2026-10-26T14:29:13Z",
+  "overall_verdict": "ACCEPTED_CPU_ENGINEERING_ONLY",
+  "real_model_work_authorized": false,
+  "verification_dimensions": {
+    "1_source_sha256_integrity": {
+      "status": "PASSED",
+      "files_checked": 8,
+      "files_matched": 8,
+      "hashes": {
+        "src/ainerzero/cli.py": "60a6c7f099649212c1fc35ff27cbe74dcb48f3b5cb1d3ad3199ce6020082afc3",
+        "src/ainerzero/v9/teachers/benchmark.py": "aa83e7db9fb4a57b7ed20dddff450b67c5c25a9350f2cace23606bd29e97a5eb",
+        "src/ainerzero/v9/teachers/benchmark_commands.py": "d9a711fca64fa7944fade8f2256079737fdaa3ccf63dec50161614fefe793383",
+        "src/ainerzero/v9/teachers/benchmark_protocol.py": "6e27c41cd54bc0977ac7d087f603fd983af1f225d32b3945e7580634f62f1bd4",
+        "src/ainerzero/v9/teachers/da3_controlled.py": "93016b3d5e6313db6aa82900cc598db59805ff2c1841da8c30c28646e08c7c18",
+        "src/ainerzero/v9/teachers/da3_worker.py": "7046723dc08b1ac819b6a46e80959889602034fb2fee9f7ff94142cfb103d205",
+        "tests/test_teacher_da3_controlled.py": "f8f863a6a1e04cfc0df80f64a5b4aa361a43b3ebca1a14798af821ba40c69ef7",
+        "tests/test_da3_supervision.py": "63b3d92193c605d400f0432a5f52a51f6e2f8ecc243355fbd310c68abd419383"
+      }
+    },
+    "2_product_supervised_worker": {
+      "status": "PASSED",
+      "normal_completion": true,
+      "timeout_supervision": true,
+      "high_rss_supervision": true,
+      "grandchild_leak_supervision": true,
+      "empty_process_group_proven": true
+    },
+    "3_prereservation_rejection_order": {
+      "status": "PASSED",
+      "rejected_before_reservation": true,
+      "zero_db_writes_on_rejection": true
+    },
+    "4_cumulative_views_quota": {
+      "status": "PASSED",
+      "lifetime_quota": 64,
+      "cumulative_rejection_verified": true
+    },
+    "5_readonly_inspect_and_fail_closed": {
+      "status": "PASSED",
+      "inspect_mode_ro_no_db_created": true,
+      "corrupted_db_fails_closed": true,
+      "no_silent_fallback_to_zero": true
+    },
+    "6_four_mutation_controls": {
+      "status": "PASSED",
+      "total_controls": 4,
+      "mutation_1_timeout_gate": "PASSED",
+      "mutation_2_rss_gate": "PASSED",
+      "mutation_3_prereservation_gate": "PASSED",
+      "mutation_4_views_quota_gate": "PASSED"
+    },
+    "7_cli_subprocess_execution": {
+      "status": "PASSED",
+      "cli_inspect_rc": 0,
+      "cli_unapproved_rc": 3,
+      "cli_views_quota_rc": 2,
+      "cli_budget_breach_rc": 5
+    }
+  },
+  "unverified_items": [
+    "真实 DA3 模型前向与 MPS 推理未在本复核卡中执行（本卡限纯 CPU 工程复核）",
+    "生产数据库 artifacts/v9/teachers/benchmark/runs.db 保持零修改",
+    "生产共享锁 artifacts/locks/m0-worker.lock 保持零占用",
+    "真实 T6 模型执行需等待统筹者正式恢复 T6 状态后由后续独立任务申请启动"
+  ]
+}

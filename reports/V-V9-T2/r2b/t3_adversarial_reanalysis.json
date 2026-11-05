@@ -1,0 +1,74 @@
+{
+  "all_12_rejected": true,
+  "cases": {
+    "C01": {
+      "title": "blob.reproducibility 篡改提升训练准入",
+      "attack_rejected": true,
+      "train_eligible_under_v2": false,
+      "mechanism": "Fail-closed under v2 (False); requires admission_bindings in v2.1 context"
+    },
+    "C02": {
+      "title": "entry/blob 许可篡改提升训练准入",
+      "attack_rejected": true,
+      "mechanism": "Disk license cannot escalate admission; v2 context strictly returns False; v2.1 reports mismatch in store_problems"
+    },
+    "C03": {
+      "title": "同 entry_id 不同内容静默覆盖",
+      "attack_rejected": true,
+      "exception": "ImmutableConflictError",
+      "mechanism": "ImmutableConflictError raised on conflicting entry write"
+    },
+    "C04": {
+      "title": "write_blob 产物不通过契约 schema",
+      "attack_rejected": true,
+      "schema_errors": 0,
+      "mechanism": "Blob record formatted as output.files[].sha256 matching teacher_cache.v2.schema.json"
+    },
+    "C05": {
+      "title": "条目 derivation 换模型后写入/读取放行",
+      "attack_rejected": true,
+      "exception": "HashMismatchError",
+      "mechanism": "Derivation teacher/weights mismatch detected and rejected with HashMismatchError"
+    },
+    "C06": {
+      "title": "blob.key_material 被换模型后读路径不核验",
+      "attack_rejected": true,
+      "broken_flag": true,
+      "exception": "HashMismatchError",
+      "mechanism": "read_blob recomputes sha(key_material), detects mismatch, marks .broken and raises HashMismatchError"
+    },
+    "C07": {
+      "title": "契约合法内容块被实现误判 broken",
+      "attack_rejected": true,
+      "mechanism": "T2 r2 uses output.files[].sha256 identical to schema, correctly reading contract-valid blobs"
+    },
+    "C08": {
+      "title": "Train Mode 下常驻教师句柄仍可产出",
+      "attack_rejected": true,
+      "exception": "ModeViolationError",
+      "mechanism": "Generation incremented on release and mode switch; extract() raises ModeViolationError"
+    },
+    "C09": {
+      "title": "World Mode TTL 过期后句柄不失效",
+      "attack_rejected": true,
+      "exception": "ModeViolationError",
+      "mechanism": "TTL expiration triggers release_teacher() on extract(), raising ModeViolationError"
+    },
+    "C10": {
+      "title": "模式切换无内存回落检查 unload_incomplete",
+      "attack_rejected": true,
+      "exception": "UnloadIncompleteError",
+      "mechanism": "UnloadIncompleteError raised when RSS drop is insufficient"
+    },
+    "C11": {
+      "title": "并发同键不同输出丢失 nondeterministic 拒绝",
+      "attack_rejected": true,
+      "mechanism": "Whole-cache flock write lock + O_EXCL ensures at most one output is accepted across Barrier rounds"
+    },
+    "C12": {
+      "title": "并发同键跨分区写入 TOCTOU",
+      "attack_rejected": true,
+      "mechanism": "Whole-cache flock write lock + cross_partition check ensures cross-partition writes are rejected"
+    }
+  }
+}

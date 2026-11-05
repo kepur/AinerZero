@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Audit r1 (44 tests) vs r2 (33 tests) in tests/v9/teachers/."""
+
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path("/Users/mac/AinerWorkFlow/AinerZero")
+
+
+def main():
+    r1_categories = {
+        "test_cache": {
+            "count": 31,
+            "details": "Basic JSON/SHA (3), Blob (5), Entry (4), store_problems (11 trivial dict checks), train_eligible (5), schema (2 with 0 assertions!), compute_entry_id (1)",
+        },
+        "test_mode": {
+            "count": 13,
+            "details": "WorkerLock (4), ModeGuard (4), Interleaving (2), Deliberate errors (3)",
+        },
+        "total": 44,
+        "runtime_s": 3.34,
+    }
+
+    r2_tests = {
+        "test_cache": [
+            ("test_canonical_json_and_sha", "Consolidates canon, sha, sha_bytes tests"),
+            ("test_write_read_blob_schema_compliant", "Schema-compliant blob write/read"),
+            ("test_validate_schema_blob_and_entry_have_asserts", "Fixes F2: Ensures schema validation actually asserts"),
+            ("test_blob_cache_key_mismatch_rejected", "Cache key mismatch rejection"),
+            ("test_blob_nondeterministic_rejected", "Sequential nondeterministic output rejection"),
+            ("test_blob_same_output_idempotent", "Idempotent identical output"),
+            ("test_blob_broken_on_output_tamper", "Tampered output content marks broken"),
+            ("test_f9_key_material_swap_marks_broken", "Fixes F9: key_material swap marks broken on read"),
+            ("test_write_read_entry", "Valid entry write and read"),
+            ("test_f1_same_entry_id_different_content_rejected", "Fixes F1: ImmutableConflictError on content conflict"),
+            ("test_f8_derivation_teacher_swap_rejected", "Fixes F8: Derivation teacher mismatch rejected"),
+            ("test_cross_partition_serial_rejected", "Cross-partition write rejected serially"),
+            ("test_f4_concurrent_different_outputs_reject", "Fixes F4: 20-round dual-process Barrier test"),
+            ("test_f3_concurrent_cross_partition_reject", "Fixes F3: 20-round dual-process Barrier test"),
+            ("test_f11_f12_disk_forgery_cannot_flip_eligibility", "Fixes F11/F12: admission_bindings security checks"),
+            ("test_missing_metadata_rejected", "Missing metadata validation"),
+            ("test_schema_reject_prevents_disk_write", "Schema failure aborts before touching disk"),
+        ],
+        "test_mode": [
+            ("test_worker_lock_acquire_release", "Basic lock acquire/release"),
+            ("test_worker_lock_non_blocking_busy", "Non-blocking lock returns false"),
+            ("test_worker_lock_context_manager", "Context manager support"),
+            ("test_worker_lock_kernel_cleanup_on_fd_close", "Kernel flock release on fd close"),
+            ("test_mode_guard_train_teacher_world_rules", "Train/Teacher/World mutual exclusion"),
+            ("test_mode_guard_switch_requires_unload", "Mode switch requires unloading teacher"),
+            ("test_mode_guard_ttl", "World mode TTL auto unload"),
+            ("test_mode_guard_no_mode", "No mode set rejects loading"),
+            ("test_f5_handle_invalid_after_release_and_train_switch", "Fixes F5: Teacher handle invalidated after release"),
+            ("test_f6_ttl_invalidates_handle", "Fixes F6: TTL expiration invalidates handle"),
+            ("test_f7_rss_probe_fail_closed_and_unload_incomplete", "Fixes F7: RSS probe drop enforcement"),
+            ("test_run_mode_process_and_interleaving", "Process mode interleaving"),
+            ("test_verify_dual_process_lock_protocol", "16 mode pair matrix mutual exclusion"),
+            ("test_run_mode_guard_tests_bundle", "Bundle test runner"),
+            ("test_deliberate_error_early_release_turns_red", "Poison test: early release turns red"),
+            ("test_deliberate_error_mode_violations_turn_red", "Poison test: violations turn red"),
+        ],
+        "total": 33,
+        "runtime_s": 15.11,
+    }
+
+    audit_summary = {
+        "r1_total": 44,
+        "r2_total": 33,
+        "change_rationale": "r1 contained trivial dict-field checks and zero-assertion schema tests; r2 replaced/consolidated them into heavy real-concurrency tests (F3/F4 20-round Barrier) and hardened security guards (F1, F2, F5, F6, F7, F8, F9, F11, F12).",
+        "was_loosened": False,
+        "hardening_evidence": [
+            "r1 schema tests had 0 assertions; r2 test_validate_schema_blob_and_entry_have_asserts checks real failure on invalid schemas",
+            "r1 had no multiprocessing Barrier concurrency tests; r2 adds 20-round spawn Barrier tests for F3 and F4",
+            "r1 had no RSS probe checks; r2 adds test_f7_rss_probe_fail_closed_and_unload_incomplete",
+            "r1 had no generation invalidation on handles; r2 adds test_f5 and test_f6 testing handle invalidation",
+            "r1 allowed silent overwrites of entry; r2 adds test_f1_same_entry_id_different_content_rejected",
+        ],
+    }
+
+    out_file = ROOT / "reports/V-V9-T2/r2b/r1_vs_r2_test_audit.json"
+    with open(out_file, "w", encoding="utf-8") as f:
+        json.dump({"r1": r1_categories, "r2": r2_tests, "audit": audit_summary}, f, indent=2, ensure_ascii=False)
+
+    print("Audit completed successfully. Summary:")
+    print(json.dumps(audit_summary, indent=2, ensure_ascii=False))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

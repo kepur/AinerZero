@@ -1,0 +1,30 @@
+Return Code: 1
+
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python3
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /Users/mac/AinerWorkFlow/AinerZero
+configfile: pyproject.toml
+collecting ... collected 1 item
+
+tests/test_da3_t56_features.py::test_is_da3_ledger_run_missing_model_refuses FAILED [100%]
+
+=================================== FAILURES ===================================
+_________________ test_is_da3_ledger_run_missing_model_refuses _________________
+
+    def test_is_da3_ledger_run_missing_model_refuses():
+        """缺 model 字段的 run 一律视为账本损坏，抛 BenchmarkRefusalError。"""
+        # Missing key completely
+>       with pytest.raises(BenchmarkRefusalError, match="missing or null 'model'"):
+E       Failed: DID NOT RAISE BenchmarkRefusalError
+
+tests/test_da3_t56_features.py:124: Failed
+=========================== short test summary info ============================
+FAILED tests/test_da3_t56_features.py::test_is_da3_ledger_run_missing_model_refuses
+============================== 1 failed in 0.20s ===============================
+
+
+STDERR:
+
