@@ -1,0 +1,39 @@
+{
+  "card": "ainerzero.V9.B2",
+  "python": "3.12.4",
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "numpy": "2.4.2",
+  "pytest": "7.4.4",
+  "jsonschema_available": true,
+  "ruff": {
+    "command": "/opt/homebrew/opt/python@3.12/bin/python3.12 -m ruff check src/ainerzero/v9/__init__.py src/ainerzero/v9/interfaces src/ainerzero/v9/fakes tests/v9/contracts reports/V9-B2",
+    "returncode": 1,
+    "seconds": 0.04,
+    "stdout_tail": "",
+    "stderr_tail": "/opt/homebrew/opt/python@3.12/bin/python3.12: No module named ruff"
+  },
+  "contract_suite": {
+    "command": "/opt/homebrew/opt/python@3.12/bin/python3.12 -m pytest tests/v9/contracts -q --no-header -rf",
+    "returncode": 0,
+    "seconds": 0.78,
+    "stdout_tail": "........................................................................ [ 41%]\n........................................................................ [ 83%]\n............................                                             [100%]\n172 passed in 0.45s",
+    "stderr_tail": ""
+  },
+  "import_surface_probe": {
+    "command": "/opt/homebrew/opt/python@3.12/bin/python3.12 -c import sys\nimport ainerzero.v9\nbad = [m for m in ('mlx', 'onnxruntime', 'torch', 'tensorflow', 'jax') if m in sys.modules]\nassert 'ainzerzero.v9.fakes' not in sys.modules\nassert not bad, bad\nfrom ainerzero.v9 import interfaces, fakes\nbad = [m for m in ('mlx', 'onnxruntime', 'torch', 'tensorflow', 'jax') if m in sys.modules]\nassert not bad, bad\nprint('probe-ok')",
+    "returncode": 0,
+    "seconds": 0.13,
+    "stdout_tail": "probe-ok",
+    "stderr_tail": ""
+  },
+  "v9_suite_informational": {
+    "command": "/opt/homebrew/opt/python@3.12/bin/python3.12 -m pytest tests/v9 -q --no-header -rf",
+    "returncode": 0,
+    "seconds": 28.49,
+    "stdout_tail": "........................................................................ [ 19%]\n........................................................................ [ 38%]\n........................................................................ [ 58%]\n........................................................................ [ 77%]\n........................................................................ [ 96%]\n............                                                             [100%]\n372 passed in 28.21s",
+    "stderr_tail": ""
+  },
+  "v9_suite_note": "tests/v9/teachers/test_cache.py requires the optional `jsonschema` package; those failures are pre-existing and outside this card's file scope",
+  "failures": [],
+  "ok": true
+}

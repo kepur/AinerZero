@@ -1,0 +1,236 @@
+{
+  "reviewer": "gemini-k8m4",
+  "task_id": "ainerzero.V9.B15",
+  "target_task": "ainerzero.V9.B12",
+  "target_candidate_round": "r3",
+  "candidate_shas": {
+    "src/ainerzero/v9/interfaces/spatial_memory.py": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+    "src/ainerzero/v9/interfaces/validation.py": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739",
+    "tests/v9/contracts/test_promotion_consumption_r3.py": "293c0dba16e0d1b150b26c1b2e6dfab9fd0a5e01ff93418171ce42b0ebb7bd7b"
+  },
+  "contracts_total": 341,
+  "contracts_passed": 341,
+  "contracts_failed": 0,
+  "independent_probe_total": 55,
+  "independent_probe_passed": 55,
+  "independent_probe_failed": 0,
+  "legacy_16_accounting": [
+    {
+      "mid": "G1",
+      "desc": "promote \u4e0d\u518d\u62d2\u7edd v1 \u8bc1\u636e",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "secondary_guard_rejection (trusted_context_missing exception mismatch, not promotion success)",
+      "note": "Legacy test passes v1 evidence lacking trusted_context. When version check is ablated, execution fails at require_independent_slow_producer with trusted_context_missing. Pytest fails due to exception message mismatch, NOT because illegal promotion succeeded. True promotion success requires forging v1 with all v2 fields."
+    },
+    {
+      "mid": "G2",
+      "desc": "v2 \u8bc1\u636e\u5b57\u6bb5\u6821\u9a8c\u6574\u4f53\u4e0d\u6267\u884c",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating _validate_v2() allows invalid calibration dataclass to construct without ValueError, causing pytest.raises(ValueError) to fail."
+    },
+    {
+      "mid": "G3",
+      "desc": "D/C/T \u4e24\u4e24\u4e0d\u76f8\u4ea4\u68c0\u67e5\u88ab\u62c6",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating disjoint check allows overlapping D/C/T in data_identity at construction, causing pytest.raises(ValueError) to fail."
+    },
+    {
+      "mid": "G4",
+      "desc": "SLOW \u5b88\u536b\u4e0d\u518d\u62e6\u622a\u7c7b\u522b self (producer='student')",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating SLOW_FORBIDDEN_CATEGORIES check allows category 'self' to pass producer check, failing the rejection assertion."
+    },
+    {
+      "mid": "G5",
+      "desc": "\u4e0d\u518d\u8981\u6c42 admission_bindings \u5b58\u5728 producer \u7ed1\u5b9a",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "exception_crash (AttributeError on NoneType.get, not promotion success)",
+      "note": "In legacy test, deleting `if matched is None: raise ...` causes the next line `matched.get(...)` to raise AttributeError because matched is None. Pytest fails with AttributeError, NOT because bare producer succeeded. True promotion success requires returning category on matched is None."
+    },
+    {
+      "mid": "G6",
+      "desc": "\u7ed1\u5b9a\u6458\u8981\u4e0d\u518d\u6821\u9a8c",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating binding digest verification allows tampered binding_sha256 to pass validation."
+    },
+    {
+      "mid": "G7",
+      "desc": "\u7f3a\u6765\u6e90/\u5bf9\u8c61/\u52a8\u4f5c\u952e\u7684\u6761\u76ee\u4ecd\u53ef\u664b\u5347",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating promotion_gaps check allows fragment missing provenance to be promoted."
+    },
+    {
+      "mid": "G8",
+      "desc": "\u6761\u76ee\u6458\u8981\u68c0\u67e5\u88ab\u62c6",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating content_digest check allows evidence with mismatched entry_digest to promote."
+    },
+    {
+      "mid": "G9",
+      "desc": "Fragment \u6807\u8bc6\u7b26\u4e0d\u518d\u62e6\u622a\u4e16\u754c\u771f\u503c ID",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating world-truth check allows fragment with gt_/eval_ identifiers to construct."
+    },
+    {
+      "mid": "G10",
+      "desc": "\u7248\u672c\u6f02\u79fb\u4e0d\u518d\u89e6\u53d1\u91cd\u9a8c",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating version match check in usable_slow_items allows drifted entries to be used."
+    },
+    {
+      "mid": "G11",
+      "desc": "demote \u5141\u8bb8\u843d\u5230 SLOW",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating DEMOTABLE_LEVELS check allows demote(..., to_level='slow') to succeed."
+    },
+    {
+      "mid": "G12",
+      "desc": "supersede \u6307\u9488\u53ef\u88ab\u53cd\u590d\u6539\u5199",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating single-shot supersede check allows overwriting existing supersede pointer."
+    },
+    {
+      "mid": "G13",
+      "desc": "ParamBeliefStore \u4e0d\u518d\u9650\u5b9a\u53ea\u7531 PARAMETRIC \u5206\u652f\u5199",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating route_code check allows non-parametric route to write ParamBeliefStore."
+    },
+    {
+      "mid": "G14",
+      "desc": "4a/4b \u8def\u7531\u8bb0\u5f55\u4e0d\u518d\u8981\u6c42 NIS \u7edf\u8ba1\u91cf\u4e0e\u81ea\u7531\u5ea6",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating NIS stat check allows 4a/4b route records with None nis_stat/dof."
+    },
+    {
+      "mid": "G15",
+      "desc": "cmfl_registration \u4e0d\u518d\u81ea\u6821\u9a8c",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating digest check allows tampered registration content to pass self-check."
+    },
+    {
+      "mid": "G16",
+      "desc": "\u8d77\u6e90\u62d2\u7edd\u95e8\uff08LLM/Teacher \u62d2\u7edd\uff09",
+      "baseline_rc": 0,
+      "mutated_rc": 1,
+      "anchor_matched": true,
+      "load_bearing_type": "targeted_test_failure (expected guard enforcement)",
+      "note": "Ablating require_slow_eligible_origin allows LLM/teacher origin to promote to SLOW."
+    }
+  ],
+  "true_controls": [
+    {
+      "mutant_name": "G1",
+      "target": "G1",
+      "baseline_outcome": "rejected",
+      "mutated_outcome": "promoted_and_usable",
+      "positive_control": "promoted_and_usable",
+      "orthogonal_gates_status": {
+        "G5": "rejected",
+        "origin": "rejected",
+        "overlap": "rejected",
+        "kind": "rejected"
+      },
+      "verified_true_load_bearing": true
+    },
+    {
+      "mutant_name": "G5",
+      "target": "G5",
+      "baseline_outcome": "rejected",
+      "mutated_outcome": "promoted_and_usable",
+      "positive_control": "promoted_and_usable",
+      "orthogonal_gates_status": {
+        "G1": "rejected",
+        "origin": "rejected",
+        "overlap": "rejected",
+        "kind": "rejected"
+      },
+      "verified_true_load_bearing": true
+    },
+    {
+      "mutant_name": "origin",
+      "target": "origin",
+      "baseline_outcome": "rejected",
+      "mutated_outcome": "promoted_and_usable",
+      "positive_control": "promoted_and_usable",
+      "orthogonal_gates_status": {
+        "G1": "rejected",
+        "G5": "rejected",
+        "overlap": "rejected",
+        "kind": "rejected"
+      },
+      "verified_true_load_bearing": true
+    },
+    {
+      "mutant_name": "overlap",
+      "target": "overlap",
+      "baseline_outcome": "rejected",
+      "mutated_outcome": "promoted_and_usable",
+      "positive_control": "promoted_and_usable",
+      "orthogonal_gates_status": {
+        "G1": "rejected",
+        "G5": "rejected",
+        "origin": "rejected"
+      },
+      "verified_true_load_bearing": true
+    },
+    {
+      "mutant_name": "kind",
+      "target": "kind",
+      "baseline_outcome": "rejected",
+      "mutated_outcome": "promoted_and_usable",
+      "positive_control": "promoted_and_usable",
+      "orthogonal_gates_status": {
+        "G1": "rejected",
+        "G5": "rejected",
+        "origin": "rejected"
+      },
+      "verified_true_load_bearing": true
+    }
+  ],
+  "source_zero_drift": true,
+  "loaded_models": [],
+  "verdict": "accept"
+}

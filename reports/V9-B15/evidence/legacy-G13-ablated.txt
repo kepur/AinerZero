@@ -1,0 +1,16 @@
+{
+  "label": "legacy-G13-ablated",
+  "cmd": [
+    "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/v9/contracts/test_param_belief.py::test_store_accepts_parametric_writes_only",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b15-isolated-omqv4n8i",
+  "returncode": 1,
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n__________________ test_store_accepts_parametric_writes_only ___________________\n\n    def test_store_accepts_parametric_writes_only():\n        store = ParamBeliefStore(registration_sha=REGISTRATION_SHA)\n        store.put(\"phi/room-a\", belief(), route_code=PARAMETRIC_ROUTE_CODE, registration_sha=REGISTRATION_SHA)\n        assert store.get(\"phi/room-a\").updated_at_ticks == 120\n        assert store.ids() == (\"phi/room-a\",)\n        assert store.version == 1\n        for other in ROUTE_CODES:\n            if other == PARAMETRIC_ROUTE_CODE:\n                continue\n>           with pytest.raises(ContractViolation) as caught:\nE           Failed: DID NOT RAISE ContractViolation\n\ntests/v9/contracts/test_param_belief.py:111: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_param_belief.py::test_store_accepts_parametric_writes_only\n1 failed in 0.03s\n",
+  "stderr": ""
+}

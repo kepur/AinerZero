@@ -1,0 +1,370 @@
+--- /Users/mac/AinerWorkFlow/AinerZero/reports/V9-B1/check_skill_proposal.py	2026-10-17 02:55:55
++++ /Users/mac/AinerWorkFlow/AinerZero/reports/V9-B1/r6-candidate/check_skill_proposal.py	2026-10-18 08:35:18
+@@ -20,6 +20,7 @@
+ import hashlib
+ import json
+ import math
++import os
+ import re
+ import shutil
+ import subprocess
+@@ -30,12 +31,12 @@
+ 
+ from jsonschema import Draft202012Validator
+ 
+-ROOT = Path(__file__).resolve().parents[2]
++ROOT = Path(__file__).resolve().parents[3]
+ OUT = Path(__file__).resolve().parent
+ PROPOSAL_SCHEMA = ROOT / 'contracts/v9/skill_proposal.v1.schema.json'
+ REPLY_SCHEMA = ROOT / 'contracts/v9/skill_gate_reply.v1.schema.json'
+ ENTRY_SCHEMA = ROOT / 'contracts/v9/ability_registry_entry.v0.schema.json'
+-FIXTURE = ROOT / 'contracts/v9/examples/skill_proposal_v1'
++FIXTURE = OUT / 'fixtures'
+ SABOTAGE = OUT / 'sabotage-schemas'
+ 
+ 
+@@ -46,7 +47,7 @@
+         PROPOSAL_SCHEMA = ROOT / 'contracts/v9/skill_proposal.v1.schema.json'
+         REPLY_SCHEMA = ROOT / 'contracts/v9/skill_gate_reply.v1.schema.json'
+         ENTRY_SCHEMA = ROOT / 'contracts/v9/ability_registry_entry.v0.schema.json'
+-        FIXTURE = ROOT / 'contracts/v9/examples/skill_proposal_v1'
++        FIXTURE = OUT / 'fixtures'
+         SABOTAGE = OUT / 'sabotage-schemas'
+ 
+ 
+@@ -211,7 +212,8 @@
+             out.append(path + ':patternProperties:' + str(pattern))
+     for name, sub in (s.get('properties') or {}).items():
+         if is_forbidden_world_id_key(name):
+-            out.append(here('forbidden_property:' + str(name)))
++            _tail = path.split('.', 1)[1] if '.' in path else ''
++            out.append(((_tail + ':') if _tail else '') + 'forbidden_property:' + str(name))
+         out.extend(check_schema_props_forbidden(sub, path + '.' + str(name)))
+     for kw in ('items', 'contains', 'not', 'if', 'then', 'else'):
+         if kw in s:
+@@ -455,12 +457,21 @@
+ REPLAY_EV = jcs_sha(base_basis())
+ 
+ 
+-# ---- 调用方固定（pin）的可信可观察量表（r4 F6）：与提案分离，随上下文一起被摘要固定。
++# ---- 调用方固定（pin）的可信可观察量表（r4 F6 / r5 B6-F4）：与提案分离，随上下文一起被摘要固定。
++# r5：source_sha256 改为 AWZ 固定 Observation 文件内容 SHA（01be45e0...），不再是路径字符串哈希。
++# 旧路径字符串哈希 a2971c9a... 作为 source_path_sha256 保留为迁移证据，不静默重 pin。
++OBSERVABLE_SOURCE_CONTENT_SHA256 = '01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb'
++OBSERVABLE_SOURCE_PATH_SHA256 = sha(OBSERVABLE_SOURCE.encode('utf-8'))   # 旧值 a2971c9a...（迁移前）
++
++
+ def trusted_observables():
+     return {
+         'registry_id': 'awz-observable-allowlist-synthetic-0001',
+         'source': OBSERVABLE_SOURCE,
+-        'source_sha256': sha(OBSERVABLE_SOURCE.encode('utf-8')),
++        'source_sha256': OBSERVABLE_SOURCE_CONTENT_SHA256,
++        'source_path_sha256': OBSERVABLE_SOURCE_PATH_SHA256,
++        'source_sha256_migration': 'v4 path-string hash -> v5 AWZ observation file content hash; '
++                                    'old value preserved in source_path_sha256; drift rejects',
+         'derivation': 'ObservationPacket/v1.1 的 $defs/ch_* 通道字段名与 payload 字段名；逐项列出，不含世界 ID、'
+                       '隐藏接触与接触标识',
+         'quantities': sorted(OBSERVABLE_QUANTITY_SET),
+@@ -601,8 +612,25 @@
+                 p.append('context_observable_forbidden:' + ','.join(forbidden[:3]))
+         if obr.get('source') != OBSERVABLE_SOURCE:
+             p.append('context_observable_source')
+-        if obr.get('source_sha256') != sha(OBSERVABLE_SOURCE.encode('utf-8')):
++        if obr.get('source_sha256') != OBSERVABLE_SOURCE_CONTENT_SHA256:
+             p.append('context_observable_source_sha256')
++        # 迁移证据：旧路径哈希可出现，但不能替代内容哈希；漂移时拒绝。
++        if 'source_path_sha256' in obr and obr.get('source_path_sha256') != OBSERVABLE_SOURCE_PATH_SHA256:
++            p.append('context_observable_source_path_sha256_drift')
++        # 运行时漂移校验：AWZ 观察文件必须存在且可读；缺失/不可读/内容漂移一律 fail-closed。
++        import os as _os
++        awz_env = _os.environ.get('AWZ_OBSERVATION_PATH')
++        awz_obs_path = Path(awz_env) if awz_env else Path('/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/v9/observation_packet.v1_1.schema.json')
++        if not awz_obs_path.is_file():
++            p.append('context_observable_source_unavailable')
++        else:
++            try:
++                actual = sha(awz_obs_path.read_bytes())
++            except Exception:
++                actual = None
++                p.append('context_observable_source_unreadable')
++            if actual is not None and actual != OBSERVABLE_SOURCE_CONTENT_SHA256:
++                p.append('context_observable_source_content_drift')
+         for k in ('registry_id', 'derivation'):
+             if not isinstance(obr.get(k), str) or not obr[k]:
+                 p.append('context_observable_missing:' + k)
+@@ -970,7 +998,7 @@
+ def worker_gate(a):
+     # r4 F4：解析失败、编码异常、JCS 异常都 fail-closed 成白名单原因码，不向外抛 traceback。
+     try:
+-        proposal = load_json(a.proposal)
++        proposal = load_json(a.proposal, strict=True)
+     except Exception as exc:
+         out = {'ok': False, 'decision': 'rejected', 'reason_code': 'schema_invalid',
+                'errors': ['proposal_unreadable:' + type(exc).__name__],
+@@ -979,7 +1007,7 @@
+         _print_json(out)
+         return 1
+     try:
+-        ctx = load_json(a.context) if a.context else None
++        ctx = load_json(a.context, strict=True) if a.context else None
+     except Exception as exc:
+         out = {'ok': False, 'decision': 'rejected', 'reason_code': 'schema_invalid',
+                'errors': ['context_unreadable:' + type(exc).__name__],
+@@ -1006,7 +1034,7 @@
+ 
+ def worker_reply(a):
+     try:
+-        rdoc = load_json(a.reply)
++        rdoc = load_json(a.reply, strict=True)
+         rschema = schema_load(a.reply_schema)
+     except Exception as exc:
+         _print_json({'ok': False, 'errors': ['reply_unreadable:' + type(exc).__name__],
+@@ -1632,12 +1660,12 @@
+         cpath = fixture_dir / 'contexts' / fname
+         write(ppath, proposal)
+         write(cpath, ctx)
+-        ctx_disk = load_json(cpath)
++        ctx_disk = load_json(cpath, strict=True)
+         pin = jcs_sha(ctx_disk)
+         # 该夹具故意把 basis 写成 JCS 超范围整数：摘要无法重算（重算本身就会抛错），
+         # 保留 mutation 写入的占位摘要，由 __init__ 之外的控制路径负责接受。
+         if case['name'] == 'jcs_int_out_of_range':
+-            raw = load_json(ppath)
++            raw = load_json(ppath, strict=True)
+             raw['evidence_version'] = '0' * 64
+             write(ppath, raw)
+         pins[case['name']] = pin
+@@ -1677,7 +1705,21 @@
+     return mut_paths, pins, expectations, case_list, reply_list
+ 
+ 
+-def suite(regenerate=False, root_arg=None):
++def suite(regenerate=False, root_arg=None, output_dir=None):
++    # r6 B9 必修：先校验输出路径，再做任何工作与任何写入。
++    # 输出与实际输入同路径/祖先/后代/符号链接别名 重叠，或输出目录已含输出证据，一律清楚拒绝（exit 2）。
++    # 默认只读（output_dir=None）不进入本分支，行为与 r5 一致。
++    _reject_reason, _reject_rc = reject_output_dir(
++        Path(output_dir) if output_dir else None)
++    if _reject_reason is not None:
++        _print_json({'ok': False, 'all_ok': False,
++                     'output_dir_rejected': True,
++                     'output_dir': str(output_dir),
++                     'errors': [_reject_reason.splitlines()[0]],
++                     'reason': _reject_reason,
++                     'note': '在 mkdir 与写 check_result.json / SHA256SUMS.txt 之前拒绝；'
++                             '合法的全新隔离输出目录不受影响。'})
++        return _reject_rc
+     pschema, rschema, eschema = schema_load(PROPOSAL_SCHEMA), schema_load(REPLY_SCHEMA), schema_load(ENTRY_SCHEMA)
+     temp_dir_ctx = None
+ 
+@@ -1850,7 +1892,7 @@
+     for row in rows:
+         if not row['valid'] or row['exception']:
+             continue
+-        p = load_json(target_fixture / 'valid' / row['proposal_file'])
++        p = load_json(target_fixture / 'valid' / row['proposal_file'], strict=True)
+         reply = row['reply'] or {}
+         no_rewrite.append({'name': row['name'],
+                            'evidence_version_echoed':
+@@ -1917,7 +1959,7 @@
+     probe_rows, probe_invariants = [], []
+     probe_path = ROOT / 'reports/V-V9-B1/probe_variants.json'
+     if probe_path.is_file():
+-        probes = load_json(probe_path)
++        probes = load_json(probe_path, strict=True)
+         family_counts, family_reject = {}, {}
+         for x in probes:
+             fam = x.get('family')
+@@ -1969,7 +2011,7 @@
+     jcs_rows = jcs_self_tests()
+     diffs = []
+     for p in sorted(FIXTURE.rglob('*.json')):
+-        obj = load_json(p)
++        obj = load_json(p, strict=True)
+         legacy = json.dumps(obj, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+         try:                                   # 含 JCS 超范围整数的夹具按异常记录，只报告
+             canon = jcs(obj).decode('utf-8')
+@@ -2049,19 +2091,56 @@
+             'note': '只报告；不改 Event/v1 r2、teacher_cache v2 或任何既有契约（RFC 8785 迁移由一级另行决定）。'},
+         'failures': failures, 'control_failures': bad_controls,
+     }
+-    write(OUT / 'check_result.json', result)
+-    write_sha_manifest(result)
++    out_dir = Path(output_dir) if output_dir else None
++    if out_dir is not None:
++        # 写入前第二道校验：即便顶部之后路径被改动/新建了证据文件，也绝不在重叠或覆盖时落盘。
++        _late_reason, _late_rc = reject_output_dir(out_dir)
++        if _late_reason is not None:
++            _print_json({'ok': False, 'all_ok': False,
++                         'output_dir_rejected': True,
++                         'output_dir': str(out_dir),
++                         'errors': [_late_reason.splitlines()[0]],
++                         'reason': _late_reason,
++                         'note': '写入前复查拒绝；本轮未创建目录、未写任何文件。'})
++            return _late_rc
++        try:
++            out_dir = _resolved(out_dir)
++            out_dir.mkdir(parents=True, exist_ok=True)
++            _write_new_output_json(out_dir / 'check_result.json', result)
++            write_sha_manifest(result, out_dir, exclusive=True)
++        except (OSError, RuntimeError, ValueError) as exc:
++            _print_json({'ok': False, 'all_ok': False, 'output_dir_rejected': True,
++                         'errors': ['output_write_refused:' + type(exc).__name__],
++                         'note': '输出只用排他创建，未覆盖既有证据；可能保留本轮已新建的部分输出。'})
++            return 2
+     _print_json({k: result[k] for k in ('all_ok', 'counts', 'failures', 'control_failures')})
+     return int(not all_ok)
+ 
+ 
+ def gen_jcs_sha(path):
+     """文件内容按 RFC 8785 规范化后的 sha256（只对 JSON 有意义）。"""
+-    return jcs_sha(load_json(path))
++    return jcs_sha(load_json(path, strict=True))
+ 
+ 
+-def write_sha_manifest(result):
+-    """r4 F7：重算全部交付物与输入的 SHA，并把「原始字节」与「JCS 摘要」分栏写清楚。"""
++# --------------------------------------------------------------------------- r6 输出路径重叠校验（B9 必修）
++#
++# B9 实证：--output-dir 指向隔离候选输入目录时仍 rc=0/all_ok=true，并把 check_result.json
++# 与 SHA256SUMS.txt 两份原字节覆盖。r6 只修这一项：任何输出与实际输入发生同路径、祖先、
++# 后代或符号链接别名 重叠，或输出目录里已存在输出证据文件，均在写任何文件之前清楚拒绝。
++# 合法的全新隔离输出目录与「默认只读（不传 --output-dir 就不写）」保持不变。
++
++OUTPUT_EVIDENCE_FILES = ('check_result.json', 'SHA256SUMS.txt')
++
++
++def _resolved(p):
++    """规范绝对路径：跟随路径上所有仍存在的符号链接段（含尚未创建的尾段前缀）。
++    别名重叠（symlink 指向输入目录）在 resolve 之后与输入同路径，因而被同路径分支命中。"""
++    return Path(p).resolve()
++
++
++def _manifest_inputs():
++    """write_sha_manifest 实际读取/哈希的 (交付物, 只读输入) 两份清单。
++    与输出重叠校验共用同一份，避免两处清单漂移；在调用时求值，以跟随 --root 改写。"""
+     deliverables = [
+         ('contracts/v9/skill_proposal.v1.schema.json', PROPOSAL_SCHEMA),
+         ('contracts/v9/skill_gate_reply.v1.schema.json', REPLY_SCHEMA),
+@@ -2088,6 +2167,88 @@
+         ('reports/V-V9-B1/probe_variants.json', ROOT / 'reports/V-V9-B1/probe_variants.json'),
+         ('reports/V-V9-B1/oracle_r3.py', ROOT / 'reports/V-V9-B1/oracle_r3.py'),
+     ]
++    return deliverables, read_only
++
++
++def manifest_input_paths():
++    """suite 实际读取的全部输入：脚本同目录（含 fixtures / sabotage-schemas）、夹具目录、
++    对照 schema 目录，以及 write_sha_manifest 会哈希的每一份文件。单一清单来源。"""
++    deliverables, read_only = _manifest_inputs()
++    paths = [OUT, FIXTURE, SABOTAGE] + [p for _label, p in deliverables] + [p for _label, p in read_only]
++    # gate 子进程实际可读的来源覆盖路径也属于输入，不能只保护默认声明路径。
++    actual_source = os.environ.get('AWZ_OBSERVATION_PATH')
++    if actual_source:
++        paths.append(Path(actual_source))
++    return paths
++
++
++def _same_existing_path(left, right):
++    """读取文件系统身份，补足大小写不敏感卷等别名；只读，不以字符串名称猜相同。"""
++    try:
++        return left.samefile(right)
++    except FileNotFoundError:
++        return False
++
++
++def output_overlap_reason(output_dir):
++    """输出目录与任一输入发生重叠、或已含输出证据时，返回可读拒绝原因；否则返回 None。
++    重叠三种：同路径、输出是输入的祖先、输出在输入之内（后代）；符号链接别名经 resolve
++    后归入同路径。必须在 mkdir 与任何写文件之前调用。"""
++    if output_dir is None:
++        return None
++    try:
++        return _output_overlap_reason_checked(output_dir)
++    except (OSError, RuntimeError, ValueError) as exc:
++        return 'output_path_unresolved: 输出或输入路径无法可靠核对：%s' % type(exc).__name__
++
++
++def _output_overlap_reason_checked(output_dir):
++    out = _resolved(output_dir)
++    for raw in manifest_input_paths():
++        if not raw:
++            continue
++        cand = _resolved(raw)
++        if out == cand or _same_existing_path(out, cand):
++            return ('output_path_is_input: 输出目录与实际输入是同一路径（同路径重叠）：\n  输出 = %s\n  输入 = %s'
++                    % (out, cand))
++        if cand in out.parents or any(_same_existing_path(parent, cand) for parent in out.parents):
++            return ('output_inside_input: 输出目录位于实际输入之内（后代重叠）：\n  输出 = %s\n  被包含于 = %s'
++                    % (out, cand))
++        if out in cand.parents or any(_same_existing_path(out, parent) for parent in cand.parents):
++            return ('output_ancestor_of_input: 输出目录是实际输入的祖先（祖先重叠）：\n  输出 = %s\n  含输入 = %s'
++                    % (out, cand))
++    if out.exists() and not out.is_dir():
++        return 'output_not_directory: 输出路径已存在且不是目录：%s' % out
++    for name in OUTPUT_EVIDENCE_FILES:
++        target = out / name
++        if target.is_symlink() or target.exists():
++            return ('output_evidence_exists: 输出目录已存在输出证据文件，拒绝覆盖既有文件：\n  文件 = %s'
++                    % target)
++    return None
++
++
++def reject_output_dir(output_dir):
++    """返回 (拒绝原因, 退出码)。可用时返回 (None, 0)。"""
++    reason = output_overlap_reason(output_dir)
++    if reason is None:
++        return None, 0
++    return reason, 2
++
++
++def _write_new_output_json(path, obj):
++    """只排他创建本轮输出；保留原JSON序列化口径，不覆盖已有文件/符号链接。"""
++    raw = json.dumps(obj, ensure_ascii=False, indent=2)
++    try:
++        raw.encode('utf-8')
++    except UnicodeEncodeError:
++        raw = json.dumps(obj, ensure_ascii=True, indent=2)
++    with path.open('x', encoding='utf-8') as stream:
++        stream.write(raw + '\n')
++
++
++def write_sha_manifest(result, out_dir=None, *, exclusive=False):
++    """r4 F7：重算全部交付物与输入的 SHA，并把「原始字节」与「JCS 摘要」分栏写清楚。"""
++    deliverables, read_only = _manifest_inputs()
+     lines = [
+         '# V9.B4 交付物与输入身份（SHA256）',
+         '# 生成：suite 每次运行重算；本目录内 COORDINATOR_DECISIONS.md 未改（只读输入）。',
+@@ -2139,7 +2300,13 @@
+     lines += ['', '## 计数（来自 check_result.json）']
+     for k in sorted(result['counts']):
+         lines.append('# %s = %s' % (k, result['counts'][k]))
+-    (OUT / 'SHA256SUMS.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
++    _target = (Path(out_dir) if out_dir else OUT)
++    target = _target / 'SHA256SUMS.txt'
++    if exclusive:
++        with target.open('x', encoding='utf-8') as stream:
++            stream.write('\n'.join(lines) + '\n')
++    else:
++        target.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+ 
+ 
+ def main():
+@@ -2147,6 +2314,7 @@
+     p.add_argument('--suite', action='store_true')
+     p.add_argument('--regenerate', action='store_true', help='显式原地重写交付夹具目录（复核流程不得使用）')
+     p.add_argument('--root', default=None, help='仓库根目录（避免写死路径）')
++    p.add_argument('--output-dir', default=None, help='显式输出目录；默认只读不写 check_result/SHA256SUMS')
+     p.add_argument('mode', nargs='?', choices=['gate', 'reply'])
+     p.add_argument('--proposal')
+     p.add_argument('--reply')
+@@ -2167,7 +2335,7 @@
+     schema_path = a.schema or str(PROPOSAL_SCHEMA)
+     reply_schema_path = a.reply_schema or str(REPLY_SCHEMA)
+     if a.suite:
+-        return suite(regenerate=a.regenerate, root_arg=a.root)
++        return suite(regenerate=a.regenerate, root_arg=a.root, output_dir=a.output_dir)
+     if a.mode == 'gate':
+         if not a.proposal:
+             p.error('gate needs --proposal')

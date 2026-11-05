@@ -1,0 +1,16 @@
+{
+  "label": "legacy-G10-ablated",
+  "cmd": [
+    "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/v9/contracts/test_memory_lifecycle.py::test_slow_entry_is_usable_only_while_versions_match",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b15-isolated-omqv4n8i",
+  "returncode": 1,
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_____________ test_slow_entry_is_usable_only_while_versions_match ______________\n\nmemory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x104c30f50>\nentry = Fragment(fragment_id='f-1', t_ticks=100, place='room-a', partition='development', encoder_version='enc-v1', metric=(0.0, 0.0), topology=(), provenance_ref='obs/t0005.png', object_keys=('obj-a',), action_keys=('act-1',))\n\n    def test_slow_entry_is_usable_only_while_versions_match(memory, entry):\n        memory.promote(\"f-1\", v2_evidence(entry))\n        assert memory.usable_slow_items(encoder_version=\"enc-v1\", prior_version=\"fprior-v9-r5\") == (\"f-1\",)\n        # \u7f16\u7801\u5668\u6f02\u79fb -> \u5f85\u91cd\u9a8c\uff0c\u786e\u5b9a\u6027\u5c42\u4e0d\u5f97\u4f7f\u7528\n>       assert memory.usable_slow_items(encoder_version=\"enc-v2\", prior_version=\"fprior-v9-r5\") == ()\nE       AssertionError: assert ('f-1',) == ()\nE         \nE         Left contains one more item: 'f-1'\nE         Use -v to get more diff\n\ntests/v9/contracts/test_memory_lifecycle.py:147: AssertionError\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_memory_lifecycle.py::test_slow_entry_is_usable_only_while_versions_match\n1 failed in 0.04s\n",
+  "stderr": ""
+}

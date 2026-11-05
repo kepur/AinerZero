@@ -1,0 +1,16 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts/test_promotion_evidence_v2.py::test_discovery_calibration_test_identities_must_be_pairwise_disjoint", "-q", "-p", "no:cacheprovider"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u/src", "returncode": 1}
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____ test_discovery_calibration_test_identities_must_be_pairwise_disjoint _____
+
+    def test_discovery_calibration_test_identities_must_be_pairwise_disjoint():
+        for overlap in (("discovery", "test"), ("calibration", "discovery"), ("test", "calibration")):
+            identity = dict(v2_evidence().data_identity)
+            identity[overlap[1]] = identity[overlap[0]]
+>           with pytest.raises(ValueError) as caught:
+E           Failed: DID NOT RAISE ValueError
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_promotion_evidence_v2.py:210: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_discovery_calibration_test_identities_must_be_pairwise_disjoint
+1 failed in 0.02s

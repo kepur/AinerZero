@@ -1,0 +1,16 @@
+{
+  "label": "legacy-G7-ablated",
+  "cmd": [
+    "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/v9/contracts/test_memory_lifecycle.py::test_fragment_without_provenance_cannot_be_promoted",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b15-isolated-omqv4n8i",
+  "returncode": 1,
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_____________ test_fragment_without_provenance_cannot_be_promoted ______________\n\nmemory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x106433650>\n\n    def test_fragment_without_provenance_cannot_be_promoted(memory):\n        legacy = Fragment(\n            fragment_id=\"f-legacy\",\n            t_ticks=10,\n            place=\"room-a\",\n            partition=\"development\",\n            encoder_version=\"enc-v1\",\n            metric=(0.0, 0.0),\n        )\n        memory.write(legacy)\n>       with pytest.raises(EvidenceRequired) as caught:\nE       Failed: DID NOT RAISE EvidenceRequired\n\ntests/v9/contracts/test_memory_lifecycle.py:106: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_memory_lifecycle.py::test_fragment_without_provenance_cannot_be_promoted\n1 failed in 0.03s\n",
+  "stderr": ""
+}

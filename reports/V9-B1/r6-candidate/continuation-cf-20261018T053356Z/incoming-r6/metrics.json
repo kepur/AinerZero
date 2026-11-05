@@ -1,0 +1,140 @@
+{
+  "task_id": "ainerzero.V9.B7",
+  "revision": "r6-candidate",
+  "agent": "mimo-k7x2",
+  "date": "2026-10-18",
+  "tier": 2,
+  "kind": "implement",
+  "write_scope": ["reports/V9-B1/r6-candidate/"],
+  "base_candidate_sha256_expected": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f",
+  "base_candidate_sha256_actual": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f",
+  "base_candidate_path": "reports/V9-B1/r5-candidate/check_skill_proposal.py",
+  "base_verified_before_and_after": true,
+  "r6_checker_sha256": "38713757757a927e88ecef576c21bb4ac39381174ce8100e1831390e4f171fc6",
+  "only_changed_file": "reports/V9-B1/r6-candidate/check_skill_proposal.py",
+
+  "r6_identity_manifest": {
+    "file": "R6_SHA256SUMS.txt",
+    "entries": 444,
+    "generated_by": "本卡手写（非检查器产物）",
+    "note": "check_result.json=ef9a4bd1… 与 SHA256SUMS.txt=65a3ada3… 是 r5 字节拷贝；只读 suite 从不写本目录（T7 零变化已证），检查器拒绝向本目录 --output-dir（T1 rc=2）"
+  },
+
+  "decision": "AinerRelay/reports/coordination/codex-20261018-cycle1/B7_OUTPUT_EVIDENCE_DECISION.md",
+  "reason": "B9 confirmed --output-dir pointed at isolated candidate input dir still rc=0/all_ok=true and overwrote check_result.json + SHA256SUMS.txt",
+
+  "preserve_directories_verified_byte_identical": [
+    {"path": "reports/V9-B1/r5-candidate/", "files": 437, "identical": true},
+    {"path": "reports/V9-B1/r4/", "files": 1, "identical": true},
+    {"path": "reports/V-V9-B1/r5-independent/", "files": 42, "identical": true},
+    {"path": "reports/V-V9-B1/r5-independent-20261018/", "files": 1236, "identical": true}
+  ],
+  "preserve_check_method": "_baseline/pre*.sha256 vs _evidence/post*.sha256, diff empty",
+  "r5_report_metrics_renamed_not_overwritten": {
+    "REPORT-r5-base.md": "dcd6fa8e92a7c45500dab1b4298ebf7ce5a3d8b65345ef70e53493bd7b705dc2",
+    "metrics-r5-base.json": "4caec020cb016c63bdb014d440388d21618e0e0ec7876784a7117d75d06b2ceb",
+    "same_as_r5_original": true
+  },
+
+  "fix": {
+    "scope": "output path overlap validation only",
+    "new_functions": ["_resolved", "_manifest_inputs", "manifest_input_paths", "output_overlap_reason", "reject_output_dir"],
+    "single_source_lists": "write_sha_manifest 的 deliverables/read_only 抽出为 _manifest_inputs()，校验与清单同源不漂移",
+    "rejection_classes": [
+      "output_path_is_input（同路径）",
+      "output_ancestor_of_input（输出是输入祖先）",
+      "output_inside_input（后代）",
+      "output_path_is_input（符号链接别名，resolve 后归同路径）",
+      "output_evidence_exists（输出目录已含 check_result.json / SHA256SUMS.txt）"
+    ],
+    "reject_exit_code": 2,
+    "distinct_from_check_failure_exit_code": 1,
+    "two_stage_check": ["suite() 顶部，在任何工作与写入之前", "写入前第二道复查"],
+    "reject_makes_no_mkdir_and_no_writes": true,
+    "default_readonly_unchanged": true,
+    "legit_new_isolated_output_still_works": true
+  },
+
+  "tests": {
+    "python": "/Users/mac/AinerWorkFlow/AnimeWorldZero/.venv/bin/python",
+    "checker": "reports/V9-B1/r6-candidate/check_skill_proposal.py",
+    "evidence_dir": "reports/V9-B1/r6-candidate/_evidence/",
+    "passed": 7, "total": 7, "cases": [
+      {"id": "T1", "scenario": "输出=输入目录（B9 复现）", "expected": "拒绝", "rc": 2, "class": "output_path_is_input", "stderr_bytes": 0, "evidence_overwritten": false, "result": "PASS"},
+      {"id": "T2", "scenario": "输出=reports/V9-B1（祖先）", "expected": "拒绝", "rc": 2, "class": "output_ancestor_of_input", "stderr_bytes": 0, "result": "PASS"},
+      {"id": "T3", "scenario": "输出=fixtures/newout（后代）", "expected": "拒绝", "rc": 2, "class": "output_inside_input", "stderr_bytes": 0, "dir_created": false, "result": "PASS"},
+      {"id": "T4", "scenario": "符号链接别名指向输入目录", "expected": "拒绝", "rc": 2, "class": "output_path_is_input", "stderr_bytes": 0, "result": "PASS"},
+      {"id": "T5", "scenario": "全新目录但已含 check_result.json", "expected": "拒绝", "rc": 2, "class": "output_evidence_exists", "preexisting_file_intact": true, "result": "PASS"},
+      {"id": "T6", "scenario": "合法全新隔离输出目录", "expected": "通过并写出", "rc": 0, "all_ok": true, "wrote_check_result_bytes": 238802, "wrote_sha256sums_lines": 297, "result": "PASS"},
+      {"id": "T6b", "scenario": "同一输出目录第二次运行", "expected": "拒绝覆盖", "rc": 2, "class": "output_evidence_exists", "first_run_evidence_preserved": true, "result": "PASS"},
+      {"id": "T7", "scenario": "默认只读（不带 --output-dir）", "expected": "通过且零写入", "rc": 0, "all_ok": true, "r6_files_before_after_identical": true, "result": "PASS"}
+    ]
+  },
+
+  "t7_suite_counts": {
+    "cases_total": 112, "positive_cases": 18, "negative_cases": 94,
+    "controls": 94, "controls_isolated_miss": 41,
+    "reply_cases": 10, "confidence_sweep_rows": 184, "jcs_self_tests": 18, "jcs_self_tests_ok": 18,
+    "fixture_files_checked": 236, "case_insensitive_name_collisions": 0, "same_inode_collisions": 0,
+    "read_only_no_write": true
+  },
+
+  "b9_repro_comparison": {
+    "r5_before": {"rc": 0, "all_ok": true, "overwrote": ["check_result.json", "SHA256SUMS.txt"]},
+    "r6_after": {"rc": 2, "all_ok": false, "output_dir_rejected": true, "overwrote": []},
+    "r6_evidence_sha_before": "ef9a4bd11018c6cd37d8c78dde8a86fbc6643df7b04a2954c651f68753c2aa62",
+    "r6_evidence_sha_after": "ef9a4bd11018c6cd37d8c78dde8a86fbc6643df7b04a2954c651f68753c2aa62",
+    "r6_sha256sums_before": "65a3ada39e5fd457cd16d1afd4ae1c1804cf441500ea78fe1ec1b149dfba403e",
+    "r6_sha256sums_after": "65a3ada39e5fd457cd16d1afd4ae1c1804cf441500ea78fe1ec1b149dfba403e"
+  },
+
+  "first_version_source_disclosure": {
+    "checker_versions_found_in_repo": [
+      {"sha256": "d1f8ab82afac5498e40d7328c2c16d78efa8f5d080ecd59bdb9b2eee3f880e26", "where": "reports/V9-B1/archive/r3-20261016T2041/"},
+      {"sha256": "37d4308f34a64bad515a8ef44b0c9a12b8bf6f35c24a628730280c3ad50328da", "where": "reports/V9-B1/check_skill_proposal.py (r4 原件)"},
+      {"sha256": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f", "where": "reports/V9-B1/r5-candidate/ (r5 base，B9 实测失败的那份，已保留)"}
+    ],
+    "r5_first_baton_bytes_archived_anywhere": false,
+    "first_version_status": "不可恢复",
+    "reconstructed_or_passed_off": false,
+    "decision_doc_unconfirmed_item": "首版完整归档 —— 维持未确认"
+  },
+
+  "relay_negative_history_retained_untouched": [
+    "AinerRelay/reports/coordination/codex-20261018-cycle1/B7_OUTPUT_EVIDENCE_DECISION.md",
+    "AinerRelay/reports/coordination/codex-20261018-cycle1/b9-accepted-input.json",
+    "AinerRelay/reports/coordination/codex-20261018-cycle1/b7-before-r6-routing.json"
+  ],
+
+  "b8_not_taken_over": {
+    "task_id": "ainerzero.V9.B8",
+    "exec_id": "102220490ccf44c0b37adeacc8459c51",
+    "holder": "deepseek-h7m2",
+    "state": "running",
+    "ended_at": null,
+    "detail": "",
+    "recovery": "pending",
+    "read_only_queried": true,
+    "finish_or_force_ended": false
+  },
+
+  "boundaries": {
+    "src_modified": 0, "contracts_modified": 0, "docs_modified": 0,
+    "old_reports_modified": 0, "r5_r4_b8_b9_bytes_modified": 0,
+    "writes_outside_scope": 0,
+    "regenerate_used": false,
+    "model_training_downloads": 0, "gpu_runs": 0, "render_or_sim": 0,
+    "paid_services": 0, "git_commits": 0, "git_pushes": 0,
+    "run_authorized": false
+  },
+
+  "adoption": {
+    "candidate_only": true,
+    "auto_adopted": false,
+    "promoted": false,
+    "requires_non_author_review": true,
+    "non_author_review_dispatched_by": "coordinator (另派)"
+  },
+  "tests_executed": 7,
+  "all_ok": true
+}

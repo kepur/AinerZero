@@ -1,0 +1,16 @@
+{
+  "label": "legacy-G2-ablated",
+  "cmd": [
+    "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/v9/contracts/test_promotion_evidence_v2.py::test_empty_conformal_certificate_is_refused",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b15-isolated-omqv4n8i",
+  "returncode": 1,
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_________________ test_empty_conformal_certificate_is_refused __________________\n\n    def test_empty_conformal_certificate_is_refused():\n        \"\"\"k = ceil((1-alpha_dom)(n_cal+1)) must not exceed n_cal (split conformal lemma).\"\"\"\n        calibration = dict(v2_evidence().calibration)\n        calibration[\"alpha_dom\"] = 0.01\n        calibration[\"n_cal\"] = 10  # ceil(0.99*11) = 11 > 10\n>       with pytest.raises(ValueError) as caught:\nE       Failed: DID NOT RAISE ValueError\n\ntests/v9/contracts/test_promotion_evidence_v2.py:132: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_empty_conformal_certificate_is_refused\n1 failed in 0.04s\n",
+  "stderr": ""
+}

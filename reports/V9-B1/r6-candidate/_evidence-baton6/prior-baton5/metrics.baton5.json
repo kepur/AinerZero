@@ -1,0 +1,157 @@
+{
+  "task_id": "ainerzero.V9.B7",
+  "agent": "mimo-k7x2",
+  "baton": 5,
+  "date": "2026-10-18",
+  "tier": 2,
+  "kind": "implement",
+  "params_version": "v1",
+
+  "identity": {
+    "base_candidate_sha256_declared": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f",
+    "base_file": "reports/V9-B1/r5-candidate/check_skill_proposal.py",
+    "base_sha256_verified_before_edit": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f",
+    "base_sha256_verified_after_edit": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f",
+    "base_matches_declared": true,
+    "r6_checker_sha256_baton3": "38713757757a927e88ecef576c21bb4ac39381174ce8100e1831390e4f171fc6",
+    "r6_checker_sha256_final": "d902876a8e5aa1af58d1e3a974c099d847cadae2b79f1956037b2186eafa8c0b",
+    "only_changed_file": "check_skill_proposal.py",
+    "r6_manifest": {"path": "R6_SHA256SUMS.txt", "entries": 972, "covers": "当前 r6 全部文件（排除清单自身）"},
+    "r6_manifest_baton3_preserved": {"path": "_evidence-baton5/R6_SHA256SUMS.baton3-38713757.txt", "entries": 444}
+  },
+
+  "batons": [
+    {"baton": 3, "agent": "mimo-k7x2", "did": "由 r5 整目录 rsync 制作 r6；唯一改动 checker 5b28818b→38713757；7 项测试；4 目录基线", "outcome": "没心跳被收回（约26分钟）"},
+    {"baton": 4, "agent": "cf-b7-fix-20261018", "did": "先完整快照我方现场进 continuation-cf-20261018T053356Z/incoming-r6/（含我444条清单），再加固 checker 38713757→d902876a", "outcome": "主动释放（用户网页手动回收）"},
+    {"baton": 5, "agent": "mimo-k7x2", "did": "逐行 diff 审第4棒改动并判为真改进予以保留；对 d902876a 全量重测 T1-T10；复核4保留目录；写交付物", "outcome": "reported"}
+  ],
+
+  "baton4_changes_accepted": [
+    {"change": "_write_new_output_json 用 open('x') 排他创建；write_sha_manifest(..., exclusive=True) 同口径", "verdict": "真改进-保留", "why": "OS 层面杜绝覆盖，是「输出证据不得覆盖既有文件」的纵深防御"},
+    {"change": "_same_existing_path 以 samefile() 补别名检测", "verdict": "真改进-保留", "why": "我版仅靠 resolve()，samefile 能捕硬链接/卷别名"},
+    {"change": "AWZ_OBSERVATION_PATH 环境变量来源纳入 manifest_input_paths 保护集", "verdict": "真改进-保留", "why": "补上我版真实缺口：该环境变量可覆盖实际读入的来源文件"},
+    {"change": "output_not_directory + 路径不可解析时 fail-closed", "verdict": "真改进-保留", "why": "扩大拒绝覆盖面且不放宽任何既有拒绝"}
+  ],
+
+  "tests": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "interpreter": "/Users/mac/AinerWorkFlow/AnimeWorldZero/.venv/bin/python",
+    "evidence_dir": "_evidence-baton5/",
+    "cases": [
+      {"id": "T1", "name": "B9复现：--output-dir 等于输入目录", "expected": "拒绝", "rc": 2, "error_code": "output_path_is_input", "stderr_bytes": 0, "evidence": "证据未被覆盖（两份SHA前后diff为空）"},
+      {"id": "T2", "name": "输出目录是输入的祖先", "expected": "拒绝", "rc": 2, "error_code": "output_ancestor_of_input", "stderr_bytes": 0},
+      {"id": "T3", "name": "输出目录在输入内部（后代）", "expected": "拒绝", "rc": 2, "error_code": "output_inside_input", "stderr_bytes": 0, "note": "未创建目录"},
+      {"id": "T4", "name": "符号链接别名指向输入目录", "expected": "拒绝", "rc": 2, "error_code": "output_path_is_input", "stderr_bytes": 0},
+      {"id": "T5", "name": "输出目录已含 check_result.json", "expected": "拒绝", "rc": 2, "error_code": "output_evidence_exists", "stderr_bytes": 0, "note": "原文件字节未变"},
+      {"id": "T6", "name": "合法全新隔离输出目录", "expected": "成功", "rc": 0, "all_ok": true, "wrote": {"check_result.json_bytes": 238802, "SHA256SUMS.txt_bytes": 55055}, "stderr_bytes": 0},
+      {"id": "T6b", "name": "同目录第二次运行（证据已存在）", "expected": "拒绝", "rc": 2, "error_code": "output_evidence_exists", "note": "首轮两份证据SHA前后不变"},
+      {"id": "T7", "name": "默认只读（无 --output-dir）", "expected": "成功且零写入", "rc": 0, "all_ok": true, "cases_total": 112, "cases_positive": 18, "cases_negative": 94, "stderr_bytes": 0, "files_changed_in_r6": 0},
+      {"id": "T8", "name": "AWZ_OBSERVATION_PATH 指向的来源被输出目录覆盖", "expected": "拒绝", "rc": 2, "error_code": "output_ancestor_of_input", "note": "第4棒新增能力，我独立验证", "original_file_intact": true},
+      {"id": "T9", "name": "输出路径是文件而非目录", "expected": "拒绝", "rc": 2, "error_code": "output_not_directory", "note": "第4棒新增能力，我独立验证"},
+      {"id": "T10", "name": "排他创建单测：_write_new_output_json 二次写", "expected": "FileExistsError", "first_write_ok": true, "second_write_raised": "FileExistsError", "original_content_unchanged": true, "note": "OS层不可覆盖实证；write_sha_manifest(exclusive=True) 二次写仅代码审阅未单测"}
+    ]
+  },
+
+  "default_readonly": {
+    "verified": true,
+    "rc": 0,
+    "all_ok": true,
+    "cases_total": 112,
+    "pre_vs_post_sha256_diff": "empty",
+    "r6_files_changed": 0
+  },
+
+  "preserve_directories": {
+    "verdict": "3/4 字节全同；第4项被并发合法属主打破，非我所改（如实披露）",
+    "results": [
+      {"dir": "reports/V9-B1/r5-candidate/", "files": 437, "byte_identical": true, "method": "_baseline/pre*.sha256 vs 当前逐条 diff"},
+      {"dir": "reports/V9-B1/r4/", "files": 1, "byte_identical": true, "method": "_baseline/pre*.sha256 vs 当前逐条 diff"},
+      {"dir": "reports/V-V9-B1/r5-independent-20261018/", "files": 1236, "byte_identical": true, "method": "_baseline/pre*.sha256 vs 当前逐条 diff"},
+      {
+        "dir": "reports/V-V9-B1/r5-independent/",
+        "byte_identical": false,
+        "baseline_files": 42,
+        "current_files": 55,
+        "original_unchanged": 39,
+        "original_modified": 3,
+        "added": 13,
+        "deleted": 0,
+        "modified_files": [
+          "reports/V-V9-B1/r5-independent/tests/indep_lib.py",
+          "reports/V-V9-B1/r5-independent/tests/verify_F_final_identity.py",
+          "reports/V-V9-B1/r5-independent/tests/__pycache__/indep_lib.cpython-312.pyc"
+        ],
+        "modified_files_nature": "全部是并发属主自身的 tests/ 脚本，非证据交付物",
+        "added_files_include": ["COMMANDS.md", "REPORT.md", "SHA256SUMS.txt", "identity.json", "metrics.json", "results/", "tests/collect_metrics.py"],
+        "attribution": "并发的 ainerzero.V9.B8（deepseek-h7m2）",
+        "attribution_evidence": [
+          "该目录 identity.json: {\"agent\":\"deepseek-h7m2\",\"task\":\"ainerzero.V9.B8\"}",
+          "该目录 REPORT.md 自述『文件范围：只写 reports/V-V9-B1/r5-independent/ 与 /tmp』、『2026-10-18 08:5x 恢复补证』",
+          "其 exec 102220490ccf44c0b37adeacc8459c51 ended_at=2026-10-18T08:45:22，state=stopped",
+          "新增文件 mtime 08:46:07–08:54:05，与我方 08:52–08:54 证据时间并行",
+          "只读 DB 查询：该 exec 属 deepseek-h7m2，非 mimo-k7x2"
+        ],
+        "i_did_not_touch_it_evidence": [
+          "check_skill_proposal.py grep 'V-V9-B1/r5-independent' = 0 命中",
+          "我本轮全部 --output-dir 目标已枚举：/tmp/b7r6-b5.*、$TD/alias、$TD5、$TD8、$TD9/afile、reports/V9-B1、reports/V9-B1/r6-candidate、.../fixtures/newout —— 无一指向该目录",
+          "我方写入仅落在 reports/V9-B1/r6-candidate/ 与 /tmp"
+        ],
+        "no_rollback_no_overwrite_no_delete": true,
+        "note": "未回滚、未覆盖、未删除对方任何字节"
+      }
+    ]
+  },
+
+  "param_v1_objection": {
+    "raised_in_report": true,
+    "item": "preserve_directories 第4项 reports/V-V9-B1/r5-independent/",
+    "why_objected": "v1 登记该项时 B8 处 recovery pending；本卡周期内 B8 已自行结束并正在写其合法范围，该条已被并发属主打破，无法作为我的不变量",
+    "suggestion": "改为只读快照对比+差异归因，或明确豁免并重登记参数"
+  },
+
+  "first_version_source_disclosure": {
+    "archived_versions_found": [
+      {"name": "r3 归档", "sha256": "d1f8ab82…"},
+      {"name": "r4 归档", "sha256": "37d4308f…"},
+      {"name": "r5 base", "sha256": "5b28818b…"},
+      {"name": "r6 baton3", "sha256": "38713757…", "preserved_at": "continuation-cf-20261018T053356Z/incoming-r6/"}
+    ],
+    "r5_first_attempt_baton": "第 1 棒约 0 分钟",
+    "r5_first_attempt_source_persisted": false,
+    "recoverable": false,
+    "reconstructed_or_impersonated": false,
+    "disclosure": "字节无存档 → 不可恢复；未重建、未冒充"
+  },
+
+  "unverified": [
+    "非作者复核（须另派，本卡不自证通过）",
+    "--regenerate（复核流程禁用项）",
+    "与本卡无关的模型/训练/下载（未跑，按卡不扩大）",
+    "write_sha_manifest(exclusive=True) 的二次写未单独单测（仅代码审阅；T6/T6b 覆盖全链路）",
+    "生产实现、迁移、部署（本卡只交候选）"
+  ],
+
+  "boundaries": {
+    "write_scope": ["reports/V9-B1/r6-candidate/"],
+    "writes_outside_scope": 0,
+    "preserve_dirs_modified_by_me": 0,
+    "src_contracts_docs_modified": 0,
+    "r5_candidate_modified": 0,
+    "r4_modified": 0,
+    "b8_exec_touched": "仅只读查询，未 finish/未强制结束/未接手",
+    "model_training_download": 0,
+    "commits_or_pushes": 0,
+    "evidence_dirs_preserved": ["/_evidence/ (第3棒原证据)", "_evidence-baton5/ (第5棒新证据)", "continuation-cf-20261018T053356Z/ (第4棒现场)"],
+    "run_authorized": false
+  },
+
+  "verdict": {
+    "recommendation": "候选可进入非作者复核，本卡不自证通过",
+    "b9_defect_fixed": true,
+    "tests": "10/10",
+    "preserve_dirs_clean": "3/4（第4项非我所致，已取证归因）",
+    "next": "新的非作者复核另派"
+  }
+}

@@ -1,0 +1,376 @@
+{
+  "task_id": "ainerzero.V9.B7",
+  "agent": "deepseek-flash-b7r6",
+  "baton": 6,
+  "date": "2026-10-18",
+  "tier": 2,
+  "kind": "implement",
+  "params_version": "v1",
+  "identity": {
+    "base_r5_candidate_checker_sha256": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f",
+    "base_candidate_sha256_declared": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f",
+    "base_matches_declared": true,
+    "prior_r6_checker_sha256": "d902876a8e5aa1af58d1e3a974c099d847cadae2b79f1956037b2186eafa8c0b",
+    "new_r6_checker_sha256": "9f88993a5aab97dfb2326e7a71ff556ffbe6fdab54850a0bde5e73aacd6944bc",
+    "r4_checker_sha256": "37d4308f34a64bad515a8ef44b0c9a12b8bf6f35c24a628730280c3ad50328da",
+    "r4_checker_unchanged": true,
+    "only_edited_path_outside_evidence": "reports/V9-B1/r6-candidate/check_skill_proposal.py",
+    "checker_diff_vs_prior_lines": 107,
+    "checker_changes": [
+      "B8-F4: suite probe regression input parse failure clean fail-closed (no traceback)",
+      "B8 fix1: r6 identity manifest labels dynamic (OUT.relative_to(ROOT)); r4 artifacts as read-only inputs"
+    ],
+    "root_identity_installed": false,
+    "current_identity_location": "reports/V9-B1/r6-candidate/_evidence-baton6/staging-run1/",
+    "stale_r6_aggregate_moved": "reports/V9-B1/r6-candidate/_identity-r5-stale/R6_SHA256SUMS.stale.txt"
+  },
+  "rejection_fixes": {
+    "stale_identity": {
+      "old_sha256sums_sha256": "65a3ada39e5fd457cd16d1afd4ae1c1804cf441500ea78fe1ec1b149dfba403e",
+      "old_check_result_sha256": "ef9a4bd11018c6cd37d8c78dde8a86fbc6643df7b04a2954c651f68753c2aa62",
+      "preserved_byte_identical_at": "reports/V9-B1/r6-candidate/_identity-r5-stale/",
+      "regenerated": true,
+      "new_check_result_sha256": "4fb8d5c31152e09ba402004fa0f369859705ceb47a17a032cc5982ebc10844eb",
+      "new_check_result_bytes": 238802,
+      "new_sha256sums_bytes": 55440,
+      "new_manifest_stats_run1": {
+        "lines": 299,
+        "r5_candidate_path_refs": 0,
+        "r6_candidate_path_refs": 240,
+        "missing_rows": 2
+      },
+      "new_sha256sums_sha256_recorded_after_install": "_evidence-baton6/staging-run2/outputs.sha256",
+      "install_exclusive_create": true,
+      "original_r4_r5_evidence_overwritten": false,
+      "root_promotion_blocked_by": "B9 output path guard (output inside input)",
+      "current_check_result_sha256": "4fb8d5c31152e09ba402004fa0f369859705ceb47a17a032cc5982ebc10844eb",
+      "note": "current identity is staging-run1; root has no check_result/SHA256SUMS due guard; stale r5-era files explicitly marked old"
+    },
+    "b8_f4_probe_duplicate_keys": {
+      "input": "reports/V-V9-B1/probe_variants.json (staging copy with duplicate key injected)",
+      "strict_rc": 1,
+      "strict_all_ok": false,
+      "strict_failures": [
+        "probe:b5_probe_variants_unreadable"
+      ],
+      "strict_stderr_bytes": 0,
+      "strict_traceback": false,
+      "nostrict_control_rc": 0,
+      "nostrict_control_all_ok": true,
+      "nostrict_control_traceback": false
+    }
+  },
+  "output_guard_regression": {
+    "negative_cases": {
+      "D1_fixture_dup_tamper": {
+        "rc": 1,
+        "stderr_bytes": 0,
+        "errors": null,
+        "raw_head": "FIXTURE MISMATCH: byte mismatch at /private/tmp/b7r6-stage/repo/reports/V9-B1/r6-candidate/fixtures/valid/01_valid_minim"
+      },
+      "G1_same_input_dir": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_path_is_input: 输出目录与实际输入是同一路径（同路径重叠）："
+        ],
+        "raw_head": null
+      },
+      "G2_ancestor_of_input": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_ancestor_of_input: 输出目录是实际输入的祖先（祖先重叠）："
+        ],
+        "raw_head": null
+      },
+      "G3_descendant_of_input": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_inside_input: 输出目录位于实际输入之内（后代重叠）："
+        ],
+        "raw_head": null
+      },
+      "G4_symlink_alias": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_path_is_input: 输出目录与实际输入是同一路径（同路径重叠）："
+        ],
+        "raw_head": null
+      },
+      "G5_output_is_file": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_not_directory: 输出路径已存在且不是目录：/private/tmp/b7r6-out1/check_result.json"
+        ],
+        "raw_head": null
+      },
+      "G6_output_has_evidence": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_evidence_exists: 输出目录已存在输出证据文件，拒绝覆盖既有文件："
+        ],
+        "raw_head": null
+      },
+      "G8_env_source_ancestor": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_inside_input: 输出目录位于实际输入之内（后代重叠）："
+        ],
+        "raw_head": null
+      },
+      "G8b_env_source": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_inside_input: 输出目录位于实际输入之内（后代重叠）："
+        ],
+        "raw_head": null
+      },
+      "G8c_env_source_only": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_ancestor_of_input: 输出目录是实际输入的祖先（祖先重叠）："
+        ],
+        "raw_head": null
+      },
+      "G9_repo_root_ancestor": {
+        "rc": 2,
+        "stderr_bytes": 0,
+        "errors": [
+          "output_ancestor_of_input: 输出目录是实际输入的祖先（祖先重叠）："
+        ],
+        "raw_head": null
+      }
+    },
+    "all_negative_rc2": false,
+    "stderr_bytes_total": 0,
+    "evidence_files_unchanged": true,
+    "legal_fresh_isolated_output": {
+      "rc": 0,
+      "all_ok": true,
+      "files_written": 2
+    }
+  },
+  "entry_regression": {
+    "gate_rows_total": 13,
+    "rows": [
+      {
+        "label": "T0_base_valid",
+        "rc": 0,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "6fd4133921de0fd2db4acb34f175d6a05bc9aef6e7c9ca89800bf9dba71b4d58",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": null,
+        "reason_code": "accepted"
+      },
+      {
+        "label": "T1_dup_proposal",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "a7354a6955af382d133ddcd30d5a25de904c75d1366feb10a882c3c1cc44ed3c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "proposal_unreadable:ValueError"
+        ],
+        "reason_code": "schema_invalid"
+      },
+      {
+        "label": "T2_dup_context",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "be2b2d0d4a4144fb54fc3530735802c6c06f6a1f99aac266e0220e529b9c6b3c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "context_unreadable:ValueError"
+        ],
+        "reason_code": "schema_invalid"
+      },
+      {
+        "label": "T3_dup_reply",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "5065f77126da9edfe91a40307ab0d656f3a7044adcf300b22afa1c0b360f4a65",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "reply_unreadable:ValueError"
+        ],
+        "reason_code": null
+      },
+      {
+        "label": "T4_illegal_property",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "62b71fafa5da9eb7fa72896c8e15377033d05993155cf339abf5a3e2252aed1c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "entry:abil-approach-object:forbidden_property:world_id",
+          "entry:abil-approach-object:forbidden_property:world_id"
+        ],
+        "reason_code": null
+      },
+      {
+        "label": "T5_illegal_property_nested",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "dd3ad4fc99008a5ad5dc36e2d34bc051b8084f59d95c0d585b07ba4f91662a60",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "entry:abil-approach-object:items:forbidden_property:worldId",
+          "entry:abil-approach-object:tags.items0:forbidden_property:worldId"
+        ],
+        "reason_code": null
+      },
+      {
+        "label": "T6_illegal_property_guard_off_nokw",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "2f6a7a94b7f2950f34431f8de10e20d65a47bc8466784090ebb8c031254b1eb1",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "entry:abil-approach-object:forbidden_property:world_id"
+        ],
+        "reason_code": null
+      },
+      {
+        "label": "T6_illegal_property_guard_off_noreg",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "2f6a7a94b7f2950f34431f8de10e20d65a47bc8466784090ebb8c031254b1eb1",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "entry:abil-approach-object:forbidden_property:world_id"
+        ],
+        "reason_code": null
+      },
+      {
+        "label": "T6_illegal_property_guard_off_noboth",
+        "rc": 0,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "03fd61b5ce2770efdfc681b36a25aaa10e5c2aea587cf9375804cbba197bdbe4",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": null,
+        "reason_code": "accepted"
+      },
+      {
+        "label": "T7_old_path_pin_rejected",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "f74089620a64472b5d2bffcfe26376c8ff15fba8612f17cfbced004b6ed27e85",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "context_observable_source_sha256"
+        ],
+        "reason_code": null
+      },
+      {
+        "label": "T8_source_content_drift",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "f76b0eda00785ce236fe8d8d648161702d4f778142076667f72281ba9a188718",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "context_observable_source_content_drift"
+        ],
+        "reason_code": null
+      },
+      {
+        "label": "T9_source_unavailable",
+        "rc": 1,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "194312c9186a1b8f5c193fe6c23595e5231fc4e270c8f49498e0cdaf2a98c413",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": [
+          "context_observable_source_unavailable"
+        ],
+        "reason_code": null
+      },
+      {
+        "label": "T10_source_guard_off_drift_accepted",
+        "rc": 0,
+        "traceback": false,
+        "stderr_bytes": 0,
+        "stdout_sha256": "6fd4133921de0fd2db4acb34f175d6a05bc9aef6e7c9ca89800bf9dba71b4d58",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "errors": null,
+        "reason_code": "accepted"
+      }
+    ]
+  },
+  "source_binding": {
+    "awz_observation_file_sha256": "01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb",
+    "checker_content_sha256_constant": "01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb",
+    "content_constant_matches_awz_file": true,
+    "legacy_path_sha256": "a2971c9a293701ae588053b88dffe817d450db45dc1d16527ccdf8b0ab1a26d6",
+    "valid_context_has_migration_fields": [
+      "source_path_sha256",
+      "source_sha256",
+      "source_sha256_migration"
+    ],
+    "old_path_pin_reject_reason": "context_observable_source_sha256",
+    "content_drift_reject_reason": "context_observable_source_content_drift",
+    "unavailable_reject_reason": "context_observable_source_unavailable",
+    "guard_off_drift_control_rc0_accepted": true
+  },
+  "default_read_only_real_candidate": {
+    "rc": 0,
+    "all_ok": true,
+    "cases_total": 112,
+    "stderr_bytes": 0,
+    "trees_unchanged": [
+      "r6-candidate",
+      "r4",
+      "r5-candidate",
+      "reports/V-V9-B1/r5-independent",
+      "reports/V-V9-B1/r5-independent-20261018"
+    ]
+  },
+  "preserve_directories": {
+    "r5-candidate_files": 437,
+    "r4_files": 1,
+    "r5-independent_files_baseline": 118,
+    "r5-independent-20261018_files": 1236,
+    "byte_identical_at_end": true
+  },
+  "errata": {
+    "file": "ERRATA.md",
+    "items": [
+      "B6-F1 stale artifact hash",
+      "B6-F3 doc line/count",
+      "B6-F8 r3 archive manifest wording"
+    ],
+    "old_reports_or_docs_modified": false
+  },
+  "honesty": {
+    "r5_first_baton_source_recoverable": false,
+    "rebuilt_or_impersonated": false,
+    "previous_r6_version_preserved_at": "_evidence-baton6/baseline/check_skill_proposal.d902876a.py",
+    "relay_history_negative_preserved": true,
+    "value_level_steganography_proof": false,
+    "ttl_or_source_policy_changed": false,
+    "trained_or_downloaded": false,
+    "non_author_review_done": false,
+    "not_adopted": true,
+    "b10_published": false
+  },
+  "evidence_dir": "reports/V9-B1/r6-candidate/_evidence-baton6/",
+  "interpreter": "/Users/mac/AinerWorkFlow/AnimeWorldZero/.venv/bin/python (jsonschema 4.26.0)"
+}

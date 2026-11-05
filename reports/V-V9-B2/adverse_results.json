@@ -1,0 +1,282 @@
+{
+  "task": "ainerzero.V9.B3",
+  "verified_task": "ainerzero.V9.B2",
+  "total": 17,
+  "rejected_expected": 17,
+  "bypassed": 0,
+  "crashed": 0,
+  "cases": [
+    {
+      "id": "adv_wb_truth_injection",
+      "returncode": 1,
+      "elapsed_s": 0.13,
+      "stdout_tail": [
+        "{\"case\": \"adv_wb_truth_injection\", \"exit_code\": 1, \"reason\": \"truth_field_rejected\", \"detail\": \"rejected: TruthFieldRejected: truth_field_rejected: L1:position@payload\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_wb_truth_injection",
+        "exit_code": 1,
+        "reason": "truth_field_rejected",
+        "detail": "rejected: TruthFieldRejected: truth_field_rejected: L1:position@payload"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_wb_envelope_injection",
+      "returncode": 1,
+      "elapsed_s": 0.141,
+      "stdout_tail": [
+        "{\"case\": \"adv_wb_envelope_injection\", \"exit_code\": 1, \"reason\": \"envelope_rejected\", \"detail\": \"rejected: EnvelopeRejected: envelope_rejected: schema_version='awz.observation_packet.v1' belongs to the packet envelope; step() takes only payload\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_wb_envelope_injection",
+        "exit_code": 1,
+        "reason": "envelope_rejected",
+        "detail": "rejected: EnvelopeRejected: envelope_rejected: schema_version='awz.observation_packet.v1' belongs to the packet envelope; step() takes only payload"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_wb_snapshot_injection",
+      "returncode": 1,
+      "elapsed_s": 0.143,
+      "stdout_tail": [
+        "{\"case\": \"adv_wb_snapshot_injection\", \"exit_code\": 1, \"reason\": \"snapshot_rejected\", \"detail\": \"rejected: SnapshotRejected: snapshot_rejected: world snapshot schema_version='awz.world_snapshot.v1' is not student input\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_wb_snapshot_injection",
+        "exit_code": 1,
+        "reason": "snapshot_rejected",
+        "detail": "rejected: SnapshotRejected: snapshot_rejected: world snapshot schema_version='awz.world_snapshot.v1' is not student input"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_wb_backwards_time",
+      "returncode": 1,
+      "elapsed_s": 0.13,
+      "stdout_tail": [
+        "{\"case\": \"adv_wb_backwards_time\", \"exit_code\": 1, \"reason\": \"time_whitelist_rejected\", \"detail\": \"rejected: TimeWhitelistRejected: time_whitelist_rejected: t_ticks went backwards inside the episode: 10 -> 5\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_wb_backwards_time",
+        "exit_code": 1,
+        "reason": "time_whitelist_rejected",
+        "detail": "rejected: TimeWhitelistRejected: time_whitelist_rejected: t_ticks went backwards inside the episode: 10 -> 5"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_wb_inconsistent_dt",
+      "returncode": 1,
+      "elapsed_s": 0.126,
+      "stdout_tail": [
+        "{\"case\": \"adv_wb_inconsistent_dt\", \"exit_code\": 1, \"reason\": \"time_whitelist_rejected\", \"detail\": \"rejected: TimeWhitelistRejected: time_whitelist_rejected: payload.time.dt_s=0.5 is inconsistent with dt_ticks/120=0.03333333333333333\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_wb_inconsistent_dt",
+        "exit_code": 1,
+        "reason": "time_whitelist_rejected",
+        "detail": "rejected: TimeWhitelistRejected: time_whitelist_rejected: payload.time.dt_s=0.5 is inconsistent with dt_ticks/120=0.03333333333333333"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_final_partition_write",
+      "returncode": 1,
+      "elapsed_s": 0.127,
+      "stdout_tail": [
+        "{\"case\": \"adv_final_partition_write\", \"exit_code\": 1, \"reason\": \"partition_write_rejected\", \"detail\": \"rejected: PartitionWriteRejected: partition_write_rejected: partition 'final' is not writable; write allowlist=('train', 'development') (final is sealed)\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_final_partition_write",
+        "exit_code": 1,
+        "reason": "partition_write_rejected",
+        "detail": "rejected: PartitionWriteRejected: partition_write_rejected: partition 'final' is not writable; write allowlist=('train', 'development') (final is sealed)"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_final_partition_disguised",
+      "returncode": 1,
+      "elapsed_s": 0.127,
+      "stdout_tail": [
+        "{\"case\": \"adv_final_partition_disguised\", \"exit_code\": 1, \"reason\": \"partition_write_rejected\", \"detail\": \"all disguised 'final' variants rejected\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_final_partition_disguised",
+        "exit_code": 1,
+        "reason": "partition_write_rejected",
+        "detail": "all disguised 'final' variants rejected"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_encoder_undeclared_pretrained",
+      "returncode": 1,
+      "elapsed_s": 0.128,
+      "stdout_tail": [
+        "{\"case\": \"adv_encoder_undeclared_pretrained\", \"exit_code\": 1, \"reason\": \"ValueError\", \"detail\": \"rejected: ValueError: an externally pretrained encoder must declare both its source and its license (ARCHITECTURE_V9 §3 PerceptionEncoder, §5 S5)\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_encoder_undeclared_pretrained",
+        "exit_code": 1,
+        "reason": "ValueError",
+        "detail": "rejected: ValueError: an externally pretrained encoder must declare both its source and its license (ARCHITECTURE_V9 §3 PerceptionEncoder, §5 S5)"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_perception_private_reference",
+      "returncode": 1,
+      "elapsed_s": 0.132,
+      "stdout_tail": [
+        "{\"case\": \"adv_perception_private_reference\", \"exit_code\": 1, \"reason\": \"reference_rejected\", \"detail\": \"rejected: ReferenceRejected: reference_rejected: reference 'private/secret/t5' is outside the registered namespaces ('obs', 'sensor', 'derived')\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_perception_private_reference",
+        "exit_code": 1,
+        "reason": "reference_rejected",
+        "detail": "rejected: ReferenceRejected: reference_rejected: reference 'private/secret/t5' is outside the registered namespaces ('obs', 'sensor', 'derived')"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_perception_future_reference",
+      "returncode": 1,
+      "elapsed_s": 0.13,
+      "stdout_tail": [
+        "{\"case\": \"adv_perception_future_reference\", \"exit_code\": 1, \"reason\": \"reference_rejected\", \"detail\": \"rejected: ReferenceRejected: reference_rejected: reference 'obs/x/t999' is stamped after the packet cut t_ticks=10\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_perception_future_reference",
+        "exit_code": 1,
+        "reason": "reference_rejected",
+        "detail": "rejected: ReferenceRejected: reference_rejected: reference 'obs/x/t999' is stamped after the packet cut t_ticks=10"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_perception_absolute_reference",
+      "returncode": 1,
+      "elapsed_s": 0.128,
+      "stdout_tail": [
+        "{\"case\": \"adv_perception_absolute_reference\", \"exit_code\": 1, \"reason\": \"reference_rejected\", \"detail\": \"rejected: ReferenceRejected: reference_rejected: reference '/etc/passwd' is absolute or remote; only relative registered paths resolve\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_perception_absolute_reference",
+        "exit_code": 1,
+        "reason": "reference_rejected",
+        "detail": "rejected: ReferenceRejected: reference_rejected: reference '/etc/passwd' is absolute or remote; only relative registered paths resolve"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_planner_truth_in_goal",
+      "returncode": 1,
+      "elapsed_s": 0.129,
+      "stdout_tail": [
+        "{\"case\": \"adv_planner_truth_in_goal\", \"exit_code\": 1, \"reason\": \"truth_field_rejected\", \"detail\": \"rejected: TruthFieldRejected: truth_field_rejected: L1:position@goal\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_planner_truth_in_goal",
+        "exit_code": 1,
+        "reason": "truth_field_rejected",
+        "detail": "rejected: TruthFieldRejected: truth_field_rejected: L1:position@goal"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_planner_missing_budget",
+      "returncode": 1,
+      "elapsed_s": 0.13,
+      "stdout_tail": [
+        "{\"case\": \"adv_planner_missing_budget\", \"exit_code\": 1, \"reason\": \"contract_violation\", \"detail\": \"missing budget level rejected\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_planner_missing_budget",
+        "exit_code": 1,
+        "reason": "contract_violation",
+        "detail": "missing budget level rejected"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_scheduler_world_signal",
+      "returncode": 1,
+      "elapsed_s": 0.13,
+      "stdout_tail": [
+        "{\"case\": \"adv_scheduler_world_signal\", \"exit_code\": 1, \"reason\": \"signal_rejected\", \"detail\": \"rejected: SignalRejected: signal_rejected: world-side key 'event_id' in signal.detail is not a learning-side source\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_scheduler_world_signal",
+        "exit_code": 1,
+        "reason": "signal_rejected",
+        "detail": "rejected: SignalRejected: signal_rejected: world-side key 'event_id' in signal.detail is not a learning-side source"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_scheduler_forbidden_key_in_detail",
+      "returncode": 1,
+      "elapsed_s": 0.135,
+      "stdout_tail": [
+        "{\"case\": \"adv_scheduler_forbidden_key_in_detail\", \"exit_code\": 1, \"reason\": \"signal_rejected\", \"detail\": \"rejected: SignalRejected: signal_rejected: forbidden key(s) in signal.detail: [('signal.detail', 'position', 'L1')]\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_scheduler_forbidden_key_in_detail",
+        "exit_code": 1,
+        "reason": "signal_rejected",
+        "detail": "rejected: SignalRejected: signal_rejected: forbidden key(s) in signal.detail: [('signal.detail', 'position', 'L1')]"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_spatial_foreign_version_leak",
+      "returncode": 1,
+      "elapsed_s": 0.128,
+      "stdout_tail": [
+        "{\"case\": \"adv_spatial_foreign_version_leak\", \"exit_code\": 1, \"reason\": \"encoder_version_mismatch\", \"detail\": \"foreign version excluded and reported\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_spatial_foreign_version_leak",
+        "exit_code": 1,
+        "reason": "encoder_version_mismatch",
+        "detail": "foreign version excluded and reported"
+      },
+      "pass": true
+    },
+    {
+      "id": "adv_spatial_teacher_promotion",
+      "returncode": 1,
+      "elapsed_s": 0.131,
+      "stdout_tail": [
+        "{\"case\": \"adv_spatial_teacher_promotion\", \"exit_code\": 1, \"reason\": \"ValueError\", \"detail\": \"rejected: ValueError: teachers and LLMs may never write SLOW directly (ARCHITECTURE_V9 §1, §8.5); producer='teacher_model'\"}"
+      ],
+      "stderr_tail": [],
+      "parsed": {
+        "case": "adv_spatial_teacher_promotion",
+        "exit_code": 1,
+        "reason": "ValueError",
+        "detail": "rejected: ValueError: teachers and LLMs may never write SLOW directly (ARCHITECTURE_V9 §1, §8.5); producer='teacher_model'"
+      },
+      "pass": true
+    }
+  ]
+}

@@ -1,0 +1,372 @@
+{
+ "identity": {
+  "my_agent": "deepseek-flash-emje",
+  "b1_authors": [
+   "claude",
+   "codex"
+  ],
+  "b4_authors": [
+   "ainercodex-p4x7",
+   "antigravity-7c1e",
+   "deepseek-flash-a7k2",
+   "grok-m4q8"
+  ],
+  "i_am_not_b1_author": true,
+  "i_am_not_b4_author": true,
+  "b1_status": "reported",
+  "b4_status": "reported",
+  "b1_sha_reported": "9593eccf5c092099d488e72c2c505deb0b116fe3cc52385793d2cc1d7e0495c1",
+  "b1_sha_disk": "9593eccf5c092099d488e72c2c505deb0b116fe3cc52385793d2cc1d7e0495c1",
+  "b1_sha_match": true,
+  "decisions_doc_sha": "04504c33643c30b3116abe5cd8430fe2bc0e8f44fa70154b9c2f892f93a6d113",
+  "decisions_sha_in_b4_inputs": "04504c33643c30b3116abe5cd8430fe2bc0e8f44fa70154b9c2f892f93a6d113",
+  "decisions_sha_match": true,
+  "b4_report_revision": "r4"
+ },
+ "original_rulings": {
+  "rows": [
+   {
+    "ruling": 1,
+    "title": "两条路线，v1 只开一条",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 2,
+    "title": "目标只能用观察句柄，不用世界 ID",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 3,
+    "title": "证据版本绑定观察和信念",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 4,
+    "title": "TTL 用 tick 计，不用墙钟",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 5,
+    "title": "能力登记是门禁的唯一依据",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 6,
+    "title": "置信度只作参考，不作门禁依据",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 7,
+    "title": "预期结果用观察量表达",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 8,
+    "title": "门禁回执分两层，防止泄露",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 9,
+    "title": "不静默改写提案",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 10,
+    "title": "身份与幂等",
+    "keywords_missing": [],
+    "present": true
+   },
+   {
+    "ruling": 11,
+    "title": "数据去向",
+    "keywords_missing": [],
+    "present": true
+   }
+  ],
+  "all_present": true,
+  "count": 11
+ },
+ "b1_claims": {
+  "rows": [
+   {
+    "id": "C1-run-route-event-source-command",
+    "label": "运行命令用既有 Event/source=command、不新增 student 枚举、不走 E3 持久提交",
+    "doc": "docs/v9/SKILL_PROPOSAL_COORDINATION.md:15",
+    "need": "source=command / 不新增 student / 不产生 E3 持久提交",
+    "evidence": {
+     "event_source_enum": [
+      "kernel",
+      "physics",
+      "command",
+      "mechanics_pack",
+      "character_runtime",
+      "presentation"
+     ],
+     "event_schema_has_command": true,
+     "event_schema_no_student_literal": true,
+     "b1_doc_phrase": true,
+     "b4_spec_run_phrase": true,
+     "delivery_no_e3_impl": true,
+     "e3_ruling5": true
+    },
+    "ok": true
+   },
+   {
+    "id": "C2-edit-abilities-empty",
+    "label": "SkillProposal/v1 已登记编辑能力集合为空，合成例子不能取得实际权限",
+    "doc": "docs/v9/SKILL_PROPOSAL_COORDINATION.md:16",
+    "need": "编辑能力集合为空；编辑类提案必拒",
+    "evidence": {
+     "b1_doc": true,
+     "b4_spec": true,
+     "all_112_contexts_empty": true,
+     "context_guard_nonempty_rejects": true,
+     "edit_proposal_rejected": "effect_class_not_registered",
+     "disable_effect_class_control": "accepted"
+    },
+    "ok": true
+   },
+   {
+    "id": "C3-ttl-closed-interval-unchanged",
+    "label": "TTL 继续闭区间 [basis.t_ticks, basis.t_ticks+ttl_ticks]，不因控制租约改变",
+    "doc": "docs/v9/SKILL_PROPOSAL_COORDINATION.md:26",
+    "need": "闭区间两端都有效，右端+1 过期；原裁决文本一致",
+    "evidence": {
+     "original_ruling_interval": true,
+     "b1_doc_interval": true,
+     "b1_no_lease_change": true,
+     "impl_boundary_rows": [
+      {
+       "name": "valid_ttl_lower_boundary",
+       "basis_t_ticks": 840,
+       "ttl_ticks": 120,
+       "current_tick": 840,
+       "right_endpoint": 960,
+       "decision": "accepted",
+       "reason": "accepted",
+       "interval_holds": true
+      },
+      {
+       "name": "valid_ttl_upper_boundary",
+       "basis_t_ticks": 840,
+       "ttl_ticks": 120,
+       "current_tick": 960,
+       "right_endpoint": 960,
+       "decision": "accepted",
+       "reason": "accepted",
+       "interval_holds": true
+      },
+      {
+       "name": "ttl_expired",
+       "basis_t_ticks": 840,
+       "ttl_ticks": 120,
+       "current_tick": 961,
+       "right_endpoint": 960,
+       "decision": "rejected",
+       "reason": "proposal_expired",
+       "interval_holds": true
+      }
+     ],
+     "impl_ttl_ok": true,
+     "code_logic_ok": true,
+     "checker_has_no_lease_logic": true
+    },
+    "ok": true
+   },
+   {
+    "id": "C4-external-derived-not-trainable",
+    "label": "AWZ 经历按 ADR-0005 为 external_derived，默认不可训练；提案不能把来源改成 observed",
+    "doc": "docs/v9/SKILL_PROPOSAL_COORDINATION.md:18",
+    "need": "ADR-0005 原文 + 交付物未改来源政策/枚举",
+    "evidence": {
+     "adr_text_ok": true,
+     "b1_doc_phrase": true,
+     "delivery_does_not_redefine_source": true,
+     "spec_no_observed_rewrite": true
+    },
+    "ok": true
+   },
+   {
+    "id": "C5-confidence-not-authority",
+    "label": "confidence/学生自填量不能成为权限来源；置信度 1.0 不能越过任何一道门",
+    "doc": "docs/v9/SKILL_PROPOSAL_COORDINATION.md:22",
+    "need": "原裁决 6 + 扫描 184 行判定不变 + 专用反例",
+    "evidence": {
+     "original_ruling6": true,
+     "b1_doc_phrase": true,
+     "schema_dependent_required": {
+      "calibration": [
+       "confidence"
+      ],
+      "confidence": [
+       "calibration"
+      ]
+     },
+     "sweep_rows": 184,
+     "sweep_bad": 0,
+     "dedicated_case": {
+      "base": "ability_unknown",
+      "sabotage_override": "accepted",
+      "sabotage_only_at_1": "rejected",
+      "base_world_log": [
+       "ability_unknown:abil-unregistered-zzz"
+      ]
+     }
+    },
+    "ok": true
+   }
+  ],
+  "all_ok": true
+ },
+ "ruling_mapping": {
+  "rows": [
+   {
+    "ruling": 1,
+    "policy": "成立：原裁决 1 + B1 文档两条路线（运行开/编辑只定义未开）",
+    "formalization": "成立（CPU 参考核对）：编辑类提案 effect_class_not_registered 且控制漏检；上下文 registered_edit_abilities 非空即 fail-closed",
+    "evidence": [
+     "gate:edit_route",
+     "gate:context_guards",
+     "fixtures:all_contexts_edit_empty"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 2,
+    "policy": "成立：原裁决 2 / B1 文档 §目标与隔离",
+    "formalization": "成立（r4 F1/F3 加固）：1131/1131 探针四层全拒；56 拼写反例；任意层级键名；句柄/世界 ID 反例与破坏对照",
+    "evidence": [
+     "probe_results",
+     "gate:controls(schema/world_id_normalization)"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 3,
+    "policy": "成立：原裁决 3 / B1 文档 §证据",
+    "formalization": "成立：evidence_version 重算 + packet_ref/t_ticks 绑定反例；自写 JCS 复现 112/112 上下文 pin；JCS 异常 fail-closed",
+    "evidence": [
+     "jcs_results",
+     "fixtures:context_pins",
+     "gate:cases"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 4,
+    "policy": "成立：原裁决 4 闭区间 + B1 文档 §TTL 不变",
+    "formalization": "成立：闭区间两端正例 + 右端+1 过期；时间域不换算反例；无 lease 逻辑",
+    "evidence": [
+     "gate:ttl_closed_interval"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 5,
+    "policy": "成立：原裁决 5 / B1 文档 §授权与证据",
+    "formalization": "成立：未登记/参数越界/动作时长/TTL 上限/目标种类/前置条件反例与对照",
+    "evidence": [
+     "gate:cases",
+     "gate:controls:ability,params,budget,target_kind,precondition"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 6,
+    "policy": "成立：原裁决 6 / B1 文档 §confidence 非授权",
+    "formalization": "成立：184 行扫描 0 变化 + 专用反例 + 造假接线仅在 1.0 且被关闭专用规则时生效",
+    "evidence": [
+     "gate:confidence"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 7,
+    "policy": "成立：原裁决 7 / B1 文档 §quantity 允许表",
+    "formalization": "成立（r4 F6）：50 项允许表三方一致、可追溯到 AWZ schema；7 反例 + 越权/未知/别名被拒；允许表内未声明量被 quantity_registry_binding 拒",
+    "evidence": [
+     "awz_quantity_results",
+     "gate:quantity"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 8,
+    "policy": "成立：原裁决 8 / B1 文档 §观察、授权与证据",
+    "formalization": "成立：回执 schema 封闭枚举 + 112 条泄露扫描 0 泄露 + 7/7 回执破坏对照",
+    "evidence": [
+     "gate:reply_cases",
+     "gate:reply_integrity"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 9,
+    "policy": "成立：原裁决 9 / B1 文档 §证据",
+    "formalization": "成立：no_rewrite 18 条断言；接受的 18 正例回执回显=提交=重算",
+    "evidence": [
+     "gate:reply_integrity"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 10,
+    "policy": "成立：原裁决 10 / B1 文档 §身份",
+    "formalization": "成立（加强读法已说明）：actor 不符 rejected_other；同 ID 换载荷 duplicate_proposal（含只改 params 的加强反例）；重放正例",
+    "evidence": [
+     "gate:controls:actor,duplicate"
+    ],
+    "ok": true
+   },
+   {
+    "ruling": 11,
+    "policy": "成立（文档）：原裁决 11 / B1 文档 §任务与完成口径",
+    "formalization": "未实现（如实登记）：final 分区训练门只在文档写明，参考核对不实现；交付物 §13 矩阵第 13 行自述不能",
+    "evidence": [
+     "SKILL_PROPOSAL.md §11/§13",
+     "checker 无 Forge 写入"
+    ],
+    "ok": true
+   }
+  ],
+  "policy_all_hold": true,
+  "formalization_hold": 10,
+  "formalization_not_implemented_by_design": [
+   11
+  ],
+  "all_ok": true,
+  "distinction_note": "一级裁决 = 路线/权限/契约原则（Claude 原 11 条 + B1 文档整合）：全部保持，未改 TTL、来源政策、观察契约、冻结参数与权限；二级形式化 = B4 的 schema/示例/参考核对，逐条有证据；裁决 11 按原裁决只在文档写明、参考核对不实现，不能当成已形式化。"
+ },
+ "doc_consistency": {
+  "issues": [
+   {
+    "file": "docs/v9/SKILL_PROPOSAL.md",
+    "line": 139,
+    "issue": "§6 写「本修订为 60 行全过」，与 r4 §13b/§12 的「184 行」矛盾（旧版残留）"
+   },
+   {
+    "file": "reports/V9-B1/r4/SUMMARY.md",
+    "line": 12,
+    "issue": "称 SHA256SUMS「253 行」，实际数据行 254（11 交付物 + 7 只读 + 236 夹具）"
+   }
+  ],
+  "sums_data_rows": 254,
+  "fixture_file_count": 236
+ },
+ "boundaries": {
+  "b1_doc_no_new_architecture": true,
+  "b1_doc_no_D019_A10_release": true,
+  "b4_not_runtime_implemented": true,
+  "training_pause_kept": true,
+  "no_git_commit_by_me": true
+ }
+}

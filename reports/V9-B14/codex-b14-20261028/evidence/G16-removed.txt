@@ -1,0 +1,37 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts/test_spatial_memory.py::test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer", "-q", "-p", "no:cacheprovider"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src", "returncode": 1}
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[llm] _
+
+memory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x1065fd010>
+origin = 'llm'
+
+    @pytest.mark.parametrize("origin", ["llm", "teacher"])
+    def test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer(memory, origin):
+        """ADR-0014 §2 D5：LLM/教师起源只进 MID。producer 与 trusted_context 全部合法、其余字段全部合法时，仍必须被拒。"""
+        stored = promotable("f-1")
+        memory.write(stored)
+        evidence = v2_evidence(stored, origin_category=origin)       # producer='contract-harness' 是登记的独立出具者
+>       with pytest.raises(EvidenceRequired) as caught:
+E       Failed: DID NOT RAISE EvidenceRequired
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_spatial_memory.py:277: Failed
+_ test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[teacher] _
+
+memory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x1065ffa70>
+origin = 'teacher'
+
+    @pytest.mark.parametrize("origin", ["llm", "teacher"])
+    def test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer(memory, origin):
+        """ADR-0014 §2 D5：LLM/教师起源只进 MID。producer 与 trusted_context 全部合法、其余字段全部合法时，仍必须被拒。"""
+        stored = promotable("f-1")
+        memory.write(stored)
+        evidence = v2_evidence(stored, origin_category=origin)       # producer='contract-harness' 是登记的独立出具者
+>       with pytest.raises(EvidenceRequired) as caught:
+E       Failed: DID NOT RAISE EvidenceRequired
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_spatial_memory.py:277: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_spatial_memory.py::test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[llm]
+FAILED tests/v9/contracts/test_spatial_memory.py::test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[teacher]
+2 failed in 0.03s

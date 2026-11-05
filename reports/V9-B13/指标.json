@@ -1,0 +1,68 @@
+{
+  "task": "ainerzero.V9.B13",
+  "agent": "composer-mf1u",
+  "tier": 2,
+  "date": "2026-10-28",
+  "role": "non_author_adversarial_review",
+  "reviewed_task": "ainerzero.V9.B12",
+  "reviewed_author": "deepseek-q7m2",
+  "author_excluded": true,
+  "verdict": "request_changes",
+  "adr": {
+    "path": "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0014-constrained-mechanism-formation.md",
+    "sha256": "8c9b861a12021634ed8652aec30bfe14608053b4bc97d38fce2b638fc465c585"
+  },
+  "card_checkpoints": {
+    "K1_student_self_refused": "pass",
+    "K2_discovery_test_overlap_refused": "pass",
+    "K3_llm_teacher_origin_with_legal_producer_blocked": "fail",
+    "K4_revoke_excludes_from_slow_usable_queries": "pass"
+  },
+  "finding": {
+    "id": "F1",
+    "severity": "origin_category llm|teacher + legal producer (independent_test) still promotes",
+    "gap_source": "REPORT.md §1.1 + B13 card hard point; types.py only enum-checks origin_category",
+    "probe_evidence": "reports/V9-B13/evidence/02-adversarial-probes.txt"
+  },
+  "ordinary_negatives": {
+    "P1_student_self": "refused",
+    "P2_dct_overlap": "refused",
+    "P3_origin_llm": "PROMOTED (finding)",
+    "P3_origin_teacher": "PROMOTED (finding)",
+    "P4_revoke_slow_usable": "empty",
+    "P5_forged_student_at_promote": "refused",
+    "P7_sindy_positive_control": "promoted"
+  },
+  "guard_removal_bad_controls": {
+    "script": "reports/V9-B12/guard_removal.py",
+    "rerun_log": "reports/V9-B13/evidence/03-guard-removal-rerun.txt",
+    "controls_green": 15,
+    "mutants_red": 15,
+    "worktree_pollution": 0,
+    "missing_origin_category_guard_mutant": true
+  },
+  "contracts_rerun": {
+    "suite": "tests/v9/contracts",
+    "passed": 288,
+    "failed": 0,
+    "log": "reports/V9-B13/evidence/01-contracts-rerun.txt"
+  },
+  "source_sha_match_b12": true,
+  "deviations_review": {
+    "D-1_prior_version": "accept",
+    "D-2_binding_digest_not_signature": "accept",
+    "D-3_v1_student_constructible": "accept_with_promote_fail_closed",
+    "D-4_revoke_to_mid": "accept",
+    "D-5_default_n_min": "accept_as_interface_default"
+  },
+  "required_fixes": [
+    "hard-refuse promote when origin_category in {llm, teacher}",
+    "add ordinary negative tests for legal producer + llm/teacher origin",
+    "add isolated guard-removal mutant for that gate"
+  ],
+  "evidence_sha256": {
+    "01-contracts-rerun.txt": "929bb3b8459ffc4846baa2af24b2d29c749fb869f63a555f613fed58a39937a9",
+    "02-adversarial-probes.txt": "bb47b9f46e7e3d4eb9d530bc961fcb3d953a65f9ce25813cab75ef7b74fe53f2",
+    "03-guard-removal-rerun.txt": "f7952a47e0d84104a7444ee41ce81054f8eb71dcd224cb2c31ef767ce4739ff5"
+  }
+}

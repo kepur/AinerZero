@@ -1,0 +1,39 @@
+{
+  "card": "ainerzero.V9.B2",
+  "python": "3.12.2",
+  "platform": "macOS-27.2-arm64-arm-64bit",
+  "numpy": "2.5.3",
+  "pytest": "9.1.1",
+  "jsonschema_available": false,
+  "ruff": {
+    "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m ruff check src/ainerzero/v9/__init__.py src/ainerzero/v9/interfaces src/ainerzero/v9/fakes tests/v9/contracts reports/V9-B2",
+    "returncode": 0,
+    "seconds": 0.07,
+    "stdout_tail": "All checks passed!",
+    "stderr_tail": ""
+  },
+  "contract_suite": {
+    "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m pytest tests/v9/contracts -q --no-header -rf",
+    "returncode": 0,
+    "seconds": 0.66,
+    "stdout_tail": "........................................................................ [ 45%]\n........................................................................ [ 90%]\n................                                                         [100%]\n160 passed in 0.41s",
+    "stderr_tail": ""
+  },
+  "import_surface_probe": {
+    "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -c import sys\nimport ainerzero.v9\nbad = [m for m in ('mlx', 'onnxruntime', 'torch', 'tensorflow', 'jax') if m in sys.modules]\nassert 'ainzerzero.v9.fakes' not in sys.modules\nassert not bad, bad\nfrom ainerzero.v9 import INTERFACES, fakes\nassert len(INTERFACES) == 7 and len(fakes.FAKES) == 7\nbad = [m for m in ('mlx', 'onnxruntime', 'torch', 'tensorflow', 'jax') if m in sys.modules]\nassert not bad, bad\nprint('probe-ok')",
+    "returncode": 0,
+    "seconds": 0.11,
+    "stdout_tail": "probe-ok",
+    "stderr_tail": ""
+  },
+  "v9_suite_informational": {
+    "command": "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python -m pytest tests/v9 -q --no-header -rf",
+    "returncode": 1,
+    "seconds": 17.89,
+    "stdout_tail": "FAILED tests/v9/teachers/test_cache.py::test_f9_key_material_swap_marks_broken\nFAILED tests/v9/teachers/test_cache.py::test_write_read_entry - ainerzero.v9....\nFAILED tests/v9/teachers/test_cache.py::test_f1_same_entry_id_different_content_rejected\nFAILED tests/v9/teachers/test_cache.py::test_f8_derivation_teacher_swap_rejected\nFAILED tests/v9/teachers/test_cache.py::test_cross_partition_serial_rejected\nFAILED tests/v9/teachers/test_cache.py::test_f3_concurrent_cross_partition_reject\nFAILED tests/v9/teachers/test_cache.py::test_f11_f12_disk_forgery_cannot_flip_eligibility\n12 failed, 348 passed in 17.70s",
+    "stderr_tail": ""
+  },
+  "v9_suite_note": "tests/v9/teachers/test_cache.py requires the optional `jsonschema` package; those failures are pre-existing and outside this card's file scope",
+  "failures": [],
+  "ok": true
+}

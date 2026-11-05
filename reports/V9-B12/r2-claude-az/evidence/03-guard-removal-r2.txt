@@ -1,0 +1,97 @@
+# 拆守卫坏控（B12 / ADR-0014 §3 C1–C5,C7）
+# 仓库：/Users/mac/AinerWorkFlow/AinerZero
+# 副本：源码树逐字节复制，守卫按字节移除后跑对应负例；每例跑完立即还原并校验 SHA
+
+## 0. 副本基线校验
+src/*.py 与仓内逐字节一致（131 个文件）
+
+副本优先于 venv 安装：/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b12-guards-foyq7wm8/work/ainerzero/v9/interfaces/__init__.py
+
+## 1. 控制组（守卫在位 -> 负例通过）
+- PASS  tests/v9/contracts/test_cmfl_registration.py::test_tampering_breaks_the_self_check
+- PASS  tests/v9/contracts/test_fragment_provenance.py::test_world_truth_identifiers_are_refused
+- PASS  tests/v9/contracts/test_memory_lifecycle.py::test_demote_never_lands_on_slow
+- PASS  tests/v9/contracts/test_memory_lifecycle.py::test_entry_digest_must_match_the_stored_content
+- PASS  tests/v9/contracts/test_memory_lifecycle.py::test_fragment_without_provenance_cannot_be_promoted
+- PASS  tests/v9/contracts/test_memory_lifecycle.py::test_slow_entry_is_usable_only_while_versions_match
+- PASS  tests/v9/contracts/test_memory_lifecycle.py::test_supersede_is_single_shot
+- PASS  tests/v9/contracts/test_param_belief.py::test_nis_routes_must_record_the_statistic
+- PASS  tests/v9/contracts/test_param_belief.py::test_store_accepts_parametric_writes_only
+- PASS  tests/v9/contracts/test_promotion_evidence_v2.py::test_bare_self_reported_string_without_binding_is_refused
+- PASS  tests/v9/contracts/test_promotion_evidence_v2.py::test_binding_digest_must_be_canonical
+- PASS  tests/v9/contracts/test_promotion_evidence_v2.py::test_discovery_calibration_test_identities_must_be_pairwise_disjoint
+- PASS  tests/v9/contracts/test_promotion_evidence_v2.py::test_empty_conformal_certificate_is_refused
+- PASS  tests/v9/contracts/test_promotion_evidence_v2.py::test_student_self_evidence_is_refused_on_the_slow_path
+- PASS  tests/v9/contracts/test_spatial_memory.py::test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer
+- PASS  tests/v9/contracts/test_spatial_memory.py::test_v1_evidence_is_refused_at_promote
+
+## 2. 拆守卫（守卫移除 -> 负例必须变红）
+- G1 [C1] promote 不再拒绝 v1 证据（fail-closed 门被拆）
+    文件 interfaces/spatial_memory.py  SHA a33ce5707b15 -> 36b051f04503 -> a33ce5707b15
+    负例 test_v1_evidence_is_refused_at_promote
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_spatial_memory.py::test_v1_evidence_is_refused_at_promote | 1 failed in 0.03s)
+- G2 [C1] v2 证据的字段校验整体不执行
+    文件 interfaces/types.py  SHA 58eedc931fe5 -> e4e77a1f881f -> 58eedc931fe5
+    负例 test_empty_conformal_certificate_is_refused
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_empty_conformal_certificate_is_refused | 1 failed in 0.03s)
+- G3 [C1] D/C/T 两两不相交检查被拆
+    文件 interfaces/types.py  SHA 58eedc931fe5 -> df503170c8ce -> 58eedc931fe5
+    负例 test_discovery_calibration_test_identities_must_be_pairwise_disjoint
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_discovery_calibration_test_identities_must_be_pairwise_disjoint | 1 failed in 0.03s)
+- G4 [C2] SLOW 守卫不再拦截类别 self（学生自证可通过）
+    文件 interfaces/validation.py  SHA 99d56e89781e -> 25f1865124fb -> 99d56e89781e
+    负例 test_student_self_evidence_is_refused_on_the_slow_path
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_student_self_evidence_is_refused_on_the_slow_path | 1 failed in 0.03s)
+- G5 [C2] 不再要求 admission_bindings 里存在该 producer 的绑定（裸自报字符串可过）
+    文件 interfaces/validation.py  SHA 99d56e89781e -> a033d397c0dc -> 99d56e89781e
+    负例 test_bare_self_reported_string_without_binding_is_refused
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_bare_self_reported_string_without_binding_is_refused | 1 failed in 0.03s)
+- G6 [C2] 绑定摘要不再校验（绑定可被挪用/伪造）
+    文件 interfaces/validation.py  SHA 99d56e89781e -> 8cc282f6056b -> 99d56e89781e
+    负例 test_binding_digest_must_be_canonical
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_binding_digest_must_be_canonical | 1 failed in 0.03s)
+- G7 [C3] 缺来源/对象/动作键的条目仍可晋升
+    文件 interfaces/spatial_memory.py  SHA a33ce5707b15 -> 163e34b3f694 -> a33ce5707b15
+    负例 test_fragment_without_provenance_cannot_be_promoted
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_memory_lifecycle.py::test_fragment_without_provenance_cannot_be_promoted | 1 failed in 0.03s)
+- G8 [C3] 晋升内容与受检内容不再比对（条目摘要检查被拆）
+    文件 interfaces/spatial_memory.py  SHA a33ce5707b15 -> bd631a836dcc -> a33ce5707b15
+    负例 test_entry_digest_must_match_the_stored_content
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_memory_lifecycle.py::test_entry_digest_must_match_the_stored_content | 1 failed in 0.03s)
+- G9 [C3] Fragment 标识符不再拦截世界真值 ID（§8.6）
+    文件 interfaces/types.py  SHA 58eedc931fe5 -> 1f5d122a951a -> 58eedc931fe5
+    负例 test_world_truth_identifiers_are_refused
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_fragment_provenance.py::test_world_truth_identifiers_are_refused[layout_id/9] | 5 failed in 0.03s)
+- G10 [C4] 版本漂移不再触发重验（漂移条目仍被确定性层使用）
+    文件 fakes/spatial_memory.py  SHA e62b8db766e5 -> 5d58ecc4aeda -> e62b8db766e5
+    负例 test_slow_entry_is_usable_only_while_versions_match
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_memory_lifecycle.py::test_slow_entry_is_usable_only_while_versions_match | 1 failed in 0.03s)
+- G11 [C4] demote 允许落到 SLOW（降级变升级）
+    文件 fakes/spatial_memory.py  SHA e62b8db766e5 -> 37b05f950565 -> e62b8db766e5
+    负例 test_demote_never_lands_on_slow
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_memory_lifecycle.py::test_demote_never_lands_on_slow | 1 failed in 0.03s)
+- G12 [C4] supersede 指针可被反复改写（旧版本链断）
+    文件 fakes/spatial_memory.py  SHA e62b8db766e5 -> c0d494be903c -> e62b8db766e5
+    负例 test_supersede_is_single_shot
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_memory_lifecycle.py::test_supersede_is_single_shot | 1 failed in 0.03s)
+- G13 [C7] ParamBeliefStore 不再限定只由 PARAMETRIC 分支写
+    文件 interfaces/cmfl.py  SHA 380d273f2800 -> 201815910538 -> 380d273f2800
+    负例 test_store_accepts_parametric_writes_only
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_param_belief.py::test_store_accepts_parametric_writes_only | 1 failed in 0.03s)
+- G14 [C7] 4a/4b 路由记录不再要求 NIS 统计量与自由度
+    文件 interfaces/cmfl.py  SHA 380d273f2800 -> 67a9163a4aa7 -> 380d273f2800
+    负例 test_nis_routes_must_record_the_statistic
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_param_belief.py::test_nis_routes_must_record_the_statistic[SUFFICIENT] | 2 failed in 0.03s)
+- G15 [C5] cmfl_registration 不再自校验（冻结件可被手改）
+    文件 interfaces/cmfl_registration.py  SHA afb93c9ee040 -> 3d616306ad75 -> afb93c9ee040
+    负例 test_tampering_breaks_the_self_check
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_cmfl_registration.py::test_tampering_breaks_the_self_check | 1 failed in 0.04s)
+- G16 [B13-K3] LLM/教师起源的晋升硬门被拆（合法 producer 即可晋升）
+    文件 interfaces/spatial_memory.py  SHA a33ce5707b15 -> 13316adfbc13 -> a33ce5707b15
+    负例 test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer
+    结果 RED (expected)  (FAILED tests/v9/contracts/test_spatial_memory.py::test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[teacher] | 2 failed in 0.04s)
+
+## 3. 还原校验
+仓内源码、副本、还原后副本三方 SHA 全部一致（未污染工作树）
+
+## 结论：16/16 个守卫是承重的（移除即变红）

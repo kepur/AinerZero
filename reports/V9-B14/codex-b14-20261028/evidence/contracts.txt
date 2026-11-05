@@ -1,0 +1,556 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts", "-q", "-p", "no:cacheprovider", "--junitxml=/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B14/codex-b14-20261028/evidence/contracts.xml"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src", "returncode": 1}
+FFFFFFFFFFFF............................................................ [ 24%]
+........................................................................ [ 48%]
+........................................................................ [ 73%]
+........................................................................ [ 97%]
+.......                                                                  [100%]
+=================================== FAILURES ===================================
+______________ test_example_registration_loads_and_self_verifies _______________
+
+cls = <class 'ainerzero.v9.interfaces.cmfl_registration.CMFLRegistration'>
+path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "CMFLRegistration":
+        target = Path(path)
+        try:
+>           document = json.loads(target.read_text(encoding="utf-8"))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src/ainerzero/v9/interfaces/cmfl_registration.py:315: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+    def test_example_registration_loads_and_self_verifies():
+>       registration = CMFLRegistration.from_json(EXAMPLE)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'ainerzero.v9.interfaces.cmfl_registration.CMFLRegistration'>
+path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "CMFLRegistration":
+        target = Path(path)
+        try:
+            document = json.loads(target.read_text(encoding="utf-8"))
+        except FileNotFoundError as error:
+>           raise UnsupportedInput(f"cmfl_registration file not found: {target}") from error
+E           ainerzero.v9.interfaces.errors.UnsupportedInput: unsupported_input: cmfl_registration file not found: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src/ainerzero/v9/interfaces/cmfl_registration.py:317: UnsupportedInput
+__________ test_registration_references_r5_by_sha_and_copies_nothing ___________
+
+cls = <class 'ainerzero.v9.interfaces.cmfl_registration.CMFLRegistration'>
+path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "CMFLRegistration":
+        target = Path(path)
+        try:
+>           document = json.loads(target.read_text(encoding="utf-8"))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src/ainerzero/v9/interfaces/cmfl_registration.py:315: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+    def test_registration_references_r5_by_sha_and_copies_nothing():
+>       registration = CMFLRegistration.from_json(EXAMPLE)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:69: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'ainerzero.v9.interfaces.cmfl_registration.CMFLRegistration'>
+path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "CMFLRegistration":
+        target = Path(path)
+        try:
+            document = json.loads(target.read_text(encoding="utf-8"))
+        except FileNotFoundError as error:
+>           raise UnsupportedInput(f"cmfl_registration file not found: {target}") from error
+E           ainerzero.v9.interfaces.errors.UnsupportedInput: unsupported_input: cmfl_registration file not found: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src/ainerzero/v9/interfaces/cmfl_registration.py:317: UnsupportedInput
+_______________ test_registration_matches_the_evidence_defaults ________________
+
+cls = <class 'ainerzero.v9.interfaces.cmfl_registration.CMFLRegistration'>
+path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "CMFLRegistration":
+        target = Path(path)
+        try:
+>           document = json.loads(target.read_text(encoding="utf-8"))
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src/ainerzero/v9/interfaces/cmfl_registration.py:315: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+
+The above exception was the direct cause of the following exception:
+
+    def test_registration_matches_the_evidence_defaults():
+        """The example is internally consistent with the contract defaults it is used with."""
+        from ainerzero.v9.interfaces.types import DEFAULT_CONFORMAL_N_MIN
+    
+>       registration = CMFLRegistration.from_json(EXAMPLE)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:83: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'ainerzero.v9.interfaces.cmfl_registration.CMFLRegistration'>
+path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+
+    @classmethod
+    def from_json(cls, path: str | Path) -> "CMFLRegistration":
+        target = Path(path)
+        try:
+            document = json.loads(target.read_text(encoding="utf-8"))
+        except FileNotFoundError as error:
+>           raise UnsupportedInput(f"cmfl_registration file not found: {target}") from error
+E           ainerzero.v9.interfaces.errors.UnsupportedInput: unsupported_input: cmfl_registration file not found: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src/ainerzero/v9/interfaces/cmfl_registration.py:317: UnsupportedInput
+_____________________ test_tampering_breaks_the_self_check _____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_tampering_breaks_the_self0')
+
+    def test_tampering_breaks_the_self_check(tmp_path):
+>       doc = document()
+              ^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+______________________ test_missing_frozen_key_is_refused ______________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_missing_frozen_key_is_ref0')
+
+    def test_missing_frozen_key_is_refused(tmp_path):
+        with pytest.raises(UnsupportedInput) as caught:
+            CMFLRegistration.from_json(
+>               mutated(tmp_path, lambda doc: doc["discovery"].pop("lambda_grid"))
+            )
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:114: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:98: in mutated
+    doc = document()
+          ^^^^^^^^^^
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+__________________ test_elond_weights_must_sum_to_at_most_one __________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_elond_weights_must_sum_to0')
+
+    def test_elond_weights_must_sum_to_at_most_one(tmp_path):
+        def mutate(doc):
+            doc["discovery"]["gamma_weights"] = [0.9, 0.9]
+    
+        with pytest.raises(UnsupportedInput) as caught:
+>           CMFLRegistration.from_json(mutated(tmp_path, mutate))
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:124: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:98: in mutated
+    doc = document()
+          ^^^^^^^^^^
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+____________ test_r5_values_may_not_be_copied_into_the_registration ____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_r5_values_may_not_be_copi0')
+
+    def test_r5_values_may_not_be_copied_into_the_registration(tmp_path):
+        def mutate(doc):
+            doc["msg"]["epsilon"] = 0.01  # 式 6 的 ε 只能引用，不能复制
+    
+        with pytest.raises(UnsupportedInput) as caught:
+>           CMFLRegistration.from_json(mutated(tmp_path, mutate))
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:133: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:98: in mutated
+    doc = document()
+          ^^^^^^^^^^
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+___________ test_r5_reference_entries_may_only_carry_source_and_sha ____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_r5_reference_entries_may_0')
+
+    def test_r5_reference_entries_may_only_carry_source_and_sha(tmp_path):
+        def add_value(doc):
+            doc["r5_references"]["ARCHITECTURE_V9_r5"]["value"] = 0.01
+    
+        with pytest.raises(UnsupportedInput) as caught:
+>           CMFLRegistration.from_json(mutated(tmp_path, add_value))
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:98: in mutated
+    doc = document()
+          ^^^^^^^^^^
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+__________________ test_unexpected_top_level_keys_are_refused __________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_unexpected_top_level_keys0')
+
+    def test_unexpected_top_level_keys_are_refused(tmp_path):
+        def mutate(doc):
+            doc["tau_override"] = 0.3
+    
+        with pytest.raises(UnsupportedInput) as caught:
+>           CMFLRegistration.from_json(mutated(tmp_path, mutate))
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:157: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:98: in mutated
+    doc = document()
+          ^^^^^^^^^^
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+__________________________ test_schema_id_must_match ___________________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_schema_id_must_match0')
+
+    def test_schema_id_must_match(tmp_path):
+        def mutate(doc):
+            doc["schema"] = "cmfl.registration.v2"
+    
+        with pytest.raises(UnsupportedInput) as caught:
+>           CMFLRegistration.from_json(mutated(tmp_path, mutate))
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:166: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:98: in mutated
+    doc = document()
+          ^^^^^^^^^^
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+__________________ test_d_permit_requires_a_provenance_digest __________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_d_permit_requires_a_prove0')
+
+    def test_d_permit_requires_a_provenance_digest(tmp_path):
+        with pytest.raises(UnsupportedInput) as caught:
+            CMFLRegistration.from_json(
+>               mutated(tmp_path, lambda doc: doc["msg"]["d_permit"].pop("provenance_sha256"))
+            )
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:173: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:98: in mutated
+    doc = document()
+          ^^^^^^^^^^
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+_____________ test_integrators_and_world_families_must_be_declared _____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-123/test_integrators_and_world_fam0')
+
+    def test_integrators_and_world_families_must_be_declared(tmp_path):
+        def clear_integrators(doc):
+            doc["msg"]["integrators"] = []
+    
+        with pytest.raises(UnsupportedInput):
+>           CMFLRegistration.from_json(mutated(tmp_path, clear_integrators))
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:183: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:98: in mutated
+    doc = document()
+          ^^^^^^^^^^
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_example_registration_loads_and_self_verifies
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_registration_references_r5_by_sha_and_copies_nothing
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_registration_matches_the_evidence_defaults
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_tampering_breaks_the_self_check
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_missing_frozen_key_is_refused
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_elond_weights_must_sum_to_at_most_one
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_r5_values_may_not_be_copied_into_the_registration
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_r5_reference_entries_may_only_carry_source_and_sha
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_unexpected_top_level_keys_are_refused
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_schema_id_must_match
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_d_permit_requires_a_provenance_digest
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_integrators_and_world_families_must_be_declared
+12 failed, 283 passed in 1.30s

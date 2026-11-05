@@ -1,0 +1,16 @@
+{
+  "label": "legacy-G1-ablated",
+  "cmd": [
+    "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/v9/contracts/test_spatial_memory.py::test_v1_evidence_is_refused_at_promote",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b15-isolated-omqv4n8i",
+  "returncode": 1,
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n____________________ test_v1_evidence_is_refused_at_promote ____________________\n\nmemory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x1040eb200>\n\n    def test_v1_evidence_is_refused_at_promote(memory):\n        \"\"\"ADR-0014 \u00a73 C1: the old \"v1 promotes\" expectation is now a negative.\"\"\"\n        memory.write(promotable(\"f-1\"))\n        legacy = PromotionEvidence(\n            kind=\"independent_test\",\n            report_ref=\"reports/V9-B2/independent.md\",\n            producer=\"contract-harness\",\n            test_id=\"v9-b2-independent-1\",\n        )\n        assert legacy.schema_version == \"v1\"  # still constructible / readable\n        with pytest.raises(EvidenceRequired) as caught:\n            memory.promote(\"f-1\", legacy)\n>       assert \"schema_version='v2'\" in caught.value.detail\nE       assert \"schema_version='v2'\" in 'trusted_context_missing: SLOW evidence needs a trusted context binding, got NoneType; a bare self-reported producer string is not accepted'\nE        +  where 'trusted_context_missing: SLOW evidence needs a trusted context binding, got NoneType; a bare self-reported producer string is not accepted' = EvidenceRequired(code='evidence_required', detail='trusted_context_missing: SLOW evidence needs a trusted context binding, got NoneType; a bare self-reported producer string is not accepted').detail\nE        +    where EvidenceRequired(code='evidence_required', detail='trusted_context_missing: SLOW evidence needs a trusted context binding, got NoneType; a bare self-reported producer string is not accepted') = <ExceptionInfo EvidenceRequired(code='evidence_required', detail='trusted_context_missing: SLOW evidence needs a trusted context binding, got NoneType; a bare self-reported producer string is not accepted') tblen=4>.value\n\ntests/v9/contracts/test_spatial_memory.py:264: AssertionError\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_spatial_memory.py::test_v1_evidence_is_refused_at_promote\n1 failed in 0.04s\n",
+  "stderr": ""
+}

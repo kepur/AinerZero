@@ -1,0 +1,79 @@
+{
+  "identity": {
+    "harness_python": "/usr/local/bin/python3",
+    "harness_version": "3.12.2",
+    "platform": "macOS-27.2-arm64-arm-64bit",
+    "agent": "deepseek-h7m2",
+    "task": "ainerzero.V9.B8",
+    "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+    "jsonschema": "4.21.1",
+    "checked_python": "/usr/local/bin/python3",
+    "checked_python_real": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12"
+  },
+  "results": {
+    "d1_fixture_dup": {
+      "label": "d1-fixture-dup-tamper",
+      "rc": 1,
+      "has_traceback": false,
+      "all_ok": null,
+      "failures_head": [],
+      "stderr_head": "",
+      "stdout_head": "FIXTURE MISMATCH: byte mismatch at /private/tmp/b8-suite-tamper/repo/reports/V9-B1/r5-candidate/fixtures/valid/01_valid_minimal_handle_target.json\n",
+      "duration_s": 0.446,
+      "stdout_contains_FIXTURE_MISMATCH": true
+    },
+    "d3_extra_fixture_dup": {
+      "label": "d3-extra-fixture-dup",
+      "rc": 1,
+      "has_traceback": false,
+      "all_ok": null,
+      "failures_head": [],
+      "stderr_head": "",
+      "stdout_head": "FIXTURE MISMATCH: extra file in committed /private/tmp/b8-suite-tamper/repo/reports/V9-B1/r5-candidate/fixtures/valid/999_extra_dup.json\n",
+      "duration_s": 0.486,
+      "stdout_contains_FIXTURE_MISMATCH": true
+    },
+    "d2_probe_dup": {
+      "label": "d2-probe-dup-tamper",
+      "rc": 1,
+      "has_traceback": true,
+      "all_ok": null,
+      "failures_head": [],
+      "stderr_head": "Traceback (most recent call last): |   File \"/tmp/b8-suite-tamper/repo/reports/V9-B1/r5-candidate/check_skill_proposal.py\", line 2219, in <module> |     sys.exit(main()) |              ^^^^^^ |   File \"/tmp/b8-suite-tamper/repo/reports/V9-B1/r5-candidate/check_skill_proposal.py\", line 2202, in main |     retu",
+      "stdout_head": "",
+      "duration_s": 89.155
+    },
+    "d2b_probe_dup_nostrict": {
+      "label": "d2b-probe-dup-nostrict",
+      "rc": 0,
+      "has_traceback": false,
+      "all_ok": true,
+      "failures_head": [],
+      "stderr_head": "",
+      "stdout_head": "{\"all_ok\": true, \"counts\": {\"cases_total\": 112, \"positive_cases\": 18, \"negative_cases\": 94, \"distinct_rules_with_counterexample\": 17, \"controls\": 94, \"controls_isolated_miss\": 41, \"reply_cases\": 10, \"reply_negative_cases\": 7, \"reply_controls\": 7, \"reply_controls_isolated_miss\": 7, \"confidence_sweep_",
+      "duration_s": 84.709,
+      "patched_sha256": "6489fd69200c92a8aee5ec0b7b45b1d1cb9e840475c56ab97fa5752b61eb1a22"
+    }
+  },
+  "checks": [
+    {
+      "label": "d1",
+      "ok": true
+    },
+    {
+      "label": "d3",
+      "ok": true
+    },
+    {
+      "label": "d2-strict-traceback",
+      "ok": true
+    },
+    {
+      "label": "d2b-nostrict-no-traceback-completes",
+      "ok": true
+    }
+  ],
+  "checks_failed": [],
+  "all_checks_ok": true,
+  "note": "D2/D2b 各跑一遍完整 suite；D1/D3 在夹具字节比对层提前返回。"
+}

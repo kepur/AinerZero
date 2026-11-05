@@ -1,0 +1,191 @@
+{
+  "card": "ainerzero.V9.B2",
+  "control": "control-unmutated-copy",
+  "pytest_target": "tests/v9/contracts",
+  "shadow_strategy": "whole src/ package copy prepended to PYTHONPATH",
+  "mutations_registered": 10,
+  "mutations_caught": 10,
+  "control_green": true,
+  "all_ok": true,
+  "results": [
+    {
+      "name": "control-unmutated-copy",
+      "mutated_file": null,
+      "expected_red_test": null,
+      "label": "control-unmutated-copy",
+      "returncode": 0,
+      "failed": [],
+      "summary": "160 passed in 0.42s",
+      "seconds": 0.69,
+      "tail": "........................................................................ [ 45%]\n........................................................................ [ 90%]\n................                                                         [100%]\n160 passed in 0.42s",
+      "caught": null,
+      "ok": true
+    },
+    {
+      "name": "M1-world-brain-envelope-gate-removed",
+      "mutated_file": "ainerzero/v9/fakes/world_brain.py",
+      "expected_red_test": "test_step_rejects_whole_envelope",
+      "label": "M1-world-brain-envelope-gate-removed",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_world_brain.py::test_step_rejects_whole_envelope",
+        "tests/v9/contracts/test_world_brain.py::test_step_rejects_snapshot_document",
+        "tests/v9/contracts/test_world_brain.py::test_step_rejects_truth_keys"
+      ],
+      "summary": "3 failed, 157 passed in 0.45s",
+      "seconds": 0.72,
+      "tail": "    def test_step_rejects_truth_keys(brain, payload_factory):\n        payload = deep(payload_factory())\n        payload[\"task_instruction\"][\"entity_id\"] = \"char-7\"\n>       with pytest.raises(TruthFieldRejected) as caught:\nE       Failed: DID NOT RAISE TruthFieldRejected\n\ntests/v9/contracts/test_world_brain.py:84: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_world_brain.py::test_step_rejects_whole_envelope\nFAILED tests/v9/contracts/test_world_brain.py::test_step_rejects_snapshot_document\nFAILED tests/v9/contracts/test_world_brain.py::test_step_rejects_truth_keys\n3 failed, 157 passed in 0.45s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M2-world-brain-backwards-time-allowed",
+      "mutated_file": "ainerzero/v9/fakes/world_brain.py",
+      "expected_red_test": "test_step_rejects_backwards_time",
+      "label": "M2-world-brain-backwards-time-allowed",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_world_brain.py::test_step_rejects_backwards_time"
+      ],
+      "summary": "1 failed, 159 passed in 0.46s",
+      "seconds": 0.72,
+      "tail": "        brain.step(payload)\n        earlier = deep(payload)\n        earlier[\"time\"][\"t_ticks\"] = 5\n        earlier[\"time\"][\"dt_ticks\"] = 0\n        earlier[\"time\"][\"dt_s\"] = 0.0\n>       with pytest.raises(TimeWhitelistRejected) as caught:\nE       Failed: DID NOT RAISE TimeWhitelistRejected\n\ntests/v9/contracts/test_world_brain.py:96: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_world_brain.py::test_step_rejects_backwards_time\n1 failed, 159 passed in 0.46s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M3-geometry-inverse-returns-transpose",
+      "mutated_file": "ainerzero/v9/fakes/geometry.py",
+      "expected_red_test": "test_compose_inverse_is_identity",
+      "label": "M3-geometry-inverse-returns-transpose",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_geometry_contract.py::test_compose_inverse_is_identity",
+        "tests/v9/contracts/test_geometry_contract.py::test_adjoint_satisfies_its_defining_relation",
+        "tests/v9/contracts/test_geometry_contract.py::test_act_round_trips_and_keeps_tags",
+        "tests/v9/contracts/test_geometry_contract.py::test_predict_applies_body_motion_and_right_error",
+        "tests/v9/contracts/test_geometry_contract.py::test_update_fuses_and_shrinks_uncertainty",
+        "tests/v9/contracts/test_geometry_contract.py::test_with_side_obeys_the_covariance_relation",
+        "tests/v9/contracts/test_geometry_contract.py::test_matches_g1_group_operations",
+        "tests/v9/contracts/test_geometry_contract.py::test_matches_g1_predict"
+      ],
+      "summary": "8 failed, 152 passed in 0.54s",
+      "seconds": 0.8,
+      "tail": "\n/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/v9b2-mutations-5_bt33l8/M3-geometry-inverse-returns-transpose/src/ainerzero/v9/fakes/geometry.py:80: UnsupportedInput\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_geometry_contract.py::test_compose_inverse_is_identity\nFAILED tests/v9/contracts/test_geometry_contract.py::test_adjoint_satisfies_its_defining_relation\nFAILED tests/v9/contracts/test_geometry_contract.py::test_act_round_trips_and_keeps_tags\nFAILED tests/v9/contracts/test_geometry_contract.py::test_predict_applies_body_motion_and_right_error\nFAILED tests/v9/contracts/test_geometry_contract.py::test_update_fuses_and_shrinks_uncertainty\nFAILED tests/v9/contracts/test_geometry_contract.py::test_with_side_obeys_the_covariance_relation\nFAILED tests/v9/contracts/test_geometry_contract.py::test_matches_g1_group_operations\nFAILED tests/v9/contracts/test_geometry_contract.py::test_matches_g1_predict\n8 failed, 152 passed in 0.54s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M4-geometry-canonicalize-becomes-identity",
+      "mutated_file": "ainerzero/v9/fakes/geometry.py",
+      "expected_red_test": "test_canonicalize_actually_changes_coordinates",
+      "label": "M4-geometry-canonicalize-becomes-identity",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_geometry_contract.py::test_canonicalisation_round_trips",
+        "tests/v9/contracts/test_geometry_contract.py::test_canonicalize_actually_changes_coordinates"
+      ],
+      "summary": "2 failed, 158 passed in 0.45s",
+      "seconds": 0.71,
+      "tail": "E        +  where True = <function allclose at 0x104bb3db0>(array([[2., 1.]]), array([[2., 1.]]), atol=1e-06)\nE        +    where <function allclose at 0x104bb3db0> = np.allclose\nE        +    and   array([[2., 1.]]) = <built-in function asarray>(Points([[2., 1.]]))\nE        +      where <built-in function asarray> = np.asarray\nE        +    and   array([[2., 1.]]) = <built-in function asarray>(Points([[2., 1.]]))\nE        +      where <built-in function asarray> = np.asarray\n\ntests/v9/contracts/test_geometry_contract.py:143: AssertionError\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_geometry_contract.py::test_canonicalisation_round_trips\nFAILED tests/v9/contracts/test_geometry_contract.py::test_canonicalize_actually_changes_coordinates\n2 failed, 158 passed in 0.45s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M5-timescale-delta-from-frame-index",
+      "mutated_file": "ainerzero/v9/fakes/timescale.py",
+      "expected_red_test": "test_align_reports_real_dt_not_the_stride",
+      "label": "M5-timescale-delta-from-frame-index",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_timescale_contract.py::test_align_reports_real_dt_not_the_stride",
+        "tests/v9/contracts/test_timescale_contract.py::test_align_accumulates_irregular_dt"
+      ],
+      "summary": "2 failed, 158 passed in 0.44s",
+      "seconds": 0.7,
+      "tail": "E             \nE             Extra items in the left set:\nE             0.08333333333333333\nE             Extra items in the right set:\nE             0.058333333333333334\nE             Use -v to get more diff\n\ntests/v9/contracts/test_timescale_contract.py:57: AssertionError\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_timescale_contract.py::test_align_reports_real_dt_not_the_stride\nFAILED tests/v9/contracts/test_timescale_contract.py::test_align_accumulates_irregular_dt\n2 failed, 158 passed in 0.44s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M6-spatial-memory-partition-seal-removed",
+      "mutated_file": "ainerzero/v9/fakes/spatial_memory.py",
+      "expected_red_test": "test_write_refuses_non_allowlisted_partitions",
+      "label": "M6-spatial-memory-partition-seal-removed",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_spatial_memory.py::test_write_refuses_non_allowlisted_partitions[final]",
+        "tests/v9/contracts/test_spatial_memory.py::test_write_refuses_non_allowlisted_partitions[quarantine]"
+      ],
+      "summary": "2 failed, 158 passed in 0.42s",
+      "seconds": 0.67,
+      "tail": "partition = 'quarantine'\n\n    @pytest.mark.parametrize(\"partition\", [\"final\", \"quarantine\"])\n    def test_write_refuses_non_allowlisted_partitions(memory, partition):\n>       with pytest.raises(PartitionWriteRejected) as caught:\nE       Failed: DID NOT RAISE PartitionWriteRejected\n\ntests/v9/contracts/test_spatial_memory.py:65: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_spatial_memory.py::test_write_refuses_non_allowlisted_partitions[final]\nFAILED tests/v9/contracts/test_spatial_memory.py::test_write_refuses_non_allowlisted_partitions[quarantine]\n2 failed, 158 passed in 0.42s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M7-spatial-memory-version-fence-removed",
+      "mutated_file": "ainerzero/v9/fakes/spatial_memory.py",
+      "expected_red_test": "test_query_excludes_foreign_encoder_version",
+      "label": "M7-spatial-memory-version-fence-removed",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_spatial_memory.py::test_query_excludes_foreign_encoder_version"
+      ],
+      "summary": "1 failed, 159 passed in 0.44s",
+      "seconds": 0.7,
+      "tail": "        memory.write(fragment(\"f-v1\", metric=(0.0, 0.0)))\n        result = memory.query_metric({\"center\": (0.0, 0.0), \"radius_m\": 1.0}, encoder_version=\"enc-v2\")\n>       assert result.entries == ()\nE       AssertionError: assert (Fragment(fra...topology=()),) == ()\nE         \nE         Left contains one more item: Fragment(fragment_id='f-v1', t_ticks=100, place='room-a', partition='train', encoder_version='enc-v1', metric=(0.0, 0.0), topology=())\nE         Use -v to get more diff\n\ntests/v9/contracts/test_spatial_memory.py:155: AssertionError\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_spatial_memory.py::test_query_excludes_foreign_encoder_version\n1 failed, 159 passed in 0.44s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M8-perception-reference-cut-removed",
+      "mutated_file": "ainerzero/v9/fakes/perception.py",
+      "expected_red_test": "test_encode_resolves_only_registered_namespaces",
+      "label": "M8-perception-reference-cut-removed",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_perception_contract.py::test_encode_resolves_only_registered_namespaces",
+        "tests/v9/contracts/test_perception_contract.py::test_encode_resolves_tick_stamped_references_as_of_the_packet"
+      ],
+      "summary": "2 failed, 158 passed in 0.43s",
+      "seconds": 0.69,
+      "tail": "        payload[\"observation\"][\"channels\"][0][\"image\"][\"uri\"] = \"obs/t50/frame.png\"\n        assert \"obs/t50/frame.png\" in encoder.encode(payload).resolved_references\n        payload = deep(payload_factory())\n        payload[\"observation\"][\"channels\"][0][\"image\"][\"uri\"] = \"obs/t99999/frame.png\"\n>       with pytest.raises(ReferenceRejected) as caught:  # counter-example: future reference\nE       Failed: DID NOT RAISE ReferenceRejected\n\ntests/v9/contracts/test_perception_contract.py:163: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_perception_contract.py::test_encode_resolves_only_registered_namespaces\nFAILED tests/v9/contracts/test_perception_contract.py::test_encode_resolves_tick_stamped_references_as_of_the_packet\n2 failed, 158 passed in 0.43s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M9-planner-leaks_truth_key_into_subgoal",
+      "mutated_file": "ainerzero/v9/fakes/planner.py",
+      "expected_red_test": "test_emitted_subgoals_have_no_truth_keys",
+      "label": "M9-planner-leaks_truth_key_into_subgoal",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_planner_contract.py::test_emitted_subgoals_have_no_truth_keys"
+      ],
+      "summary": "1 failed, 159 passed in 0.45s",
+      "seconds": 0.71,
+      "tail": "        \"\"\"Scans every subgoal the planner emits (the sabotage target for M9).\"\"\"\n        plan = planner.plan(GOAL, make_belief(), FULL_BUDGET)\n>       assert FakeHierarchicalPlanner.scan_subgoals(plan) == []\nE       AssertionError: assert [('$', 'posit...ition', 'L1')] == []\nE         \nE         Left contains 3 more items, first extra item: ('$', 'position', 'L1')\nE         Use -v to get more diff\n\ntests/v9/contracts/test_planner_contract.py:121: AssertionError\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_planner_contract.py::test_emitted_subgoals_have_no_truth_keys\n1 failed, 159 passed in 0.45s",
+      "caught": true,
+      "ok": true
+    },
+    {
+      "name": "M10-scheduler-world_signal_scan-removed",
+      "mutated_file": "ainerzero/v9/fakes/scheduler.py",
+      "expected_red_test": "test_world_side_signal_payloads_are_refused",
+      "label": "M10-scheduler-world_signal_scan-removed",
+      "returncode": 1,
+      "failed": [
+        "tests/v9/contracts/test_scheduler_contract.py::test_world_side_signal_payloads_are_refused[event_id]",
+        "tests/v9/contracts/test_scheduler_contract.py::test_world_side_signal_payloads_are_refused[world_entity_id]",
+        "tests/v9/contracts/test_scheduler_contract.py::test_world_side_signal_payloads_are_refused[contact]",
+        "tests/v9/contracts/test_scheduler_contract.py::test_world_side_signal_payloads_are_refused[truth_graph]"
+      ],
+      "summary": "4 failed, 156 passed in 0.45s",
+      "seconds": 0.71,
+      "tail": "    def test_world_side_signal_payloads_are_refused(scheduler, key):\n        assert key in WORLD_SIGNAL_KEYS\n>       with pytest.raises(SignalRejected) as caught:\nE       Failed: DID NOT RAISE SignalRejected\n\ntests/v9/contracts/test_scheduler_contract.py:68: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_scheduler_contract.py::test_world_side_signal_payloads_are_refused[event_id]\nFAILED tests/v9/contracts/test_scheduler_contract.py::test_world_side_signal_payloads_are_refused[world_entity_id]\nFAILED tests/v9/contracts/test_scheduler_contract.py::test_world_side_signal_payloads_are_refused[contact]\nFAILED tests/v9/contracts/test_scheduler_contract.py::test_world_side_signal_payloads_are_refused[truth_graph]\n4 failed, 156 passed in 0.45s",
+      "caught": true,
+      "ok": true
+    }
+  ]
+}

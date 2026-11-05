@@ -1,0 +1,236 @@
+{
+  "task": "ainerzero.V9.B8",
+  "stage": "r6-output-suite",
+  "candidate": {
+    "path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B1/r6-candidate/check_skill_proposal.py",
+    "sha256": "d902876a8e5aa1af58d1e3a974c099d847cadae2b79f1956037b2186eafa8c0b"
+  },
+  "r4": {
+    "path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B1/check_skill_proposal.py",
+    "sha256": "37d4308f34a64bad515a8ef44b0c9a12b8bf6f35c24a628730280c3ad50328da"
+  },
+  "delivered": {
+    "check_result_sha256": "ef9a4bd11018c6cd37d8c78dde8a86fbc6643df7b04a2954c651f68753c2aa62",
+    "sha256sums_sha256": "65a3ada39e5fd457cd16d1afd4ae1c1804cf441500ea78fe1ec1b149dfba403e"
+  },
+  "checks": [
+    {
+      "id": "identity-candidate",
+      "ok": true,
+      "detail": {
+        "sha256": "d902876a8e5aa1af58d1e3a974c099d847cadae2b79f1956037b2186eafa8c0b"
+      }
+    },
+    {
+      "id": "identity-r4",
+      "ok": true,
+      "detail": {
+        "sha256": "37d4308f34a64bad515a8ef44b0c9a12b8bf6f35c24a628730280c3ad50328da"
+      }
+    },
+    {
+      "id": "identity-delivered-check-result",
+      "ok": true,
+      "detail": {
+        "sha256": "ef9a4bd11018c6cd37d8c78dde8a86fbc6643df7b04a2954c651f68753c2aa62"
+      }
+    },
+    {
+      "id": "E1-fresh-output",
+      "ok": true,
+      "detail": {
+        "rc": 0,
+        "duration_s": 78.671,
+        "files": [
+          "SHA256SUMS.txt",
+          "check_result.json"
+        ],
+        "cases_total": 112,
+        "check_result_sha": "8192b347e2422831bfd992e8549cd1aa248beefb0d34994e370a22e586ea9921",
+        "sha_sums_sha": "ece3e4893f593a547968fff2fd54735ad81ddffe1ec7106550cdb75d2836313b",
+        "tree_diff_clean": true,
+        "tree_diff": {
+          "candidate": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "r4": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "contracts_v9": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          },
+          "docs_v9": {
+            "added": [],
+            "removed": [],
+            "changed": []
+          }
+        }
+      }
+    },
+    {
+      "id": "E1b-output-deterministic",
+      "ok": true,
+      "detail": {
+        "rc": 0,
+        "run1_sha": "8192b347e2422831bfd992e8549cd1aa248beefb0d34994e370a22e586ea9921",
+        "run2_sha": "8192b347e2422831bfd992e8549cd1aa248beefb0d34994e370a22e586ea9921",
+        "deterministic": true
+      }
+    },
+    {
+      "id": "E1c-delivered-evidence-audit",
+      "ok": true,
+      "detail": {
+        "delivered_check_result_mentions_r5_candidate": true,
+        "fresh_check_result_mentions_r6_candidate": true,
+        "delivered_sums_mentions_r5_candidate": true,
+        "delivered_check_result_sha": "ef9a4bd11018c6cd37d8c78dde8a86fbc6643df7b04a2954c651f68753c2aa62",
+        "fresh_check_result_sha": "8192b347e2422831bfd992e8549cd1aa248beefb0d34994e370a22e586ea9921",
+        "delivered_sums_sha": "65a3ada39e5fd457cd16d1afd4ae1c1804cf441500ea78fe1ec1b149dfba403e",
+        "fresh_sums_sha": "ece3e4893f593a547968fff2fd54735ad81ddffe1ec7106550cdb75d2836313b",
+        "delivered_evidence_stale": true
+      }
+    },
+    {
+      "id": "E2-rerun-refused",
+      "ok": true,
+      "detail": {
+        "rc": 2,
+        "errors": [
+          "output_evidence_exists: 输出目录已存在输出证据文件，拒绝覆盖既有文件："
+        ],
+        "no_traceback": true,
+        "evidence_sha_unchanged": true
+      }
+    },
+    {
+      "id": "E3-overlap-rejections",
+      "ok": true,
+      "detail": {
+        "cases": [
+          {
+            "case": "r4-dir-ancestor",
+            "rc": 2,
+            "errors": [
+              "output_ancestor_of_input: 输出目录是实际输入的祖先（祖先重叠）："
+            ],
+            "no_traceback": true,
+            "protected_changed": {
+              "r4dir": [],
+              "canddir": [],
+              "fixtures": []
+            },
+            "ok": true
+          },
+          {
+            "case": "candidate-dir-same-path",
+            "rc": 2,
+            "errors": [
+              "output_path_is_input: 输出目录与实际输入是同一路径（同路径重叠）："
+            ],
+            "no_traceback": true,
+            "protected_changed": {
+              "r4dir": [],
+              "canddir": [],
+              "fixtures": []
+            },
+            "ok": true
+          },
+          {
+            "case": "fixtures-descendant",
+            "rc": 2,
+            "errors": [
+              "output_inside_input: 输出目录位于实际输入之内（后代重叠）："
+            ],
+            "no_traceback": true,
+            "protected_changed": {
+              "r4dir": [],
+              "canddir": [],
+              "fixtures": []
+            },
+            "ok": true
+          },
+          {
+            "case": "symlink-alias",
+            "rc": 2,
+            "errors": [
+              "output_path_is_input: 输出目录与实际输入是同一路径（同路径重叠）："
+            ],
+            "no_traceback": true,
+            "protected_changed": {
+              "r4dir": [],
+              "canddir": [],
+              "fixtures": []
+            },
+            "ok": true
+          },
+          {
+            "case": "output-path-is-file",
+            "rc": 2,
+            "errors": [
+              "output_not_directory: 输出路径已存在且不是目录：/private/tmp/b8-r6-outputs/not-a-dir"
+            ],
+            "no_traceback": true,
+            "protected_changed": {
+              "r4dir": [],
+              "canddir": [],
+              "fixtures": []
+            },
+            "ok": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "E4-r4-candidate-bytes-unchanged",
+      "ok": true,
+      "detail": {
+        "candidate": {
+          "added": [],
+          "removed": [],
+          "changed": []
+        },
+        "r4": {
+          "added": [],
+          "removed": [],
+          "changed": []
+        },
+        "contracts_v9": {
+          "added": [],
+          "removed": [],
+          "changed": []
+        },
+        "docs_v9": {
+          "added": [],
+          "removed": [],
+          "changed": []
+        }
+      }
+    }
+  ],
+  "checks_failed": [],
+  "all_checks_ok": true,
+  "findings": [
+    {
+      "id": "r6-delivered-evidence-stale",
+      "detail": "候选目录 r6-candidate 的 check_result.json/SHA256SUMS.txt 仍含 reports/V9-B1/r5-candidate 逻辑路径（B7 第4棒改目录名后未重生成），与本次全新输出不一致；R6_SHA256SUMS.txt 是另一份当前身份清单"
+    }
+  ],
+  "identity": {
+    "harness_python": "/usr/local/bin/python3",
+    "harness_version": "3.12.2",
+    "platform": "macOS-27.2-arm64-arm-64bit",
+    "agent": "deepseek-flash-4up8",
+    "task": "ainerzero.V9.B8",
+    "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+    "jsonschema": "4.21.1",
+    "checked_python": "/usr/local/bin/python3",
+    "checked_python_real": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12"
+  }
+}

@@ -1,0 +1,151 @@
+{
+  "task": "ainerzero.V9.B12",
+  "agent": "deepseek-q7m2",
+  "tier": 2,
+  "date": "2026-10-28",
+  "adr": {
+    "path": "/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0014-constrained-mechanism-formation.md",
+    "version": "r3-accepted",
+    "sha256": "8c9b861a12021634ed8652aec30bfe14608053b4bc97d38fce2b638fc465c585",
+    "lines": 227
+  },
+  "previous_handoff": {
+    "agent": "gemini-f8a2",
+    "state": "released-after-0-min",
+    "changes_made": 0
+  },
+  "changes": {
+    "C1_promotion_evidence_v2": {
+      "status": "done",
+      "fields_added": 12,
+      "v1_promote": "refused-fail-closed"
+    },
+    "C2_slow_producer_guard": {
+      "status": "done",
+      "function": "require_independent_slow_producer(producer, *, trusted_context)",
+      "validate_producer_signature_unchanged": true,
+      "registry_unchanged": true
+    },
+    "C3_fragment_provenance": {
+      "status": "done",
+      "fields_added": 3,
+      "world_truth_id_fence": "L2/L5/L8 tokens"
+    },
+    "C4_revoke_demote_supersede": {
+      "status": "done",
+      "abstract_methods_added": 4
+    },
+    "C5_cmfl_registration": {
+      "status": "done",
+      "example": "reports/V9-B12/cmfl_registration.json",
+      "example_sha256": "e3f7e08d73ea9150b85ba7c04eaedefd15bfbb391acb03a0d6a8f4d44fd1909c"
+    },
+    "C6_skill_proposal": {
+      "status": "not-changed-per-adr"
+    },
+    "C7_param_belief_and_routes": {
+      "status": "done",
+      "classes": [
+        "ParamBelief",
+        "ParamBeliefStore",
+        "MSGRouteRecord",
+        "MSGRouteLog"
+      ],
+      "update_scheduler_touched": false
+    }
+  },
+  "tests": {
+    "suite": "tests/v9/contracts",
+    "baseline_passed": 178,
+    "now_passed": 288,
+    "added": 110,
+    "failed": 0,
+    "new_files": {
+      "test_promotion_evidence_v2.py": 41,
+      "test_memory_lifecycle.py": 24,
+      "test_param_belief.py": 17,
+      "test_fragment_provenance.py": 14,
+      "test_cmfl_registration.py": 13
+    },
+    "rewritten": {
+      "test_spatial_memory.py": "v1 evidence fixture -> v2 + v1-promote negative (21 cases)",
+      "test_interface_surface.py": "SpatialMemory required surface 7 -> 11 methods"
+    }
+  },
+  "guard_removal": {
+    "script": "reports/V9-B12/guard_removal.py",
+    "mutants": 15,
+    "red": 15,
+    "controls_green": 15,
+    "worktree_pollution": 0,
+    "by_change": {
+      "C1": 3,
+      "C2": 3,
+      "C3": 3,
+      "C4": 3,
+      "C5": 1,
+      "C7": 2
+    },
+    "evidence": "evidence/03-guard-removal.txt (SHA 已与终态源码对齐，见日志内每例 before->mutated->restored)"
+  },
+  "scope": {
+    "files_modified": 8,
+    "files_added": 9,
+    "lines_added_approx": 3029,
+    "out_of_scope_files_touched": 0,
+    "git_commits": 0,
+    "lines_note": "modified-file deltas (763) + new source/test/script lines (2201) + registration json (65)"
+  },
+  "deviations": [
+    {
+      "id": "D-1",
+      "what": "PromotionEvidence.prior_version is a required v2 field not listed in ADR C1",
+      "why": "makes the D3-9 revalidation clause executable"
+    },
+    {
+      "id": "D-2",
+      "what": "binding_sha256 is a canonical digest, not a signature",
+      "why": "structural binding only; authentication is the issuer's job"
+    },
+    {
+      "id": "D-3",
+      "what": "v1 construction still accepts producer='student'",
+      "why": "ADR requires v1 to stay constructible/readable; v1 has no promotion path"
+    },
+    {
+      "id": "D-4",
+      "what": "revoke sets level to 'mid' instead of keeping 'slow' with a flag",
+      "why": "single source of truth for level"
+    },
+    {
+      "id": "D-5",
+      "what": "DEFAULT_CONFORMAL_N_MIN=10 is an interface default",
+      "why": "real value comes from cmfl_registration.discovery.n_min"
+    }
+  ],
+  "out_of_scope_failures": {
+    "count": 6,
+    "attribution": "pre-existing, reproduced with --ignore=tests/v9/contracts",
+    "items": [
+      "tests/v9/geometry/test_canonical.py::test_cpu_only_imports (order pollution; geometry alone: 149 passed)",
+      "tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only (same)",
+      "tests/v9/mechanism/test_cmfl_prototype.py x3 (G7's own card; mechanism/ has zero references to interfaces)",
+      "tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy... (S1 line)"
+    ]
+  },
+  "evidence": {
+    "01-sha-before.txt": "a08b2054fa90fde40f22c8e342a4af87eae3979568f5fa1b6e2eb0b51651b1aa",
+    "02-sha-after.txt": "b00752541cf0acdd994b89900d2db50213a06a353addb2571879d3d867c7efa1",
+    "03-guard-removal.txt": "424677ff155f42c566e2a0c9553c2e78eccb16108fc8a30150c390399bd4f2cc",
+    "04-tests.txt": "b87dcbb6ff9f61bb6ccaf8efe830e71c156c56c6be955656999de93a41320e8b"
+  },
+  "key_source_sha256": {
+    "src/ainerzero/v9/interfaces/types.py": "58eedc931fe5928044c17e3ab823f1cd73491494221559f7d4fb9557fcc62254",
+    "src/ainerzero/v9/interfaces/validation.py": "3d9e403b0829bb36d69efccdf0706c485069b7b5abef48355c42e9a2e1e3f764",
+    "src/ainerzero/v9/interfaces/spatial_memory.py": "027b5a2d04c1490b90474c6ea251171680186520b0eade95da3a8d1ca32c3f82",
+    "src/ainerzero/v9/interfaces/cmfl.py": "380d273f2800e1854be8f77689e5b79fd2ddba8e6ee346f4409363324759501a",
+    "src/ainerzero/v9/interfaces/cmfl_registration.py": "afb93c9ee040b49ad90ccd5c79a01480b3aa2f670b5b8faedf716a29f45e04bd",
+    "src/ainerzero/v9/fakes/spatial_memory.py": "e62b8db766e54eaf8f8c1acd859d07428af7aa3375517526ed5c32e9a6f10b63"
+  },
+  "verdict": "ready-for-B13-adversarial-review"
+}

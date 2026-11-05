@@ -1,0 +1,231 @@
+{
+  "task": "ainerzero.V9.B4",
+  "revision": "r4",
+  "agent": "ainercodex-p4x7",
+  "tier": "二级执行层",
+  "gpu": false,
+  "synthetic_only": true,
+  "all_ok": true,
+  "supersedes": "r3（antigravity-7c1e），r3 的原始报告/指标/夹具/脚本已归档在 reports/V9-B1/archive/r3-20261016T2041/",
+  "authority": "reports/V9-B1/COORDINATOR_DECISIONS.md 裁决 1–11 + AinerRelay/.../B4-r4-DECISIONS.md F1–F7；未自行 accept",
+  "counts": {
+    "cases_total": 112,
+    "positive_cases": 18,
+    "negative_cases": 94,
+    "distinct_rules_with_counterexample": 17,
+    "controls": 94,
+    "controls_isolated_miss": 41,
+    "reply_cases": 10,
+    "reply_negative_cases": 7,
+    "reply_controls": 7,
+    "reply_controls_isolated_miss": 7,
+    "confidence_sweep_rows": 184,
+    "no_rewrite_rows": 18,
+    "leak_scan_rows": 112,
+    "jcs_self_tests": 18,
+    "jcs_self_tests_ok": 18,
+    "schema_meta_checks": 3,
+    "registry_entries": 7,
+    "registry_entry_matrix_rows": 13,
+    "registry_entry_matrix_ok": 13,
+    "probe_invariant_rows": 2,
+    "consistency_rows": 2,
+    "hygiene_rows": 2,
+    "fixture_files_checked": 236,
+    "case_insensitive_name_collisions": 0,
+    "same_inode_collisions": 0,
+    "existing_canon_vs_jcs_differences": 10
+  },
+  "r4_deltas_vs_r3": {
+    "cases_total": "52 -> 112",
+    "positive_cases": "8 -> 18",
+    "negative_cases": "44 -> 94",
+    "controls_isolated_miss": "44 -> 41（53 条规范化拼写反例属“按设计不隔离”：层 1 schema 正则已先拒，详见 control_failures 说明与 docs §2.4）",
+    "distinct_rules_with_counterexample": "16 -> 17",
+    "registry_entry_matrix": "新增 13 行，13/13 通过",
+    "b5_probe_variants": "新增回归：1131/1131 全部拒绝（规范化层与 schema 层各自全拒）",
+    "fixture_name_collisions": "新增扫描：236 文件、casefold 0 碰撞、inode 0 碰撞",
+    "disable_rule_hygiene": "新增 2 行：未知名退出码 2、已知名不被误拒",
+    "allowlist_consistency": "新增 2 行：schema enum / entry enum / 核对器允许表三方逐项一致",
+    "jcs_fail_closed": "新增 2 条反例（超范围整数、孤立代理项）+ 隔离破坏对照",
+    "quantity_allowlist": "新增 7 条反例 + 10 条裸复数正例"
+  },
+  "r4_item_closure": {
+    "F1_plural_stem_and_affix_aliases": {
+      "status": "closed",
+      "evidence": "1131/1131 探针；56 条拼写反例（含 entities_id/objects_id/gtWorldId/objectIdMap/id_world/ids_object/HIDDENID/idx/identifiers）"
+    },
+    "F2_case_insensitive_collision": {
+      "status": "closed",
+      "evidence": "序号前缀文件命名 + casefold/inode 扫描 0 碰撞；EXPECTATIONS 与磁盘计数一致"
+    },
+    "F3_entry_param_schema_dynamic_branch": {
+      "status": "closed",
+      "evidence": "UNSUPPORTED_PARAM_SCHEMA_KEYWORDS（含 patternProperties/$ref/if-then/oneOf）+ 13 条矩阵"
+    },
+    "F4_jcs_fail_closed": {
+      "status": "closed",
+      "evidence": "safe_jcs_sha + jcs_fail_closed 检查 + CLI try/except；两条反例各配隔离对照；0 traceback"
+    },
+    "F5_doc_closure_matrix": {
+      "status": "closed",
+      "evidence": "docs §13 三层矩阵 13 行，含“值级偷带/任意隐写未消除”如实条目"
+    },
+    "F6_quantity_allowlist": {
+      "status": "closed",
+      "evidence": "schema 50 项封闭枚举 + 上下文 pin 可信表 + 条目 observable_names；7 反例 10 正例"
+    },
+    "F7_sha_and_disable_hygiene": {
+      "status": "closed",
+      "evidence": "SHA256SUMS 三列（RAW/JCS/PATH）每轮重算；--disable 未知名退出码 2"
+    }
+  },
+  "schemas": [
+    {
+      "schema": "skill_proposal.v1",
+      "path": "contracts/v9/skill_proposal.v1.schema.json",
+      "sha256": "cdbed88a4fd4a7c13269781659f2700cf0124838f9d4f2706872effe7d2c76a1",
+      "meta_ok": true
+    },
+    {
+      "schema": "skill_gate_reply.v1",
+      "path": "contracts/v9/skill_gate_reply.v1.schema.json",
+      "sha256": "dc81852c0dc6341a033bcf9ed70c969091faae541e775c4682cb0ce6f1840f2c",
+      "meta_ok": true
+    },
+    {
+      "schema": "ability_registry_entry.v0",
+      "path": "contracts/v9/ability_registry_entry.v0.schema.json",
+      "sha256": "8b5d089b40a226bfd300a5b94af6399e321cd19da839d5ca88801aa90377489f",
+      "meta_ok": true
+    }
+  ],
+  "artifacts": {
+    "contracts/v9/skill_proposal.v1.schema.json": "cdbed88a4fd4a7c13269781659f2700cf0124838f9d4f2706872effe7d2c76a1",
+    "contracts/v9/skill_gate_reply.v1.schema.json": "dc81852c0dc6341a033bcf9ed70c969091faae541e775c4682cb0ce6f1840f2c",
+    "contracts/v9/ability_registry_entry.v0.schema.json": "8b5d089b40a226bfd300a5b94af6399e321cd19da839d5ca88801aa90377489f",
+    "docs/v9/SKILL_PROPOSAL.md": "148fcfed4c0a7e03cce804880f8f94e7ebb4fdc798c847a5518be15edd894adf",
+    "reports/V9-B1/check_skill_proposal.py": "9cf0d90b00ab14453b92c5666790af2ab7e8330bb4fceff42c3560a83ba5e02d",
+    "reports/V9-B1/check_result.json": "10e65404e476df67459e22c3b38d652ba7a66a035e2228ba7bd403972bfc70f1",
+    "reports/V9-B1/COORDINATOR_DECISIONS.md": "04504c33643c30b3116abe5cd8430fe2bc0e8f44fa70154b9c2f892f93a6d113",
+    "contracts/v9/examples/skill_proposal_v1/EXPECTATIONS.json": "6389216957ca5e5a1c53d3955de1fb179e4e1130fbafc6adf1b7169f6f553a66"
+  },
+  "jcs_context_hashes": {
+    "contexts/80_jcs_lone_surrogate.json": null
+  },
+  "inputs_read_only": {
+    "reports/V9-B1/COORDINATOR_DECISIONS.md": "04504c33643c30b3116abe5cd8430fe2bc0e8f44fa70154b9c2f892f93a6d113",
+    "ARCHITECTURE_V9.md": "0f54a96ace5b9c6fad2f3a16f3e6417a2f521fe131a13400263a0f5d9920f2a4",
+    "docs/v9/SKILL_PROPOSAL_COORDINATION.md": "9593eccf5c092099d488e72c2c505deb0b116fe3cc52385793d2cc1d7e0495c1",
+    "docs/v9/TEACHERS_AND_CACHE.md": "a5b5d07556e899905add48158e6252a206e0b19daddf4b7ffa8e96125f36e636",
+    "AinerRelay/.../B4-r4-DECISIONS.md": "d2e5dee3c4331442e19db59254dc60a3b1a160fdda86b1962db07d120fd21cf2",
+    "AnimeWorldZero/contracts/v9/observation_packet.v1_1.schema.json": "01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb",
+    "reports/V-V9-B1/probe_variants.json": "3f40299111ed0629611341f5f4226e857ca5101cc4eae9e0eb04f7593e732507",
+    "reports/V-V9-B1/oracle_r3.py": "8540645ee1c8f11a7dd970d14a8860e8f70103409fc8cb21e0bae5945c0ef125"
+  },
+  "b5_probe_regression": [
+    {
+      "name": "b5_probe_variants_rejected_by_normalization",
+      "total": 1131,
+      "rejected": 1131,
+      "by_family": [
+        {
+          "family": "hidden_contact",
+          "total": 36,
+          "rejected_by_normalization": 36
+        },
+        {
+          "family": "mandated",
+          "total": 402,
+          "rejected_by_normalization": 402
+        },
+        {
+          "family": "padded",
+          "total": 297,
+          "rejected_by_normalization": 297
+        },
+        {
+          "family": "plural_stem",
+          "total": 396,
+          "rejected_by_normalization": 396
+        }
+      ],
+      "ok": true
+    },
+    {
+      "name": "b5_probe_variants_rejected_by_schema_pattern",
+      "total": 1131,
+      "rejected": 1131,
+      "note": "schema 只做结构快拒；完整覆盖由规范化判定负责（r4 F5 闭合矩阵）。",
+      "ok": true
+    }
+  ],
+  "allowlist_consistency": [
+    {
+      "name": "schema_enum_matches_checker_allowlist",
+      "ok": true,
+      "schema_count": 50,
+      "checker_count": 50
+    },
+    {
+      "name": "entry_enum_matches_checker_allowlist",
+      "ok": true,
+      "entry_count": 50,
+      "checker_count": 50
+    }
+  ],
+  "disable_rule_hygiene": [
+    {
+      "name": "unknown_rule_rejected",
+      "rules": [
+        "no_such_rule_zzz"
+      ],
+      "returncode": 2,
+      "ok": true,
+      "payload_errors": [
+        "unknown_disable_rule:no_such_rule_zzz"
+      ]
+    },
+    {
+      "name": "known_rule_accepted",
+      "rules": [
+        "params"
+      ],
+      "returncode": 0,
+      "ok": true,
+      "payload_errors": null
+    }
+  ],
+  "fixture_name_collision_scan": {
+    "files": 236,
+    "case_insensitive_collisions": [],
+    "same_inode_collisions": []
+  },
+  "controls_non_isolated_by_design": {
+    "count": 53,
+    "names": [
+      "world_id_norm_01_world_snake",
+      "world_id_norm_02_world_title",
+      "world_id_norm_03_world_upper",
+      "world_id_norm_04_world_hyphen",
+      "world_id_norm_05_world_dot",
+      "world_id_norm_06_world_camel"
+    ],
+    "why": "规范化拼写反例：层 1 schema 正则已经拒绝，关掉层 2 不会放行；层 2 的隔离性由 idx/identifiers 与 entities_plural 三条真正隔离的对照证明"
+  },
+  "failures": [],
+  "control_failures": [],
+  "unverified": [
+    "没有真实 AWZ 门禁实现、没有内核求值、没有 WorldBrainAdapter（V9.B2 / AWZ 侧）",
+    "参数值级偷带与任意隐写未消除：合法键里的世界 ID 字符串只能靠可信能力 schema / 句柄解析拦（docs §13 第 3、4 行）",
+    "裁决 11 的 final 分区训练门只在文档写明，未实现",
+    "句柄映射、E3 编译、编辑路线授权均未实现",
+    "测试通过不等于能力通过；本卡不构成运行授权"
+  ],
+  "commands": {
+    "suite": "/Users/mac/AinerWorkFlow/AnimeWorldZero/.venv/bin/python reports/V9-B1/check_skill_proposal.py --suite",
+    "suite_regenerate": "同上加 --regenerate（仅作者改夹具时用，复核不得用）",
+    "gate_example": "同上脚本 gate --proposal <夹具> --context <上下文> --expected-context-sha256 <pin> --schema <schema> --reply-schema <reply schema>",
+    "unknown_disable_must_fail": "… gate … --disable no_such_rule_zzz  → 退出码 2"
+  }
+}

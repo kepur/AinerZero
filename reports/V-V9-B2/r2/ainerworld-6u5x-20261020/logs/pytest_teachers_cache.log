@@ -1,0 +1,887 @@
+.FF.FFFFFFFF.FF..                                                        [100%]
+=================================== FAILURES ===================================
+____________________ test_write_read_blob_schema_compliant _____________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x100c4f500>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+
+    def test_write_read_blob_schema_compliant(temp_cache_dir, sample_blob_args):
+        data = b"test output data"
+>       record = cache_mod.write_blob(output_data=data, **sample_blob_args)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/teachers/test_cache.py:204: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x100c4f500>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'test output data'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+_______________ test_validate_schema_blob_and_entry_have_asserts _______________
+
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+sample_key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+
+    def test_validate_schema_blob_and_entry_have_asserts(sample_blob_args, sample_key_material):
+        data = b"abc"
+        good = cache_mod.build_blob_record(
+            cache_key=sample_blob_args["cache_key"],
+            key_material=sample_key_material,
+            output_data=data,
+            teacher_license=_license(True),
+            reproducibility="numeric",
+            generation_info=cache_mod.default_generation(),
+            tolerance={"metric": "cosine_min", "value": 0.999},
+        )
+>       assert validate_schema(good, "teacher_blob") == []
+E       AssertionError: assert ['jsonschema_not_available'] == []
+E         
+E         Left contains one more item: 'jsonschema_not_available'
+E         Use -v to get more diff
+
+tests/v9/teachers/test_cache.py:226: AssertionError
+_____________________ test_blob_nondeterministic_rejected ______________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x103277950>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+
+    def test_blob_nondeterministic_rejected(temp_cache_dir, sample_blob_args):
+>       cache_mod.write_blob(output_data=b"first", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:245: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x103277950>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'first'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+_______________________ test_blob_same_output_idempotent _______________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x103277c50>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+
+    def test_blob_same_output_idempotent(temp_cache_dir, sample_blob_args):
+>       cache_mod.write_blob(output_data=b"same", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:251: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x103277c50>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'same'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+______________________ test_blob_broken_on_output_tamper _______________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1031e5ca0>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+
+    def test_blob_broken_on_output_tamper(temp_cache_dir, sample_blob_args):
+>       cache_mod.write_blob(output_data=b"valid", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:257: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1031e5ca0>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'valid'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+____________________ test_f9_key_material_swap_marks_broken ____________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1032773b0>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+sample_key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+
+    def test_f9_key_material_swap_marks_broken(temp_cache_dir, sample_blob_args, sample_key_material):
+>       cache_mod.write_blob(output_data=b"valid", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:268: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1032773b0>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'valid'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+____________________________ test_write_read_entry _____________________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x103277980>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+sample_key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+
+    def test_write_read_entry(temp_cache_dir, sample_blob_args, sample_key_material):
+>       cache_mod.write_blob(output_data=b"out", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:280: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x103277980>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'out'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+_______________ test_f1_same_entry_id_different_content_rejected _______________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1032754c0>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+sample_key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+
+    def test_f1_same_entry_id_different_content_rejected(
+        temp_cache_dir, sample_blob_args, sample_key_material
+    ):
+>       cache_mod.write_blob(output_data=b"out", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:291: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1032754c0>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'out'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+___________________ test_f8_derivation_teacher_swap_rejected ___________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x103275f10>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+sample_key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+
+    def test_f8_derivation_teacher_swap_rejected(
+        temp_cache_dir, sample_blob_args, sample_key_material
+    ):
+>       cache_mod.write_blob(output_data=b"out", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:305: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x103275f10>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'out'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+_____________________ test_cross_partition_serial_rejected _____________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1032c08f0>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+sample_key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+
+    def test_cross_partition_serial_rejected(
+        temp_cache_dir, sample_blob_args, sample_key_material
+    ):
+>       cache_mod.write_blob(output_data=b"out", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:318: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1032c08f0>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'out'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+__________________ test_f3_concurrent_cross_partition_reject ___________________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1032c21e0>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+sample_key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+
+    def test_f3_concurrent_cross_partition_reject(temp_cache_dir, sample_blob_args, sample_key_material):
+        root = str(cache_mod.get_cache().root)
+        # pre-write blob once in parent
+>       cache_mod.write_blob(output_data=b"shared-out", **sample_blob_args)
+
+tests/v9/teachers/test_cache.py:396: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x1032c21e0>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'shared-out'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'numeric', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None
+tolerance = {'metric': 'cosine_min', 'value': 0.999}, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+______________ test_f11_f12_disk_forgery_cannot_flip_eligibility _______________
+
+temp_cache_dir = <ainerzero.v9.teachers.cache.TeacherCache object at 0x101cb4230>
+sample_blob_args = {'cache_key': '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c', 'key_material': {'teacher': {'teache...eference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}, 'reproducibility': 'numeric', ...}
+sample_key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+
+    def test_f11_f12_disk_forgery_cannot_flip_eligibility(
+        temp_cache_dir, sample_blob_args, sample_key_material
+    ):
+        # honest: unverified + binding unverified → not eligible
+        args = dict(sample_blob_args)
+        args["reproducibility"] = "unverified"
+        args["tolerance"] = None
+>       blob = cache_mod.write_blob(output_data=b"out", **args)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/v9/teachers/test_cache.py:442: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/teachers/cache.py:542: in write_blob
+    return get_cache().write_blob(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.teachers.cache.TeacherCache object at 0x101cb4230>
+cache_key = '7322461f688526647b0398c8e7708c1756744842f1a8af76346ab9c21ed1446c'
+key_material = {'teacher': {'teacher_id': 'vjepa2.1-vitl', 'variant': 'synthetic-test', 'teacher_kind': 'feature', 'weights': [{'file...sode_id': 'test-episode-001', 'epoch_id': 'test-epoch-001', 'tick_hz': 120}, 'timestamps_ticks': [0, 12, 24, 36], ...}}
+output_data = b'out'
+teacher_license = {'license_id': 'MIT', 'source_url': 'https://example.com/license', 'verified_at': '2026-10-20', 'scope': {'reference': True, 'train': True, 'eval': True, 'commercial_output': True, ...}, ...}
+reproducibility = 'unverified', confidence_data = None
+generation_info = {'mode': 'teacher', 'argv': ['teacher-cache-write'], 'started_at': '2026-10-20T00:00:00+03:00', 'wall_s': 0.0, ...}
+output_meta = None, confidence_meta = None, tolerance = None, extra = None
+
+    def write_blob(
+        self,
+        cache_key: str,
+        key_material: Dict,
+        output_data: bytes,
+        teacher_license: Dict,
+        reproducibility: str = "unverified",
+        confidence_data: Optional[bytes] = None,
+        generation_info: Optional[Dict] = None,
+        output_meta: Optional[Dict] = None,
+        confidence_meta: Optional[Dict] = None,
+        tolerance: Any = None,
+        extra: Optional[Dict] = None,
+    ) -> Dict:
+        for name, val in (
+            ("cache_key", cache_key),
+            ("key_material", key_material),
+            ("teacher_license", teacher_license),
+            ("reproducibility", reproducibility),
+            ("output_data", output_data),
+        ):
+            if val is None or val == "" or val == {}:
+                raise MetadataIncompleteError(f"missing required blob metadata: {name}")
+        if not isinstance(output_data, (bytes, bytearray)):
+            raise MetadataIncompleteError("output_data must be bytes")
+        if sha(key_material) != cache_key:
+            raise HashMismatchError(f"cache_key mismatch for {cache_key[:16]}...")
+    
+        record = build_blob_record(
+            cache_key=cache_key,
+            key_material=key_material,
+            output_data=bytes(output_data),
+            teacher_license=teacher_license,
+            reproducibility=reproducibility,
+            confidence_data=confidence_data,
+            generation_info=generation_info,
+            output_meta=output_meta,
+            confidence_meta=confidence_meta,
+            tolerance=tolerance,
+        )
+        if extra:
+            # reject unknown top-level extras that would break schema
+            raise SchemaValidationError("extra top-level blob fields are not allowed")
+    
+        errs = validate_schema(record, "teacher_blob")
+        if errs:
+>           raise SchemaValidationError("blob schema invalid: " + "; ".join(errs[:5]))
+E           ainerzero.v9.teachers.cache.SchemaValidationError: blob schema invalid: jsonschema_not_available
+
+src/ainerzero/v9/teachers/cache.py:267: SchemaValidationError
+=========================== short test summary info ============================
+FAILED tests/v9/teachers/test_cache.py::test_write_read_blob_schema_compliant
+FAILED tests/v9/teachers/test_cache.py::test_validate_schema_blob_and_entry_have_asserts
+FAILED tests/v9/teachers/test_cache.py::test_blob_nondeterministic_rejected
+FAILED tests/v9/teachers/test_cache.py::test_blob_same_output_idempotent - ai...
+FAILED tests/v9/teachers/test_cache.py::test_blob_broken_on_output_tamper - a...
+FAILED tests/v9/teachers/test_cache.py::test_f9_key_material_swap_marks_broken
+FAILED tests/v9/teachers/test_cache.py::test_write_read_entry - ainerzero.v9....
+FAILED tests/v9/teachers/test_cache.py::test_f1_same_entry_id_different_content_rejected
+FAILED tests/v9/teachers/test_cache.py::test_f8_derivation_teacher_swap_rejected
+FAILED tests/v9/teachers/test_cache.py::test_cross_partition_serial_rejected
+FAILED tests/v9/teachers/test_cache.py::test_f3_concurrent_cross_partition_reject
+FAILED tests/v9/teachers/test_cache.py::test_f11_f12_disk_forgery_cannot_flip_eligibility
+12 failed, 5 passed in 6.23s

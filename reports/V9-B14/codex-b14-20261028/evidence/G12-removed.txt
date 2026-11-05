@@ -1,0 +1,22 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts/test_memory_lifecycle.py::test_supersede_is_single_shot", "-q", "-p", "no:cacheprovider"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src", "returncode": 1}
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________________ test_supersede_is_single_shot _________________________
+
+memory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x105768920>
+
+    def test_supersede_is_single_shot(memory):
+        first = fragment("f-1")
+        second = fragment("f-2", action_keys=("act-2",))
+        third = fragment("f-3", action_keys=("act-3",))
+        for stored in (first, second, third):
+            memory.write(stored)
+            memory.promote(stored.fragment_id, v2_evidence(stored))
+        memory.supersede("f-1", "f-2")
+>       with pytest.raises(ContractViolation) as caught:
+E       Failed: DID NOT RAISE ContractViolation
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_memory_lifecycle.py:260: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_memory_lifecycle.py::test_supersede_is_single_shot
+1 failed in 0.02s

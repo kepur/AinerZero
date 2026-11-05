@@ -1,0 +1,163 @@
+{
+  "task": "ainerzero.V9.B12",
+  "revision": "r3",
+  "agent": "codex-b12-r3-fix-20261028",
+  "role": "tier2 implementation author",
+  "author_group_includes_session_and_derived_aliases": true,
+  "git_head": "2de6caef0820894520271a8943761cc0b3cf8c22",
+  "source_sha256": {
+    "src/ainerzero/v9/interfaces/spatial_memory.py": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+    "src/ainerzero/v9/interfaces/validation.py": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739",
+    "tests/v9/contracts/test_promotion_consumption_r3.py": "293c0dba16e0d1b150b26c1b2e6dfab9fd0a5e01ff93418171ce42b0ebb7bd7b"
+  },
+  "contracts": {
+    "passed": 341,
+    "failed": 0,
+    "skipped": 0,
+    "added_cases": 46
+  },
+  "rejected_r2_reproduction": {
+    "failed": 33,
+    "passed": 13,
+    "source_before_sha_verified": true
+  },
+  "first_new_test_run": {
+    "failed": 41,
+    "passed": 4,
+    "cause": "author test assertion used QueryResult.items instead of entries; preserved raw log"
+  },
+  "ordinary_probe": {
+    "rows": [
+      {
+        "case": "positive",
+        "outcome": "promoted_and_usable"
+      },
+      {
+        "case": "G1",
+        "outcome": "rejected",
+        "reason": "evidence_required: promote() only accepts PromotionEvidence schema_version='v2', got 'v1'; v1 evidence stays readable but may not promote (ADR-0014 §3 C1, fail-closed)"
+      },
+      {
+        "case": "G5",
+        "outcome": "rejected",
+        "reason": "evidence_required: trusted_context_binding: producer 'contract-harness' has no admission binding in trusted context 'ctx-b12'; a bare self-reported producer string is not accepted"
+      },
+      {
+        "case": "origin",
+        "outcome": "rejected",
+        "reason": "evidence_required: origin_category 'llm' may only reach MID, never SLOW: knowledge proposed by an LLM or a teacher cannot be promoted by swapping in a different producer (ADR-0014 §2 D5)"
+      },
+      {
+        "case": "overlap",
+        "outcome": "rejected",
+        "reason": "evidence_required: invalid promotion evidence at consumption: evidence.data_identity must be pairwise disjoint across D/C/T, got ['dev-D-20261028', 'dev-C-20261028', 'dev-D-20261028']; the discovery, calibration and test sets may never overlap (§2 D3)"
+      },
+      {
+        "case": "kind",
+        "outcome": "rejected",
+        "reason": "evidence_required: invalid promotion evidence at consumption: a SLOW promotion needs kind='independent_test' evidence"
+      }
+    ],
+    "loaded_models": []
+  },
+  "genuine_success_controls": [
+    {
+      "mutant": "G1",
+      "target": "G1",
+      "baseline": "rejected",
+      "mutated": "promoted_and_usable",
+      "positive": "promoted_and_usable",
+      "source_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+      "mutated_sha256": "041d05c39d5dfec7c3cd44901a7af2af55d8f99265367b66b652382fd0021e4f",
+      "restored_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208"
+    },
+    {
+      "mutant": "G5",
+      "target": "G5",
+      "baseline": "rejected",
+      "mutated": "promoted_and_usable",
+      "positive": "promoted_and_usable",
+      "source_sha256": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739",
+      "mutated_sha256": "eaf114f33bd35da39410b7f0d090887856c2b590309aa290270c358a0ae5b0de",
+      "restored_sha256": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739"
+    },
+    {
+      "mutant": "origin",
+      "target": "origin",
+      "baseline": "rejected",
+      "mutated": "promoted_and_usable",
+      "positive": "promoted_and_usable",
+      "source_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+      "mutated_sha256": "f4b14d124872ca7ee3b934c709cf4ccafbdf7a2c8a41754671acfc6c28a37297",
+      "restored_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208"
+    },
+    {
+      "mutant": "v2-overlap",
+      "target": "overlap",
+      "baseline": "rejected",
+      "mutated": "promoted_and_usable",
+      "positive": "promoted_and_usable",
+      "source_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+      "mutated_sha256": "6aa7a0287d1a76416f1bbdd464a6cf5a511001434b1ace68d083704652162a4a",
+      "restored_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208"
+    },
+    {
+      "mutant": "v2-kind",
+      "target": "kind",
+      "baseline": "rejected",
+      "mutated": "promoted_and_usable",
+      "positive": "promoted_and_usable",
+      "source_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+      "mutated_sha256": "6aa7a0287d1a76416f1bbdd464a6cf5a511001434b1ace68d083704652162a4a",
+      "restored_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208"
+    }
+  ],
+  "distinct_mutant_edits": 4,
+  "success_control_cases": 5,
+  "full_v2_mutant_checks_two_cases": [
+    "overlap",
+    "kind"
+  ],
+  "legacy_16_control_claim": "not re-certified; original G1/G5 red-only claims remain superseded by these controls",
+  "nonfinite_observations": [
+    {
+      "field": "calibration.alpha_dom",
+      "value": "nan",
+      "outcome": "rejected"
+    },
+    {
+      "field": "calibration.alpha_dom",
+      "value": "inf",
+      "outcome": "rejected"
+    },
+    {
+      "field": "error_control.alpha_t",
+      "value": "nan",
+      "outcome": "rejected"
+    }
+  ],
+  "cpu_engineering_only": true,
+  "model_loads": 0,
+  "real_runstore_access": false,
+  "model_lock_access": false,
+  "downloads": 0,
+  "paid_calls": 0,
+  "deployment": false,
+  "push": false,
+  "commit": false,
+  "other_cards_claimed": [],
+  "acceptance": "pending new non-author review",
+  "budget": {
+    "new_model_reservation": 0,
+    "actual_model_updates": 0,
+    "cpu_tests": "within original CPU engineering scope; no budget or frozen parameters modified"
+  },
+  "unverified": [
+    "model capability",
+    "real producer provenance authentication",
+    "referenced reports/calibration statistical truth",
+    "production deployment",
+    "new non-author acceptance",
+    "full tests/v9 outside contracts (G7 untouched)"
+  ]
+}

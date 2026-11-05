@@ -1,0 +1,16 @@
+{
+  "label": "legacy-G4-ablated",
+  "cmd": [
+    "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/v9/contracts/test_promotion_evidence_v2.py::test_student_self_evidence_is_refused_on_the_slow_path",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b15-isolated-omqv4n8i",
+  "returncode": 1,
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n____________ test_student_self_evidence_is_refused_on_the_slow_path ____________\n\n    def test_student_self_evidence_is_refused_on_the_slow_path():\n        \"\"\"The whole point of C2: ``producer=\"student\"`` must not issue SLOW evidence.\"\"\"\n        context = trusted_context_for(\"student\")\n        assert context[\"admission_bindings\"][0][\"category\"] == \"self\"\n>       with pytest.raises(EvidenceRequired) as caught:\nE       Failed: DID NOT RAISE EvidenceRequired\n\ntests/v9/contracts/test_promotion_evidence_v2.py:228: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_student_self_evidence_is_refused_on_the_slow_path\n1 failed in 0.04s\n",
+  "stderr": ""
+}

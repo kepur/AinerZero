@@ -1,0 +1,193 @@
+{
+  "jcs_vectors": [
+    {
+      "input": "{}",
+      "expect": "{}",
+      "got": "{}",
+      "ok": true
+    },
+    {
+      "input": "{'b': 1, 'a': 2}",
+      "expect": "{\"a\":2,\"b\":1}",
+      "got": "{\"a\":2,\"b\":1}",
+      "ok": true
+    },
+    {
+      "input": "{'�': 1, '𐀀': 2}",
+      "expect": "{\"𐀀\":2,\"�\":1}",
+      "got": "{\"𐀀\":2,\"�\":1}",
+      "ok": true
+    },
+    {
+      "input": "{'€': 'e', 'a': 'a'}",
+      "expect": "{\"a\":\"a\",\"€\":\"e\"}",
+      "got": "{\"a\":\"a\",\"€\":\"e\"}",
+      "ok": true
+    },
+    {
+      "input": "{'n': None, 't': True, 'f': False}",
+      "expect": "{\"f\":false,\"n\":null,\"t\":true}",
+      "got": "{\"f\":false,\"n\":null,\"t\":true}",
+      "ok": true
+    },
+    {
+      "input": "[1, 'a', None, True]",
+      "expect": "[1,\"a\",null,true]",
+      "got": "[1,\"a\",null,true]",
+      "ok": true
+    },
+    {
+      "input": "{'s': '\"\\\\\\x08\\x0c\\n\\r\\t\\x01'}",
+      "expect": "{\"s\":\"\\\"\\\\\\b\\f\\n\\r\\t\\u0001\"}",
+      "got": "{\"s\":\"\\\"\\\\\\b\\f\\n\\r\\t\\u0001\"}",
+      "ok": true
+    },
+    {
+      "input": "{'e': 'é😀'}",
+      "expect": "{\"e\":\"é😀\"}",
+      "got": "{\"e\":\"é😀\"}",
+      "ok": true
+    },
+    {
+      "input": "1e+21",
+      "expect": "1e+21",
+      "got": "1e+21",
+      "ok": true
+    },
+    {
+      "input": "1e+20",
+      "expect": "100000000000000000000",
+      "got": "100000000000000000000",
+      "ok": true
+    },
+    {
+      "input": "1e-06",
+      "expect": "0.000001",
+      "got": "0.000001",
+      "ok": true
+    },
+    {
+      "input": "1e-07",
+      "expect": "1e-7",
+      "got": "1e-7",
+      "ok": true
+    },
+    {
+      "input": "-0.0",
+      "expect": "0",
+      "got": "0",
+      "ok": true
+    },
+    {
+      "input": "0.1",
+      "expect": "0.1",
+      "got": "0.1",
+      "ok": true
+    },
+    {
+      "input": "1.0",
+      "expect": "1",
+      "got": "1",
+      "ok": true
+    },
+    {
+      "input": "100.0",
+      "expect": "100",
+      "got": "100",
+      "ok": true
+    },
+    {
+      "input": "1.5",
+      "expect": "1.5",
+      "got": "1.5",
+      "ok": true
+    },
+    {
+      "input": "-1.5",
+      "expect": "-1.5",
+      "got": "-1.5",
+      "ok": true
+    },
+    {
+      "input": "9007199254740991",
+      "expect": "9007199254740991",
+      "got": "9007199254740991",
+      "ok": true
+    },
+    {
+      "input": "1.2e-07",
+      "expect": "1.2e-7",
+      "got": "1.2e-7",
+      "ok": true
+    },
+    {
+      "input": "1.7976931348623157e+308",
+      "expect": "1.7976931348623157e+308",
+      "got": "1.7976931348623157e+308",
+      "ok": true
+    }
+  ],
+  "pins": {
+    "ok": 52,
+    "total": 52,
+    "bad": []
+  },
+  "manifest": {
+    "ok": 113,
+    "bad": [
+      {
+        "name": "world_id_norm_Entity_Id",
+        "kind": "proposal(raw file)",
+        "got": "c31907fc4aa9fb76b4f4b3c2935b4f922d84b7ece2017b7f65b72120847963d0",
+        "want": "67e2a7c1d105b96e652eeb144a0bc0769a22394cb5e51f3b0ec13a1fc2ae2d16"
+      }
+    ],
+    "bad_count": 1,
+    "proposal_hash_kind": "raw file sha256",
+    "context_hash_kind": "JCS canonical sha256",
+    "mixed_semantics_examples": [
+      {
+        "name": "valid_minimal_handle_target",
+        "raw": "01c3c2eeab2df151201aedd3fb72dd88e29e58aad434e02c7d967b3966f9dcbf",
+        "jcs": "11db87aaf7773c5a6707407baf1841457d0bda5639bb3539204186faa9e3b115",
+        "pin": "11db87aaf7773c5a6707407baf1841457d0bda5639bb3539204186faa9e3b115"
+      },
+      {
+        "name": "valid_ttl_upper_boundary",
+        "raw": "f575721d22969163d2ef78020101f944ef4191f8de73956b5aa4793654a681d1",
+        "jcs": "9f9ddf86e85ef53a68f419d458826afcf3dfb021c5b4db34e70c05407ed7897a",
+        "pin": "9f9ddf86e85ef53a68f419d458826afcf3dfb021c5b4db34e70c05407ed7897a"
+      },
+      {
+        "name": "valid_ttl_lower_boundary",
+        "raw": "bca2d5746a00f2d74d16d468b9af9168dfe1a03e873768a3098dbcd3793daa34",
+        "jcs": "af6e70cab22a2c9dbc4256112e8a8b81ce16717a3fe71cb427a9cf5d3147ecd2",
+        "pin": "af6e70cab22a2c9dbc4256112e8a8b81ce16717a3fe71cb427a9cf5d3147ecd2"
+      }
+    ],
+    "mixed_semantics_count": 52
+  },
+  "evidence": {
+    "match": 51,
+    "total": 52,
+    "mismatch_names": [
+      "evidence_digest_mismatch"
+    ]
+  },
+  "cross": {
+    "proposal_cases": 52,
+    "decision_match": 52,
+    "reason_match": 52,
+    "reply_cases": 10,
+    "reply_match": 10,
+    "mismatches": [],
+    "mismatch_count": 0,
+    "reply_mismatches": []
+  },
+  "jcs_vs_author": {
+    "agree": 52,
+    "checked": 52
+  },
+  "jcs_vectors_ok": 21,
+  "jcs_vectors_total": 21
+}

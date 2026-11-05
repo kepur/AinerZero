@@ -1,0 +1,292 @@
+{
+  "verifier": "antigravity-7c1e",
+  "target_task": "ainerzero.V9.B4",
+  "author": "grok-m4q8",
+  "revision": "r2",
+  "authority": "reports/V9-B1/COORDINATOR_DECISIONS.md",
+  "all_checks_passed": true,
+  "author_suite_live_run": {
+    "command": "/Users/mac/AinerWorkFlow/AnimeWorldZero/.venv/bin/python reports/V9-B1/check_skill_proposal.py --suite",
+    "returncode": 0,
+    "elapsed_seconds": 18.871,
+    "all_ok": true,
+    "cases_total": 40,
+    "positive_cases": 8,
+    "negative_cases": 32,
+    "controls": 32,
+    "controls_isolated_miss": 32,
+    "reply_controls": 7,
+    "reply_controls_isolated_miss": 7
+  },
+  "meta_schema_checks": [
+    {
+      "schema": "skill_proposal.v1.schema.json",
+      "valid": true
+    },
+    {
+      "schema": "skill_gate_reply.v1.schema.json",
+      "valid": true
+    },
+    {
+      "schema": "ability_registry_entry.v0.schema.json",
+      "valid": true
+    }
+  ],
+  "jcs_self_tests": [
+    {
+      "test": "empty_object",
+      "passed": true
+    },
+    {
+      "test": "empty_array",
+      "passed": true
+    },
+    {
+      "test": "string_escaping",
+      "passed": true
+    },
+    {
+      "test": "control_chars",
+      "passed": true
+    },
+    {
+      "test": "utf16_sorting",
+      "passed": true
+    },
+    {
+      "test": "numbers",
+      "passed": true
+    }
+  ],
+  "author_fixture_cross_check": {
+    "proposals_total": 40,
+    "proposals_matched": 40,
+    "replies_total": 10,
+    "replies_matched": 10,
+    "mismatches": []
+  },
+  "adverse_cases": [
+    {
+      "id": "ADV-01",
+      "name": "adv_nested_world_id_in_deep_params",
+      "description": "Deeply nested params attempting to smuggle world-side entity_id identifier",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable world_id_key propertyNames check via pattern neutralization"
+    },
+    {
+      "id": "ADV-02",
+      "name": "adv_camel_case_world_id_in_params",
+      "description": "Params containing camelCase worldId identifier (Decision 2)",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable world_id_key propertyNames check"
+    },
+    {
+      "id": "ADV-03",
+      "name": "adv_camel_case_entity_id_in_params",
+      "description": "Params containing camelCase entityID identifier (Decision 2)",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable world_id_key propertyNames check"
+    },
+    {
+      "id": "ADV-04",
+      "name": "adv_quantity_value_world_id",
+      "description": "expected_outcomes.quantity set to forbidden identifier 'world_id' (Decisions 2, 7)",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Neutralize quantity value prohibition pattern"
+    },
+    {
+      "id": "ADV-05",
+      "name": "adv_quantity_value_hidden_contact",
+      "description": "expected_outcomes.quantity set to forbidden hidden state 'hidden_contact' (Decisions 2, 7)",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Neutralize quantity value prohibition pattern"
+    },
+    {
+      "id": "ADV-06",
+      "name": "adv_foreign_cross_packet_handle",
+      "description": "Target handle h-999 never present in current observation packet",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable handle observation check"
+    },
+    {
+      "id": "ADV-07",
+      "name": "adv_stale_handle_retired_post_occlusion",
+      "description": "Target handle h-7 is in retired_handles due to occlusion reissue policy",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable handle occlusion check"
+    },
+    {
+      "id": "ADV-08",
+      "name": "adv_forged_basis_self_computed_evidence",
+      "description": "Brain forged packet_ref and correctly computed JCS digest, but basis mismatches observation packet",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable evidence basis packet_ref binding check"
+    },
+    {
+      "id": "ADV-09",
+      "name": "adv_ttl_boundary_plus_one_tick",
+      "description": "Current tick exceeds valid_until_tick by exactly 1 tick (1231 > 1230)",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable TTL expiration check"
+    },
+    {
+      "id": "ADV-10",
+      "name": "adv_cross_episode_time_domain",
+      "description": "Proposal basis specifies a foreign episode_id",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable time domain verification check"
+    },
+    {
+      "id": "ADV-11",
+      "name": "adv_confidence_one_override_budget",
+      "description": "Proposal with confidence 1.0 attempts to bypass exceeded max_actions budget",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Allow confidence 1.0 to bypass budget check"
+    },
+    {
+      "id": "ADV-12",
+      "name": "adv_edit_effect_masquerading_run",
+      "description": "Ability has effect_class 'edit', which is prohibited from registration in v1",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable effect_class check"
+    },
+    {
+      "id": "ADV-13",
+      "name": "adv_expected_outcome_event_type_truth",
+      "description": "Expected outcomes smuggles forbidden truth event type field",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Allow additionalProperties on expected_outcome item"
+    },
+    {
+      "id": "ADV-14",
+      "name": "adv_gate_reply_leaks_hidden_state",
+      "description": "Gate reply attempts to emit non-whitelisted reason code exposing world hidden state",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Mutate reply schema to whitelist hidden_target_behind_wall"
+    },
+    {
+      "id": "ADV-15",
+      "name": "adv_duplicate_proposal_id_payload_mutation",
+      "description": "Proposal reuses ID of previously evaluated proposal but provides mutated payload",
+      "base_returncode": 1,
+      "base_rejected": true,
+      "control_returncode": 0,
+      "control_passed": true,
+      "isolated_miss": true,
+      "control_desc": "Disable duplicate proposal ID detection"
+    }
+  ],
+  "decision_audit_matrix": [
+    {
+      "decision": "裁决 1 两条路线，v1 只开一条",
+      "verdict": "通过",
+      "details": "运行路线走 run，编辑路线走 edit，v1 编辑集合为空，编辑提案被拒 effect_class_not_registered；提案自身无路由字段"
+    },
+    {
+      "decision": "裁决 2 只用句柄、禁世界 ID",
+      "verdict": "通过",
+      "details": "targets 只许 handle/ego_relative_pose；params 任意深度 propertyNames 禁止世界 ID 键（含驼峰 worldId/entityID/hidden_contact）；quantity 值亦禁止世界标识"
+    },
+    {
+      "decision": "裁决 3 证据版本绑定观察与信念",
+      "verdict": "通过",
+      "details": "basis 固定 5 字段；evidence_version 为 basis 的 RFC 8785 (JCS) SHA256；门禁重算并比对当前包，不一致拒 evidence_mismatch"
+    },
+    {
+      "decision": "裁决 4 TTL 用 tick、时间域不换算",
+      "verdict": "通过",
+      "details": "ttl_ticks 正整数；有效窗 [t_ticks, t_ticks + ttl_ticks] 闭区间；超时拒 proposal_expired；时间域不符拒 time_domain_mismatch"
+    },
+    {
+      "decision": "裁决 5 能力登记是唯一依据",
+      "verdict": "通过",
+      "details": "ability_registry_entry.v0 最小条目草案；前置条件 observable 封闭枚举；超限拒 budget_exceeded；未知能力拒 ability_unknown"
+    },
+    {
+      "decision": "裁决 6 置信度不作门禁依据",
+      "verdict": "通过",
+      "details": "confidence 选填但需 calibration；置信度 1.0 无法越过预算/能力/时间门；置信度扫描判定不变"
+    },
+    {
+      "decision": "裁决 7 预期结果用观察量表达",
+      "verdict": "通过",
+      "details": "expected_outcomes 仅限 8 个观察通道；时间窗严格在 TTL 闭区间内；quantity 值禁止世界 ID 与 hidden_contact"
+    },
+    {
+      "decision": "裁决 8 回执分两层、白名单原因码",
+      "verdict": "通过",
+      "details": "世界侧日志留完整信息；世界脑回执只含 12 个白名单原因码封闭枚举；回执扫描 0 泄露隐藏状态与世界 ID"
+    },
+    {
+      "decision": "裁决 9 不静默改写提案",
+      "verdict": "通过",
+      "details": "门禁原样接受或拒绝；回执回显 evidence_version 逐字节一致且等于重算 basis JCS 摘要"
+    },
+    {
+      "decision": "裁决 10 身份与幂等",
+      "verdict": "通过",
+      "details": "从 session 取 actor，自带不符拒 rejected_other；同 ID 同摘要返回原决定；同 ID 换载荷拒 duplicate_proposal"
+    },
+    {
+      "decision": "裁决 11 数据去向与 final 门禁",
+      "verdict": "通过",
+      "details": "规范明确 final 分区数据不得用于训练；契约层已作说明，本轮不实现代码符合 ADR-0012"
+    }
+  ]
+}

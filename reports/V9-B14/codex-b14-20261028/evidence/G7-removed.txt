@@ -1,0 +1,24 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts/test_memory_lifecycle.py::test_fragment_without_provenance_cannot_be_promoted", "-q", "-p", "no:cacheprovider"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src", "returncode": 1}
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_fragment_without_provenance_cannot_be_promoted ______________
+
+memory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x103cc64b0>
+
+    def test_fragment_without_provenance_cannot_be_promoted(memory):
+        legacy = Fragment(
+            fragment_id="f-legacy",
+            t_ticks=10,
+            place="room-a",
+            partition="development",
+            encoder_version="enc-v1",
+            metric=(0.0, 0.0),
+        )
+        memory.write(legacy)
+>       with pytest.raises(EvidenceRequired) as caught:
+E       Failed: DID NOT RAISE EvidenceRequired
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_memory_lifecycle.py:106: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_memory_lifecycle.py::test_fragment_without_provenance_cannot_be_promoted
+1 failed in 0.06s

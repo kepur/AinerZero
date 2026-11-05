@@ -1,0 +1,303 @@
+{
+  "task": "ainerzero.V9.B6",
+  "title": "【非作者复核】SkillProposal r4 最小加固与信息隔离",
+  "verifier": "deepseek-flash-emje",
+  "verifier_tier": "二级执行层",
+  "verified_tasks": [
+    "ainerzero.V9.B1",
+    "ainerzero.V9.B4"
+  ],
+  "verified_revisions": {
+    "B1": "docs/v9/SKILL_PROPOSAL_COORDINATION.md（9593eccf…）",
+    "B4": "r4"
+  },
+  "verifier_is_author": false,
+  "non_author_evidence": {
+    "b1_authors": [
+      "claude",
+      "codex"
+    ],
+    "b4_authors": [
+      "ainercodex-p4x7",
+      "antigravity-7c1e",
+      "deepseek-flash-a7k2",
+      "grok-m4q8"
+    ],
+    "i_am_author": false
+  },
+  "reused_author_oracle": false,
+  "independent_tools": {
+    "own_jcs": "tests/indep_lib.py（自写 RFC 8785；自测 16 向量 + 复现 112/112 上下文 pin）",
+    "own_key_classifier": "tests/indep_lib.py is_ident_key_indep（按裁决 2/F1-F3 条文另写）",
+    "own_gate_harness": "tests/verify_gate_checks.py（112 用例 + 101 对照子进程重跑）",
+    "not_reused": [
+      "reports/V9-B1/check_skill_proposal.py 的判定逻辑（仅作被测对象）",
+      "reports/V-V9-B1/oracle_r3.py"
+    ]
+  },
+  "environment": {
+    "time_local": "2026-10-17T08:22–09:1x +03:00 Europe/Istanbul",
+    "python": "3.12.10",
+    "platform": "macOS-27.2-arm64-arm-64bit",
+    "gpu": false,
+    "training": false,
+    "mlx_ort_torch": false,
+    "downloads": false,
+    "paid_services": false,
+    "git_commit": "953bde896c64675a1df559bcefd3276d6063ab3d",
+    "git_head_unchanged_by_me": true,
+    "files_outside_scope_written": 0,
+    "delivered_tree_unchanged_by_me": true
+  },
+  "authority": {
+    "reports/V9-B1/COORDINATOR_DECISIONS.md": "04504c33643c30b3116abe5cd8430fe2bc0e8f44fa70154b9c2f892f93a6d113",
+    "docs/v9/SKILL_PROPOSAL_COORDINATION.md": "9593eccf5c092099d488e72c2c505deb0b116fe3cc52385793d2cc1d7e0495c1",
+    "B4-r4-DECISIONS.md": "d2e5dee3c4331442e19db59254dc60a3b1a160fdda86b1962db07d120fd21cf2",
+    "B5_probe_variants.json": "3f40299111ed0629611341f5f4226e857ca5101cc4eae9e0eb04f7593e732507",
+    "AWZ_observation_packet.v1_1.schema.json": "01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb"
+  },
+  "verified_artifact_sha256": {
+    "contracts/v9/skill_proposal.v1.schema.json": "cdbed88a4fd4a7c13269781659f2700cf0124838f9d4f2706872effe7d2c76a1",
+    "contracts/v9/skill_gate_reply.v1.schema.json": "dc81852c0dc6341a033bcf9ed70c969091faae541e775c4682cb0ce6f1840f2c",
+    "contracts/v9/ability_registry_entry.v0.schema.json": "8b5d089b40a226bfd300a5b94af6399e321cd19da839d5ca88801aa90377489f",
+    "docs/v9/SKILL_PROPOSAL.md": "148fcfed4c0a7e03cce804880f8f94e7ebb4fdc798c847a5518be15edd894adf",
+    "docs/v9/SKILL_PROPOSAL_COORDINATION.md": "9593eccf5c092099d488e72c2c505deb0b116fe3cc52385793d2cc1d7e0495c1",
+    "reports/V9-B1/check_skill_proposal.py": "37d4308f34a64bad515a8ef44b0c9a12b8bf6f35c24a628730280c3ad50328da",
+    "reports/V9-B1/check_result.json": "10e65404e476df67459e22c3b38d652ba7a66a035e2228ba7bd403972bfc70f1",
+    "reports/V9-B1/SHA256SUMS.txt": "336afc61fdcdc73d211ff0b7e65f9313d4fa3c8cc150abab6ba68487988ff2fd",
+    "reports/V9-B1/metrics.json": "3bca7f7e90837b2d26795447954dcc85169f5e9529ff6db9d8e5f041c75f0a66",
+    "reports/V9-B1/REPORT.md": "4ad05236888bf48a4d73c9382f9072637d871f9dc6cd2c95beaf4068200f6e5e",
+    "contracts/v9/examples/skill_proposal_v1/EXPECTATIONS.json": "6389216957ca5e5a1c53d3955de1fb179e4e1130fbafc6adf1b7169f6f553a66"
+  },
+  "counts": {
+    "probe_variants_total": 1131,
+    "probe_rejected_by_indep_classifier": 1131,
+    "probe_rejected_by_schema_regex_layer": 1131,
+    "probe_rejected_by_gate_normalization_layer": 1131,
+    "probe_rejected_by_full_gate": 1131,
+    "probe_nested_positions_layer2_checked": 3393,
+    "probe_layer2_only_keys": 0,
+    "bare_plural_positive_accepted": 10,
+    "proposal_cases": 112,
+    "proposal_cases_ok": 112,
+    "reply_cases": 10,
+    "reply_cases_ok": 10,
+    "controls_total": 101,
+    "controls_isolated": 48,
+    "controls_nonisolated_explained_by_schema_layer": 53,
+    "rules_with_counterexample_and_isolated_control": 18,
+    "rules_total": 18,
+    "confidence_sweep_rows": 184,
+    "no_rewrite_rows": 18,
+    "leak_scan_rows": 112,
+    "reply_leaks": 0,
+    "fixture_files": 236,
+    "fixture_casefold_collisions": 0,
+    "fixture_inode_collisions": 0,
+    "fixture_unique_inodes": 236,
+    "fixture_alias_spellings": 65,
+    "sha256sums_data_rows_checked": 254,
+    "sha256sums_errors": 0,
+    "sha256sums_claimed_rows_in_reports": 253,
+    "sha256sums_actual_data_rows": 254,
+    "archive_files_total": 124,
+    "archive_payload_files": 123,
+    "archive_payload_hashes_verified": 123,
+    "jcs_mandated_rows": 8,
+    "jcs_rows_bad": 0,
+    "duplicate_key_input_accepted_observation": true,
+    "quantity_allowlist_items": 50,
+    "quantity_three_way_consistent": true,
+    "quantity_grounding_unmatched": 0,
+    "quantity_negative_cases_rejected": 7,
+    "context_guards_ok": 5,
+    "suite_runs": 2,
+    "suite_all_ok": true,
+    "suite_elapsed_s": [
+      53.73,
+      54.2
+    ],
+    "suite_fixture_tree_unchanged": true,
+    "suite_checkout_unchanged": true,
+    "suite_deterministic": true,
+    "b1_original_rulings": 11,
+    "b1_original_rulings_present": true,
+    "b1_claims_ok": 5,
+    "b1_claims_total": 5,
+    "formalization_hold": 10,
+    "formalization_unimplemented_by_design": [
+      11
+    ]
+  },
+  "layers": {
+    "L0_independent_classifier": {
+      "total": 1131,
+      "rejected": 1131
+    },
+    "L1_proposal_schema_regex": {
+      "total": 1131,
+      "rejected": 1131
+    },
+    "L2_gate_normalization（--disable schema）": {
+      "total": 1131,
+      "rejected": 1131
+    },
+    "L3_full_gate": {
+      "total": 1131,
+      "rejected": 1131
+    },
+    "families": {
+      "hidden_contact": {
+        "total": 36,
+        "L0_indep_reject": 36,
+        "L1_schema_reject": 36,
+        "L2_gate_layer_reject": 36,
+        "L3_full_gate_reject": 36,
+        "L2_only": 0
+      },
+      "mandated": {
+        "total": 402,
+        "L0_indep_reject": 402,
+        "L1_schema_reject": 402,
+        "L2_gate_layer_reject": 402,
+        "L3_full_gate_reject": 402,
+        "L2_only": 0
+      },
+      "padded": {
+        "total": 297,
+        "L0_indep_reject": 297,
+        "L1_schema_reject": 297,
+        "L2_gate_layer_reject": 297,
+        "L3_full_gate_reject": 297,
+        "L2_only": 0
+      },
+      "plural_stem": {
+        "total": 396,
+        "L0_indep_reject": 396,
+        "L1_schema_reject": 396,
+        "L2_gate_layer_reject": 396,
+        "L3_full_gate_reject": 396,
+        "L2_only": 0
+      }
+    }
+  },
+  "findings": [
+    {
+      "id": "B6-F1",
+      "severity": "minor(evidence-integrity)",
+      "blocking": false,
+      "title": "metrics.json / relay B4 报告 data 的 check_skill_proposal.py 哈希陈旧",
+      "detail": "metrics.artifacts=9cf0d90b…，磁盘/SHA256SUMS=37d4308f…；两处均报旧值。SUITE 在最终编辑后重跑（check_result/SHA256SUMS 02:56 自洽且与磁盘一致），本复核以最终字节复跑两次 all_ok。建议统筹验收时以 SHA256SUMS.txt 为准或令作者补勘误。"
+    },
+    {
+      "id": "B6-F2",
+      "severity": "minor(code-defect, fail-closed)",
+      "blocking": false,
+      "title": "check_schema_props_forbidden 对 forbidden 属性名抛 NameError（here 未定义）",
+      "detail": "登记条目 param_schema 属性名为 WORLD_ID/entities_id/objectId/hidden_contact 时，registry_problems→check_schema_props_forbidden 第 214 行 NameError；CLI 兜底为 schema_invalid（无 traceback、真实非零，fail-closed 已验证），但干净上下文拒绝路径被内部错误替代；作者矩阵用 lite_problems 未覆盖该路径。非阻断，建议 r5 修一行。"
+    },
+    {
+      "id": "B6-F3",
+      "severity": "minor(doc-consistency)",
+      "blocking": false,
+      "title": "文档/摘要中两处旧数字",
+      "detail": "SKILL_PROPOSAL.md:139「本修订为 60 行全过」vs 实际 184 行；r4/SUMMARY.md:12 称 SHA256SUMS「253 行」vs 实际数据行 254。"
+    },
+    {
+      "id": "B6-F4",
+      "severity": "observation",
+      "blocking": false,
+      "title": "observable_registry.source_sha256 绑定的是路径字符串而非 AWZ 文件内容",
+      "detail": "上下文该字段 = sha256(\"AnimeWorldZero/contracts/v9/observation_packet.v1_1.schema.json\")（a2971c9a…），AWZ 文件内容哈希为 01be45e0…。允许表内容仍由整份上下文 JCS pin 固定；但「取自 AWZ 契约」不能由核对器密码学验证。"
+    },
+    {
+      "id": "B6-F5",
+      "severity": "observation",
+      "blocking": false,
+      "title": "quantity_forbidden_alias 分支按构造不可达（防御纵深死代码）",
+      "detail": "允许表内 50 项无一命中标识规范化判定（作者与自写判定均为空），而上下文允许表若含别名会被 context_observable_forbidden 拒；故任意别名先被 quantity_not_allowed 拦，别名分支不会命中。不影响拒绝结果，但不应记为额外覆盖。"
+    },
+    {
+      "id": "B6-F6",
+      "severity": "observation",
+      "blocking": false,
+      "title": "输入 JSON 重复键不 fail-closed（最后值获胜）",
+      "detail": "gate 读提案/上下文用 load_json(strict=False)；重复键静默合并。已实测重复 proposal_id 的提案 rc0 accepted。RFC 8259 允许重复键但 JCS 要求唯一；建议所有输入 strict=True。不在 F4 点名范围（整数/代理项/编解码），列为残留风险。"
+    },
+    {
+      "id": "B6-F7",
+      "severity": "observation",
+      "blocking": false,
+      "title": "值级偷带可接受（任意隐写无通用证明）",
+      "detail": "合法字符串参数承载真实实体 ID entity-7f3a41c9b2e05d18 → accepted；B4 文档 §13 第 3/4 行已如实写明「不能/未实现」，本复核确认该自述诚实；裁决 2 只要求字段级禁止，故不构成对 r4 的阻断。"
+    },
+    {
+      "id": "B6-F8",
+      "severity": "observation",
+      "blocking": false,
+      "title": "r3 归档清单含自指占位行（e3b0c44…=空文件哈希），\"124 文件\"口径含清单自身",
+      "detail": "archive 目录共 124 文件：123 payload + ARCHIVE_SHA256SUMS.txt；123 个 payload 哈希全部逐字核对通过；清单自指行用空哈希占位。建议措辞改「123 文件＋清单」。"
+    },
+    {
+      "id": "B6-F9",
+      "severity": "observation",
+      "blocking": false,
+      "title": "B5 两个汇总文件与 B5 报告 data 记录哈希不一致（自指清单类）",
+      "detail": "reports/V-V9-B1/SHA256SUMS_b4-r3.txt、metrics_b4-r3.json 当前哈希与 B5 报告的 verifier_artifact_hashes 不同（其中 sums 文件对自身行也记空哈希式占位）；B5 的关键回归输入（probe_variants.json、oracle_r3.py、verify_b4r3.py、REPORT_B4-r3.md、probe_results.json）与报告哈希一致，B5 负面发现可按原样使用。"
+    }
+  ],
+  "verdicts": {
+    "b4_r4_1131_probe_stratified": "PASS（四层 1131/1131；3 层嵌套位置 L2 全拒）",
+    "b4_r4_case_only_paths": "PASS（236 文件 0 casefold/0 inode 碰撞；5 组大小写别名各自独立路径/inode/内容）",
+    "b4_r4_quantity": "PASS（50 项三方一致+可追溯 AWZ；7 反例+越权/未知/别名+上下文守卫全拒，控制真实漏检）",
+    "b4_r4_jcs_fail_closed": "PASS（点名两类 + NaN/Inf/无效 UTF-8 均真实非零白名单码、0 traceback；重复键见 B6-F6）",
+    "b4_r4_manifest_sha": "PASS with B6-F1（254/254 数据行核对通过；check_result/SHA256SUMS 自洽；metrics/relay 一处陈旧）",
+    "b4_r4_suite_readonly": "PASS（副本 2 次 all_ok；夹具 0 改动；交付副本哈希归一 inode 后与提交版一致；确定性）",
+    "b4_r4_broken_controls": "PASS（101 对照：48 真实隔离（41 提案+7 回执），53 由层 1 schema 正则先拒且逐条独立解释；17 规则均有隔离对照）",
+    "b4_r4_stegh_proof": "N/A（不存在任意隐写通用证明；B4 自述如实，见 B6-F7）",
+    "b1_primary_rulings": "PASS（Claude 原 11 条完整；B1 协调页 5 项重点主张全部与原裁决/AWZ 只读证据一致）",
+    "b1_vs_b4_separation": "PASS（一级裁决 11/11 保持、未改参数；二级形式化 10/11 有独立证据，裁决 11 按原裁决仅文档未实现）",
+    "review_conclusion": "建议统筹验收 B1 + B4 r4（限本次证据范围）；B6-F1/F2/F3 建议随下一次修订补正，均非阻断；未验证项见报告。本复核不自行 accept。"
+  },
+  "unverified": [
+    "真实 AWZ 门禁/运行内核/WorldBrainAdapter 均未实现（交付自述一致）；本复核只验 CPU 参考核对。",
+    "参数值语义与任意隐写：无通用证明，未实现（B4 文档 §13 第 3/4 行）。",
+    "裁决 11 final 分区训练门只在文档写明，未实现。",
+    "句柄到实体映射、E3 编译与编辑路线授权未实现。",
+    "未在大小写敏感文件系统（Linux CI）复跑；本机 APFS 大小写不敏感，casefold/inode 结论限本机。",
+    "未运行真实模型/训练/下载/GPU；未修改任何源码或交付物。"
+  ],
+  "commands": [
+    "/Users/mac/AinerWorkFlow/AnimeWorldZero/.venv/bin/python reports/V-V9-B1/r4-independent/tests/indep_lib.py selftest",
+    "…/tests/verify_probe.py",
+    "…/tests/verify_fixtures.py",
+    "…/tests/verify_gate_checks.py",
+    "…/tests/verify_jcs_cli.py",
+    "…/tests/verify_suite_copy.py   # 在 /tmp/v9b6-suite-copy 副本跑 --suite 两次",
+    "…/tests/verify_awz_quantity.py",
+    "…/tests/verify_b1_doc.py",
+    "…/tests/collect_metrics.py"
+  ],
+  "artifacts": {
+    "reports/V-V9-B1/r4-independent/REPORT.md": "ecc9445fd6cf741e9834a9a6ba5e70f138ed7a6eb06b216bb6b1e64bbe246c50",
+    "reports/V-V9-B1/r4-independent/SHA256SUMS.txt": "dc05f9b21f62f56e31ea4c529353245604efa472711387a602be6803959d78e7",
+    "reports/V-V9-B1/r4-independent/metrics.json": "b1bbcde9e5c2ea6537dd686289219b90f7b00b7e309dd4fe949660c8d31e5476",
+    "reports/V-V9-B1/r4-independent/results/awz_quantity_results.json": "7055b2c58ae9fe0748d8410dc82f205a0feecda46617fe8c30ad7538a20a00de",
+    "reports/V-V9-B1/r4-independent/results/b1_doc_results.json": "6b9e571317c22d64000ad5fe8a57fea38b89e1e34dfcc0dd10683db75aea5e0f",
+    "reports/V-V9-B1/r4-independent/results/baseline_manifest.json": "cda80f3e9666663b11753ecc394f65e68a19652684d8548cecfa2576761ccdf8",
+    "reports/V-V9-B1/r4-independent/results/fixture_results.json": "a5cfd654f6ca3fbc71260ca82bbd53b131ce8ad0d089b02793c50c6ce1cafa1d",
+    "reports/V-V9-B1/r4-independent/results/gate_results.json": "87c370c0f847ba8cefbdaef90870342321e4c2cf6f58c99c6a137271bb471e4f",
+    "reports/V-V9-B1/r4-independent/results/jcs_results.json": "6f15ee3eace48965496f474094ee433187a962d6c6979a91b23b3820d132b710",
+    "reports/V-V9-B1/r4-independent/results/probe_results.json": "a2b1463eb0d05a847a6c21bebf0e78278d80e5453d274577e16cc5e603a241ba",
+    "reports/V-V9-B1/r4-independent/results/suite_results.json": "232a6a4a91d44dbdd2428fb9f90591a6fa16bde119e312aa49ef0394961b2829",
+    "reports/V-V9-B1/r4-independent/tests/collect_metrics.py": "82dd1ab4a7c5e2780335c5ab40f85de34eb34dbc95dae7114c2c380c18d03e46",
+    "reports/V-V9-B1/r4-independent/tests/indep_lib.py": "53b989fbbd36a1a52dcc7b2e429b62334bff42023f5f1f149eb033ee4cbc3648",
+    "reports/V-V9-B1/r4-independent/tests/verify_awz_quantity.py": "66d96c2e190ca8567232215b0a20b9e86552bd7d681092ee17c5f8613e9107fc",
+    "reports/V-V9-B1/r4-independent/tests/verify_b1_doc.py": "62faaf1e2898bd9bbce181148e5d0964de723654c7ce1d7c9358ec49a44acc00",
+    "reports/V-V9-B1/r4-independent/tests/verify_fixtures.py": "078f62751e68b19b4956580b672642882275275239dfea0ce5eaca7edb234869",
+    "reports/V-V9-B1/r4-independent/tests/verify_gate_checks.py": "f33323741b5c139676cf68daa7d55eae2d55ba357f8357bbb3e62e4630427bd9",
+    "reports/V-V9-B1/r4-independent/tests/verify_jcs_cli.py": "5da53e8c762f88d1e2c573cb8c5dd3a708344c3c729cc2f59957142f844ae542",
+    "reports/V-V9-B1/r4-independent/tests/verify_probe.py": "af18bb4ba5c3beee5ba82f58a8ca3e019f13d63288126ac7f05624608d239f63",
+    "reports/V-V9-B1/r4-independent/tests/verify_suite_copy.py": "763ead5673fc2917cc6718b3e7191d41a5bcd44ff24fc90b8923b11295131380"
+  }
+}

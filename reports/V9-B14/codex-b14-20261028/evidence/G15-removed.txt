@@ -1,0 +1,40 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts/test_cmfl_registration.py::test_tampering_breaks_the_self_check", "-q", "-p", "no:cacheprovider"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src", "returncode": 1}
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________________ test_tampering_breaks_the_self_check _____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-125/test_tampering_breaks_the_self0')
+
+    def test_tampering_breaks_the_self_check(tmp_path):
+>       doc = document()
+              ^^^^^^^^^^
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_cmfl_registration.py:32: in document
+    return json.loads(EXAMPLE.read_text(encoding="utf-8"))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/reports/V9-B12/cmfl_registration.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_cmfl_registration.py::test_tampering_breaks_the_self_check
+1 failed in 0.04s

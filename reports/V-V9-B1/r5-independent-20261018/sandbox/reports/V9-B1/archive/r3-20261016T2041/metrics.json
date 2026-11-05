@@ -1,0 +1,226 @@
+{
+  "task": "ainerzero.V9.B4",
+  "revision": "r3",
+  "agent": "antigravity-7c1e",
+  "tier": "二级执行层",
+  "gpu": false,
+  "synthetic_only": true,
+  "all_ok": true,
+  "counts": {
+    "cases_total": 52,
+    "positive_cases": 8,
+    "negative_cases": 44,
+    "distinct_rules_with_counterexample": 16,
+    "controls": 44,
+    "controls_isolated_miss": 44,
+    "reply_cases": 10,
+    "reply_negative_cases": 7,
+    "reply_controls": 7,
+    "reply_controls_isolated_miss": 7,
+    "confidence_sweep_rows": 84,
+    "no_rewrite_rows": 8,
+    "leak_scan_rows": 52,
+    "jcs_self_tests": 18,
+    "jcs_self_tests_ok": 18,
+    "schema_meta_checks": 3,
+    "registry_entries": 6,
+    "existing_canon_vs_jcs_differences": 8
+  },
+  "r3_new_features": {
+    "two_layer_world_id_defense": true,
+    "world_id_normalization_12_spellings": [
+      "world_id_norm_OBJECT_ID",
+      "world_id_norm_Entity_Id",
+      "world_id_norm_ENTITY_ID",
+      "world_id_norm_entity_hyphen_id",
+      "world_id_norm_world_dot_id",
+      "world_id_norm_objectId",
+      "world_id_norm_actorIds",
+      "world_id_norm_instanceId",
+      "world_id_norm_landmarkId",
+      "world_id_norm_agentId",
+      "world_id_norm_truthId",
+      "world_id_norm_gtObjectId"
+    ],
+    "param_schema_closed_and_normalized": true,
+    "suite_temp_dir_byte_comparison": true,
+    "suite_regenerate_explicit_flag": true,
+    "suite_root_arg_supported": true
+  },
+  "rules_with_counterexample": {
+    "ttl": {
+      "cases": [
+        "valid_ttl_upper_boundary",
+        "valid_ttl_lower_boundary",
+        "ttl_expired"
+      ],
+      "control_isolated": true
+    },
+    "budget": {
+      "cases": [
+        "valid_budget_at_cap",
+        "ttl_over_registry_cap",
+        "actions_over_cap",
+        "duration_over_cap"
+      ],
+      "control_isolated": true
+    },
+    "duplicate": {
+      "cases": [
+        "replay_same_id_same_digest",
+        "duplicate_id_changed_evidence",
+        "duplicate_id_same_evidence_changed_params"
+      ],
+      "control_isolated": true
+    },
+    "schema": {
+      "cases": [
+        "world_id_field_world_id",
+        "world_id_field_entity_id",
+        "world_id_field_scene_id",
+        "world_id_field_event_id",
+        "world_id_in_target",
+        "world_id_in_params",
+        "world_id_camel_in_params",
+        "quantity_value_world_id",
+        "quantity_value_hidden_contact",
+        "expected_outcome_truth_field",
+        "confidence_without_calibration"
+      ],
+      "control_isolated": true
+    },
+    "world_id_normalization": {
+      "cases": [
+        "world_id_norm_OBJECT_ID",
+        "world_id_norm_Entity_Id",
+        "world_id_norm_ENTITY_ID",
+        "world_id_norm_entity_hyphen_id",
+        "world_id_norm_world_dot_id",
+        "world_id_norm_objectId",
+        "world_id_norm_actorIds",
+        "world_id_norm_instanceId",
+        "world_id_norm_landmarkId",
+        "world_id_norm_agentId",
+        "world_id_norm_truthId",
+        "world_id_norm_gtObjectId"
+      ],
+      "control_isolated": true
+    },
+    "outcome_window": {
+      "cases": [
+        "outcome_window_reversed"
+      ],
+      "control_isolated": true
+    },
+    "handle": {
+      "cases": [
+        "handle_not_in_packet",
+        "handle_retired_after_occlusion",
+        "handle_unresolvable_world_side"
+      ],
+      "control_isolated": true
+    },
+    "evidence": {
+      "cases": [
+        "evidence_digest_mismatch",
+        "evidence_packet_ref_mismatch"
+      ],
+      "control_isolated": true
+    },
+    "time_domain": {
+      "cases": [
+        "time_domain_mismatch"
+      ],
+      "control_isolated": true
+    },
+    "ability": {
+      "cases": [
+        "ability_unknown"
+      ],
+      "control_isolated": true
+    },
+    "params": {
+      "cases": [
+        "params_out_of_range",
+        "params_missing_required"
+      ],
+      "control_isolated": true
+    },
+    "effect_class": {
+      "cases": [
+        "edit_effect_class"
+      ],
+      "control_isolated": true
+    },
+    "precondition": {
+      "cases": [
+        "precondition_not_met"
+      ],
+      "control_isolated": true
+    },
+    "target_kind": {
+      "cases": [
+        "target_kind_not_registered"
+      ],
+      "control_isolated": true
+    },
+    "actor": {
+      "cases": [
+        "actor_mismatch"
+      ],
+      "control_isolated": true
+    },
+    "confidence_independence": {
+      "cases": [
+        "confidence_one_ability_unknown"
+      ],
+      "control_isolated": true
+    }
+  },
+  "jcs_self_tests": {
+    "total": 18,
+    "ok": 18
+  },
+  "canon_vs_jcs_report_only": {
+    "differences": 8
+  },
+  "schemas": [
+    {
+      "schema": "skill_proposal.v1",
+      "path": "contracts/v9/skill_proposal.v1.schema.json",
+      "sha256": "dc6915a12d1c66527df4dcc4352b3b010c64dbfe329f4698de7fe00a9983f486",
+      "meta_ok": true
+    },
+    {
+      "schema": "skill_gate_reply.v1",
+      "path": "contracts/v9/skill_gate_reply.v1.schema.json",
+      "sha256": "dc81852c0dc6341a033bcf9ed70c969091faae541e775c4682cb0ce6f1840f2c",
+      "meta_ok": true
+    },
+    {
+      "schema": "ability_registry_entry.v0",
+      "path": "contracts/v9/ability_registry_entry.v0.schema.json",
+      "sha256": "1f087c7f95f9a8451312529816915e811ca648d25ebca7bdcaa44d6bf7080d60",
+      "meta_ok": true
+    }
+  ],
+  "artifacts": {
+    "valid_proposals": 8,
+    "invalid_proposals": 44,
+    "reply_valid": 3,
+    "reply_invalid": 7,
+    "expectations": "453ab6bef44b4ffe314464ef72e486dc6b5d8f8a46337bf55ed4e944ded56f4e",
+    "baseline_context": "01c3c2eeab2df151201aedd3fb72dd88e29e58aad434e02c7d967b3966f9dcbf",
+    "check_result": "06814a7b0e4dd3954980bd628e89812c18194919aa5aa0c516fb81d88b24b4f4",
+    "checker": "d1f8ab82afac5498e40d7328c2c16d78efa8f5d080ecd59bdb9b2eee3f880e26",
+    "doc": "b515bd75c72224d16e29633cae057c0617412715a1e23538567a35726d341004"
+  },
+  "inputs_read_only": {
+    "reports/V9-B1/COORDINATOR_DECISIONS.md": "04504c33643c30b3116abe5cd8430fe2bc0e8f44fa70154b9c2f892f93a6d113",
+    "ARCHITECTURE_V9.md": "0f54a96ace5b9c6fad2f3a16f3e6417a2f521fe131a13400263a0f5d9920f2a4",
+    "docs/v9/TEACHERS_AND_CACHE.md": "a5b5d07556e899905add48158e6252a206e0b19daddf4b7ffa8e96125f36e636",
+    "contracts/v9/teacher_cache.v2.schema.json": "e8ca43e9e1359a6d8315c3c72e642de476e1495d19a2bb713f665cec81fe9f76"
+  },
+  "failures": [],
+  "control_failures": []
+}

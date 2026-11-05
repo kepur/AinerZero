@@ -1,0 +1,15 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts/test_promotion_evidence_v2.py::test_binding_digest_must_be_canonical", "-q", "-p", "no:cacheprovider"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u/src", "returncode": 1}
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________________ test_binding_digest_must_be_canonical _____________________
+
+    def test_binding_digest_must_be_canonical():
+        context = trusted_context_for()
+        context["admission_bindings"][0]["binding_sha256"] = "b" * 64
+>       with pytest.raises(EvidenceRequired) as caught:
+E       Failed: DID NOT RAISE EvidenceRequired
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_promotion_evidence_v2.py:277: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_binding_digest_must_be_canonical
+1 failed in 0.02s

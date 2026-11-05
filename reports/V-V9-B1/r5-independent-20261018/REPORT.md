@@ -1,0 +1,19 @@
+# ainerzero.V9.B9 现有证据交接（2026-10-18）
+- 执行者cf-b7-review-20261018，tier2/subagent；非B7任何版作者，未接管旧B8；建议reject当前B7候选，限以下已落盘CPU证据。
+- 主责通知上一轮工具风险检测中止；接通知后未启动新探针/测试/规则改写/覆盖实验，仅等待既有150秒有界命令自然结束并读取结果；风险检测具体触发原因未向本执行者暴露。
+- 当前候选脚本SHA256：5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f；隔离副本相同，详见input-identities.json。
+- 原r4脚本SHA256：37d4308f34a64bad515a8ef44b0c9a12b8bf6f35c24a628730280c3ad50328da；AWZ原件/隔离副本SHA同为01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb。
+- 已完成：基线rc=0/accepted；自建proposal/context/reply重复键、非法登记属性名、来源缺失/不可读/内容漂移7类原始反例均rc=1、无traceback。
+- 已完成守卫关闭对照：7类隔离副本均真实rc=0；reply为ok，其他为decision=accepted，未以异常退出冒充漏检；原始记录见runs.json及logs/。
+- 默认suite已完成：rc=0、all_ok=true、86.864秒；112用例（18正/94反）等计数见logs/suite-default.stdout；隔离输入树1153文件零增删改，见default-zero-write.json。
+- 必修F1已实证：既有--suite --output-dir指向隔离候选输入目录，rc=0/all_ok=true、87.552秒，仍覆盖check_result.json及SHA256SUMS.txt；违反输入输出分离/不得原位覆盖要求，见output-overwrite.json。
+- F1前后摘要：check_result ef9a4bd1…→14894f1e…；SHA256SUMS 65a3ada3…→f99582ed…；完整SHA已在output-overwrite.json保存，不触碰真实交付。
+- 输出到父目录的额外动态探针未执行，仅有既存无重叠守卫的静态观察；不把它写成运行通过或实证覆盖。
+- 首轮失败：b7-live-read.stdout保留首次reported及随后来源fail-open/默认写入被打回事件；当前候选目录未找到对应首版源码/报告/指标归档，无法确认完整归档或恢复首版，不重建冒充。
+- 已有preservation.json/before.json/after.json记录：真实候选437、原r4目录327、旧B8目录42、contracts383、docs3文件前后SHA均不变；隔离覆盖只发生于本独立目录。
+- r4-frozen-comparison.json另核对13份可解析原B6冻结记录，13/13匹配；不外推为未检查记录或整个工作区原子快照。
+- 原始命令/stdout/stderr/rc/SHA：runs.json、logs/<label>.stdout/.stderr/.rc；总harness.rc=0、harness.stderr为空，既有有界进程已自然结束。
+- suite原始stdout SHA256：9eef91e82945c8f89c2762e62710369296c96caafefb6e330f9494486759fc60；两次suite记录各保留独立命令和rc，未新补跑。
+- 未确认：首版完整归档、父目录动态覆盖、fixture重复键独立端到端对照、真实AWZ消费者/模型能力；不以现有正例补齐这些缺口。
+- 本轮无模型/MLX/ORT/训练/GPU/网络下载/安装/生产服务修改；未改候选、原r4、旧B8或采用政策；不自行accept、不next。
+- 交付后仅正常report本B9，由主责决定打回及后续安全修订；本报告不是采用、验收或运行授权。

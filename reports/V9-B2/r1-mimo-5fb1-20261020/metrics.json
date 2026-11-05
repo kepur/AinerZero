@@ -1,0 +1,105 @@
+{
+  "task": "ainerzero.V9.B2",
+  "agent": "mimo-5fb1",
+  "date": "2026-10-20",
+  "params_version": "v0",
+  "params_changed": false,
+  "cpu_only": true,
+  "training_or_model_work": 0,
+  "downloads_or_installs": 0,
+  "git_commits_or_pushes": 0,
+  "out_of_scope_files_modified": 0,
+  "out_of_scope_note": "geometry/ (G1), teachers/ (T2), tokenization/ (T8) and their tests untouched; AWZ opened read-only",
+  "interfaces_delivered": 7,
+  "interface_names": [
+    "WorldBrainAdapter",
+    "GeometryCore",
+    "TimeScaleAdapter",
+    "SpatialMemory",
+    "PerceptionEncoder",
+    "HierarchicalPlanner",
+    "UpdateScheduler"
+  ],
+  "fakes_delivered": 7,
+  "error_classes": 17,
+  "shared_types_file": "src/ainerzero/v9/interfaces/types.py",
+  "contract_tests": {
+    "total": 160,
+    "passed": 160,
+    "failed": 0,
+    "skipped": 0,
+    "errors": 0,
+    "by_file": {
+      "test_payload_gate.py": 23,
+      "test_world_brain.py": 11,
+      "test_geometry_contract.py": 36,
+      "test_timescale_contract.py": 14,
+      "test_spatial_memory.py": 20,
+      "test_perception_contract.py": 12,
+      "test_planner_contract.py": 12,
+      "test_scheduler_contract.py": 23,
+      "test_interface_surface.py": 9
+    }
+  },
+  "ruff": {
+    "scope": [
+      "src/ainerzero/v9/__init__.py",
+      "src/ainerzero/v9/interfaces",
+      "src/ainerzero/v9/fakes",
+      "tests/v9/contracts",
+      "reports/V9-B2"
+    ],
+    "errors": 0
+  },
+  "mutation_controls": {
+    "registered": 10,
+    "caught": 10,
+    "control_green": true,
+    "strategy": "whole src/ package copy prepended to PYTHONPATH (temp dir, removed afterwards)",
+    "anchor_uniqueness_enforced": true,
+    "results_file": "mutation-results.json"
+  },
+  "import_surface": {
+    "frameworks_absent": ["mlx", "onnxruntime", "torch", "tensorflow", "jax"],
+    "fakes_not_eagerly_imported": true,
+    "probe": "subprocess + static regex over interfaces/ and fakes/"
+  },
+  "g1_cross_check": {
+    "target": "ainzero.v9.geometry (read-only)",
+    "operations_matched": ["exp", "log", "compose", "adjoint", "inverse", "predict", "update", "with_side"],
+    "atol": "1e-10..1e-12",
+    "status": "matched"
+  },
+  "awz_drift_pins": {
+    "leak_rules_sha256": "5a53affd4ee437ba130d9ebddc066f71d50a30598caa6b2d1ffedf392fbe931d",
+    "packet_schema_sha256": "01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb",
+    "examples_total": 20,
+    "examples_valid_accepted": 2,
+    "examples_invalid_whole_document_rejected": 18,
+    "examples_invalid_payload_also_rejected": 10,
+    "examples_invalid_envelope_side_only": 8
+  },
+  "v9_suite_informational": {
+    "passed": 348,
+    "failed": 12,
+    "failures_all_in": "tests/v9/teachers/test_cache.py",
+    "cause": "jsonschema not installed in .venv-ainerzero (pre-existing, out of card scope)"
+  },
+  "files": {
+    "interfaces_modules": 11,
+    "fakes_modules": 8,
+    "test_modules": 10,
+    "report_scripts": 2,
+    "total_lines_owned": 5608
+  },
+  "lease_incidents": [
+    {
+      "type": "heartbeat_stall",
+      "detail": "execution record #1 stalled after 20 min without heartbeat; same agent mimo-5fb1 reclaimed with the original token, no work lost; 300s background heartbeat loop started afterwards"
+    }
+  ],
+  "interface_decisions_pending_coordinator": 6,
+  "independent_review": "pending (must be a different agent)",
+  "capability_claimed": false,
+  "capability_note": "测试通过不等于能力通过; fakes are test doubles, real implementations and capability acceptance stay with their own cards"
+}

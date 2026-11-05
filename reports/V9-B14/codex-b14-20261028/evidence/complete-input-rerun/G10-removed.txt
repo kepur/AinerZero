@@ -1,0 +1,22 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts/test_memory_lifecycle.py::test_slow_entry_is_usable_only_while_versions_match", "-q", "-p", "no:cacheprovider"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-kmso5o8u/src", "returncode": 1}
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_slow_entry_is_usable_only_while_versions_match ______________
+
+memory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x105446b10>
+entry = Fragment(fragment_id='f-1', t_ticks=100, place='room-a', partition='development', encoder_version='enc-v1', metric=(0.0, 0.0), topology=(), provenance_ref='obs/t0005.png', object_keys=('obj-a',), action_keys=('act-1',))
+
+    def test_slow_entry_is_usable_only_while_versions_match(memory, entry):
+        memory.promote("f-1", v2_evidence(entry))
+        assert memory.usable_slow_items(encoder_version="enc-v1", prior_version="fprior-v9-r5") == ("f-1",)
+        # 编码器漂移 -> 待重验，确定性层不得使用
+>       assert memory.usable_slow_items(encoder_version="enc-v2", prior_version="fprior-v9-r5") == ()
+E       AssertionError: assert ('f-1',) == ()
+E         
+E         Left contains one more item: 'f-1'
+E         Use -v to get more diff
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_memory_lifecycle.py:147: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_memory_lifecycle.py::test_slow_entry_is_usable_only_while_versions_match
+1 failed in 0.02s

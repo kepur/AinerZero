@@ -1,0 +1,842 @@
+{
+  "identity": {
+    "harness_python": "/usr/local/bin/python3",
+    "harness_version": "3.12.2",
+    "platform": "macOS-27.2-arm64-arm-64bit",
+    "agent": "deepseek-h7m2",
+    "task": "ainerzero.V9.B8",
+    "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+    "jsonschema": "4.21.1",
+    "checked_python": "/usr/local/bin/python3",
+    "checked_python_real": "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12"
+  },
+  "patch_variants": {
+    "base_sha256": "5b28818b02f5a380355e673eda66fd73911f054284369079aa1cf6668ab87b9f",
+    "variants": {
+      "strict": {
+        "path": "/tmp/b8-probe/patched/reports/V9-B1/r5-candidate/check_skill_proposal_strict.py",
+        "sha256": "c7dca569fe7896d7fdf47f953d99d9eb9186e453d2e3dd8a8b696ccc2200f6b5"
+      },
+      "propguard": {
+        "path": "/tmp/b8-probe/patched/reports/V9-B1/r5-candidate/check_skill_proposal_propguard.py",
+        "sha256": "0b1b45c2f526e877a2e7a17baf6284846bdd31908a438100f44be5025c2bb3fe"
+      },
+      "sourceguard": {
+        "path": "/tmp/b8-probe/patched/reports/V9-B1/r5-candidate/check_skill_proposal_sourceguard.py",
+        "sha256": "4c3c82816d804269764b717b68b9a93b6baaec1036b10d491b53b4140c5c32ea"
+      },
+      "noregpropguard": {
+        "path": "/tmp/b8-probe/patched/reports/V9-B1/r5-candidate/check_skill_proposal_noregpropguard.py",
+        "sha256": "b2c51fc30dfb25a5b596ca644705867ecb95f7661f054bc53906c127826097a2"
+      }
+    },
+    "syntax": {
+      "check_skill_proposal_strict.py": true,
+      "check_skill_proposal_propguard.py": true,
+      "check_skill_proposal_sourceguard.py": true,
+      "check_skill_proposal_noregpropguard.py": true
+    }
+  },
+  "jcs_crosscheck": {
+    "pins_compared": 112,
+    "ok": 112,
+    "mismatch": [],
+    "all_match": true
+  },
+  "source_variants": {
+    "real": "/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/v9/observation_packet.v1_1.schema.json",
+    "drift": "/tmp/b8-probe/sources/observation_packet.drift.json",
+    "unreadable": "/tmp/b8-probe/sources/observation_packet.unreadable.json",
+    "missing": "/tmp/b8-probe/sources/does-not-exist.json"
+  },
+  "drift_source_sha256": "ee176b3a197309936106417c75a1d764fafd9c984eff379ee1173055a7482603",
+  "real_source_sha256": "01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb",
+  "runs": [
+    {
+      "label": "base-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.211,
+      "env_extra": {}
+    },
+    {
+      "label": "base-r4",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "52b8b7706d\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.205,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-proposal-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": "rejected",
+      "reason_code": "schema_invalid",
+      "errors": [
+        "proposal_unreadable:ValueError"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "{\"ok\": false, \"decision\": \"rejected\", \"reason_code\": \"schema_invalid\", \"errors\": [\"proposal_unreadable:ValueError\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": true, \"world_side_log\": [\"proposal_unreadable:ValueError\"], \"reply\": null}\n",
+      "duration_s": 0.172,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-proposal-smuggle-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": "rejected",
+      "reason_code": "schema_invalid",
+      "errors": [
+        "proposal_unreadable:ValueError"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "{\"ok\": false, \"decision\": \"rejected\", \"reason_code\": \"schema_invalid\", \"errors\": [\"proposal_unreadable:ValueError\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": true, \"world_side_log\": [\"proposal_unreadable:ValueError\"], \"reply\": null}\n",
+      "duration_s": 0.175,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-proposal-cand-nostrict",
+      "script": "check_skill_proposal_strict.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.204,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-proposal-smuggle-cand-nostrict",
+      "script": "check_skill_proposal_strict.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.211,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-proposal-r4",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "52b8b7706d\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.209,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-proposal-smuggle-r4",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "52b8b7706d\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.208,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-context-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": "rejected",
+      "reason_code": "schema_invalid",
+      "errors": [
+        "context_unreadable:ValueError"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "{\"ok\": false, \"decision\": \"rejected\", \"reason_code\": \"schema_invalid\", \"errors\": [\"context_unreadable:ValueError\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": true, \"world_side_log\": [\"context_unreadable:ValueError\"], \"reply\": null}\n",
+      "duration_s": 0.169,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-context-cand-nostrict",
+      "script": "check_skill_proposal_strict.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.209,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-context-r4",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "52b8b7706d\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.213,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-reply-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "reply_unreadable:ValueError"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "{\"ok\": false, \"errors\": [\"reply_unreadable:ValueError\"], \"reason_whitelisted\": false}\n",
+      "duration_s": 0.171,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-reply-cand-nostrict",
+      "script": "check_skill_proposal_strict.py",
+      "rc": 0,
+      "decision": null,
+      "reason_code": null,
+      "errors": [],
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "{\"ok\": true, \"errors\": [], \"reason_whitelisted\": true}\n",
+      "duration_s": 0.174,
+      "env_extra": {}
+    },
+    {
+      "label": "dup-reply-r4",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": null,
+      "reason_code": null,
+      "errors": [],
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "{\"ok\": true, \"errors\": [], \"reason_whitelisted\": true}\n",
+      "duration_s": 0.167,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "entry:abil-approach-object:forbidden_property:world_id",
+        "entry:abil-approach-object:forbidden_property:world_id"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"entry:abil-approach-object:forbidden_property:world_id\", \"entry:abil-approach-object:forbidden_property:world_id\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.204,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-disable-norm-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "entry:abil-approach-object:forbidden_property:world_id",
+        "entry:abil-approach-object:forbidden_property:world_id"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"entry:abil-approach-object:forbidden_property:world_id\", \"entry:abil-approach-object:forbidden_property:world_id\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.207,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-cand-nopropguard",
+      "script": "check_skill_proposal_propguard.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "entry:abil-approach-object:forbidden_property:world_id"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "abil-approach-object:forbidden_property:world_id\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"entry:abil-approach-object:forbidden_property:world_id\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.209,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-r4",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": "rejected",
+      "reason_code": "schema_invalid",
+      "errors": [
+        "gate_internal_error:NameError"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "{\"ok\": false, \"decision\": \"rejected\", \"reason_code\": \"schema_invalid\", \"errors\": [\"gate_internal_error:NameError\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": true, \"world_side_log\": [\"gate_internal_error:NameError\"], \"reply\": null}\n",
+      "duration_s": 0.204,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-nested-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "entry:abil-approach-object:items:forbidden_property:worldId",
+        "entry:abil-approach-object:tags.items0:forbidden_property:worldId"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": " [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"entry:abil-approach-object:items:forbidden_property:worldId\", \"entry:abil-approach-object:tags.items0:forbidden_property:worldId\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.202,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-nested-cand-nopropguard",
+      "script": "check_skill_proposal_propguard.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "entry:abil-approach-object:items:forbidden_property:worldId"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "ach-object:items:forbidden_property:worldId\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"entry:abil-approach-object:items:forbidden_property:worldId\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.201,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-cand-noregpropguard",
+      "script": "check_skill_proposal_noregpropguard.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "d7a2a4fd5f\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.199,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-nested-cand-noregpropguard",
+      "script": "check_skill_proposal_noregpropguard.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "99521b140a\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.21,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-illegal-nested-r4",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": "rejected",
+      "reason_code": "schema_invalid",
+      "errors": [
+        "gate_internal_error:NameError"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "{\"ok\": false, \"decision\": \"rejected\", \"reason_code\": \"schema_invalid\", \"errors\": [\"gate_internal_error:NameError\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": true, \"world_side_log\": [\"gate_internal_error:NameError\"], \"reply\": null}\n",
+      "duration_s": 0.201,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-legal-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.195,
+      "env_extra": {}
+    },
+    {
+      "label": "registry-legal-r4",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "52b8b7706d\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.194,
+      "env_extra": {}
+    },
+    {
+      "label": "source-missing-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "context_observable_source_unavailable"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "on_code\": null, \"errors\": [\"context_observable_source_unavailable\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"context_observable_source_unavailable\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.196,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/does-not-exist.json"
+      }
+    },
+    {
+      "label": "source-unreadable-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "context_observable_source_unreadable"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "ason_code\": null, \"errors\": [\"context_observable_source_unreadable\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"context_observable_source_unreadable\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.232,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/observation_packet.unreadable.json"
+      }
+    },
+    {
+      "label": "source-drift-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "context_observable_source_content_drift"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "ode\": null, \"errors\": [\"context_observable_source_content_drift\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"context_observable_source_content_drift\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.195,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/observation_packet.drift.json"
+      }
+    },
+    {
+      "label": "source-missing-cand-nosourceguard",
+      "script": "check_skill_proposal_sourceguard.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.204,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/does-not-exist.json"
+      }
+    },
+    {
+      "label": "source-unreadable-cand-nosourceguard",
+      "script": "check_skill_proposal_sourceguard.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.197,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/observation_packet.unreadable.json"
+      }
+    },
+    {
+      "label": "source-drift-cand-nosourceguard",
+      "script": "check_skill_proposal_sourceguard.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.21,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/observation_packet.drift.json"
+      }
+    },
+    {
+      "label": "source-drift-path-unchanged-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "context_observable_source_content_drift"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "ode\": null, \"errors\": [\"context_observable_source_content_drift\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"context_observable_source_content_drift\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.193,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/observation_packet.drift.json"
+      }
+    },
+    {
+      "label": "source-old-pin-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "context_observable_source_sha256"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "ull, \"reason_code\": null, \"errors\": [\"context_observable_source_sha256\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"context_observable_source_sha256\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.195,
+      "env_extra": {}
+    },
+    {
+      "label": "source-old-pin-r4-env-missing",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "52b8b7706d\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.312,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/does-not-exist.json"
+      }
+    },
+    {
+      "label": "source-path-sha-drift-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "context_observable_source_path_sha256_drift"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "ll, \"errors\": [\"context_observable_source_path_sha256_drift\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"context_observable_source_path_sha256_drift\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.191,
+      "env_extra": {}
+    },
+    {
+      "label": "source-adv-ctx-sha-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "context_observable_source_sha256",
+        "context_observable_source_content_drift"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "rvable_source_content_drift\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"context_observable_source_sha256\", \"context_observable_source_content_drift\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.189,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/observation_packet.drift.json"
+      }
+    },
+    {
+      "label": "source-env-real-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 0,
+      "decision": "accepted",
+      "reason_code": "accepted",
+      "errors": null,
+      "ok": true,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "3e990a3334\", \"reply\": {\"schema_version\": \"skill_gate_reply.v1\", \"proposal_id\": \"prop-synthetic-approach-0001\", \"evidence_version\": \"b3fb3070604b1f5ec9c4ed1e41467d55b390cc933408c57177e37296e2617022\", \"decision\": \"accepted\", \"reason_code\": \"accepted\", \"decided_at_tick\": 850, \"valid_until_tick\": 960}}\n",
+      "duration_s": 0.202,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/v9/observation_packet.v1_1.schema.json"
+      }
+    },
+    {
+      "label": "source-missing-all-disable-cand",
+      "script": "check_skill_proposal.py",
+      "rc": 1,
+      "decision": null,
+      "reason_code": null,
+      "errors": [
+        "context_observable_source_unavailable"
+      ],
+      "ok": false,
+      "has_traceback": false,
+      "stderr_tail": "",
+      "stdout_tail": "on_code\": null, \"errors\": [\"context_observable_source_unavailable\"], \"reply_schema_errors\": [], \"leaked_world_side_tokens\": [], \"reason_whitelisted\": false, \"world_side_log\": [\"context_observable_source_unavailable\"], \"replayed\": null, \"proposal_digest\": null, \"context_sha256\": null, \"reply\": null}\n",
+      "duration_s": 0.198,
+      "env_extra": {
+        "AWZ_OBSERVATION_PATH": "/tmp/b8-probe/sources/does-not-exist.json"
+      }
+    }
+  ],
+  "checks": [
+    {
+      "label": "base-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "base-r4",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-proposal-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-proposal-smuggle-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-proposal-cand-nostrict",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-proposal-smuggle-cand-nostrict",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-proposal-r4",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-proposal-smuggle-r4",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-context-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-context-cand-nostrict",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-context-r4",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-reply-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-reply-cand-nostrict",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "dup-reply-r4",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-disable-norm-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-cand-nopropguard",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-cand-noregpropguard",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-r4",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-nested-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-nested-cand-nopropguard",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-nested-cand-noregpropguard",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-illegal-nested-r4",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "registry-legal-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-missing-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-unreadable-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-drift-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-missing-cand-nosourceguard",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-unreadable-cand-nosourceguard",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-drift-cand-nosourceguard",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-drift-path-unchanged-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-old-pin-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-old-pin-r4-env-missing",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-path-sha-drift-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-adv-ctx-sha-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-env-real-cand",
+      "ok": true,
+      "fails": []
+    },
+    {
+      "label": "source-missing-all-disable-cand",
+      "ok": true,
+      "fails": []
+    }
+  ],
+  "checks_failed": [],
+  "all_checks_ok": true,
+  "note": "共 38 次 CLI 运行；每个守卫含\"候选原脚本 / 关守卫副本 / 原 r4(如适用)\"三态。"
+}

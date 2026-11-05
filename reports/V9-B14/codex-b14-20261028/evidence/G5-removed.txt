@@ -1,0 +1,83 @@
+{"argv": ["/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python", "-m", "pytest", "tests/v9/contracts/test_promotion_evidence_v2.py::test_bare_self_reported_string_without_binding_is_refused", "-q", "-p", "no:cacheprovider"], "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5", "PYTHONPATH": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5:/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src", "returncode": 1}
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_bare_self_reported_string_without_binding_is_refused ___________
+
+    def test_bare_self_reported_string_without_binding_is_refused():
+        """A context that merely exists is not enough: the producer needs a binding."""
+        context = trusted_context_for("independent_test")
+        with pytest.raises(EvidenceRequired) as caught:
+>           require_independent_slow_producer("contract-harness", trusted_context=context)
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/contracts/test_promotion_evidence_v2.py:254: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+producer = 'contract-harness'
+trusted_context = {'context_id': 'ctx-b12', 'issuer': 'relay:independent-harness', 'admission_bindings': [{'producer': 'independent_test...line', 'context_id': 'ctx-b12', 'binding_sha256': '03a80c5745db063d3d661510c630bee06167d11c850b3eb7206bd3c1d93d57e7'}]}
+
+    def require_independent_slow_producer(producer: Any, *, trusted_context: Any) -> str:
+        """SLOW 晋升专用出具者守卫；返回登记类别。
+    
+        唯一登记表权威仍是 :func:`validate_producer`：本函数先调用它，再在其结论上
+        追加“不得 self”与“必须可信上下文绑定”两条。任何一条不满足都 fail-closed
+        抛 :class:`~.errors.EvidenceRequired`，绝不返回“近似通过”。
+        """
+        category = validate_producer(producer)
+    
+        if category in SLOW_FORBIDDEN_CATEGORIES:
+            raise EvidenceRequired(
+                f"producers of category {category!r} may not produce SLOW evidence: a promotion needs an "
+                f"identity isolated from the generator (ADR-0014 §2 D3-7); producer={producer!r}"
+            )
+    
+        if not isinstance(trusted_context, Mapping):
+            raise EvidenceRequired(
+                "trusted_context_missing: SLOW evidence needs a trusted context binding, got "
+                f"{type(trusted_context).__name__}; a bare self-reported producer string is not accepted"
+            )
+        missing = [key for key in TRUSTED_CONTEXT_REQUIRED_KEYS if key not in trusted_context]
+        if missing:
+            raise EvidenceRequired(
+                f"trusted_context_schema: trusted context is missing {missing}; "
+                f"required={TRUSTED_CONTEXT_REQUIRED_KEYS}"
+            )
+    
+        context_id = trusted_context["context_id"]
+        issuer = trusted_context["issuer"]
+        for name, value in (("context_id", context_id), ("issuer", issuer)):
+            if not isinstance(value, str) or not value:
+                raise EvidenceRequired(f"trusted_context_schema: {name} must be a non-empty string")
+    
+        bindings = trusted_context["admission_bindings"]
+        if not isinstance(bindings, (list, tuple)) or not bindings:
+            raise EvidenceRequired(
+                f"trusted_context_schema: admission_bindings must be a non-empty sequence "
+                f"(context {context_id!r})"
+            )
+    
+        matched: Mapping | None = None
+        for index, binding in enumerate(bindings):
+            if not isinstance(binding, Mapping):
+                raise EvidenceRequired(
+                    f"trusted_context_schema: admission_bindings[{index}] must be a mapping, "
+                    f"got {type(binding).__name__}"
+                )
+            if binding.get("producer") != producer:
+                continue
+            if matched is not None:
+                raise EvidenceRequired(
+                    f"trusted_context_schema: duplicate admission binding for producer {producer!r} "
+                    f"in context {context_id!r}"
+                )
+            matched = binding
+    
+            # B14 isolated guard removal
+    
+>       bound_context = matched.get("context_id", context_id)
+                        ^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'get'
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b14-independent-74ax4uf5/src/ainerzero/v9/interfaces/validation.py:418: AttributeError
+=========================== short test summary info ============================
+FAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_bare_self_reported_string_without_binding_is_refused
+1 failed in 0.04s

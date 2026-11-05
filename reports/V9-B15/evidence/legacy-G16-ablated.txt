@@ -1,0 +1,16 @@
+{
+  "label": "legacy-G16-ablated",
+  "cmd": [
+    "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/v9/contracts/test_spatial_memory.py::test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b15-isolated-omqv4n8i",
+  "returncode": 1,
+  "stdout": "FF                                                                       [100%]\n=================================== FAILURES ===================================\n_ test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[llm] _\n\nmemory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x103914920>\norigin = 'llm'\n\n    @pytest.mark.parametrize(\"origin\", [\"llm\", \"teacher\"])\n    def test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer(memory, origin):\n        \"\"\"ADR-0014 \u00a72 D5\uff1aLLM/\u6559\u5e08\u8d77\u6e90\u53ea\u8fdb MID\u3002producer \u4e0e trusted_context \u5168\u90e8\u5408\u6cd5\u3001\u5176\u4f59\u5b57\u6bb5\u5168\u90e8\u5408\u6cd5\u65f6\uff0c\u4ecd\u5fc5\u987b\u88ab\u62d2\u3002\"\"\"\n        stored = promotable(\"f-1\")\n        memory.write(stored)\n        evidence = v2_evidence(stored, origin_category=origin)       # producer='contract-harness' \u662f\u767b\u8bb0\u7684\u72ec\u7acb\u51fa\u5177\u8005\n>       with pytest.raises(EvidenceRequired) as caught:\nE       Failed: DID NOT RAISE EvidenceRequired\n\ntests/v9/contracts/test_spatial_memory.py:277: Failed\n_ test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[teacher] _\n\nmemory = <ainerzero.v9.fakes.spatial_memory.FakeSpatialMemory object at 0x1039e1430>\norigin = 'teacher'\n\n    @pytest.mark.parametrize(\"origin\", [\"llm\", \"teacher\"])\n    def test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer(memory, origin):\n        \"\"\"ADR-0014 \u00a72 D5\uff1aLLM/\u6559\u5e08\u8d77\u6e90\u53ea\u8fdb MID\u3002producer \u4e0e trusted_context \u5168\u90e8\u5408\u6cd5\u3001\u5176\u4f59\u5b57\u6bb5\u5168\u90e8\u5408\u6cd5\u65f6\uff0c\u4ecd\u5fc5\u987b\u88ab\u62d2\u3002\"\"\"\n        stored = promotable(\"f-1\")\n        memory.write(stored)\n        evidence = v2_evidence(stored, origin_category=origin)       # producer='contract-harness' \u662f\u767b\u8bb0\u7684\u72ec\u7acb\u51fa\u5177\u8005\n>       with pytest.raises(EvidenceRequired) as caught:\nE       Failed: DID NOT RAISE EvidenceRequired\n\ntests/v9/contracts/test_spatial_memory.py:277: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_spatial_memory.py::test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[llm]\nFAILED tests/v9/contracts/test_spatial_memory.py::test_llm_or_teacher_origin_cannot_reach_slow_even_with_a_legitimate_producer[teacher]\n2 failed in 0.04s\n",
+  "stderr": ""
+}

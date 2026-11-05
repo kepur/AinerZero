@@ -1,0 +1,218 @@
+--- /Users/mac/AinerWorkFlow/AinerZero/reports/V9-B1/check_skill_proposal.py	2026-10-17 02:55:55
++++ /Users/mac/AinerWorkFlow/AinerZero/reports/V9-B1/r5-candidate/check_skill_proposal.py	2026-10-17 08:58:17
+@@ -30,12 +30,12 @@
+ 
+ from jsonschema import Draft202012Validator
+ 
+-ROOT = Path(__file__).resolve().parents[2]
++ROOT = Path(__file__).resolve().parents[3]
+ OUT = Path(__file__).resolve().parent
+ PROPOSAL_SCHEMA = ROOT / 'contracts/v9/skill_proposal.v1.schema.json'
+ REPLY_SCHEMA = ROOT / 'contracts/v9/skill_gate_reply.v1.schema.json'
+ ENTRY_SCHEMA = ROOT / 'contracts/v9/ability_registry_entry.v0.schema.json'
+-FIXTURE = ROOT / 'contracts/v9/examples/skill_proposal_v1'
++FIXTURE = OUT / 'fixtures'
+ SABOTAGE = OUT / 'sabotage-schemas'
+ 
+ 
+@@ -46,7 +46,7 @@
+         PROPOSAL_SCHEMA = ROOT / 'contracts/v9/skill_proposal.v1.schema.json'
+         REPLY_SCHEMA = ROOT / 'contracts/v9/skill_gate_reply.v1.schema.json'
+         ENTRY_SCHEMA = ROOT / 'contracts/v9/ability_registry_entry.v0.schema.json'
+-        FIXTURE = ROOT / 'contracts/v9/examples/skill_proposal_v1'
++        FIXTURE = OUT / 'fixtures'
+         SABOTAGE = OUT / 'sabotage-schemas'
+ 
+ 
+@@ -211,7 +211,8 @@
+             out.append(path + ':patternProperties:' + str(pattern))
+     for name, sub in (s.get('properties') or {}).items():
+         if is_forbidden_world_id_key(name):
+-            out.append(here('forbidden_property:' + str(name)))
++            _tail = path.split('.', 1)[1] if '.' in path else ''
++            out.append(((_tail + ':') if _tail else '') + 'forbidden_property:' + str(name))
+         out.extend(check_schema_props_forbidden(sub, path + '.' + str(name)))
+     for kw in ('items', 'contains', 'not', 'if', 'then', 'else'):
+         if kw in s:
+@@ -455,12 +456,21 @@
+ REPLAY_EV = jcs_sha(base_basis())
+ 
+ 
+-# ---- 调用方固定（pin）的可信可观察量表（r4 F6）：与提案分离，随上下文一起被摘要固定。
++# ---- 调用方固定（pin）的可信可观察量表（r4 F6 / r5 B6-F4）：与提案分离，随上下文一起被摘要固定。
++# r5：source_sha256 改为 AWZ 固定 Observation 文件内容 SHA（01be45e0...），不再是路径字符串哈希。
++# 旧路径字符串哈希 a2971c9a... 作为 source_path_sha256 保留为迁移证据，不静默重 pin。
++OBSERVABLE_SOURCE_CONTENT_SHA256 = '01be45e0adfdac74d00d3f4affd2dce52ce5596f23c3def974b14998bd0830eb'
++OBSERVABLE_SOURCE_PATH_SHA256 = sha(OBSERVABLE_SOURCE.encode('utf-8'))   # 旧值 a2971c9a...（迁移前）
++
++
+ def trusted_observables():
+     return {
+         'registry_id': 'awz-observable-allowlist-synthetic-0001',
+         'source': OBSERVABLE_SOURCE,
+-        'source_sha256': sha(OBSERVABLE_SOURCE.encode('utf-8')),
++        'source_sha256': OBSERVABLE_SOURCE_CONTENT_SHA256,
++        'source_path_sha256': OBSERVABLE_SOURCE_PATH_SHA256,
++        'source_sha256_migration': 'v4 path-string hash -> v5 AWZ observation file content hash; '
++                                    'old value preserved in source_path_sha256; drift rejects',
+         'derivation': 'ObservationPacket/v1.1 的 $defs/ch_* 通道字段名与 payload 字段名；逐项列出，不含世界 ID、'
+                       '隐藏接触与接触标识',
+         'quantities': sorted(OBSERVABLE_QUANTITY_SET),
+@@ -601,8 +611,25 @@
+                 p.append('context_observable_forbidden:' + ','.join(forbidden[:3]))
+         if obr.get('source') != OBSERVABLE_SOURCE:
+             p.append('context_observable_source')
+-        if obr.get('source_sha256') != sha(OBSERVABLE_SOURCE.encode('utf-8')):
++        if obr.get('source_sha256') != OBSERVABLE_SOURCE_CONTENT_SHA256:
+             p.append('context_observable_source_sha256')
++        # 迁移证据：旧路径哈希可出现，但不能替代内容哈希；漂移时拒绝。
++        if 'source_path_sha256' in obr and obr.get('source_path_sha256') != OBSERVABLE_SOURCE_PATH_SHA256:
++            p.append('context_observable_source_path_sha256_drift')
++        # 运行时漂移校验：AWZ 观察文件必须存在且可读；缺失/不可读/内容漂移一律 fail-closed。
++        import os as _os
++        awz_env = _os.environ.get('AWZ_OBSERVATION_PATH')
++        awz_obs_path = Path(awz_env) if awz_env else Path('/Users/mac/AinerWorkFlow/AnimeWorldZero/contracts/v9/observation_packet.v1_1.schema.json')
++        if not awz_obs_path.is_file():
++            p.append('context_observable_source_unavailable')
++        else:
++            try:
++                actual = sha(awz_obs_path.read_bytes())
++            except Exception:
++                actual = None
++                p.append('context_observable_source_unreadable')
++            if actual is not None and actual != OBSERVABLE_SOURCE_CONTENT_SHA256:
++                p.append('context_observable_source_content_drift')
+         for k in ('registry_id', 'derivation'):
+             if not isinstance(obr.get(k), str) or not obr[k]:
+                 p.append('context_observable_missing:' + k)
+@@ -970,7 +997,7 @@
+ def worker_gate(a):
+     # r4 F4：解析失败、编码异常、JCS 异常都 fail-closed 成白名单原因码，不向外抛 traceback。
+     try:
+-        proposal = load_json(a.proposal)
++        proposal = load_json(a.proposal, strict=True)
+     except Exception as exc:
+         out = {'ok': False, 'decision': 'rejected', 'reason_code': 'schema_invalid',
+                'errors': ['proposal_unreadable:' + type(exc).__name__],
+@@ -979,7 +1006,7 @@
+         _print_json(out)
+         return 1
+     try:
+-        ctx = load_json(a.context) if a.context else None
++        ctx = load_json(a.context, strict=True) if a.context else None
+     except Exception as exc:
+         out = {'ok': False, 'decision': 'rejected', 'reason_code': 'schema_invalid',
+                'errors': ['context_unreadable:' + type(exc).__name__],
+@@ -1006,7 +1033,7 @@
+ 
+ def worker_reply(a):
+     try:
+-        rdoc = load_json(a.reply)
++        rdoc = load_json(a.reply, strict=True)
+         rschema = schema_load(a.reply_schema)
+     except Exception as exc:
+         _print_json({'ok': False, 'errors': ['reply_unreadable:' + type(exc).__name__],
+@@ -1632,12 +1659,12 @@
+         cpath = fixture_dir / 'contexts' / fname
+         write(ppath, proposal)
+         write(cpath, ctx)
+-        ctx_disk = load_json(cpath)
++        ctx_disk = load_json(cpath, strict=True)
+         pin = jcs_sha(ctx_disk)
+         # 该夹具故意把 basis 写成 JCS 超范围整数：摘要无法重算（重算本身就会抛错），
+         # 保留 mutation 写入的占位摘要，由 __init__ 之外的控制路径负责接受。
+         if case['name'] == 'jcs_int_out_of_range':
+-            raw = load_json(ppath)
++            raw = load_json(ppath, strict=True)
+             raw['evidence_version'] = '0' * 64
+             write(ppath, raw)
+         pins[case['name']] = pin
+@@ -1677,7 +1704,7 @@
+     return mut_paths, pins, expectations, case_list, reply_list
+ 
+ 
+-def suite(regenerate=False, root_arg=None):
++def suite(regenerate=False, root_arg=None, output_dir=None):
+     pschema, rschema, eschema = schema_load(PROPOSAL_SCHEMA), schema_load(REPLY_SCHEMA), schema_load(ENTRY_SCHEMA)
+     temp_dir_ctx = None
+ 
+@@ -1850,7 +1877,7 @@
+     for row in rows:
+         if not row['valid'] or row['exception']:
+             continue
+-        p = load_json(target_fixture / 'valid' / row['proposal_file'])
++        p = load_json(target_fixture / 'valid' / row['proposal_file'], strict=True)
+         reply = row['reply'] or {}
+         no_rewrite.append({'name': row['name'],
+                            'evidence_version_echoed':
+@@ -1917,7 +1944,7 @@
+     probe_rows, probe_invariants = [], []
+     probe_path = ROOT / 'reports/V-V9-B1/probe_variants.json'
+     if probe_path.is_file():
+-        probes = load_json(probe_path)
++        probes = load_json(probe_path, strict=True)
+         family_counts, family_reject = {}, {}
+         for x in probes:
+             fam = x.get('family')
+@@ -1969,7 +1996,7 @@
+     jcs_rows = jcs_self_tests()
+     diffs = []
+     for p in sorted(FIXTURE.rglob('*.json')):
+-        obj = load_json(p)
++        obj = load_json(p, strict=True)
+         legacy = json.dumps(obj, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+         try:                                   # 含 JCS 超范围整数的夹具按异常记录，只报告
+             canon = jcs(obj).decode('utf-8')
+@@ -2049,18 +2076,21 @@
+             'note': '只报告；不改 Event/v1 r2、teacher_cache v2 或任何既有契约（RFC 8785 迁移由一级另行决定）。'},
+         'failures': failures, 'control_failures': bad_controls,
+     }
+-    write(OUT / 'check_result.json', result)
+-    write_sha_manifest(result)
++    out_dir = Path(output_dir).resolve() if output_dir else None
++    if out_dir is not None:
++        out_dir.mkdir(parents=True, exist_ok=True)
++        write(out_dir / 'check_result.json', result)
++        write_sha_manifest(result, out_dir)
+     _print_json({k: result[k] for k in ('all_ok', 'counts', 'failures', 'control_failures')})
+     return int(not all_ok)
+ 
+ 
+ def gen_jcs_sha(path):
+     """文件内容按 RFC 8785 规范化后的 sha256（只对 JSON 有意义）。"""
+-    return jcs_sha(load_json(path))
++    return jcs_sha(load_json(path, strict=True))
+ 
+ 
+-def write_sha_manifest(result):
++def write_sha_manifest(result, out_dir=None):
+     """r4 F7：重算全部交付物与输入的 SHA，并把「原始字节」与「JCS 摘要」分栏写清楚。"""
+     deliverables = [
+         ('contracts/v9/skill_proposal.v1.schema.json', PROPOSAL_SCHEMA),
+@@ -2139,7 +2169,8 @@
+     lines += ['', '## 计数（来自 check_result.json）']
+     for k in sorted(result['counts']):
+         lines.append('# %s = %s' % (k, result['counts'][k]))
+-    (OUT / 'SHA256SUMS.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
++    _target = (Path(out_dir) if out_dir else OUT)
++    (_target / 'SHA256SUMS.txt').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+ 
+ 
+ def main():
+@@ -2147,6 +2178,7 @@
+     p.add_argument('--suite', action='store_true')
+     p.add_argument('--regenerate', action='store_true', help='显式原地重写交付夹具目录（复核流程不得使用）')
+     p.add_argument('--root', default=None, help='仓库根目录（避免写死路径）')
++    p.add_argument('--output-dir', default=None, help='显式输出目录；默认只读不写 check_result/SHA256SUMS')
+     p.add_argument('mode', nargs='?', choices=['gate', 'reply'])
+     p.add_argument('--proposal')
+     p.add_argument('--reply')
+@@ -2167,7 +2199,7 @@
+     schema_path = a.schema or str(PROPOSAL_SCHEMA)
+     reply_schema_path = a.reply_schema or str(REPLY_SCHEMA)
+     if a.suite:
+-        return suite(regenerate=a.regenerate, root_arg=a.root)
++        return suite(regenerate=a.regenerate, root_arg=a.root, output_dir=a.output_dir)
+     if a.mode == 'gate':
+         if not a.proposal:
+             p.error('gate needs --proposal')

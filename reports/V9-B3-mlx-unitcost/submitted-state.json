@@ -1,0 +1,1272 @@
+{
+  "id": "ainerzero.V9.P28",
+  "project_id": "ainerzero",
+  "track_id": "ainerzero.V9.P",
+  "seq": 28,
+  "title": "【MLX·测量】S1评测单位耗时实测B3（用户批准一次、≤10分钟、只测batch-1前向/encode/probe_graph）",
+  "kind": "implement",
+  "tier": 2,
+  "status": "reported",
+  "prompt": "# S1 评测 MLX 单位耗时实测（P18 选项 B3）——用户已批准一次，单次 ≤10 分钟\n\n**授权**：用户原话与预算登记见 AinerZero/RESEARCH_LOG.md 的 `R20261022-S1-B3-mlx-unitcost-budget` 一节。只批准**一次**有界运行；失败不重跑，不挪用额度。\n\n## 两阶段（第二阶段必须等一级冻结后才能做）\n\n**阶段 1：写脚本，CPU 干跑（不导入 MLX）**\n1. 在 `reports/V9-B3-mlx-unitcost/` 下写测量脚本 `measure_unit_cost.py`，只读导入 `ainerzero.v9.experiments.s1` 的产品代码，不改任何源码。\n   - arm1：用 `arms.load_d_candidate()` 加载冻结的 D 候选，并先过 `verify_d_candidate_identity()`。\n   - arm2/3/4：用 `arms.build_trainable_arm(arm_id, seed=0)`，冻结规模，不训练。\n   - 后端用 `runtime.MlxBackend`。\n2. 样本：从 development 分区（dataset digest `8234f2f3…83ad26`，`artifacts/v9/s1/datasets/`）按 scene_id 排序后，取前 N 个 episode 作为固定清单，N 由你定但要写死，建议 8–12。清单和 SHA 都写进报告。只用 development 分区。**任何含 `final` 的路径都 fail-closed**，并给出这个守卫的单测。\n3. 每个臂测三项，都是 batch-1：\n   - (a) 单步前向：在 `step_sequence` 里逐步计时，每步包含 `forward_terms` 加 `backend.eval` 同步。必要时可以在脚本里复刻同一个循环来计时，但调用的必须是产品的 `forward_terms`。\n   - (b) `encode`：单行观测。\n   - (c) `probe_graph`：只测 arm2/3/4，用 (a) 跑完后的真实 memory。\n   - 每项先丢弃 3 次预热调用，单独记录首次调用的编译/预热开销；之后至少测 30 次，报 median / p90 / max。\n   - 计时用 `time.perf_counter`，必须在 MLX 同步之后取时间（`encode` 返回 numpy 时已经同步；前向在 `backend.eval` 之后取）。\n4. 资源与边界：\n   - 启动前核对资源闸门：进程 ≤8 GiB；MLX ≤4 GiB；系统余量 ≥16 GiB；本次开机内交换区增长 ≤1 GiB。不满足就拒绝启动。\n   - 运行中逐臂落盘 JSON，超时也要保留已完成的臂。\n   - 记录 MLX 峰值内存与进程峰值 RSS。\n   - 不创建优化器，不调 `value_and_grad`，不保存检查点，不写 P1 的 RunStore 或台账。\n5. 用一个不导入 MLX 的假后端在 CPU 上干跑整个脚本，证明流程、落盘和守卫都正确，并给出 `final` 路径守卫与「不建优化器」两项检查的测试。\n6. 用 `relay ask ainerzero.V9.P28` 提交冻结申请，内容包括：脚本与测试的 SHA、精确 argv、预计墙钟、N 的取值、资源闸门的实测读数。**提交后停下等一级答复，不得自行开跑。**\n\n**阶段 2：一级答复「冻结通过」后，真实运行一次**\n7. 用 `relay exec ainerzero.V9.P28 --agent <你> -- <冻结的 argv>` 运行，硬截止 600 s（可以用 `timeout 600` 包住，或用 runner 的 wall 限制）。只跑一次。\n8. 用测得的单位耗时乘以 P18 已实测的调用量（digest `8234f2f3…`：611 次 step_sequence、1492 次单步前向、800 次 probe_graph、3500 次 encode；来源 `reports/V9-P18/r4/products/metrics.json`），按臂换算评测墙钟，给出区间（median 到 p90），并对照 P1 的单次 20 分钟与总计 4 小时。换算只是算术，要写明假设（例如 step_sequence 的单步数按 P18 实测帧数），不得外推成能力结论。\n\n## 报告\n`reports/V9-B3-mlx-unitcost/报告.md`、`指标.json`、原始逐次计时 JSON、`env.txt`（MLX 版本、芯片、macOS 版本）、`SHA256SUMS.txt`。所有 SHA 由脚本输出直接粘贴。失败、超时或部分结果都如实写明。\n\n## 禁止\n训练或反向传播、生成数据、读 final、下载安装、写批准行、启动 P1、第二次真实运行。超过 5 分钟的命令用 relay exec；每 10 分钟内至少 heartbeat 一次。\n",
+  "params": {
+    "user_approval_ref": "AinerZero RESEARCH_LOG R20261022-S1-B3-mlx-unitcost-budget",
+    "runs_authorized": 1,
+    "wall_seconds_max": 600,
+    "measure": [
+      "batch1_forward",
+      "encode",
+      "probe_graph"
+    ],
+    "forbidden": [
+      "training",
+      "backward",
+      "optimizer",
+      "data_generation",
+      "final_partition",
+      "checkpoint_save",
+      "p1_runstore_write",
+      "approval_line",
+      "second_run"
+    ],
+    "resource_gate": {
+      "process_rss_gib_max": 8,
+      "mlx_gib_max": 4,
+      "system_headroom_gib_min": 16,
+      "same_boot_swap_growth_gib_max": 1,
+      "boot": "2026-10-22T17:20"
+    },
+    "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+    "partition": "development",
+    "freeze_gate": "阶段1结束后 relay ask 交脚本SHA+argv，一级答复冻结后才可真实运行"
+  },
+  "params_version": 0,
+  "acceptance": "",
+  "context_files": [
+    "/Users/mac/AinerWorkFlow/AinerRelay/reports/coordination/claude-20261022-e32/P1-READINESS.md"
+  ],
+  "file_scope": [
+    "reports/V9-B3-mlx-unitcost/"
+  ],
+  "depends_on": [
+    "ainerzero.V9.P15"
+  ],
+  "verifies": [],
+  "needs_gpu": true,
+  "dedupe_key": "ainerzero-v9-p28-b3-mlx-unitcost",
+  "max_attempts": 3,
+  "attempts": 0,
+  "assignee": "codex-0fqn",
+  "author": "codex-0fqn",
+  "lease_until": null,
+  "lease_s": 1200,
+  "progress": null,
+  "last_message": "结束：/usr/bin/timeout -s KILL 600 /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python（返回码 0，用时 0.1 分）",
+  "result": "# ainerzero.V9.P28 执行报告\n角色：executor；负责人：codex-0fqn；时间：2026-10-22T22:37:13+03:00\n任务状态：reported，待P29非作者复核；实验状态：唯一MLX测量completed，不代表能力通过。\n任务依据：R20261022-S1-B3-mlx-unitcost-budget一次≤600秒；一级#425/#429/#431口径及#433最终冻结。\n输入身份：脚本/测试/23项源码及数据/精确argv见freeze.json与SHA256SUMS.txt；运行后全部未变。\n文件范围：仅reports/V9-B3-mlx-unitcost/；未修改产品源码。\n实际执行：冻结argv外套relay exec与系统timeout -s KILL 600，恰好1次，0重跑；原始命令/输出见DETAILS.md和real-exec.log。\n墙钟：外层3.330s，登记进程组3.151s；退出0，confirmed_empty=true，无剩余成员。\n样本：development固定前12场景，全e3_identity，60帧/48转移；完整清单及SHA已交。\n每臂：forward3预热+48正式、encode3+60、probe_graph3+36；另12次原生step_sequence/48转移交叉核对。\narm1：按一级#425三项N/A，只验冻结D身份；不测C0 batch16，D真实2秒前向仍未知。\n硬件：Apple M2 Max，macOS27.2，mlx/mlx-metal0.32.2，numpy2.5.3；实际Device(gpu,0)，backend名字mlx-cpu不作为设备证据。\n资源：进程峰值0.105225GiB，MLX峰值0.001052GiB，系统余量最低48.568GiB，开机swap增长0。\n三臂参数SHA前后相同；无优化器/反向/训练/保存checkpoint/生成数据/final/P1账本或批准行。\n逐步forward median(ms)：arm2=2.577104；arm3=2.495104；arm4=2.513896。\n原生序列平均单步/逐步median比值：arm2=0.9447；arm3=0.7373；arm4=1.0215，原因未验证，不替换不利结果。\nP18调用量算术：每臂/种子核心约5.63–8.00s；9次情景合计52.150–64.501s，非联合p90/置信区间。\n未测：175个window批、D真实前向、checkpoint/I/O、训练及其他family/训练后memory；不能据此确认完整20分钟/4小时预算或放行P1。\nCPU最终29过/0败，完整假后端无MLX；初版/dev/null失败及两轮冻结暂缓均保留，真实预算未用于重试。\n产物：指标.json、DETAILS.md、env.txt、SHA256SUMS.txt、real-001逐臂/逐次JSON、所有原始CPU/MLX日志、freeze.json及ONCE。\n交回统筹：交P29静态非作者复核，不再实测、不自行accept、不启动P1。\n",
+  "result_data": {
+    "schema": "ainerzero.v9.p28.unit_cost.v1",
+    "task": "ainerzero.V9.P28",
+    "agent": "codex-0fqn",
+    "status": "reported_pending_non_author_review",
+    "measured_at": "2026-10-22T22:37:13+03:00",
+    "authorization": "RESEARCH_LOG R20261022-S1-B3-mlx-unitcost-budget; task answer #433",
+    "runs_authorized": 1,
+    "real_attempts": 1,
+    "real_model_runs": 1,
+    "retries": 0,
+    "hard_limit_seconds": 600,
+    "outer_wall_seconds": 3.3303827500021725,
+    "supervision": {
+      "wall_s": null,
+      "cap_s": null,
+      "pgid": 48856,
+      "timeout": false,
+      "elapsed_s": 3.151,
+      "kind": "exited",
+      "confirmed_empty": true,
+      "members_left": [],
+      "leader_returncode": 0,
+      "confirmed_at_s": 3.1506,
+      "raw_log": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B3-mlx-unitcost/real-exec.log"
+    },
+    "execution": {
+      "command": [
+        "python3",
+        "/Users/mac/AinerWorkFlow/AinerRelay/bin/relay",
+        "exec",
+        "ainerzero.V9.P28",
+        "--agent",
+        "codex-0fqn",
+        "--",
+        "/usr/bin/timeout",
+        "-s",
+        "KILL",
+        "600",
+        "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+        "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B3-mlx-unitcost/measure_unit_cost.py",
+        "--mode",
+        "real",
+        "--output",
+        "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B3-mlx-unitcost/real-001",
+        "--freeze",
+        "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B3-mlx-unitcost/freeze.json"
+      ],
+      "returncode": 0,
+      "outer_wall_seconds": 3.3303827500021725,
+      "retry": false
+    },
+    "freeze_message_id": 433,
+    "frozen_source_files": {
+      "src/ainerzero/v9/experiments/s1/__init__.py": "b406eb96528e5e2bd40cc2c66004cc67ad7ab18c7fe718b7b9ac8acb5aa3d273",
+      "src/ainerzero/v9/experiments/s1/arms.py": "dfee798e41143857be811e7d9b1e70839f4c44c026890740da4a79d204cca62d",
+      "src/ainerzero/v9/experiments/s1/awz_export.py": "9870af961551ef35357688ee52e35fa5bbd672863764458c85519c7404563492",
+      "src/ainerzero/v9/experiments/s1/commands.py": "aca140c49245b4d3c13f00d84e306aacb57fba158f4e7ed6f62484295e3583b7",
+      "src/ainerzero/v9/experiments/s1/completion.py": "3dee3291a99a26484acd2ec3a05cf23902bf9eb404c0a4916f361313025333c2",
+      "src/ainerzero/v9/experiments/s1/data.py": "c354fdd5bacf054f02cc601c9362c334d7a732e6ba4aa1c8b1a310aff13958fc",
+      "src/ainerzero/v9/experiments/s1/evaluation.py": "90e174c0a739a106d1e2137e14fc27bb4a95516513762a4a34deadd34738fb92",
+      "src/ainerzero/v9/experiments/s1/identity.py": "5673103449ffcabc6666baf6e7e8a869a10d29c3a7ba5fc1a00553b04c816903",
+      "src/ainerzero/v9/experiments/s1/metrics.py": "577210abaacca6559e30bf1c901e906d774ab68ea9a97524424ddeb3aa9f58d4",
+      "src/ainerzero/v9/experiments/s1/prereg.py": "a6cc1cbfabe16cb72f4c4e86758ed7359deadae7e5b648cb8b8b2fce7f184e6c",
+      "src/ainerzero/v9/experiments/s1/resource_gate.py": "7171a83282abdfdb31892a3b24d82251b813f3623102148b9ddcc0710e5d578f",
+      "src/ainerzero/v9/experiments/s1/runtime.py": "d5417b188126754e73e9b43c579235b062926b765e3be584759f8e5b1f0e60df",
+      "src/ainerzero/v9/experiments/s1/smoke.py": "90c71f538fbb7d4b068f595333558988e73ea76bb0f903d0c8cf9a1bea3c00b8",
+      "src/ainerzero/v9/experiments/s1/spec.py": "d7cd6dc9d2fb7ac9fe2f1a466abba288298e3341346016344c58f033d007ea31",
+      "src/ainerzero/v9/experiments/s1/worker.py": "f271ef609a23c4388338e2d6c95636c034c2a57e35469bd74a1869fd1425268d",
+      "src/ainerzero/learning/pilot_model.py": "6e7bc8def57fdf26297f00a0a4d38a740f1ef5308a5a6f1ce8e41b8554417f82",
+      "src/ainerzero/cli.py": "816531f32a50d52c29963aee403e26b900a421372a135f14f19f7fdcfd99c9fa",
+      "src/ainerzero/runtime/checkpoints.py": "9fb0fb3ea57fe82dbfe13de01dfa003ce78f0cff1e16aeb7761ff659da6ac9a8",
+      "reports/V9-B3-mlx-unitcost/measure_unit_cost.py": "bf5dad13687e1515a99cb1c487e5da6ddabffb22a97f96770c249883792666f9",
+      "reports/V9-B3-mlx-unitcost/test_measure_unit_cost.py": "a385436c0c475cd2372eccce7d046f9a704e99f75c221ddee273af883666a913",
+      "artifacts/v9/s1/datasets/8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26/dataset_manifest.json": "5cbd65225c84d50b50e65f31d79b8ddeb8ca5272a085d8f8c5cc1f116b4ed594",
+      "artifacts/v9/s1/datasets/8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26/packets/development.jsonl": "b9420ef5e26a00a29f022f75390cf39ffd36fac1be8b723767fa71250d7a4aa7",
+      "reports/V9-P18/r4/products/metrics.json": "ef53e69af5d4c2b47dfe3196504d8b27c88d2819566ba0fcf4c0bf07850ce9b4"
+    },
+    "source_identity_unchanged": true,
+    "environment": {
+      "python": "3.12.2 (v3.12.2:6abddd9f6a, Feb  6 2024, 17:02:06) [Clang 13.0.0 (clang-1300.0.29.30)]",
+      "platform": "macOS-27.2-arm64-arm-64bit",
+      "macos": "27.2",
+      "chip": "Apple M2 Max",
+      "kern.boottime": "{ sec = 1792678827, usec = 705963 } Thu Oct 22 17:20:27 2026",
+      "vm.swapusage": "total = 0.00M  used = 0.00M  free = 0.00M  (encrypted)",
+      "mlx_installed_version": "0.32.2",
+      "dist_info_versions": {
+        "mlx": "0.32.2",
+        "mlx-metal": "0.32.2",
+        "numpy": "2.5.3"
+      },
+      "mlx_imported": false,
+      "metadata_snapshot_stage": "before MLX import; mlx_imported=false belongs to that snapshot",
+      "actual_runtime_device": "Device(gpu, 0)",
+      "product_backend_name": "mlx-cpu"
+    },
+    "resources": {
+      "process_peak_rss_gib": 0.105224609375,
+      "mlx_peak_gib": 0.0010523833334445953,
+      "system_available_min_gib": 48.56829833984375,
+      "same_boot_swap_growth_max_gib": 0.0,
+      "boot_epoch": 1792678827,
+      "samples": 995,
+      "resource_refusals": []
+    },
+    "sample_manifest": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B3-mlx-unitcost/sample_manifest.json",
+    "sample_manifest_file_sha256": "6b27deb54c6fe8773d2ee0d52a8f56167806e339ee014d4ef231f733373fb026",
+    "sample_content_sha256": "b772eeb0806ff72ec16a5e8c52f6516d777c3000069435b8c90db66e2a389063",
+    "N": 12,
+    "partition": "development",
+    "dataset_digest": "8234f2f382281f355b662f05f0bb576d5efac4853f732ddf2e1cdfeee083ad26",
+    "families": [
+      "e3_identity"
+    ],
+    "cpu_tests": {
+      "passed": 29,
+      "failed": 0,
+      "log": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B3-mlx-unitcost/cpu-tests-r5.log"
+    },
+    "arm1": {
+      "status": "not_applicable",
+      "forward": "not_applicable",
+      "encode": "not_applicable",
+      "probe_graph": "not_applicable",
+      "reason": "incomparable S1 input layout; no forward_terms"
+    },
+    "arm1_identity": {
+      "schema": "ainerzero.v9.s1.d_identity.v2",
+      "frozen_manifest": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-baseline/r3/baseline_manifest.json",
+      "frozen_manifest_file_sha256": "2c991f052f322112fa97c57f52585bd99779c3178b21108efdc494596184be5b",
+      "frozen_manifest_digest": "3481b6ad70991478c658fa2de87d5621208fe69fc50369705cbaaa7492eb45e9",
+      "manifest_digest_rule": "sha256(canonical_json(manifest minus generated_at, manifest_digest, policy_check)) -- the original A2 r3 builder algorithm",
+      "manifest_digest_match": true,
+      "registered_fields": {
+        "tensors_sha256": {
+          "expected": "cbb14d878dfda5af816dbc4903c7fb811aabbcfb17ce494f00e994ab3d6b286a",
+          "actual": "cbb14d878dfda5af816dbc4903c7fb811aabbcfb17ce494f00e994ab3d6b286a",
+          "match": true
+        },
+        "manifest_sha256": {
+          "expected": "76403018a033317c1cf4422f60318ee9a9df99d8b9e75c4c3211e444d4ba3892",
+          "actual": "76403018a033317c1cf4422f60318ee9a9df99d8b9e75c4c3211e444d4ba3892",
+          "match": true
+        },
+        "metadata_sha256": {
+          "expected": "0de030a55af2f9f6d5cca6a1d0c0b5f15eac1281a9ead3bffdadda5a0f8bf58a",
+          "actual": "0de030a55af2f9f6d5cca6a1d0c0b5f15eac1281a9ead3bffdadda5a0f8bf58a",
+          "match": true
+        }
+      },
+      "entries_verified": 9,
+      "pilot_dir": "artifacts/pilot/pilot-b4e75e9b4a1a4ba086118d37017b2a1a",
+      "checkpoint_id": "96b72328-d9c1-4b48-b69c-1fa30ba8123c",
+      "tensors_sha256": "cbb14d878dfda5af816dbc4903c7fb811aabbcfb17ce494f00e994ab3d6b286a",
+      "manifest_sha256": "76403018a033317c1cf4422f60318ee9a9df99d8b9e75c4c3211e444d4ba3892",
+      "metadata_sha256": "0de030a55af2f9f6d5cca6a1d0c0b5f15eac1281a9ead3bffdadda5a0f8bf58a",
+      "role": "read-only baseline freeze for ADR-0012 / V9 P0 (r3: C3 coverage, T3 pinned-tree scan, RunStore row-level ruling)",
+      "mlx_imported": false
+    },
+    "arms": {
+      "arm2": {
+        "parameter_count": 207519,
+        "parameter_sha256_before": "78d8f6f5332da21b424c797b70203a46dbf10ecaeeb1623db5bdb2fe02852e65",
+        "parameter_sha256_after": "78d8f6f5332da21b424c797b70203a46dbf10ecaeeb1623db5bdb2fe02852e65",
+        "initialization_and_identity_seconds": 0.038795167001808295,
+        "forward": {
+          "first_call_seconds": 0.10798941699977149,
+          "samples": 48,
+          "median_seconds": 0.0025771039981918875,
+          "p90_seconds": 0.0036916286004270663,
+          "max_seconds": 0.0095937909973145,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "encode": {
+          "first_call_seconds": 0.0010662499989848584,
+          "samples": 60,
+          "median_seconds": 0.0006044580004527234,
+          "p90_seconds": 0.0006896747003338532,
+          "max_seconds": 0.001604958000825718,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "probe_graph": {
+          "first_call_seconds": 0.0001489589994889684,
+          "samples": 36,
+          "median_seconds": 7.668750004086178e-05,
+          "p90_seconds": 0.00010295850188413169,
+          "max_seconds": 0.00014320800255518407,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "step_sequence_per_transition": {
+          "samples": 12,
+          "median_seconds": 0.002434671875107597,
+          "p90_seconds": 0.0032332083999790486,
+          "max_seconds": 0.0033221562507605995,
+          "delta_vs_step_median_seconds": -0.00014243212308429065,
+          "ratio_vs_step_median": 0.9447317131228612,
+          "scope": "12 auxiliary checks, once per episode, actual product step_sequence; not a fourth 30-sample primitive"
+        }
+      },
+      "arm3": {
+        "parameter_count": 159455,
+        "parameter_sha256_before": "1af9e5adc4b85c27bb43f1271ff2a2bd05305dcccb446efcc598aaf121809a2f",
+        "parameter_sha256_after": "1af9e5adc4b85c27bb43f1271ff2a2bd05305dcccb446efcc598aaf121809a2f",
+        "initialization_and_identity_seconds": 0.0042382079991512,
+        "forward": {
+          "first_call_seconds": 0.0026940839998133015,
+          "samples": 48,
+          "median_seconds": 0.0024951040013547754,
+          "p90_seconds": 0.003280487699521473,
+          "max_seconds": 0.01160416699713096,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "encode": {
+          "first_call_seconds": 0.0006671250012004748,
+          "samples": 60,
+          "median_seconds": 0.0005433125006675255,
+          "p90_seconds": 0.0005761374988651369,
+          "max_seconds": 0.00086070799807203,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "probe_graph": {
+          "first_call_seconds": 3.0583996704081073e-05,
+          "samples": 36,
+          "median_seconds": 1.1812498996732756e-05,
+          "p90_seconds": 1.727050039335154e-05,
+          "max_seconds": 2.9000002541579306e-05,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "step_sequence_per_transition": {
+          "samples": 12,
+          "median_seconds": 0.001839599000504677,
+          "p90_seconds": 0.0019501958497130545,
+          "max_seconds": 0.0037890210005571134,
+          "delta_vs_step_median_seconds": -0.0006555050008500984,
+          "ratio_vs_step_median": 0.7372834958005051,
+          "scope": "12 auxiliary checks, once per episode, actual product step_sequence; not a fourth 30-sample primitive"
+        }
+      },
+      "arm4": {
+        "parameter_count": 274031,
+        "parameter_sha256_before": "b63dac897c1563fc7c8beb57cc95201841960b955bcf659e47de510c9200d973",
+        "parameter_sha256_after": "b63dac897c1563fc7c8beb57cc95201841960b955bcf659e47de510c9200d973",
+        "initialization_and_identity_seconds": 0.004775541001436068,
+        "forward": {
+          "first_call_seconds": 0.0028705830009130295,
+          "samples": 48,
+          "median_seconds": 0.0025138959990727017,
+          "p90_seconds": 0.0028017793982144214,
+          "max_seconds": 0.0031757079996168613,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "encode": {
+          "first_call_seconds": 0.00038095800118753687,
+          "samples": 60,
+          "median_seconds": 0.0005619589974230621,
+          "p90_seconds": 0.0006794788001570851,
+          "max_seconds": 0.00173170799826039,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "probe_graph": {
+          "first_call_seconds": 3.162499706377275e-05,
+          "samples": 36,
+          "median_seconds": 1.260450153495185e-05,
+          "p90_seconds": 1.6312500520143658e-05,
+          "max_seconds": 1.9791998056462035e-05,
+          "first_call_caveat": "first call includes compilation/warmup work; compiler time is not separately isolated"
+        },
+        "step_sequence_per_transition": {
+          "samples": 12,
+          "median_seconds": 0.002567989625276823,
+          "p90_seconds": 0.0027701561747562665,
+          "max_seconds": 0.0034080104996974114,
+          "delta_vs_step_median_seconds": 5.409362620412139e-05,
+          "ratio_vs_step_median": 1.0215178456961127,
+          "scope": "12 auxiliary checks, once per episode, actual product step_sequence; not a fourth 30-sample primitive"
+        }
+      }
+    },
+    "actual_call_accounting": {
+      "timed_regions": 495,
+      "per_arm": {
+        "primary_forward": 48,
+        "forward_warmup": 3,
+        "encode": 60,
+        "encode_warmup": 3,
+        "probe_graph": 36,
+        "probe_graph_warmup": 3,
+        "native_step_sequence_crosschecks": 12,
+        "native_crosscheck_forward_transitions": 48,
+        "total_forward_terms_including_warmup_and_crosscheck": 99
+      }
+    },
+    "extrapolation": {
+      "source": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-P18/r4/products/metrics.json",
+      "source_sha256": "ef53e69af5d4c2b47dfe3196504d8b27c88d2819566ba0fcf4c0bf07850ce9b4",
+      "calls_per_arm_seed": {
+        "encode_calls": 3500,
+        "probe_graph_calls": 800,
+        "provenance": "measured_non_author (P19)",
+        "single_step_forwards": 1492,
+        "step_sequence_calls": 611,
+        "window_forward_loss_calls": 175
+      },
+      "per_arm_seed": {
+        "arm2": {
+          "arm_id": "arm2",
+          "median_seconds": 6.021992166919517,
+          "median_seconds_fraction_of_1200": 0.0050183268057662645,
+          "mean_step_sequence_median_seconds": 0.006293026457123234,
+          "p90_seconds": 8.004138124512973,
+          "p90_seconds_fraction_of_1200": 0.0066701151037608115,
+          "mean_step_sequence_p90_seconds": 0.00901458244163205
+        },
+        "arm3": {
+          "arm_id": "arm3",
+          "median_seconds": 5.63373892155505,
+          "median_seconds_fraction_of_1200": 0.004694782434629208,
+          "mean_step_sequence_median_seconds": 0.006092790785632283,
+          "p90_seconds": 6.924785294028698,
+          "p90_seconds_fraction_of_1200": 0.005770654411690582,
+          "mean_step_sequence_p90_seconds": 0.00801061808131921
+        },
+        "arm4": {
+          "arm_id": "arm4",
+          "median_seconds": 5.72767292282515,
+          "median_seconds_fraction_of_1200": 0.004773060769020958,
+          "mean_step_sequence_median_seconds": 0.006138678937179167,
+          "p90_seconds": 6.57148066310183,
+          "p90_seconds_fraction_of_1200": 0.005476233885918192,
+          "mean_step_sequence_p90_seconds": 0.006841660985492499
+        }
+      },
+      "nine_eval_invocations_arithmetic": {
+        "median_seconds": 52.15021203389915,
+        "p90_seconds": 64.50121224493051
+      },
+      "phase_cap_seconds": 14400,
+      "phase_fraction_median": 0.0036215425023541077,
+      "phase_fraction_p90": 0.004479250850342397,
+      "assumptions": [
+        "1492 forwards already include the 611 sequence calls; no double multiplication",
+        "per-arm seed0 untrained structures reused arithmetically for three seeds; no trained-checkpoint cost claim",
+        "median-to-p90 weighted sums are scenario arithmetic, not confidence bounds or a joint p90",
+        "only first 12 sorted development scenes, all e3_identity, with sparse untrained memories"
+      ],
+      "unmeasured": [
+        "175 separate checkpoint window-forward_loss batches",
+        "C0 D real forward and its 2-second deadline",
+        "checkpoint reload, model I/O, sequence slicing, output serialization, full Python bookkeeping",
+        "trained-memory population and other scene families, training time, full end-to-end phase wall"
+      ],
+      "budget_verdict": "partial primitive arithmetic only; cannot certify 20-minute or four-hour end-to-end fit"
+    },
+    "negative_evidence": [
+      "initial CPU dryrun failed because /dev/null was refused; original evidence retained",
+      "r1 freeze held for lock-mkdir issue (#429); r2 freeze held for materialization and native crosscheck (#431)",
+      "arm3 native sequence per-transition median is 26.272% lower than step median; cause not determined",
+      "backend.name says mlx-cpu but observed actual default device was GPU; no override was applied"
+    ],
+    "unmeasured": [
+      "175 separate checkpoint window-forward_loss batches",
+      "C0 D real forward and its 2-second deadline",
+      "checkpoint reload, model I/O, sequence slicing, output serialization, full Python bookkeeping",
+      "trained-memory population and other scene families, training time, full end-to-end phase wall"
+    ],
+    "not_done": [
+      "training",
+      "backward",
+      "optimizer creation",
+      "data generation",
+      "final reads",
+      "checkpoint saving",
+      "P1 RunStore/ledger writes",
+      "APPROVED line",
+      "P1 launch",
+      "second real run"
+    ],
+    "report_dir": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-B3-mlx-unitcost",
+    "independent_review": "P29 pending"
+  },
+  "callback_url": null,
+  "created_by": "claude",
+  "created_at": "2026-10-22T21:29:01+03:00",
+  "updated_at": "2026-10-22T22:39:04+03:00",
+  "workdirs": null,
+  "claimed_at": null,
+  "last_beat_at": 1792697540.064616,
+  "beats": 20,
+  "stalls": 0,
+  "max_stalls": 5,
+  "needs": [
+    "code",
+    "math"
+  ],
+  "reserve_until": null,
+  "reserve_for": null,
+  "reserve_for_kind": null,
+  "reserve_by": null,
+  "reserve_reason": null,
+  "reserve_mode": null,
+  "ready_since": 1792694269.1883671,
+  "recovery": {
+    "state": "released",
+    "actor": "composer-r8x3",
+    "reason": "P26刚交完；本会话上下文已紧，P28需读必读+写测量脚本+CPU干跑+relay ask冻结等待，换新会话再领",
+    "checkpoint": {},
+    "file_scope": [
+      "reports/V9-B3-mlx-unitcost/"
+    ],
+    "last_message": null,
+    "at": "2026-10-22T21:37:49+03:00",
+    "agent": "composer-r8x3",
+    "claimed_at": 1792694256.7834618,
+    "exec_ids": [],
+    "waiting_reason": "",
+    "completed_at": "2026-10-22T21:37:49+03:00"
+  },
+  "module": null,
+  "report_revision_id": null,
+  "gpu_level": 1,
+  "deps": [
+    {
+      "id": "ainerzero.V9.P15",
+      "status": "accepted",
+      "ok": true
+    }
+  ],
+  "deps_ok": true,
+  "waiting_questions": [],
+  "display_state": "reported",
+  "display_label": "待验收",
+  "recovery_pending": false,
+  "lease_left_s": null,
+  "elapsed_s": null,
+  "idle_s": null,
+  "health": null,
+  "reserved": false,
+  "reserve_left_s": null,
+  "reserve_label": "",
+  "events": [
+    {
+      "id": 11284,
+      "at": "2026-10-22T22:39:04+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "reported",
+      "message": "# ainerzero.V9.P28 执行报告",
+      "data": {
+        "result": "# ainerzero.V9.P28 执行报告\n角色：executor；负责人：codex-0fqn；时间：2026-10-22T22:37:13+03:00\n任务状态：reported，待P29非作者复核；实验状态：唯一MLX测量completed，不代表能力通过。\n任务依据：R20261022-S1-B3-mlx-unitcost-budget一次≤600秒；一级#425/#429/#431口径及#433最终冻结。\n输入身份：脚本/测试/23项源码及数据/精确argv见freeze.json与SHA256SUMS.txt；运行后全部未变。\n文件范围：仅reports/V9-B3-mlx-unitcost/；未修改产品源码。\n实际执行：冻结argv外套relay exec与系统timeout -s KILL 600，恰好1次，0重跑；原始命令/输出见DETAILS.md和real-exec.log。\n墙钟：外层3.330s，登记进程组3.151s；退出0，confirmed_empty=true，无剩余成员。\n样本：development固定前12场景，全e3_identity，60帧/48转移；完整清单及SHA已交。\n每臂：forward3预热+48正式、encode3+60、probe_graph3+36；另12次原生step_sequence/48转移交叉核对。\narm1：按一级#425三项N/A，只验冻结D身份；不测C0 batch16，D真实2秒前向仍未知。\n硬件：Apple M2 Max，macOS27.2，mlx/mlx-metal0.32.2，numpy2.5.3；实际Device(gpu,0)，backend名字mlx-cpu不作为设备证据。\n资源：进程峰值0.105225GiB，MLX峰值0.001052GiB，系统余量最低48.568GiB，开机swap增长0。\n三臂参数SHA前后相同；无优化器/反向/训练/保存checkpoint/生成数据/final/P1账本或批准行。\n逐步forward median(ms)：arm2=2.577104；arm3=2.495104；arm4=2.513896。\n原生序列平均单步/逐步median比值：arm2=0.9447；arm3=0.7373；arm4=1.0215，原因未验证，不替换不利结果。\nP18调用量算术：每臂/种子核心约5.63–8.00s；9次情景合计52.150–64.501s，非联合p90/置信区间。\n未测：175个window批、D真实前向、checkpoint/I/O、训练及其他family/训练后memory；不能据此确认完整20分钟/4小时预算或放行P1。\nCPU最终29过/0败，完整假后端无MLX；初版/dev/null失败及两轮冻结暂缓均保留，真实预算未用于重试。\n产物：指标.json、DETAILS.md、env.txt、SHA256SUMS.txt、real-001逐臂/逐次JSON、所有原始CPU/MLX日志、freeze.json及ONCE。\n交回统筹：交P29静态非作者复核，不再实测、不自行accept、不启动P1。\n"
+      }
+    },
+    {
+      "id": 11282,
+      "at": "2026-10-22T22:38:06+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "message_ack",
+      "message": "已严格按冻结argv真实执行恰好1次，登记组3.151s/退出0/组空确认；三臂495条计时region，参数SHA相同，资源全通过；第8步情景算术与未测项报告齐备，不重跑不启动P1。",
+      "data": {
+        "message_id": 433,
+        "state": "applied"
+      }
+    },
+    {
+      "id": 11261,
+      "at": "2026-10-22T22:32:20+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 0；进程组 48856 已确认空",
+      "data": {
+        "exec_id": "cb40c61ff9674b9dbb5203ac063d5a19",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11260,
+      "at": "2026-10-22T22:32:20+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：/usr/bin/timeout -s KILL 600 /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python（返回码 0，用时 0.1 分）",
+      "data": null
+    },
+    {
+      "id": 11259,
+      "at": "2026-10-22T22:32:16+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "cb40c61ff9674b9dbb5203ac063d5a19",
+      "data": null
+    },
+    {
+      "id": 11258,
+      "at": "2026-10-22T22:32:16+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：/usr/bin/timeout -s KILL 600 /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+      "data": null
+    },
+    {
+      "id": 11257,
+      "at": "2026-10-22T22:32:16+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "message_ack",
+      "message": "freeze.json已按433写入原文、消息号、23项source_files和精确argv，复算仍一致；ONCE与real-001均不存在，准备只执行这一次。",
+      "data": {
+        "message_id": 433,
+        "state": "received"
+      }
+    },
+    {
+      "id": 11248,
+      "at": "2026-10-22T22:30:24+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "claude",
+      "type": "message",
+      "message": "一级(claude,E32)答#432：冻结通过。绑定如下：脚本 measure_unit_cost.py SHA256=bf5dad13687e1515a99cb1c487e5da6ddabffb22a97f96770c249883792666f9；测试 SHA256=a385436c0c475cd2372eccce7d046f9a704e99f75c221ddee273af883666a913",
+      "data": {
+        "message_id": 433,
+        "kind": "answer",
+        "blocking": false,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11247,
+      "at": "2026-10-22T22:29:42+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "question",
+      "message": "按#431仅补两处后的r3冻结申请；实际MLX0次：\n脚本SHA256=bf5dad13687e1515a99cb1c487e5da6ddabffb22a97f96770c249883792666f9\n测试SHA256=a385436c0c475cd2372eccce7d046f9a704e99f75c221ddee273af883666a913\n清单SHA256=6b27deb54c6fe877",
+      "data": {
+        "message_id": 432,
+        "kind": "question",
+        "blocking": true,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11246,
+      "at": "2026-10-22T22:29:42+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "message_ack",
+      "message": "已按431只补完整同步与12原生序列交叉核对；invoke内pose/pred转numpy、扫描产品memory对象MLX叶子eval；CPU假延迟时钟14=2+5+1+2+4证明在区内；29过并重新preflight。实际MLX仍0。",
+      "data": {
+        "message_id": 431,
+        "state": "applied"
+      }
+    },
+    {
+      "id": 11245,
+      "at": "2026-10-22T22:28:16+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 0；进程组 45170 已确认空",
+      "data": {
+        "exec_id": "e234c5c0a7e144b18eb444fab486936f",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11244,
+      "at": "2026-10-22T22:28:16+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：.venv/bin/python reports/V9-B3-mlx-unitcost/measure_unit_cost.py --mode prefligh（返回码 0，用时 0.0 分）",
+      "data": null
+    },
+    {
+      "id": 11243,
+      "at": "2026-10-22T22:28:14+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "e234c5c0a7e144b18eb444fab486936f",
+      "data": null
+    },
+    {
+      "id": 11242,
+      "at": "2026-10-22T22:28:14+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：.venv/bin/python reports/V9-B3-mlx-unitcost/measure_unit_cost.py --mode prefligh",
+      "data": null
+    },
+    {
+      "id": 11241,
+      "at": "2026-10-22T22:28:14+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 0；进程组 45077 已确认空",
+      "data": {
+        "exec_id": "86841eb2ba2d42428934ca82ffb008cb",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11240,
+      "at": "2026-10-22T22:28:14+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：.venv/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_unit_cost.py （返回码 0，用时 0.1 分）",
+      "data": null
+    },
+    {
+      "id": 11239,
+      "at": "2026-10-22T22:28:10+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "86841eb2ba2d42428934ca82ffb008cb",
+      "data": null
+    },
+    {
+      "id": 11238,
+      "at": "2026-10-22T22:28:10+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：.venv/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_unit_cost.py ",
+      "data": null
+    },
+    {
+      "id": 11236,
+      "at": "2026-10-22T22:26:40+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "message_ack",
+      "message": "按431只补计时区完整求值和12个episode原生step_sequence交叉核对，保留真实memory类型，补CPU时钟/同步和流程断言；新SHA再次提交前不跑MLX。",
+      "data": {
+        "message_id": 431,
+        "state": "received"
+      }
+    },
+    {
+      "id": 11234,
+      "at": "2026-10-22T22:24:22+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "claude",
+      "type": "message",
+      "message": "一级(claude,E32)答#430：这一版暂不冻结，有一处必改，改完就能通过。我已读 measure_unit_cost.py（6422764d…）。①计时区必须与产品 step_sequence 的单步一致：产品每步除 forward_terms 与 eval(loss, parts) 外，还做 np.asarray(pose) 与 np.asarray(predictions)[0].co",
+      "data": {
+        "message_id": 431,
+        "kind": "answer",
+        "blocking": false,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11233,
+      "at": "2026-10-22T22:22:32+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "按429完成r2修订，28过，新冻结申请430待答复；真实MLX0次，旧候选不放行，源码argv未变",
+      "data": null
+    },
+    {
+      "id": 11231,
+      "at": "2026-10-22T22:17:09+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "question",
+      "message": "阶段1修订r2，按#429重新申请冻结（真实MLX仍0次，旧#426未放行候选保留stage1-r1/）：\n脚本SHA256=6422764dd327313431bee19e8a2b73599dee119363e3b91c9f8c83f6ee5b1aea\n测试SHA256=e5c60b4625d6e62e46a37e3b00fba6d7545ed355c5801075f33fced8822c0e0",
+      "data": {
+        "message_id": 430,
+        "kind": "question",
+        "blocking": true,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11230,
+      "at": "2026-10-22T22:17:09+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "message_ack",
+      "message": "已按429修订并封存旧候选；.venv下28过，真实worker_lock临时夹具正例/新目录/symlink/范围外写/SQLite/其他mkdir全有反例，整脚本干跑无MLX。env记录三种dist-info。提交r2新SHA与argv。",
+      "data": {
+        "message_id": 429,
+        "state": "applied"
+      }
+    },
+    {
+      "id": 11227,
+      "at": "2026-10-22T22:15:48+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 0；进程组 41031 已确认空",
+      "data": {
+        "exec_id": "e2014ae0d2f74b30a282853499bf10ba",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11226,
+      "at": "2026-10-22T22:15:48+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：.venv/bin/python reports/V9-B3-mlx-unitcost/measure_unit_cost.py --mode prefligh（返回码 0，用时 0.0 分）",
+      "data": null
+    },
+    {
+      "id": 11225,
+      "at": "2026-10-22T22:15:48+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "e2014ae0d2f74b30a282853499bf10ba",
+      "data": null
+    },
+    {
+      "id": 11224,
+      "at": "2026-10-22T22:15:48+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：.venv/bin/python reports/V9-B3-mlx-unitcost/measure_unit_cost.py --mode prefligh",
+      "data": null
+    },
+    {
+      "id": 11223,
+      "at": "2026-10-22T22:15:47+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 0；进程组 40951 已确认空",
+      "data": {
+        "exec_id": "bb7235904fb147709231b1c5cb4c6ac0",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11222,
+      "at": "2026-10-22T22:15:47+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：.venv/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_unit_cost.py （返回码 0，用时 0.1 分）",
+      "data": null
+    },
+    {
+      "id": 11221,
+      "at": "2026-10-22T22:15:44+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "bb7235904fb147709231b1c5cb4c6ac0",
+      "data": null
+    },
+    {
+      "id": 11220,
+      "at": "2026-10-22T22:15:44+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：.venv/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_unit_cost.py ",
+      "data": null
+    },
+    {
+      "id": 11216,
+      "at": "2026-10-22T22:14:59+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "message_ack",
+      "message": "旧SHA不运行；按严格已存在/非symlink/resolve相等的父目录例外补CPU真实锁正反例，改用P1同一.venv及三项dist-info，再重新提交冻结。",
+      "data": {
+        "message_id": 429,
+        "state": "received"
+      }
+    },
+    {
+      "id": 11213,
+      "at": "2026-10-22T22:13:00+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "claude",
+      "type": "message",
+      "message": "一级(claude,E32)答#426/#428：①同意暂缓#426的旧冻结（d8eb6b1e…/650ae1cf…不放行），允许修订阶段1。②放宽只限一处：对 worker_lock 注册的锁父目录做幂等 mkdir。条件是该路径与登记的锁父目录逐字相等（resolve 后比较）、调用前已存在、是目录而且不是符号链接；其余任何 mkdir、范围外写入、SQLite 打开仍然拒绝。用真实 work",
+      "data": {
+        "message_id": 429,
+        "kind": "answer",
+        "blocking": false,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11212,
+      "at": "2026-10-22T22:12:19+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "question",
+      "message": "冻结申请#426补充，发现必须先补修的CPU入口问题，当前旧SHA请勿放行：现有ainerzero.cli.worker_lock每次调用path.parent.mkdir(parents=True,exist_ok=True)，即使目录已存在也会触发os.mkdir审计；当前测量脚本I/O守卫会拒绝该已存在的artifacts/locks目录调用，真实运行会在导入MLX前失败。建议仅允许“已存在",
+      "data": {
+        "message_id": 428,
+        "kind": "question",
+        "blocking": true,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11204,
+      "at": "2026-10-22T22:08:24+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "阶段1最终22过；#426等待一级冻结；源码/argv未改，真实MLX0次，未消费一次额度",
+      "data": null
+    },
+    {
+      "id": 11194,
+      "at": "2026-10-22T22:04:59+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "question",
+      "message": "阶段1冻结申请（真实MLX运行0次，等待明确“冻结通过”后才执行）：\n脚本SHA256=d8eb6b1ea6cd932741c2ffb225e83754e5d1b45d23185f8f505b02a7a37e97e7\n测试SHA256=650ae1cf45b016128814df15c48406587b1588fe0719769325befb21e5bce51e\n样本清单SHA256=6b27de",
+      "data": {
+        "message_id": 426,
+        "kind": "question",
+        "blocking": true,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11193,
+      "at": "2026-10-22T22:04:59+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "message_ack",
+      "message": "阶段1已落实：arm1仅CPU身份核验三项N/A；未加载D或读取C0批用于推理；实际boot1792678827/当前swap0按开机0基线检查；arm2/3/4脚本和22项CPU测试完成。",
+      "data": {
+        "message_id": 425,
+        "state": "applied"
+      }
+    },
+    {
+      "id": 11190,
+      "at": "2026-10-22T22:02:00+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 0；进程组 28637 已确认空",
+      "data": {
+        "exec_id": "cde79082aeaa40b79f61984f301ea119",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11189,
+      "at": "2026-10-22T22:02:00+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：.venv-ainerzero/bin/python reports/V9-B3-mlx-unitcost/measure_unit_cost.py --mod（返回码 0，用时 0.0 分）",
+      "data": null
+    },
+    {
+      "id": 11188,
+      "at": "2026-10-22T22:01:59+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "cde79082aeaa40b79f61984f301ea119",
+      "data": null
+    },
+    {
+      "id": 11187,
+      "at": "2026-10-22T22:01:59+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：.venv-ainerzero/bin/python reports/V9-B3-mlx-unitcost/measure_unit_cost.py --mod",
+      "data": null
+    },
+    {
+      "id": 11186,
+      "at": "2026-10-22T22:01:59+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 0；进程组 28533 已确认空",
+      "data": {
+        "exec_id": "7ec6ed6cf4ed45d692131ba83eca511d",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11185,
+      "at": "2026-10-22T22:01:59+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：.venv-ainerzero/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_uni（返回码 0，用时 0.0 分）",
+      "data": null
+    },
+    {
+      "id": 11184,
+      "at": "2026-10-22T22:01:57+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "7ec6ed6cf4ed45d692131ba83eca511d",
+      "data": null
+    },
+    {
+      "id": 11183,
+      "at": "2026-10-22T22:01:57+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：.venv-ainerzero/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_uni",
+      "data": null
+    },
+    {
+      "id": 11181,
+      "at": "2026-10-22T22:00:20+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 0；进程组 26697 已确认空",
+      "data": {
+        "exec_id": "5021666601cb4193873b470efc130d40",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11180,
+      "at": "2026-10-22T22:00:20+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：.venv-ainerzero/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_uni（返回码 0，用时 0.0 分）",
+      "data": null
+    },
+    {
+      "id": 11179,
+      "at": "2026-10-22T22:00:17+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "5021666601cb4193873b470efc130d40",
+      "data": null
+    },
+    {
+      "id": 11178,
+      "at": "2026-10-22T22:00:17+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：.venv-ainerzero/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_uni",
+      "data": null
+    },
+    {
+      "id": 11177,
+      "at": "2026-10-22T21:59:00+03:00",
+      "project_id": null,
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_end",
+      "message": "返回码 1；进程组 24407 已确认空",
+      "data": {
+        "exec_id": "e2e7aa4cc6ad4698ad5a3c05558eca1c",
+        "state": "finished"
+      }
+    },
+    {
+      "id": 11176,
+      "at": "2026-10-22T21:59:00+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "结束：.venv-ainerzero/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_uni（返回码 1，用时 0.0 分）",
+      "data": null
+    },
+    {
+      "id": 11175,
+      "at": "2026-10-22T21:58:58+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "exec_start",
+      "message": "e2e7aa4cc6ad4698ad5a3c05558eca1c",
+      "data": null
+    },
+    {
+      "id": 11174,
+      "at": "2026-10-22T21:58:58+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "progress",
+      "message": "开始：.venv-ainerzero/bin/python -m pytest reports/V9-B3-mlx-unitcost/test_measure_uni",
+      "data": null
+    },
+    {
+      "id": 11157,
+      "at": "2026-10-22T21:51:39+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "message_ack",
+      "message": "按裁决：arm1三项N/A，仅stdlib身份核验，不加载D不读C0；arm2/3/4实测；本次boot从0的swap守卫不重置。阶段1完成后提交冻结。",
+      "data": {
+        "message_id": 425,
+        "state": "received"
+      }
+    },
+    {
+      "id": 11154,
+      "at": "2026-10-22T21:49:08+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "claude",
+      "type": "message",
+      "message": "一级(claude,E32)答#424，冻结口径：①arm1（冻结D候选SharedSymbolPredictor）在S1下没有forward_terms，其encode签名也与MlxBackend.encode不兼容。spec已规定arm1的S1指标为not_applicable，因此本卡arm1的batch-1前向、encode、probe_graph三项全部记为not_applicable，",
+      "data": {
+        "message_id": 425,
+        "kind": "answer",
+        "blocking": false,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11152,
+      "at": "2026-10-22T21:48:28+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "question",
+      "message": "阶段1接口澄清（不启动MLX）：arm1实际加载SharedSymbolPredictor，没有forward_terms；其encode(symbols,visible_mask,cursor)也不兼容MlxBackend.encode的一行S1特征。现产品arm1评测仅用d_candidate_forward_loss+fixed-batch.npz(C0)，但本卡限制只用developmen",
+      "data": {
+        "message_id": 424,
+        "kind": "question",
+        "blocking": false,
+        "exec_id": null
+      }
+    },
+    {
+      "id": 11147,
+      "at": "2026-10-22T21:47:00+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "codex-0fqn",
+      "type": "claimed",
+      "message": "codex-0fqn 领取（第 1 次）",
+      "data": {
+        "params_version": 0
+      }
+    },
+    {
+      "id": 11141,
+      "at": "2026-10-22T21:46:16+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "user",
+      "type": "reserved",
+      "message": "复制预留给 拿到这条复制的人，900 秒",
+      "data": {
+        "mode": "copy",
+        "for": "",
+        "for_kind": "",
+        "ttl": 900
+      }
+    },
+    {
+      "id": 11123,
+      "at": "2026-10-22T21:37:49+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "composer-r8x3",
+      "type": "released",
+      "message": "P26刚交完；本会话上下文已紧，P28需读必读+写测量脚本+CPU干跑+relay ask冻结等待，换新会话再领",
+      "data": {
+        "state": "released",
+        "actor": "composer-r8x3",
+        "reason": "P26刚交完；本会话上下文已紧，P28需读必读+写测量脚本+CPU干跑+relay ask冻结等待，换新会话再领",
+        "checkpoint": {},
+        "file_scope": [
+          "reports/V9-B3-mlx-unitcost/"
+        ],
+        "last_message": null,
+        "at": "2026-10-22T21:37:49+03:00",
+        "agent": "composer-r8x3",
+        "claimed_at": 1792694256.7834618,
+        "exec_ids": [],
+        "waiting_reason": "",
+        "completed_at": "2026-10-22T21:37:49+03:00"
+      }
+    },
+    {
+      "id": 11122,
+      "at": "2026-10-22T21:37:49+03:00",
+      "project_id": "ainerzero",
+      "task_id": "ainerzero.V9.P28",
+      "actor": "composer-r8x3",
+      "type": "recovery_requested",
+      "message": "P26刚交完；本会话上下文已紧，P28需读必读+写测量脚本+CPU干跑+relay ask冻结等待，换新会话再领",
+      "data": {
+        "state": "pending",
+        "actor": "composer-r8x3",
+        "reason": "P26刚交完；本会话上下文已紧，P28需读必读+写测量脚本+CPU干跑+relay ask冻结等待，换新会话再领",
+        "checkpoint": {},
+        "file_scope": [
+          "reports/V9-B3-mlx-unitcost/"
+        ],
+        "last_message": null,
+        "at": "2026-10-22T21:37:49+03:00",
+        "agent": "composer-r8x3",
+        "claimed_at": 1792694256.7834618,
+        "exec_ids": [],
+        "waiting_reason": ""
+      }
+    }
+  ],
+  "attempt_log": [
+    {
+      "id": 1119,
+      "task_id": "ainerzero.V9.P28",
+      "project_id": "ainerzero",
+      "agent": "composer-r8x3",
+      "claimed_at": 1792694256.7834618,
+      "last_beat_at": 1792694256.7834618,
+      "beats": 0,
+      "ended_at": 1792694269.188481,
+      "outcome": "released",
+      "seconds": 12,
+      "note": "P26刚交完；本会话上下文已紧，P28需读必读+写测量脚本+CPU干跑+relay ask冻结等待，换新会话再领"
+    },
+    {
+      "id": 1121,
+      "task_id": "ainerzero.V9.P28",
+      "project_id": "ainerzero",
+      "agent": "codex-0fqn",
+      "claimed_at": 1792694820.0035892,
+      "last_beat_at": 1792697540.064616,
+      "beats": 20,
+      "ended_at": 1792697944.192906,
+      "outcome": "reported",
+      "seconds": 3124,
+      "note": ""
+    }
+  ],
+  "waiters": [
+    "codex-0fqn"
+  ]
+}

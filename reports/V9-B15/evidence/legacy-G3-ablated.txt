@@ -1,0 +1,16 @@
+{
+  "label": "legacy-G3-ablated",
+  "cmd": [
+    "/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/v9/contracts/test_promotion_evidence_v2.py::test_discovery_calibration_test_identities_must_be_pairwise_disjoint",
+    "-q",
+    "-p",
+    "no:cacheprovider"
+  ],
+  "cwd": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/b15-isolated-omqv4n8i",
+  "returncode": 1,
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_____ test_discovery_calibration_test_identities_must_be_pairwise_disjoint _____\n\n    def test_discovery_calibration_test_identities_must_be_pairwise_disjoint():\n        for overlap in ((\"discovery\", \"test\"), (\"calibration\", \"discovery\"), (\"test\", \"calibration\")):\n            identity = dict(v2_evidence().data_identity)\n            identity[overlap[1]] = identity[overlap[0]]\n>           with pytest.raises(ValueError) as caught:\nE           Failed: DID NOT RAISE ValueError\n\ntests/v9/contracts/test_promotion_evidence_v2.py:210: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_promotion_evidence_v2.py::test_discovery_calibration_test_identities_must_be_pairwise_disjoint\n1 failed in 0.03s\n",
+  "stderr": ""
+}

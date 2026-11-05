@@ -1,0 +1,44 @@
+# 测试证据（B12，2026-10-28T01:21:54+03:00）
+
+## 1. 合同测试全量（tests/v9/contracts）
+........................................................................ [ 75%]
+........................................................................ [100%]
+288 passed in 0.82s
+
+## 2. 逐文件计数
+  41 tests/v9/contracts/test_promotion_evidence_v2.py
+  36 tests/v9/contracts/test_geometry_contract.py
+  29 tests/v9/contracts/test_payload_gate.py
+  24 tests/v9/contracts/test_memory_lifecycle.py
+  23 tests/v9/contracts/test_scheduler_contract.py
+  21 tests/v9/contracts/test_spatial_memory.py
+  17 tests/v9/contracts/test_param_belief.py
+  14 tests/v9/contracts/test_timescale_contract.py
+  14 tests/v9/contracts/test_fragment_provenance.py
+  13 tests/v9/contracts/test_cmfl_registration.py
+  12 tests/v9/contracts/test_regression_b3.py
+  12 tests/v9/contracts/test_planner_contract.py
+  12 tests/v9/contracts/test_perception_contract.py
+  11 tests/v9/contracts/test_world_brain.py
+   9 tests/v9/contracts/test_interface_surface.py
+
+## 3. 基线对照：开工前 178 passed（只含 contracts）-> 现在 288 passed
+
+## 4. 范围外（非本卡）既有失败：与本次改动无关的证明
+### 4a. 排除 contracts 后仍有同样的失败
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s1_r7_phase_accounting.py::test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original
+FAILED tests/v9/geometry/test_canonical.py::test_cpu_only_imports - assert no...
+FAILED tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only - assert...
+FAILED tests/v9/mechanism/test_cmfl_prototype.py::test_msg_eight_routes_confusion_matrix_and_d_permit_sensitivity
+FAILED tests/v9/mechanism/test_cmfl_prototype.py::test_executable_prior_checker_data_thinning_and_weak_stlsq
+FAILED tests/v9/mechanism/test_cmfl_prototype.py::test_one_sided_promotion_gate_positive_and_negative_controls
+6 failed, 560 passed in 39.78s
+
+### 4b. geometry 单跑全绿（说明 cpu_only 失败是跨测试顺序污染，不是本卡引入）
+.....                                                                    [100%]
+149 passed in 6.63s
+
+### 4c. mechanism/ 与 tests/v9/mechanism/ 不引用 interfaces（G7 自己的卡）
+0
+（0 = 无引用）

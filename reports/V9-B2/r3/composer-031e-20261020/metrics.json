@@ -1,0 +1,73 @@
+{
+  "task": "ainerzero.V9.B2",
+  "round": "r3",
+  "agent": "composer-031e",
+  "git_head": "2de6caef0820894520271a8943761cc0b3cf8c22",
+  "pytest_contracts": "178 passed",
+  "b3_strict": {
+    "cases_pass": 19,
+    "cases_total": 19,
+    "legit_pass": 7,
+    "legit_total": 7,
+    "controls_red": 9,
+    "controls_total": 9,
+    "probes_held": 8,
+    "probes_bypassed": [],
+    "probes_rejected": [
+      "probe_ref_traversal",
+      "probe_ref_future_ext",
+      "probe_ref_frame_index",
+      "probe_time_stalled",
+      "probe_time_jump",
+      "probe_truth_case_variant",
+      "probe_teacher_alias",
+      "probe_llm_alias"
+    ],
+    "probes_other": [],
+    "new_probes_held": 8,
+    "new_probes_bypassed": [],
+    "new_probes_rejected": [
+      "new_ref_urlenc_dotdot",
+      "new_ref_double_slash",
+      "new_ref_unicode_slash",
+      "new_ref_future_query",
+      "new_time_off_by_one",
+      "new_truth_fullwidth_key",
+      "new_producer_unregistered",
+      "new_producer_case_variant"
+    ],
+    "new_probes_other": []
+  },
+  "sabotage": {
+    "mutation_query_removed_rc": 1,
+    "mutation_query_tail": [
+      "FAILED tests/v9/contracts/test_payload_gate.py::test_reference_rejects_query_fragment_and_param_separators",
+      "FAILED tests/v9/contracts/test_regression_b3.py::test_probe_ref_query_future_tick",
+      "2 failed in 0.06s"
+    ],
+    "mutation_nfkc_removed_rc": 1,
+    "mutation_nfkc_tail": [
+      "FAILED tests/v9/contracts/test_payload_gate.py::test_reference_rejects_fullwidth_slash_and_non_ascii",
+      "FAILED tests/v9/contracts/test_regression_b3.py::test_probe_ref_fullwidth_slash_to_private",
+      "2 failed in 0.06s"
+    ],
+    "control_restored_rc": 0,
+    "control_tail": [
+      "....                                                                     [100%]",
+      "4 passed in 0.04s"
+    ],
+    "all_mutations_went_red": true,
+    "control_green": true
+  },
+  "source_sha256": {
+    "src/ainerzero/v9/interfaces/validation.py": "c80857bd7e8146558d68c1bf9ca1d82ca900d8a06b75b4962531777819ba8d3e",
+    "tests/v9/contracts/test_payload_gate.py": "4fc04973d47055de8f208929a23de62380e97f9c5b1eb52b2f7d8768f5ec0d72",
+    "tests/v9/contracts/test_regression_b3.py": "bd2571c1481920a330f96dc88c30aed928a4fbab55923e8d57bb5c6f1d63a63d"
+  },
+  "fix": [
+    "fullwidth slash obs/／private/answers → ReferenceRejected (NFKC-unstable)",
+    "query obs/cam/x?t=999 → ReferenceRejected (query string)",
+    "NFKC variant fullwidth？ → ReferenceRejected"
+  ],
+  "capability_claimed": false
+}

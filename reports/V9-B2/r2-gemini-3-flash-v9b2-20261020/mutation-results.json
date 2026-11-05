@@ -1,0 +1,130 @@
+[
+  {
+    "name": "control-unmutated-copy",
+    "mutated_file": null,
+    "expected_red_test": null,
+    "label": "control-unmutated-copy",
+    "returncode": 0,
+    "failed": [],
+    "summary": "172 passed in 0.49s",
+    "seconds": 0.9,
+    "tail": "........................................................................ [ 41%]\n........................................................................ [ 83%]\n............................                                             [100%]\n172 passed in 0.49s"
+  },
+  {
+    "name": "M1-world-brain-envelope-gate-removed",
+    "mutated_file": "ainerzero/v9/fakes/world_brain.py",
+    "expected_red_test": "test_step_rejects_whole_envelope",
+    "label": "M1-world-brain-envelope-gate-removed",
+    "returncode": 1,
+    "failed": [
+      "tests/v9/contracts/test_regression_b3.py::test_probe_truth_nfkc_variant",
+      "tests/v9/contracts/test_world_brain.py::test_step_rejects_whole_envelope",
+      "tests/v9/contracts/test_world_brain.py::test_step_rejects_snapshot_document",
+      "tests/v9/contracts/test_world_brain.py::test_step_rejects_truth_keys"
+    ],
+    "summary": "4 failed, 168 passed in 0.52s",
+    "seconds": 0.85,
+    "tail": "        payload = deep(payload_factory())\n        payload[\"task_instruction\"][\"entity_id\"] = \"char-7\"\n>       with pytest.raises(TruthFieldRejected) as caught:\nE       Failed: DID NOT RAISE <class 'ainerzero.v9.interfaces.errors.TruthFieldRejected'>\n\ntests/v9/contracts/test_world_brain.py:84: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_truth_nfkc_variant\nFAILED tests/v9/contracts/test_world_brain.py::test_step_rejects_whole_envelope\nFAILED tests/v9/contracts/test_world_brain.py::test_step_rejects_snapshot_document\nFAILED tests/v9/contracts/test_world_brain.py::test_step_rejects_truth_keys\n4 failed, 168 passed in 0.52s"
+  },
+  {
+    "name": "M2-world-brain-clock-jump-allowed",
+    "mutated_file": "ainerzero/v9/fakes/world_brain.py",
+    "expected_red_test": "test_probe_time_jump",
+    "label": "M2-world-brain-clock-jump-allowed",
+    "returncode": 1,
+    "failed": [
+      "tests/v9/contracts/test_regression_b3.py::test_probe_time_stalled",
+      "tests/v9/contracts/test_regression_b3.py::test_probe_time_jump",
+      "tests/v9/contracts/test_world_brain.py::test_step_rejects_backwards_time"
+    ],
+    "summary": "3 failed, 169 passed in 0.52s",
+    "seconds": 0.87,
+    "tail": "        earlier[\"time\"][\"t_ticks\"] = 5\n        earlier[\"time\"][\"dt_ticks\"] = 0\n        earlier[\"time\"][\"dt_s\"] = 0.0\n>       with pytest.raises(TimeWhitelistRejected) as caught:\nE       Failed: DID NOT RAISE <class 'ainerzero.v9.interfaces.errors.TimeWhitelistRejected'>\n\ntests/v9/contracts/test_world_brain.py:96: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_time_stalled - Fa...\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_time_jump - Faile...\nFAILED tests/v9/contracts/test_world_brain.py::test_step_rejects_backwards_time\n3 failed, 169 passed in 0.52s"
+  },
+  {
+    "name": "M3-ref-traversal-allowed",
+    "mutated_file": "ainerzero/v9/interfaces/validation.py",
+    "expected_red_test": "test_probe_ref_traversal",
+    "label": "M3-ref-traversal-allowed",
+    "returncode": 1,
+    "failed": [
+      "tests/v9/contracts/test_payload_gate.py::test_reference_normalization_rejects_relatives_and_dupes",
+      "tests/v9/contracts/test_regression_b3.py::test_probe_ref_traversal"
+    ],
+    "summary": "2 failed, 170 passed in 0.55s",
+    "seconds": 0.89,
+    "tail": "___________________________ test_probe_ref_traversal ___________________________\n\n    def test_probe_ref_traversal():\n        encoder = FakePerceptionEncoder()\n>       with pytest.raises(ReferenceRejected) as caught:\nE       Failed: DID NOT RAISE <class 'ainerzero.v9.interfaces.errors.ReferenceRejected'>\n\ntests/v9/contracts/test_regression_b3.py:46: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_payload_gate.py::test_reference_normalization_rejects_relatives_and_dupes\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_ref_traversal - F...\n2 failed, 170 passed in 0.55s"
+  },
+  {
+    "name": "M4-ref-future-tick-allowed",
+    "mutated_file": "ainerzero/v9/interfaces/validation.py",
+    "expected_red_test": "test_probe_ref_future_ext",
+    "label": "M4-ref-future-tick-allowed",
+    "returncode": 1,
+    "failed": [
+      "tests/v9/contracts/test_payload_gate.py::test_reference_namespaces_and_time_cut",
+      "tests/v9/contracts/test_perception_contract.py::test_encode_resolves_tick_stamped_references_as_of_the_packet",
+      "tests/v9/contracts/test_regression_b3.py::test_probe_ref_future_ext"
+    ],
+    "summary": "3 failed, 169 passed in 0.58s",
+    "seconds": 0.97,
+    "tail": "\n    def test_probe_ref_future_ext():\n        encoder = FakePerceptionEncoder()\n>       with pytest.raises(ReferenceRejected) as caught:\nE       Failed: DID NOT RAISE <class 'ainerzero.v9.interfaces.errors.ReferenceRejected'>\n\ntests/v9/contracts/test_regression_b3.py:53: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_payload_gate.py::test_reference_namespaces_and_time_cut\nFAILED tests/v9/contracts/test_perception_contract.py::test_encode_resolves_tick_stamped_references_as_of_the_packet\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_ref_future_ext - ...\n3 failed, 169 passed in 0.58s"
+  },
+  {
+    "name": "M5-ref-fail-closed-removed",
+    "mutated_file": "ainerzero/v9/interfaces/validation.py",
+    "expected_red_test": "test_probe_ref_fail_closed",
+    "label": "M5-ref-fail-closed-removed",
+    "returncode": 1,
+    "failed": [
+      "tests/v9/contracts/test_payload_gate.py::test_reference_fail_closed_on_unmarked_numeric_names",
+      "tests/v9/contracts/test_regression_b3.py::test_probe_ref_fail_closed"
+    ],
+    "summary": "2 failed, 170 passed in 1.15s",
+    "seconds": 1.96,
+    "tail": "\n    def test_probe_ref_fail_closed():\n        encoder = FakePerceptionEncoder()\n        # 999.png has numbers but no 't' or 'frame' marker; should be rejected by fail-closed\n>       with pytest.raises(ReferenceRejected) as caught:\nE       Failed: DID NOT RAISE <class 'ainerzero.v9.interfaces.errors.ReferenceRejected'>\n\ntests/v9/contracts/test_regression_b3.py:61: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_payload_gate.py::test_reference_fail_closed_on_unmarked_numeric_names\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_ref_fail_closed\n2 failed, 170 passed in 1.15s"
+  },
+  {
+    "name": "M6-key-normalization-removed",
+    "mutated_file": "ainerzero/v9/interfaces/validation.py",
+    "expected_red_test": "test_probe_truth_nfkc_variant",
+    "label": "M6-key-normalization-removed",
+    "returncode": 1,
+    "failed": [
+      "tests/v9/contracts/test_payload_gate.py::test_leakage_normalization_hits_homoglyphs",
+      "tests/v9/contracts/test_regression_b3.py::test_probe_truth_nfkc_variant"
+    ],
+    "summary": "2 failed, 170 passed in 0.63s",
+    "seconds": 1.49,
+    "tail": "    def test_probe_truth_nfkc_variant():\n        brain = FakeWorldBrain()\n        # Full-width '\uff30' (U+FF30) should be normalized to 'P' and then lowered to 'p'\n        # which hits \"position\" in L1.\n>       with pytest.raises(TruthFieldRejected) as caught:\nE       Failed: DID NOT RAISE <class 'ainerzero.v9.interfaces.errors.TruthFieldRejected'>\n\ntests/v9/contracts/test_regression_b3.py:86: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_payload_gate.py::test_leakage_normalization_hits_homoglyphs\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_truth_nfkc_variant\n2 failed, 170 passed in 0.63s"
+  },
+  {
+    "name": "M7-producer-registry-bypassed",
+    "mutated_file": "ainerzero/v9/interfaces/validation.py",
+    "expected_red_test": "test_probe_teacher_alias",
+    "label": "M7-producer-registry-bypassed",
+    "returncode": 1,
+    "failed": [
+      "tests/v9/contracts/test_regression_b3.py::test_probe_teacher_alias",
+      "tests/v9/contracts/test_regression_b3.py::test_probe_llm_alias",
+      "tests/v9/contracts/test_spatial_memory.py::test_promote_refuses_teacher_and_llm_producers"
+    ],
+    "summary": "3 failed, 169 passed in 0.56s",
+    "seconds": 0.94,
+    "tail": "\n    def test_promote_refuses_teacher_and_llm_producers():\n        for producer in (\"teacher_main\", \"Teacher-T2\", \"llm\", \"assistant\", \"human_unreviewed\"):\n>           with pytest.raises(EvidenceRequired) as caught:\nE           Failed: DID NOT RAISE <class 'ainerzero.v9.interfaces.errors.EvidenceRequired'>\n\ntests/v9/contracts/test_spatial_memory.py:229: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_teacher_alias - F...\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_llm_alias - Faile...\nFAILED tests/v9/contracts/test_spatial_memory.py::test_promote_refuses_teacher_and_llm_producers\n3 failed, 169 passed in 0.56s"
+  },
+  {
+    "name": "M8-forbidden-producer-allowed",
+    "mutated_file": "ainerzero/v9/interfaces/validation.py",
+    "expected_red_test": "test_probe_llm_alias",
+    "label": "M8-forbidden-producer-allowed",
+    "returncode": 1,
+    "failed": [
+      "tests/v9/contracts/test_regression_b3.py::test_probe_teacher_alias",
+      "tests/v9/contracts/test_regression_b3.py::test_probe_llm_alias"
+    ],
+    "summary": "2 failed, 170 passed in 0.52s",
+    "seconds": 0.87,
+    "tail": "_____________________________ test_probe_llm_alias _____________________________\n\n    def test_probe_llm_alias():\n        # LLM-gpt should be rejected as a producer category that cannot write SLOW\n>       with pytest.raises(EvidenceRequired) as caught:\nE       Failed: DID NOT RAISE <class 'ainerzero.v9.interfaces.errors.EvidenceRequired'>\n\ntests/v9/contracts/test_regression_b3.py:105: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_teacher_alias - F...\nFAILED tests/v9/contracts/test_regression_b3.py::test_probe_llm_alias - Faile...\n2 failed, 170 passed in 0.52s"
+  }
+]
