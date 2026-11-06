@@ -1,0 +1,138 @@
+=== Mutation P152-M1 ===
+Name: omit_nan_finite_loss_check
+Target test: tests/v9/experiments/test_s2_smoke_checks.py::test_short_train_sanity_nan_loss_fails
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpxzamlkja/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_smoke_checks.py F                           [100%]
+
+=================================== FAILURES ===================================
+____________________ test_short_train_sanity_nan_loss_fails ____________________
+
+    def test_short_train_sanity_nan_loss_fails() -> None:
+        """出现 NaN：不通过。
+    
+        Catches mutation P152-M1 (omitting NaN / finite check).
+        """
+        arm = FakeNaNArm()
+        batches = [{"x": i} for i in range(50)]
+    
+        res = smoke_checks.short_train_sanity(arm, batches, S=40)
+        assert res["passed"] is False
+>       assert res["all_losses_finite"] is False
+E       assert True is False
+
+tests/v9/experiments/test_s2_smoke_checks.py:120: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_smoke_checks.py::test_short_train_sanity_nan_loss_fails
+============================== 1 failed in 0.74s ===============================
+
+Stderr:
+
+
+=== Mutation P152-M2 ===
+Name: relax_fuse_threshold_to_05
+Target test: tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_partial_success_does_not_fuse_at_005
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpxzamlkja/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_smoke_checks.py F                           [100%]
+
+=================================== FAILURES ===================================
+_________ test_oracle_feasibility_partial_success_does_not_fuse_at_005 _________
+
+    def test_oracle_feasibility_partial_success_does_not_fuse_at_005() -> None:
+        """当成功率为 0.25 时，在 0.05 阈值下不应熔断；若阈值被改成 0.5 则必变红。"""
+        # 构造 4 个回合的假规划器：只有 1 个成功（成功率 0.25）
+        episodes: list[dict[str, Any]] = []
+        w_seed = 101
+        rng = random.Random(w_seed)
+        layout, pairs, _ = world.prepare_world_with_long_pairs(seed=w_seed, rng=rng)
+        for pair in pairs[:4]:
+            episodes.append({"layout": layout, "spec": pair})
+    
+        call_count = 0
+    
+        def mock_planner_quarter_success(**kwargs: Any):
+            nonlocal call_count
+            call_count += 1
+            # 只有第 1 个成功，其余失败
+            succ = (call_count == 1)
+            return succ, 50, []
+    
+        res = smoke_checks.oracle_feasibility(episodes, planner_fn=mock_planner_quarter_success, n_fwd=2000)
+        assert res["success_rate"] == 0.25
+>       assert res["fuse_triggered"] is False, "0.25 success rate should NOT trigger fuse under 0.05 threshold"
+E       AssertionError: 0.25 success rate should NOT trigger fuse under 0.05 threshold
+E       assert True is False
+
+tests/v9/experiments/test_s2_smoke_checks.py:279: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_partial_success_does_not_fuse_at_005
+============================== 1 failed in 1.07s ===============================
+
+Stderr:
+
+
+=== Mutation P152-M3 ===
+Name: insert_constant_metric_dict_literal
+Target test: tests/v9/experiments/test_s2_smoke_checks.py::test_anti_fabrication_ast_scan
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpxzamlkja/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_smoke_checks.py F                           [100%]
+
+=================================== FAILURES ===================================
+________________________ test_anti_fabrication_ast_scan ________________________
+
+    def test_anti_fabrication_ast_scan() -> None:
+        """用 ast 扫描 smoke_checks.py，函数体里不得出现形如
+        "long_goal_success_rates": {…数字…} 的字典字面量，也不得出现指标名直接赋予数字常量。
+    
+        Catches mutation P152-M3 (stuffing constant metric dictionary literal).
+        """
+        source_file = Path(smoke_checks.__file__).resolve()
+        tree = ast.parse(source_file.read_text(encoding="utf-8"))
+    
+        forbidden_metric_names = {
+            "long_goal_success_rates",
+            "delta_sigreg",
+            "action_sensitivity",
+            "subgoal_shuffle_drop",
+        }
+    
+        for node in ast.walk(tree):
+            # 1. 检查字典字面量中的键
+            if isinstance(node, ast.Dict):
+                for k in node.keys:
+                    if isinstance(k, ast.Constant) and k.value in forbidden_metric_names:
+>                       raise AssertionError(
+                            f"Forbidden metric dictionary key found in {source_file}: {k.value!r}"
+                        )
+E                       AssertionError: Forbidden metric dictionary key found in /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpxzamlkja/ainerzero_sandbox/src/ainerzero/v9/experiments/s2/smoke_checks.py: 'long_goal_success_rates'
+
+tests/v9/experiments/test_s2_smoke_checks.py:343: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_smoke_checks.py::test_anti_fabrication_ast_scan
+============================== 1 failed in 0.77s ===============================
+
+Stderr:
+

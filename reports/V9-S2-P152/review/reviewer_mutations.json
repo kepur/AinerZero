@@ -1,0 +1,46 @@
+{
+  "task_id": "ainerzero.V9.P153",
+  "verifying_task": "ainerzero.V9.P152",
+  "total_reviewer_mutations": 4,
+  "killed": 4,
+  "survived": 0,
+  "all_killed": true,
+  "mutations": [
+    {
+      "id": "REV-M1",
+      "description": "Invert loss decrease check (mean_last < mean_first -> mean_last >= mean_first)",
+      "test_targeted": "test_short_train_sanity_decreasing_loss_passes",
+      "exit_code": 1,
+      "killed": true,
+      "status": "KILLED (RED)",
+      "restored_sha_matched": true
+    },
+    {
+      "id": "REV-M2",
+      "description": "Bypass SIGReg 1.1x bound check (unconditionally mark sigreg_stable = True)",
+      "test_targeted": "test_short_train_sanity_sigreg_increase_fails",
+      "exit_code": 1,
+      "killed": true,
+      "status": "KILLED (RED)",
+      "restored_sha_matched": true
+    },
+    {
+      "id": "REV-M3",
+      "description": "Corrupt action sensitivity normalization (mean_pairwise / mean_norm -> mean_pairwise * 1.5)",
+      "test_targeted": "test_action_sensitivity_hand_calculated_analytic",
+      "exit_code": 5,
+      "killed": true,
+      "status": "KILLED (RED)",
+      "restored_sha_matched": true
+    },
+    {
+      "id": "REV-M4",
+      "description": "Truncate oracle max_steps (bfs_dist * 3 -> 1)",
+      "test_targeted": "test_oracle_feasibility_on_gridlab_two_worlds",
+      "exit_code": 1,
+      "killed": true,
+      "status": "KILLED (RED)",
+      "restored_sha_matched": true
+    }
+  ]
+}

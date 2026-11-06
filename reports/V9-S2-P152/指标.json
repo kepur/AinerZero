@@ -1,0 +1,64 @@
+{
+  "task_id": "ainerzero.V9.P152",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-a5b8",
+  "deliverables": {
+    "module": "src/ainerzero/v9/experiments/s2/smoke_checks.py",
+    "test_module": "tests/v9/experiments/test_s2_smoke_checks.py",
+    "smoke_py_untouched": true,
+    "commands_py_untouched": true
+  },
+  "oracle_feasibility": {
+    "total_episodes": 12,
+    "successful_episodes": 10,
+    "actual_success_rate": 0.8333333333333334,
+    "threshold": 0.05,
+    "fuse_triggered": false,
+    "budget_exhaustion_test": {
+      "n_fwd": 8,
+      "success_rate": 0.0,
+      "fuse_triggered": true
+    }
+  },
+  "action_sensitivity": {
+    "hand_calculated_expected": 1.6094757082487299,
+    "hand_calculated_measured": 1.6094757082487299,
+    "insensitive_model_measured": 0.0
+  },
+  "tests": {
+    "smoke_checks_suite_passed": 13,
+    "smoke_checks_suite_failed": 0,
+    "full_pure_cpu_suite_passed": 3595,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P152-M1": {
+      "name": "omit_nan_finite_loss_check",
+      "target_test": "test_short_train_sanity_nan_loss_fails",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P152-M2": {
+      "name": "relax_fuse_threshold_to_05",
+      "target_test": "test_oracle_feasibility_partial_success_does_not_fuse_at_005",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P152-M3": {
+      "name": "insert_constant_metric_dict_literal",
+      "target_test": "test_anti_fabrication_ast_scan",
+      "status": "KILLED",
+      "exit_code": 1
+    }
+  },
+  "sha256": {
+    "src/ainerzero/v9/experiments/s2/smoke_checks.py": "090a404e5dde55c5d59a105eb7f045c31ec83f930a4753653c521d5176c359d7",
+    "tests/v9/experiments/test_s2_smoke_checks.py": "9f4eabbf935aca9d643a4ae1168c7ebb49a4990b949da9e7e567c2a7ea2bb04e"
+  },
+  "zero_mlx_imported": true,
+  "no_fabrication_verified": true
+}

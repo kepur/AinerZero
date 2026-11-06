@@ -1,0 +1,78 @@
+{
+  "task_id": "ainerzero.V9.P148",
+  "round": "r2",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-r7m2",
+  "files_modified": [
+    "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "src/ainerzero/v9/experiments/s2/smoke.py",
+    "src/ainerzero/v9/experiments/s2/commands.py",
+    "tests/v9/experiments/test_s2_wiring.py",
+    "tests/v9/experiments/test_s2_adapters_mlx_native.py",
+    "tests/conftest.py"
+  ],
+  "smoke_r2_fixes": {
+    "removed_default_constants": true,
+    "fail_closed_on_missing_measurements": true,
+    "real_measurement_path_implemented": true,
+    "lazy_mlx_import_inside_function": true,
+    "budget_calculated_from_real_numbers": true,
+    "budget_formula": "3.0 * sum(shared_train_steps * step_times[arm]) + other_ceilings <= 36000s"
+  },
+  "mutations": {
+    "total": 5,
+    "killed": 5,
+    "survived": 0,
+    "all_killed": true,
+    "items": [
+      {
+        "id": "P148-M1",
+        "description": "verify mode omits call to identity.verify_frozen_identity",
+        "test_targeted": "test_verify_case_tampered_byte_fails_and_names_file",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      },
+      {
+        "id": "P148-M2",
+        "description": "Change smoke circuit breaker threshold from 0.05 to 0.5",
+        "test_targeted": "test_smoke_logic_circuit_breaker_when_all_arms_below_floor",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      },
+      {
+        "id": "P148-M3",
+        "description": "Calculate shared training steps using max() instead of min()",
+        "test_targeted": "test_smoke_timing_and_training_steps_minimum_rule",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      },
+      {
+        "id": "P148-M4",
+        "description": "Import adapters_mlx at module level in commands.py (leaking MLX into CPU suite)",
+        "test_targeted": "test_pure_cpu_isolation_commands_and_smoke_do_not_import_mlx",
+        "status": "KILLED (RED)",
+        "exit_code": 2
+      },
+      {
+        "id": "P148-M5",
+        "description": "smoke restores default constant numbers instead of failing closed",
+        "test_targeted": "test_smoke_no_injected_measurements_fails_with_named_reasons",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      }
+    ]
+  },
+  "tests": {
+    "test_s2_wiring_passed": 15,
+    "full_regression_collected": 3588,
+    "full_regression_selected": 3582,
+    "full_regression_passed": 3582,
+    "full_regression_failed": 0,
+    "full_regression_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "zero_mlx_executed": true,
+  "zero_smoke_executed": true
+}

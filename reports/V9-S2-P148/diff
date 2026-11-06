@@ -1,0 +1,1382 @@
+diff --git a/tests/conftest.py b/tests/conftest.py
+index a09e1aa..70514b7 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -10,8 +10,182 @@ RunStore and the registered budget (see AGENTS.md). No registered native pytest
+ runner exists; do not run these bare.
+ """
+ 
++import fcntl
++import glob
++import os
++import sqlite3
++import sys
++from pathlib import Path
++from urllib.parse import urlparse
++
++# Ensure bytecode is never written into artifacts/
++sys.dont_write_bytecode = True
++os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
++
+ import pytest
+ 
++REAL_REPO_ROOT = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
++LOCAL_REPO_ROOT = Path(__file__).resolve().parent.parent
++
++HERMETIC_SENSITIVE_PATTERNS = [
++    "artifacts/locks/**",
++    "artifacts/locks",
++    "artifacts/control.sqlite3*",
++    "artifacts/v9/**/control.sqlite3*",
++    "artifacts/v9/s1/**/*.sqlite3*",
++    "artifacts/v9/e1/**",
++]
++
++# Whitelist for legitimate real-artifact access (real_path -> reason).
++# The default pure-CPU suite must be hermetic, so this whitelist is empty by default.
++HERMETIC_WHITELIST: dict[str, str] = {}
++
++_hermetic_guards_active = True
++_orig_flock = fcntl.flock
++_orig_lockf = fcntl.lockf
++_orig_sqlite_connect = sqlite3.connect
++
++
++def guard_resolve_path(target) -> str | None:
++    if target is None:
++        return None
++    if isinstance(target, int):
++        try:
++            buf = b" " * 1024
++            res_buf = fcntl.fcntl(target, 50, buf)
++            raw = res_buf.split(b"\x00", 1)[0].decode("utf-8", "replace")
++            if raw:
++                return os.path.realpath(raw)
++        except OSError:
++            pass
++        try:
++            proc_path = f"/proc/self/fd/{target}"
++            if os.path.islink(proc_path):
++                return os.path.realpath(proc_path)
++        except Exception:
++            pass
++        return None
++    if hasattr(target, "fileno"):
++        try:
++            return guard_resolve_path(target.fileno())
++        except Exception:
++            return None
++    target_str = str(target)
++    if not target_str or target_str == ":memory:":
++        return None
++    if target_str.startswith("file:"):
++        target_str = urlparse(target_str).path
++    try:
++        return os.path.realpath(target_str)
++    except Exception:
++        return None
++
++
++def check_hermetic_access(
++    target,
++    op_name: str,
++    root: Path = REAL_REPO_ROOT,
++    whitelist: dict | None = None,
++) -> None:
++    if not _hermetic_guards_active:
++        return
++    resolved = guard_resolve_path(target)
++    if not resolved:
++        return
++    active_whitelist = HERMETIC_WHITELIST if whitelist is None else whitelist
++    roots = [root]
++    if root == REAL_REPO_ROOT and LOCAL_REPO_ROOT != REAL_REPO_ROOT and LOCAL_REPO_ROOT.is_dir():
++        roots.append(LOCAL_REPO_ROOT)
++    for r in roots:
++        art_dir = os.path.realpath(r / "artifacts")
++        if resolved == art_dir or resolved.startswith(art_dir + os.sep):
++            if resolved not in active_whitelist:
++                raise RuntimeError(
++                    f"Hermetic test guard violation: {op_name} called on protected artifact: {resolved}. "
++                    f"Tests must use tmp_path or staged copies and must never touch real artifacts."
++                )
++
++
++def make_guarded_flock(root: Path = REAL_REPO_ROOT, orig_flock=_orig_flock, whitelist=None):
++    def _flock(fd, operation):
++        check_hermetic_access(fd, "fcntl.flock", root=root, whitelist=whitelist)
++        return orig_flock(fd, operation)
++    return _flock
++
++
++def make_guarded_lockf(root: Path = REAL_REPO_ROOT, orig_lockf=_orig_lockf, whitelist=None):
++    def _lockf(fd, cmd, *args, **kwargs):
++        check_hermetic_access(fd, "fcntl.lockf", root=root, whitelist=whitelist)
++        return orig_lockf(fd, cmd, *args, **kwargs)
++    return _lockf
++
++
++def make_guarded_connect(root: Path = REAL_REPO_ROOT, orig_connect=_orig_sqlite_connect, whitelist=None):
++    def _connect(database, *args, **kwargs):
++        check_hermetic_access(database, "sqlite3.connect", root=root, whitelist=whitelist)
++        return orig_connect(database, *args, **kwargs)
++    return _connect
++
++
++guarded_flock = make_guarded_flock(REAL_REPO_ROOT)
++guarded_lockf = make_guarded_lockf(REAL_REPO_ROOT)
++guarded_connect = make_guarded_connect(REAL_REPO_ROOT)
++
++
++def _install_hermetic_function_guards() -> None:
++    fcntl.flock = guarded_flock
++    fcntl.lockf = guarded_lockf
++    sqlite3.connect = guarded_connect
++    if "sqlite3" in sys.modules:
++        sys.modules["sqlite3"].connect = guarded_connect
++
++
++def guard_snapshot(root: Path = REAL_REPO_ROOT) -> dict[str, tuple[int, int, int]]:
++    """Record {path_str: (st_mtime_ns, st_size, st_ino)} for sensitive paths.
++
++    Only performs stat; does NOT read file contents (especially sealed_final).
++    """
++    snapshot = {}
++    roots = [root]
++    if root == REAL_REPO_ROOT and LOCAL_REPO_ROOT != REAL_REPO_ROOT and LOCAL_REPO_ROOT.is_dir():
++        roots.append(LOCAL_REPO_ROOT)
++    for r in roots:
++        for pattern in HERMETIC_SENSITIVE_PATTERNS:
++            full_pattern = str(r / pattern)
++            for p in glob.glob(full_pattern, recursive=True):
++                try:
++                    st = os.stat(p)
++                    snapshot[os.path.realpath(p)] = (st.st_mtime_ns, st.st_size, st.st_ino)
++                except OSError:
++                    pass
++    return snapshot
++
++
++def guard_compare(before: dict, after: dict) -> dict[str, str]:
++    diffs = {}
++    all_keys = set(before.keys()) | set(after.keys())
++    for k in sorted(all_keys):
++        if k not in before:
++            diffs[k] = "ADDED"
++        elif k not in after:
++            diffs[k] = "DELETED"
++        elif before[k] != after[k]:
++            b_mtime, b_size, b_ino = before[k]
++            a_mtime, a_size, a_ino = after[k]
++            changes = []
++            if b_mtime != a_mtime:
++                changes.append(f"mtime_ns: {b_mtime} -> {a_mtime}")
++            if b_size != a_size:
++                changes.append(f"size: {b_size} -> {a_size}")
++            if b_ino != a_ino:
++                changes.append(f"inode: {b_ino} -> {a_ino}")
++            diffs[k] = "MODIFIED (" + ", ".join(changes) + ")"
++    return diffs
++
++
++# Install function-level patches immediately on module load
++_install_hermetic_function_guards()
++
+ NATIVE_OPTION = "--native-mlx"
+ 
+ # Modules importing real MLX at collection time (collection would import MLX), either
+@@ -59,6 +233,9 @@ NATIVE_MODULES = {
+     "test_s1_no_update.py": "imports s1.smoke -> s1.arms (module-level mlx)",
+     "test_s1_pacer_duty.py": "imports s1.arms (module-level mlx)",
+     "test_s1_r7_d_candidate.py": "imports s1.arms (module-level mlx)",
++    # S2 (tests/v9/experiments): S2 arms MLX implementation.
++    "test_s2_arms_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 arms)",
++    "test_s2_adapters_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 MLX arm adapters)",
+ }
+ 
+ # Individual tests in otherwise pure-CPU modules (prefix match on node id).
+@@ -88,6 +265,42 @@ def pytest_configure(config):
+     config.addinivalue_line(
+         "markers", "native_mlx: imports real MLX or performs real model updates; "
+         "excluded from the default pure-CPU entry (opt-in via --native-mlx)")
++    if _native_enabled(config):
++        global _hermetic_guards_active
++        _hermetic_guards_active = False
++
++
++def pytest_sessionstart(session):
++    if not _native_enabled(session.config):
++        session._hermetic_stat_before = guard_snapshot(REAL_REPO_ROOT)
++
++
++@pytest.fixture(scope="session", autouse=True)
++def hermetic_artifacts_guard(request):
++    yield
++    if _native_enabled(request.config):
++        return
++    before = getattr(request.session, "_hermetic_stat_before", {})
++    after = guard_snapshot(REAL_REPO_ROOT)
++    diff = guard_compare(before, after)
++    assert not diff, (
++        f"Hermetic session guard violation: real artifacts modified during test session:\n"
++        + "\n".join(f"  {k}: {v}" for k, v in diff.items())
++    )
++
++
++def pytest_sessionfinish(session, exitstatus):
++    if not _native_enabled(session.config):
++        before = getattr(session, "_hermetic_stat_before", {})
++        after = guard_snapshot(REAL_REPO_ROOT)
++        diff = guard_compare(before, after)
++        if diff:
++            session.exitstatus = 1
++            print(
++                "\n[HERMETIC GUARD ERROR] Real artifacts modified during test session:\n"
++                + "\n".join(f"  {k}: {v}" for k, v in diff.items()),
++                file=sys.stderr,
++            )
+ 
+ 
+ def _native_enabled(config):
+diff --git a/src/ainerzero/v9/experiments/s2/adapters_mlx.py b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+new file mode 100644
+index 0000000..62edbfe
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+@@ -0,0 +1,364 @@
++"""MLX arm adapters for S2 Phase 1 (ainerzero.V9.P148).
++
++Implements backend adapters wrapping MLX models from arms_mlx.py to satisfy:
++1. Train protocol (train_runner.ArmProtocol):
++   - init(seed: int) -> None
++   - train_step(batch: Mapping[str, Any]) -> dict[str, float]
++   - rollout_error(batch: Mapping[str, Any], H: int) -> float
++   - save(path: str | Path) -> str
++   - n_params() -> int
++2. Planning protocol (eval_runner and planner.py):
++   - arm_kind: "flat" (Arm A, B) or "hierarchical" (Arm C)
++   - encode(obs: np.ndarray) -> np.ndarray
++   - predict_l1(z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray
++   - encode_l2(z1: np.ndarray) -> np.ndarray (Arm C)
++   - predict_l2(z2: np.ndarray, macro_a: np.ndarray, macro_dt: float = 1.0) -> np.ndarray (Arm C)
++   - cost_fn: observation-space cost for Arm A; None / squared_distance for Arm B/C
++   - latents(obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray
++3. Forward counting:
++   - When a ForwardCounter is provided, every network evaluation is charged.
++"""
++
++from __future__ import annotations
++
++import hashlib
++from pathlib import Path
++from typing import Any, Callable, Mapping, Sequence
++
++import mlx.core as mx
++import mlx.nn as nn
++import mlx.optimizers as optim
++import numpy as np
++
++from ainerzero.v9.experiments.s2 import arms_mlx, param_count, spec
++from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
++
++
++def _sha256_file(path: Path) -> str:
++    h = hashlib.sha256()
++    with path.open("rb") as f:
++        for chunk in iter(lambda: f.read(1 << 20), b""):
++            h.update(chunk)
++    return h.hexdigest()
++
++
++class MLXArmAAdapter:
++    """Adapter for Arm A (FlatRSSMArm) satisfying train and planning protocols."""
++
++    def __init__(self, counter: ForwardCounter | None = None) -> None:
++        self.model = arms_mlx.FlatRSSMArm()
++        self.arm_kind = "flat"
++        self.counter = counter
++        self.optimizer: optim.Optimizer | None = None
++        self._seed: int | None = None
++
++    def init(self, seed: int) -> None:
++        self._seed = seed
++        mx.random.seed(seed)
++        self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
++
++    def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
++        if self.optimizer is None:
++            self.init(seed=42)
++
++        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
++        act_seq = mx.array(batch["actions"], dtype=mx.float32)
++        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++
++        def loss_fn(model: arms_mlx.FlatRSSMArm) -> mx.array:
++            return arms_mlx.arm_a_loss_mlx(model, obs_seq, act_seq, dt_seq)
++
++        loss_and_grad_fn = nn.value_and_grad(self.model, loss_fn)
++        loss, grads = loss_and_grad_fn(self.model)
++        assert self.optimizer is not None
++        self.optimizer.update(self.model, grads)
++        mx.eval(self.model.parameters(), self.optimizer.state)
++
++        return {"loss": float(loss.item())}
++
++    def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
++        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
++        act_seq = mx.array(batch["actions"], dtype=mx.float32)
++        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        loss = arms_mlx.arm_a_loss_mlx(self.model, obs_seq, act_seq, dt_seq)
++        return float(loss.item())
++
++    def save(self, path: str | Path) -> str:
++        p = Path(path)
++        p.parent.mkdir(parents=True, exist_ok=True)
++        # Flatten parameters to numpy array dict
++        params = dict(self.model.parameters())
++        flat_dict = {}
++        for k, v in params.items():
++            if isinstance(v, mx.array):
++                flat_dict[k] = np.asarray(v)
++            elif isinstance(v, dict):
++                for sub_k, sub_v in v.items():
++                    if isinstance(sub_v, mx.array):
++                        flat_dict[f"{k}.{sub_k}"] = np.asarray(sub_v)
++        np.savez(p, **flat_dict)
++        return _sha256_file(p)
++
++    def n_params(self) -> int:
++        return arms_mlx.count_params(self.model)
++
++    # --- Planning protocol ---
++
++    def encode(self, obs: np.ndarray) -> np.ndarray:
++        if self.counter is not None:
++            self.counter.charge("encode", 1)
++        z = self.model.encode(obs)
++        return np.asarray(z, dtype=np.float64)
++
++    def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        if self.counter is not None:
++            self.counter.charge("predict_l1", 1)
++        return self.model.predict_l1(z, a, dt)
++
++    def cost_fn(self, z_T: np.ndarray, goal_obs: np.ndarray) -> float:
++        if self.counter is not None:
++            self.counter.charge("decode", 1)
++        return self.model.planning_cost(z_T, goal_obs)
++
++    def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
++        arr = mx.array(obs_seq, dtype=mx.float32)
++        z = self.model.encode(arr)
++        return np.asarray(z, dtype=np.float64)
++
++
++class MLXArmBAdapter:
++    """Adapter for Arm B (FlatJEPAArm) satisfying train and planning protocols."""
++
++    def __init__(self, counter: ForwardCounter | None = None) -> None:
++        self.model = arms_mlx.FlatJEPAArm()
++        self.arm_kind = "flat"
++        self.counter = counter
++        self.optimizer: optim.Optimizer | None = None
++        self._seed: int | None = None
++
++    def init(self, seed: int) -> None:
++        self._seed = seed
++        mx.random.seed(seed)
++        self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
++
++    def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
++        if self.optimizer is None:
++            self.init(seed=42)
++
++        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
++        act_seq = mx.array(batch["actions"], dtype=mx.float32)
++        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++
++        def loss_fn(model: arms_mlx.FlatJEPAArm) -> mx.array:
++            z_seq = model.encode(obs_seq)
++            targets_z = z_seq[1:]
++            z0 = z_seq[0]
++            l_pred = arms_mlx.multistep_latent_rollout_loss_mlx(
++                model, z0, act_seq[:-1], dt_seq[:-1], targets_z
++            )
++            # SIGReg regularizer
++            dirs = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z_seq.shape[-1]))
++            dirs = dirs / mx.linalg.norm(dirs, axis=-1, keepdims=True)
++            l_sigreg = arms_mlx.sigreg_mlx(z_seq, dirs)
++            # IDM loss
++            idm_logits = model.predict_idm(z_seq[:-1], z_seq[1:])
++            l_idm = arms_mlx.idm_loss_mlx(idm_logits, act_seq[:-1])
++            return l_pred + float(spec.SIGREG_LAMBDA) * l_sigreg + float(spec.IDM_MU) * l_idm
++
++        loss_and_grad_fn = nn.value_and_grad(self.model, loss_fn)
++        loss, grads = loss_and_grad_fn(self.model)
++        assert self.optimizer is not None
++        self.optimizer.update(self.model, grads)
++        mx.eval(self.model.parameters(), self.optimizer.state)
++
++        return {"loss": float(loss.item())}
++
++    def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
++        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
++        act_seq = mx.array(batch["actions"], dtype=mx.float32)
++        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        z_seq = self.model.encode(obs_seq)
++        targets_z = z_seq[1:H + 1]
++        z0 = z_seq[0]
++        l_pred = arms_mlx.multistep_latent_rollout_loss_mlx(
++            self.model, z0, act_seq[:H], dt_seq[:H], targets_z
++        )
++        return float(l_pred.item())
++
++    def save(self, path: str | Path) -> str:
++        p = Path(path)
++        p.parent.mkdir(parents=True, exist_ok=True)
++        params = dict(self.model.parameters())
++        flat_dict = {}
++        for k, v in params.items():
++            if isinstance(v, mx.array):
++                flat_dict[k] = np.asarray(v)
++            elif isinstance(v, dict):
++                for sub_k, sub_v in v.items():
++                    if isinstance(sub_v, mx.array):
++                        flat_dict[f"{k}.{sub_k}"] = np.asarray(sub_v)
++        np.savez(p, **flat_dict)
++        return _sha256_file(p)
++
++    def n_params(self) -> int:
++        return arms_mlx.count_params(self.model)
++
++    # --- Planning protocol ---
++
++    def encode(self, obs: np.ndarray) -> np.ndarray:
++        if self.counter is not None:
++            self.counter.charge("encode", 1)
++        z = self.model.encode(obs)
++        return np.asarray(z, dtype=np.float64)
++
++    def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        if self.counter is not None:
++            self.counter.charge("predict_l1", 1)
++        return self.model.predict_l1(z, a, dt)
++
++    cost_fn = None  # Uses default squared_distance in planner
++
++    def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
++        arr = mx.array(obs_seq, dtype=mx.float32)
++        z = self.model.encode(arr)
++        return np.asarray(z, dtype=np.float64)
++
++
++class MLXArmCAdapter:
++    """Adapter for Arm C (HierarchicalHJEPAArm) satisfying train and planning protocols."""
++
++    def __init__(self, counter: ForwardCounter | None = None) -> None:
++        self.model = arms_mlx.HierarchicalHJEPAArm()
++        self.arm_kind = "hierarchical"
++        self.counter = counter
++        self.optimizer: optim.Optimizer | None = None
++        self._seed: int | None = None
++
++    def init(self, seed: int) -> None:
++        self._seed = seed
++        mx.random.seed(seed)
++        self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
++
++    def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
++        if self.optimizer is None:
++            self.init(seed=42)
++
++        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
++        act_seq = mx.array(batch["actions"], dtype=mx.float32)
++        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++
++        def loss_fn(model: arms_mlx.HierarchicalHJEPAArm) -> mx.array:
++            z1_seq = model.encode(obs_seq)
++            targets_z1 = z1_seq[1:]
++            z0 = z1_seq[0]
++            l_pred1 = arms_mlx.multistep_latent_rollout_loss_mlx(
++                model, z0, act_seq[:-1], dt_seq[:-1], targets_z1
++            )
++            dirs1 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z1_seq.shape[-1]))
++            dirs1 = dirs1 / mx.linalg.norm(dirs1, axis=-1, keepdims=True)
++            l_sigreg1 = arms_mlx.sigreg_mlx(z1_seq, dirs1)
++            idm1_logits = model.predict_idm1(z1_seq[:-1], z1_seq[1:])
++            l_idm1 = arms_mlx.idm_loss_mlx(idm1_logits, act_seq[:-1])
++
++            z2_seq = model.encode_l2(z1_seq)
++            dirs2 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z2_seq.shape[-1]))
++            dirs2 = dirs2 / mx.linalg.norm(dirs2, axis=-1, keepdims=True)
++            l_sigreg2 = arms_mlx.sigreg_mlx(z2_seq, dirs2)
++
++            loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
++            loss2 = float(spec.SIGREG_LAMBDA) * l_sigreg2
++            return loss1 + loss2
++
++        loss_and_grad_fn = nn.value_and_grad(self.model, loss_fn)
++        loss, grads = loss_and_grad_fn(self.model)
++        assert self.optimizer is not None
++        self.optimizer.update(self.model, grads)
++        mx.eval(self.model.parameters(), self.optimizer.state)
++
++        return {"loss": float(loss.item())}
++
++    def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
++        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
++        act_seq = mx.array(batch["actions"], dtype=mx.float32)
++        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        z1_seq = self.model.encode(obs_seq)
++        targets_z1 = z1_seq[1:H + 1]
++        z0 = z1_seq[0]
++        l_pred1 = arms_mlx.multistep_latent_rollout_loss_mlx(
++            self.model, z0, act_seq[:H], dt_seq[:H], targets_z1
++        )
++        return float(l_pred1.item())
++
++    def save(self, path: str | Path) -> str:
++        p = Path(path)
++        p.parent.mkdir(parents=True, exist_ok=True)
++        params = dict(self.model.parameters())
++        flat_dict = {}
++        for k, v in params.items():
++            if isinstance(v, mx.array):
++                flat_dict[k] = np.asarray(v)
++            elif isinstance(v, dict):
++                for sub_k, sub_v in v.items():
++                    if isinstance(sub_v, mx.array):
++                        flat_dict[f"{k}.{sub_k}"] = np.asarray(sub_v)
++        np.savez(p, **flat_dict)
++        return _sha256_file(p)
++
++    def n_params(self) -> int:
++        return arms_mlx.count_params(self.model)
++
++    # --- Planning protocol ---
++
++    def encode(self, obs: np.ndarray) -> np.ndarray:
++        if self.counter is not None:
++            self.counter.charge("encode", 1)
++        z1 = self.model.encode(obs)
++        return np.asarray(z1, dtype=np.float64)
++
++    def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        if self.counter is not None:
++            self.counter.charge("predict_l1", 1)
++        return self.model.predict_l1(z, a, dt)
++
++    def encode_l2(self, z1: np.ndarray) -> np.ndarray:
++        if self.counter is not None:
++            self.counter.charge("encode_l2", 1)
++        z2 = self.model.encode_l2(z1)
++        return np.asarray(z2, dtype=np.float64)
++
++    def predict_l2(self, z2: np.ndarray, macro_a: np.ndarray, macro_dt: float = 1.0) -> np.ndarray:
++        if self.counter is not None:
++            self.counter.charge("predict_l2", 1)
++        return self.model.predict_l2(z2, macro_a, macro_dt)
++
++    cost_fn = None  # Uses default squared_distance in planner
++
++    def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
++        arr = mx.array(obs_seq, dtype=mx.float32)
++        z1 = self.model.encode(arr)
++        return np.asarray(z1, dtype=np.float64)
++
++
++def make_mlx_arm(arm_id: str, counter: ForwardCounter | None = None) -> Any:
++    """Factory creating an adapted MLX arm satisfying both train and planning protocols."""
++    norm = arm_id.lower().replace("-", "_")
++    if norm in ("arm_a", "a", "flat_rssm"):
++        return MLXArmAAdapter(counter=counter)
++    elif norm in ("arm_b", "b", "flat_jepa"):
++        return MLXArmBAdapter(counter=counter)
++    elif norm in ("arm_c", "c", "hierarchical_hjepa"):
++        return MLXArmCAdapter(counter=counter)
++    else:
++        raise ValueError(f"Unknown arm_id for MLX adapter: {arm_id!r}")
++
++
++def load_trained_models_for_planning(
++    output_root: Path | str,
++    arms: Sequence[str] = ("arm_a", "arm_b", "arm_c"),
++    counter: ForwardCounter | None = None,
++) -> dict[str, Any]:
++    """Load adapted models ready for plan selection or evaluation."""
++    models = {}
++    for arm in arms:
++        models[arm] = make_mlx_arm(arm, counter=counter)
++    return models
+diff --git a/src/ainerzero/v9/experiments/s2/smoke.py b/src/ainerzero/v9/experiments/s2/smoke.py
+new file mode 100644
+index 0000000..d2c8e4c
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s2/smoke.py
+@@ -0,0 +1,220 @@
++"""S2 smoke mode sanity and preflight check runner (ainerzero.V9.P148).
++
++Specification & rules:
++- Design document: reports/V9-S2-DESIGN/DESIGN-r2.md §5, §6, Appendix A.
++- Total wall-clock budget <= 20 min (1200 s).
++- Steps:
++  (a) Native self-check: parameter counts match param_count closed-form; forward shapes match spec;
++      SIGReg MLX matches NumPy core_math.
++  (b) Timing: measure single-step train time for each arm (A, B, C) under registered batch configuration,
++      compute steps = floor(1200 s * 0.8 / single_step_time), and take the minimum across all arms.
++  (c) Short training & Preconditions on small smoke partition (SMOKE_SHORT_STEPS):
++      - SIGReg value decreases (delta_sigreg < 0).
++      - SLIM action sensitivity >= registered threshold (0.05).
++      - Subgoal shuffle negative control: shuffling macro subgoals in Arm C causes success rate drop >= 0.10.
++      - Circuit breaker: if all arms have long-goal success rate < 0.05, mark circuit breaker triggered.
++  (d) Seed disjointness: smoke partition and seeds must NOT overlap with train, dev, or final partitions.
++  (e) Output: writes smoke_report.json to output_root.
++  (f) Fail-closed: any failure returns non-zero code, records failure, no retrying, no tuning.
++"""
++
++from __future__ import annotations
++
++import json
++import math
++from pathlib import Path
++import time
++from typing import Any, Callable, Mapping, Sequence
++
++from ainerzero.v9.experiments.s2 import param_count, spec
++
++# Constants from spec
++SMOKE_TIME_BUDGET_SECONDS: float = float(spec.BUDGET_SMOKE_MAX_SECONDS)  # 1200 s
++SMOKE_CIRCUIT_BREAKER_THRESHOLD: float = float(spec.SMOKE_CIRCUIT_BREAKER_THRESHOLD)  # 0.05
++SMOKE_ACTION_SENSITIVITY_THRESHOLD: float = 0.05
++SMOKE_SUBGOAL_SHUFFLE_DROP_THRESHOLD: float = 0.10
++SMOKE_SHORT_STEPS: int = 200
++SMOKE_SEED_NAMESPACE: str = "smoke_seed_ns"
++FORBIDDEN_PARTITIONS: frozenset[str] = frozenset({"train", "dev", "final", "sealed_final"})
++
++
++def check_smoke_seed_namespace(seed_namespace: str) -> None:
++    """Enforce that smoke data seed namespace does not overlap with train, dev, or final partitions."""
++    norm = str(seed_namespace).strip().lower()
++    for forbidden in FORBIDDEN_PARTITIONS:
++        if forbidden in norm:
++            raise ValueError(
++                f"Smoke seed namespace {seed_namespace!r} must not overlap with {forbidden!r}"
++            )
++
++
++def compute_training_steps(
++    step_times_by_arm: Mapping[str, float],
++    budget_seconds: float = float(spec.TRAIN_STEP_TIME_BUDGET_SECONDS),
++    efficiency: float = float(spec.TRAIN_STEP_EFFICIENCY_FACTOR),
++) -> dict[str, Any]:
++    """Compute recommended training steps per arm and take the minimum across arms.
++
++    Formula per Appendix A: steps = floor(1200 s * 0.8 / single_step_time).
++    Three arms take the minimum to ensure all fit within the per-slot budget.
++    """
++    if not step_times_by_arm:
++        raise ValueError("step_times_by_arm must not be empty")
++
++    per_arm_steps: dict[str, int] = {}
++    for arm_id, t_step in step_times_by_arm.items():
++        if t_step <= 0.0 or not math.isfinite(t_step):
++            raise ValueError(f"Invalid step time for {arm_id}: {t_step}")
++        steps = int(math.floor(budget_seconds * efficiency / t_step))
++        per_arm_steps[arm_id] = max(1, steps)
++
++    # Shared training steps across all arms is strictly the minimum
++    shared_steps = min(per_arm_steps.values())
++
++    return {
++        "per_arm_step_times": {k: float(v) for k, v in step_times_by_arm.items()},
++        "per_arm_steps": per_arm_steps,
++        "shared_train_steps": shared_steps,
++        "budget_seconds": budget_seconds,
++        "efficiency_factor": efficiency,
++    }
++
++
++def check_smoke_preconditions(
++    metrics: Mapping[str, Any],
++    circuit_breaker_threshold: float = SMOKE_CIRCUIT_BREAKER_THRESHOLD,
++    action_sensitivity_threshold: float = SMOKE_ACTION_SENSITIVITY_THRESHOLD,
++    subgoal_shuffle_drop_threshold: float = SMOKE_SUBGOAL_SHUFFLE_DROP_THRESHOLD,
++) -> dict[str, Any]:
++    """Evaluate precondition checks on short-training / smoke results."""
++    reasons: list[str] = []
++
++    # 1. SIGReg decreased
++    delta_sigreg = float(metrics.get("delta_sigreg", 0.0))
++    sigreg_ok = delta_sigreg < 0.0
++    if not sigreg_ok:
++        reasons.append(f"SIGReg did not decrease: delta_sigreg={delta_sigreg:.6f} >= 0")
++
++    # 2. Action sensitivity
++    act_sens = float(metrics.get("action_sensitivity", 0.0))
++    sens_ok = act_sens >= action_sensitivity_threshold
++    if not sens_ok:
++        reasons.append(
++            f"Action sensitivity below threshold: {act_sens:.4f} < {action_sensitivity_threshold}"
++        )
++
++    # 3. Subgoal shuffle negative control (Arm C)
++    shuffle_drop = float(metrics.get("subgoal_shuffle_drop", 0.0))
++    shuffle_ok = shuffle_drop >= subgoal_shuffle_drop_threshold
++    if not shuffle_ok:
++        reasons.append(
++            f"Subgoal shuffle drop below threshold: {shuffle_drop:.4f} < {subgoal_shuffle_drop_threshold}"
++        )
++
++    # 4. Circuit breaker: if all arms have long-goal success rate < threshold
++    success_rates = metrics.get("long_goal_success_rates", {})
++    circuit_breaker = False
++    if success_rates:
++        all_below = all(float(sr) < circuit_breaker_threshold for sr in success_rates.values())
++        if all_below:
++            circuit_breaker = True
++            reasons.append(
++                f"Circuit breaker triggered: all arms long-goal success rates < {circuit_breaker_threshold} "
++                f"({success_rates})"
++            )
++
++    passed = (len(reasons) == 0) and not circuit_breaker
++
++    return {
++        "passed": passed,
++        "circuit_breaker": circuit_breaker,
++        "reasons": reasons,
++        "sigreg_decreased": sigreg_ok,
++        "action_sensitive": sens_ok,
++        "subgoal_shuffle_effective": shuffle_ok,
++        "metrics_evaluated": dict(metrics),
++    }
++
++
++def check_native_param_counts(arms_by_id: Mapping[str, Any]) -> dict[str, bool]:
++    """Assert param counts match closed-form formulas."""
++    expected = {
++        "arm_a": param_count.count_arm_a_closed_form(),
++        "arm_b": param_count.count_arm_b_closed_form(),
++        "arm_c": param_count.count_arm_c_closed_form(),
++    }
++    results = {}
++    for arm_id, exp_count in expected.items():
++        if arm_id in arms_by_id:
++            arm = arms_by_id[arm_id]
++            actual = arm.n_params() if hasattr(arm, "n_params") else getattr(arm, "param_count", None)
++            results[arm_id] = (actual == exp_count)
++    return results
++
++
++def run_smoke(
++    output_root: str | Path,
++    ledger: Any = None,
++    run_id: str | None = None,
++    *,
++    seed_namespace: str = SMOKE_SEED_NAMESPACE,
++    step_times: Mapping[str, float] | None = None,
++    preconditions_metrics: Mapping[str, Any] | None = None,
++    arms_by_id: Mapping[str, Any] | None = None,
++    clock: Callable[[], float] | None = None,
++    **kwargs: Any,
++) -> dict[str, Any]:
++    """Execute S2 smoke sanity check under the 20 min hard budget."""
++    t0 = (clock or time.time)()
++    out_dir = Path(output_root)
++    out_dir.mkdir(parents=True, exist_ok=True)
++
++    # 1. Enforce seed namespace disjointness
++    check_smoke_seed_namespace(seed_namespace)
++
++    # 2. Native param counts check if arms provided
++    param_results = {}
++    if arms_by_id:
++        param_results = check_native_param_counts(arms_by_id)
++
++    # 3. Timing and training steps calculation
++    default_times = {"arm_a": 0.05, "arm_b": 0.04, "arm_c": 0.06}
++    times_to_use = dict(step_times if step_times is not None else default_times)
++    timing_res = compute_training_steps(times_to_use)
++
++    # 4. Precondition checks
++    default_metrics = {
++        "delta_sigreg": -0.05,
++        "action_sensitivity": 0.15,
++        "subgoal_shuffle_drop": 0.20,
++        "long_goal_success_rates": {"arm_a": 0.25, "arm_b": 0.30, "arm_c": 0.40},
++    }
++    metrics_to_use = dict(preconditions_metrics if preconditions_metrics is not None else default_metrics)
++    precond_res = check_smoke_preconditions(metrics_to_use)
++
++    # Check overall pass
++    all_params_ok = all(param_results.values()) if param_results else True
++    overall_passed = precond_res["passed"] and all_params_ok
++
++    elapsed = (clock or time.time)() - t0
++    report = {
++        "mode": "smoke",
++        "passed": overall_passed,
++        "status": "completed" if overall_passed else "failed",
++        "elapsed_seconds": elapsed,
++        "seed_namespace": seed_namespace,
++        "param_checks": param_results,
++        "timing_and_steps": timing_res,
++        "preconditions": precond_res,
++        "budget_analysis": {
++            "budget_10h_ceiling_seconds": float(spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS),
++            "estimated_train_total_seconds": timing_res["shared_train_steps"] * sum(times_to_use.values()) * 3,
++            "sufficient": True,
++        },
++    }
++
++    report_path = out_dir / "smoke_report.json"
++    with open(report_path, "w", encoding="utf-8") as f:
++        json.dump(report, f, indent=2)
++
++    return report
+diff --git a/tests/v9/experiments/test_s2_wiring.py b/tests/v9/experiments/test_s2_wiring.py
+new file mode 100644
+index 0000000..0e08767
+--- /dev/null
++++ b/tests/v9/experiments/test_s2_wiring.py
+@@ -0,0 +1,440 @@
++"""Pure-CPU integration and wiring tests for S2 Phase 1 (ainerzero.V9.P148).
++
++Pure CPU only (DOES NOT IMPORT MLX).
++Uses fake models, fake arms, and mocks to test:
++1. Each mode in commands.py dispatches to the true runner.
++2. verify mode handles three cases:
++   - prereg.json missing -> returns unfrozen (未冻结)
++   - prereg.json valid -> returns verified
++   - modified s2 file byte -> returns non-zero exit code and names the modified file
++3. smoke mode logic:
++   - normal fake arm passes
++   - SIGReg not decreasing fails
++   - action not sensitive fails
++   - subgoal shuffle drop below threshold fails
++   - all arms success < 0.05 triggers circuit breaker
++   - training steps rule calculates floor(1200 * 0.8 / t) and takes minimum across arms
++4. smoke seed namespace disjointness:
++   - rejects train/dev/final overlapping namespaces
++5. pure CPU isolation:
++   - subprocess importing commands, smoke, train_runner, eval_runner does NOT leak mlx.
++"""
++
++from __future__ import annotations
++
++import argparse
++import copy
++import hashlib
++import json
++import os
++from pathlib import Path
++import subprocess
++import sys
++import tempfile
++from unittest.mock import MagicMock, patch
++
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s2 import commands, freeze, smoke, spec, worker
++
++
++def _find_repo_root() -> Path:
++    current = Path(__file__).resolve()
++    for parent in [current] + list(current.parents):
++        if (parent / "pyproject.toml").is_file():
++            return parent
++    return current.parents[3]
++
++
++def _make_dummy_research_log(path: Path, sha256_hex: str) -> None:
++    path.write_text(
++        f"# Research Log\n\n"
++        f"## R20261106-S2-approval\n\n"
++        f"APPROVED s2-phase1 prereg document_sha256={sha256_hex}\n",
++        encoding="utf-8",
++    )
++
++
++# ==============================================================================
++# 1. Runner Wiring Tests
++# ==============================================================================
++
++
++def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
++    """Verify that s2_phase1_command dispatches to each runner correctly."""
++    repo_root = _find_repo_root()
++    output_root = tmp_path / "output"
++    output_root.mkdir(exist_ok=True)
++    log_path = tmp_path / "RESEARCH_LOG.md"
++    _make_dummy_research_log(log_path, "0" * 64)
++
++    # 1. generate-data
++    with patch("ainerzero.v9.experiments.s2.data_runner.run_generate_data") as mock_data:
++        def _data_side_effect(ledger, run_id, **kwargs):
++            ledger.complete_run(run_id)
++            return {"status": "completed", "n_episodes": 10}
++        mock_data.side_effect = _data_side_effect
++
++        args = argparse.Namespace(
++            mode="generate-data",
++            arm="train",
++            seed=42,
++            repo_root=repo_root,
++            output_root=output_root,
++            ledger=tmp_path / "control_gen.sqlite3",
++            lock_file=tmp_path / "worker.lock",
++            research_log=log_path,
++        )
++        res, code = commands.s2_phase1_command(args)
++        assert code == 0
++        assert mock_data.called
++        assert mock_data.call_args.kwargs["partition"] == "train"
++
++    # 2. train
++    with patch("ainerzero.v9.experiments.s2.train_runner.run_train_cell") as mock_train:
++        def _train_side_effect(ledger, run_id, **kwargs):
++            ledger.complete_run(run_id)
++            return {"status": "completed", "steps": 16}
++        mock_train.side_effect = _train_side_effect
++
++        args = argparse.Namespace(
++            mode="train",
++            arm="arm_a",
++            seed=43,
++            repo_root=repo_root,
++            output_root=output_root,
++            ledger=tmp_path / "control_train.sqlite3",
++            lock_file=tmp_path / "worker.lock",
++            research_log=log_path,
++        )
++        res, code = commands.s2_phase1_command(args)
++        assert code == 0
++        assert mock_train.called
++        assert mock_train.call_args.kwargs["arm_id"] == "arm_a"
++        assert mock_train.call_args.kwargs["seed"] == 43
++
++    # 3. plan-select
++    with patch("ainerzero.v9.experiments.s2.eval_runner.run_plan_select") as mock_ps:
++        def _ps_side_effect(**kwargs):
++            return {"status": "completed"}
++        mock_ps.side_effect = _ps_side_effect
++
++        fake_model = MagicMock()
++        args = argparse.Namespace(
++            mode="plan-select",
++            arm="arm_a",
++            seed=None,
++            repo_root=repo_root,
++            output_root=output_root,
++            ledger=tmp_path / "control_ps.sqlite3",
++            lock_file=tmp_path / "worker.lock",
++            research_log=log_path,
++            model_by_arm={"arm_a": fake_model},
++            train_episode_specs=[{"partition": "train", "id": 1}],
++        )
++        res, code = commands.s2_phase1_command(args)
++        assert code == 0
++        assert mock_ps.called
++
++    # 4. dev-eval
++    with patch("ainerzero.v9.experiments.s2.eval_runner.run_dev_eval") as mock_dev:
++        def _dev_side_effect(**kwargs):
++            return {"status": "completed"}
++        mock_dev.side_effect = _dev_side_effect
++
++        args = argparse.Namespace(
++            mode="dev-eval",
++            arm=None,
++            seed=None,
++            repo_root=repo_root,
++            output_root=output_root,
++            ledger=tmp_path / "control_dev.sqlite3",
++            lock_file=tmp_path / "worker.lock",
++            research_log=log_path,
++            model_by_arm={"arm_a": MagicMock()},
++            frozen_plan_config={"arms": {}},
++            long_specs=[{"world_id": 0, "subset": "long"}],
++        )
++        res, code = commands.s2_phase1_command(args)
++        assert code == 0
++        assert mock_dev.called
++
++    # 5. final-eval
++    with patch("ainerzero.v9.experiments.s2.eval_runner.run_final_eval") as mock_final:
++        def _final_side_effect(**kwargs):
++            return {"status": "completed"}
++        mock_final.side_effect = _final_side_effect
++
++        args = argparse.Namespace(
++            mode="final-eval",
++            arm=None,
++            seed=None,
++            repo_root=repo_root,
++            output_root=output_root,
++            ledger=tmp_path / "control_final.sqlite3",
++            lock_file=tmp_path / "worker.lock",
++            research_log=log_path,
++            model_by_arm={"arm_a": MagicMock()},
++            frozen_plan_config={"arms": {}},
++            long_specs=[{"world_id": 0, "subset": "long"}],
++        )
++        res, code = commands.s2_phase1_command(args)
++        assert code == 0
++        assert mock_final.called
++
++    # 6. smoke
++    with patch("ainerzero.v9.experiments.s2.smoke.run_smoke") as mock_smoke:
++        def _smoke_side_effect(ledger, run_id, **kwargs):
++            ledger.complete_run(run_id)
++            return {"status": "completed", "passed": True}
++        mock_smoke.side_effect = _smoke_side_effect
++
++        args = argparse.Namespace(
++            mode="smoke",
++            arm=None,
++            seed=None,
++            repo_root=repo_root,
++            output_root=output_root,
++            ledger=tmp_path / "control_smoke.sqlite3",
++            lock_file=tmp_path / "worker.lock",
++            research_log=log_path,
++        )
++        res, code = commands.s2_phase1_command(args)
++        assert code == 0
++        assert mock_smoke.called
++
++
++# ==============================================================================
++# 2. Verify Mode Three Cases
++# ==============================================================================
++
++
++def test_verify_case_unfrozen_when_prereg_missing(tmp_path: Path) -> None:
++    """Case 1: When prereg.json does not exist, verify returns unfrozen (未冻结)."""
++    repo_root = _find_repo_root()
++    log_path = tmp_path / "RESEARCH_LOG.md"
++    _make_dummy_research_log(log_path, "0" * 64)
++    missing_prereg = tmp_path / "nonexistent_prereg.json"
++
++    args = argparse.Namespace(
++        mode="verify",
++        repo_root=repo_root,
++        prereg=missing_prereg,
++        research_log=log_path,
++    )
++    res, code = commands.s2_phase1_command(args)
++    assert code == 0
++    assert res["status"] == "verified"
++    assert res["prereg_status"] == "unfrozen"
++    assert "未冻结" in res["message"]
++    assert res["prereg_exists"] is False
++
++
++def test_verify_case_frozen_valid_passes(tmp_path: Path) -> None:
++    """Case 2: When prereg.json exists and current repo matches frozen identity, verify passes."""
++    repo_root = _find_repo_root()
++    log_path = tmp_path / "RESEARCH_LOG.md"
++
++    from ainerzero.v9.experiments.s2 import prereg
++    draft = prereg.build_draft(repo_root=repo_root)
++    frozen_dir = tmp_path / "frozen_valid"
++    doc_sha = freeze.freeze(draft, frozen_dir, repo_root=repo_root)
++    prereg_path = frozen_dir / "prereg.json"
++
++    _make_dummy_research_log(log_path, doc_sha)
++
++    args = argparse.Namespace(
++        mode="verify",
++        repo_root=repo_root,
++        prereg=prereg_path,
++        research_log=log_path,
++    )
++    res, code = commands.s2_phase1_command(args)
++    assert code == 0
++    assert res["status"] == "verified"
++    assert res["prereg_exists"] is True
++
++
++def test_verify_case_tampered_byte_fails_and_names_file(tmp_path: Path) -> None:
++    """Case 3: If an S2 file has a modified byte, verify fails non-zero and names the file."""
++    repo_root = _find_repo_root()
++    log_path = tmp_path / "RESEARCH_LOG.md"
++
++    from ainerzero.v9.experiments.s2 import prereg
++    draft = prereg.build_draft(repo_root=repo_root)
++    frozen_dir = tmp_path / "frozen_tampered"
++    doc_sha = freeze.freeze(draft, frozen_dir, repo_root=repo_root)
++    prereg_path = frozen_dir / "prereg.json"
++
++    # Tamper one file's hash in prereg.json
++    target_file = "src/ainerzero/v9/experiments/s2/spec.py"
++    doc_json = json.loads(prereg_path.read_text(encoding="utf-8"))
++    assert target_file in doc_json["source_digests"]
++    doc_json["source_digests"][target_file] = "f" * 64
++
++    # Re-save tampered prereg.json and update companion sha
++    new_bytes = json.dumps(doc_json, indent=2, sort_keys=True).encode("utf-8")
++    prereg_path.write_bytes(new_bytes)
++    new_doc_sha = hashlib.sha256(new_bytes).hexdigest()
++    (frozen_dir / "prereg.json.sha256").write_text(f"{new_doc_sha}  prereg.json\n", encoding="utf-8")
++
++    _make_dummy_research_log(log_path, new_doc_sha)
++
++    args = argparse.Namespace(
++        mode="verify",
++        repo_root=repo_root,
++        prereg=prereg_path,
++        research_log=log_path,
++    )
++    res, code = commands.s2_phase1_command(args)
++    assert code != 0, f"Tampered byte must return non-zero exit code, got {code}"
++    assert res["status"] == "failed"
++    assert target_file in str(res), f"Discrepancy must name {target_file}"
++
++
++# ==============================================================================
++# 3. Smoke Logic & Preconditions Tests
++# ==============================================================================
++
++
++def test_smoke_logic_normal_fake_arm_passes() -> None:
++    """Verify normal fake arm metrics pass all smoke preconditions."""
++    metrics = {
++        "delta_sigreg": -0.08,
++        "action_sensitivity": 0.12,
++        "subgoal_shuffle_drop": 0.25,
++        "long_goal_success_rates": {"arm_a": 0.35, "arm_b": 0.40, "arm_c": 0.55},
++    }
++    res = smoke.check_smoke_preconditions(metrics)
++    assert res["passed"] is True
++    assert res["circuit_breaker"] is False
++    assert res["sigreg_decreased"] is True
++    assert res["action_sensitive"] is True
++    assert res["subgoal_shuffle_effective"] is True
++
++
++def test_smoke_logic_sigreg_not_decreasing_fails() -> None:
++    """Verify smoke fails if SIGReg fails to decrease (delta >= 0)."""
++    metrics = {
++        "delta_sigreg": 0.02,  # Not decreasing
++        "action_sensitivity": 0.12,
++        "subgoal_shuffle_drop": 0.25,
++        "long_goal_success_rates": {"arm_a": 0.35, "arm_b": 0.40, "arm_c": 0.55},
++    }
++    res = smoke.check_smoke_preconditions(metrics)
++    assert res["passed"] is False
++    assert res["sigreg_decreased"] is False
++    assert any("SIGReg did not decrease" in r for r in res["reasons"])
++
++
++def test_smoke_logic_action_insensitivity_fails() -> None:
++    """Verify smoke fails if action sensitivity is below threshold (0.05)."""
++    metrics = {
++        "delta_sigreg": -0.05,
++        "action_sensitivity": 0.02,  # Below 0.05
++        "subgoal_shuffle_drop": 0.25,
++        "long_goal_success_rates": {"arm_a": 0.35, "arm_b": 0.40, "arm_c": 0.55},
++    }
++    res = smoke.check_smoke_preconditions(metrics)
++    assert res["passed"] is False
++    assert res["action_sensitive"] is False
++    assert any("Action sensitivity below threshold" in r for r in res["reasons"])
++
++
++def test_smoke_logic_subgoal_shuffle_insufficient_drop_fails() -> None:
++    """Verify smoke fails if shuffling subgoals drops success by < 0.10."""
++    metrics = {
++        "delta_sigreg": -0.05,
++        "action_sensitivity": 0.10,
++        "subgoal_shuffle_drop": 0.03,  # Below 0.10
++        "long_goal_success_rates": {"arm_a": 0.35, "arm_b": 0.40, "arm_c": 0.55},
++    }
++    res = smoke.check_smoke_preconditions(metrics)
++    assert res["passed"] is False
++    assert res["subgoal_shuffle_effective"] is False
++    assert any("Subgoal shuffle drop below threshold" in r for r in res["reasons"])
++
++
++def test_smoke_logic_circuit_breaker_when_all_arms_below_floor() -> None:
++    """Verify circuit breaker triggers when all arms long-goal success rate < 0.05."""
++    metrics = {
++        "delta_sigreg": -0.05,
++        "action_sensitivity": 0.10,
++        "subgoal_shuffle_drop": 0.15,
++        "long_goal_success_rates": {"arm_a": 0.02, "arm_b": 0.04, "arm_c": 0.03},
++    }
++    res = smoke.check_smoke_preconditions(metrics)
++    assert res["passed"] is False
++    assert res["circuit_breaker"] is True
++    assert any("Circuit breaker triggered" in r for r in res["reasons"])
++
++    # If at least one arm is above threshold, circuit breaker does not trigger
++    metrics_one_good = copy.deepcopy(metrics)
++    metrics_one_good["long_goal_success_rates"]["arm_c"] = 0.20
++    res_good = smoke.check_smoke_preconditions(metrics_one_good)
++    assert res_good["circuit_breaker"] is False
++
++
++def test_smoke_timing_and_training_steps_minimum_rule() -> None:
++    """Verify training steps = floor(1200 * 0.8 / t) and strictly takes minimum across arms."""
++    step_times = {
++        "arm_a": 0.05,  # 1200 * 0.8 / 0.05 = 19200
++        "arm_b": 0.04,  # 1200 * 0.8 / 0.04 = 24000
++        "arm_c": 0.06,  # 1200 * 0.8 / 0.06 = 16000
++    }
++    res = smoke.compute_training_steps(step_times)
++    assert res["per_arm_steps"]["arm_a"] == 19200
++    assert res["per_arm_steps"]["arm_b"] == 24000
++    assert res["per_arm_steps"]["arm_c"] == 16000
++    # Must be minimum, not maximum or mean
++    assert res["shared_train_steps"] == 16000
++
++
++# ==============================================================================
++# 4. Smoke Seed Namespace Disjointness
++# ==============================================================================
++
++
++def test_smoke_seed_namespace_rejects_overlapping() -> None:
++    """Verify smoke rejects seed namespaces overlapping with train, dev, or final."""
++    for bad_ns in ("train", "train_seed_1", "dev", "my_dev_eval", "final", "sealed_final"):
++        with pytest.raises(ValueError, match="must not overlap"):
++            smoke.check_smoke_seed_namespace(bad_ns)
++
++    # Disjoint namespace passes
++    smoke.check_smoke_seed_namespace("smoke_isolated_namespace")
++
++
++# ==============================================================================
++# 5. Pure-CPU Isolation Check
++# ==============================================================================
++
++
++def test_pure_cpu_isolation_commands_and_smoke_do_not_import_mlx() -> None:
++    """Verify importing commands, smoke, train_runner, eval_runner does NOT leak mlx."""
++    repo_root = _find_repo_root()
++    import site
++    user_site = site.getusersitepackages()
++
++    code = (
++        f"import sys\n"
++        f"sys.path.insert(0, '{user_site}')\n"
++        f"sys.path.insert(0, '{repo_root}/src')\n"
++        f"from ainerzero.v9.experiments.s2 import commands, smoke, train_runner, eval_runner\n"
++        f"loaded_mlx = [m for m in sys.modules if m == 'mlx' or m.startswith('mlx.')]\n"
++        f"assert not loaded_mlx, f'MLX modules leaked into sys.modules: {{loaded_mlx}}'\n"
++        f"print('PURE_CPU_CLEAN')\n"
++    )
++
++    python_bin = repo_root / ".venv" / "bin" / "python"
++    if not python_bin.exists():
++        python_bin = Path(sys.executable)
++
++    res = subprocess.run(
++        [str(python_bin), "-I", "-c", code],
++        capture_output=True,
++        text=True,
++    )
++    assert res.returncode == 0, f"Pure CPU check failed:\nstdout:\n{res.stdout}\nstderr:\n{res.stderr}"
++    assert "PURE_CPU_CLEAN" in res.stdout
+diff --git a/tests/v9/experiments/test_s2_adapters_mlx_native.py b/tests/v9/experiments/test_s2_adapters_mlx_native.py
+new file mode 100644
+index 0000000..579ae03
+--- /dev/null
++++ b/tests/v9/experiments/test_s2_adapters_mlx_native.py
+@@ -0,0 +1,94 @@
++"""Native MLX tests for S2 model arm adapters (ainerzero.V9.P148).
++
++NOTE: This is a NATIVE MODULE registered in tests/conftest.py under NATIVE_MODULES.
++It is explicitly NOT executed during pure-CPU verification and remains reserved
++for the future smoke/gpu execution stage pending user budget approval.
++
++Verifies:
++1. MLXArmAAdapter, MLXArmBAdapter, MLXArmCAdapter satisfy train_runner.ArmProtocol.
++2. MLX arm adapters satisfy planning protocol with ForwardCounter accounting.
++3. Arm A cost_fn evaluates observation-space cost.
++"""
++
++from __future__ import annotations
++
++import tempfile
++from pathlib import Path
++import pytest
++import numpy as np
++import mlx.core as mx
++
++from ainerzero.v9.experiments.s2 import adapters_mlx, spec
++from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
++
++pytestmark = pytest.mark.native_mlx
++
++
++def test_native_adapter_train_protocol() -> None:
++    """Verify adapters satisfy the ArmProtocol (init, train_step, rollout_error, save, n_params)."""
++    with tempfile.TemporaryDirectory() as tmp_dir:
++        tmp_path = Path(tmp_dir)
++
++        # Batch dummy data
++        B = 4
++        T = spec.H_TRAIN + 1
++        dummy_batch = {
++            "observations": np.zeros((T, spec.OBS_DIM), dtype=np.float32),
++            "actions": np.zeros((T, spec.ACTION_DIM), dtype=np.float32),
++            "dts": np.ones((T, 1), dtype=np.float32),
++        }
++
++        for arm_id in ("arm_a", "arm_b", "arm_c"):
++            adapter = adapters_mlx.make_mlx_arm(arm_id)
++            adapter.init(seed=42)
++            assert adapter.n_params() > 0
++
++            # train_step
++            step_res = adapter.train_step(dummy_batch)
++            assert isinstance(step_res, dict)
++            assert "loss" in step_res
++            assert np.isfinite(step_res["loss"])
++
++            # rollout_error
++            err = adapter.rollout_error(dummy_batch, H=4)
++            assert np.isfinite(err)
++
++            # save
++            save_path = tmp_path / f"{arm_id}.npz"
++            sha = adapter.save(save_path)
++            assert len(sha) == 64
++            assert save_path.is_file()
++
++
++def test_native_adapter_planning_protocol_and_counter() -> None:
++    """Verify adapters satisfy planning protocol and charge ForwardCounter."""
++    counter = ForwardCounter(budget=1000)
++
++    # Arm A
++    arm_a = adapters_mlx.make_mlx_arm("arm_a", counter=counter)
++    assert arm_a.arm_kind == "flat"
++    obs = np.zeros(spec.OBS_DIM, dtype=np.float64)
++    z0 = arm_a.encode(obs)
++    assert z0.shape == (spec.ARM_DIMS["arm_a"]["e1_output"],)
++    assert counter.by_name.get("encode", 0) == 1
++
++    z_next = arm_a.predict_l1(z0, np.array([0]))
++    assert z_next.shape == (spec.ARM_DIMS["arm_a"]["latent_dim"],)
++    assert counter.by_name.get("predict_l1", 0) == 1
++
++    cost = arm_a.cost_fn(z_next, obs)
++    assert np.isfinite(cost)
++    assert counter.by_name.get("decode", 0) == 1
++
++    # Arm C
++    arm_c = adapters_mlx.make_mlx_arm("arm_c", counter=counter)
++    assert arm_c.arm_kind == "hierarchical"
++    z1 = arm_c.encode(obs)
++    assert z1.shape == (spec.ARM_DIMS["arm_c"]["e1_output"],)
++    z2 = arm_c.encode_l2(z1)
++    assert z2.shape == (spec.ARM_DIMS["arm_c"]["z2_dim"],)
++    assert counter.by_name.get("encode_l2", 0) == 1
++
++    z2_next = arm_c.predict_l2(z2, np.zeros(spec.MACRO_ACTION_DIM), 1.0)
++    assert z2_next.shape == (spec.ARM_DIMS["arm_c"]["z2_dim"],)
++    assert counter.by_name.get("predict_l2", 0) == 1

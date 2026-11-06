@@ -1,0 +1,83 @@
+{
+  "task_id": "ainerzero.V9.P148",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-w4x2",
+  "deliverables": {
+    "adapters_mlx": {
+      "file": "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+      "train_protocol_implemented": true,
+      "planning_protocol_implemented": true,
+      "forward_counter_wired": true,
+      "arm_a_cost_fn_observation_space": true
+    },
+    "smoke_mode": {
+      "file": "src/ainerzero/v9/experiments/s2/smoke.py",
+      "budget_seconds": 1200,
+      "timing_rule": "floor(1200 * 0.8 / t), minimum across arms",
+      "preconditions": {
+        "sigreg_decrease": true,
+        "action_sensitivity_floor": 0.05,
+        "subgoal_shuffle_drop_floor": 0.10,
+        "circuit_breaker_floor": 0.05
+      },
+      "seed_namespace_disjointness_enforced": true
+    },
+    "commands_wiring": {
+      "file": "src/ainerzero/v9/experiments/s2/commands.py",
+      "real_runners_lazy_dispatched": true,
+      "verify_mode_frozen_identity_verified": true,
+      "verify_mode_unfrozen_when_prereg_missing": true
+    },
+    "conftest_boundary": {
+      "file": "tests/conftest.py",
+      "native_modules_entry_added": "test_s2_adapters_mlx_native.py",
+      "strictly_one_entry_added": true
+    }
+  },
+  "tests": {
+    "test_s2_wiring_passed": 12,
+    "test_s2_wiring_failed": 0,
+    "test_s2_lifecycle_passed": 8,
+    "test_s2_lifecycle_failed": 0,
+    "full_pure_cpu_suite_passed": 3579,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P148-M1": {
+      "name": "verify_skips_identity_check",
+      "desc": "Bypass identity.verify_frozen_identity in verify mode when prereg exists",
+      "target_test": "test_verify_case_tampered_byte_fails_and_names_file",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P148-M2": {
+      "name": "smoke_circuit_breaker_relaxed",
+      "desc": "Relax circuit breaker threshold from 0.05 to 0.50",
+      "target_test": "test_smoke_logic_circuit_breaker_when_all_arms_below_floor",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P148-M3": {
+      "name": "smoke_train_steps_takes_max_instead_of_min",
+      "desc": "Compute training steps using max across arms instead of min",
+      "target_test": "test_smoke_timing_and_training_steps_minimum_rule",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P148-M4": {
+      "name": "commands_top_level_mlx_import",
+      "desc": "Import adapters_mlx at top-level of commands.py causing mlx leakage in pure CPU",
+      "target_test": "test_pure_cpu_isolation_commands_and_smoke_do_not_import_mlx",
+      "status": "KILLED",
+      "exit_code": 2,
+      "restored_sha_verified": true
+    }
+  }
+}

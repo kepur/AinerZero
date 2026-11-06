@@ -1,0 +1,117 @@
+{
+  "task_id": "ainerzero.V9.P153",
+  "verifying_task": "ainerzero.V9.P152",
+  "author": "gemini-a5b8",
+  "reviewer": "gemini-r7m2",
+  "reviewer_tier": 2,
+  "independent_check": {
+    "author_is_reviewer": false,
+    "same_session": false,
+    "reviewer_self_attestation": "本人 gemini-r7m2 确系独立非作者复核者，与被验卡 ainerzero.V9.P152 作者 gemini-a5b8 非同一会话、非同一 ID，全程独立复核。"
+  },
+  "scope_audit": {
+    "files_created_by_author": [
+      "src/ainerzero/v9/experiments/s2/smoke_checks.py",
+      "tests/v9/experiments/test_s2_smoke_checks.py"
+    ],
+    "sha256": {
+      "src/ainerzero/v9/experiments/s2/smoke_checks.py": "090a404e5dde55c5d59a105eb7f045c31ec83f930a4753653c521d5176c359d7",
+      "tests/v9/experiments/test_s2_smoke_checks.py": "9f4eabbf935aca9d643a4ae1168c7ebb49a4990b949da9e7e567c2a7ea2bb04e"
+    },
+    "smoke_py_untouched": true,
+    "commands_py_untouched": true,
+    "artifacts_clean": true,
+    "artifacts_diff_count": 0
+  },
+  "anti_fabrication_audit": {
+    "ast_scan_clean": true,
+    "no_hardcoded_metrics": true,
+    "empty_or_none_inputs_fail_closed": {
+      "short_train_sanity_none_arm": "ValueError (arm must implement train_step)",
+      "short_train_sanity_none_batches": "ValueError (arm must implement train_step)",
+      "short_train_sanity_small_S": "ValueError (S must be an integer >= 20, got 10)",
+      "action_sensitivity_none_predict": "ValueError (predict_fn must be a callable)",
+      "action_sensitivity_empty_states": "ValueError (states must be a non-empty sequence)",
+      "oracle_feasibility_empty_specs": "ValueError (layout_specs must be a non-empty sequence)",
+      "oracle_feasibility_none_item": "TypeError (Invalid layout_spec format: <class 'NoneType'>)"
+    }
+  },
+  "algorithm_verification": {
+    "short_train_sanity": {
+      "finite_loss_check": true,
+      "loss_decreased_check": true,
+      "sigreg_stable_check": true
+    },
+    "action_sensitivity": {
+      "manual_analytic_2_states": {
+        "expected": 1.3333333333333333,
+        "measured": 1.3333333333333333,
+        "exact_match": true
+      },
+      "insensitive_model_returns_zero": true
+    },
+    "oracle_feasibility_independent_rerun": {
+      "world_seeds": [
+        200,
+        201
+      ],
+      "total_episodes": 12,
+      "successful_episodes": 11,
+      "success_rate": 0.9166666666666666,
+      "threshold": 0.05,
+      "fuse_triggered": false,
+      "budget_exhaustion_test": {
+        "n_fwd": 8,
+        "success_rate": 0.0,
+        "fuse_triggered": true
+      }
+    }
+  },
+  "reviewer_mutations": {
+    "total": 4,
+    "killed": 4,
+    "survived": 0,
+    "all_killed": true,
+    "items": [
+      {
+        "id": "REV-M1",
+        "description": "Invert loss decrease check (mean_last < mean_first -> mean_last >= mean_first)",
+        "test_targeted": "test_short_train_sanity_decreasing_loss_passes",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      },
+      {
+        "id": "REV-M2",
+        "description": "Bypass SIGReg 1.1x bound check (unconditionally mark sigreg_stable = True)",
+        "test_targeted": "test_short_train_sanity_sigreg_increase_fails",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      },
+      {
+        "id": "REV-M3",
+        "description": "Corrupt action sensitivity normalization (mean_pairwise / mean_norm -> mean_pairwise * 1.5)",
+        "test_targeted": "test_action_sensitivity_hand_calculated_analytic",
+        "status": "KILLED (RED)",
+        "exit_code": 5
+      },
+      {
+        "id": "REV-M4",
+        "description": "Truncate oracle max_steps (bfs_dist * 3 -> 1)",
+        "test_targeted": "test_oracle_feasibility_on_gridlab_two_worlds",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      }
+    ]
+  },
+  "pure_cpu_regression": {
+    "subprocess_isolation_no_mlx": true,
+    "collected": 3601,
+    "selected": 3595,
+    "passed": 3595,
+    "failed": 0,
+    "deselected": 6,
+    "artifacts_audited": 80929,
+    "artifacts_diff_count": 0
+  },
+  "verdict": "RECOMMEND_ACCEPT"
+}

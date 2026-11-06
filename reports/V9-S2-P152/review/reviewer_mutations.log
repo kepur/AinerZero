@@ -1,0 +1,128 @@
+=== REV-M1: invert loss decrease ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox
+configfile: pyproject.toml
+collecting ... collected 13 items / 12 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py::test_short_train_sanity_decreasing_loss_passes FAILED [100%]
+
+=================================== FAILURES ===================================
+________________ test_short_train_sanity_decreasing_loss_passes ________________
+
+    def test_short_train_sanity_decreasing_loss_passes() -> None:
+        """NumPy 假臂，损失随步数下降：通过。"""
+        arm = FakeDecreasingArm(initial_loss=2.0, decay=0.98)
+        batches = [{"x": i} for i in range(50)]
+    
+        res = smoke_checks.short_train_sanity(arm, batches, S=40)
+>       assert res["passed"] is True
+E       assert False is True
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py:90: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py::test_short_train_sanity_decreasing_loss_passes
+======================= 1 failed, 12 deselected in 0.74s =======================
+
+
+
+=== REV-M2: bypass SIGReg check ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox
+configfile: pyproject.toml
+collecting ... collected 13 items / 12 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py::test_short_train_sanity_sigreg_increase_fails FAILED [100%]
+
+=================================== FAILURES ===================================
+________________ test_short_train_sanity_sigreg_increase_fails _________________
+
+    def test_short_train_sanity_sigreg_increase_fails() -> None:
+        """SIGReg 末值是初值的 1.5 倍：不通过。"""
+        arm = FakeDecreasingArm(initial_loss=2.0, decay=0.98)
+        batches = [{"x": i} for i in range(50)]
+    
+        sigreg_calls = [1.0, 1.5]  # initial=1.0, final=1.5 (> 1.1x)
+        call_idx = 0
+    
+        def sigreg_probe(*args: Any) -> float:
+            nonlocal call_idx
+            val = sigreg_calls[min(call_idx, len(sigreg_calls) - 1)]
+            call_idx += 1
+            return val
+    
+        res = smoke_checks.short_train_sanity(arm, batches, S=40, sigreg_probe=sigreg_probe)
+>       assert res["passed"] is False
+E       assert True is False
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py:139: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py::test_short_train_sanity_sigreg_increase_fails
+======================= 1 failed, 12 deselected in 0.76s =======================
+
+
+
+=== REV-M3: corrupt sensitivity formula ===
+Exit code: 5 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox
+configfile: pyproject.toml
+collecting ... collected 13 items / 13 deselected / 0 selected
+
+============================ 13 deselected in 0.39s ============================
+
+
+
+=== REV-M4: truncate oracle max_steps ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox
+configfile: pyproject.toml
+collecting ... collected 13 items / 12 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_on_gridlab_two_worlds FAILED [100%]
+
+=================================== FAILURES ===================================
+________________ test_oracle_feasibility_on_gridlab_two_worlds _________________
+
+    def test_oracle_feasibility_on_gridlab_two_worlds() -> None:
+        """在 GridLab-S2 上用真实动力学跑 2 个世界 × 6 个长目标：
+        成功率应明显高于 0.05，报告实际数字。
+        """
+        episodes: list[dict[str, Any]] = []
+        for w_seed in (101, 102):
+            rng = random.Random(w_seed)
+            layout, pairs, _ = world.prepare_world_with_long_pairs(seed=w_seed, rng=rng)
+            for pair in pairs:
+                episodes.append({"layout": layout, "spec": pair})
+    
+        assert len(episodes) == 12
+    
+        # 使用默认 threshold (0.05)
+        res = smoke_checks.oracle_feasibility(episodes, n_fwd=2000, rng=42)
+>       assert res["passed"] is True
+E       assert False is True
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py:249: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p153_rev_mut_ei85tv4z/sandbox/tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_on_gridlab_two_worlds
+======================= 1 failed, 12 deselected in 1.25s =======================
+
+
