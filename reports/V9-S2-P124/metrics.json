@@ -1,0 +1,68 @@
+{
+  "task_id": "ainerzero.V9.P124",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-f8a2",
+  "experiment_id": "s2-phase1-20261106-r0",
+  "target_parameter_count": 300000,
+  "parameter_tolerance": 0.10,
+  "parameter_bounds": [270000, 330000],
+  "arm_parameter_counts": {
+    "arm_a": 306093,
+    "arm_b": 305732,
+    "arm_c": 303115
+  },
+  "arm_relative_diff_from_target": {
+    "arm_a": "+2.03%",
+    "arm_b": "+1.91%",
+    "arm_c": "+1.04%"
+  },
+  "arm_dims_registered": {
+    "arm_a": {
+      "e1": "205->256->128",
+      "gru": "in 37, hidden 160",
+      "prior": "160->128->64",
+      "posterior": "288->128->64",
+      "decoder": "192->128->205"
+    },
+    "arm_b": {
+      "e1": "205->256->128",
+      "p1": "133->320->320->128",
+      "idm": "256->128->4"
+    },
+    "arm_c": {
+      "layer1": "same as B structure with P1 133->256->256->128, IDM 256->128->4",
+      "e2": "128->128->64",
+      "p2": "72->128->64",
+      "idm2": "128->64->7"
+    }
+  },
+  "tests": {
+    "s2_spec_passed": 9,
+    "s2_prereg_passed": 10,
+    "s2_total_suite_passed": 74,
+    "s2_total_suite_failed": 0,
+    "isolated_subprocess_run": "PASSED"
+  },
+  "mutations": {
+    "P124-M1": {
+      "description": "闭式公式漏算偏置",
+      "test": "test_closed_form_matches_numpy_reference_per_arm",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P124-M2": {
+      "description": "validate 去掉参数量检查",
+      "test": "test_tamper_double_arm_a_width_fails",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P124-M3": {
+      "description": "spec 里 δ_pred 改为 0.5",
+      "test": "test_spec_matches_design_document_constants",
+      "status": "KILLED",
+      "exit_code": 1
+    }
+  },
+  "artifacts_touched": false
+}

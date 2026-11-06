@@ -1,0 +1,219 @@
+{
+  "arm_dims": {
+    "arm_a": {
+      "decoder_hidden": 128,
+      "description": "flat RSSM with GRU deterministic state and Gaussian latent",
+      "e1_hidden": 256,
+      "e1_input": 205,
+      "e1_output": 128,
+      "gru_hidden": 160,
+      "gru_input": 37,
+      "latent_dim": 32,
+      "name": "flat_rssm",
+      "posterior_hidden": 128,
+      "prior_hidden": 128
+    },
+    "arm_b": {
+      "description": "flat JEPA with shared E1, residual predictor P1, and IDM",
+      "e1_hidden": 256,
+      "e1_input": 205,
+      "e1_output": 128,
+      "idm_hidden": 128,
+      "idm_input": 256,
+      "idm_output": 4,
+      "name": "flat_jepa",
+      "p1_hidden_1": 320,
+      "p1_hidden_2": 320,
+      "p1_input": 133,
+      "p1_output": 128
+    },
+    "arm_c": {
+      "description": "two-layer hierarchical H-JEPA; layer 1 + layer 2 macro dynamics",
+      "e1_hidden": 256,
+      "e1_input": 205,
+      "e1_output": 128,
+      "e2_hidden": 128,
+      "e2_input": 128,
+      "idm2_hidden": 64,
+      "idm2_input": 128,
+      "idm2_output": 7,
+      "idm_hidden": 128,
+      "idm_input": 256,
+      "idm_output": 4,
+      "name": "hierarchical_hjepa",
+      "p1_hidden_1": 256,
+      "p1_hidden_2": 256,
+      "p1_input": 133,
+      "p1_output": 128,
+      "p2_hidden": 128,
+      "p2_input": 72,
+      "p2_output": 64,
+      "z2_dim": 64
+    }
+  },
+  "arm_parameter_counts": {
+    "arm_a": 306093,
+    "arm_b": 305732,
+    "arm_c": 303115
+  },
+  "budget": {
+    "arm_d_seconds": 3600,
+    "baseline_e_seconds": 300,
+    "calendar_window_hours": 72.0,
+    "calendar_window_seconds": 259200,
+    "data_max_seconds": 3600,
+    "dev_eval_seconds": 9000,
+    "final_eval_seconds": 5400,
+    "hyperparam_selection_seconds": 1800,
+    "smoke_max_seconds": 1200,
+    "total_wallclock_hours": 10.0,
+    "total_wallclock_seconds": 36000,
+    "train_main_total_seconds": 10800,
+    "train_per_slot_seconds": 1200,
+    "train_slots_main": 9
+  },
+  "created_utc": "2026-11-06T15:00:00Z",
+  "design_reference": {
+    "path": "reports/V9-S2-DESIGN/DESIGN-r2.md",
+    "sha256": "4e3e5d78f410daa7e3de182dc256eed498fc371f450a166af43fbfd9213bc245"
+  },
+  "evaluation": {
+    "dev_long_goal_episodes": 300,
+    "dev_pairs_per_world": 6,
+    "dev_worlds": 50,
+    "episode_l_factor": 3.0,
+    "final_long_goal_episodes": 300,
+    "final_pairs_per_world": 6,
+    "final_worlds": 50,
+    "num_seeds": 3,
+    "perturb_action_count": 5,
+    "perturb_fraction": 0.3333333333333333,
+    "perturb_insert_step": 20,
+    "regular_dt_subset_episodes": 100,
+    "training_seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "experiment_id": "s2-phase1-20261106-r0",
+  "gates": {
+    "baseline_success_plausible_range": [
+      0.1,
+      0.8
+    ],
+    "bootstrap_confidence": 0.95,
+    "bootstrap_resamples": 10000,
+    "delta_pred": 1.0,
+    "probe_eval_steps": [
+      1,
+      5,
+      10,
+      30,
+      60
+    ],
+    "probe_ridge_lambda": 1.0,
+    "smoke_circuit_breaker_threshold": 0.05,
+    "success_rate_diff_min": 0.1
+  },
+  "planning": {
+    "flat_h_candidates": [
+      16,
+      32,
+      48
+    ],
+    "hierarchical_budget_ratio_candidates": [
+      0.25,
+      0.5
+    ],
+    "hierarchical_horizon_candidates": [
+      4,
+      6,
+      8
+    ],
+    "hyperparam_selection_max_episodes": 50,
+    "n_fwd": 4096,
+    "n_fwd_dev_levels": [
+      2048,
+      4096,
+      8192
+    ],
+    "replan_m_steps": 4,
+    "s2_macro_steps": 8
+  },
+  "schema": "ainerzero.v9.s2.preregistration.v1",
+  "source_digests": {
+    "src/ainerzero/v9/experiments/s2/__init__.py": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+    "src/ainerzero/v9/experiments/s2/core_math.py": "3d0311e7edbc7f421bea662ab30e023f25a8c6eac7aa0756bcf6cd7f1ed7f972",
+    "src/ainerzero/v9/experiments/s2/data.py": "8fd195af598fcc618392bbc694e164dfa7e79a88c503f408824bb402081cf3e8",
+    "src/ainerzero/v9/experiments/s2/eval.py": "9a98ef7e3042241f662bf66cc520f8f00c8b1e4d3c0de3b584cec954c9a4614c",
+    "src/ainerzero/v9/experiments/s2/fwd_counter.py": "2dbe4002805ae4dafb3a965a30c8f9127d00af526909eefeb3ed929845b31e20",
+    "src/ainerzero/v9/experiments/s2/param_count.py": "e09afde313ad09507e4ea0592b0baadf7f9c8904f42c23a73fbad1ee901ae5cc",
+    "src/ainerzero/v9/experiments/s2/planner.py": "e3c73a9aea9eb497001c3c5b87946dbb7bc2e019424379a6b54e21dbf85441ab",
+    "src/ainerzero/v9/experiments/s2/prereg.py": "f2f3c16b2a6e430a4b1d7bea04c343fe7e637bace445359a32a5a4fe9c0d6f75",
+    "src/ainerzero/v9/experiments/s2/probe.py": "707015d7a5f6d22212809841dd687975ad556de68c7daa028ddc2c425f40445d",
+    "src/ainerzero/v9/experiments/s2/spec.py": "f828816871c93b8c81f9b55d55b0ea1e05e62c4093bea9268d269f8de156af21",
+    "src/ainerzero/v9/experiments/s2/stats.py": "ac6e3fed713f7a160a379b683dd19fd5d33be5baacbe577c2d13900e45d67a8b",
+    "src/ainerzero/v9/experiments/s2/world.py": "f4d4ff246a5f078ec1500fe11c8a06ffe1221d47fb4d78d103eaba645b7abbdd"
+  },
+  "spec_name": "s2-phase1-v1",
+  "status": "draft_awaiting_approval",
+  "stopping_rules": [
+    "If both Arm B and Arm C are non-plannable in smoke pre-check: stop before full training.",
+    "dev partition decisions allowed at most 2 times; 3rd requires new dev partition.",
+    "GridLab-S2 world is incommensurable with S1; M2 reported as incommensurable.",
+    "Any arm parameter count outside +/- 10% voids the comparison.",
+    "Any planning forward evaluation exceeding N_fwd voids the comparison.",
+    "delta_pred frozen at 1.0; no post-hoc tuning permitted on dev or final."
+  ],
+  "target_parameters": {
+    "max": 330000,
+    "min": 270000,
+    "target": 300000,
+    "tolerance_fraction": 0.1
+  },
+  "task_id": "ainerzero.V9.P124",
+  "training": {
+    "batch_size": 32,
+    "free_bits": 1.0,
+    "h_train": 16,
+    "idm_mu": 1.0,
+    "learning_rate": 0.0003,
+    "optimizer": "Adam",
+    "sequence_length": 17,
+    "sigreg_directions": 256,
+    "sigreg_lambda": 0.1,
+    "sigreg_quadrature_points": 17,
+    "train_step_efficiency_factor": 0.8,
+    "train_step_time_budget_seconds": 1200
+  },
+  "world": {
+    "episode_steps": 240,
+    "fov_size": 7,
+    "k_distribution": {
+      "1": 0.5,
+      "2": 0.3,
+      "3": 0.2
+    },
+    "long_goal_min_steps": 40,
+    "max_redraw_retries": 5,
+    "max_rejection_rate": 0.3,
+    "non_bfs_ratio_min": 0.5,
+    "num_actions": 4,
+    "room_interior_size": 7,
+    "room_pillars_range": [
+      0,
+      3
+    ],
+    "rooms_x": 3,
+    "rooms_y": 3,
+    "segment_len_range": [
+      20,
+      60
+    ],
+    "short_goal_max_steps": 10,
+    "terrain_classes": 4,
+    "total_rooms": 9,
+    "world_size": 25
+  }
+}

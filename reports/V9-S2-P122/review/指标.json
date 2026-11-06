@@ -1,0 +1,78 @@
+{
+  "task_id": "ainerzero.V9.P123",
+  "review_target": "ainerzero.V9.P122",
+  "tier": 2,
+  "agent": "gemini-k4p9",
+  "author": "gemini-m7k4",
+  "conclusion": "RECOMMEND_ACCEPT",
+  "verified_at_utc": "2026-11-06T14:15:00Z",
+  "independent_checks": {
+    "scope_clean": true,
+    "pure_cpu": true,
+    "cluster_bootstrap_math_valid": true,
+    "bootstrap_coverage_500_mc": 0.9740,
+    "analytical_power_vs_simulation": {
+      "analytical_approx": 0.7769,
+      "simulation_power": 0.5400
+    },
+    "episode_execution": {
+      "perturb_at_step_20": true,
+      "perturb_action_count": 5,
+      "hard_step_limit_factor": 3.0,
+      "success_ignores_heading": true,
+      "strict_success_checks_heading": true,
+      "begin_episode_called": true,
+      "oracle_long_goals_tested": 10,
+      "oracle_long_success_rate": 1.0,
+      "oracle_long_avg_steps": 41.90,
+      "oracle_long_avg_bfs": 43.00
+    },
+    "ridge_regression": {
+      "lambda_default": 1.0,
+      "closed_form_exact": true
+    }
+  },
+  "full_regression": {
+    "passed": 3510,
+    "failed": 0,
+    "deselected": 6,
+    "duration_seconds": 252.84,
+    "signal_mode": "SIG_DFL"
+  },
+  "reviewer_mutations": {
+    "total_tested": 4,
+    "killed_count": 3,
+    "survived_count": 1,
+    "results": [
+      {
+        "id": "REV-M1",
+        "target": "src/ainerzero/v9/experiments/s2/probe.py",
+        "description": "RidgeProbe.predict 遗漏偏置项 (+ self.bias)",
+        "status": "KILLED",
+        "exit_code": 1
+      },
+      {
+        "id": "REV-M2",
+        "target": "src/ainerzero/v9/experiments/s2/stats.py",
+        "description": "cluster_paired_bootstrap 移除 W>=2 阻断检查",
+        "status": "KILLED",
+        "exit_code": 1
+      },
+      {
+        "id": "REV-M3",
+        "target": "src/ainerzero/v9/experiments/s2/eval.py",
+        "description": "run_episode regular 模式误设 k_next = 2",
+        "status": "KILLED",
+        "exit_code": 1
+      },
+      {
+        "id": "REV-M4",
+        "target": "src/ainerzero/v9/experiments/s2/eval.py",
+        "description": "run_episode 扰动仅插入 1 个动作而非 5 个动作",
+        "status": "SURVIVED",
+        "exit_code": 0,
+        "note": "测试漏洞：dummy_planner跑满limit_steps导致steps_used>=25恒成立"
+      }
+    ]
+  }
+}

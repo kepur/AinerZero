@@ -1,0 +1,24 @@
+# S2 冻结常量、参数量公式与预登记草稿校验器交付报告（ainerzero.V9.P124）
+
+- **执行代理**：`gemini-f8a2`（二级执行 Agent）· 纯 CPU（无 MLX 导入、不 freeze、无训练、无 artifacts 写入）
+- **ARM_DIMS 登记表与三臂参数量**（目标 300k ± 10% [270,000, 330,000]）：
+  - **Arm A（flat RSSM）**：GRU hidden=160, heads=128 → **306,093**（+2.03%）
+  - **Arm B（flat JEPA）**：P1 hidden=320, IDM=128 → **305,732**（+1.91%）
+  - **Arm C（分层 H-JEPA）**：L1 P1=256; L2 E2=128, P2=128, IDM2=64 → **303,115**（+1.04%）
+  - 最大臂间差 |306,093 - 303,115| = 2,978（< 1.0%），满足 §3 臂间 ≤ 10% 要求。
+- **闭式公式与 NumPy 累加交叉核对**：A/B/C 三臂闭式与 NumPy 形状逐层累加严格相等（0 误差）。
+- **测试清单（19 项新单测全部通过）**：
+  - `test_s2_spec.py`（9 项）：设计稿 10+ 关键数值比对（25×25, 7×7, 240, 40, 4096, 1.0, 10,000, 72h 等）、常数完整性。
+  - `test_s2_prereg.py`（10 项）：公式 vs NumPy、300k±10%、改大一档越界边界、`python -I` 独立子进程、五种篡改抛错（删键/δ_pred=2.0/A加倍/窗口5h/N_fwd=1000）。
+  - S2 现有套件回归：`tests/v9/experiments/test_s2_*.py` 74 项全部 PASSED（10.38s）。
+- **坏对照变异矩阵（隔离副本运行，变异均变红，已按字节还原并校验 SHA256）**：
+  - **P124-M1**（闭式漏算偏置）：`test_closed_form_matches_numpy_reference_per_arm` 变红（KILLED, exit 1）
+  - **P124-M2**（validate 去掉参数量检查）：`test_tamper_double_arm_a_width_fails` 变红（KILLED, exit 1）
+  - **P124-M3**（spec 里 δ_pred 改为 0.5）：`test_spec_matches_design_document_constants` 变红（KILLED, exit 1）
+- **产物与 SHA256**：
+  - `src/ainerzero/v9/experiments/s2/spec.py`: `f828816871c93b8c81f9b55d55b0ea1e05e62c4093bea9268d269f8de156af21`
+  - `src/ainerzero/v9/experiments/s2/param_count.py`: `e09afde313ad09507e4ea0592b0baadf7f9c8904f42c23a73fbad1ee901ae5cc`
+  - `src/ainerzero/v9/experiments/s2/prereg.py`: `f2f3c16b2a6e430a4b1d7bea04c343fe7e637bace445359a32a5a4fe9c0d6f75`
+  - `tests/v9/experiments/test_s2_spec.py`: `53565937aded5fdd45878cab331e4a2f94b9ba66103d7e03fa57b3896c7b0094`
+  - `tests/v9/experiments/test_s2_prereg.py`: `c2a4c8f44f969172a266b88ce446729b9b8d2f15814566b4a01561b477cfb6b2`
+  - `reports/V9-S2-P124/prereg_draft_sample.json`: `627587f39a4bd3f7c6602e2b5a5c723a63fddf6dcfeb02a77432c1a03760cbc8`

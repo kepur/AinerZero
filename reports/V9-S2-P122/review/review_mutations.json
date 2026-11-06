@@ -1,0 +1,38 @@
+[
+  {
+    "mutation_id": "REV-M1",
+    "description": "RidgeProbe.predict 遗漏偏置项 (+ self.bias)",
+    "target_file": "src/ainerzero/v9/experiments/s2/probe.py",
+    "targeted_test": "test_ridge_recovers_known_linear_mapping_with_noise",
+    "exit_code": 1,
+    "status": "KILLED",
+    "diagnosis": "被测用例严格断言均方欧氏距离恢复误差 <= 0.35；遗漏偏置导致误差达 17.67，成功变红拦截。"
+  },
+  {
+    "mutation_id": "REV-M2",
+    "description": "cluster_paired_bootstrap 移除 W>=2 阻断检查",
+    "target_file": "src/ainerzero/v9/experiments/s2/stats.py",
+    "targeted_test": "test_single_world_raises_value_error",
+    "exit_code": 1,
+    "status": "KILLED",
+    "diagnosis": "用例验证 W=1 时必须抛出 ValueError，放宽检查导致 DID NOT RAISE，成功变红拦截。"
+  },
+  {
+    "mutation_id": "REV-M3",
+    "description": "run_episode regular 模式误设 k_next = 2",
+    "target_file": "src/ainerzero/v9/experiments/s2/eval.py",
+    "targeted_test": "test_dt_mode_regular_and_irregular_distribution",
+    "exit_code": 1,
+    "status": "KILLED",
+    "diagnosis": "用例检查 regular 模式下所有 k 必须全为 1，出现 2 导致断言失败，成功变红拦截。"
+  },
+  {
+    "mutation_id": "REV-M4",
+    "description": "run_episode 扰动仅插入 1 个动作而非 5 个动作",
+    "target_file": "src/ainerzero/v9/experiments/s2/eval.py",
+    "targeted_test": "test_perturb_inserts_at_step_20_and_is_reproducible",
+    "exit_code": 0,
+    "status": "SURVIVED",
+    "diagnosis": "测试漏洞诊断（SURVIVED）：test_perturb_inserts_at_step_20_and_is_reproducible 使用 dummy_planner 在达到目标前持续执行 WAIT，导致回合自然跑满 limit_steps (~120)，断言 assert res1.steps_used >= 25 无法区分插入的是 1 个还是 5 个动作。建议后续补充对 actions_taken 中扰动动作切片长度的直接断言。"
+  }
+]
