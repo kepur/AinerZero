@@ -1,0 +1,23 @@
+# S2 运行生命周期接线交付报告（ainerzero.V9.P126）
+
+- **执行代理**：`gemini-w4x2`（二级执行 Agent）· 纯 CPU（无 MLX 导入、runner 桩拒绝执行、无训练、无实盘库写入）
+- **实现内容**：
+  - `src/ainerzero/v9/experiments/s2/worker.py`：实现 `S2Ledger`、`LEDGER_EXPERIMENT_IDS` 跨谱系常数、72 h 日历窗口与按格预算分离、`check_cell_already_completed` 防重复（模式、臂、种子三元组）、默认拒绝桩 `default_stub_runner` 与 `execute_work_cell`。
+  - `src/ainerzero/v9/experiments/s2/commands.py`：实现 `s2_phase1_command` 分发 7 种模式、`scan_approval_log` 批准预检（合格行 `APPROVED s2-phase1 prereg document_sha256=<64hex>`，排除引用块/代码块/缩进行）、`_check_phase_budget_ceiling` 跨谱系累计 10 h 上限。
+  - `src/ainerzero/cli.py`：注册 `s2-phase1` 子命令，纯追加（+56 行，-0 行，见 `cli.diff`）。
+- **测试结果（6 项生命周期单测全过，耗时 1.23s）**：
+  - (a) 无批准行拒绝 train，verify 通过且零写入；
+  - (b) 合格批准行配合假 runner 准入 train，同格重复准入返回 `duplicate_execution`；
+  - (c) 10 h 预算总上限边界（刚好 10 h 准入，超 10 h 拒绝）及跨谱系累计验证；
+  - (d) 72 h 日历窗口与 10 h 实际用时分离（间隔 30 h 准入，超 72 h 拒绝）；
+  - (e) 引用块/代码块/缩进行中的非合格批准行均被拒绝；
+  - (f) `.venv/bin/python -I -m ainerzero s2-phase1 --mode verify` 独立子进程符合预期。
+- **坏对照变异矩阵（隔离副本运行，均变红 KILLED，已按字节还原并校验 SHA256）**：
+  - **P126-M1**（日历窗口坍缩为 10h 计算上限）：(d) 变红（KILLED, exit 1）；
+  - **P126-M2**（总上限只查当前实验 ID）：(c) 跨谱系变红（KILLED, exit 1）；
+  - **P126-M3**（防重复忽略种子）：(b) 变红（KILLED, exit 1）；
+  - **P126-M4**（批准行扫描接受引用块）：(e) 变红（KILLED, exit 1）。
+- **全量回归与实盘零写入审计**：
+  - 前台纯 CPU pytest 配合 `SIG_DFL` 信号还原：**3516 passed, 6 deselected in 253.49s，0 failed**；
+  - 实盘 `artifacts/` 全量 80,929 项在测试前后执行逐项 stat 对比：**0 新增、0 删除、0 修改（零差异）**。
+- **产物哈希**：`reports/V9-S2-P126/sha256.json` 记录包含 `commands.py`、`worker.py`、`test_s2_lifecycle.py`、`cli.diff` 等全部产物。

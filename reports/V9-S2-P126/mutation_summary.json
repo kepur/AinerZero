@@ -1,0 +1,38 @@
+[
+  {
+    "id": "P126-M1",
+    "name": "calendar_window_collapsed_to_compute_ceiling",
+    "desc": "Experiment-level max_wall_seconds collapsed to 10h compute ceiling; 30h idle gap fails",
+    "expected_fail_test": "tests/v9/experiments/test_s2_lifecycle.py::test_d_calendar_window_separation_and_expiration",
+    "returncode": 1,
+    "is_red": true,
+    "sha_restored": true
+  },
+  {
+    "id": "P126-M2",
+    "name": "phase_ceiling_only_current_experiment_id",
+    "desc": "Phase budget ceiling only checks current experiment ID, failing cross-lineage accumulation",
+    "expected_fail_test": "tests/v9/experiments/test_s2_lifecycle.py::test_c_phase_budget_ceiling_boundary_and_lineage_accumulation",
+    "returncode": 1,
+    "is_red": true,
+    "sha_restored": true
+  },
+  {
+    "id": "P126-M3",
+    "name": "anti_duplicate_ignores_seed",
+    "desc": "check_cell_already_completed ignores seed, rejecting subsequent runs of different seeds as duplicate",
+    "expected_fail_test": "tests/v9/experiments/test_s2_lifecycle.py::test_b_qualified_approval_admits_train_and_detects_duplicate",
+    "returncode": 1,
+    "is_red": true,
+    "sha_restored": true
+  },
+  {
+    "id": "P126-M4",
+    "name": "approval_scan_accepts_blockquote",
+    "desc": "scan_approval_log strips '>' and accepts approval line inside blockquotes",
+    "expected_fail_test": "tests/v9/experiments/test_s2_lifecycle.py::test_e_approval_line_in_quote_or_code_refused",
+    "returncode": 1,
+    "is_red": true,
+    "sha_restored": true
+  }
+]

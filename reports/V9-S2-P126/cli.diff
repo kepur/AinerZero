@@ -1,0 +1,74 @@
+diff --git a/src/ainerzero/cli.py b/src/ainerzero/cli.py
+index fdfe31d..7739aec 100644
+--- a/src/ainerzero/cli.py
++++ b/src/ainerzero/cli.py
+@@ -1375,6 +1375,56 @@ def main(argv: list[str] | None = None) -> int:
+         type=int,
+         help="训练步数（可选覆盖，如测试时≤5步）",
+     )
++    s2 = commands.add_parser(
++        "s2-phase1",
++        help="S2 第一阶段入口：多时间尺度世界脑实验（verify/smoke/generate-data/train/plan-select/dev-eval/final-eval）",
++    )
++    s2.add_argument(
++        "--mode",
++        required=True,
++        choices=("verify", "smoke", "generate-data", "train", "plan-select", "dev-eval", "final-eval"),
++        help="verify=只读核验；smoke=冒烟；generate-data=数据生成；train=训练；plan-select=规划选参；dev-eval=开发评测；final-eval=封存评测",
++    )
++    s2.add_argument(
++        "--arm",
++        choices=("arm_a", "arm_b", "arm_c", "arm_d", "arm_e", "A", "B", "C", "D", "E"),
++        help="目标模型臂 (arm_a..arm_e)",
++    )
++    s2.add_argument(
++        "--seed",
++        type=int,
++        help="随机种子（train 必选 42/43/44；eval 可选）",
++    )
++    s2.add_argument(
++        "--output-root",
++        type=Path,
++        help="输出根目录（默认 artifacts/v9/s2/phase1）",
++    )
++    s2.add_argument(
++        "--ledger",
++        type=Path,
++        help="中央 RunStore 账本路径",
++    )
++    s2.add_argument(
++        "--lock-file",
++        type=Path,
++        help="共享锁路径（默认 artifacts/locks/m0-worker.lock）",
++    )
++    s2.add_argument(
++        "--prereg",
++        type=Path,
++        help="预登记 JSON 文件",
++    )
++    s2.add_argument(
++        "--research-log",
++        type=Path,
++        help="RESEARCH_LOG.md 路径",
++    )
++    s2.add_argument(
++        "--budget",
++        type=float,
++        help="单格预算秒数（可选，覆盖默认值，但不可超过注册上限）",
++    )
+     teacher = commands.add_parser(
+         "teacher-benchmark",
+         help="教师基准受控入口（支持 T4 与 T6 DA3）：检查（inspect，零副作用）与受控运行（run，共享锁+RunStore+资源门）",
+@@ -1562,6 +1612,12 @@ def main(argv: list[str] | None = None) -> int:
+             report, exit_code = e1_phase2_command(args)
+             print(json.dumps(report, ensure_ascii=False, indent=2))
+             return exit_code
++        if args.command == "s2-phase1":
++            from ainerzero.v9.experiments.s2.commands import s2_phase1_command
++
++            report, exit_code = s2_phase1_command(args)
++            print(json.dumps(report, ensure_ascii=False, indent=2))
++            return exit_code
+         if args.command in {
+             "train-pilot",
+             "diagnose-pilot",

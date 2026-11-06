@@ -1,0 +1,40 @@
+{
+  "sandbox": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p127_review_mutations_odf1mtuk",
+  "results": [
+    {
+      "id": "R127-X1",
+      "name": "approval_scan_accepts_fenced_code",
+      "target": "commands.scan_approval_log fence skip removed",
+      "test": "test_e_approval_line_in_quote_or_code_refused",
+      "rc": 1,
+      "killed": true,
+      "sha_restored": true,
+      "tail": "                                             [100%]\n=================================== FAILURES ===================================\nE   assert not True\n/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p127_review_mutations_odf1mtuk/tests/v9/experiments/test_s2_lifecycle.py:295: assert not True\n=========================== short test summary info ============================\nFAILED tests/v9/experiments/test_s2_lifecycle.py::test_e_approval_line_in_quote_or_code_refused\n1 failed in 3.84s\n\n"
+    },
+    {
+      "id": "R127-X2",
+      "name": "phase_ceiling_rejects_exact_boundary",
+      "target": "commands._check_phase_budget_ceiling > changed to >=",
+      "test": "test_c_phase_budget_ceiling_boundary_and_lineage_accumulation",
+      "rc": 1,
+      "killed": true,
+      "sha_restored": true,
+      "tail": "onError: Boundary cell failed: {'status': 'refused', 'mode': 'train', 'stage': 'phase_budget_exceeded', 'consumed_seconds': 34800.0, 'cell_budget_seconds': 1200.0, 'ceiling_seconds': 36000.0, 'message': 'Adding cell budget (1200.0 s) to consumed (34800.0 s) exceeds ceiling (36000.0 s)'}\n=========================== short test summary info ============================\nFAILED tests/v9/experiments/test_s2_lifecycle.py::test_c_phase_budget_ceiling_boundary_and_lineage_accumulation\n1 failed in 3.52s\n\n"
+    },
+    {
+      "id": "R127-X3",
+      "name": "anti_duplicate_ignores_arm",
+      "target": "worker.check_cell_already_completed ignores arm",
+      "test": "full lifecycle suite + same-seed-diff-arm oracle",
+      "rc_suite": 1,
+      "suite_killed": true,
+      "rc_oracle": 1,
+      "oracle_killed": true,
+      "oracle_out": "{'first': 0, 'second_status': 'refused', 'second_stage': 'duplicate_execution', 'second_code': 1}\n",
+      "killed": true,
+      "survived_suite_only": false,
+      "sha_restored": true,
+      "tail": "================ FAILURES ===================================\nE   assert 1 == 2\n     +  where 2 = commands.EXIT_REFUSED_RESOURCE\n/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p127_review_mutations_odf1mtuk/tests/v9/experiments/test_s2_lifecycle.py:231: assert 1 == 2\n=========================== short test summary info ============================\nFAILED tests/v9/experiments/test_s2_lifecycle.py::test_c_phase_budget_ceiling_boundary_and_lineage_accumulation\n1 failed, 5 passed in 1.63s\n\n"
+    }
+  ]
+}
