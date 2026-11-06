@@ -1,0 +1,42 @@
+[
+  {
+    "id": "P120-REV-M1",
+    "name": "data_py_inject_gridlab2d",
+    "desc": "Inject gridlab2d import into s2/data.py (verified by test_no_gridlab_module_imported)",
+    "expected_fail_test": "tests/v9/experiments/test_s2_world.py::test_no_gridlab_module_imported",
+    "returncode": 1,
+    "is_red": true,
+    "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_______________________ test_no_gridlab_module_imported ________________________\n\n    def test_no_gridlab_module_imported():\n        \"\"\"Iso",
+    "sha_restored": true
+  },
+  {
+    "id": "P120-REV-M2",
+    "name": "begin_episode_noop_in_hierarchical",
+    "desc": "ForwardCounter.begin_episode() does not clear cache; hierarchical new episode fails assert snap4['by_name']['encode'] == 2",
+    "expected_fail_test": "tests/v9/experiments/test_s2_planner.py::test_hierarchical_goal_embedding_cached_across_decisions_in_episode",
+    "returncode": 1,
+    "is_red": true,
+    "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_____ test_hierarchical_goal_embedding_cached_across_decisions_in_episode ______\n\n    def test_hierarchical_goal_embedding_cached_across_de",
+    "sha_restored": true
+  },
+  {
+    "id": "P120-REV-M3",
+    "name": "world_line_of_sight_always_true",
+    "desc": "world.py line_of_sight always returns True (no raycast occlusion), failing LOS closed form test",
+    "expected_fail_test": "tests/v9/experiments/test_s2_world.py::test_line_of_sight_closed_form",
+    "returncode": 1,
+    "is_red": true,
+    "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n________________________ test_line_of_sight_closed_form ________________________\n\n    def test_line_of_sight_closed_form():\n        \"\"\"Thre",
+    "sha_restored": true
+  },
+  {
+    "id": "P120-REV-M4",
+    "name": "world_docstring_lowercase_gridlab_leak",
+    "desc": "Re-introduce lowercase gridlab into world.py docstring, failing test_gridlab_s07 guard",
+    "expected_fail_test": "tests/test_gridlab_s07.py::test_not_wired_into_training",
+    "returncode": 1,
+    "is_red": true,
+    "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_________________________ test_not_wired_into_training _________________________\n\n    def test_not_wired_into_training():\n        # gridlab",
+    "sha_restored": true
+  }
+]

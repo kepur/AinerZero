@@ -1,0 +1,38 @@
+{
+  "P120-M1": {
+    "desc": "分层规划器绕过缓存: z1_goal 直接调用 encode(goal_obs) 而非 counter.goal_embedding",
+    "target_test": "tests/v9/experiments/test_s2_planner.py::test_hierarchical_goal_embedding_cached_across_decisions_in_episode",
+    "passed_before_mutation": true,
+    "turned_red": true,
+    "exit_code": 1,
+    "fail_summary": "assert snap2[\"by_name\"][\"encode\"] == 1 (actual 2)",
+    "sha_before": "e3c73a9aea9eb497001c3c5b87946dbb7bc2e019424379a6b54e21dbf85441ab",
+    "sha_mutated": "d3e405de0762a04a03a1fb63e7eb8b46715a21603b7b245fcfb8d031650b77d5",
+    "sha_restored": "e3c73a9aea9eb497001c3c5b87946dbb7bc2e019424379a6b54e21dbf85441ab",
+    "restored_verified": true
+  },
+  "P120-M2": {
+    "desc": "world.py 加一句 import ainerzero.environments.gridlab_v1",
+    "target_test": "tests/v9/experiments/test_s2_world.py::test_no_gridlab_module_imported",
+    "passed_before_mutation": true,
+    "turned_red": true,
+    "exit_code": 1,
+    "fail_summary": "AssertionError: GridLab modules imported: ['ainerzero.environments.gridlab2d', 'ainerzero.environments.gridlab_v1']",
+    "sha_before": "f4d4ff246a5f078ec1500fe11c8a06ffe1221d47fb4d78d103eaba645b7abbdd",
+    "sha_mutated": "7357e891a47c3c1c11afbf1ba744b4b80009347448ddc94588a87bf4bca50f4d",
+    "sha_restored": "f4d4ff246a5f078ec1500fe11c8a06ffe1221d47fb4d78d103eaba645b7abbdd",
+    "restored_verified": true
+  },
+  "P120-M3": {
+    "desc": "把 world.py 第 90 行 docstring 改回小写 gridlab",
+    "target_test": "tests/test_gridlab_s06.py::test_not_wired_into_training",
+    "passed_before_mutation": true,
+    "turned_red": true,
+    "exit_code": 1,
+    "fail_summary": "assert users == [] (found world.py)",
+    "sha_before": "f4d4ff246a5f078ec1500fe11c8a06ffe1221d47fb4d78d103eaba645b7abbdd",
+    "sha_mutated": "70b2f47fe4aea7641c7f8f3ee8222035d2f6614e31e7ceb0d40dd45a79bc23ff",
+    "sha_restored": "f4d4ff246a5f078ec1500fe11c8a06ffe1221d47fb4d78d103eaba645b7abbdd",
+    "restored_verified": true
+  }
+}
