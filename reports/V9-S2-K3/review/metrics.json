@@ -1,0 +1,69 @@
+{
+  "task_id": "ainerzero.V9.P114",
+  "verified_task_id": "ainerzero.V9.P112",
+  "reviewer_id": "gemini-8m4d",
+  "author_id": "composer-m7k2",
+  "recommendation": "RECOMMEND_ACCEPT",
+  "self_certified_independent": true,
+  "scope_check": {
+    "git_tracked_src_modified": false,
+    "untracked_files_match_manifest": true
+  },
+  "forward_counter_probe": {
+    "flat_probe_total": 152,
+    "flat_counter_total": 152,
+    "flat_breakdown_matches": true,
+    "hier_probe_total": 149,
+    "hier_counter_total": 149,
+    "hier_breakdown_matches": true,
+    "target_encoding_counted": true,
+    "e2_encoding_counted": true
+  },
+  "lower_cost_verification": {
+    "e2_squared_distance_verified": true,
+    "upper_lower_budget_fixed": true,
+    "new_maze_experiment": {
+      "name": "L-Shaped Winding Maze",
+      "shortest_path_distance": 44,
+      "n_fwd_budget": 5000,
+      "n_seeds": 5,
+      "flat_success_rate": 1.0,
+      "hierarchical_success_rate": 1.0,
+      "flat_steps": [61, 68, 72, 68, 76],
+      "hierarchical_steps": [63, 88, 95, 63, 96]
+    }
+  },
+  "test_authenticity": {
+    "tests_invoke_real_functions": true,
+    "no_tautology_or_rewriting": true,
+    "near_goal_floor_justified": true
+  },
+  "review_mutations": {
+    "REV-M1": {
+      "desc": "ForwardCounter 不在超预算时抛出 ForwardBudgetExceeded (静默放行)",
+      "target_test": "tests/v9/experiments/test_s2_planner.py::test_budget_exceeded_by_one_raises",
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "REV-M2": {
+      "desc": "分层规划子目标损坏：将 z2_subgoal 设为当前状态 z2_0（不推进目标）",
+      "target_test": "tests/v9/experiments/test_s2_planner.py::test_hierarchical_far_goal_vs_flat_same_budget",
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "REV-M3": {
+      "desc": "Flat CEM 精英选择反转：挑选代价最大的候选者（反向优化）",
+      "target_test": "tests/v9/experiments/test_s2_planner.py::test_flat_near_goal_success_rate",
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    }
+  },
+  "pure_cpu": {
+    "zero_mlx_in_subprocess_I": true,
+    "default_suite_collected": 3469,
+    "deselected": 6
+  }
+}

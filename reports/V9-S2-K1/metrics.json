@@ -1,0 +1,54 @@
+{
+  "task_id": "ainerzero.V9.P111",
+  "agent_id": "gemini-8m4d",
+  "tier": 2,
+  "kind": "gemini",
+  "direction": "S2",
+  "pure_cpu": true,
+  "mlx_imported": false,
+  "test_counts": {
+    "default_suite_collected_before": 3455,
+    "default_suite_collected_after": 3469,
+    "deselected_count": 6,
+    "new_tests_count": 14,
+    "new_tests_passed": 14,
+    "new_tests_failed": 0
+  },
+  "mutations": {
+    "K1-M1": {
+      "desc": "聚合改为直接把各步位移相加",
+      "target_test": "tests/v9/experiments/test_s2_core_math.py::test_aggregate_macro_square_loop_back_to_origin",
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "K1-M2": {
+      "desc": "SIGReg 把与标准正态的比较换成与均匀分布比较",
+      "target_test": "tests/v9/experiments/test_s2_core_math.py::test_sigreg_isotropic_vs_degenerates_sample_size_derived_threshold",
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "K1-M3": {
+      "desc": "去掉 dpsi 归一",
+      "target_test": "tests/v9/experiments/test_s2_core_math.py::test_aggregate_macro_square_loop_back_to_origin",
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "K1-M4": {
+      "desc": "在 __init__ 里加 import mlx.core",
+      "target_test": "tests/v9/experiments/test_s2_package_pure_cpu.py::test_s2_package_pure_cpu_no_mlx_imported",
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    }
+  },
+  "files_sha256": {
+    "src/ainerzero/v9/experiments/s2/__init__.py": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+    "src/ainerzero/v9/experiments/s2/core_math.py": "3d0311e7edbc7f421bea662ab30e023f25a8c6eac7aa0756bcf6cd7f1ed7f972",
+    "tests/v9/experiments/test_s2_core_math.py": "45381c98dd9bdda40379611ee6529ed8d4373c081e6c4d160b06365b936f3efb",
+    "tests/v9/experiments/test_s2_package_pure_cpu.py": "75bcdd36913e1db4b84206359f8b22f082d0185a0c769454e3ae29f6f0da8398",
+    "reports/V9-S2-K1/run_mutations.py": "86cfbe93e7e07a0e780029512a3a878fb494ddfbff9ba7370c81db1e3a9905bc"
+  }
+}
