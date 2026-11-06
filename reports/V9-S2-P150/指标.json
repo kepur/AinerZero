@@ -1,0 +1,53 @@
+{
+  "task_id": "ainerzero.V9.P150",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-f4b2",
+  "target_file": "tests/v9/experiments/test_s2_arms_static.py",
+  "new_test": "test_arm_a_loss_return_includes_overshooting_and_mean_from_losses",
+  "static_checks": {
+    "ast_return_addition_binop": true,
+    "terms_checked": [
+      "mean_recon",
+      "kl_penalized",
+      "mean_overshoot"
+    ],
+    "overshoot_losses_mean_verified": true
+  },
+  "mutations": {
+    "P150-M1": {
+      "name": "omit_mean_overshoot_in_return",
+      "desc": "Omit mean_overshoot from arm_a_loss_mlx return addition expression",
+      "target_test": "test_arm_a_loss_return_includes_overshooting_and_mean_from_losses",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P150-M2": {
+      "name": "mean_overshoot_constant_zero",
+      "desc": "Set mean_overshoot to constant 0 unconditionally without averaging overshoot_losses",
+      "target_test": "test_arm_a_loss_return_includes_overshooting_and_mean_from_losses",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P150-M3": {
+      "name": "return_not_addition",
+      "desc": "Change arm_a_loss_mlx return to a tuple instead of an addition BinOp (+)",
+      "target_test": "test_arm_a_loss_return_includes_overshooting_and_mean_from_losses",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    }
+  },
+  "tests": {
+    "test_s2_arms_static_passed": 9,
+    "total_collected": 3573,
+    "total_selected": 3567,
+    "deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "src_modified": false,
+  "zero_mlx_imported": true
+}

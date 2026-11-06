@@ -1,0 +1,74 @@
+--- a/tests/v9/experiments/test_s2_arms_static.py
++++ b/tests/v9/experiments/test_s2_arms_static.py
+@@ -278,3 +278,71 @@
+     # Verify target actions or target_7d is stopped
+     stopped_vars = [var for _, args in stop_gradient_calls for var in args]
+     assert any("target" in v for v in stopped_vars), f"Target variable not passed to stop_gradient: {stopped_vars}"
++
++
++def test_arm_a_loss_return_includes_overshooting_and_mean_from_losses() -> None:
++    """Verify arm_a_loss_mlx return statement sums reconstruction, KL (free bits), and overshooting terms.
++
++    Also asserts that mean_overshoot is computed by averaging overshoot_losses.
++    """
++    repo_root = _find_repo_root()
++    arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
++    tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
++
++    func_node = None
++    for node in ast.walk(tree):
++        if isinstance(node, ast.FunctionDef) and node.name == "arm_a_loss_mlx":
++            func_node = node
++            break
++
++    assert func_node is not None, "arm_a_loss_mlx function not found"
++
++    # 1. Parse Return expression and assert it is an addition expression
++    ret_nodes = [n for n in ast.walk(func_node) if isinstance(n, ast.Return)]
++    assert len(ret_nodes) == 1, f"Expected exactly 1 return node in arm_a_loss_mlx, found {len(ret_nodes)}"
++    ret_val = ret_nodes[0].value
++    assert isinstance(ret_val, ast.BinOp) and isinstance(ret_val.op, ast.Add), (
++        f"Return value must be an addition BinOp (+), found: {type(ret_val).__name__}"
++    )
++
++    def _collect_add_terms(node: ast.AST) -> list[ast.AST]:
++        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
++            return _collect_add_terms(node.left) + _collect_add_terms(node.right)
++        return [node]
++
++    terms = _collect_add_terms(ret_val)
++    term_names = {t.id for t in terms if isinstance(t, ast.Name)}
++
++    # Assert all three terms are present in the addition
++    assert "mean_recon" in term_names, (
++        f"Reconstruction term 'mean_recon' missing from arm_a_loss_mlx return addition: {term_names}"
++    )
++    assert "kl_penalized" in term_names, (
++        f"Free bits KL term 'kl_penalized' missing from arm_a_loss_mlx return addition: {term_names}"
++    )
++    assert "mean_overshoot" in term_names, (
++        f"Overshooting term 'mean_overshoot' missing from arm_a_loss_mlx return addition: {term_names}"
++    )
++
++    # 2. Assert mean_overshoot is derived by averaging overshoot_losses
++    mean_overshoot_from_overshoot_losses = False
++    for node in ast.walk(func_node):
++        if isinstance(node, ast.Assign):
++            target_ids = {t.id for t in node.targets if isinstance(t, ast.Name)}
++            if "mean_overshoot" in target_ids:
++                has_mean_call = False
++                has_overshoot_losses = False
++                for sub in ast.walk(node.value):
++                    if isinstance(sub, ast.Call):
++                        fn_name = getattr(sub.func, "attr", "") or getattr(sub.func, "id", "")
++                        if fn_name == "mean":
++                            has_mean_call = True
++                    if isinstance(sub, ast.Name) and sub.id == "overshoot_losses":
++                        has_overshoot_losses = True
++                if has_mean_call and has_overshoot_losses:
++                    mean_overshoot_from_overshoot_losses = True
++
++    assert mean_overshoot_from_overshoot_losses, (
++        "mean_overshoot must be computed by averaging overshoot_losses (via mx.mean or equivalent)"
++    )
++

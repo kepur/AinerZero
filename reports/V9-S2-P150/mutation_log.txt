@@ -1,0 +1,208 @@
+=== P150-M1 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox
+configfile: pyproject.toml
+collecting ... collected 9 items / 8 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_return_includes_overshooting_and_mean_from_losses FAILED [100%]
+
+=================================== FAILURES ===================================
+______ test_arm_a_loss_return_includes_overshooting_and_mean_from_losses _______
+
+    def test_arm_a_loss_return_includes_overshooting_and_mean_from_losses() -> None:
+        """Verify arm_a_loss_mlx return statement sums reconstruction, KL (free bits), and overshooting terms.
+    
+        Also asserts that mean_overshoot is computed by averaging overshoot_losses.
+        """
+        repo_root = _find_repo_root()
+        arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
+        tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
+    
+        func_node = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "arm_a_loss_mlx":
+                func_node = node
+                break
+    
+        assert func_node is not None, "arm_a_loss_mlx function not found"
+    
+        # 1. Parse Return expression and assert it is an addition expression
+        ret_nodes = [n for n in ast.walk(func_node) if isinstance(n, ast.Return)]
+        assert len(ret_nodes) == 1, f"Expected exactly 1 return node in arm_a_loss_mlx, found {len(ret_nodes)}"
+        ret_val = ret_nodes[0].value
+        assert isinstance(ret_val, ast.BinOp) and isinstance(ret_val.op, ast.Add), (
+            f"Return value must be an addition BinOp (+), found: {type(ret_val).__name__}"
+        )
+    
+        def _collect_add_terms(node: ast.AST) -> list[ast.AST]:
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+                return _collect_add_terms(node.left) + _collect_add_terms(node.right)
+            return [node]
+    
+        terms = _collect_add_terms(ret_val)
+        term_names = {t.id for t in terms if isinstance(t, ast.Name)}
+    
+        # Assert all three terms are present in the addition
+        assert "mean_recon" in term_names, (
+            f"Reconstruction term 'mean_recon' missing from arm_a_loss_mlx return addition: {term_names}"
+        )
+        assert "kl_penalized" in term_names, (
+            f"Free bits KL term 'kl_penalized' missing from arm_a_loss_mlx return addition: {term_names}"
+        )
+>       assert "mean_overshoot" in term_names, (
+            f"Overshooting term 'mean_overshoot' missing from arm_a_loss_mlx return addition: {term_names}"
+        )
+E       AssertionError: Overshooting term 'mean_overshoot' missing from arm_a_loss_mlx return addition: {'kl_penalized', 'mean_recon'}
+E       assert 'mean_overshoot' in {'kl_penalized', 'mean_recon'}
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py:323: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_return_includes_overshooting_and_mean_from_losses
+======================= 1 failed, 8 deselected in 0.75s ========================
+
+
+
+=== P150-M2 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox
+configfile: pyproject.toml
+collecting ... collected 9 items / 8 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_return_includes_overshooting_and_mean_from_losses FAILED [100%]
+
+=================================== FAILURES ===================================
+______ test_arm_a_loss_return_includes_overshooting_and_mean_from_losses _______
+
+    def test_arm_a_loss_return_includes_overshooting_and_mean_from_losses() -> None:
+        """Verify arm_a_loss_mlx return statement sums reconstruction, KL (free bits), and overshooting terms.
+    
+        Also asserts that mean_overshoot is computed by averaging overshoot_losses.
+        """
+        repo_root = _find_repo_root()
+        arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
+        tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
+    
+        func_node = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "arm_a_loss_mlx":
+                func_node = node
+                break
+    
+        assert func_node is not None, "arm_a_loss_mlx function not found"
+    
+        # 1. Parse Return expression and assert it is an addition expression
+        ret_nodes = [n for n in ast.walk(func_node) if isinstance(n, ast.Return)]
+        assert len(ret_nodes) == 1, f"Expected exactly 1 return node in arm_a_loss_mlx, found {len(ret_nodes)}"
+        ret_val = ret_nodes[0].value
+        assert isinstance(ret_val, ast.BinOp) and isinstance(ret_val.op, ast.Add), (
+            f"Return value must be an addition BinOp (+), found: {type(ret_val).__name__}"
+        )
+    
+        def _collect_add_terms(node: ast.AST) -> list[ast.AST]:
+            if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+                return _collect_add_terms(node.left) + _collect_add_terms(node.right)
+            return [node]
+    
+        terms = _collect_add_terms(ret_val)
+        term_names = {t.id for t in terms if isinstance(t, ast.Name)}
+    
+        # Assert all three terms are present in the addition
+        assert "mean_recon" in term_names, (
+            f"Reconstruction term 'mean_recon' missing from arm_a_loss_mlx return addition: {term_names}"
+        )
+        assert "kl_penalized" in term_names, (
+            f"Free bits KL term 'kl_penalized' missing from arm_a_loss_mlx return addition: {term_names}"
+        )
+        assert "mean_overshoot" in term_names, (
+            f"Overshooting term 'mean_overshoot' missing from arm_a_loss_mlx return addition: {term_names}"
+        )
+    
+        # 2. Assert mean_overshoot is derived by averaging overshoot_losses
+        mean_overshoot_from_overshoot_losses = False
+        for node in ast.walk(func_node):
+            if isinstance(node, ast.Assign):
+                target_ids = {t.id for t in node.targets if isinstance(t, ast.Name)}
+                if "mean_overshoot" in target_ids:
+                    has_mean_call = False
+                    has_overshoot_losses = False
+                    for sub in ast.walk(node.value):
+                        if isinstance(sub, ast.Call):
+                            fn_name = getattr(sub.func, "attr", "") or getattr(sub.func, "id", "")
+                            if fn_name == "mean":
+                                has_mean_call = True
+                        if isinstance(sub, ast.Name) and sub.id == "overshoot_losses":
+                            has_overshoot_losses = True
+                    if has_mean_call and has_overshoot_losses:
+                        mean_overshoot_from_overshoot_losses = True
+    
+>       assert mean_overshoot_from_overshoot_losses, (
+            "mean_overshoot must be computed by averaging overshoot_losses (via mx.mean or equivalent)"
+        )
+E       AssertionError: mean_overshoot must be computed by averaging overshoot_losses (via mx.mean or equivalent)
+E       assert False
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py:345: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_return_includes_overshooting_and_mean_from_losses
+======================= 1 failed, 8 deselected in 0.75s ========================
+
+
+
+=== P150-M3 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox
+configfile: pyproject.toml
+collecting ... collected 9 items / 8 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_return_includes_overshooting_and_mean_from_losses FAILED [100%]
+
+=================================== FAILURES ===================================
+______ test_arm_a_loss_return_includes_overshooting_and_mean_from_losses _______
+
+    def test_arm_a_loss_return_includes_overshooting_and_mean_from_losses() -> None:
+        """Verify arm_a_loss_mlx return statement sums reconstruction, KL (free bits), and overshooting terms.
+    
+        Also asserts that mean_overshoot is computed by averaging overshoot_losses.
+        """
+        repo_root = _find_repo_root()
+        arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
+        tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
+    
+        func_node = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "arm_a_loss_mlx":
+                func_node = node
+                break
+    
+        assert func_node is not None, "arm_a_loss_mlx function not found"
+    
+        # 1. Parse Return expression and assert it is an addition expression
+        ret_nodes = [n for n in ast.walk(func_node) if isinstance(n, ast.Return)]
+        assert len(ret_nodes) == 1, f"Expected exactly 1 return node in arm_a_loss_mlx, found {len(ret_nodes)}"
+        ret_val = ret_nodes[0].value
+>       assert isinstance(ret_val, ast.BinOp) and isinstance(ret_val.op, ast.Add), (
+            f"Return value must be an addition BinOp (+), found: {type(ret_val).__name__}"
+        )
+E       AssertionError: Return value must be an addition BinOp (+), found: Tuple
+E       assert (False)
+E        +  where False = isinstance(<ast.Tuple object at 0x110fc2890>, <class 'ast.BinOp'>)
+E        +    where <class 'ast.BinOp'> = ast.BinOp
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py:304: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p150_mut_l4f5uhgk/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_return_includes_overshooting_and_mean_from_losses
+======================= 1 failed, 8 deselected in 0.77s ========================
+
+
