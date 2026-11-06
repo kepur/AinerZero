@@ -1,0 +1,44 @@
+{
+  "task_id": "ainerzero.V9.P140",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-w4x2",
+  "single_function_edit": "src/ainerzero/v9/experiments/s2/freeze.py:approval_line",
+  "validation_rules": {
+    "strip_applied": true,
+    "lower_applied": true,
+    "exact_64_hex_enforced": true,
+    "illegal_chars_rejected": true
+  },
+  "tests": {
+    "freeze_identity_total": 8,
+    "freeze_identity_passed": 8,
+    "freeze_identity_failed": 0,
+    "full_pure_cpu_suite_passed": 3538,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P140-M1": {
+      "name": "omit_cli_snippet_extraction",
+      "desc": "Omit collecting digest for src/ainerzero/cli.py:s2-phase1 snippet",
+      "target_test": "test_p140_cli_snippet_tamper_detected_and_names_cli_py",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P140-M2": {
+      "name": "omit_approval_line_hex_validation",
+      "desc": "Omit 64-hex character validation in freeze.approval_line",
+      "target_test": "test_p140_approval_line_validation",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    }
+  },
+  "production_files_tampered": false,
+  "artifacts_touched": false,
+  "zero_mlx_imported": true
+}

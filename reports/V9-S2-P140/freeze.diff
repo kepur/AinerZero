@@ -1,0 +1,18 @@
+--- a/src/ainerzero/v9/experiments/s2/freeze.py
++++ b/src/ainerzero/v9/experiments/s2/freeze.py
+@@ -42,8 +42,15 @@
+ 
+     Strictly matches the scanning regex in ainerzero.v9.experiments.s2.commands:
+     r"^APPROVED\\s+s2-phase1\\s+prereg\\s+document_sha256=([0-9a-f]{64})$"
++
++    Raises:
++        ValueError: If sha is not exactly 64 hexadecimal characters.
+     """
+     cleaned = str(sha).strip().lower()
++    if len(cleaned) != 64 or not re.fullmatch(r"[0-9a-f]{64}", cleaned):
++        raise ValueError(
++            f"document_sha256 must be exactly 64 lowercase hexadecimal characters, got {sha!r}"
++        )
+     return f"{APPROVAL_PREFIX}{cleaned}"
+ 
+ 

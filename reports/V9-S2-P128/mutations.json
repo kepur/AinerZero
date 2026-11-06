@@ -1,0 +1,29 @@
+[
+  {
+    "mutation_id": "P128-M1",
+    "description": "在 arms_mlx.py 里写死 nn.Linear(205, 256) (hardcoded layer dimensions)",
+    "target_file": "src/ainerzero/v9/experiments/s2/arms_mlx.py",
+    "targeted_test": "test_no_hardcoded_integer_widths_in_layer_constructors",
+    "exit_code": 1,
+    "status": "KILLED",
+    "failure_output": "1 failed in 1.67s"
+  },
+  {
+    "mutation_id": "P128-M2",
+    "description": "在 s2/__init__.py 里导入 arms_mlx (pollutes pure CPU s2 package with MLX)",
+    "target_file": "src/ainerzero/v9/experiments/s2/__init__.py",
+    "targeted_test": "test_s2_package_init_does_not_import_arms_mlx",
+    "exit_code": 1,
+    "status": "KILLED",
+    "failure_output": "1 failed in 2.06s"
+  },
+  {
+    "mutation_id": "P128-M3",
+    "description": "从 NATIVE_MODULES 删掉 test_s2_arms_mlx_native.py 登记 (native test unisolated)",
+    "target_file": "tests/conftest.py",
+    "targeted_test": "test_native_module_registered_in_conftest_and_excluded_from_collection",
+    "exit_code": 1,
+    "status": "KILLED",
+    "failure_output": "1 failed in 0.76s"
+  }
+]

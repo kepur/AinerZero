@@ -1,0 +1,50 @@
+{
+  "task_id": "ainerzero.V9.P128",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-h8c2",
+  "target_parameter_count": 300000,
+  "arm_parameter_counts": {
+    "arm_a": 306093,
+    "arm_b": 305732,
+    "arm_c": 303115
+  },
+  "arm_relative_diff_from_target": {
+    "arm_a": "+2.03%",
+    "arm_b": "+1.91%",
+    "arm_c": "+1.04%"
+  },
+  "tests": {
+    "static_tests_passed": 4,
+    "static_tests_failed": 0,
+    "native_tests_registered": 5,
+    "native_tests_executed": 0,
+    "native_tests_status": "RESERVED_FOR_SMOKE",
+    "pure_cpu_suite_passed": 487,
+    "pure_cpu_suite_deselected": 1,
+    "pure_cpu_suite_failed": 0
+  },
+  "mutations": {
+    "P128-M1": {
+      "description": "在 arms_mlx.py 里写死 nn.Linear(205, 256)",
+      "test": "test_no_hardcoded_integer_widths_in_layer_constructors",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P128-M2": {
+      "description": "在 s2/__init__.py 里导入 arms_mlx",
+      "test": "test_s2_package_init_does_not_import_arms_mlx",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P128-M3": {
+      "description": "从 NATIVE_MODULES 删掉 test_s2_arms_mlx_native.py 登记",
+      "test": "test_native_module_registered_in_conftest_and_excluded_from_collection",
+      "status": "KILLED",
+      "exit_code": 1
+    }
+  },
+  "conftest_diff_lines_added": 1,
+  "artifacts_touched": false,
+  "mlx_executed": false
+}

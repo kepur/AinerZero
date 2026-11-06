@@ -1,0 +1,72 @@
+=== P140-M1 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p140_mut_2ty9jt4o/sandbox
+configfile: pyproject.toml
+collecting ... collected 8 items / 7 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p140_mut_2ty9jt4o/sandbox/tests/v9/experiments/test_s2_freeze_identity.py::test_p140_cli_snippet_tamper_detected_and_names_cli_py FAILED [100%]
+
+=================================== FAILURES ===================================
+____________ test_p140_cli_snippet_tamper_detected_and_names_cli_py ____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-366/test_p140_cli_snippet_tamper_d0')
+
+    def test_p140_cli_snippet_tamper_detected_and_names_cli_py(tmp_path: Path) -> None:
+        """冻结后改一下 cli.py 中 s2 段落的一个字节（在 tmp 伪造仓库里改），核对必须报错，并点名 src/ainerzero/cli.py:s2-phase1。
+    
+        Catches mutation P140-M1 (omitting cli.py:s2-phase1 from collect_source_digests).
+        """
+        staged = _make_staged_repo(tmp_path)
+        draft = prereg.build_draft(repo_root=staged)
+        out_dir = tmp_path / "frozen_cli_test"
+    
+        doc_sha = freeze.freeze(draft, out_dir, repo_root=staged)
+        prereg_file = out_dir / "prereg.json"
+    
+        # Pre-check: passes before tampering
+        res = identity.verify_frozen_identity(prereg_file, repo_root=staged)
+        assert res["status"] == "passed"
+>       assert "src/ainerzero/cli.py:s2-phase1" in res["source_digests"]
+E       AssertionError: assert 'src/ainerzero/cli.py:s2-phase1' in {'src/ainerzero/v9/experiments/s2/__init__.py': 'd083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d', 'src/ainerzero/v9/experiments/s2/commands.py': '7b30473e10e8c3145bed95088746f1e20eb43ecd18a94bf8d5e059ac1c967131', 'src/ainerzero/v9/experiments/s2/core_math.py': '3d0311e7edbc7f421bea662ab30e023f25a8c6eac7aa0756bcf6cd7f1ed7f972', 'src/ainerzero/v9/experiments/s2/data.py': '8fd195af598fcc618392bbc694e164dfa7e79a88c503f408824bb402081cf3e8', ...}
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p140_mut_2ty9jt4o/sandbox/tests/v9/experiments/test_s2_freeze_identity.py:184: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p140_mut_2ty9jt4o/sandbox/tests/v9/experiments/test_s2_freeze_identity.py::test_p140_cli_snippet_tamper_detected_and_names_cli_py
+======================= 1 failed, 7 deselected in 0.83s ========================
+
+
+
+=== P140-M2 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p140_mut_2ty9jt4o/sandbox
+configfile: pyproject.toml
+collecting ... collected 8 items / 7 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p140_mut_2ty9jt4o/sandbox/tests/v9/experiments/test_s2_freeze_identity.py::test_p140_approval_line_validation FAILED [100%]
+
+=================================== FAILURES ===================================
+______________________ test_p140_approval_line_validation ______________________
+
+    def test_p140_approval_line_validation() -> None:
+        """approval_line 收到 63 位、65 位、含 g 的字符串、空串，都要抛错；收到大写的 64 位十六进制时，转成小写后通过。
+    
+        Catches mutation P140-M2 (omitting approval_line hex validation).
+        """
+        # 1. 63 characters -> ValueError
+>       with pytest.raises(ValueError, match="document_sha256 must be exactly 64"):
+E       Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p140_mut_2ty9jt4o/sandbox/tests/v9/experiments/test_s2_freeze_identity.py:214: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p140_mut_2ty9jt4o/sandbox/tests/v9/experiments/test_s2_freeze_identity.py::test_p140_approval_line_validation
+======================= 1 failed, 7 deselected in 0.78s ========================
+
+

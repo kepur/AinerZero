@@ -1,0 +1,24 @@
+# S2 三臂 MLX 实现与损失交付报告（ainerzero.V9.P128）
+
+- **执行代理**：`gemini-h8c2`（二级执行 Agent）· 纯 CPU（未运行任何 MLX 代码、零 GPU 占用、未修改实盘文件）
+- **结构对照表（附录 A 规范 vs arms_mlx.py 行号，全部层宽自 spec.ARM_DIMS 动态读取）**：
+  - **Arm A（flat RSSM）**：`arms_mlx.py` L87–L177（E1 L61–L75, GRUCell L32–L58, 先验/后验头 L108–L124, 解码器 L126–L131）
+  - **Arm B（flat JEPA）**：`arms_mlx.py` L179–L247（E1 L61–L75, 残差预测器 P1 L194–L201, IDM 头 L203–L206）
+  - **Arm C（分层 H-JEPA）**：`arms_mlx.py` L249–L354（L1 E1/P1/IDM L260–L273, L2 E2/P2/IDM2 L275–L286）
+- **损失与 P111 core_math 数学对齐**：
+  - `sigreg_mlx`（L361）：Epps-Pulley 检验，17 积分节点 [0.2, 4.0]，高斯加权，投影差异 $\le 10^{-5}$
+  - `continuous_gaussian_nll_mlx`（L398）与 `soft_cross_entropy_mlx`（L409）分别对齐高斯负对数似然与软目标交叉熵
+  - `idm2_loss_mlx`（L420）与 `multistep_latent_rollout_loss_mlx`（L431）对齐复合逆动力学与多步潜空间滚动损失
+  - `arm_a_loss_mlx`（L452）：观测重建损失与解析对角高斯 KL 散度（严格施加 free bits = 1.0 nat 保护）
+- **原生测试清单（tests/v9/experiments/test_s2_arms_mlx_native.py，未运行，留待 smoke）**：
+  - `test_native_count_params_matches_closed_form`：各臂 count_params 闭式校验（A=306093, B=305732, C=303115）
+  - `test_native_forward_shapes`：A/B/C 三臂各层前向形状断言
+  - `test_native_sigreg_mlx_matches_numpy`：MLX 版与 NumPy 版在相同球面方向下差异 $< 10^{-5}$
+  - `test_native_losses_match_numpy_reference`：连续 NLL 与软交叉熵数值对齐
+  - `test_native_one_step_gradient_descent_decreases_loss`：一步 Adam 更新损失严格单调下降
+- **静态 AST 测试与坏对照变异（tests/v9/experiments/test_s2_arms_static.py 4 项全过）**：
+  - P128-M1（arms_mlx.py 写死 Linear(205, 256)）$\to$ 静态宽度检查变红（KILLED, exit 1）
+  - P128-M2（s2/__init__.py 导入 arms_mlx）$\to$ 纯 CPU 隔离检查变红（KILLED, exit 1）
+  - P128-M3（NATIVE_MODULES 删去登记）$\to$ 收集隔离检查变红（KILLED, exit 1）
+- **conftest 补丁**：仅在 `NATIVE_MODULES` 字典新增 1 行登记 `"test_s2_arms_mlx_native.py"`，默认收集时不加载
+- **默认全量计数**：静态测试 4 passed；全量默认纯 CPU 验证 487 passed, 1 deselected, 0 failed（耗时 26.51s）
