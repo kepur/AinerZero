@@ -1,0 +1,72 @@
+{
+  "task_id": "ainerzero.V9.P129",
+  "verifies": "ainerzero.V9.P128",
+  "agent": "composer-m8k4",
+  "author_of_verified": "gemini-h8c2",
+  "self_review_conflict": false,
+  "mlx_executed": false,
+  "recommendation": "RECOMMEND_ACCEPT_SCOPED",
+  "scoped_to": [
+    "three-arm structure from ARM_DIMS / Appendix A with registered width retunes",
+    "MLX SIGReg/NLL/soft-CE/IDM2/rollout/free-bits floor formulas aligned with P111",
+    "native MLX tests written and NATIVE_MODULES-registered, not executed",
+    "static isolation tests + author mutations P128-M1..M3",
+    "conftest NATIVE_MODULES +1 entry (author patch)"
+  ],
+  "out_of_scope_claims_rejected": [
+    "arm A latent overshooting H-step imagination recon",
+    "arm B planning_cost L2 to E1(goal)",
+    "explicit mx.stop_gradient on IDM2 macro-action targets in MLX helpers",
+    "static coverage of GELU and free-bits",
+    "author-reported full suite count 487"
+  ],
+  "structure": {
+    "arm_a_hand_calc_params": 306093,
+    "arm_b_closed_form": 305732,
+    "arm_c_closed_form": 303115,
+    "matches_spec_registration": true
+  },
+  "loss_alignment": {
+    "sigreg": "same",
+    "continuous_gaussian_nll": "same",
+    "soft_cross_entropy": "same",
+    "idm2_composite": "same",
+    "multistep_rollout": "isomorphic",
+    "kl_free_bits_floor": "present_1.0",
+    "arm_a_planning_cost": "terrain_soft_ce_plus_mse",
+    "arm_b_planning_cost": "missing"
+  },
+  "native_tolerance": {
+    "sigreg_vs_same_direction_ref": "1e-5",
+    "nll_ce_vs_core_math": "1e-5",
+    "judgement": "reasonable_for_float32"
+  },
+  "conftest": {
+    "author_patch_native_entries_added": 1,
+    "worktree_has_unrelated_hermetic_dirt": true
+  },
+  "tests": {
+    "static_passed": 4,
+    "static_failed": 0,
+    "full_pure_cpu_passed": 3542,
+    "full_pure_cpu_deselected": 6,
+    "full_pure_cpu_failed": 0,
+    "full_pure_cpu_seconds": 270.95,
+    "sig_dfl_execv": true,
+    "native_mlx_flag_used": false
+  },
+  "mlx_import_check": {
+    "method": "python -I import ainerzero.v9.experiments.s2",
+    "mlx_in_sys_modules": false
+  },
+  "reviewer_mutations": {
+    "R129-X1": {"name": "hardcoded_GRUCell_37_160", "status": "KILLED", "restored": true},
+    "R129-X2": {"name": "e1_gelu_to_relu", "status": "SURVIVED", "restored": true, "judgement": "static_test_gap_activation"},
+    "R129-X3": {"name": "drop_kl_free_bits_floor", "status": "SURVIVED", "restored": true, "judgement": "static_test_gap_free_bits"},
+    "survivors": 2
+  },
+  "params_used": {
+    "level": "L2",
+    "no_mlx": "复核也不得运行任何 MLX"
+  }
+}
