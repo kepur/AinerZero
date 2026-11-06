@@ -19,6 +19,8 @@ import pytest
 
 from ainerzero.v9.experiments.s1 import arms, resource_gate, spec, worker
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via s1.arms (A39)")
+
 GIB = float(2**30)
 
 

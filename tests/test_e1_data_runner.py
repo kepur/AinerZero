@@ -38,6 +38,8 @@ from ainerzero.v9.experiments.e1.export import (
     verify_sealed_final,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 # =========================================================================
 # 1. Real Blender Smoke Test (<= 120s)

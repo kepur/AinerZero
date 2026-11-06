@@ -44,6 +44,8 @@ from ainerzero.v9.experiments.e1.prior import (
     rollout,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 def synthesize_bounce_sequence(
     seq_idx: int,

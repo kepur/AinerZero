@@ -17,6 +17,8 @@ from test_e1_eval_runner import PerfectArm, synthesize_bounce_sequence  # noqa: 
 from ainerzero.v9.experiments.e1 import analysis, commands, export, prereg, spec, worker  # noqa: E402
 from ainerzero.v9.experiments.e1.export import seal_final_dataset  # noqa: E402
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 def _seal_family(data_dir: Path, family: str, tmp_path: Path) -> tuple[Path, str]:
     """Seal a two-episode final dataset for one family, laid out as generate-data does."""

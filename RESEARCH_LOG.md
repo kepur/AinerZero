@@ -2389,3 +2389,20 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
   - fullproj 身份断言已过时；
   - E1/S1 测试写死了 `REGISTERED_HOST_ROOT`；
   - A2 基线清单需要刷新。
+
+## R20261106-test-hygiene：入库时发现的四个既有测试问题已修复（Claude，2026-11-06）
+
+- **范围：** PLAN（`reports/git-batch-commit-20261105/PLAN.md`）§6 第 1–4 项。只改测试代码，`src/`、配置、冻结件和交付证据都没动。报告见 `reports/test-hygiene-20261106/report.md`。
+- **一级裁定（第 1 项）：** E1/S1 测试登记为原生模块（A39 `native_mlx`），不改成延迟导入。
+  - 原因：延迟导入要改 `e1/__init__.py`、`arms_net.py`、`train_runner.py` 和 `s1/arms.py`。前三个由 E1 冻结 `prereg.json` 的 `source_digests` 绑定，后一个由 S1 `final/pre_registration.json` 绑定。E1 已收口，重启须新登记。
+  - 代价：默认入口少 296 条（E1 272、S1 24），另有 1 条按节点登记。这些用例只能用 `--native-mlx` 收集，仍须走 CLI、锁、RunStore 和预算，不得裸跑。
+  - 另查明：38 条 S1 用例在运行期经 `resource_gate.mlx_memory_probe` 导入真实 MLX，不只是收集阶段。改由测试夹具返回该探针自带的「不可用」分支；在阻断 MLX 的条件下这 38 条都能通过。
+- **其余三项：**
+  - M2 probe 改为在 `tmp_path` 回放，生成后与交付文件逐字节比对，交付的 `probe.py` 未改；
+  - S1 r7 账本测试改为钉住 r7 当时的 3 行（59.53 s / 720.27 s）；
+  - fullproj 身份断言改为只接受一级签署的冻结。
+- **验证：**
+  - 前台全量 3431 passed / 0 failed / 6 deselected；
+  - stat 对比实盘 116,401 项，只有 S1 账本 `-shm` 的 mtime 变化，来自冻结源码 `worker.canonical_ledger_state()` 的只读打开（PLAN §6 第 5 项，未处理）；
+  - E1 冻结件 SHA 一致，A2 基线 497/497 完好。
+- **仍待一级：** PLAN §6 第 5 项（E1/S1 测试写死 `REGISTERED_HOST_ROOT`）、第 6 项（A2 基线刷新）、根目录 `probe.py` 的去留。

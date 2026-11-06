@@ -15,6 +15,32 @@ from ainerzero.v9.experiments.s1 import data
 from s1_testkit import make_plan, write_staging
 
 
+@pytest.fixture(autouse=True)
+def _no_real_mlx_in_resource_probe(request, monkeypatch):
+    """A39: the default pure-CPU entry imports no real MLX, at collection or at run time.
+
+    ``resource_gate.collect`` calls ``mlx_memory_probe``, which imports ``mlx.core``
+    best-effort, whenever a mode passes the start gate.  ``resource_gate.py`` is bound
+    by the frozen S1 final preregistration, so it is not edited.  Outside native-marked
+    tests the probe returns its own documented degraded record (MLX unavailable)
+    instead of loading MLX into the shared test process; the 38 tests that reach it
+    were checked to pass with MLX blocked (2026-11-06 report).
+    """
+    if request.node.get_closest_marker("native_mlx") is not None:
+        return
+    from ainerzero.v9.experiments.s1 import resource_gate
+
+    def _unavailable() -> dict:
+        return {
+            "available": False,
+            "active_bytes": 0.0,
+            "peak_bytes": 0.0,
+            "error": "real MLX is not imported in the default pure-CPU test entry (A39)",
+        }
+
+    monkeypatch.setattr(resource_gate, "mlx_memory_probe", _unavailable)
+
+
 @pytest.fixture
 def synthetic_dataset(tmp_path):
     """Finalize a synthetic dataset; returns (manifest, dataset_dir, plan)."""

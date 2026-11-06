@@ -19,6 +19,8 @@ import pytest
 
 from ainerzero.v9.experiments.e1 import prereg, spec
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 def _make_test_draft(**kwargs) -> dict[str, Any]:
     """Helper to build test draft."""

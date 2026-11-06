@@ -44,6 +44,8 @@ from ainerzero.v9.experiments.e1.metrics import (
     summarize_inference_latency,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 # =========================================================================
 # 1. Frozen Constants Verification

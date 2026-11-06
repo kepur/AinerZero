@@ -27,6 +27,8 @@ from ainerzero.v9.experiments.s1 import arms, identity as identity_module, spec,
 
 from s1_testkit import write_frozen
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via s1.arms (A39)")
+
 
 def _synthetic_candidate(tmp_path: Path, monkeypatch) -> dict:
     """A tiny A2-shaped manifest + pinned files, wired into spec.ARM_SPECS.

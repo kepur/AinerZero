@@ -34,6 +34,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from probe_replay import replay_probe
 
 from ainerzero import cli
 from ainerzero.learning import action_preservation_closure as apc
@@ -977,17 +978,18 @@ def test_onestep_rejects_unregistered_duty_and_other_fields():
         apc.onestep_source_schedule_compat(wrong_source, live, identity)
 
 
-def test_onestep_full_cpu_chain_binds_historical_config():
+def test_onestep_full_cpu_chain_binds_historical_config(tmp_path):
     script = ROOT / "artifacts/reports/E27-onestep/source-full-chain/probe.py"
-    proc = subprocess.run(
-        [sys.executable, str(script)], cwd=ROOT, capture_output=True, text=True, timeout=600,
-    )
+    proc, regenerated = replay_probe(script, tmp_path)
     assert proc.returncode == 0, proc.stderr[-4000:] + proc.stdout[-2000:]
-    log = json.loads((script.parent / "probe-log.json").read_text())
+    log = json.loads(regenerated.read_text())
     assert log["strict_history_rejected"] and log["unscoped_relabel_rejected"]
     assert log["live_duty"] == 1.0 and log["historical_duty"] == 0.25
     assert log["condition_sha_unchanged"] and log["protocol"] == apc.ONESTEP_PROTOCOL
+    assert log["protocol_is_onestep"] is True
     assert log["m2l_weights_loaded"] is False and log["mlx_loaded"] is False
+    # COORDINATION rule 8: written to tmp, compared byte for byte with the delivered log.
+    assert regenerated.read_bytes() == (script.parent / "probe-log.json").read_bytes()
 
 
 # --------------------------------------------------------------------------
@@ -1040,6 +1042,9 @@ def _copy_tree(destination: Path) -> Path:
     shutil.copy2(IDENTITY, destination / "artifacts/reports/E27-onestep/onestep-identity.json")
     (destination / "tests").mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / MUTATION_TEST_FILE, destination / MUTATION_TEST_FILE)
+    # The test module imports this helper; without it every copy run would fail at
+    # import and every mutant would look "caught".
+    shutil.copy2(ROOT / "tests/probe_replay.py", destination / "tests/probe_replay.py")
     return destination
 
 

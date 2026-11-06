@@ -52,6 +52,8 @@ from ainerzero.v9.experiments.e1.prior import (
     simulate_frame,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 @pytest.fixture(autouse=True)
 def ensure_cpu_device():

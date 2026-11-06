@@ -3,11 +3,10 @@
 import hashlib
 import inspect
 import json
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
+from probe_replay import replay_probe
 
 from ainerzero.core.pilot import load_pilot_config
 from ainerzero.learning.action_preservation_closure import (
@@ -42,7 +41,7 @@ def pair():
     return metadata, live
 
 
-def test_live_duty_stays_one_and_checkpoint_file_is_not_rewritten(pair):
+def test_live_duty_stays_one_and_checkpoint_file_is_not_rewritten(pair, tmp_path):
     metadata, live = pair
     before = hashlib.sha256(META.read_bytes()).hexdigest()
     assert live["resources"]["active"]["training_duty_cycle"] == 1.0
@@ -54,14 +53,17 @@ def test_live_duty_stays_one_and_checkpoint_file_is_not_rewritten(pair):
         "source": 0.25,
         "live": 1.0,
     }
-    OUT.mkdir(parents=True, exist_ok=True)
     payload = {
         "metadata_path": str(META.relative_to(ROOT)),
         "metadata_file_sha256": before,
         "record": record,
         "live_active_training_duty_cycle": 1.0,
     }
-    (OUT / "duty-migration.json").write_text(json.dumps(payload, indent=1) + "\n")
+    # COORDINATION rule 8: regenerate into tmp and compare with the delivered record;
+    # the delivered file under artifacts/reports is never rewritten by a re-run.
+    regenerated = tmp_path / "duty-migration.json"
+    regenerated.write_text(json.dumps(payload, indent=1) + "\n")
+    assert regenerated.read_bytes() == (OUT / "duty-migration.json").read_bytes()
 
 
 def test_old_history_validator_still_rejects_the_same_pair(pair):
@@ -152,14 +154,14 @@ def test_other_source_callers_keep_the_strict_validator():
     assert "history_config" not in signature.parameters
 
 
-def test_weight025_full_cpu_chain_binds_historical_config():
+def test_weight025_full_cpu_chain_binds_historical_config(tmp_path):
     script = ROOT / "artifacts/reports/E25-weighted/source-full-chain/probe.py"
-    proc = subprocess.run(
-        [sys.executable, str(script)], cwd=ROOT, capture_output=True, text=True, timeout=600,
-    )
+    proc, regenerated = replay_probe(script, tmp_path)
     assert proc.returncode == 0, proc.stderr[-4000:]
-    log = json.loads((script.parent / "probe-log.json").read_text())
+    log = json.loads(regenerated.read_text())
     assert log["strict_history_rejected"] and log["unscoped_relabel_rejected"]
     assert log["live_duty"] == 1.0 and log["historical_duty"] == 0.25
     assert log["condition_sha_unchanged"] and log["m2l_weights_loaded"] is False
     assert log["mlx_loaded"] is False
+    # COORDINATION rule 8: written to tmp, compared byte for byte with the delivered log.
+    assert regenerated.read_bytes() == (script.parent / "probe-log.json").read_bytes()

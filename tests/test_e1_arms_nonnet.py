@@ -44,6 +44,8 @@ from ainerzero.v9.experiments.e1.prior import (
     rollout,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 # =========================================================================
 # 1. Arm ⑤ Tests: Online Parameter Identification & Identifiability Gate

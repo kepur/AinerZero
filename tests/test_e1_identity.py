@@ -23,6 +23,8 @@ import pytest
 
 from ainerzero.v9.experiments.e1 import commands, data_runner, identity, prereg, spec
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 def _setup_isolated_environment(tmp_path: Path) -> tuple[Path, Path, dict[str, Any], str]:
     """Create isolated copies of repo_root and awz_root with exact source structures."""

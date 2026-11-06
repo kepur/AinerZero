@@ -47,6 +47,8 @@ from ainerzero.v9.experiments.e1.spec import (
     TRAINING_SEEDS,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 def create_synthetic_cell_data(
     arm_id: int,

@@ -454,14 +454,44 @@ def test_fullproj_history_half_requires_parts_one_fail_closed():
     assert "raise RuntimeError" in branch
 
 
+TIER1_SIGNERS = ("claude", "codex")
+FULLPROJ_IMPLEMENTER_DRAFT = "fullproj-identity.r1-implementer-draft.archived.json"
+
+
 def test_identity_file_is_not_frozen_by_the_implementation():
-    """Rejection fix: the identity file belongs to the tier-1 freeze; the
-    implementation must not write `registered_by` or claim a frozen status."""
+    """Rejection fix (A57 r2): the identity file belongs to the tier-1 freeze; the
+    implementation must not write `registered_by` or claim a frozen status.
+
+    A57 r1's implementer wrote a self-signed freeze; it was deleted and archived
+    (``FULLPROJ_IMPLEMENTER_DRAFT``, marked invalid for the identity gate). The file
+    was later frozen by tier-1 (Claude, after A57 r2/A58 r2 acceptance), so a
+    `registered_by` is now expected -- but only a tier-1 one, never the implementer's.
+    """
+    # 1. The implementation (the files the identity binds) never writes a freeze itself.
+    for rel in sorted(cli.FULLPROJ_REQUIRED_FILES):
+        if rel.endswith(".py"):
+            text = (ROOT / rel).read_text()
+            for key in ('"registered_by"', "'registered_by'"):
+                assert key not in text, f"{rel}: 实现者不得代一级写 registered_by"
     identity = ROOT / cli.FULLPROJ_IDENTITY_PATH
-    if identity.exists():
-        record = json.loads(identity.read_text())
-        assert "registered_by" not in record, "实现者不得代一级写 registered_by"
-        assert record.get("status") != "identity_frozen_run_not_authorized"
+    if not identity.exists():
+        return  # no freeze yet: the identity gate fails closed (OSError)
+    record = json.loads(identity.read_text())
+    frozen = str(record.get("status", "")).startswith("identity_frozen")
+    if "registered_by" not in record:
+        # 2a. Unsigned: nobody may claim a frozen status on tier-1's behalf.
+        assert not frozen, "未经一级签署不得自称冻结"
+        return
+    # 2b. Signed: only a tier-1 freeze, which never authorizes the run by itself.
+    signer = str(record["registered_by"])
+    assert signer.split(maxsplit=1)[0].lower() in TIER1_SIGNERS, signer
+    assert frozen and record.get("run_authorized") is False
+    # 3. The archived implementer self-freeze is not what the gate reads.
+    draft_path = identity.with_name(FULLPROJ_IMPLEMENTER_DRAFT)
+    if draft_path.exists():
+        draft = json.loads(draft_path.read_text())
+        assert draft["not_valid_for_identity_gate"] is True
+        assert signer != draft["content"]["registered_by"]
 
 
 # ---------------------------------------------------------------- 5. real mutations (at least 4)

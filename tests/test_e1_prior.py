@@ -43,6 +43,8 @@ from ainerzero.v9.experiments.e1.prior import (
     step_substep,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 # =========================================================================
 # 0. Structural Bias Registry Verification

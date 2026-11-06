@@ -51,6 +51,8 @@ from ainerzero.v9.experiments.e1 import (
     worker,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 
 class FakeClock:
     """Deterministic simulated clock for end-to-end schedule rehearsal."""

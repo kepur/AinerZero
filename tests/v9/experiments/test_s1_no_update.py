@@ -16,6 +16,8 @@ import pytest
 
 from ainerzero.v9.experiments.s1 import commands, smoke
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via s1.arms (A39)")
+
 
 class _DigestModel:
     """Minimal model with a mutable parameter block the test can hash itself."""

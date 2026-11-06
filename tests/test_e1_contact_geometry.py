@@ -22,6 +22,8 @@ import pytest
 from ainerzero.v9.experiments.e1 import contact_geometry as cg
 from ainerzero.v9.experiments.e1 import eval_runner, spec
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 TOL = 0.004
 E0_WORKER = spec.AWZ_ROOT / "python" / "animeworld" / "e0" / "blender_worker.py"
 DEV_ROOT = spec.REGISTERED_HOST_DATASETS

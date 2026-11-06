@@ -53,6 +53,8 @@ from ainerzero.v9.experiments.e1.eval_runner import (
 )
 from ainerzero.v9.experiments.e1.train_runner import make_arm6_identifier
 
+pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+
 
 def test_resting_box_physics():
     """1. Box 1.2 x 1.2 x 1.0 resting at z=0.5 on ground with zero velocity.

@@ -227,6 +227,25 @@ def test_an_unknown_state_is_refused_with_or_without_a_reservation():
         worker.run_conservative_wall_seconds(row, instant=2000.0)
 
 
+# The fixed run set the P17 addendum measured: the ledger as it stood at r7, i.e. the
+# three S1 prereg-prep rows of 2026-10-21 (terminal intervals 59.53 s, reservations
+# 720.27 s in total).  Later rounds (r8-r15, final) append rows to the same real
+# ledger; those rows are not the r7 evidence, so the assertion is bound to these
+# pinned rows, never to whatever the ledger holds today.
+#   run_id: (state, created_at, updated_at, active_seconds), exact stored REALs
+R7_LEDGER_ROWS = {
+    "f3f29a16369c400bb140b0d982f80ad2": (
+        "completed", 1792576573.9644, 1792576624.302446, 350.57941137500075,
+    ),
+    "7b21d3dfd2714afa8f68a5484c5596eb": (
+        "completed", 1792576638.852673, 1792576643.396393, 184.79119249999985,
+    ),
+    "c03caffeb5304f668e711dc9d3ab9831": (
+        "completed", 1792579501.883355, 1792579506.531561, 184.89637216699884,
+    ),
+}
+
+
 def test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_original(
     tmp_path,
 ):
@@ -243,11 +262,15 @@ def test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_origin
     try:
         raw = list(
             connection.execute(
-                "SELECT run_id, state, created_at, updated_at, active_seconds FROM runs"
+                "SELECT run_id, state, created_at, updated_at, active_seconds FROM runs "
+                f"WHERE run_id IN ({','.join('?' * len(R7_LEDGER_ROWS))}) ORDER BY run_id",
+                tuple(R7_LEDGER_ROWS),
             )
         )
     finally:
         connection.close()
+    # The r7 rows are still present and bit-for-bit what was measured.
+    assert {row[0]: tuple(row[1:]) for row in raw} == R7_LEDGER_ROWS
     runs = [
         SimpleNamespace(
             run_id=run_id,
@@ -267,6 +290,13 @@ def test_the_real_ledger_copy_reproduces_the_old_bug_without_touching_the_origin
         age_based += max(0.0, now - created)
         reserved_based += max(0.0, float(run.reserved_active_seconds or 0.0))
 
+    terminal_based = sum(
+        worker._parse_timestamp(run.updated_at) - worker._parse_timestamp(run.created_at)
+        for run in runs
+    )
+    # The P17 addendum figures (module docstring) are reproduced from the copy.
+    assert terminal_based == pytest.approx(59.53, abs=0.005)
+    assert reserved_based == pytest.approx(720.27, abs=0.005)
     assert age_based > spec.TIMING["phase_wall_max_seconds"], "the r6 bug must be reproducible"
     assert conservative == pytest.approx(reserved_based)
     assert conservative < spec.TIMING["phase_wall_max_seconds"]

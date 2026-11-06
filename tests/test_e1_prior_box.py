@@ -43,6 +43,8 @@ from ainerzero.v9.experiments.e1.prior import (
     support_distance,
 )
 
+pytestmark = pytest.mark.native_mlx(reason="real MLX import at collection via the e1 package (arms_net) (A39)")
+
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "e1_prior_sphere_regression.npz"
 
 
