@@ -1,0 +1,78 @@
+{
+  "task_id": "ainerzero.V9.P125",
+  "review_target": "ainerzero.V9.P124",
+  "tier": 2,
+  "agent": "gemini-h8c2",
+  "author": "gemini-f8a2",
+  "conclusion": "RECOMMEND_ACCEPT",
+  "verified_at_utc": "2026-11-06T18:14:00Z",
+  "independent_checks": {
+    "scope_clean": true,
+    "pure_cpu": true,
+    "sha256_verified_count": 10,
+    "design_numerical_checks_count": 38,
+    "delta_pred_strict_value": 1.0,
+    "n_fwd_budget": 4096,
+    "episodes_dev_final": 300,
+    "parameter_counts_exact_match": true,
+    "arm_parameter_counts": {
+      "arm_a": 306093,
+      "arm_b": 305732,
+      "arm_c": 303115
+    },
+    "arm_relative_diff_from_300k": {
+      "arm_a": "+2.03%",
+      "arm_b": "+1.91%",
+      "arm_c": "+1.04%"
+    },
+    "max_arm_difference": 2978,
+    "max_arm_difference_pct": "0.97%",
+    "prereg_draft_validated": true
+  },
+  "full_regression": {
+    "passed": 3536,
+    "failed": 0,
+    "deselected": 6,
+    "duration_seconds": 278.44,
+    "s2_suite_passed": 100,
+    "s2_suite_failed": 0,
+    "p124_direct_tests_passed": 19,
+    "p124_direct_tests_failed": 0,
+    "signal_mode": "SIG_DFL"
+  },
+  "reviewer_mutations": {
+    "total_tested": 4,
+    "killed_count": 4,
+    "survived_count": 0,
+    "results": [
+      {
+        "id": "Review-M1",
+        "target": "src/ainerzero/v9/experiments/s2/prereg.py",
+        "description": "prereg.py validate 去掉日历窗口小于总实际用时校验 (bypass calendar < wallclock check)",
+        "status": "KILLED",
+        "exit_code": 1
+      },
+      {
+        "id": "Review-M2",
+        "target": "src/ainerzero/v9/experiments/s2/param_count.py",
+        "description": "param_count.py gru_params 闭式公式漏算 Wh 循环权重 (omit recurrent weights)",
+        "status": "KILLED",
+        "exit_code": 1
+      },
+      {
+        "id": "Review-M3",
+        "target": "src/ainerzero/v9/experiments/s2/prereg.py",
+        "description": "prereg.py validate 去掉 planning.n_fwd 校验 (bypass n_fwd check)",
+        "status": "KILLED",
+        "exit_code": 1
+      },
+      {
+        "id": "Review-M4",
+        "target": "src/ainerzero/v9/experiments/s2/spec.py",
+        "description": "spec.py 门限 SUCCESS_RATE_DIFF_MIN 改为 0.05 (altered gate threshold)",
+        "status": "KILLED",
+        "exit_code": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "REV-M1",
+    "name": "weaken_guard_to_exact_artifacts_root_only",
+    "description": "Guard checks `out_path == artifacts_root` instead of `is_relative_to(artifacts_root)`, permitting subpaths like s2/other",
+    "status": "KILLED",
+    "exit_code": 1,
+    "killed": true,
+    "stdout_tail": "Running independent verification test suite...\n✓ Scope & spec.py untouched verification passed.\n",
+    "stderr_tail": "aths\n    with pytest.raises(ValueError, match=\"output_root cannot point to non-registered artifacts directory\"):\n  File \"/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/_pytest/raises.py\", line 699, in __exit__\n    fail(f\"DID NOT RAISE {self.expected_exceptions[0].__name__}\")\n  File \"/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/_pytest/outcomes.py\", line 162, in __call__\n    raise Failed(msg=reason, pytrace=pytrace)\nFailed: DID NOT RAISE ValueError\n"
+  },
+  {
+    "id": "REV-M2",
+    "name": "leak_goal_episode_specs_into_layout_digests",
+    "description": "Include goal_episode_specs in sealed_final/LAYOUT_DIGESTS.json payload",
+    "status": "KILLED",
+    "exit_code": 1,
+    "killed": true,
+    "stdout_tail": "Running independent verification test suite...\n✓ Scope & spec.py untouched verification passed.\n✓ Five guard paths verification passed.\n",
+    "stderr_tail": "iew/verify_all.py\", line 282, in <module>\n    test_sealed_final_zero_readback_and_fields()\n  File \"/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S2-P138/review/verify_all.py\", line 131, in test_sealed_final_zero_readback_and_fields\n    assert set(layout_data.keys()) == {\"partition\", \"seed_namespace\", \"layout_digests\"}, (\nAssertionError: LAYOUT_DIGESTS.json keys must strictly be partition, seed_namespace, layout_digests, got {'partition', 'layout_digests', 'seed_namespace', 'goal_episode_specs'}\n"
+  },
+  {
+    "id": "REV-M3",
+    "name": "read_sealed_final_manifest_during_disjointness",
+    "description": "Disjointness check opens sealed_final/manifest.json instead of LAYOUT_DIGESTS.json",
+    "status": "KILLED",
+    "exit_code": 1,
+    "killed": true,
+    "stdout_tail": "Running independent verification test suite...\n✓ Scope & spec.py untouched verification passed.\n✓ Five guard paths verification passed.\n",
+    "stderr_tail": "^^^^^^^^^^^^^^^^^\n  File \"/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S2-P138/review/verify_all.py\", line 161, in patched_read_text\n    check_access(self)\n  File \"/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S2-P138/review/verify_all.py\", line 150, in check_access\n    raise AssertionError(\nAssertionError: FORBIDDEN READ from sealed_final: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpc6fpa62b/run_sealed_test/datasets/sealed_final/manifest.json (only LAYOUT_DIGESTS.json allowed)\n"
+  }
+]
