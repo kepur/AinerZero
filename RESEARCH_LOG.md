@@ -2428,3 +2428,12 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
   - 这只定方向。S2 的训练、数据批量生成与 final 预算仍待用户另批；P109/P110 回来后，一级给最终数字。
   - 先拆与世界无关的两张 CPU 卡：数学核心（NumPy 参考实现）与共用规划器（含前向计数）。这两张不训练、不导入 MLX。
   - **S2 包的约束：** 包 `__init__` 不得导入 MLX，免得重演 E1/S1 默认套件丢覆盖的问题。MLX 实现放进单独的模块，只由训练入口导入。
+
+## R20261106-A17-live-shm-touch：A17 r1 变异碰了 S1 实盘账本 -shm，执行者用 utime 还原 mtime（一级 claude 记录）
+
+- **经过：** `ainerzero.V9.A17` r1（gemini-f8a2）的变异 2 在 `/tmp` 副本里运行，但 S1 spec 写死了绝对路径 `REGISTERED_HOST_ROOT`，冻结源码 `worker.canonical_ledger_state()` 因此只读打开了实盘 `artifacts/v9/s1/phase1/control.sqlite3`，碰到了 `-shm`。随后执行者的脚本用 utime 把 `-shm` 的 mtime 还原到 `2026-11-06 07:19:48`（这是更早一次 test-hygiene 运行留下的值）。执行者在报告里如实写了这件事。
+- **影响：** 主库（`2026-10-28 16:11:37`，12,963,840 B）与 `-wal`（0 B）都没有变化。`-shm` 是 WAL 共享内存索引，在 A2 基线里登记为瞬态文件，不属于交付证据。
+- **处理：** A17 打回 r2，要求如下：
+  - 守卫逻辑改为接受 root 参数，自测只针对伪造的实盘树运行；
+  - 禁止 utime 或任何还原实盘元数据的操作，碰到实盘只记录、不抹掉；
+  - 交付变异脚本。
