@@ -1,0 +1,280 @@
+=== P146-M1: GELU -> ReLU ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox
+configfile: pyproject.toml
+collecting ... collected 8 items / 7 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_activations_use_gelu_and_no_relu FAILED [100%]
+
+=================================== FAILURES ===================================
+____________________ test_activations_use_gelu_and_no_relu _____________________
+
+    def test_activations_use_gelu_and_no_relu() -> None:
+        """Verify SharedE1Encoder and arm hidden layers use GELU activations, and ReLU is never used."""
+        repo_root = _find_repo_root()
+        arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
+        source = arms_mlx_path.read_text(encoding="utf-8")
+        tree = ast.parse(source)
+    
+        # 1. No relu in AST
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and node.attr.lower() == "relu":
+>               pytest.fail(f"Disallowed ReLU activation found at line {node.lineno}: {node.attr}")
+E               Failed: Disallowed ReLU activation found at line 249: relu
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py:160: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_activations_use_gelu_and_no_relu
+======================= 1 failed, 7 deselected in 0.75s ========================
+
+
+
+=== P146-M2: Remove free bits floor ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox
+configfile: pyproject.toml
+collecting ... collected 8 items / 7 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_free_bits_floor FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_arm_a_loss_free_bits_floor ________________________
+
+    def test_arm_a_loss_free_bits_floor() -> None:
+        """Verify arm_a_loss_mlx enforces the ARM_A_FREE_BITS floor using mx.maximum."""
+        repo_root = _find_repo_root()
+        arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
+        tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
+    
+        func_node = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "arm_a_loss_mlx":
+                func_node = node
+                break
+    
+        assert func_node is not None, "arm_a_loss_mlx function not found"
+    
+        has_max = False
+        references_free_bits = False
+        for node in ast.walk(func_node):
+            if isinstance(node, ast.Call):
+                func_id = ""
+                if isinstance(node.func, ast.Attribute):
+                    func_id = node.func.attr
+                elif isinstance(node.func, ast.Name):
+                    func_id = node.func.id
+                if func_id == "maximum":
+                    has_max = True
+                    # Check args for free_bits or ARM_A_FREE_BITS
+                    for arg in node.args:
+                        if isinstance(arg, ast.Name) and "free_bits" in arg.id.lower():
+                            references_free_bits = True
+                        elif isinstance(arg, ast.Attribute) and "ARM_A_FREE_BITS" in arg.attr:
+                            references_free_bits = True
+    
+>       assert has_max, "arm_a_loss_mlx must call mx.maximum for free bits floor"
+E       AssertionError: arm_a_loss_mlx must call mx.maximum for free bits floor
+E       assert False
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py:208: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_free_bits_floor
+======================= 1 failed, 7 deselected in 0.75s ========================
+
+
+
+=== P146-M3: Remove overshooting loop ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox
+configfile: pyproject.toml
+collecting ... collected 8 items / 7 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_overshooting_loop_and_horizon_bound FAILED [100%]
+
+=================================== FAILURES ===================================
+_____________ test_arm_a_loss_overshooting_loop_and_horizon_bound ______________
+
+    def test_arm_a_loss_overshooting_loop_and_horizon_bound() -> None:
+        """Verify arm_a_loss_mlx implements latent overshooting bounded by H_TRAIN."""
+        repo_root = _find_repo_root()
+        arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
+        tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
+    
+        func_node = None
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "arm_a_loss_mlx":
+                func_node = node
+                break
+    
+        assert func_node is not None, "arm_a_loss_mlx function not found"
+    
+        # Find the outer loop over T and inner loop over tau
+        found_overshoot_loop = False
+        references_h_train = False
+        decodes_in_overshoot = False
+    
+        for node in ast.walk(func_node):
+            if isinstance(node, ast.For):
+                # Check if this loop is the overshooting loop (target name tau or similar)
+                target_name = getattr(node.target, "id", "")
+                if "tau" in target_name:
+                    found_overshoot_loop = True
+                    # Inspect body of overshooting loop
+                    for child in ast.walk(node):
+                        if isinstance(child, ast.Call):
+                            fn_attr = getattr(child.func, "attr", "")
+                            if fn_attr == "decode":
+                                decodes_in_overshoot = True
+    
+            # Check references to H_TRAIN
+            if isinstance(node, ast.Attribute) and node.attr == "H_TRAIN":
+                references_h_train = True
+            elif isinstance(node, ast.Name) and "h_train" in node.id.lower():
+                references_h_train = True
+    
+>       assert found_overshoot_loop, "arm_a_loss_mlx missing overshooting loop (tau)"
+E       AssertionError: arm_a_loss_mlx missing overshooting loop (tau)
+E       assert False
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py:250: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_arm_a_loss_overshooting_loop_and_horizon_bound
+======================= 1 failed, 7 deselected in 0.75s ========================
+
+
+
+=== P146-M4: Remove stop_gradient on IDM targets ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox
+configfile: pyproject.toml
+collecting ... collected 8 items / 7 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_idm_targets_explicit_stop_gradient FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_idm_targets_explicit_stop_gradient ____________________
+
+    def test_idm_targets_explicit_stop_gradient() -> None:
+        """Verify IDM loss functions explicitly call mx.stop_gradient on target actions / macro actions."""
+        repo_root = _find_repo_root()
+        arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
+        tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
+    
+        stop_gradient_calls = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                fn_name = ""
+                if isinstance(node.func, ast.Attribute):
+                    fn_name = node.func.attr
+                elif isinstance(node.func, ast.Name):
+                    fn_name = node.func.id
+                if fn_name == "stop_gradient":
+                    # record argument name if Name
+                    arg_names = []
+                    for a in node.args:
+                        if isinstance(a, ast.Name):
+                            arg_names.append(a.id)
+                    stop_gradient_calls.append((node.lineno, arg_names))
+    
+>       assert len(stop_gradient_calls) >= 2, f"Expected stop_gradient calls on IDM targets, found {stop_gradient_calls}"
+E       AssertionError: Expected stop_gradient calls on IDM targets, found []
+E       assert 0 >= 2
+E        +  where 0 = len([])
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py:277: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_arms_static.py::test_idm_targets_explicit_stop_gradient
+======================= 1 failed, 7 deselected in 0.75s ========================
+
+
+
+=== P146-M5: Bypass ForwardCounter in planner cost_fn ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox
+configfile: pyproject.toml
+collecting ... collected 12 items / 11 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_planner.py::test_flat_cem_cost_fn_forward_counter_and_custom_cost FAILED [100%]
+
+=================================== FAILURES ===================================
+____________ test_flat_cem_cost_fn_forward_counter_and_custom_cost _____________
+
+    def test_flat_cem_cost_fn_forward_counter_and_custom_cost() -> None:
+        """Verify flat_cem_plan supports cost_fn hook and counts neural forward calls in ForwardCounter."""
+        start = np.array([2.0, 2.0], dtype=np.float64)
+        goal = np.array([10.0, 2.0], dtype=np.float64)
+    
+        cfg = FlatCEMConfig(
+            horizon=6,
+            n_iters=3,
+            pop_size=10,
+            elite_frac=0.2,
+            action_dim=1,
+            n_categories=4,
+        )
+        rng = np.random.default_rng(42)
+        counter = ForwardCounter(budget=1000)
+    
+        # Mock neural decoder function (e.g. for Arm A observation-space planning)
+        def mocked_decoder(z: np.ndarray) -> np.ndarray:
+            return z * 1.5
+    
+        wrapped_decoder = counter.wrap("decode", mocked_decoder)
+    
+        def custom_cost_fn(z_T: np.ndarray, goal_obs: np.ndarray) -> float:
+            # Calls wrapped decoder: should charge 1 to 'decode'
+            dec = mocked_decoder(z_T)  # bypass ForwardCounter
+            return float(np.sum((dec - goal_obs) ** 2))
+    
+        res = flat_cem_plan(
+            encode=identity_encode,
+            predict_l1=predict_l1_analytic,
+            obs=start,
+            goal_obs=goal,
+            config=cfg,
+            rng=rng,
+            counter=counter,
+            cost_fn=custom_cost_fn,
+        )
+    
+        expected_evals = cfg.n_iters * cfg.pop_size
+>       assert counter.by_name.get("decode", 0) == expected_evals, (
+            f"Expected {expected_evals} decode calls in ForwardCounter, got {counter.by_name.get('decode', 0)}"
+        )
+E       AssertionError: Expected 30 decode calls in ForwardCounter, got 0
+E       assert 0 == 30
+E        +  where 0 = <built-in method get of dict object at 0x111cbbf80>('decode', 0)
+E        +    where <built-in method get of dict object at 0x111cbbf80> = {}.get
+E        +      where {} = <ainerzero.v9.experiments.s2.fwd_counter.ForwardCounter object at 0x110f79370>.by_name
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_planner.py:778: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p146_mut_bdeg03w9/sandbox/tests/v9/experiments/test_s2_planner.py::test_flat_cem_cost_fn_forward_counter_and_custom_cost
+======================= 1 failed, 11 deselected in 0.76s =======================
+
+

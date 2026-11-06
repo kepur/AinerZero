@@ -1,0 +1,93 @@
+{
+  "task_id": "ainerzero.V9.P146",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-w4x2",
+  "deliverables": {
+    "arm_a_latent_overshooting": {
+      "implemented": true,
+      "horizon_bound": "spec.H_TRAIN (16)",
+      "prior_rollout": true,
+      "weights": "1.0 one-step recon + 1.0 overshooting",
+      "free_bits_floor": "1.0 nat"
+    },
+    "planner_cost_fn_hook": {
+      "implemented": true,
+      "default_behavior_preserved": "squared_distance(z_T, z_goal)",
+      "custom_hook_wired": "cost_fn(z_T, goal_obs)",
+      "forward_counter_wired": true
+    },
+    "idm_stop_gradient": {
+      "implemented": true,
+      "raw_action_target_stopped": true,
+      "macro_action_target_stopped": true
+    },
+    "static_ast_guards": {
+      "gelu_enforced": true,
+      "relu_prohibited": true,
+      "free_bits_floor_enforced": true,
+      "overshooting_loop_enforced": true,
+      "idm_stop_gradient_enforced": true
+    },
+    "native_test_cleanup": {
+      "dead_code_eliminated": true,
+      "sigreg_mlx_matches_core_math_numpy": true
+    }
+  },
+  "tests": {
+    "test_s2_arms_static_passed": 8,
+    "test_s2_arms_static_failed": 0,
+    "test_s2_planner_passed": 12,
+    "test_s2_planner_failed": 0,
+    "full_pure_cpu_suite_passed": 3566,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P146-M1": {
+      "name": "gelu_to_relu",
+      "desc": "Replace nn.gelu with nn.relu in arms_mlx.py",
+      "target_test": "test_activations_use_gelu_and_no_relu",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P146-M2": {
+      "name": "omit_free_bits_floor",
+      "desc": "Omit free bits floor mx.maximum in arm_a_loss_mlx",
+      "target_test": "test_arm_a_loss_free_bits_floor",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P146-M3": {
+      "name": "omit_overshooting_loop",
+      "desc": "Remove overshooting loop in arm_a_loss_mlx",
+      "target_test": "test_arm_a_loss_overshooting_loop_and_horizon_bound",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P146-M4": {
+      "name": "omit_idm_stop_gradient",
+      "desc": "Omit mx.stop_gradient on IDM targets in arms_mlx.py",
+      "target_test": "test_idm_targets_explicit_stop_gradient",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P146-M5": {
+      "name": "bypass_forward_counter_in_cost_fn",
+      "desc": "Bypass ForwardCounter charge in custom planner cost_fn",
+      "target_test": "test_flat_cem_cost_fn_forward_counter_and_custom_cost",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    }
+  },
+  "production_files_tampered": false,
+  "artifacts_touched": false,
+  "zero_mlx_imported": true
+}

@@ -1,0 +1,96 @@
+{
+  "task_id": "ainerzero.V9.P147",
+  "review_target": "ainerzero.V9.P146",
+  "report_dir": "reports/V9-S2-P146/review",
+  "reviewer_agent": "gemini-r7m2",
+  "reviewer_session": "sess-ef82e69a0a5b",
+  "author_agent": "gemini-w4x2",
+  "recommendation": "RECOMMEND_ACCEPT",
+  "independent_verification": {
+    "scope_verification": {
+      "p146_files": [
+        "src/ainerzero/v9/experiments/s2/arms_mlx.py",
+        "src/ainerzero/v9/experiments/s2/planner.py",
+        "tests/v9/experiments/test_s2_arms_static.py",
+        "tests/v9/experiments/test_s2_arms_mlx_native.py",
+        "tests/v9/experiments/test_s2_planner.py"
+      ],
+      "sha256_match_author_manifest": true,
+      "src_tracked_files_diff_against_head_only_cli": true,
+      "src_other_tracked_files_byte_exact_to_head": true
+    },
+    "planner_cost_fn_verification": {
+      "default_path_squared_distance_preserved": true,
+      "default_path_counter_counts_identical": true,
+      "custom_cost_fn_neural_calls_charged": true,
+      "custom_cost_fn_decode_charges": 16,
+      "forward_budget_exceeded_enforced": true
+    },
+    "static_code_verification_zero_mlx_run": {
+      "overshooting_bounded_by_h_train": true,
+      "overshooting_decodes_every_step": true,
+      "overshooting_reconstruction_accumulated": true,
+      "idm_explicit_stop_gradient_present": true,
+      "stop_gradient_locations": [
+        "continuous_gaussian_nll_mlx (target)",
+        "soft_cross_entropy_mlx (target_hist)",
+        "idm_loss_mlx (target_actions)",
+        "idm2_loss_mlx (target_7d)"
+      ],
+      "free_bits_floor_enforced": true,
+      "free_bits_value": "1.0 nat (spec.ARM_A_FREE_BITS)",
+      "native_mlx_test_dead_code_eliminated": true
+    },
+    "test_authenticity": {
+      "real_function_calls": true,
+      "no_constant_comparisons": true,
+      "no_mock_rewrites": true
+    },
+    "reviewer_mutations": [
+      {
+        "id": "REV-P146-M1",
+        "target": "src/ainerzero/v9/experiments/s2/arms_mlx.py:359",
+        "description": "Overshooting loop does not call arm_a.decode",
+        "outcome": "KILLED",
+        "exit_code": 1,
+        "failed_test": "test_arm_a_loss_overshooting_loop_and_horizon_bound",
+        "restored_sha_verified": true
+      },
+      {
+        "id": "REV-P146-M2",
+        "target": "src/ainerzero/v9/experiments/s2/planner.py:233",
+        "description": "Invert default squared_distance cost in flat_cem_plan",
+        "outcome": "KILLED",
+        "exit_code": 1,
+        "failed_test": "test_s2_planner suite",
+        "restored_sha_verified": true
+      },
+      {
+        "id": "REV-P146-M3",
+        "target": "src/ainerzero/v9/experiments/s2/arms_mlx.py",
+        "description": "Add disallowed 'relu' identifier to AST",
+        "outcome": "KILLED",
+        "exit_code": 1,
+        "failed_test": "test_activations_use_gelu_and_no_relu",
+        "restored_sha_verified": true
+      },
+      {
+        "id": "REV-P146-M4",
+        "target": "src/ainerzero/v9/experiments/s2/arms_mlx.py:407",
+        "description": "Total loss omits mean_overshoot from final return sum",
+        "outcome": "SURVIVED",
+        "exit_code": 0,
+        "analysis": "STATIC_AST_COVERAGE_GAP: Static AST test asserts loop and decode calls, but does not inspect the Return node expression for mean_overshoot addition.",
+        "restored_sha_verified": true
+      }
+    ],
+    "pure_cpu": {
+      "isolated_subprocess_zero_mlx": true,
+      "full_regression_passed": 3566,
+      "full_regression_failed": 0,
+      "full_regression_deselected": 6,
+      "full_regression_elapsed_seconds": 268.28,
+      "artifacts_diff_count": 0
+    }
+  }
+}

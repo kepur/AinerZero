@@ -1,0 +1,426 @@
+--- a/src/ainerzero/v9/experiments/s2/arms_mlx.py
++++ b/src/ainerzero/v9/experiments/s2/arms_mlx.py
+@@ -188,11 +188,20 @@
+ 
+     def planning_cost(
+         self,
+-        decoded_obs: np.ndarray | mx.array,
++        z_or_obs: np.ndarray | mx.array,
+         goal_obs: np.ndarray | mx.array,
+     ) -> float:
+-        """Observation-space planning cost: cross entropy against goal observation."""
+-        dec = mx.array(decoded_obs, dtype=mx.float32) if isinstance(decoded_obs, np.ndarray) else decoded_obs
++        """Observation-space planning cost: cross entropy against goal observation.
++
++        Accepts either an observation vector (205-dim) or a latent vector (32-dim).
++        When given a latent vector, decodes to observation space using decode(h0, z).
++        """
++        arr = mx.array(z_or_obs, dtype=mx.float32) if isinstance(z_or_obs, np.ndarray) else z_or_obs
++        if arr.shape[-1] != spec.OBS_DIM:
++            h0 = mx.zeros((self.dims["gru_hidden"],), dtype=mx.float32)
++            dec = self.decode(h0, arr)
++        else:
++            dec = arr
+         goal = mx.array(goal_obs, dtype=mx.float32) if isinstance(goal_obs, np.ndarray) else goal
+         # Soft cross entropy on first 196 terrain dims + MSE on coordinates
+         terrain_pred = dec[:spec.TERRAIN_ONE_HOT_DIM].reshape(-1, spec.NUM_TERRAIN_CLASSES)
+@@ -432,6 +441,7 @@
+     variance: float = 1.0,
+ ) -> mx.array:
+     """Gaussian negative log-likelihood with fixed variance in MLX."""
++    target = mx.stop_gradient(target)
+     sq_err = (pred - target) ** 2
+     c = math.log(2.0 * math.pi * variance)
+     return mx.mean(0.5 * (sq_err / variance + c))
+@@ -442,9 +452,19 @@
+     target_hist: mx.array,
+ ) -> mx.array:
+     """Soft-target cross-entropy from logits in MLX."""
++    target_hist = mx.stop_gradient(target_hist)
+     log_p = nn.log_softmax(logits, axis=-1)
+     loss_per_item = -mx.sum(target_hist * log_p, axis=-1)
+     return mx.mean(loss_per_item)
++
++
++def idm_loss_mlx(
++    logits: mx.array,
++    target_actions: mx.array,
++) -> mx.array:
++    """Raw action IDM loss (Arm B and Arm C Layer 1) with explicit stop_gradient."""
++    target_actions = mx.stop_gradient(target_actions)
++    return soft_cross_entropy_mlx(logits, target_actions)
+ 
+ 
+ def idm2_loss_mlx(
+@@ -454,6 +474,7 @@
+     weight_cat: float = 1.0,
+ ) -> mx.array:
+     """Composite Layer 2 IDM loss (continuous 3-dim NLL + soft cross-entropy 4-dim)."""
++    target_7d = mx.stop_gradient(target_7d)
+     l_cont = continuous_gaussian_nll_mlx(pred_7d[..., :3], target_7d[..., :3], variance=variance)
+     l_cat = soft_cross_entropy_mlx(pred_7d[..., 3:], target_7d[..., 3:])
+     return l_cont + weight_cat * l_cat
+@@ -489,13 +510,15 @@
+     actions_onehot: mx.array,
+     dts: mx.array,
+ ) -> mx.array:
+-    """Compute Arm A total loss: observation reconstruction + KL with free bits 1.0."""
++    """Compute Arm A total loss: observation reconstruction + KL (free bits 1.0) + latent overshooting."""
+     T = obs_seq.shape[0]
+     e1_feats = arm_a.encode(obs_seq)
+     h_curr = mx.zeros((arm_a.dims["gru_hidden"],), dtype=mx.float32)
+ 
+     recon_losses = []
+     kl_losses = []
++    overshoot_losses = []
++    h_train_bound = int(spec.H_TRAIN)
+ 
+     for t in range(T - 1):
+         z_post_mean, z_post_logstd = arm_a.posterior(h_curr, e1_feats[t])
+@@ -523,7 +546,7 @@
+         kl = mx.sum(kl_dim, axis=-1)
+         kl_losses.append(kl)
+ 
+-        # Reconstruct observation at t+1
++        # Reconstruct observation at t+1 (one-step)
+         obs_rec = arm_a.decode(h_next, z_next_post_mean)
+         target_obs = obs_seq[t + 1]
+         terrain_rec = obs_rec[:spec.TERRAIN_ONE_HOT_DIM].reshape(-1, spec.NUM_TERRAIN_CLASSES)
+@@ -532,6 +555,25 @@
+         l_coord = mx.mean((obs_rec[spec.TERRAIN_ONE_HOT_DIM:] - target_obs[spec.TERRAIN_ONE_HOT_DIM:]) ** 2)
+         recon_losses.append(l_terrain + l_coord)
+ 
++        # Latent overshooting: roll out using the prior p(z_{t+tau} | h_{t+tau}) for H_train steps
++        h_roll = h_curr
++        z_roll = z_sample
++        max_overshoot_steps = min(h_train_bound, T - 1 - t)
++        for tau in range(1, max_overshoot_steps + 1):
++            tau_idx = t + tau
++            act_idx = tau_idx - 1
++            gru_in_roll = mx.concatenate([z_roll, actions_onehot[act_idx], dts[act_idx : act_idx + 1]], axis=-1)
++            h_roll = arm_a.gru(gru_in_roll, h_roll)
++            z_prior_roll, _ = arm_a.prior(h_roll)
++            obs_rec_roll = arm_a.decode(h_roll, z_prior_roll)
++            target_obs_roll = obs_seq[tau_idx]
++            terrain_rec_roll = obs_rec_roll[:spec.TERRAIN_ONE_HOT_DIM].reshape(-1, spec.NUM_TERRAIN_CLASSES)
++            terrain_tgt_roll = target_obs_roll[:spec.TERRAIN_ONE_HOT_DIM].reshape(-1, spec.NUM_TERRAIN_CLASSES)
++            l_t_roll = soft_cross_entropy_mlx(terrain_rec_roll, terrain_tgt_roll)
++            l_c_roll = mx.mean((obs_rec_roll[spec.TERRAIN_ONE_HOT_DIM:] - target_obs_roll[spec.TERRAIN_ONE_HOT_DIM:]) ** 2)
++            overshoot_losses.append(l_t_roll + l_c_roll)
++            z_roll = z_prior_roll
++
+         h_curr = h_next
+ 
+     mean_recon = mx.mean(mx.stack(recon_losses))
+@@ -540,9 +582,30 @@
+     free_bits = float(spec.ARM_A_FREE_BITS)
+     kl_penalized = mx.maximum(mean_kl, free_bits)
+ 
+-    return mean_recon + kl_penalized
+-
+-
++    if overshoot_losses:
++        mean_overshoot = mx.mean(mx.stack(overshoot_losses))
++    else:
++        mean_overshoot = mx.array(0.0)
++
++    # Weights: 1.0 for one-step reconstruction, 1.0 for overshooting (Appendix A)
++    return mean_recon + kl_penalized + mean_overshoot
++
++
++def make_arm_a_cost_fn(
++    arm: FlatRSSMArm,
++    counter: Any = None,
++) -> Callable[[np.ndarray, np.ndarray], float]:
++    """Arm A planning cost adapter compatible with flat_cem_plan(cost_fn=...).
++
++    Evaluates candidate latent z_T against goal observation in observation space.
++    If counter is provided, decoder forward calls are charged to counter.
++    """
++    def cost_fn(z_T: np.ndarray, goal_obs: np.ndarray) -> float:
++        if counter is not None and hasattr(counter, "charge"):
++            counter.charge("decode", 1)
++        return arm.planning_cost(z_T, goal_obs)
++
++    return cost_fn
+ 
+ 
+ # ==============================================================================
+
+--- a/src/ainerzero/v9/experiments/s2/planner.py
++++ b/src/ainerzero/v9/experiments/s2/planner.py
+@@ -230,7 +230,10 @@
+         costs = np.empty(config.pop_size, dtype=np.float64)
+         for i in range(config.pop_size):
+             z_T = rollout_l1(predict_l1, z0, pop[i], dts)
+-            costs[i] = squared_distance(z_T, z_goal)
++            if cost_fn is None:
++                costs[i] = squared_distance(z_T, z_goal)
++            else:
++                costs[i] = cost_fn(z_T, goal_obs)
+         n_elite = _elite_count(config.pop_size, config.elite_frac)
+         elite_idx = np.argpartition(costs, n_elite - 1)[:n_elite]
+         elites = pop[elite_idx]
+
+--- a/tests/v9/experiments/test_s2_arms_static.py
++++ b/tests/v9/experiments/test_s2_arms_static.py
+@@ -103,12 +103,14 @@
+     assert "arms_mlx" not in init_content, "s2/__init__.py must not import arms_mlx"
+ 
+     # Subprocess check with -I: importing s2 does not load mlx into sys.modules
++    import site
++    user_site = site.getusersitepackages()
+     cmd = [
+         sys.executable,
+         "-I",
+         "-c",
+         (
+-            f"import sys; sys.path.insert(0, '{repo_root}/src'); "
++            f"import sys; sys.path.insert(0, '{user_site}'); sys.path.insert(0, '{repo_root}/src'); "
+             "import ainerzero.v9.experiments.s2; "
+             "assert 'mlx' not in sys.modules, f'mlx leaked into sys.modules: {sys.modules.keys()}'; "
+             "print('s2 package pure CPU import clean')"
+@@ -145,3 +147,134 @@
+     )
+ 
+ 
++def test_activations_use_gelu_and_no_relu() -> None:
++    """Verify SharedE1Encoder and arm hidden layers use GELU activations, and ReLU is never used."""
++    repo_root = _find_repo_root()
++    arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
++    source = arms_mlx_path.read_text(encoding="utf-8")
++    tree = ast.parse(source)
++
++    # 1. No relu in AST
++    for node in ast.walk(tree):
++        if isinstance(node, ast.Attribute) and node.attr.lower() == "relu":
++            pytest.fail(f"Disallowed ReLU activation found at line {node.lineno}: {node.attr}")
++        if isinstance(node, ast.Name) and node.id.lower() == "relu":
++            pytest.fail(f"Disallowed ReLU activation found at line {node.lineno}: {node.id}")
++
++    # 2. Assert gelu calls exist in the model classes
++    gelu_calls = []
++    for node in ast.walk(tree):
++        if isinstance(node, ast.Call):
++            if isinstance(node.func, ast.Attribute) and node.func.attr == "gelu":
++                gelu_calls.append(node.lineno)
++            elif isinstance(node.func, ast.Name) and node.func.id == "gelu":
++                gelu_calls.append(node.lineno)
++
++    assert len(gelu_calls) >= 10, f"Expected at least 10 GELU calls in arms_mlx.py, found {len(gelu_calls)}"
++
++
++def test_arm_a_loss_free_bits_floor() -> None:
++    """Verify arm_a_loss_mlx enforces the ARM_A_FREE_BITS floor using mx.maximum."""
++    repo_root = _find_repo_root()
++    arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
++    tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
++
++    func_node = None
++    for node in ast.walk(tree):
++        if isinstance(node, ast.FunctionDef) and node.name == "arm_a_loss_mlx":
++            func_node = node
++            break
++
++    assert func_node is not None, "arm_a_loss_mlx function not found"
++
++    has_max = False
++    references_free_bits = False
++    for node in ast.walk(func_node):
++        if isinstance(node, ast.Call):
++            func_id = ""
++            if isinstance(node.func, ast.Attribute):
++                func_id = node.func.attr
++            elif isinstance(node.func, ast.Name):
++                func_id = node.func.id
++            if func_id == "maximum":
++                has_max = True
++                # Check args for free_bits or ARM_A_FREE_BITS
++                for arg in node.args:
++                    if isinstance(arg, ast.Name) and "free_bits" in arg.id.lower():
++                        references_free_bits = True
++                    elif isinstance(arg, ast.Attribute) and "ARM_A_FREE_BITS" in arg.attr:
++                        references_free_bits = True
++
++    assert has_max, "arm_a_loss_mlx must call mx.maximum for free bits floor"
++    assert references_free_bits, "arm_a_loss_mlx mx.maximum call must reference free_bits"
++
++
++def test_arm_a_loss_overshooting_loop_and_horizon_bound() -> None:
++    """Verify arm_a_loss_mlx implements latent overshooting bounded by H_TRAIN."""
++    repo_root = _find_repo_root()
++    arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
++    tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
++
++    func_node = None
++    for node in ast.walk(tree):
++        if isinstance(node, ast.FunctionDef) and node.name == "arm_a_loss_mlx":
++            func_node = node
++            break
++
++    assert func_node is not None, "arm_a_loss_mlx function not found"
++
++    # Find the outer loop over T and inner loop over tau
++    found_overshoot_loop = False
++    references_h_train = False
++    decodes_in_overshoot = False
++
++    for node in ast.walk(func_node):
++        if isinstance(node, ast.For):
++            # Check if this loop is the overshooting loop (target name tau or similar)
++            target_name = getattr(node.target, "id", "")
++            if "tau" in target_name:
++                found_overshoot_loop = True
++                # Inspect body of overshooting loop
++                for child in ast.walk(node):
++                    if isinstance(child, ast.Call):
++                        fn_attr = getattr(child.func, "attr", "")
++                        if fn_attr == "decode":
++                            decodes_in_overshoot = True
++
++        # Check references to H_TRAIN
++        if isinstance(node, ast.Attribute) and node.attr == "H_TRAIN":
++            references_h_train = True
++        elif isinstance(node, ast.Name) and "h_train" in node.id.lower():
++            references_h_train = True
++
++    assert found_overshoot_loop, "arm_a_loss_mlx missing overshooting loop (tau)"
++    assert references_h_train, "arm_a_loss_mlx must reference H_TRAIN bound"
++    assert decodes_in_overshoot, "overshooting loop must call arm_a.decode"
++
++
++def test_idm_targets_explicit_stop_gradient() -> None:
++    """Verify IDM loss functions explicitly call mx.stop_gradient on target actions / macro actions."""
++    repo_root = _find_repo_root()
++    arms_mlx_path = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "arms_mlx.py"
++    tree = ast.parse(arms_mlx_path.read_text(encoding="utf-8"))
++
++    stop_gradient_calls = []
++    for node in ast.walk(tree):
++        if isinstance(node, ast.Call):
++            fn_name = ""
++            if isinstance(node.func, ast.Attribute):
++                fn_name = node.func.attr
++            elif isinstance(node.func, ast.Name):
++                fn_name = node.func.id
++            if fn_name == "stop_gradient":
++                # record argument name if Name
++                arg_names = []
++                for a in node.args:
++                    if isinstance(a, ast.Name):
++                        arg_names.append(a.id)
++                stop_gradient_calls.append((node.lineno, arg_names))
++
++    assert len(stop_gradient_calls) >= 2, f"Expected stop_gradient calls on IDM targets, found {stop_gradient_calls}"
++    # Verify target actions or target_7d is stopped
++    stopped_vars = [var for _, args in stop_gradient_calls for var in args]
++    assert any("target" in v for v in stopped_vars), f"Target variable not passed to stop_gradient: {stopped_vars}"
+
+--- a/tests/v9/experiments/test_s2_arms_mlx_native.py
++++ b/tests/v9/experiments/test_s2_arms_mlx_native.py
+@@ -88,36 +88,17 @@
+ 
+ def test_native_sigreg_mlx_matches_numpy() -> None:
+     """Verify MLX SIGReg matches NumPy core_math.sigreg within 1e-5 tolerance."""
+-    rng = np.random.default_rng(42)
+     N, D, M = 32, 64, 16
+-    Z_np = rng.standard_normal((N, D)).astype(np.float32)
++    Z_np = np.random.default_rng(123).standard_normal((N, D)).astype(np.float32)
+ 
+-    # Sample M unit directions
+-    dirs_raw = rng.standard_normal((M, D)).astype(np.float32)
++    # When core_math.sigreg is called with rng=42, it samples M directions with default_rng(42)
++    dirs_raw = np.random.default_rng(42).standard_normal((M, D)).astype(np.float32)
+     dirs_np = dirs_raw / np.linalg.norm(dirs_raw, axis=-1, keepdims=True)
+ 
+     sigreg_np = core_math.sigreg(Z_np, n_directions=M, rng=42)
+-    # Direct computation with identical directions
+     sigreg_mx_val = arms_mlx.sigreg_mlx(mx.array(Z_np), mx.array(dirs_np)).item()
+ 
+-    # The difference between fixed directions in MLX and NumPy must be < 1e-5
+-    X_np = Z_np @ dirs_np.T
+-    knots = np.linspace(0.2, 4.0, 17, dtype=np.float64)
+-    dt = 3.8 / 16.0
+-    trapz = np.full(17, dt, dtype=np.float64)
+-    trapz[0] *= 0.5
+-    trapz[-1] *= 0.5
+-    phi_0 = np.exp(-0.5 * (knots**2))
+-    w_t = np.exp(-0.5 * (knots**2))
+-    quad_w = trapz * w_t
+-
+-    t_X = knots[:, None, None] * X_np[None, :, :]
+-    mean_cos = np.mean(np.cos(t_X), axis=1)
+-    mean_sin = np.mean(np.sin(t_X), axis=1)
+-    sq_diff = (mean_cos - phi_0[:, None]) ** 2 + mean_sin**2
+-    ref_exact = float(np.mean(np.sum(quad_w[:, None] * sq_diff, axis=0)))
+-
+-    assert abs(sigreg_mx_val - ref_exact) < 1e-5
++    assert abs(sigreg_mx_val - sigreg_np) < 1e-5
+ 
+ 
+ def test_native_losses_match_numpy_reference() -> None:
+
+--- a/tests/v9/experiments/test_s2_planner.py
++++ b/tests/v9/experiments/test_s2_planner.py
+@@ -736,3 +736,61 @@
+                 pytest.fail(f"MLX import in {mod.__file__}: {s}")
+ 
+ 
++def test_flat_cem_cost_fn_forward_counter_and_custom_cost() -> None:
++    """Verify flat_cem_plan supports cost_fn hook and counts neural forward calls in ForwardCounter."""
++    start = np.array([2.0, 2.0], dtype=np.float64)
++    goal = np.array([10.0, 2.0], dtype=np.float64)
++
++    cfg = FlatCEMConfig(
++        horizon=6,
++        n_iters=3,
++        pop_size=10,
++        elite_frac=0.2,
++        action_dim=1,
++        n_categories=4,
++    )
++    rng = np.random.default_rng(42)
++    counter = ForwardCounter(budget=1000)
++
++    # Mock neural decoder function (e.g. for Arm A observation-space planning)
++    def mocked_decoder(z: np.ndarray) -> np.ndarray:
++        return z * 1.5
++
++    wrapped_decoder = counter.wrap("decode", mocked_decoder)
++
++    def custom_cost_fn(z_T: np.ndarray, goal_obs: np.ndarray) -> float:
++        # Calls wrapped decoder: should charge 1 to 'decode'
++        dec = wrapped_decoder(z_T)
++        return float(np.sum((dec - goal_obs) ** 2))
++
++    res = flat_cem_plan(
++        encode=identity_encode,
++        predict_l1=predict_l1_analytic,
++        obs=start,
++        goal_obs=goal,
++        config=cfg,
++        rng=rng,
++        counter=counter,
++        cost_fn=custom_cost_fn,
++    )
++
++    expected_evals = cfg.n_iters * cfg.pop_size
++    assert counter.by_name.get("decode", 0) == expected_evals, (
++        f"Expected {expected_evals} decode calls in ForwardCounter, got {counter.by_name.get('decode', 0)}"
++    )
++    assert res.actions.shape[0] == cfg.n_exec
++
++    # Verify that a budget limit is enforced on cost_fn calls
++    counter_tight = ForwardCounter(budget=5)
++    wrapped_tight = counter_tight.wrap("decode", mocked_decoder)
++    with pytest.raises(ForwardBudgetExceeded):
++        flat_cem_plan(
++            encode=identity_encode,
++            predict_l1=predict_l1_analytic,
++            obs=start,
++            goal_obs=goal,
++            config=cfg,
++            rng=np.random.default_rng(42),
++            counter=counter_tight,
++            cost_fn=lambda z, g: float(np.sum(wrapped_tight(z) - g)),
++        )
