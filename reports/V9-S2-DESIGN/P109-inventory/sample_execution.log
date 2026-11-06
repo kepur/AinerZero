@@ -1,0 +1,19 @@
+[SAMPLE EXECUTION RECORD]
+Command:
+cd /Users/mac/AinerWorkFlow/AnimeWorldZero && .venv/bin/python -c "import sys, json, os, time; sys.path.insert(0, '/Users/mac/AinerWorkFlow/AnimeWorldZero/python'); sys.path.insert(0, '/Users/mac/AinerWorkFlow/AinerZero/src'); from animeworld.exams import scenarios; from animeworld.exams.packets import emit_stream; t0 = time.perf_counter(); world = scenarios.navigation_world(partition='train', scene_id='s1-train-nav-00000'); bundle = emit_stream(world, validate=True); elapsed = time.perf_counter() - t0; print(f'rc=0, packets={len(bundle.packets)}, truth={len(bundle.truth_packets)}, elapsed={elapsed:.4f}s')"
+
+Return Code:
+0
+
+Stdout:
+rc=0, packets=7, truth=7, elapsed=0.0125s
+
+Stderr:
+(none)
+
+Sample Output Summary:
+- Episode Steps: 7 (fixed path: (0,0)->(1,0)->(1,1)->(1,2)->(0,2)->(0,1)->(0,0))
+- Observation Channels: ['relative_objects', 'ego_motion']
+- Payload Fields: ['time', 'episode_start', 'observation', 'pose_sensor_if_allowed', 'visibility', 'sensor_noise', 'last_action_result', 'task_instruction']
+- Truth Fields: ['seq', 'tick', 'world_key', 'partition', 'agent_world_pose', 'visible_entity_ids', 'entities', 'handle_to_entity', 'relations', 'events']
+- Closed-loop Random Actions Test: Not executed because no interactive step() interface exists in animeworld.exams.

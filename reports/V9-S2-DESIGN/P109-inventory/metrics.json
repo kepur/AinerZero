@@ -1,0 +1,59 @@
+{
+  "schema": "ainerzero.v9.s2.p109_inventory.v1",
+  "task_id": "ainerzero.V9.P109",
+  "level": "L2",
+  "status": "completed",
+  "source_inspected": {
+    "awz_exams": "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/exams",
+    "awz_sensing": "/Users/mac/AinerWorkFlow/AnimeWorldZero/python/animeworld/sensing",
+    "s1_spec": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/spec.py",
+    "s1_export": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/awz_export.py",
+    "s1_final_export": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/awz_final_export.py",
+    "m2_pilot": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/learning/pilot_model.py",
+    "m2_paired_memory": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/runtime/paired_memory_worker.py",
+    "s1_evaluation": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s1/evaluation.py",
+    "e1_commands": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/e1/commands.py"
+  },
+  "feasibility_checklist": {
+    "closed_loop_stepping": {
+      "supported_as_is": false,
+      "requires_new_code": true,
+      "estimated_lines": 110,
+      "hidden_randomness": false
+    },
+    "long_episodes_and_multi_room": {
+      "supported_as_is": false,
+      "max_steps_current": 7,
+      "grid_size": "6x4 to 8x6",
+      "multi_room_support": false,
+      "shortest_path_ge_40_feasible": false
+    },
+    "target_observation_spec": {
+      "supported_as_is": true,
+      "pure_functions": ["visibility_from", "_agent_frame"]
+    },
+    "irregular_dt": {
+      "supported_as_is": true,
+      "truth_timing_accurate": true
+    },
+    "partition_isolation": {
+      "supported_as_is": false,
+      "single_partition_generation": false,
+      "estimated_refactor_lines": 40
+    },
+    "m2_rssm_reuse": {
+      "direct_reuse": false,
+      "reason": "M2 hardcodes 8-byte discrete tokens and 4 discrete actions, incompatible with ObservationPacket/v1.1"
+    },
+    "m2_interference_reuse": {
+      "direct_reuse": true,
+      "entrypoint": "ainerzero.v9.experiments.s1.evaluation.evaluate_memory_probe"
+    },
+    "lifecycle_budget_reuse": {
+      "direct_reuse": true,
+      "reusable_components": ["worker_lock", "prereg_approval_check", "RunStore", "preflight_guard"]
+    }
+  },
+  "recommendation": "use_gridlab",
+  "recommendation_reason": "S1 AWZ generator lacks multi-room topology and cannot produce >=40 steps shortest paths or >=120 step non-looping episodes"
+}
