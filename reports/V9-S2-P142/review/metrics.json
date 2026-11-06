@@ -1,0 +1,108 @@
+{
+  "task_id": "ainerzero.V9.P144",
+  "review_target": "ainerzero.V9.P142",
+  "reviewer_agent": "gemini-r7m2",
+  "reviewer_session": "sess-ef82e69a0a5b",
+  "author_agent": "composer-m4k7",
+  "author_session": "sess-c4309a6cbd44",
+  "recommendation": "RECOMMEND_ACCEPT",
+  "independent_verification": {
+    "scope_verification": {
+      "p142_files": [
+        "src/ainerzero/v9/experiments/s2/train_runner.py",
+        "tests/v9/experiments/test_s2_train_runner.py"
+      ],
+      "sha256_match_author_manifest": true,
+      "src_tracked_files_diff_against_head_only_cli": true,
+      "src_other_tracked_files_byte_exact_to_head": true
+    },
+    "no_dev_touching_verification": {
+      "code_level_forbidden_path_parts": [
+        "dev",
+        "sealed_final"
+      ],
+      "rejected_at_partition_resolution": true,
+      "rejected_at_sequence_loading": true,
+      "dual_curve_fake_arm_experiment": {
+        "holdout_optimum_step": 10,
+        "dev_optimum_step": 20,
+        "selected_best_step": 10,
+        "selected_dev_optimum": false
+      }
+    },
+    "wall_clock_guard_verification": {
+      "fake_clock_timeout_enforced": true,
+      "status_reported": "stopped",
+      "status_is_completed": false,
+      "actual_steps_truthful": 3,
+      "requested_steps": 50,
+      "wall_budget_exceeded_flag": true,
+      "meta_json_complete": true,
+      "meta_json_verified_fields": [
+        "actual_steps",
+        "requested_steps",
+        "best_step",
+        "holdout_curve",
+        "n_params",
+        "source_digest",
+        "data_manifest_sha256",
+        "checkpoint_sha256",
+        "checkpoint_path",
+        "status",
+        "wall_budget_seconds",
+        "elapsed_seconds"
+      ]
+    },
+    "test_authenticity": {
+      "real_function_calls": true,
+      "no_constant_comparisons": true,
+      "no_mock_rewrites": true
+    },
+    "reviewer_mutations": [
+      {
+        "id": "REV-P144-M1",
+        "target": "src/ainerzero/v9/experiments/s2/train_runner.py:174",
+        "description": "split_holdout uses global np.random.permutation instead of explicit rng",
+        "outcome": "KILLED",
+        "exit_code": 1,
+        "failed_test": "test_fixed_seed_checkpoint_sha_reproducible",
+        "restored_sha_verified": true
+      },
+      {
+        "id": "REV-P144-M2",
+        "target": "src/ainerzero/v9/experiments/s2/train_runner.py:301",
+        "description": "Check if err < best_error inverted to err > best_error (select worst checkpoint)",
+        "outcome": "KILLED",
+        "exit_code": 1,
+        "failed_test": "test_holdout_error_decreases_and_best_step_is_argmin",
+        "restored_sha_verified": true
+      },
+      {
+        "id": "REV-P144-M3",
+        "target": "src/ainerzero/v9/experiments/s2/train_runner.py:257",
+        "description": "Bypass assert_output_root_is_permitted in run_train_cell",
+        "outcome": "KILLED",
+        "exit_code": 1,
+        "failed_test": "test_output_root_must_pass_p138_guard",
+        "restored_sha_verified": true
+      },
+      {
+        "id": "REV-P144-M4",
+        "target": "src/ainerzero/v9/experiments/s2/train_runner.py:249",
+        "description": "Bypass direct check_cell_already_completed check inside run_train_cell",
+        "outcome": "SURVIVED",
+        "exit_code": 0,
+        "analysis": "DEFENSIVE_FALLBACK: worker.execute_work_cell intercepts duplicate cells before calling the runner; the internal check in run_train_cell acts as a defensive guard for direct callers.",
+        "restored_sha_verified": true
+      }
+    ],
+    "pure_cpu": {
+      "isolated_subprocess_zero_mlx": true,
+      "full_regression_passed": 3561,
+      "full_regression_failed": 0,
+      "full_regression_deselected": 6,
+      "full_regression_elapsed_seconds": 266.27,
+      "artifacts_diff_count": 0
+    }
+  }
+}
