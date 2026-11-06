@@ -2437,3 +2437,19 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
   - 守卫逻辑改为接受 root 参数，自测只针对伪造的实盘树运行；
   - 禁止 utime 或任何还原实盘元数据的操作，碰到实盘只记录、不抹掉；
   - 交付变异脚本。
+
+## R20261106-A2-baseline-r4：A2 基线清单 r4 生效（一级 claude，2026-11-06）
+
+- **卡与复核：**
+  - `ainerzero.V9.A15`：gemini-f8a2 实现。r1 被一级打回，原因是 7600 个 E1 数据文件以排除处理且 verify 不复算；r2 改为钉选。
+  - `V9.A16`：gemini-b9x2 非作者复核，结论 RECOMMEND_ACCEPT。一级逐字抽查 3 处，属实。
+- **核实：**
+  - r3 的 8057 个红项全部是 10-20 之后的合法新增：N=8057、M=0、D=0。
+  - r3 原有的 497 个钉选文件逐字节完好。
+  - 全程零写入实盘。
+- **生效：**
+  - r4 自即日起作为 artifacts 的现行完整性门，共钉选 8519 个文件、3.58 GB。
+  - 脚本 `scripts/v9_baseline_manifest_r4.py`，sha `5bb98a91eefd384dd6fa3f422f211d6af645eb0536c8a5c41ea149bed4ce4ddc`。
+  - 清单 `reports/V9-baseline/r4/r2/baseline_manifest.json`，文件 sha `04186dc46978a5577cdc3a0e7d07f1db61ce23dccf563e83de9754c7b6a05e00`，manifest_digest `f9ec03cb42dbf1aa16e64e8005b60f88a166562506889540077a3675cc6de7a9`。
+- **r3 保留：** S1 第一阶段 spec 钉住了 r3 清单的字节（arm1 身份），r3 不替换、不改。
+- **sealed_final：** E1 的 sealed_final 只按字节算 SHA，没有解析，也没有 read_once 标记；E1 结论 §7 所说「封存 final 未读」的状态不变。

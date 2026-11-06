@@ -1,0 +1,107 @@
+{
+  "task_id": "ainerzero.V9.A16",
+  "review_target": "ainerzero.V9.A15 (r2: reports/V9-baseline/r4/r2/)",
+  "reviewer_agent": "gemini-b9x2",
+  "verdict": "RECOMMEND_ACCEPT",
+  "r3_intact": {
+    "files_checked": 30,
+    "git_head_mismatches": 0,
+    "r3_script_sha256": "f7160692854e6c659c4d17211338aa58002294324d791ba424cb1e8e0f8e3e41",
+    "verified": true
+  },
+  "n_m_d_verification": {
+    "r3_verify_verdict": "RED",
+    "N_unexpected_new_files": 8057,
+    "N_breakdown": {
+      "unexpected_new_file": 8027,
+      "policy_claim_unmet": 30
+    },
+    "M_modified_files": 0,
+    "D_deleted_files": 0,
+    "violations_absorbed": 0,
+    "samples_checked": 5,
+    "samples_legitimate": true
+  },
+  "sealed_final_audit": {
+    "hash_method": "raw_bytes_sha256",
+    "np_load_used": false,
+    "json_parse_used": false,
+    "marker_files_created": false,
+    "verified": true
+  },
+  "mutation_testing": {
+    "filesystem": "APFS clone (cp -c / clonefile)",
+    "inode_verification": "distinct_inodes_confirmed_no_symlinks",
+    "cases_tested": 5,
+    "cases_passed": 5,
+    "mutations": [
+      {
+        "name": "mut_1_e1_checkpoint_meta_byte_flip",
+        "target": "artifacts/v9/e1/phase2/checkpoints/arm2_P_seed42/checkpoint_meta.json",
+        "action": "flipped_1_byte",
+        "expected": "RED",
+        "actual": "RED",
+        "problem": "sha256_changed",
+        "exit_code": 1
+      },
+      {
+        "name": "mut_2_e1_raw_manifest_deleted",
+        "target": "artifacts/v9/e1/phase2/datasets/raw/manifest.json",
+        "action": "deleted_file",
+        "expected": "RED",
+        "actual": "RED",
+        "problem": "missing",
+        "exit_code": 1
+      },
+      {
+        "name": "mut_3_e1_phase2_sqlite_forged",
+        "target": "artifacts/v9/e1/phase2/control.sqlite3",
+        "action": "update_runs_row",
+        "expected": "RED",
+        "actual": "RED",
+        "problem": "runstore_entries_changed",
+        "exit_code": 1
+      },
+      {
+        "name": "mut_4_excluded_lock_modified_stays_green",
+        "target": "artifacts/locks/m0-worker.lock",
+        "action": "modified_excluded_lock",
+        "expected": "GREEN",
+        "actual": "GREEN",
+        "problem": null,
+        "exit_code": 0
+      },
+      {
+        "name": "mut_5_dataset_e1_raw_byte_flip",
+        "target": "artifacts/v9/e1/phase2/datasets/raw/P/train/seq_train_ramp_roll_000.json",
+        "action": "flipped_1_byte",
+        "expected": "RED",
+        "actual": "RED",
+        "problem": "sha256_changed",
+        "exit_code": 1
+      }
+    ]
+  },
+  "determinism_and_zero_writes": {
+    "manifest_digest": "f9ec03cb42dbf1aa16e64e8005b60f88a166562506889540077a3675cc6de7a9",
+    "two_builds_payload_identical": true,
+    "verify_clean_verdict": "ok",
+    "verify_problems": 0,
+    "artifacts_files_scanned": 59744,
+    "real_tree_stat_diffs": 0,
+    "zero_writes_verified": true
+  },
+  "tier1_precheck_discrepancy_resolution": {
+    "reported_text": "排除 101（.DS_Store 95、locks 6）",
+    "actual_manifest_by_rule": {
+      "episode_data": 80,
+      "os_metadata": 12,
+      "teacher_cache": 8,
+      "runtime_lock": 1
+    },
+    "total_excluded_items": 101,
+    "conclusion": "REPORTING_WORDING_ERROR",
+    "blocking": false,
+    "note": "Total count 101 is exact and identical between code, manifest, inventory and report. Breakdown in markdown text was a clerical slip by the author."
+  }
+}

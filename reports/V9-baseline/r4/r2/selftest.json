@@ -1,0 +1,399 @@
+{
+ "selftest": [
+  {
+   "case": "clean_real_copy",
+   "exit": 0,
+   "fault": "no fault injected",
+   "expect_red": false,
+   "problems": [],
+   "warnings": [],
+   "real_copy": true,
+   "note": "real-copy tree, no fault: must stay green (not an always-red harness)",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "checkpoint_byte_flip",
+   "exit": 1,
+   "fault": "flipped one byte of tensors.safetensors (size unchanged)",
+   "expect_red": true,
+   "problems": [
+    "sha256_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "checkpoint_swapped",
+   "exit": 1,
+   "fault": "copied tensors.safetensors (2604 B) over updates-878.npz (641526 B)",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "tamper_checkpoint_meta",
+   "exit": 1,
+   "fault": "truncated artifacts/m0/m0-cpu-222513b47d0e/checkpoints/midpoint/manifest.json to b'{}'",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "tamper_m0_run",
+   "exit": 1,
+   "fault": "truncated artifacts/m0/m0-cpu-222513b47d0e/config.yaml to b'{}'",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "tamper_run_config",
+   "exit": 1,
+   "fault": "truncated artifacts/pilot/pilot-00c78153553a42bb88caaa02c074f63c/fixed-batch.npz to b'{}'",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "tamper_run_updates",
+   "exit": 1,
+   "fault": "truncated artifacts/pilot/pilot-108afd15e6084b37a21760e06d8f3a3e/updates-014ef614-27a0-4162-a6a7-25dc5c5ab623.jsonl to b'{}'",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "tamper_probe_meta",
+   "exit": 1,
+   "fault": "truncated artifacts/pilot/pilot-3b18fe9fc5f3425eb99761a58e3577b9/probes/ridge-probes/manifest.json to b'{}'",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "tamper_dataset_c0",
+   "exit": 1,
+   "fault": "truncated artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/manifest.json to b'{}'",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "tamper_dataset_gridlab2d",
+   "exit": 1,
+   "fault": "truncated artifacts/gridlab2d/s06-sample/5453be03-8a9d-5927-868c-1c3ac2acbe69/manifest.json to b'{}'",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "tamper_registration",
+   "exit": 1,
+   "fault": "truncated artifacts/pilot/pilot-00c78153553a42bb88caaa02c074f63c/preregistration.json to b'{}'",
+   "expect_red": true,
+   "problems": [
+    "size_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "dataset_file_deleted",
+   "exit": 1,
+   "fault": "deleted a dataset file: artifacts/gridlab2d/s06-sample/5453be03-8a9d-5927-868c-1c3ac2acbe69/manifest.json",
+   "expect_red": true,
+   "problems": [
+    "missing"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "t3_notes_in_checkpoint_dir",
+   "exit": 1,
+   "fault": "added artifacts/m0/m0-cpu-222513b47d0e/checkpoints/midpoint/NOTES.md",
+   "expect_red": true,
+   "problems": [
+    "unexpected_new_file"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "A4 T3: unregistered file in a pinned checkpoint directory",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "t3_notes_in_m0_run_root",
+   "exit": 1,
+   "fault": "added artifacts/m0/m0-cpu-222513b47d0e/NOTES.md",
+   "expect_red": true,
+   "problems": [
+    "unexpected_new_file"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "unregistered file in an M0 run root",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "t3_notes_in_dataset_dir",
+   "exit": 1,
+   "fault": "added artifacts/c0/242b7060-4a2c-4ca9-aa46-e4bbc59f4786/NOTES.md",
+   "expect_red": true,
+   "problems": [
+    "unexpected_new_file",
+    "policy_claim_unmet"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "unregistered file in a pinned dataset directory",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "t3_smuggled_safetensors",
+   "exit": 1,
+   "fault": "added artifacts/m0/m0-cpu-222513b47d0e/checkpoints/midpoint/smuggled-extra.safetensors",
+   "expect_red": true,
+   "problems": [
+    "unexpected_new_file",
+    "policy_claim_unmet"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "new pinned-category file smuggled next to a baseline checkpoint",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "t3_e1_notes_in_checkpoint_dir",
+   "exit": 1,
+   "fault": "injected NOTES.md in E1 phase2 checkpoint directory",
+   "expect_red": true,
+   "problems": [
+    "unexpected_new_file",
+    "policy_claim_unmet"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "r4 addition: unregistered file injected into an E1 phase2 checkpoint directory",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "sealed_final_byte_flip",
+   "exit": 1,
+   "fault": "flipped one byte in E1 phase2 sealed_final/P/.../SEALED.json",
+   "expect_red": true,
+   "problems": [
+    "sha256_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "r4 addition: flipped one byte in sealed_final file",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "r2_e1_evaluator_byte_flip",
+   "exit": 1,
+   "fault": "flipped one byte in E1 evaluator JSON 026cfdbc51de1bb4.json",
+   "expect_red": true,
+   "problems": [
+    "sha256_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "r2 addition: flipped one byte in an E1 evaluator development JSON",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "r2_e1_student_file_deleted",
+   "exit": 1,
+   "fault": "deleted E1 student train file 00111f9f42a0c719.json",
+   "expect_red": true,
+   "problems": [
+    "missing"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "r2 addition: deleted one file in E1 student train dataset",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "volatile_scratch_allowed",
+   "exit": 0,
+   "fault": "added a *.safetensors under a tmp-* component (volatile rule)",
+   "expect_red": false,
+   "problems": [],
+   "warnings": [
+    "volatile_prefix_added"
+   ],
+   "real_copy": true,
+   "note": "volatile rule exception, documented in policy",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "out_of_scope_report_allowed",
+   "exit": 0,
+   "fault": "added a non-registration file under artifacts/reports/ (out of scope)",
+   "expect_red": false,
+   "problems": [],
+   "warnings": [],
+   "real_copy": true,
+   "note": "artifacts/reports/** is declared out of scope",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "runstore_vacuum_allowed",
+   "exit": 0,
+   "fault": "legitimate VACUUM on a real copy: 63201280 -> 63180800 bytes",
+   "expect_red": false,
+   "problems": [],
+   "warnings": [
+    "runstore_file_size_changed",
+    "runstore_file_sha_changed",
+    "transient_file_missing",
+    "transient_file_missing"
+   ],
+   "real_copy": true,
+   "note": "policy: row digest unchanged -> file sha/size change is only a warning",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "runstore_row_forged",
+   "exit": 1,
+   "fault": "UPDATE runs SET state='completed_forged' on one row (1 row)",
+   "expect_red": true,
+   "problems": [
+    "runstore_entries_changed"
+   ],
+   "warnings": [
+    "runstore_file_sha_changed",
+    "transient_file_missing",
+    "transient_file_missing"
+   ],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "manifest_self_edited",
+   "exit": 1,
+   "fault": "edited the stored sha of files[0] in the manifest copy",
+   "expect_red": true,
+   "problems": [
+    "manifest_digest",
+    "sha256_changed"
+   ],
+   "warnings": [],
+   "real_copy": true,
+   "note": "",
+   "stderr": "",
+   "passed": true
+  },
+  {
+   "case": "excluded_file_tamper_stays_green",
+   "exit": 0,
+   "fault": "appended bytes to excluded file artifacts/.DS_Store (documented blind spot)",
+   "expect_red": false,
+   "problems": [],
+   "warnings": [],
+   "real_copy": true,
+   "note": "known limitation: files excluded with a reason are not hashed; a change there is not detected by this manifest",
+   "stderr": "",
+   "passed": true
+  }
+ ],
+ "summary": {
+  "cases_total": 26,
+  "faults_injected": 21,
+  "faults_detected": 21,
+  "faults_missed": [],
+  "controls_green": 5,
+  "controls_unexpectedly_red": [],
+  "all_detected": true
+ },
+ "real_tree_integrity": {
+  "before": {
+   "label": "before",
+   "checked": 8519,
+   "checked_non_runstore": 8511,
+   "mismatches": [],
+   "content_unchanged": true
+  },
+  "after": {
+   "label": "after",
+   "checked": 8519,
+   "checked_non_runstore": 8511,
+   "mismatches": [],
+   "content_unchanged": true
+  }
+ },
+ "copy_mode": "APFS clone (clonefile / cp -c) / shutil.copy2 fallback, never a symlink"
+}
