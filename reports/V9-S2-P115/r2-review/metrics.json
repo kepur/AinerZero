@@ -1,0 +1,98 @@
+{
+  "task_id": "ainerzero.V9.P117",
+  "verified_task_id": "ainerzero.V9.P115",
+  "revision": "r2",
+  "reviewer_agent": "gemini-m7k4",
+  "author_agents": ["composer-a7k2", "gemini-b9x2"],
+  "recommendation": "RECOMMEND_ACCEPT",
+  "pure_cpu": true,
+  "mlx_in_sys_modules": false,
+  "files_sha256": {
+    "world_py": "dbd923017bf7d158dbba8604a6c32aa57c74782234f1b05571fd4eeb8a25f591",
+    "data_py": "8fd195af598fcc618392bbc694e164dfa7e79a88c503f408824bb402081cf3e8",
+    "test_s2_world_py": "599881c1df1ce4af08298b49f58338325b7edabb122276110e1fe05532221f11",
+    "test_s2_data_py": "f2838ea2dc7fac6792ca596acb08911b5c4dd3647b8626525a499060daed9ec4",
+    "run_mutations_py": "14e6ececb8408a99cabf67f45bfdc9cf00339e0e561f63ad58ac2fb56b83d3ec"
+  },
+  "others_files_untouched": {
+    "src/ainerzero/v9/experiments/s2/core_math.py": "3d0311e7edbc7f421bea662ab30e023f25a8c6eac7aa0756bcf6cd7f1ed7f972",
+    "src/ainerzero/v9/experiments/s2/planner.py": "e3c73a9aea9eb497001c3c5b87946dbb7bc2e019424379a6b54e21dbf85441ab",
+    "src/ainerzero/v9/experiments/s2/fwd_counter.py": "2dbe4002805ae4dafb3a965a30c8f9127d00af526909eefeb3ed929845b31e20",
+    "src/ainerzero/v9/experiments/s2/__init__.py": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+    "tests/v9/experiments/test_s2_core_math.py": "45381c98dd9bdda40379611ee6529ed8d4373c081e6c4d160b06365b936f3efb",
+    "tests/v9/experiments/test_s2_package_pure_cpu.py": "75bcdd36913e1db4b84206359f8b22f082d0185a0c769454e3ae29f6f0da8398",
+    "tests/v9/experiments/test_s2_planner.py": "c7770b6ce9d8348b8bf31070878e45ee7cec083db168a101970dc7119db596a9"
+  },
+  "r2_independent_verifications": {
+    "no_fallback": {
+      "verified_code_no_fallback": true,
+      "random_starts_tested": 35,
+      "all_long_ge_40": true,
+      "min_distance": 40,
+      "max_distance": 45,
+      "mean_distance": 41.05,
+      "short_starts_fail_closed": true
+    },
+    "k_distribution": {
+      "sample_size": 10000,
+      "empirical_counts": {
+        "1": 4981,
+        "2": 3038,
+        "3": 1981
+      },
+      "chi_square": 0.734,
+      "threshold": 20.0,
+      "passed": true
+    },
+    "ambiguity_uniqueness": {
+      "all_accepted_goal_views_unique_in_layout": true,
+      "occurences_per_accepted_view": 1
+    },
+    "r2_four_items": {
+      "non_bfs_ratio_ge_50": true,
+      "measured_non_bfs_ratio": 0.589,
+      "world_rejection_redraw_threshold_030": true,
+      "dev_final_perturb_ratio": 0.3333333333333333,
+      "is_success_rules_hand_calculated": true
+    }
+  },
+  "reviewer_mutations": {
+    "REV-P115-M1": {
+      "desc": "is_success: 步数预算放宽至 10*bfs_dist (允许 121 步判定成功)",
+      "target_test": "tests/v9/experiments/test_s2_world.py::test_is_success_rules",
+      "passed_before_mutation": true,
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "REV-P115-M2": {
+      "desc": "compute_ego_view: EAST 朝向颠倒 du 与 dv 偏移",
+      "target_test": "tests/v9/experiments/test_s2_world.py::test_line_of_sight_closed_form",
+      "passed_before_mutation": true,
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "REV-P115-M3": {
+      "desc": "make_goal_episode_specs: PERTURB_LONG_FRACTION 改为 0.0",
+      "target_test": "tests/v9/experiments/test_s2_data.py::test_generate_partition_isolation_and_disjointness",
+      "passed_before_mutation": true,
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "REV-P115-M4": {
+      "desc": "assert_k_distribution: 判定条件反转为 chi2 < threshold",
+      "target_test": "tests/v9/experiments/test_s2_data.py::test_k_distribution_chi_square",
+      "passed_before_mutation": true,
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    }
+  },
+  "test_counts": {
+    "suite_total": 16,
+    "suite_passed": 16,
+    "suite_failed": 0
+  }
+}
