@@ -1,0 +1,45 @@
+{
+  "task_id": "ainerzero.V9.P138",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-w4x2",
+  "single_function_edit": "src/ainerzero/v9/experiments/s2/data_runner.py:assert_output_root_is_permitted",
+  "guard_rules": {
+    "permitted_exact_registered": "REGISTERED_HOST_ROOT / artifacts/v9/s2/phase1",
+    "permitted_outside_artifacts": true,
+    "refused_other_artifacts": true,
+    "refused_symlinks_into_artifacts": true,
+    "name_guessing_removed": true
+  },
+  "tests": {
+    "data_runner_total": 11,
+    "data_runner_passed": 11,
+    "data_runner_failed": 0,
+    "full_pure_cpu_suite_passed": 3535,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P138-M1": {
+      "name": "permit_all_paths_under_artifacts",
+      "desc": "Guard permits all paths under artifacts directory (bypasses e1 rejection)",
+      "target_test": "test_p138_other_artifacts_path_e1_rejected",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P138-M2": {
+      "name": "omit_path_resolve_before_comparison",
+      "desc": "Guard fails to resolve symlink before checking if under artifacts",
+      "target_test": "test_p138_symlink_into_e1_artifacts_rejected",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    }
+  },
+  "spec_py_untouched": true,
+  "artifacts_touched": false,
+  "zero_mlx_imported": true
+}

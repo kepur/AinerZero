@@ -1,0 +1,39 @@
+{
+  "task_id": "ainerzero.V9.P136",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-w4x2",
+  "single_function_edit": "src/ainerzero/v9/experiments/s2/worker.py:ledger_read_snapshot",
+  "temp_dir_policy": "system_temp_directory (tempfile.mkdtemp) to guarantee zero residual files in production ledger directory",
+  "tests": {
+    "s2_lifecycle_total": 8,
+    "test_g_passed": true,
+    "test_h_passed": true,
+    "full_pure_cpu_suite_passed": 3531,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P136-M1": {
+      "name": "direct_open_real_ledger",
+      "desc": "Revert ledger_read_snapshot to directly opening real ledger without temp dir copy",
+      "target_test": "test_g_ledger_read_snapshot_leaves_real_ledger_completely_untouched",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P136-M2": {
+      "name": "omit_wal_copy",
+      "desc": "Omit copying WAL file during snapshot preparation",
+      "target_test": "test_h_ledger_read_snapshot_reads_completed_run_residing_only_in_wal",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    }
+  },
+  "production_files_tampered": false,
+  "artifacts_touched": false,
+  "zero_mlx_imported": true
+}

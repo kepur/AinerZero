@@ -1,0 +1,100 @@
+--- a/src/ainerzero/v9/experiments/s2/data_runner.py
++++ b/src/ainerzero/v9/experiments/s2/data_runner.py
+@@ -30,7 +30,10 @@
+ __all__ = [
+     "run_generate_data",
+     "check_partition_already_completed",
++    "assert_output_root_is_permitted",
+     "assert_output_root_is_temporary",
++    "REGISTERED_HOST_ROOT",
++    "REGISTERED_OUTPUT_ROOT",
+     "DEFAULT_SEED_NAMESPACES",
+ ]
+ 
+@@ -40,38 +43,50 @@
+     "final": "s2-phase1-final-v1",
+ }
+ 
+-
+-def assert_output_root_is_temporary(output_root: str | Path) -> Path:
+-    """Assert that output_root is located strictly under a safe temporary path and not production artifacts.
+-
+-    Raises:
+-        ValueError: If pointing to production artifacts or not in a temporary directory.
++# Pending merge into spec.py once P125 is accepted
++REGISTERED_HOST_ROOT: Path = getattr(
++    spec, "REGISTERED_HOST_ROOT", Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
++)
++REGISTERED_OUTPUT_ROOT: Path = getattr(
++    spec,
++    "REGISTERED_OUTPUT_ROOT",
++    (REGISTERED_HOST_ROOT / "artifacts" / "v9" / "s2" / "phase1").resolve(),
++)
++
++
++def assert_output_root_is_permitted(output_root: str | Path) -> Path:
++    """Assert output_root is either the registered production path or a valid non-artifacts path.
++
++    Rules per ainerzero.V9.P138:
++    1. Permitted: output_root resolves exactly to REGISTERED_HOST_ROOT / "artifacts/v9/s2/phase1".
++    2. Permitted: Any path outside REGISTERED_HOST_ROOT / "artifacts" (e.g. test tmp_path).
++    3. Refused: Any other path under REGISTERED_HOST_ROOT / "artifacts" (e.g. e1, s1, or other s2 dirs).
++    4. Refused: Symlinks resolving into non-registered artifacts paths (resolved prior to comparison).
+     """
+     out_path = Path(output_root).resolve()
+ 
+-    # Rule 1: Refuse any production artifacts directory
+-    if "artifacts" in out_path.parts:
++    host_root = Path(
++        getattr(spec, "REGISTERED_HOST_ROOT", None) or REGISTERED_HOST_ROOT
++    ).resolve()
++    artifacts_root = (host_root / "artifacts").resolve()
++    registered_output = (artifacts_root / "v9" / "s2" / "phase1").resolve()
++
++    # Rule 1: Exact match with registered production path is permitted
++    if out_path == registered_output:
++        return out_path
++
++    # Rule 2 & 3: Refuse any other path under artifacts
++    if out_path == artifacts_root or out_path.is_relative_to(artifacts_root):
+         raise ValueError(
+-            f"output_root cannot point to production artifacts: {out_path}"
+-        )
+-
+-    # Rule 2: Assert path is under a recognized system temporary directory or contains temporary tags
+-    temp_roots = (
+-        Path(tempfile.gettempdir()).resolve(),
+-        Path("/tmp").resolve(),
+-        Path("/private/tmp").resolve(),
+-        Path("/var/folders").resolve(),
+-    )
+-    is_under_temp = any(
+-        out_path == tr or tr in out_path.parents for tr in temp_roots
+-    ) or any(t in out_path.name.lower() for t in ("tmp", "temp", "pytest"))
+-
+-    if not is_under_temp:
+-        raise ValueError(
+-            f"output_root must be located under a temporary path, got: {out_path}"
+-        )
+-
++            f"output_root cannot point to non-registered artifacts directory: {out_path} (registered is {registered_output})"
++        )
++
++    # Rule 4: Outside artifacts (e.g. tmp_path) is permitted
+     return out_path
++
++
++# Backward compatibility alias
++assert_output_root_is_temporary = assert_output_root_is_permitted
+ 
+ 
+ def check_partition_already_completed(
+@@ -138,7 +153,7 @@
+         raise ValueError("output_root must be explicitly specified and non-empty")
+ 
+     # 1. Output root permission check
+-    out_path = assert_output_root_is_temporary(output_root)
++    out_path = assert_output_root_is_permitted(output_root)
+ 
+     # 2. Partition specification check
+     part = partition.lower()

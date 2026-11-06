@@ -1,0 +1,50 @@
+--- a/src/ainerzero/v9/experiments/s2/worker.py
++++ b/src/ainerzero/v9/experiments/s2/worker.py
+@@ -76,16 +76,42 @@
+ 
+ @contextmanager
+ def ledger_read_snapshot(ledger_path: Path | str) -> Generator[RunStore | None, None, None]:
+-    """Provide a read-only snapshot connection to the ledger if it exists."""
+-    p = Path(ledger_path)
++    """Provide a read-only snapshot connection to the ledger if it exists.
++
++    Copies the database, WAL, and SHM files to an isolated system temporary directory
++    before opening RunStore on the replica. This ensures zero disk modifications
++    (mtime, size, inode, or shm updates) to the real ledger, and leaves no temporary
++    files in the real ledger directory.
++    """
++    import shutil
++    import tempfile
++
++    p = Path(ledger_path).resolve()
+     if not p.is_file():
+         yield None
+         return
+-    store = RunStore(p)
++
++    tmp_dir = Path(tempfile.mkdtemp(prefix="s2_ledger_read_"))
++    temp_db = tmp_dir / p.name
++    wal_path = p.parent / f"{p.name}-wal"
++    shm_path = p.parent / f"{p.name}-shm"
++    temp_wal = tmp_dir / f"{p.name}-wal"
++    temp_shm = tmp_dir / f"{p.name}-shm"
++
+     try:
+-        yield store
++        shutil.copy2(p, temp_db)
++        if wal_path.is_file():
++            shutil.copy2(wal_path, temp_wal)
++        if shm_path.is_file():
++            shutil.copy2(shm_path, temp_shm)
++
++        store = RunStore(temp_db)
++        try:
++            yield store
++        finally:
++            store.close()
+     finally:
+-        store.close()
++        shutil.rmtree(tmp_dir, ignore_errors=True)
+ 
+ 
+ def check_cell_already_completed(

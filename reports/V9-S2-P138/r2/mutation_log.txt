@@ -1,0 +1,207 @@
+=== P138-M1 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox
+configfile: pyproject.toml
+collecting ... collected 12 items / 11 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_other_artifacts_path_e1_rejected FAILED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_p138_other_artifacts_path_e1_rejected __________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-346/test_p138_other_artifacts_path0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10494faa0>
+
+    def test_p138_other_artifacts_path_e1_rejected(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """伪造树里的 artifacts/v9/e1/phase2：拒绝。
+    
+        Catches mutation P138-M1 (guard permits all paths under artifacts).
+        """
+        fake_host = tmp_path / "fake_host_e1"
+        fake_host.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(data_runner, "REGISTERED_HOST_ROOT", fake_host)
+    
+        e1_path = fake_host / "artifacts" / "v9" / "e1" / "phase2"
+>       with pytest.raises(ValueError, match="output_root cannot point to non-registered artifacts directory"):
+E       Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py:90: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_other_artifacts_path_e1_rejected
+======================= 1 failed, 11 deselected in 2.14s =======================
+
+
+
+=== P138-M2 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox
+configfile: pyproject.toml
+collecting ... collected 12 items / 11 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_symlink_into_e1_artifacts_rejected FAILED [100%]
+
+=================================== FAILURES ===================================
+_________________ test_p138_symlink_into_e1_artifacts_rejected _________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-347/test_p138_symlink_into_e1_arti0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x102f03650>
+
+    def test_p138_symlink_into_e1_artifacts_rejected(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """用符号链接把一个临时目录指向伪造树里的 e1 目录：拒绝。
+    
+        Catches mutation P138-M2 (guard does not resolve path before comparison).
+        """
+        fake_host = tmp_path / "fake_host_sym"
+        fake_host.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(data_runner, "REGISTERED_HOST_ROOT", fake_host)
+    
+        e1_path = fake_host / "artifacts" / "v9" / "e1" / "phase2"
+        e1_path.mkdir(parents=True, exist_ok=True)
+    
+        symlink_dir = tmp_path / "symlink_to_e1"
+        symlink_dir.symlink_to(e1_path)
+    
+>       with pytest.raises(ValueError, match="output_root cannot point to non-registered artifacts directory"):
+E       Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py:111: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_symlink_into_e1_artifacts_rejected
+======================= 1 failed, 11 deselected in 0.82s =======================
+
+
+
+=== P138-M3 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox
+configfile: pyproject.toml
+collecting ... collected 12 items / 11 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_dev_generation_reads_only_layout_digests_from_sealed_final FAILED [100%]
+
+=================================== FAILURES ===================================
+_____ test_p138_dev_generation_reads_only_layout_digests_from_sealed_final _____
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-348/test_p138_dev_generation_reads0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10487b9b0>
+
+    def test_p138_dev_generation_reads_only_layout_digests_from_sealed_final(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """先生成 final 小样，再生成 dev；运行时给 open/read_text/read_bytes 打补丁，断言 sealed_final/ 下除 LAYOUT_DIGESTS.json 外没有任何文件被读。
+    
+        Catches mutation P138-M3 (reading manifest.json instead of LAYOUT_DIGESTS.json).
+        """
+        out_dir = tmp_path / "run_sealed_check"
+        db_file = tmp_path / "ledger.db"
+        ledger = S2Ledger(db_file)
+    
+        # 1. Generate final sample
+        res_final = run_generate_data(
+            partition="final",
+            output_root=out_dir,
+            ledger=ledger,
+            n_worlds=2,
+            episodes_per_world=2,
+            enforce_rejection_redraw=False,
+            max_steps_per_episode=15,
+        )
+        assert res_final["status"] == "completed"
+    
+        sealed_dir = out_dir / "datasets" / "sealed_final"
+        layout_file = sealed_dir / "LAYOUT_DIGESTS.json"
+        manifest_file = sealed_dir / "manifest.json"
+        assert layout_file.is_file()
+        assert manifest_file.is_file()
+    
+        # Verify LAYOUT_DIGESTS.json has exactly the 3 permitted fields
+        layout_data = json.loads(layout_file.read_text(encoding="utf-8"))
+        assert set(layout_data.keys()) == {"partition", "seed_namespace", "layout_digests"}
+        assert layout_data["partition"] == "final"
+    
+        # 2. Patch file reading methods during dev generation
+        orig_open = open
+        orig_read_text = Path.read_text
+        orig_read_bytes = Path.read_bytes
+    
+        def guarded_check_path(p: Any) -> None:
+            p_str = str(p)
+            if "sealed_final" in p_str:
+                name = Path(p_str).name
+                if name != "LAYOUT_DIGESTS.json":
+                    raise AssertionError(
+                        f"Forbidden file read from sealed_final: {p_str} (only LAYOUT_DIGESTS.json is allowed)"
+                    )
+    
+        def guarded_open(file: Any, *args: Any, **kwargs: Any) -> Any:
+            mode = args[0] if args else kwargs.get("mode", "r")
+            if isinstance(mode, str) and any(m in mode for m in ("r", "+")):
+                guarded_check_path(file)
+            return orig_open(file, *args, **kwargs)
+    
+        def guarded_read_text(self: Path, *args: Any, **kwargs: Any) -> str:
+            guarded_check_path(self)
+            return orig_read_text(self, *args, **kwargs)
+    
+        def guarded_read_bytes(self: Path, *args: Any, **kwargs: Any) -> bytes:
+            guarded_check_path(self)
+            return orig_read_bytes(self, *args, **kwargs)
+    
+        monkeypatch.setattr("builtins.open", guarded_open)
+        monkeypatch.setattr(Path, "read_text", guarded_read_text)
+        monkeypatch.setattr(Path, "read_bytes", guarded_read_bytes)
+    
+        # 3. Generate dev partition (disjointness check against sealed_final runs)
+>       res_dev = run_generate_data(
+            partition="dev",
+            output_root=out_dir,
+            ledger=ledger,
+            n_worlds=2,
+            episodes_per_world=2,
+            enforce_rejection_redraw=False,
+            max_steps_per_episode=15,
+        )
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py:420: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/src/ainerzero/v9/experiments/s2/data_runner.py:289: in run_generate_data
+    json.loads(cand_manifest.read_text(encoding="utf-8"))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py:408: in guarded_read_text
+    guarded_check_path(self)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+p = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-348/test_p138_dev_generation_reads0/run_sealed_check/datasets/sealed_final/manifest.json')
+
+    def guarded_check_path(p: Any) -> None:
+        p_str = str(p)
+        if "sealed_final" in p_str:
+            name = Path(p_str).name
+            if name != "LAYOUT_DIGESTS.json":
+>               raise AssertionError(
+                    f"Forbidden file read from sealed_final: {p_str} (only LAYOUT_DIGESTS.json is allowed)"
+                )
+E               AssertionError: Forbidden file read from sealed_final: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-348/test_p138_dev_generation_reads0/run_sealed_check/datasets/sealed_final/manifest.json (only LAYOUT_DIGESTS.json is allowed)
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py:397: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_r2_mut_kz96leh1/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_dev_generation_reads_only_layout_digests_from_sealed_final
+======================= 1 failed, 11 deselected in 1.70s =======================
+
+

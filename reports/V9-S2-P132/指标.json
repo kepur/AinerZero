@@ -1,0 +1,53 @@
+{
+  "task_id": "ainerzero.V9.P132",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-w4x2",
+  "modules_created": [
+    "src/ainerzero/v9/experiments/s2/freeze.py",
+    "src/ainerzero/v9/experiments/s2/identity.py",
+    "tests/v9/experiments/test_s2_freeze_identity.py"
+  ],
+  "freeze_features": {
+    "canonical_json": "sort_keys=True, separators=(',', ':'), UTF-8",
+    "document_sha256": "SHA256 hex digest of canonical bytes",
+    "source_digests_collected": 15,
+    "cli_snippet_extracted": true,
+    "refuse_overwrite_enforced": true,
+    "approval_line_format": "APPROVED s2-phase1 prereg document_sha256=<64hex>"
+  },
+  "tests": {
+    "s2_freeze_identity_passed": 6,
+    "s2_freeze_identity_failed": 0,
+    "full_pure_cpu_suite_passed": 3522,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0
+  },
+  "mutations": {
+    "P132-M1": {
+      "name": "omit_worker_py_from_source_digests",
+      "desc": "collect_source_digests omits worker.py; modifying worker.py is not detected",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P132-M2": {
+      "name": "freeze_allows_overwrite",
+      "desc": "freeze bypasses overwrite checks, allowing overwrite of existing prereg files",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P132-M3": {
+      "name": "approval_line_missing_space",
+      "desc": "approval_line drops space between APPROVED and s2-phase1, failing regex scan",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    }
+  },
+  "production_files_frozen": false,
+  "artifacts_touched": false,
+  "zero_mlx_imported": true
+}

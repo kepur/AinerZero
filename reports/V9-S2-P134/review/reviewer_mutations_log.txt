@@ -1,0 +1,214 @@
+=== REV-M1 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox
+configfile: pyproject.toml
+collecting ... collected 7 items / 6 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_train_partition_requires_explicit_scale FAILED [100%]
+
+=================================== FAILURES ===================================
+_________________ test_train_partition_requires_explicit_scale _________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-334/test_train_partition_requires_0')
+
+    def test_train_partition_requires_explicit_scale(tmp_path: Path) -> None:
+        """Train partition scale must be explicitly provided."""
+        out_dir = tmp_path / "run_train_err"
+>       with pytest.raises(ValueError, match="train partition scale .* must be explicitly provided"):
+E       Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py:262: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_train_partition_requires_explicit_scale
+======================= 1 failed, 6 deselected in 3.70s ========================
+
+
+
+=== REV-M2 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox
+configfile: pyproject.toml
+collecting ... collected 7 items / 6 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_shared_seed_namespace_raises_error FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_shared_seed_namespace_raises_error ____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-335/test_shared_seed_namespace_rai0')
+
+    def test_shared_seed_namespace_raises_error(tmp_path: Path) -> None:
+        """Generating two partitions with identical seed_namespace triggers assertion error."""
+        out_dir = tmp_path / "run_disjoint"
+        shared_ns = "shared-evil-namespace"
+    
+        # Generate dev partition with shared_ns
+        res_dev = run_generate_data(
+            partition="dev",
+            output_root=out_dir,
+            seed_namespace=shared_ns,
+            n_worlds=2,
+            episodes_per_world=2,
+            enforce_rejection_redraw=False,
+            max_steps_per_episode=20,
+        )
+        assert res_dev["status"] == "completed"
+    
+        # Generate train partition deliberately reusing the same seed_namespace
+>       with pytest.raises(ValueError, match="Shared seed namespace detected"):
+E       Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py:247: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_shared_seed_namespace_raises_error
+======================= 1 failed, 6 deselected in 2.87s ========================
+
+
+
+=== REV-M3 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox
+configfile: pyproject.toml
+collecting ... collected 7 items / 6 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_output_root_under_tmp_path_guard_and_refuses_production FAILED [100%]
+
+=================================== FAILURES ===================================
+_________ test_output_root_under_tmp_path_guard_and_refuses_production _________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-336/test_output_root_under_tmp_pat0')
+
+    def test_output_root_under_tmp_path_guard_and_refuses_production(tmp_path: Path) -> None:
+        """assert_output_root_is_temporary enforces safe temporary directories and rejects production paths.
+    
+        Catches mutation P134-M3 (missing output_root safety guard).
+        """
+        # 1. Safe temporary path succeeds
+        resolved = assert_output_root_is_temporary(tmp_path)
+        assert resolved == tmp_path.resolve()
+    
+        # 2. Production artifacts directory is rejected
+        fake_prod_artifacts = Path("/Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/fake_run")
+        with pytest.raises(ValueError, match="output_root cannot point to production artifacts"):
+            assert_output_root_is_temporary(fake_prod_artifacts)
+    
+        # 3. Non-temporary arbitrary root path is rejected
+        fake_non_temp = Path("/opt/ainerzero_data")
+>       with pytest.raises(ValueError, match="output_root must be located under a temporary path"):
+E       Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py:59: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_output_root_under_tmp_path_guard_and_refuses_production
+======================= 1 failed, 6 deselected in 0.73s ========================
+
+
+
+=== REV-M4 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox
+configfile: pyproject.toml
+collecting ... collected 7 items / 6 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_final_partition_written_to_sealed_final_and_never_read_back FAILED [100%]
+
+=================================== FAILURES ===================================
+_______ test_final_partition_written_to_sealed_final_and_never_read_back _______
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-337/test_final_partition_written_t0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x103232420>
+
+    def test_final_partition_written_to_sealed_final_and_never_read_back(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Final partition is written to sealed_final/ and its contents are never read back.
+    
+        Catches mutation P134-M2 (final written to datasets/final/ rather than sealed_final/).
+        """
+        db_file = tmp_path / "ledger.db"
+        ledger = S2Ledger(db_file)
+        out_dir = tmp_path / "run_final"
+    
+        # 1. AST static analysis proof: verify data_runner does not call read_text/json.load on sealed_final
+        runner_src = (
+            Path(__file__).resolve().parents[3]
+            / "src"
+            / "ainerzero"
+            / "v9"
+            / "experiments"
+            / "s2"
+            / "data_runner.py"
+        ).read_text(encoding="utf-8")
+        tree = ast.parse(runner_src)
+    
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                # Check for direct calls like json.load / json.loads
+                if isinstance(node.func, ast.Attribute) and node.func.attr == "load":
+                    # Ensure json.load is not called on any file in sealed_final
+                    pass
+    
+        # 2. Runtime proof with monkeypatch:
+        # If any file under sealed_final (except the raw byte read of SHA256SUMS.txt) is opened for text reading, raise error!
+        orig_read_text = Path.read_text
+    
+        def guarded_read_text(self: Path, *args: Any, **kwargs: Any) -> str:
+            if "sealed_final" in str(self):
+                raise AssertionError(f"Illegal content read on sealed_final file: {self}")
+            return orig_read_text(self, *args, **kwargs)
+    
+        monkeypatch.setattr(Path, "read_text", guarded_read_text)
+    
+        # 3. Execute final generation
+        res = run_generate_data(
+            partition="final",
+            output_root=out_dir,
+            ledger=ledger,
+            n_worlds=2,
+            episodes_per_world=2,
+            enforce_rejection_redraw=False,
+            max_steps_per_episode=20,
+        )
+    
+        assert res["status"] == "completed"
+        assert res["partition"] == "final"
+    
+        sealed_dir = out_dir / "datasets" / "sealed_final"
+        unsealed_dir = out_dir / "datasets" / "final"
+    
+        # Assert final exists exclusively under sealed_final/ and NOT under final/
+        assert sealed_dir.is_dir(), f"Expected sealed_final directory at {sealed_dir}"
+        assert not unsealed_dir.exists(), f"Unsealed final directory must not exist: {unsealed_dir}"
+        assert Path(res["target_dir"]) == sealed_dir
+    
+        # Verify SHA256SUMS.txt exists in sealed_final
+        sums_file = sealed_dir / "SHA256SUMS.txt"
+        assert sums_file.is_file()
+>       assert res["sha256sums_hash"] == hashlib.sha256(sums_file.read_bytes()).hexdigest()
+E       AssertionError: assert 'dummy_corrupted_hash_value' == 'f94ae59ccf86...19a6d17444f6c'
+E         
+E         - f94ae59ccf86b069c8a32d998efcf1a142970bc9617785a84c819a6d17444f6c
+E         + dummy_corrupted_hash_value
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py:224: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p135_mut_hwfaguub/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_final_partition_written_to_sealed_final_and_never_read_back
+======================= 1 failed, 6 deselected in 1.21s ========================
+
+

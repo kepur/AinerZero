@@ -1,0 +1,144 @@
+=== P136-M1 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p136_mut_ygidn8xy/sandbox
+configfile: pyproject.toml
+collecting ... collected 8 items / 7 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p136_mut_ygidn8xy/sandbox/tests/v9/experiments/test_s2_lifecycle.py::test_g_ledger_read_snapshot_leaves_real_ledger_completely_untouched FAILED [100%]
+
+=================================== FAILURES ===================================
+_____ test_g_ledger_read_snapshot_leaves_real_ledger_completely_untouched ______
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-326/test_g_ledger_read_snapshot_le0')
+
+    def test_g_ledger_read_snapshot_leaves_real_ledger_completely_untouched(tmp_path):
+        """(g) 预检读取前后，对主库、-wal、-shm 分别做 stat（mtime_ns、size、inode）加 SHA，结果完全一致；账本目录零新增文件。"""
+        ledger_dir = tmp_path / "protected_ledger"
+        ledger_dir.mkdir(parents=True, exist_ok=True)
+        ledger_path = ledger_dir / "control.sqlite3"
+        wal_path = ledger_dir / "control.sqlite3-wal"
+        shm_path = ledger_dir / "control.sqlite3-shm"
+    
+        # Hold a connection open to simulate an active running worker / process
+        hold_conn = sqlite3.connect(ledger_path)
+        hold_conn.execute("PRAGMA journal_mode=WAL")
+    
+        # Create a real ledger with WAL & SHM active
+        ledger = worker.S2Ledger(ledger_path)
+        run_id = ledger.open_run(mode="train", arm="arm_a", seed=42, cell_wall_budget=100.0)
+        ledger.begin_run(run_id, state="training")
+        # Keep in WAL without checkpoint
+        ledger.store._conn.execute("PRAGMA wal_autocheckpoint=0")
+        ledger.complete_run(run_id, active_seconds=10.0)
+    
+        assert ledger_path.is_file()
+        assert wal_path.is_file() and wal_path.stat().st_size > 0
+        assert shm_path.is_file()
+    
+        # Snapshot pre-state of ledger_dir
+        pre_dir_files = sorted(f.name for f in ledger_dir.iterdir())
+    
+        def get_file_stat_and_sha(p: Path):
+            st = p.stat()
+            sha = hashlib.sha256(p.read_bytes()).hexdigest()
+            return (st.st_mtime_ns, st.st_size, st.st_ino, sha)
+    
+        pre_ledger = get_file_stat_and_sha(ledger_path)
+        pre_wal = get_file_stat_and_sha(wal_path)
+        pre_shm = get_file_stat_and_sha(shm_path)
+    
+        # Perform snapshot read
+        with worker.ledger_read_snapshot(ledger_path) as store:
+            assert store is not None
+            runs = store.list_runs()
+            assert len(runs) >= 1
+    
+        # Check preflight check_cell_already_completed
+        assert worker.check_cell_already_completed(ledger_path, mode="train", arm="arm_a", seed=42) is True
+    
+        # Assert ledger_dir has zero new files (e.g. no .tmp_read_* left behind)
+        post_dir_files = sorted(f.name for f in ledger_dir.iterdir())
+        assert post_dir_files == pre_dir_files
+    
+        # Assert stat and SHA256 of all 3 files are 100% identical
+        post_ledger = get_file_stat_and_sha(ledger_path)
+        post_wal = get_file_stat_and_sha(wal_path)
+        post_shm = get_file_stat_and_sha(shm_path)
+    
+        assert post_ledger == pre_ledger, f"Main ledger was modified: {pre_ledger} -> {post_ledger}"
+>       assert post_wal == pre_wal, f"WAL was modified: {pre_wal} -> {post_wal}"
+E       AssertionError: WAL was modified: (1793979307817615838, 156592, 110248053, '4854ec7bdc3fff130357d1e3e49203e985ec9d9ead9f8265352a2a4ea56ae410') -> (1793979307818448635, 160712, 110248053, 'af052ea87c936db3a2dd0791ea8cf7e6edf6bc3a9c9ae914e051c2400360567a')
+E       assert (179397930781...c2400360567a') == (179397930781...2a4ea56ae410')
+E         
+E         At index 0 diff: 1793979307818448635 != 1793979307817615838
+E         
+E         Full diff:
+E           (
+E         -     1793979307817615838,
+E         ?                 ^ ^ ---...
+E         
+E         ...Full output truncated (8 lines hidden), use '-vv' to show
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p136_mut_ygidn8xy/sandbox/tests/v9/experiments/test_s2_lifecycle.py:416: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p136_mut_ygidn8xy/sandbox/tests/v9/experiments/test_s2_lifecycle.py::test_g_ledger_read_snapshot_leaves_real_ledger_completely_untouched
+======================= 1 failed, 7 deselected in 0.81s ========================
+
+
+
+=== P136-M2 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p136_mut_ygidn8xy/sandbox
+configfile: pyproject.toml
+collecting ... collected 8 items / 7 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p136_mut_ygidn8xy/sandbox/tests/v9/experiments/test_s2_lifecycle.py::test_h_ledger_read_snapshot_reads_completed_run_residing_only_in_wal FAILED [100%]
+
+=================================== FAILURES ===================================
+_____ test_h_ledger_read_snapshot_reads_completed_run_residing_only_in_wal _____
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-327/test_h_ledger_read_snapshot_re0')
+
+    def test_h_ledger_read_snapshot_reads_completed_run_residing_only_in_wal(tmp_path):
+        """(h) 账本里有一条 completed 记录、只存在于 WAL 中时，预检也能读到，验证 WAL 确实被一并拷贝。"""
+        ledger_dir = tmp_path / "wal_only_ledger"
+        ledger_dir.mkdir(parents=True, exist_ok=True)
+        ledger_path = ledger_dir / "control.sqlite3"
+        wal_path = ledger_dir / "control.sqlite3-wal"
+    
+        hold_conn = sqlite3.connect(ledger_path)
+        hold_conn.execute("PRAGMA journal_mode=WAL")
+    
+        ledger = worker.S2Ledger(ledger_path)
+        run_id = ledger.open_run(mode="train", arm="arm_b", seed=43, cell_wall_budget=200.0)
+        ledger.begin_run(run_id, state="training")
+        ledger.store._conn.execute("PRAGMA wal_autocheckpoint=0")
+        ledger.complete_run(run_id, active_seconds=20.0)
+    
+        assert wal_path.is_file() and wal_path.stat().st_size > 0
+    
+        # Confirm that reading with ledger_read_snapshot sees the completed cell
+        with worker.ledger_read_snapshot(ledger_path) as store:
+            assert store is not None
+            completed_runs = [
+                r for r in store.list_runs()
+                if r.state == "completed" and r.config_snapshot.get("seed") == 43
+            ]
+>           assert len(completed_runs) == 1
+E           assert 0 == 1
+E            +  where 0 = len([])
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p136_mut_ygidn8xy/sandbox/tests/v9/experiments/test_s2_lifecycle.py:449: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p136_mut_ygidn8xy/sandbox/tests/v9/experiments/test_s2_lifecycle.py::test_h_ledger_read_snapshot_reads_completed_run_residing_only_in_wal
+======================= 1 failed, 7 deselected in 0.85s ========================
+
+

@@ -1,0 +1,54 @@
+=== P134-M1: remove_duplicate_execution_guard ===
+Description: Bypass check_partition_already_completed in ledger
+Status: KILLED (returncode=1)
+Failure summary: ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_duplicate_execution_returns_gracefully_and_does_not_overwrite FAILED [100%] | assert res1["status"] == "completed" | >       assert res2["status"] == "d
+Tail output:
+            enforce_rejection_redraw=False,
+            max_steps_per_episode=20,
+        )
+>       assert res2["status"] == "duplicate_execution"
+E       AssertionError: assert 'completed' == 'duplicate_execution'
+E         
+E         - duplicate_execution
+E         + completed
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py:148: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_duplicate_execution_returns_gracefully_and_does_not_overwrite
+======================= 1 failed, 6 deselected in 1.45s ========================
+
+
+
+=== P134-M2: final_written_to_final_instead_of_sealed_final ===
+Description: Leave final partition in datasets/final/ instead of renaming to sealed_final
+Status: KILLED (returncode=1)
+Failure summary: ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_final_partition_written_to_sealed_final_and_never_read_back FAILED [100%] | raise AssertionError(f"Illegal content read on sealed_final file: {self}") |
+Tail output:
+un_final/datasets/sealed_final
+E       assert False
+E        +  where False = is_dir()
+E        +    where is_dir = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-318/test_final_partition_written_t0/run_final/datasets/sealed_final').is_dir
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py:217: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_final_partition_written_to_sealed_final_and_never_read_back
+======================= 1 failed, 6 deselected in 1.22s ========================
+
+
+
+=== P134-M3: remove_production_artifacts_guard ===
+Description: Bypass production artifacts path check in assert_output_root_is_temporary
+Status: KILLED (returncode=1)
+Failure summary: ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_output_root_under_tmp_path_guard_and_refuses_production FAILED [100%] | assert resolved == tmp_path.resolve() | E       AssertionError: Regex pattern di
+Tail output:
+n artifacts"):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'output_root cannot point to production artifacts'
+E         Actual message: 'output_root must be located under a temporary path, got: /Users/mac/AinerWorkFlow/AinerZero/artifacts/v9/fake_run'
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py:54: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p134_mut_agyem17b/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_output_root_under_tmp_path_guard_and_refuses_production
+======================= 1 failed, 6 deselected in 0.76s ========================
+
+

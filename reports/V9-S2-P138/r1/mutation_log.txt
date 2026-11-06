@@ -1,0 +1,84 @@
+=== P138-M1 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_mut_7bqojumr/sandbox
+configfile: pyproject.toml
+collecting ... collected 11 items / 10 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_mut_7bqojumr/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_other_artifacts_path_e1_rejected FAILED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_p138_other_artifacts_path_e1_rejected __________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-341/test_p138_other_artifacts_path0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10468d9d0>
+
+    def test_p138_other_artifacts_path_e1_rejected(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """伪造树里的 artifacts/v9/e1/phase2：拒绝。
+    
+        Catches mutation P138-M1 (guard permits all paths under artifacts).
+        """
+        fake_host = tmp_path / "fake_host_e1"
+        fake_host.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(data_runner, "REGISTERED_HOST_ROOT", fake_host)
+    
+        e1_path = fake_host / "artifacts" / "v9" / "e1" / "phase2"
+>       with pytest.raises(ValueError, match="output_root cannot point to non-registered artifacts directory"):
+E       Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_mut_7bqojumr/sandbox/tests/v9/experiments/test_s2_data_runner.py:90: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_mut_7bqojumr/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_other_artifacts_path_e1_rejected
+======================= 1 failed, 10 deselected in 2.18s =======================
+
+
+
+=== P138-M2 Output ===
+ReturnCode: 1
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_mut_7bqojumr/sandbox
+configfile: pyproject.toml
+collecting ... collected 11 items / 10 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_mut_7bqojumr/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_symlink_into_e1_artifacts_rejected FAILED [100%]
+
+=================================== FAILURES ===================================
+_________________ test_p138_symlink_into_e1_artifacts_rejected _________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-342/test_p138_symlink_into_e1_arti0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x105375b20>
+
+    def test_p138_symlink_into_e1_artifacts_rejected(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """用符号链接把一个临时目录指向伪造树里的 e1 目录：拒绝。
+    
+        Catches mutation P138-M2 (guard does not resolve path before comparison).
+        """
+        fake_host = tmp_path / "fake_host_sym"
+        fake_host.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(data_runner, "REGISTERED_HOST_ROOT", fake_host)
+    
+        e1_path = fake_host / "artifacts" / "v9" / "e1" / "phase2"
+        e1_path.mkdir(parents=True, exist_ok=True)
+    
+        symlink_dir = tmp_path / "symlink_to_e1"
+        symlink_dir.symlink_to(e1_path)
+    
+>       with pytest.raises(ValueError, match="output_root cannot point to non-registered artifacts directory"):
+E       Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_mut_7bqojumr/sandbox/tests/v9/experiments/test_s2_data_runner.py:111: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p138_mut_7bqojumr/sandbox/tests/v9/experiments/test_s2_data_runner.py::test_p138_symlink_into_e1_artifacts_rejected
+======================= 1 failed, 10 deselected in 0.73s =======================
+
+

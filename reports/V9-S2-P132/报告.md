@@ -1,0 +1,21 @@
+# S2 预登记冻结与身份核对新模块交付报告（ainerzero.V9.P132）
+
+- **执行代理**：`gemini-w4x2`（二级执行 Agent）· 纯 CPU（无 MLX 导入、不冻结生产预登记、零实盘写入）
+- **实现内容（全是新模块，未改既有文件）**：
+  - `src/ainerzero/v9/experiments/s2/freeze.py`：实现 `canonical_bytes` 与 `document_sha256`（排序键、紧凑分隔符、UTF-8）；实现 `collect_source_digests`（覆盖 S2 全部 14 个 `.py` 模块以及 `cli.py` 中 s2-phase1 解析器与分发块抽取源码）；实现 `freeze`（严格调用 `prereg.validate`、注入当前源码摘要、落盘 `prereg.json` 与 `.sha256`、文件已存在拒绝覆盖）；实现 `approval_line`（完全匹配 `commands.py` 扫描正则）。
+  - `src/ainerzero/v9/experiments/s2/identity.py`：实现 `verify_frozen_identity`，严格核验伴生 `.sha256` 字节级一致性，重算当前源码摘要并逐项对比，任何不一致抛出 `FrozenIdentityMismatchError` 并列出差异文件。
+- **测试结果（6 项新单测全部通过）**：
+  - 先冻结后核对通过；改动 `worker.py` 单字节被即时拦截并指出文件名；
+  - 目标目录已有预登记时，`freeze` 严格拒绝覆盖（抛出 `FileExistsError`）；
+  - 篡改 `prereg.json` 但保留 `.sha256` 时，核对即时抛出校验和不符；
+  - `approval_line` 格式与 `commands.scan_approval_log` 规则逐字匹配；
+  - 同一草稿多次冻结哈希与字节完全确定；
+  - `-I` 隔离子进程导入 `freeze` 与 `identity`，断言 `sys.modules` 无任何 MLX。
+- **坏对照变异矩阵（隔离副本运行，均变红 KILLED，已按字节还原并校验 SHA256）**：
+  - **P132-M1**（`collect_source_digests` 漏掉 `worker.py`）：变红（KILLED, exit 1）；
+  - **P132-M2**（`freeze` 允许覆盖已有文件）：变红（KILLED, exit 1）；
+  - **P132-M3**（`approval_line` 缺少空格）：变红（KILLED, exit 1）。
+- **全量回归与实盘零写入审计**：
+  - 前台纯 CPU pytest 配合 `SIG_DFL` 信号还原：**3522 passed, 6 deselected, 0 failed**；
+  - 实盘 `artifacts/` 全量 80,929 项在测试前后执行逐项 stat 对比：**0 新增、0 删除、0 修改（零差异）**。
+- **产物哈希**：`reports/V9-S2-P132/sha256.json` 记录新模块、单测及全部报告产物。

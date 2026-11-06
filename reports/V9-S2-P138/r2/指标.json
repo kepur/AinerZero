@@ -1,0 +1,60 @@
+{
+  "task_id": "ainerzero.V9.P138",
+  "round": "r2",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-w4x2",
+  "guard_rules": {
+    "permitted_exact_registered": "REGISTERED_HOST_ROOT / artifacts/v9/s2/phase1",
+    "permitted_outside_artifacts": true,
+    "refused_other_artifacts": true,
+    "refused_symlinks_into_artifacts": true,
+    "name_guessing_removed": true
+  },
+  "sealed_final_zero_readback": {
+    "layout_digests_json_written_on_final": true,
+    "layout_digests_fields": ["partition", "seed_namespace", "layout_digests"],
+    "zero_goal_episode_specs_in_layout_digests": true,
+    "disjointness_check_reads_only_layout_digests": true,
+    "sealed_final_manifest_never_opened": true
+  },
+  "tests": {
+    "data_runner_total": 12,
+    "data_runner_passed": 12,
+    "data_runner_failed": 0,
+    "full_pure_cpu_suite_passed": 3536,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P138-M1": {
+      "name": "permit_all_paths_under_artifacts",
+      "desc": "Guard permits all paths under artifacts directory (bypasses e1 rejection)",
+      "target_test": "test_p138_other_artifacts_path_e1_rejected",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P138-M2": {
+      "name": "omit_path_resolve_before_comparison",
+      "desc": "Guard fails to resolve symlink before checking if under artifacts",
+      "target_test": "test_p138_symlink_into_e1_artifacts_rejected",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P138-M3": {
+      "name": "revert_to_reading_sealed_final_manifest_json",
+      "desc": "Disjointness check reads sealed_final/manifest.json instead of LAYOUT_DIGESTS.json",
+      "target_test": "test_p138_dev_generation_reads_only_layout_digests_from_sealed_final",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    }
+  },
+  "spec_py_untouched": true,
+  "artifacts_touched": false,
+  "zero_mlx_imported": true
+}

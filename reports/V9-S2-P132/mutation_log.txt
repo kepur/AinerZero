@@ -1,0 +1,57 @@
+=== P132-M1: omit_worker_py_from_source_digests ===
+Description: collect_source_digests omits worker.py; modifying worker.py is not detected
+Target Test: test_freeze_then_verify_passes_and_detects_single_byte_tamper
+Returncode: 1 (is_red=True)
+Output snippet:
+5088746f1e20eb43ecd18a94bf8d5e059ac1c967131', 'src/ainerzero/v9/experiments/s2/core_math.py': '3d0311e7edbc7f421bea662ab30e023f25a8c6eac7aa0756bcf6cd7f1ed7f972', 'src/ainerzero/v9/experiments/s2/data.py': '8fd195af598fcc618392bbc694e164dfa7e79a88c503f408824bb402081cf3e8', ...}
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p132_mut_wivne6f0/sandbox/tests/v9/experiments/test_s2_freeze_identity.py:61: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p132_mut_wivne6f0/sandbox/tests/v9/experiments/test_s2_freeze_identity.py::test_freeze_then_verify_passes_and_detects_single_byte_tamper
+======================= 1 failed, 5 deselected in 0.95s ========================
+
+
+
+=== P132-M2: freeze_allows_overwrite ===
+Description: freeze bypasses overwrite checks, allowing overwrite of existing prereg files
+Target Test: test_freeze_refuses_overwrite
+Returncode: 1 (is_red=True)
+Output snippet:
+write_test"
+    
+        freeze.freeze(draft, out_dir, repo_root=staged)
+        assert (out_dir / "prereg.json").is_file()
+    
+        # Second freeze to same target must raise FileExistsError
+>       with pytest.raises(FileExistsError, match="Target.*already exists"):
+E       Failed: DID NOT RAISE FileExistsError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p132_mut_wivne6f0/sandbox/tests/v9/experiments/test_s2_freeze_identity.py:86: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p132_mut_wivne6f0/sandbox/tests/v9/experiments/test_s2_freeze_identity.py::test_freeze_refuses_overwrite
+======================= 1 failed, 5 deselected in 0.92s ========================
+
+
+
+=== P132-M3: approval_line_missing_space ===
+Description: approval_line drops space between APPROVED and s2-phase1, failing regex scan
+Target Test: test_approval_line_matches_commands_scan
+Returncode: 1 (is_red=True)
+Output snippet:
+n"
+            f"## R20261106-S2-approval: Coordinator Approval\n"
+            f"{line}\n\n"
+            f"Some notes.\n",
+            encoding="utf-8",
+        )
+    
+        scan_res = commands.scan_approval_log(research_log)
+>       assert scan_res["found"] is True
+E       assert False is True
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p132_mut_wivne6f0/sandbox/tests/v9/experiments/test_s2_freeze_identity.py:123: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p132_mut_wivne6f0/sandbox/tests/v9/experiments/test_s2_freeze_identity.py::test_approval_line_matches_commands_scan
+======================= 1 failed, 5 deselected in 0.94s ========================
+
+
