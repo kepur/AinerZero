@@ -1,0 +1,72 @@
+{
+  "task_id": "ainerzero.V9.P118",
+  "status": "completed",
+  "pure_cpu": true,
+  "mlx_imported": false,
+  "design_r2_section_4": {
+    "goal_embedding_cached_per_episode": true,
+    "goal_embedding_charges_first_call_only": true,
+    "new_episode_clears_cache": true,
+    "changed_goal_obs_raises_ValueError": true,
+    "current_latent_state_cache": "未实现"
+  },
+  "planner_wiring": {
+    "flat_cem_plan_uses_goal_embedding": true,
+    "hierarchical_cem_plan_uses_goal_embedding": true
+  },
+  "tests": {
+    "suite": "tests/v9/experiments/test_s2_planner.py",
+    "original_tests": 8,
+    "original_tests_passed": 8,
+    "new_tests": 2,
+    "new_tests_passed": 2,
+    "total_passed": 10,
+    "total_failed": 0
+  },
+  "full_regression_replica": {
+    "total_collected": 3477,
+    "deselected": 6,
+    "selected": 3471,
+    "passed": 3319,
+    "failed": 91,
+    "skipped": 56,
+    "errors": 5,
+    "duration_seconds": 125.87
+  },
+  "mutations": {
+    "total": 3,
+    "all_turned_red": true,
+    "cases": [
+      {
+        "id": "P118-M1",
+        "description": "Cache never cleared on begin_episode (begin_episode does not reset _goal_sha/_goal_cache)",
+        "expected_failure_test": "test_goal_embedding_cached_across_decisions_in_episode",
+        "result": "RED",
+        "exit_code": 1,
+        "sha_restored": true
+      },
+      {
+        "id": "P118-M2",
+        "description": "Cache hit still charges encode (charge count unconditionally)",
+        "expected_failure_test": "test_goal_embedding_cached_across_decisions_in_episode",
+        "result": "RED",
+        "exit_code": 1,
+        "sha_restored": true
+      },
+      {
+        "id": "P118-M3",
+        "description": "Changing goal observation in same episode silently returns old cache without raising",
+        "expected_failure_test": "test_goal_embedding_changed_goal_in_same_episode_raises",
+        "result": "RED",
+        "exit_code": 1,
+        "sha_restored": true
+      }
+    ]
+  },
+  "real_artifacts_stat": {
+    "total_entries": 80851,
+    "diff_count": 0,
+    "shm_wal_diff_count": 0,
+    "utime_used": false
+  }
+}

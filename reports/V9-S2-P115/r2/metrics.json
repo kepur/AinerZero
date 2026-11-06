@@ -1,0 +1,125 @@
+{
+  "task_id": "ainerzero.V9.P115",
+  "revision": "r2",
+  "status": "completed",
+  "agent": "composer-a7k2",
+  "design_ref": "reports/V9-S2-DESIGN/DESIGN-r2.md §2 (r2.1)",
+  "pure_cpu": true,
+  "mlx_imported": false,
+  "changes_from_r1": [
+    "pose-graph BFS (forward/left/right action steps)",
+    "joint start-goal sampling; deleted long-distance fallback",
+    "world redraw on rejection_rate>30% or <6 long pairs (cap 5)",
+    "mixed exploration non-BFS>=50%",
+    "dev/final goal specs with perturb",
+    "is_success / is_success_strict",
+    "k chi-square gate; +4 mutations M6-M9"
+  ],
+  "tests": {
+    "suite": "test_s2_world.py + test_s2_data.py",
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "all_passed": true,
+    "isolated_experiments_suite": {
+      "passed": 415,
+      "failed": 4,
+      "skipped": 2,
+      "note": "4 failures in pre-existing s1_*_registration (missing approved artifacts); not in P115 file scope"
+    }
+  },
+  "mutations": {
+    "total": 9,
+    "passed": 9,
+    "all_turned_red": true,
+    "cases": [
+      {
+        "name": "P115-M1",
+        "turned_red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "P115-M2",
+        "turned_red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "P115-M3",
+        "turned_red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "P115-M4",
+        "turned_red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "P115-M5",
+        "turned_red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "P115-M6",
+        "turned_red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "P115-M7",
+        "turned_red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "P115-M8",
+        "turned_red": true,
+        "exit_code": 1
+      },
+      {
+        "name": "P115-M9",
+        "turned_red": true,
+        "exit_code": 1
+      }
+    ]
+  },
+  "sample_stats": {
+    "tmp_dir": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p115_r2_sample_e0wkmnwf",
+    "elapsed_s": 1.024,
+    "within_60s": true,
+    "steps_per_episode": [
+      240,
+      240,
+      240,
+      240
+    ],
+    "long_goal_pose_bfs": {
+      "n": 12,
+      "min": 40,
+      "max": 43,
+      "mean": 41.667,
+      "all_ge_40": true
+    },
+    "ambiguity_rejection_rates": [
+      0.14285714285714285,
+      0.14285714285714285
+    ],
+    "mean_rejection_rate": 0.1429,
+    "unseen_view_cell_ratio": 0.3498,
+    "time_per_world_s": [
+      0.312,
+      0.29
+    ],
+    "mean_time_per_world_s": 0.301,
+    "manifest_non_bfs_ratio": 0.5885416666666666,
+    "n_goal_specs": 12,
+    "n_perturb_true": 4
+  },
+  "shas": {
+    "world_py": "dbd923017bf7d158dbba8604a6c32aa57c74782234f1b05571fd4eeb8a25f591",
+    "data_py": "8fd195af598fcc618392bbc694e164dfa7e79a88c503f408824bb402081cf3e8",
+    "test_s2_world_py": "599881c1df1ce4af08298b49f58338325b7edabb122276110e1fe05532221f11",
+    "test_s2_data_py": "f2838ea2dc7fac6792ca596acb08911b5c4dd3647b8626525a499060daed9ec4",
+    "run_mutations_py": "14e6ececb8408a99cabf67f45bfdc9cf00339e0e561f63ad58ac2fb56b83d3ec"
+  },
+  "k_chi2_threshold": 20.0,
+  "long_goal_min_dist": 40,
+  "distance_metric": "pose_action_bfs"
+}

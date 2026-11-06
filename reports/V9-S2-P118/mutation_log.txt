@@ -1,0 +1,36 @@
+=== S2 FORWARD COUNTER ADVERSARIAL MUTATION VERIFICATION (P118) ===
+
+[Step 1] Recording pre-mutation snapshot of real artifacts/ ...
+Pre-mutation real artifacts recorded: 80851 entries (3.43s)
+
+[Step 2] Staging isolated replica under /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p118-mut-iso-opz1ebah/replica ...
+[Step 3] Replica import isolation verified successfully.
+Original fwd_counter.py SHA256: 2dbe4002805ae4dafb3a965a30c8f9127d00af526909eefeb3ed929845b31e20
+
+[Step 4] Running baseline test on unmutated replica...
+Baseline: 10 passed (GREEN).
+
+[Step 5] Executing 3 adversarial mutations...
+
+--- Running Mutation P118-M1: Cache never cleared on begin_episode (begin_episode does not reset _goal_sha/_goal_cache) ---
+Applied mutation P118-M1. Mutated file SHA256: 800962146ef1654a2ac515de93293905d954e97e0d06df36728a8718f0d75b64
+Result for P118-M1: exit_code=1, red=True, detected=True
+Restored fwd_counter.py: SHA256 verified identical (2dbe4002805ae4dafb3a965a30c8f9127d00af526909eefeb3ed929845b31e20).
+Verification after restore: GREEN.
+
+--- Running Mutation P118-M2: Cache hit still charges encode (charge count unconditionally) ---
+Applied mutation P118-M2. Mutated file SHA256: 397e255756ac2235425196f287d6aad61578456098dfa243083a791af4baea86
+Result for P118-M2: exit_code=1, red=True, detected=True
+Restored fwd_counter.py: SHA256 verified identical (2dbe4002805ae4dafb3a965a30c8f9127d00af526909eefeb3ed929845b31e20).
+Verification after restore: GREEN.
+
+--- Running Mutation P118-M3: Changing goal observation in same episode silently returns old cache without raising ---
+Applied mutation P118-M3. Mutated file SHA256: 86cda34ccae6cc88211503996a6a52b5c1cc08489909fc12942f24da91cb5c5f
+Result for P118-M3: exit_code=1, red=True, detected=True
+Restored fwd_counter.py: SHA256 verified identical (2dbe4002805ae4dafb3a965a30c8f9127d00af526909eefeb3ed929845b31e20).
+Verification after restore: GREEN.
+
+[Step 6] Recording post-mutation snapshot of real artifacts/ ...
+Post-mutation real artifacts recorded: 80851 entries (3.35s)
+Real artifacts stat differences count: 0
+ZERO real artifact changes confirmed.

@@ -1,0 +1,96 @@
+{
+  "task_id": "ainerzero.V9.P113",
+  "verified_task_id": "ainerzero.V9.P111",
+  "reviewer_agent": "gemini-m7k4",
+  "author_agent": "gemini-8m4d",
+  "recommendation": "RECOMMEND_ACCEPT_SCOPED",
+  "scope_limitation": "Recommended accept for S2 core math modules; test suite execution requires standard .venv interpreter for robust subprocess -I user-site discovery.",
+  "pure_cpu": true,
+  "mlx_in_sys_modules": false,
+  "files_sha256": {
+    "src/ainerzero/v9/experiments/s2/__init__.py": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+    "src/ainerzero/v9/experiments/s2/core_math.py": "3d0311e7edbc7f421bea662ab30e023f25a8c6eac7aa0756bcf6cd7f1ed7f972",
+    "tests/v9/experiments/test_s2_core_math.py": "45381c98dd9bdda40379611ee6529ed8d4373c081e6c4d160b06365b936f3efb",
+    "tests/v9/experiments/test_s2_package_pure_cpu.py": "75bcdd36913e1db4b84206359f8b22f082d0185a0c769454e3ae29f6f0da8398",
+    "reports/V9-S2-K1/run_mutations.py": "86cfbe93e7e07a0e780029512a3a878fb494ddfbff9ba7370c81db1e3a9905bc",
+    "reports/V9-S2-K1/REPORT.md": "83019c82fda3c3d0bd12a6fc15d19df94ec912fcece34566e5e61edb03498db1",
+    "reports/V9-S2-K1/metrics.json": "9453fb591dcb7ed0dea117e947a469360077d2407bc91a2288efcf8d6e42dd9b"
+  },
+  "paper_sigreg_check": {
+    "paper": "arXiv 2511.08544 §3.2 (LeJEPA)",
+    "projection_direction_distribution": "consistent (uniform S^{D-1} via standard normal normalized by Euclidean norm)",
+    "epps_pulley_statistic": "consistent (empirical CF diff against standard normal CF, quadrature over knots)",
+    "weight_function": "consistent (Gaussian window exp(-0.5 * t^2))",
+    "quadrature_knots": "consistent (17 knots in [0.2, 4.0] with trapezoidal weights)",
+    "normalization": "consistent (unit directions, N sample averaging, trapz dt, M direction expectation)",
+    "cc_by_nc_code_copying": "none (pure mathematical NumPy implementation, clean canonical naming)"
+  },
+  "hand_calculations": {
+    "example_1": {
+      "desc": "Forward -> Left 90 deg -> Forward -> Right 45 deg -> Forward",
+      "hand_dx": 1.7071067811865475,
+      "hand_dy": 1.7071067811865475,
+      "hand_dpsi": 0.7853981633974483,
+      "hand_dt": 5.0,
+      "code_dx_diff": 0.0,
+      "code_dy_diff": 0.0,
+      "code_dpsi_diff": 0.0,
+      "passed": true
+    },
+    "example_2": {
+      "desc": "Irregular dt with simultaneous translation and rotation",
+      "hand_dx": -2.531088913245535,
+      "hand_dy": 3.1160254037844384,
+      "hand_dpsi": 2.0943951023931953,
+      "hand_dt": 4.5,
+      "code_dx_diff": 4.440892098500626e-16,
+      "code_dy_diff": 8.881784197001252e-16,
+      "code_dpsi_diff": 4.440892098500626e-16,
+      "passed": true
+    }
+  },
+  "reviewer_mutations": {
+    "REV-M1": {
+      "desc": "Continuous Gaussian NLL: 漏掉对数归一化项 (0.5 * log(2*pi*var))",
+      "target_test": "tests/v9/experiments/test_s2_core_math.py::test_inverse_dynamics_loss_continuous_gaussian_nll",
+      "passed_before_mutation": true,
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "REV-M2": {
+      "desc": "多步自回归滚动：状态不向前传递 (z_curr 保持 z0，退化为开环单步)",
+      "target_test": "tests/v9/experiments/test_s2_core_math.py::test_multistep_rollout_loss_autoregressive_chaining",
+      "passed_before_mutation": true,
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "REV-M3": {
+      "desc": "软目标交叉熵：丢失负号 (导致损失为负值)",
+      "target_test": "tests/v9/experiments/test_s2_core_math.py::test_inverse_dynamics_loss_soft_cross_entropy",
+      "passed_before_mutation": true,
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    },
+    "REV-M4": {
+      "desc": "SIGReg: 随机投影方向不做单位模长归一化 (dirs = raw_dirs)",
+      "target_test": "tests/v9/experiments/test_s2_core_math.py::test_sigreg_isotropic_vs_degenerates_sample_size_derived_threshold",
+      "passed_before_mutation": true,
+      "turned_red": true,
+      "exit_code": 1,
+      "restored_verified": true
+    }
+  },
+  "test_counts": {
+    "p111_new_tests_count": 14,
+    "p111_tests_passed": 14,
+    "p111_tests_failed": 0,
+    "baseline_collected": 3455,
+    "p111_collected_net_added": 14,
+    "total_collected_baseline_plus_p111": 3469,
+    "current_repo_total_collected": 3476,
+    "deselected": 6
+  }
+}

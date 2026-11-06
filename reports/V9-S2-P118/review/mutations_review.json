@@ -1,0 +1,52 @@
+[
+  {
+    "id": "REV-M1",
+    "name": "hierarchical_cem_bypasses_goal_embedding",
+    "desc": "Hierarchical CEM bypasses counter.goal_embedding and calls encode(goal_obs) directly each decision",
+    "expected_fail_test": "test_goal_embedding_cached_across_decisions_in_episode",
+    "returncode": 0,
+    "is_red": false,
+    "stdout": ".                                                                        [100%]\n1 passed in 0.67s",
+    "sha_restored": true
+  },
+  {
+    "id": "REV-M2",
+    "name": "counter_reset_clears_goal_cache",
+    "desc": "ForwardCounter.reset() errantly clears episode goal cache, forcing re-encoding every decision",
+    "expected_fail_test": "test_goal_embedding_cached_across_decisions_in_episode",
+    "returncode": 1,
+    "is_red": true,
+    "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n____________ test_goal_embedding_cached_across_decisions_in_episode ____________\n\n    def test_goal_embedding_cached_across_decisions_in_ep",
+    "sha_restored": true
+  },
+  {
+    "id": "REV-M3",
+    "name": "goal_sha_hardcoded_constant",
+    "desc": "goal_embedding hashes to a constant string, preventing detection of goal changes in the same episode",
+    "expected_fail_test": "test_goal_embedding_changed_goal_in_same_episode_raises",
+    "returncode": 1,
+    "is_red": true,
+    "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n___________ test_goal_embedding_changed_goal_in_same_episode_raises ____________\n\n    def test_goal_embedding_changed_goal_in_same_episode_",
+    "sha_restored": true
+  },
+  {
+    "id": "REV-M4",
+    "name": "flat_cem_bypasses_goal_embedding",
+    "desc": "Flat CEM bypasses counter.goal_embedding and calls encode(goal_obs) directly each decision",
+    "expected_fail_test": "test_goal_embedding_cached_across_decisions_in_episode",
+    "returncode": 1,
+    "is_red": true,
+    "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n____________ test_goal_embedding_cached_across_decisions_in_episode ____________\n\n    def test_goal_embedding_cached_across_decisions_in_ep",
+    "sha_restored": true
+  },
+  {
+    "id": "REV-M5",
+    "name": "goal_embedding_unwrapped_call_bypasses_charge",
+    "desc": "goal_embedding unwraps encode on first call to bypass the initial count charge",
+    "expected_fail_test": "test_goal_embedding_cached_across_decisions_in_episode",
+    "returncode": 1,
+    "is_red": true,
+    "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n____________ test_goal_embedding_cached_across_decisions_in_episode ____________\n\n    def test_goal_embedding_cached_across_decisions_in_ep",
+    "sha_restored": true
+  }
+]
