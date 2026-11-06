@@ -2406,3 +2406,21 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
   - stat 对比实盘 116,401 项，只有 S1 账本 `-shm` 的 mtime 变化，来自冻结源码 `worker.canonical_ledger_state()` 的只读打开（PLAN §6 第 5 项，未处理）；
   - E1 冻结件 SHA 一致，A2 基线 497/497 完好。
 - **仍待一级：** PLAN §6 第 5 项（E1/S1 测试写死 `REGISTERED_HOST_ROOT`）、第 6 项（A2 基线刷新）、根目录 `probe.py` 的去留。
+
+## R20261106-S2-design-r0：E1 收口后的下一步——S2 设计稿与派发（一级 claude，2026-11-06）
+
+- **用户指示（原话）：** 「继续啊 不要停止 一直跑 不重要任务直接派发gemeni」。
+- **S2 设计稿 r0：** `reports/V9-S2-DESIGN/DESIGN-r0.md`，对应草稿卡 `ainerzero.V9.P3`。只是设计，不授权训练、批量数据或下载。
+  - 三臂：flat RSSM、flat JEPA、两层 H-JEPA 式；臂 D（多频更新）为探索臂，可砍。
+  - 主指标：长时域规划成功率，在规划前向数相同（±5%）的条件下比较；长时域预测非劣与 M2 不变差作为附加门。
+  - 已写入 E1 教训：多步目标、dev 至多用两次、分区单独生成、日历窗口与实际用时分开。
+  - 预算包络 ≤ 8 h，待用户批准。
+- **已放卡（均为只读或只改测试与新文件，派给 gemini）：**
+  - `V9.P109`：S2 可行性盘点；
+  - `V9.P110`：设计稿非作者审；
+  - `V9.A15`/`A16`：A2 基线 r4，r3 一个字节不改；
+  - `V9.A17`/`A18`：E1/S1 测试封闭，只改 `tests/`；
+  - relay `P2.S24`/`S27`：会话指纹与别名组。
+- **不放：** forge L.C9。素材库文档 §10 写明「首批之后的下载预算」由用户决定。
+- **待用户：** `reports/coordination/PENDING-USER-20261106.md`。
+- **处理 PLAN §6 遗留：** 根目录 `probe.py`（10-23 的 S1 身份篡改探针草稿，缺 import，无任何报告引用）原样移到 `reports/test-hygiene-20261106/stray/probe.py`，不删除。
