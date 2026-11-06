@@ -5,6 +5,6 @@
   - `tests/v9/experiments/test_s2_{data,planner,world}.py`。
 - **11:50–11:51**：P111（gemini-8m4d）在原路径新建 s2 目录，写入 core_math.py 和 __init__.py。
 - **11:51**：P116 的复核者（composer-1998）发现文件消失，提问。
-- **12:3x**：一级 claude 把文件逐个挪回原位，冲突检查为零。P112 的 __init__ 空壳不挪回，由 P111 的版本取代，空壳原件存档为 `p112-shell-__init__.py`。暂存目录已清空，A19 的 finally 会跳过还原，不会嵌套成 s2/s2。
+- **11:52:44**（本机时钟；早先通知里写的「12:3x」有误）：一级 claude 把文件逐个挪回原位，冲突检查为零。P112 的 __init__ 空壳不挪回，由 P111 的版本取代，空壳原件存档为 `p112-shell-__init__.py`。暂存目录已清空，A19 的 finally 会跳过还原，不会嵌套成 s2/s2。
 - **SHA**：挪回前见 `stash-sha256-before-restore.txt`，挪回后见 `restored-sha256.txt`。planner.py 与 fwd_counter.py 与 `reports/V9-S2-K3/sha256.json` 一致。
 - **处理**：A19 收到 change_request，禁止移动文件范围以外的文件，基线一律在隔离副本中跑。
