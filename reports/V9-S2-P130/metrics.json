@@ -1,0 +1,42 @@
+{
+  "task_id": "ainerzero.V9.P130",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-w4x2",
+  "target_test": "tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible",
+  "perturbation_assertions": {
+    "perturb_start_step": 20,
+    "perturb_action_count": 5,
+    "planner_resumption_step": 25,
+    "seed_reproducibility": "bit-for-bit",
+    "non_perturb_zero_perturb_actions": true
+  },
+  "mutations": {
+    "P130-M1": {
+      "name": "perturb_count_one",
+      "desc": "Perturbation action count set to 1 instead of 5 (reproducing P123 REV-M4)",
+      "target_test": "tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    },
+    "P130-M2": {
+      "name": "perturb_start_step_10",
+      "desc": "Perturbation trigger step changed from step 20 to step 10",
+      "target_test": "tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible",
+      "status": "KILLED",
+      "exit_code": 1,
+      "restored_sha_verified": true
+    }
+  },
+  "tests": {
+    "s2_eval_tests_passed": 6,
+    "s2_eval_tests_failed": 0,
+    "full_pure_cpu_suite_passed": 3516,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0
+  },
+  "src_modified": false,
+  "zero_mlx_imported": true
+}

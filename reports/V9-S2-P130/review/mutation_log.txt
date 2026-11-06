@@ -1,0 +1,186 @@
+=== REV-M1: perturb_count_four ===
+Description: Perturbation action count mutated to 4 instead of 5
+Status: KILLED (returncode=1)
+Failure excerpt: ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible FAILED [100%] | assert res1.perturb_applied is True, "Perturbation flag was not applied" | assert res1.steps
+Output snippet:
+, got {res1.actions_taken[20:25]}"
+        )
+E       AssertionError: Expected perturb actions [2, 3, 3, 2, 2], got [2, 3, 3, 2, 1]
+E       assert [2, 3, 3, 2, 1] == [2, 3, 3, 2, 2]
+E         
+E         At index 4 diff: 1 != 2
+E         
+E         Full diff:
+E           [
+E               2,
+E               3,
+E               3,
+E               2,
+E         -     2,
+E         ?     ^
+E         +     1,
+E         ?     ^
+E           ]
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py:183: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible - AssertionError: Expected perturb actions [2, 3, 3, 2, 2], got [2, 3, 3, 2, 1]
+assert [2, 3, 3, 2, 1] == [2, 3, 3, 2, 2]
+  
+  At index 4 diff: 1 != 2
+  
+  Full diff:
+    [
+        2,
+        3,
+        3,
+        2,
+  -     2,
+  ?     ^
+  +     1,
+  ?     ^
+    ]
+======================= 1 failed, 5 deselected in 1.33s ========================
+
+
+
+=== REV-M2: perturb_start_step_21 ===
+Description: Perturbation trigger step changed from step 20 to step 21
+Status: KILLED (returncode=1)
+Failure excerpt: ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible FAILED [100%] | assert res1.perturb_applied is True, "Perturbation flag was not applied" | assert res1.steps
+Output snippet:
+   f"Expected perturb actions {expected_perturb_actions}, got {res1.actions_taken[20:25]}"
+        )
+E       AssertionError: Expected perturb actions [2, 3, 3, 2, 2], got [1, 2, 3, 3, 2]
+E       assert [1, 2, 3, 3, 2] == [2, 3, 3, 2, 2]
+E         
+E         At index 0 diff: 1 != 2
+E         
+E         Full diff:
+E           [
+E         +     1,
+E               2,
+E               3,
+E               3,
+E               2,
+E         -     2,
+E           ]
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py:183: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible - AssertionError: Expected perturb actions [2, 3, 3, 2, 2], got [1, 2, 3, 3, 2]
+assert [1, 2, 3, 3, 2] == [2, 3, 3, 2, 2]
+  
+  At index 0 diff: 1 != 2
+  
+  Full diff:
+    [
+  +     1,
+        2,
+        3,
+        3,
+        2,
+  -     2,
+    ]
+======================= 1 failed, 5 deselected in 1.39s ========================
+
+
+
+=== REV-M3: perturb_count_six ===
+Description: Perturbation action count mutated to 6 instead of 5
+Status: KILLED (returncode=1)
+Failure excerpt: ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible FAILED [100%] | assert res1.perturb_applied is True, "Perturbation flag was not applied" | assert res1.steps
+Output snippet:
+ON_TURN_RIGHT, ACTION_WAIT, ACTION_WAIT], (
+            f"Expected planner signature at steps 25..28, got {res1.actions_taken[25:29]}"
+        )
+E       AssertionError: Expected planner signature at steps 25..28, got [2, 1, 2, 3]
+E       assert [2, 1, 2, 3] == [1, 2, 3, 3]
+E         
+E         At index 0 diff: 2 != 1
+E         
+E         Full diff:
+E           [
+E         +     2,
+E               1,
+E               2,
+E               3,
+E         -     3,
+E           ]
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py:188: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible - AssertionError: Expected planner signature at steps 25..28, got [2, 1, 2, 3]
+assert [2, 1, 2, 3] == [1, 2, 3, 3]
+  
+  At index 0 diff: 2 != 1
+  
+  Full diff:
+    [
+  +     2,
+        1,
+        2,
+        3,
+  -     3,
+    ]
+======================= 1 failed, 5 deselected in 1.27s ========================
+
+
+
+=== REV-M4: perturb_fixed_action ===
+Description: Perturbation random actions replaced with constant ACTION_FORWARD
+Status: KILLED (returncode=1)
+Failure excerpt: ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible FAILED [100%] | assert res1.perturb_applied is True, "Perturbation flag was not applied" | assert res1.steps
+Output snippet:
+^
+E         -     3,
+E         ?     ^
+E         +     0,
+E         ?     ^
+E         -     3,
+E         ?     ^
+E         +     0,
+E         ?     ^
+E         -     2,
+E         ?     ^
+E         +     0,
+E         ?     ^
+E         -     2,
+E         ?     ^
+E         +     0,
+E         ?     ^
+E           ]
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py:183: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p131_rev_mut_exigd1kc/sandbox/tests/v9/experiments/test_s2_eval.py::test_perturb_inserts_at_step_20_and_is_reproducible - AssertionError: Expected perturb actions [2, 3, 3, 2, 2], got [0, 0, 0, 0, 0]
+assert [0, 0, 0, 0, 0] == [2, 3, 3, 2, 2]
+  
+  At index 0 diff: 0 != 2
+  
+  Full diff:
+    [
+  -     2,
+  ?     ^
+  +     0,
+  ?     ^
+  -     3,
+  ?     ^
+  +     0,
+  ?     ^
+  -     3,
+  ?     ^
+  +     0,
+  ?     ^
+  -     2,
+  ?     ^
+  +     0,
+  ?     ^
+  -     2,
+  ?     ^
+  +     0,
+  ?     ^
+    ]
+======================= 1 failed, 5 deselected in 1.40s ========================
+
+

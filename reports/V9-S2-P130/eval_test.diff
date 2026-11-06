@@ -1,0 +1,149 @@
+--- a/tests/v9/experiments/test_s2_eval.py
++++ b/tests/v9/experiments/test_s2_eval.py
+@@ -21,7 +21,10 @@
+ )
+ from ainerzero.v9.experiments.s2.fwd_counter import ForwardBudgetExceeded, ForwardCounter
+ from ainerzero.v9.experiments.s2.world import (
++    ACTIONS,
+     ACTION_FORWARD,
++    ACTION_TURN_LEFT,
++    ACTION_TURN_RIGHT,
+     ACTION_WAIT,
+     EAST,
+     NORTH,
+@@ -118,7 +121,95 @@
+     assert not res_random.success, "Random planner unexpectedly solved long goal"
+ 
+ 
+-def test_perturb_inserts_at_step_20_and_is_reproducible() -> None:
+    """Perturbation inserts 5 random actions at step 20; identical seed produces bit-for-bit output.
+
+    Catches mutation P122-M2 (perturbation disabled / not inserted).
+    """
+    layout = _get_test_layout(seed=404)
+    rng = random.Random(88)
+
+    start, goal, goal_obs, stats = sample_start_goal_pair(
+        layout, rng, kind="long", max_pair_attempts=100
+    )
+    spec = {
+        "start": truth(start),
+        "goal": truth(goal),
+        "goal_obs": goal_obs,
+        "bfs_distance": stats["bfs_distance"],
+        "perturb": True,
+        "perturb_spec": {"at_step": 20, "n_random_actions": 5},
+    }
+
+    def dummy_planner(obs: Any, goal_obs: Any, **kwargs: Any) -> list[int]:
+        # Return WAIT actions so agent stays put except for perturbation
+        return [ACTION_WAIT] * 4
+
+    # Run twice with the exact same seed
+    res1 = run_episode(
+        layout, spec, dummy_planner, counter=None, rng=54321, dt_mode="regular", m=4
+    )
+    res2 = run_episode(
+        layout, spec, dummy_planner, counter=None, rng=54321, dt_mode="regular", m=4
+    )
+
+    # Verification: perturbation must be recorded and active
+    assert res1.perturb_applied is True, "Perturbation flag was not applied"
+    assert res1.steps_used >= 25, f"Expected >= 25 steps, got {res1.steps_used}"
+
+    # Reproducibility: bit-for-bit match
+    assert res1.actions_taken == res2.actions_taken
+    assert res1.trajectory == res2.trajectory
+    assert res1.steps_used == res2.steps_used
++def test_perturb_inserts_at_step_20_and_is_reproducible() -> None:
++    """Perturbation inserts exactly 5 random actions at step 20; planner resumes control at step 25;
++    identical seed produces bit-for-bit output; and non-perturb episodes contain zero perturbation actions.
++
++    Catches mutation P122-M2, P123 REV-M4 (perturb action count != 5), and perturb offset tampering.
++    """
++    layout = _get_test_layout(seed=404)
++    rng = random.Random(88)
++
++    start, goal, goal_obs, stats = sample_start_goal_pair(
++        layout, rng, kind="long", max_pair_attempts=100
++    )
++    spec = {
++        "start": truth(start),
++        "goal": truth(goal),
++        "goal_obs": goal_obs,
++        "bfs_distance": stats["bfs_distance"],
++        "perturb": True,
++        "perturb_spec": {"at_step": 20, "n_random_actions": 5},
++    }
++
++    class TrackingPlanner:
++        def __init__(self) -> None:
++            self.call_history: list[int] = []
++
++        def __call__(self, obs: Any, goal_obs: Any, **kwargs: Any) -> list[int]:
++            call_id = len(self.call_history)
++            self.call_history.append(call_id)
++            # Decisions 0..4 (steps 0..19): return WAIT actions
++            # Decision 5 (at resumption after perturbation, step 25): return distinctive signature
++            if call_id < 5:
++                return [ACTION_WAIT] * 4
++            elif call_id == 5:
++                return [ACTION_TURN_LEFT, ACTION_TURN_RIGHT, ACTION_WAIT, ACTION_WAIT]
++            return [ACTION_WAIT] * 4
++
++    # Run twice with the exact same seed
++    p1 = TrackingPlanner()
++    res1 = run_episode(
++        layout, spec, p1, counter=None, rng=54321, dt_mode="regular", m=4
++    )
++    p2 = TrackingPlanner()
++    res2 = run_episode(
++        layout, spec, p2, counter=None, rng=54321, dt_mode="regular", m=4
++    )
++
++    # Verification 1: Perturbation must be recorded and active
++    assert res1.perturb_applied is True, "Perturbation flag was not applied"
++    assert res1.steps_used >= 25, f"Expected >= 25 steps, got {res1.steps_used}"
++
++    # Verification 2: Actions before step 20 come from planner (decisions 0..4, all ACTION_WAIT)
++    assert res1.actions_taken[0:20] == [ACTION_WAIT] * 20, (
++        f"Expected 20 initial planner actions, got {res1.actions_taken[0:20]}"
++    )
++
++    # Verification 3: From step 20, exactly 5 actions come from perturb rng
++    expected_perturb_rng = random.Random(54321 + 99991)
++    expected_perturb_actions = [expected_perturb_rng.choice(ACTIONS) for _ in range(5)]
++    assert len(expected_perturb_actions) == 5
++    assert res1.actions_taken[20:25] == expected_perturb_actions, (
++        f"Expected perturb actions {expected_perturb_actions}, got {res1.actions_taken[20:25]}"
++    )
++
++    # Verification 4: Control returns to planner at step 25 (Decision 5 executed at steps 25..28)
++    assert res1.actions_taken[25:29] == [ACTION_TURN_LEFT, ACTION_TURN_RIGHT, ACTION_WAIT, ACTION_WAIT], (
++        f"Expected planner signature at steps 25..28, got {res1.actions_taken[25:29]}"
++    )
++
++    # Verification 5: Bit-for-bit reproducibility
++    assert res1.actions_taken == res2.actions_taken
++    assert res1.trajectory == res2.trajectory
++    assert res1.steps_used == res2.steps_used
++
++    # Verification 6: Non-perturb episode check - zero perturbation actions inserted
++    spec_no_perturb = dict(spec, perturb=False)
++    p_no = TrackingPlanner()
++    res_no = run_episode(
++        layout, spec_no_perturb, p_no, counter=None, rng=54321, dt_mode="regular", m=4
++    )
++    assert res_no.perturb_applied is False, "Non-perturb episode had perturb_applied=True"
++    # In non-perturb episode, decision 5 occurs at step 20 rather than step 25
++    assert res_no.actions_taken[20:24] == [ACTION_TURN_LEFT, ACTION_TURN_RIGHT, ACTION_WAIT, ACTION_WAIT], (
++        "Non-perturb episode did not execute decision 5 at step 20"
++    )
++    assert res_no.actions_taken[20:25] != expected_perturb_actions, (
++        "Non-perturb episode unexpectedly contained perturbation actions"
++    )
++
++
+ def test_success_does_not_require_heading_match() -> None:
+     """Primary success metric requires arriving at goal cell within L steps; heading not required.
+ 
