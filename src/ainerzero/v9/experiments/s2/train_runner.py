@@ -338,6 +338,7 @@ def run_train_cell(
     ledger: S2Ledger | None = None,
     run_id: str | None = None,
     ledger_path: str | Path | None = None,
+    **kwargs: Any,
 ) -> dict[str, Any]:
     """Train one (arm, seed) cell; select checkpoint by train-holdout rollout error.
 

@@ -1,0 +1,57 @@
+{
+  "sandbox_path": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/w3_verify_sandbox_mpwwwqos",
+  "import_resolved": "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/w3_verify_sandbox_mpwwwqos/src/ainerzero/v9/experiments/s2/eval_runner.py",
+  "sha256_verified": true,
+  "baseline": {
+    "exit_code": 0,
+    "output": "5 passed in 11.44s"
+  },
+  "mutations": {
+    "M1_collusion_gate_off": {
+      "target": "collusion = bool(drop < subgoal_drop_threshold)",
+      "replacement": "collusion = False",
+      "test_target": "test_s2_eval_runner.py::test_c_arm_collusion_detected_and_dev_refused & test_s2_production_e2e.py::test_production_e2e_blocks_colluding_c_arm",
+      "exit_code": 1,
+      "output_eval_runner": "1 failed in 7.48s",
+      "output_e2e": "1 failed in 14.91s",
+      "turned_red": true
+    },
+    "M2_sensitivity_gate_off": {
+      "target": "if sens < sensitivity_threshold: unplannable_arms.append(arm_name)",
+      "replacement": "if False: unplannable_arms.append(arm_name)",
+      "test_target": "test_s2_eval_runner.py::test_unplannable_arm_fails_gate_and_dev_refused & test_s2_production_e2e.py::test_production_e2e_blocks_unplannable_arm",
+      "exit_code": 1,
+      "output_eval_runner": "1 failed in 0.72s",
+      "output_e2e": "1 failed in 14.92s",
+      "turned_red": true
+    },
+    "M3_default_plan_choice_back": {
+      "target": "raise ValueError(f\"frozen plan config has no plan_choice for arm {arm_name!r}\")",
+      "replacement": "return {\"H\": 32}",
+      "test_target": "test_s2_eval_runner.py::test_missing_frozen_plan_choice_is_refused_not_defaulted",
+      "exit_code": 1,
+      "output_eval_runner": "1 failed in 0.68s",
+      "turned_red": true
+    },
+    "M4_c_choice_default_back": {
+      "target": "if c_cfg_info is None: raise ValueError(...)",
+      "replacement": "if c_cfg_info is None: c_cfg_info = {\"plan_choice\": ...}",
+      "test_target": "test_s2_eval_runner.py::test_c_negative_control_refuses_without_c_plan_choice",
+      "exit_code": 1,
+      "output_eval_runner": "1 failed in 1.05s",
+      "turned_red": true
+    },
+    "M5_baseline_rationality_gate_off": {
+      "target": "base_passed = bool(p_min <= max_ab <= p_max)",
+      "replacement": "base_passed = True",
+      "test_target": "test_s2_eval_runner.py::test_baseline_rationality_gate_out_of_range",
+      "exit_code": 1,
+      "output_eval_runner": "1 failed in 3.40s",
+      "turned_red": true
+    }
+  },
+  "restored": {
+    "exit_code": 0,
+    "output": "5 passed in 10.02s"
+  }
+}

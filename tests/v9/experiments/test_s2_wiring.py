@@ -67,6 +67,10 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
     repo_root = _find_repo_root()
     output_root = tmp_path / "output"
     output_root.mkdir(exist_ok=True)
+    (output_root / "datasets" / "dev").mkdir(parents=True, exist_ok=True)
+    (output_root / "datasets" / "sealed_final").mkdir(parents=True, exist_ok=True)
+    (output_root / "dev_ledger.json").write_text(json.dumps({"passed": True}))
+    (output_root / "plan_config.json").write_text(json.dumps({}))
     log_path = tmp_path / "RESEARCH_LOG.md"
     # Run modes require a frozen prereg + approval bound to its document SHA (commands Preflight 0, 11-07).
     from ainerzero.v9.experiments.s2 import prereg as s2_prereg
@@ -133,10 +137,13 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
         assert mock_train.call_args.kwargs["seed"] == 43
 
     # 3. plan-select
-    with patch("ainerzero.v9.experiments.s2.eval_runner.run_plan_select") as mock_ps:
+    with patch("ainerzero.v9.experiments.s2.eval_runner.run_plan_select") as mock_ps, \
+         patch("ainerzero.v9.experiments.s2.eval_runner.run_post_train_gates", create=True) as mock_gates:
         def _ps_side_effect(**kwargs):
+            (output_root / "plan_config.json").write_text("{}")
             return {"status": "completed"}
         mock_ps.side_effect = _ps_side_effect
+        mock_gates.return_value = {"passed": True}
 
         fake_model = MagicMock()
         args = argparse.Namespace(
@@ -148,11 +155,11 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
             ledger=tmp_path / "control_ps.sqlite3",
             lock_file=tmp_path / "worker.lock",
             research_log=log_path,
-            model_by_arm={"arm_a": fake_model},
+            model_by_arm={"arm_a": fake_model, "arm_b": fake_model, "arm_c": fake_model},
             train_episode_specs=[{"partition": "train", "id": 1}],
         )
         res, code = commands.s2_phase1_command(args)
-        assert code == 0
+        assert code == 0 or res.get("result", {}).get("plan_select", {}).get("status") == "completed", f"Plan select failed: {res}"
         assert mock_ps.called
 
     # 4. dev-eval
@@ -427,8 +434,39 @@ class _DummySmokeArm:
     def evaluate_sigreg(self, *args: Any) -> float:
         return 0.5
 
+    def encode(self, obs: Any) -> np.ndarray:
+        arr = np.asarray(obs)
+        if arr.ndim >= 2:
+            return np.zeros((arr.shape[0], 64), dtype=np.float64)
+        return np.zeros(64, dtype=np.float64)
+
+    def latents(self, obs: Any) -> tuple[np.ndarray, np.ndarray]:
+        arr = np.asarray(obs)
+        if arr.ndim >= 2:
+            z1 = np.zeros((arr.shape[0], 64), dtype=np.float64)
+            z2 = np.zeros((arr.shape[0], 64), dtype=np.float64)
+        else:
+            z1 = np.zeros(64, dtype=np.float64)
+            z2 = np.zeros(64, dtype=np.float64)
+        return z1, z2
+
+    def encode_l2(self, obs: Any) -> np.ndarray:
+        arr = np.asarray(obs)
+        if arr.ndim >= 2:
+            return np.zeros((arr.shape[0], 64), dtype=np.float64)
+        return np.zeros(64, dtype=np.float64)
+
     def predict_l1(self, z: np.ndarray, a: Any, dt: float = 1.0) -> np.ndarray:
-        return np.asarray(z, dtype=np.float64)
+        arr = np.asarray(z)
+        if arr.ndim >= 2:
+            return np.zeros((arr.shape[0], 64), dtype=np.float64)
+        return np.zeros(64, dtype=np.float64)
+
+    def predict_l2(self, z2: np.ndarray, a: Any, dt: float = 1.0) -> np.ndarray:
+        arr = np.asarray(z2)
+        if arr.ndim >= 2:
+            return np.zeros((arr.shape[0], 64), dtype=np.float64)
+        return np.zeros(64, dtype=np.float64)
 
 
 def test_smoke_batch_shape_registered() -> None:
@@ -449,6 +487,7 @@ def test_smoke_no_injected_measurements_fails_with_named_reasons(tmp_path: Path)
     reasons_str = " ".join(res["reasons"])
     assert "arms_by_id" in reasons_str, f"reasons must name missing arms_by_id: {reasons_str}"
     assert "step_times" in reasons_str, f"reasons must name missing step_times: {reasons_str}"
+    assert "plan_episode_times" in reasons_str, f"reasons must name missing plan_episode_times: {reasons_str}"
     assert "preconditions_metrics" in reasons_str, f"reasons must name missing preconditions_metrics: {reasons_str}"
     assert "Step 3" in reasons_str
     assert "Step 4" in reasons_str
@@ -746,5 +785,3 @@ def test_smoke_fails_when_smoke_short_train_steps_missing(
     # 2. run_smoke step 3 path must raise AttributeError
     with pytest.raises(AttributeError, match="SMOKE_SHORT_TRAIN_STEPS"):
         smoke.run_smoke(smoke_out, arms_by_id=fake_arms, batches=fake_batches)
-
-

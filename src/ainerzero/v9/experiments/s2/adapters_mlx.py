@@ -630,7 +630,8 @@ def load_trained_model(
     arm: str,
     seed: int,
     *,
-    ledger_path: Path | str,
+    ledger_path: Path | str | None = None,
+    ledger: Any = None,
     model_factory: Callable[[str], Any] | None = None,
 ) -> Any:
     """Load the best checkpoint of (arm, seed) after verifying its sha against the ledger.
@@ -641,7 +642,13 @@ def load_trained_model(
     ckpt = checkpoint_path(output_root, arm, seed)
     if not ckpt.is_file():
         raise FileNotFoundError(f"checkpoint missing: {ckpt}")
-    expected = ledger_checkpoint_sha(ledger_path, arm, seed)
+    lp = ledger_path or getattr(ledger, "db_path", None) or getattr(ledger, "path", None) or getattr(getattr(ledger, "store", None), "db_path", None)
+    if lp is None or not isinstance(lp, (str, Path)):
+        if isinstance(ledger, (str, Path)):
+            lp = ledger
+        else:
+            raise ValueError(f"ledger_path or ledger with valid db_path must be provided to verify checkpoint sha, got {ledger!r}")
+    expected = ledger_checkpoint_sha(lp, arm, seed)
     actual = _sha256_file(ckpt)
     if actual != expected:
         raise ValueError(f"checkpoint sha mismatch for {canonical_arm(arm)} seed={seed}: ledger {expected}, file {actual}")

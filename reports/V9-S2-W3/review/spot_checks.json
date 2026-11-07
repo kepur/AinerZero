@@ -1,0 +1,42 @@
+{
+  "checks": [
+    {
+      "id": 1,
+      "claim": "spec 追加 ACTION_SENSITIVITY_FLOOR = 0.05、SUBGOAL_DROP_FLOOR = 0.10、MAX_DEV_EVALS = 2。这三个值原先只以字面量写在 eval_runner 里，没有进预登记。",
+      "file": "src/ainerzero/v9/experiments/s2/spec.py",
+      "disk_evidence": [
+        "ACTION_SENSITIVITY_FLOOR: float = 0.05",
+        "SUBGOAL_DROP_FLOOR: float = 0.10",
+        "MAX_DEV_EVALS: int = 2"
+      ],
+      "prereg_evidence": "gates_doc validation in prereg.py lines 347-357",
+      "eval_runner_evidence": "eval_runner.py module aliases lines 38-40",
+      "verdict": "VERBATIM_CONFIRMED"
+    },
+    {
+      "id": 2,
+      "claim": "把唯一用到 MLX 的 SIGReg 对齐检查抽成 smoke.mlx_sigreg_alignment，在函数内部才导入 MLX，生产行为不变。",
+      "file": "src/ainerzero/v9/experiments/s2/smoke.py",
+      "disk_evidence": [
+        "def mlx_sigreg_alignment(Z_test: np.ndarray) -> float:",
+        "    import mlx.core as mx",
+        "    from ainerzero.v9.experiments.s2 import arms_mlx",
+        "    val = arms_mlx.compute_sigreg_mlx(mx.array(Z_test))",
+        "    return float(val.item() if hasattr(val, 'item') else val)"
+      ],
+      "verdict": "VERBATIM_CONFIRMED"
+    },
+    {
+      "id": 3,
+      "claim": "新增 _require_plan_choice，缺失即抛 ValueError... 由此暴露一个真 bug：训练后门中 C 臂模型的键是 arm_c/42，而 plan_config 按 arm_c 记录... 现已按去掉种子后缀的臂名查找。",
+      "file": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+      "disk_evidence": [
+        "def _require_plan_choice(arm_cfg: Any, arm_name: str) -> dict[str, Any]:",
+        "    raise ValueError(f\"frozen plan config has no plan_choice for arm {arm_name!r}\")",
+        "c_base_arm = str(c_arm_name).split(\"/\", 1)[0]",
+        "if c_cfg_info is None: raise ValueError(f\"C-arm negative control needs the plan-select choice for {c_arm_name!r}; none in plan_config\")"
+      ],
+      "verdict": "VERBATIM_CONFIRMED"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "mutations": [
+    {
+      "id": "W3-M1",
+      "name": "restore_fake_success_or_random_branch_in_planning",
+      "target_file": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+      "description": "Restore fake success return {'success': True} or random success in learned planning evaluation.",
+      "result": "RED",
+      "failing_test": "tests/v9/experiments/test_s2_eval_runner.py::test_dev_voids_when_forward_budget_exceeded",
+      "failure_signature": "AssertionError: expected voided comparisons when budget exceeded"
+    },
+    {
+      "id": "W3-M2",
+      "name": "plan_select_fallback_score_constant",
+      "target_file": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+      "description": "Fallback score returned as constant 0.5 in _score_config_on_train.",
+      "result": "RED",
+      "failing_test": "tests/v9/experiments/test_s2_eval_runner.py::test_plan_select_tie_break_smaller_compute",
+      "failure_signature": "assert 16 == 32 (score differentiation destroyed, tie-breaking fails)"
+    },
+    {
+      "id": "W3-M3",
+      "name": "dev_eval_single_seed_only",
+      "target_file": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+      "description": "Dev eval evaluates single seed seeds=(42,) instead of all 3 seeds (42, 43, 44).",
+      "result": "RED",
+      "failing_test": "tests/v9/experiments/test_s2_eval_runner.py::test_dev_eval_evaluates_all_seeds",
+      "failure_signature": "AssertionError: Dev eval must evaluate all 3 seeds (42, 43, 44), got {42}"
+    },
+    {
+      "id": "W3-M4",
+      "name": "bootstrap_resamples_reduced",
+      "target_file": "src/ainerzero/v9/experiments/s2/spec.py",
+      "description": "spec.BOOTSTRAP_RESAMPLES set to 200 instead of required 10,000.",
+      "result": "RED",
+      "failing_test": "tests/v9/experiments/test_s2_spec.py::test_spec_existing_prefix_byte_for_byte_unchanged, test_s2_prereg.py",
+      "failure_signature": "assert 200 == 10000 / PreregValidationError: bootstrap_resamples mismatch: expected 10000, got 200"
+    },
+    {
+      "id": "W3-M5",
+      "name": "baseline_rationality_gate_bypassed",
+      "target_file": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+      "description": "Disable or bypass baseline rationality gate max(A, B) in [0.10, 0.80] in post_train_gates.",
+      "result": "RED",
+      "failing_test": "tests/v9/experiments/test_s2_production_e2e.py::test_production_e2e_blocks_unplannable_arm",
+      "failure_signature": "Failed: DID NOT RAISE <class 'ainerzero.v9.experiments.s2.eval_runner.PostTrainGateRefused'>"
+    }
+  ],
+  "all_mutations_killed": true
+}

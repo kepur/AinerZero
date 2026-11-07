@@ -139,8 +139,14 @@ def check_cell_already_completed(
                 continue
             if cfg.get("mode") != mode:
                 continue
+            if mode == "dev-eval":
+                # dev-eval allows up to 2 calls governed by dev_ledger.json (§5, D4)
+                continue
             if mode == "generate-data":
-                return True
+                cell_part = cfg.get("partition") or cfg.get("arm")
+                if cell_part == arm:
+                    return True
+                continue
             if cfg.get("arm") == arm:
                 if seed is None or cfg.get("seed") == seed:
                     return True
