@@ -1,0 +1,50 @@
+{
+  "任务": "ainerzero.V9.P166",
+  "复核对象": "ainerzero.V9.P164",
+  "目标版本": "r2",
+  "目标作者": "claude",
+  "复核者": "gemini-v4n8",
+  "层级": 2,
+  "结论": "RECOMMEND_ACCEPT",
+  "范围审计合格": true,
+  "回退清零合格": true,
+  "生产链路状态": {
+    "状态": "fail_closed_refusal_pending_w3",
+    "commands调用点": [395, 412, 432],
+    "当前调用": "adapters_mlx.load_trained_models_for_planning(output_root)",
+    "新签名要求": "必须提供关键字参数 seed 与 ledger_path",
+    "当前行为": "抛出 TypeError（安全拒绝/拒绝执行，无静默回退）",
+    "后续接入任务": "W3 (ainerzero.V9.P168)",
+    "计数器状态": "无 act_counter，禁止带计数器模型进入"
+  },
+  "坏对照变异测试": {
+    "总数": 5,
+    "击杀数": 5,
+    "存活数": 0,
+    "击杀率": 1.0,
+    "还原SHA比对一致": true,
+    "变异结果": {
+      "W2r2-M1_真值参数泄漏": "KILLED (ret=1)",
+      "W2r2-M2_写死种群32": "KILLED (ret=1)",
+      "W2r2-M3_跳过SHA校验": "KILLED (ret=1)",
+      "W2r2-M4_默认配置回退": "KILLED (ret=1)",
+      "W2r2-M5_允许模型自带计数器": "KILLED (ret=1)"
+    }
+  },
+  "测试统计": {
+    "学习规划测试通过数": 39,
+    "原生MLX规划通过数": 1,
+    "原生MLX耗时秒": 6.47,
+    "纯CPU全量回归通过数": 3683,
+    "纯CPU全量回归跳过数": 6,
+    "纯CPU全量回归失败数": 0,
+    "纯CPU回归耗时秒": 300.18
+  },
+  "产物守卫审计": {
+    "扫描条目数": 84250,
+    "检查字段": ["mtime_ns", "ctime_ns", "size", "ino"],
+    "差异数": 0,
+    "完全只读": true
+  },
+  "逐字核对项数": 3
+}
