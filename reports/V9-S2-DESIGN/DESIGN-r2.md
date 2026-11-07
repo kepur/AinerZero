@@ -298,3 +298,26 @@
   - 不许向 runner 注入其他参数。
 - 另有 `--native-mlx` 选入的同一流程测试，用真实 MLX，在缩小规模下跑。
 - 坏对照要能抓到上面「发现的问题」里的每一项回退。
+
+### D3.1 CEM 参数由 N_fwd 推出的登记规则（一级 claude，2026-11-07 02:4x）
+
+§4 写的是「种群与迭代按 N_fwd 推出」，但一直没有登记具体规则。现在定如下，以下常量都追加写入 spec。全仓只有一个函数按这条规则生成配置，即 `learned_planning.cem_config_for_budget(arm_kind, plan_choice, n_fwd)`，learned 规划、oracle 熔断、smoke 计时三处都调用它。
+
+- **公共常量：**
+  - 迭代数 `CEM_N_ITERS = 4`，精英比例 `CEM_ELITE_FRAC = 0.1`；
+  - 每个决策执行 `m = spec` 中登记的重规划步数（4）；
+  - 为编码预留 `CEM_ENCODE_RESERVE = 8` 次计数（当前观察，加上本回合第一次目标编码，分层臂还有 E₂ 的两次）；
+  - 可用计数 `B = N_fwd − 8`；
+  - 期望步长 `E[k] = Σ k·p_k`，由 `spec.K_DISTRIBUTION` 算出，为 1.7。规划时第一步用真实的 k，其余步用 E[k]。
+- **flat（A、B）：**
+  - `plan_choice = {"H": h}`，h 取自登记的候选；
+  - 种群 `pop = ⌊B / (4 · h)⌋`。
+- **分层（C、D）：**
+  - `plan_choice = {"macro_horizon": M, "budget_ratio": ρ}`；
+  - 上层预算 `U = ⌊ρ · B⌋`，下层预算 `L = B − U`；
+  - 上层种群 `⌊U / (4 · M)⌋`，下层种群 `⌊L / (4 · (s₂ + 1))⌋`，其中 s₂ 取 `spec.S2_MACRO_STEPS`（8）。
+- **下限：** 任一种群 < 2 时报错，不截断，也不改用别的值。
+- **smoke 与 oracle 熔断的规划选择：** 取候选网格的中位，即 flat 的 H = 32；分层的 M = 6、ρ = 0.5。写入 spec，常量名为 `SMOKE_PLAN_CHOICE`。
+
+  已验收的 `smoke_checks.oracle_feasibility_with_s2_planner` 现在写死 H=10、pop=16、n_exec=2，须改为调用上面的函数（由 W4 改）。
+- **plan_config 必须给：** 不得在 plan_config 为 None 时回退到默认值。

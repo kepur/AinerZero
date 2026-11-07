@@ -60,3 +60,10 @@
 2. **子进程不受函数级守卫保护：** 测试启动的子 Python 不会加载 conftest。会话 stat 快照只能发现改动，发现不了只读打开或拿锁。只读打开 WAL 库会产生 `-shm`，因此只有在 `-shm` 原先不存在时才会被发现。
 3. `test_the_real_ledger_is_untouched_by_the_anchor_checks` 现在要 `copyfile` 实盘 S1 账本（只读），所以依赖实盘账本存在。可以接受，但应在用例内注明。
 4. `os.environ['PYTHONDONTWRITEBYTECODE']='1'` 全局设置：子进程继承这个变量，正是想要的效果（不让 `__pycache__` 落进暂存树或 artifacts）；全量全绿，可以接受。
+
+## 六、A22/A23 之后（一级 claude，2026-11-07 02:1x）
+- A22 已补上缺口 1 和 2：会话级强制有了自测，子进程通过 sitecustomize 注入守卫。A23 为非作者复核，3 处变异都变红；A22、A23 都已验收。
+- **已知限制（暂不处理）：** conftest 在导入时向 PYTHONPATH 注入守卫，`--native-mlx` 模式也照样注入。所以 native 模式下，子进程里的守卫仍然生效。
+  - native 模块里有 3 个会起子进程：`test_e1_calendar_window.py`、`test_e1_data_runner.py`、`test_e1_prereg.py`。E1 已收口，这几条不会再作为登记运行使用。
+  - S2 的 native 端到端测试在进程内调用 `cli.main`，不受影响。
+  - 以后若需要 native 子进程访问实盘，应在 `pytest_configure` 判断为 native 时，把注入项从 PYTHONPATH 中去掉。**不要**新增关闭守卫的环境变量。
