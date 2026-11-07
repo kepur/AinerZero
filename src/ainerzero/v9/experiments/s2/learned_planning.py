@@ -75,7 +75,7 @@ def cem_config_for_budget(
         raise ValueError(f"N_fwd={n_fwd} leaves no budget after encode reserve {spec.CEM_ENCODE_RESERVE}")
     n_iters = int(spec.CEM_N_ITERS)
     elite = float(spec.CEM_ELITE_FRAC)
-    n_exec = int(spec.REPLAN_M_STEPS)
+    n_exec = int(spec.PLAN_REPLAN_EVERY_OBS_STEPS)
     n_cat = int(spec.ACTION_DIM)
 
     if kind == "flat":
@@ -133,18 +133,34 @@ def cem_config_for_budget(
 
 
 def denormalize_macro(u: np.ndarray) -> np.ndarray:
-    """Map a CEM macro sample in [-1, 1]^7 to (dx, dy, dpsi, histogram[4])."""
-    u = np.clip(np.asarray(u, dtype=np.float64).reshape(-1), -1.0, 1.0)
-    if u.shape[0] != int(spec.MACRO_ACTION_DIM):
-        raise ValueError(f"macro sample dim {u.shape[0]} != MACRO_ACTION_DIM {spec.MACRO_ACTION_DIM}")
-    out = np.empty_like(u)
-    out[0] = u[0] * float(spec.MACRO_DXY_SCALE)
-    out[1] = u[1] * float(spec.MACRO_DXY_SCALE)
-    out[2] = u[2] * math.pi
-    hist = (u[3:] + 1.0) / 2.0
-    s = float(hist.sum())
-    out[3:] = hist / s if s > 0 else np.full(hist.shape, 1.0 / hist.shape[0])
-    return out
+    """Map CEM macro sample(s) in [-1, 1]^7 to (dx, dy, dpsi, histogram[4])."""
+    arr = np.clip(np.asarray(u, dtype=np.float64), -1.0, 1.0)
+    macro_dim = int(spec.MACRO_ACTION_DIM)
+    scale = float(spec.MACRO_DXY_SCALE)
+    if arr.ndim == 1:
+        if arr.shape[0] != macro_dim:
+            raise ValueError(f"macro sample dim {arr.shape[0]} != MACRO_ACTION_DIM {macro_dim}")
+        out = np.empty_like(arr)
+        out[0] = arr[0] * scale
+        out[1] = arr[1] * scale
+        out[2] = arr[2] * math.pi
+        hist = (arr[3:] + 1.0) / 2.0
+        s = float(hist.sum())
+        out[3:] = hist / s if s > 0 else np.full(hist.shape, 1.0 / hist.shape[0])
+        return out
+    elif arr.ndim == 2:
+        if arr.shape[1] != macro_dim:
+            raise ValueError(f"macro sample dim {arr.shape[1]} != MACRO_ACTION_DIM {macro_dim}")
+        out = np.empty_like(arr)
+        out[:, 0] = arr[:, 0] * scale
+        out[:, 1] = arr[:, 1] * scale
+        out[:, 2] = arr[:, 2] * math.pi
+        hist = (arr[:, 3:] + 1.0) / 2.0
+        s = hist.sum(axis=-1, keepdims=True)
+        out[:, 3:] = np.where(s > 0, hist / np.maximum(s, 1e-12), 1.0 / hist.shape[1])
+        return out
+    else:
+        raise ValueError(f"unsupported macro sample shape {arr.shape}")
 
 
 def featurize_obs(obs: Mapping[str, Any], k: int) -> np.ndarray:
@@ -224,7 +240,8 @@ def make_plan_fn(
         x_goal = featurize_goal(goal_obs)
 
         if kind == "flat":
-            # §4: flat arms (A and B) use the squared latent distance to the goal encoding.
+            dts = np.full(config.horizon, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
+            dts[0] = float(k)
             return planner.flat_cem_plan(
                 encode=enc,
                 predict_l1=p1,
@@ -233,7 +250,8 @@ def make_plan_fn(
                 config=config,
                 rng=rng,
                 counter=counter,
-                dts=_dts(k, config.horizon, e_k),
+                dts=dts,
+                cost_mode=spec.PLAN_COST_TRAJECTORY_SUM,
             )
 
         enc2 = counter.wrap("encode_l2", model.encode_l2)
@@ -244,8 +262,10 @@ def make_plan_fn(
 
         p2 = counter.wrap("predict_l2", _p2)
         s2 = int(config.s2)
-        macro_dts = np.full(config.macro_horizon, s2 * e_k, dtype=np.float64)
-        macro_dts[0] = float(k) + (s2 - 1) * e_k
+        macro_dts = np.full(config.macro_horizon, float(spec.PLAN_FUTURE_DT_L2), dtype=np.float64)
+        macro_dts[0] = float(k) + float(round((s2 - 1) * e_k))
+        raw_dts = np.full(s2, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
+        raw_dts[0] = float(k)
         return planner.hierarchical_cem_plan(
             encode=enc,
             predict_l1=p1,
@@ -257,7 +277,7 @@ def make_plan_fn(
             rng=rng,
             counter=counter,
             macro_dts=macro_dts,
-            raw_dts=_dts(k, s2, e_k),
+            raw_dts=raw_dts,
         )
 
     return plan_fn

@@ -32,6 +32,11 @@ from ainerzero.v9.experiments.s2 import param_count, spec
 from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
 
 
+def _to_np(arr: Any) -> np.ndarray:
+    """Convert an array-like (including mlx.core.array) to a float64 numpy array."""
+    return np.asarray(arr, dtype=np.float64)
+
+
 class _MLXProxy:
     def __getattr__(self, name: str) -> Any:
         import mlx.core as _real_mx
@@ -193,22 +198,42 @@ class MLXArmAAdapter:
         e1 = self.model.encode(obs)
         h0 = mx.zeros((self.model.dims["gru_hidden"],), dtype=mx.float32)
         mean, _ = self.model.posterior(h0, e1)
-        return np.asarray(mean, dtype=np.float64)
+        return _to_np(mean)
 
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+        z_arr = np.asarray(z, dtype=np.float64)
+        if z_arr.ndim == 1:
+            if self.counter is not None:
+                self.counter.charge("predict_l1", 1)
+            return _to_np(self.model.predict_l1(z, a, dt))
+        B = z_arr.shape[0]
         if self.counter is not None:
-            self.counter.charge("predict_l1", 1)
-        return self.model.predict_l1(z, a, dt)
+            self.counter.charge("predict_l1", B)
+        z_mlx = mx.array(z_arr, dtype=mx.float32)
+        a_raw = np.asarray(a)
+        if a_raw.ndim == 1 or (a_raw.ndim == 2 and a_raw.shape[-1] == 1):
+            idx = a_raw.reshape(-1).astype(np.int64)
+            a_onehot = np.zeros((B, spec.ACTION_DIM), dtype=np.float32)
+            a_onehot[np.arange(B), idx] = 1.0
+            a_mlx = mx.array(a_onehot)
+        else:
+            a_mlx = mx.array(a_raw, dtype=mx.float32)
+        dt_mlx = mx.full((B, 1), float(dt), dtype=mx.float32)
+        h_init = mx.zeros((B, self.model.dims["gru_hidden"]), dtype=mx.float32)
+        gru_in = mx.concatenate([z_mlx, a_mlx, dt_mlx], axis=-1)
+        h_next = self.model.gru(gru_in, h_init)
+        mean, _ = self.model.prior(h_next)
+        return _to_np(mean)
 
     def cost_fn(self, z_T: np.ndarray, goal_obs: np.ndarray) -> float:
         if self.counter is not None:
             self.counter.charge("decode", 1)
-        return self.model.planning_cost(z_T, goal_obs)
+        return float(self.model.planning_cost(z_T, goal_obs))
 
     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
         arr = mx.array(obs_seq, dtype=mx.float32)
         z = self.model.encode(arr)
-        return np.asarray(z, dtype=np.float64)
+        return _to_np(z)
 
 
 class MLXArmBAdapter:
@@ -319,19 +344,36 @@ class MLXArmBAdapter:
         if self.counter is not None:
             self.counter.charge("encode", 1)
         z = self.model.encode(obs)
-        return np.asarray(z, dtype=np.float64)
+        return _to_np(z)
 
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+        z_arr = np.asarray(z, dtype=np.float64)
+        if z_arr.ndim == 1:
+            if self.counter is not None:
+                self.counter.charge("predict_l1", 1)
+            return _to_np(self.model.predict_l1(z, a, dt))
+        B = z_arr.shape[0]
         if self.counter is not None:
-            self.counter.charge("predict_l1", 1)
-        return self.model.predict_l1(z, a, dt)
+            self.counter.charge("predict_l1", B)
+        z_mlx = mx.array(z_arr, dtype=mx.float32)
+        a_raw = np.asarray(a)
+        if a_raw.ndim == 1 or (a_raw.ndim == 2 and a_raw.shape[-1] == 1):
+            idx = a_raw.reshape(-1).astype(np.int64)
+            a_onehot = np.zeros((B, spec.ACTION_DIM), dtype=np.float32)
+            a_onehot[np.arange(B), idx] = 1.0
+            a_mlx = mx.array(a_onehot)
+        else:
+            a_mlx = mx.array(a_raw, dtype=mx.float32)
+        dt_mlx = mx.full((B, 1), float(dt), dtype=mx.float32)
+        z_next = self.model.predict_l1_step(z_mlx, a_mlx, dt_mlx)
+        return _to_np(z_next)
 
     cost_fn = None  # Uses default squared_distance in planner
 
     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
         arr = mx.array(obs_seq, dtype=mx.float32)
         z = self.model.encode(arr)
-        return np.asarray(z, dtype=np.float64)
+        return _to_np(z)
 
 
 class MLXArmCAdapter:
@@ -456,30 +498,64 @@ class MLXArmCAdapter:
         if self.counter is not None:
             self.counter.charge("encode", 1)
         z1 = self.model.encode(obs)
-        return np.asarray(z1, dtype=np.float64)
+        return _to_np(z1)
 
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+        z_arr = np.asarray(z, dtype=np.float64)
+        if z_arr.ndim == 1:
+            if self.counter is not None:
+                self.counter.charge("predict_l1", 1)
+            return _to_np(self.model.predict_l1(z, a, dt))
+        B = z_arr.shape[0]
         if self.counter is not None:
-            self.counter.charge("predict_l1", 1)
-        return self.model.predict_l1(z, a, dt)
+            self.counter.charge("predict_l1", B)
+        z_mlx = mx.array(z_arr, dtype=mx.float32)
+        a_raw = np.asarray(a)
+        if a_raw.ndim == 1 or (a_raw.ndim == 2 and a_raw.shape[-1] == 1):
+            idx = a_raw.reshape(-1).astype(np.int64)
+            a_onehot = np.zeros((B, spec.ACTION_DIM), dtype=np.float32)
+            a_onehot[np.arange(B), idx] = 1.0
+            a_mlx = mx.array(a_onehot)
+        else:
+            a_mlx = mx.array(a_raw, dtype=mx.float32)
+        dt_mlx = mx.full((B, 1), float(dt), dtype=mx.float32)
+        z_next = self.model.predict_l1_step(z_mlx, a_mlx, dt_mlx)
+        return _to_np(z_next)
 
     def encode_l2(self, z1: np.ndarray) -> np.ndarray:
+        z1_arr = np.asarray(z1, dtype=np.float64)
+        if z1_arr.ndim == 1:
+            if self.counter is not None:
+                self.counter.charge("encode_l2", 1)
+            return _to_np(self.model.encode_l2(z1))
+        B = z1_arr.shape[0]
         if self.counter is not None:
-            self.counter.charge("encode_l2", 1)
-        z2 = self.model.encode_l2(z1)
-        return np.asarray(z2, dtype=np.float64)
+            self.counter.charge("encode_l2", B)
+        z1_mlx = mx.array(z1_arr, dtype=mx.float32)
+        z2 = self.model.encode_l2(z1_mlx)
+        return _to_np(z2)
 
     def predict_l2(self, z2: np.ndarray, macro_a: np.ndarray, macro_dt: float = 1.0) -> np.ndarray:
+        z2_arr = np.asarray(z2, dtype=np.float64)
+        if z2_arr.ndim == 1:
+            if self.counter is not None:
+                self.counter.charge("predict_l2", 1)
+            return _to_np(self.model.predict_l2(z2, macro_a, macro_dt))
+        B = z2_arr.shape[0]
         if self.counter is not None:
-            self.counter.charge("predict_l2", 1)
-        return self.model.predict_l2(z2, macro_a, macro_dt)
+            self.counter.charge("predict_l2", B)
+        z2_mlx = mx.array(z2_arr, dtype=mx.float32)
+        macro_mlx = mx.array(macro_a, dtype=mx.float32)
+        dt2_mlx = mx.full((B, 1), float(macro_dt), dtype=mx.float32)
+        z2_next = self.model.predict_l2_step(z2_mlx, macro_mlx, dt2_mlx)
+        return _to_np(z2_next)
 
     cost_fn = None  # Uses default squared_distance in planner
 
     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
         arr = mx.array(obs_seq, dtype=mx.float32)
         z1 = self.model.encode(arr)
-        return np.asarray(z1, dtype=np.float64)
+        return _to_np(z1)
 
 
 def make_mlx_arm(arm_id: str, counter: ForwardCounter | None = None) -> Any:

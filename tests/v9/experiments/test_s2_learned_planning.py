@@ -88,10 +88,22 @@ class PoseArm:
         return _z(*self._table.pose(x))
 
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
-        x, y, h = _unz(z)
-        act = int(np.asarray(a).reshape(-1)[0])
-        nxt = world.step(self._layout, world.State(x=x, y=y, heading=h), act, k=max(1, int(round(dt))))
-        return _z(nxt.x, nxt.y, nxt.heading)
+        z = np.asarray(z, dtype=np.float64)
+        if z.ndim == 1:
+            x, y, h = _unz(z)
+            act = int(np.asarray(a).reshape(-1)[0])
+            nxt = world.step(self._layout, world.State(x=x, y=y, heading=h), act, k=max(1, int(round(dt))))
+            return _z(nxt.x, nxt.y, nxt.heading)
+        B = z.shape[0]
+        a_arr = np.asarray(a).reshape(B, -1)
+        k_val = max(1, int(round(dt)))
+        out = np.empty((B, 4), dtype=np.float64)
+        for i in range(B):
+            x, y, h = _unz(z[i])
+            act = int(a_arr[i, 0])
+            nxt = world.step(self._layout, world.State(x=x, y=y, heading=h), act, k=k_val)
+            out[i] = _z(nxt.x, nxt.y, nxt.heading)
+        return out
 
 
 class GeoPoseArm:
@@ -116,22 +128,45 @@ class GeoPoseArm:
 
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
         z = np.asarray(z, dtype=np.float64)
-        x, y, h = (int(round(v / self._EPS)) for v in z[1:4])
-        act = int(np.asarray(a).reshape(-1)[0])
-        nxt = world.step(self._layout, world.State(x=x, y=y, heading=h % 4), act, k=max(1, int(round(dt))))
-        return self._zp(nxt.x, nxt.y, nxt.heading)
+        if z.ndim == 1:
+            x, y, h = (int(round(v / self._EPS)) for v in z[1:4])
+            act = int(np.asarray(a).reshape(-1)[0])
+            nxt = world.step(self._layout, world.State(x=x, y=y, heading=h % 4), act, k=max(1, int(round(dt))))
+            return self._zp(nxt.x, nxt.y, nxt.heading)
+        B = z.shape[0]
+        a_arr = np.asarray(a).reshape(B, -1)
+        k_val = max(1, int(round(dt)))
+        out = np.empty((B, 4), dtype=np.float64)
+        for i in range(B):
+            x, y, h = (int(round(v / self._EPS)) for v in z[i, 1:4])
+            act = int(a_arr[i, 0])
+            nxt = world.step(self._layout, world.State(x=x, y=y, heading=h % 4), act, k=k_val)
+            out[i] = self._zp(nxt.x, nxt.y, nxt.heading)
+        return out
 
 
 class HierPoseArm(PoseArm):
     """Good hierarchical fake arm: z2 = position; macro (dx, dy) moves z2 in world frame."""
 
     def encode_l2(self, z1: np.ndarray) -> np.ndarray:
-        return np.asarray(z1, dtype=np.float64)[:2].copy()
+        z = np.asarray(z1, dtype=np.float64)
+        if z.ndim == 1:
+            return z[:2].copy()
+        return z[:, :2].copy()
 
     def predict_l2(self, z2: np.ndarray, macro_a: np.ndarray, macro_dt: float = 1.0) -> np.ndarray:
-        m = np.asarray(macro_a, dtype=np.float64).reshape(-1)
-        assert m.shape[0] == spec.MACRO_ACTION_DIM
-        return np.asarray(z2, dtype=np.float64) + m[:2] / float(spec.MACRO_DXY_SCALE) * float(spec.S2_MACRO_STEPS)
+        z2_arr = np.asarray(z2, dtype=np.float64)
+        m = np.asarray(macro_a, dtype=np.float64)
+        scale = float(spec.MACRO_DXY_SCALE)
+        s2 = float(spec.S2_MACRO_STEPS)
+        if z2_arr.ndim == 1:
+            m = m.reshape(-1)
+            assert m.shape[0] == spec.MACRO_ACTION_DIM
+            return z2_arr + m[:2] / scale * s2
+        B = z2_arr.shape[0]
+        m = m.reshape(B, -1)
+        assert m.shape[1] == spec.MACRO_ACTION_DIM
+        return z2_arr + m[:, :2] / scale * s2
 
 
 class RandomArm:
@@ -146,7 +181,10 @@ class RandomArm:
         return self._rng.normal(size=4)
 
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
-        return self._rng.normal(size=4)
+        z = np.asarray(z, dtype=np.float64)
+        if z.ndim == 1:
+            return self._rng.normal(size=4)
+        return self._rng.normal(size=(z.shape[0], 4))
 
 
 class TruthGuard:
@@ -178,7 +216,7 @@ def _run(arm: Any, kind: str, choice: dict, layout: world.Layout, ep_spec: dict,
     plan_fn = lp.make_plan_fn(arm, kind, choice, n_fwd)
     counter = ForwardCounter(budget=n_fwd)
     return s2_eval.run_episode(
-        layout, ep_spec, plan_fn, counter, seed, m=int(spec.REPLAN_M_STEPS), catch_budget_exceeded=True
+        layout, ep_spec, plan_fn, counter, seed, m=int(spec.PLAN_REPLAN_EVERY_OBS_STEPS), catch_budget_exceeded=True
     )
 
 
@@ -191,7 +229,7 @@ def test_flat_population_follows_registered_rule(n_fwd: int, h: int) -> None:
     cfg = lp.cem_config_for_budget("arm_b", {"H": h}, n_fwd)
     assert cfg.pop_size == (n_fwd - spec.CEM_ENCODE_RESERVE) // (spec.CEM_N_ITERS * h)
     assert cfg.n_iters == spec.CEM_N_ITERS and cfg.horizon == h
-    assert cfg.n_exec == spec.REPLAN_M_STEPS and cfg.n_categories == spec.ACTION_DIM
+    assert cfg.n_exec == spec.PLAN_REPLAN_EVERY_OBS_STEPS and cfg.n_categories == spec.ACTION_DIM
     assert cfg.pop_size * cfg.n_iters * h + spec.CEM_ENCODE_RESERVE <= n_fwd
 
 
@@ -278,7 +316,7 @@ def test_hierarchical_arm_runs_two_levels_and_charges_l2() -> None:
     assert names.get("encode_l2", 0) > 0 and names.get("predict_l2", 0) > 0
     assert names.get("predict_l1", 0) > 0
     assert counter.total <= TEST_N_FWD
-    assert len(np.asarray(res.actions).reshape(-1)) == spec.REPLAN_M_STEPS
+    assert len(np.asarray(res.actions).reshape(-1)) == spec.PLAN_REPLAN_EVERY_OBS_STEPS
 
 
 # ---------------------------------------------------------------- counting
@@ -391,3 +429,139 @@ def test_load_for_planning_requires_seed(tmp_path: Any) -> None:
 
     with pytest.raises(TypeError):
         adapters_mlx.load_trained_models_for_planning(tmp_path, ledger_path=tmp_path / "x")  # type: ignore[call-arg]
+
+
+def test_r26_closed_loop_geopose_success_rate() -> None:
+    """Appendix E validation: GeoPoseArm reaches >= 10/12 success on 2 worlds x 6 long goals; RandomArm is low."""
+    worlds = _worlds(2, 6)
+    geo_ok = 0
+    rand_ok = 0
+    total = 0
+
+    for w, (layout, specs) in enumerate(worlds):
+        for i, ep in enumerate(specs):
+            arm_geo = GeoPoseArm(layout, s2_eval._to_state(ep["goal"]))
+            plan_fn_geo = lp.make_plan_fn(arm_geo, "flat", {"H": 16}, int(spec.N_FWD))
+            counter_geo = ForwardCounter(budget=int(spec.N_FWD))
+            res_geo = s2_eval.run_episode(
+                layout, ep, plan_fn_geo, counter_geo, 100 * w + i, m=int(spec.PLAN_REPLAN_EVERY_OBS_STEPS), catch_budget_exceeded=True
+            )
+            geo_ok += int(res_geo.success)
+
+            plan_fn_rand = s2_eval.make_random_planner(42 + 100 * w + i)
+            res_rand = s2_eval.run_episode(
+                layout, ep, plan_fn_rand, None, 100 * w + i, m=int(spec.PLAN_REPLAN_EVERY_OBS_STEPS)
+            )
+            rand_ok += int(res_rand.success)
+            total += 1
+
+    assert total == 12
+    assert geo_ok >= 10, f"GeoPoseArm success {geo_ok}/12 < 10/12"
+    assert rand_ok <= 2, f"RandomArm success {rand_ok}/12 not significantly lower"
+
+
+def test_learned_planning_batch_parity_consistency() -> None:
+    """Verify batched plan_fn vs unbatched reference produces identical actions and counts."""
+    layout, specs = _worlds(1, 1)[0]
+    ep = specs[0]
+    goal_state = s2_eval._to_state(ep["goal"])
+
+    arm = GeoPoseArm(layout, goal_state)
+    choice = {"H": 16}
+    n_fwd = int(spec.N_FWD)
+
+    plan_fn_batched = lp.make_plan_fn(arm, "flat", choice, n_fwd)
+
+    config = lp.cem_config_for_budget("flat", choice, n_fwd)
+    dts = np.full(config.horizon, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
+    dts[0] = 1.0
+
+    st = s2_eval._to_state(ep["start"])
+    obs = world.student_obs(layout, st, last_action=world.ACTION_WAIT, dt=1)
+    goal_obs = {
+        "view": world.compute_ego_view(layout, goal_state.x, goal_state.y, goal_state.heading),
+        "heading": [1 if i == goal_state.heading else 0 for i in range(4)],
+    }
+
+    c_batch = ForwardCounter(budget=n_fwd)
+    res_b = plan_fn_batched(obs, goal_obs, 1, c_batch, np.random.default_rng(999))
+
+    c_ref = ForwardCounter(budget=n_fwd)
+    enc_r = c_ref.wrap("encode", arm.encode)
+    p1_r = c_ref.wrap("predict_l1", arm.predict_l1)
+    x_obs = lp.featurize_obs(obs, 1)
+    x_goal = lp.featurize_goal(goal_obs)
+    res_r = planner.flat_cem_plan_reference(
+        encode=enc_r,
+        predict_l1=p1_r,
+        obs=x_obs,
+        goal_obs=x_goal,
+        config=config,
+        rng=np.random.default_rng(999),
+        counter=c_ref,
+        dts=dts,
+        cost_mode=spec.PLAN_COST_TRAJECTORY_SUM,
+    )
+
+    np.testing.assert_array_equal(res_b.actions, res_r.actions)
+    assert c_batch.total == c_ref.total
+    assert c_batch.by_name == c_ref.by_name
+
+
+def test_adapters_all_planning_methods_return_numpy_float64_ast() -> None:
+    """Pure CPU AST guard: assert all adapter planning methods return np.ndarray (float64).
+
+    Static AST guard ensures MLXArmAAdapter, MLXArmBAdapter, MLXArmCAdapter return values
+    in planning protocol methods are explicitly wrapped with _to_np or np.asarray(..., dtype=np.float64).
+    Guarantees no mx.array leaks into planner.py even on 1D/2D branches.
+    """
+    import ast
+    from pathlib import Path
+
+    adapters_path = Path("src/ainerzero/v9/experiments/s2/adapters_mlx.py")
+    assert adapters_path.exists(), "adapters_mlx.py not found"
+    tree = ast.parse(adapters_path.read_text(encoding="utf-8"))
+
+    # 1. Verify _to_np helper
+    to_np_defs = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "_to_np"]
+    assert len(to_np_defs) == 1, "_to_np function helper definition missing"
+    to_np_fn = to_np_defs[0]
+    to_np_returns = [n for n in ast.walk(to_np_fn) if isinstance(n, ast.Return)]
+    assert len(to_np_returns) == 1, "_to_np must have exactly one return"
+    ret_val = to_np_returns[0].value
+    assert isinstance(ret_val, ast.Call)
+    assert getattr(ret_val.func, "attr", "") == "asarray" or getattr(ret_val.func, "id", "") == "asarray"
+
+    # 2. Check each adapter class and each planning method
+    target_classes = {
+        "MLXArmAAdapter": {"encode", "predict_l1", "latents"},
+        "MLXArmBAdapter": {"encode", "predict_l1", "latents"},
+        "MLXArmCAdapter": {"encode", "predict_l1", "encode_l2", "predict_l2", "latents"},
+    }
+
+    verified_methods = set()
+    total_returns = 0
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef) and node.name in target_classes:
+            cls_methods = target_classes[node.name]
+            for item in node.body:
+                if isinstance(item, ast.FunctionDef) and item.name in cls_methods:
+                    returns = [n for n in ast.walk(item) if isinstance(n, ast.Return)]
+                    assert len(returns) >= 1, f"{node.name}.{item.name} has no return statements"
+                    for r in returns:
+                        assert r.value is not None, f"{node.name}.{item.name} has bare return"
+                        call_name = ""
+                        if isinstance(r.value, ast.Call):
+                            if isinstance(r.value.func, ast.Name):
+                                call_name = r.value.func.id
+                            elif isinstance(r.value.func, ast.Attribute):
+                                call_name = r.value.func.attr
+                        assert call_name in ("_to_np", "asarray"), (
+                            f"{node.name}.{item.name} return not wrapped by _to_np or asarray: {ast.dump(r.value)}"
+                        )
+                        total_returns += 1
+                    verified_methods.add((node.name, item.name))
+
+    expected_methods = {(cls, m) for cls, methods in target_classes.items() for m in methods}
+    assert verified_methods == expected_methods, f"Missing method checks: {expected_methods - verified_methods}"
+    assert total_returns == 16, f"Expected 16 returns across 11 planning methods, got {total_returns}"

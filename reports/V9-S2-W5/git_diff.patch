@@ -1,0 +1,1313 @@
+diff --git a/src/ainerzero/v9/experiments/s2/adapters_mlx.py b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+index c6c0989..32008c0 100644
+--- a/src/ainerzero/v9/experiments/s2/adapters_mlx.py
++++ b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+@@ -196,9 +196,29 @@ class MLXArmAAdapter:
+         return np.asarray(mean, dtype=np.float64)
+ 
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        z_arr = np.asarray(z, dtype=np.float64)
++        if z_arr.ndim == 1:
++            if self.counter is not None:
++                self.counter.charge("predict_l1", 1)
++            return self.model.predict_l1(z, a, dt)
++        B = z_arr.shape[0]
+         if self.counter is not None:
+-            self.counter.charge("predict_l1", 1)
+-        return self.model.predict_l1(z, a, dt)
++            self.counter.charge("predict_l1", B)
++        z_mlx = mx.array(z_arr, dtype=mx.float32)
++        a_raw = np.asarray(a)
++        if a_raw.ndim == 1 or (a_raw.ndim == 2 and a_raw.shape[-1] == 1):
++            idx = a_raw.reshape(-1).astype(np.int64)
++            a_onehot = np.zeros((B, spec.ACTION_DIM), dtype=np.float32)
++            a_onehot[np.arange(B), idx] = 1.0
++            a_mlx = mx.array(a_onehot)
++        else:
++            a_mlx = mx.array(a_raw, dtype=mx.float32)
++        dt_mlx = mx.full((B, 1), float(dt), dtype=mx.float32)
++        h_init = mx.zeros((B, self.model.dims["gru_hidden"]), dtype=mx.float32)
++        gru_in = mx.concatenate([z_mlx, a_mlx, dt_mlx], axis=-1)
++        h_next = self.model.gru(gru_in, h_init)
++        mean, _ = self.model.prior(h_next)
++        return np.asarray(mean, dtype=np.float64)
+ 
+     def cost_fn(self, z_T: np.ndarray, goal_obs: np.ndarray) -> float:
+         if self.counter is not None:
+@@ -322,9 +342,26 @@ class MLXArmBAdapter:
+         return np.asarray(z, dtype=np.float64)
+ 
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        z_arr = np.asarray(z, dtype=np.float64)
++        if z_arr.ndim == 1:
++            if self.counter is not None:
++                self.counter.charge("predict_l1", 1)
++            return self.model.predict_l1(z, a, dt)
++        B = z_arr.shape[0]
+         if self.counter is not None:
+-            self.counter.charge("predict_l1", 1)
+-        return self.model.predict_l1(z, a, dt)
++            self.counter.charge("predict_l1", B)
++        z_mlx = mx.array(z_arr, dtype=mx.float32)
++        a_raw = np.asarray(a)
++        if a_raw.ndim == 1 or (a_raw.ndim == 2 and a_raw.shape[-1] == 1):
++            idx = a_raw.reshape(-1).astype(np.int64)
++            a_onehot = np.zeros((B, spec.ACTION_DIM), dtype=np.float32)
++            a_onehot[np.arange(B), idx] = 1.0
++            a_mlx = mx.array(a_onehot)
++        else:
++            a_mlx = mx.array(a_raw, dtype=mx.float32)
++        dt_mlx = mx.full((B, 1), float(dt), dtype=mx.float32)
++        z_next = self.model.predict_l1_step(z_mlx, a_mlx, dt_mlx)
++        return np.asarray(z_next, dtype=np.float64)
+ 
+     cost_fn = None  # Uses default squared_distance in planner
+ 
+@@ -459,20 +496,54 @@ class MLXArmCAdapter:
+         return np.asarray(z1, dtype=np.float64)
+ 
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        z_arr = np.asarray(z, dtype=np.float64)
++        if z_arr.ndim == 1:
++            if self.counter is not None:
++                self.counter.charge("predict_l1", 1)
++            return self.model.predict_l1(z, a, dt)
++        B = z_arr.shape[0]
+         if self.counter is not None:
+-            self.counter.charge("predict_l1", 1)
+-        return self.model.predict_l1(z, a, dt)
++            self.counter.charge("predict_l1", B)
++        z_mlx = mx.array(z_arr, dtype=mx.float32)
++        a_raw = np.asarray(a)
++        if a_raw.ndim == 1 or (a_raw.ndim == 2 and a_raw.shape[-1] == 1):
++            idx = a_raw.reshape(-1).astype(np.int64)
++            a_onehot = np.zeros((B, spec.ACTION_DIM), dtype=np.float32)
++            a_onehot[np.arange(B), idx] = 1.0
++            a_mlx = mx.array(a_onehot)
++        else:
++            a_mlx = mx.array(a_raw, dtype=mx.float32)
++        dt_mlx = mx.full((B, 1), float(dt), dtype=mx.float32)
++        z_next = self.model.predict_l1_step(z_mlx, a_mlx, dt_mlx)
++        return np.asarray(z_next, dtype=np.float64)
+ 
+     def encode_l2(self, z1: np.ndarray) -> np.ndarray:
++        z1_arr = np.asarray(z1, dtype=np.float64)
++        if z1_arr.ndim == 1:
++            if self.counter is not None:
++                self.counter.charge("encode_l2", 1)
++            return self.model.encode_l2(z1)
++        B = z1_arr.shape[0]
+         if self.counter is not None:
+-            self.counter.charge("encode_l2", 1)
+-        z2 = self.model.encode_l2(z1)
++            self.counter.charge("encode_l2", B)
++        z1_mlx = mx.array(z1_arr, dtype=mx.float32)
++        z2 = self.model.encode_l2(z1_mlx)
+         return np.asarray(z2, dtype=np.float64)
+ 
+     def predict_l2(self, z2: np.ndarray, macro_a: np.ndarray, macro_dt: float = 1.0) -> np.ndarray:
++        z2_arr = np.asarray(z2, dtype=np.float64)
++        if z2_arr.ndim == 1:
++            if self.counter is not None:
++                self.counter.charge("predict_l2", 1)
++            return self.model.predict_l2(z2, macro_a, macro_dt)
++        B = z2_arr.shape[0]
+         if self.counter is not None:
+-            self.counter.charge("predict_l2", 1)
+-        return self.model.predict_l2(z2, macro_a, macro_dt)
++            self.counter.charge("predict_l2", B)
++        z2_mlx = mx.array(z2_arr, dtype=mx.float32)
++        macro_mlx = mx.array(macro_a, dtype=mx.float32)
++        dt2_mlx = mx.full((B, 1), float(macro_dt), dtype=mx.float32)
++        z2_next = self.model.predict_l2_step(z2_mlx, macro_mlx, dt2_mlx)
++        return np.asarray(z2_next, dtype=np.float64)
+ 
+     cost_fn = None  # Uses default squared_distance in planner
+ 
+diff --git a/src/ainerzero/v9/experiments/s2/learned_planning.py b/src/ainerzero/v9/experiments/s2/learned_planning.py
+index 990c0ee..bd796df 100644
+--- a/src/ainerzero/v9/experiments/s2/learned_planning.py
++++ b/src/ainerzero/v9/experiments/s2/learned_planning.py
+@@ -75,7 +75,7 @@ def cem_config_for_budget(
+         raise ValueError(f"N_fwd={n_fwd} leaves no budget after encode reserve {spec.CEM_ENCODE_RESERVE}")
+     n_iters = int(spec.CEM_N_ITERS)
+     elite = float(spec.CEM_ELITE_FRAC)
+-    n_exec = int(spec.REPLAN_M_STEPS)
++    n_exec = int(spec.PLAN_REPLAN_EVERY_OBS_STEPS)
+     n_cat = int(spec.ACTION_DIM)
+ 
+     if kind == "flat":
+@@ -133,18 +133,34 @@ def cem_config_for_budget(
+ 
+ 
+ def denormalize_macro(u: np.ndarray) -> np.ndarray:
+-    """Map a CEM macro sample in [-1, 1]^7 to (dx, dy, dpsi, histogram[4])."""
+-    u = np.clip(np.asarray(u, dtype=np.float64).reshape(-1), -1.0, 1.0)
+-    if u.shape[0] != int(spec.MACRO_ACTION_DIM):
+-        raise ValueError(f"macro sample dim {u.shape[0]} != MACRO_ACTION_DIM {spec.MACRO_ACTION_DIM}")
+-    out = np.empty_like(u)
+-    out[0] = u[0] * float(spec.MACRO_DXY_SCALE)
+-    out[1] = u[1] * float(spec.MACRO_DXY_SCALE)
+-    out[2] = u[2] * math.pi
+-    hist = (u[3:] + 1.0) / 2.0
+-    s = float(hist.sum())
+-    out[3:] = hist / s if s > 0 else np.full(hist.shape, 1.0 / hist.shape[0])
+-    return out
++    """Map CEM macro sample(s) in [-1, 1]^7 to (dx, dy, dpsi, histogram[4])."""
++    arr = np.clip(np.asarray(u, dtype=np.float64), -1.0, 1.0)
++    macro_dim = int(spec.MACRO_ACTION_DIM)
++    scale = float(spec.MACRO_DXY_SCALE)
++    if arr.ndim == 1:
++        if arr.shape[0] != macro_dim:
++            raise ValueError(f"macro sample dim {arr.shape[0]} != MACRO_ACTION_DIM {macro_dim}")
++        out = np.empty_like(arr)
++        out[0] = arr[0] * scale
++        out[1] = arr[1] * scale
++        out[2] = arr[2] * math.pi
++        hist = (arr[3:] + 1.0) / 2.0
++        s = float(hist.sum())
++        out[3:] = hist / s if s > 0 else np.full(hist.shape, 1.0 / hist.shape[0])
++        return out
++    elif arr.ndim == 2:
++        if arr.shape[1] != macro_dim:
++            raise ValueError(f"macro sample dim {arr.shape[1]} != MACRO_ACTION_DIM {macro_dim}")
++        out = np.empty_like(arr)
++        out[:, 0] = arr[:, 0] * scale
++        out[:, 1] = arr[:, 1] * scale
++        out[:, 2] = arr[:, 2] * math.pi
++        hist = (arr[:, 3:] + 1.0) / 2.0
++        s = hist.sum(axis=-1, keepdims=True)
++        out[:, 3:] = np.where(s > 0, hist / np.maximum(s, 1e-12), 1.0 / hist.shape[1])
++        return out
++    else:
++        raise ValueError(f"unsupported macro sample shape {arr.shape}")
+ 
+ 
+ def featurize_obs(obs: Mapping[str, Any], k: int) -> np.ndarray:
+@@ -224,7 +240,8 @@ def make_plan_fn(
+         x_goal = featurize_goal(goal_obs)
+ 
+         if kind == "flat":
+-            # §4: flat arms (A and B) use the squared latent distance to the goal encoding.
++            dts = np.full(config.horizon, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
++            dts[0] = float(k)
+             return planner.flat_cem_plan(
+                 encode=enc,
+                 predict_l1=p1,
+@@ -233,7 +250,8 @@ def make_plan_fn(
+                 config=config,
+                 rng=rng,
+                 counter=counter,
+-                dts=_dts(k, config.horizon, e_k),
++                dts=dts,
++                cost_mode=spec.PLAN_COST_TRAJECTORY_SUM,
+             )
+ 
+         enc2 = counter.wrap("encode_l2", model.encode_l2)
+@@ -244,8 +262,10 @@ def make_plan_fn(
+ 
+         p2 = counter.wrap("predict_l2", _p2)
+         s2 = int(config.s2)
+-        macro_dts = np.full(config.macro_horizon, s2 * e_k, dtype=np.float64)
+-        macro_dts[0] = float(k) + (s2 - 1) * e_k
++        macro_dts = np.full(config.macro_horizon, float(spec.PLAN_FUTURE_DT_L2), dtype=np.float64)
++        macro_dts[0] = float(k) + float(round((s2 - 1) * e_k))
++        raw_dts = np.full(s2, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
++        raw_dts[0] = float(k)
+         return planner.hierarchical_cem_plan(
+             encode=enc,
+             predict_l1=p1,
+@@ -257,7 +277,7 @@ def make_plan_fn(
+             rng=rng,
+             counter=counter,
+             macro_dts=macro_dts,
+-            raw_dts=_dts(k, s2, e_k),
++            raw_dts=raw_dts,
+         )
+ 
+     return plan_fn
+diff --git a/src/ainerzero/v9/experiments/s2/planner.py b/src/ainerzero/v9/experiments/s2/planner.py
+index 4206c5d..0268e8c 100644
+--- a/src/ainerzero/v9/experiments/s2/planner.py
++++ b/src/ainerzero/v9/experiments/s2/planner.py
+@@ -20,7 +20,9 @@ __all__ = [
+     "HierCEMConfig",
+     "PlanResult",
+     "flat_cem_plan",
++    "flat_cem_plan_reference",
+     "hierarchical_cem_plan",
++    "hierarchical_cem_plan_reference",
+     "rollout_l1",
+     "squared_distance",
+ ]
+@@ -124,6 +126,7 @@ class FlatCEMConfig:
+     # When set, CEM samples categorical indices in ``{0..n_categories-1}``
+     # stored as shape ``(H, 1)``; ``action_dim`` should be 1.
+     n_categories: int | None = None
++    cost_mode: str = "trajectory_sum"
+ 
+ 
+ @dataclass(frozen=True)
+@@ -158,6 +161,7 @@ class HierCEMConfig:
+     n_exec: int = 1
+     n_categories: int | None = None
+     n_macro_categories: int | None = None
++    cost_mode: str = "trajectory_sum"
+ 
+ 
+ @dataclass(frozen=True)
+@@ -178,7 +182,7 @@ def _as_bounds(value: float | Sequence[float], dim: int, horizon: int) -> np.nda
+     raise ValueError(f"bound shape {arr.shape} incompatible with ({horizon}, {dim})")
+ 
+ 
+-def flat_cem_plan(
++def flat_cem_plan_reference(
+     *,
+     encode: ArrayFn,
+     predict_l1: ArrayFn,
+@@ -188,25 +192,23 @@ def flat_cem_plan(
+     rng: np.random.Generator,
+     counter: ForwardCounter,
+     dts: np.ndarray | None = None,
+-    cost_fn: Callable[[np.ndarray, np.ndarray], float] | None = None,
++    cost_mode: str | None = None,
++    **kwargs: Any,
+ ) -> PlanResult:
+-    """Optimize a raw action sequence of length ``H`` with CEM.
+-
+-    Cost = squared distance between terminal latent and goal encoding by default,
+-    or custom cost_fn(z_T, goal_obs) when provided (e.g. Arm A observation space matching).
+-    Only the first ``n_exec`` actions are intended for execution before replan;
+-    the full elite mean sequence is still returned for inspection.
+-    """
++    """Sequential (unbatched) reference implementation of flat CEM planning."""
+     if not isinstance(rng, np.random.Generator):
+         raise TypeError("rng must be an explicit numpy.random.Generator")
+ 
+     start_total = counter.total
+     z0 = encode(obs)
++    cost_fn = kwargs.get("cost_fn")
+     if cost_fn is None:
+         z_goal = counter.goal_embedding(goal_obs, encode)
+     else:
+         z_goal = None
+ 
++    mode = cost_mode if cost_mode is not None else getattr(config, "cost_mode", "trajectory_sum")
++
+     discrete = config.n_categories is not None
+     if discrete:
+         n_cat = int(config.n_categories)
+@@ -221,6 +223,7 @@ def flat_cem_plan(
+ 
+     best_cost = float("inf")
+     elite_costs: list[float] = []
++    h_dts = np.ones(config.horizon, dtype=np.float64) if dts is None else np.asarray(dts, dtype=np.float64).reshape(-1)
+ 
+     for _ in range(config.n_iters):
+         if discrete:
+@@ -229,13 +232,130 @@ def flat_cem_plan(
+             pop = _sample_actions(rng, mean, std, low, high, config.pop_size)
+         costs = np.empty(config.pop_size, dtype=np.float64)
+         for i in range(config.pop_size):
+-            z_T = rollout_l1(predict_l1, z0, pop[i], dts)
+-            if cost_fn is None:
+-                costs[i] = squared_distance(z_T, z_goal)
++            z_curr = z0.copy()
++            acc_cost = 0.0
++            for t in range(config.horizon):
++                z_curr = predict_l1(z_curr, pop[i, t], float(h_dts[t]))
++                if mode == "trajectory_sum" and z_goal is not None:
++                    acc_cost += squared_distance(z_curr, z_goal)
++            if cost_fn is not None:
++                costs[i] = cost_fn(z_curr, goal_obs)
++            elif mode == "trajectory_sum":
++                costs[i] = acc_cost
+             else:
+-                costs[i] = cost_fn(z_T, goal_obs)
++                costs[i] = squared_distance(z_curr, z_goal)
++        n_elite = _elite_count(config.pop_size, config.elite_frac)
++        elite_idx = np.argsort(costs)[:n_elite]
++        elites = pop[elite_idx]
++        elite_costs = [float(c) for c in costs[elite_idx]]
++        if discrete:
++            probs = _update_categorical_probs(elites, n_cat)
++        else:
++            mean = elites.mean(axis=0)
++            std = elites.std(axis=0) + 1e-6
++        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
++        if costs[best_i] < best_cost:
++            best_cost = float(costs[best_i])
++            best_seq = pop[best_i].copy()
++
++    n_exec = max(1, min(config.n_exec, config.horizon))
++    exec_actions = best_seq[:n_exec].copy()
++    snap = counter.snapshot()
++    info = {
++        "best_cost": best_cost,
++        "elite_costs": elite_costs,
++        "n_exec": n_exec,
++        "forwards_this_decision": int(counter.total - start_total),
++        "full_sequence": best_seq,
++        "discrete": discrete,
++    }
++    return PlanResult(actions=exec_actions, counts=snap, info=info)
++
++
++def flat_cem_plan(
++    *,
++    encode: ArrayFn,
++    predict_l1: ArrayFn,
++    obs: np.ndarray,
++    goal_obs: np.ndarray,
++    config: FlatCEMConfig,
++    rng: np.random.Generator,
++    counter: ForwardCounter,
++    dts: np.ndarray | None = None,
++    cost_mode: str | None = None,
++    **kwargs: Any,
++) -> PlanResult:
++    """Optimize a raw action sequence of length ``H`` with batched CEM (Appendix E).
++
++    Evaluates predict_l1 once per step for the entire population.
++    Charges are inferred automatically by ForwardCounter (batch_size_of).
++    """
++    if not isinstance(rng, np.random.Generator):
++        raise TypeError("rng must be an explicit numpy.random.Generator")
++
++    cost_fn = kwargs.get("cost_fn")
++    if cost_fn is not None:
++        return flat_cem_plan_reference(
++            encode=encode,
++            predict_l1=predict_l1,
++            obs=obs,
++            goal_obs=goal_obs,
++            config=config,
++            rng=rng,
++            counter=counter,
++            dts=dts,
++            cost_mode=cost_mode,
++            **kwargs,
++        )
++
++    start_total = counter.total
++    z0 = encode(obs)
++    z_goal = counter.goal_embedding(goal_obs, encode)
++
++    mode = cost_mode if cost_mode is not None else getattr(config, "cost_mode", "trajectory_sum")
++
++    discrete = config.n_categories is not None
++    if discrete:
++        n_cat = int(config.n_categories)
++        probs = np.full((config.horizon, n_cat), 1.0 / n_cat, dtype=np.float64)
++        best_seq = np.zeros((config.horizon, 1), dtype=np.float64)
++    else:
++        low = _as_bounds(config.action_low, config.action_dim, config.horizon)
++        high = _as_bounds(config.action_high, config.action_dim, config.horizon)
++        mean = 0.5 * (low + high)
++        std = np.full_like(mean, float(config.init_std))
++        best_seq = mean.copy()
++
++    best_cost = float("inf")
++    elite_costs: list[float] = []
++    h_dts = np.ones(config.horizon, dtype=np.float64) if dts is None else np.asarray(dts, dtype=np.float64).reshape(-1)
++
++    for _ in range(config.n_iters):
++        if discrete:
++            pop = _sample_categorical(rng, probs, config.pop_size)
++        else:
++            pop = _sample_actions(rng, mean, std, low, high, config.pop_size)
++
++        z = np.tile(np.asarray(z0, dtype=np.float64).reshape(1, -1), (config.pop_size, 1))
++        costs = np.zeros(config.pop_size, dtype=np.float64)
++
++        for t in range(config.horizon):
++            act_t = pop[:, t, :]
++            dt_t = float(h_dts[t])
++            z = predict_l1(z, act_t, dt_t)
++            if mode == "trajectory_sum" and z_goal is not None:
++                diff = z - np.asarray(z_goal, dtype=np.float64).reshape(1, -1)
++                costs += np.sum(diff * diff, axis=-1)
++
++        if cost_fn is not None:
++            for i in range(config.pop_size):
++                costs[i] = cost_fn(z[i], goal_obs)
++        elif mode != "trajectory_sum" and z_goal is not None:
++            diff = z - np.asarray(z_goal, dtype=np.float64).reshape(1, -1)
++            costs = np.sum(diff * diff, axis=-1)
++
+         n_elite = _elite_count(config.pop_size, config.elite_frac)
+-        elite_idx = np.argpartition(costs, n_elite - 1)[:n_elite]
++        elite_idx = np.argsort(costs)[:n_elite]
+         elites = pop[elite_idx]
+         elite_costs = [float(c) for c in costs[elite_idx]]
+         if discrete:
+@@ -282,7 +402,7 @@ def _rollout_l2(
+     return z
+ 
+ 
+-def hierarchical_cem_plan(
++def hierarchical_cem_plan_reference(
+     *,
+     encode: ArrayFn,
+     predict_l1: ArrayFn,
+@@ -297,24 +417,13 @@ def hierarchical_cem_plan(
+     macro_dts: np.ndarray | None = None,
+     raw_dts: np.ndarray | None = None,
+ ) -> PlanResult:
+-    """Two-level CEM with a shared ``ForwardCounter`` / ``N_fwd``.
+-
+-    Upper: plan a macro sequence toward the goal encoding → subgoal ``z2_hat``.
+-    Lower: plan ``s2`` raw actions with cost
+-    ``||encode_l2(z1_{t+s2}) - z2_subgoal||^2``.
+-
+-    Budget split (``upper_budget``, ``lower_budget``) is a registered parameter
+-    and is enforced by nested counters that share the parent charge path; the
+-    parent ``counter`` remains the single source of truth for ``N_fwd``.
+-    """
++    """Sequential (unbatched) reference implementation of hierarchical CEM planning."""
+     if not isinstance(rng, np.random.Generator):
+         raise TypeError("rng must be an explicit numpy.random.Generator")
+     if config.upper_budget < 0 or config.lower_budget < 0:
+         raise ValueError("budget shares must be >= 0")
+     if counter.budget is not None:
+         expected = config.upper_budget + config.lower_budget
+-        # Encoding of obs/goal is charged to the shared budget outside the split
+-        # bookkeeping; split values constrain CEM bodies only when both > 0.
+         if expected > 0 and expected > counter.budget:
+             raise ValueError(
+                 f"upper_budget+lower_budget ({expected}) exceeds N_fwd ({counter.budget})"
+@@ -329,7 +438,7 @@ def hierarchical_cem_plan(
+         z2_0 = np.asarray(z2_current, dtype=np.float64)
+     z2_goal = encode_l2(z1_goal)
+ 
+-    # ---- Upper CEM (macro → goal encoding in L2) ---------------------------
++    # ---- Upper CEM (macro -> goal encoding in L2, trajectory sum) ----------
+     upper_start = counter.total
+     upper_discrete = config.n_macro_categories is not None
+     if upper_discrete:
+@@ -346,6 +455,12 @@ def hierarchical_cem_plan(
+         best_macros = mean_m.copy()
+     best_upper_cost = float("inf")
+ 
++    h_macro_dts = (
++        np.ones(config.macro_horizon, dtype=np.float64)
++        if macro_dts is None
++        else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
++    )
++
+     for _ in range(config.upper_iters):
+         if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
+             break
+@@ -353,40 +468,31 @@ def hierarchical_cem_plan(
+             pop = _sample_categorical(rng, probs_m, config.upper_pop)
+         else:
+             pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
+-        costs = np.full(config.upper_pop, np.inf, dtype=np.float64)
+-        stopped = False
++        costs = np.empty(config.upper_pop, dtype=np.float64)
+         for i in range(config.upper_pop):
+-            if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
+-                stopped = True
+-                break
+-            z2_T = _rollout_l2(predict_l2, z2_0, pop[i], macro_dts)
+-            costs[i] = squared_distance(z2_T, z2_goal)
+-        finite = np.isfinite(costs)
+-        if not np.any(finite):
+-            break
+-        work_costs = np.where(finite, costs, np.inf)
++            z2_curr = z2_0.copy()
++            acc = 0.0
++            for t in range(config.macro_horizon):
++                z2_curr = predict_l2(z2_curr, pop[i, t], float(h_macro_dts[t]))
++                acc += squared_distance(z2_curr, z2_goal)
++            costs[i] = acc
+         n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
+-        n_elite = max(1, min(n_elite, config.upper_pop))
+-        elite_idx = np.argpartition(work_costs, n_elite - 1)[:n_elite]
++        elite_idx = np.argsort(costs)[:n_elite]
+         elites = pop[elite_idx]
+         if upper_discrete:
+             probs_m = _update_categorical_probs(elites, n_macro_cat)
+         else:
+             mean_m = elites.mean(axis=0)
+             std_m = elites.std(axis=0) + 1e-6
+-        best_i = _pick_modal_first_elite(pop, work_costs, elite_idx)
+-        if work_costs[best_i] < best_upper_cost:
+-            best_upper_cost = float(work_costs[best_i])
++        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
++        if costs[best_i] < best_upper_cost:
++            best_upper_cost = float(costs[best_i])
+             best_macros = pop[best_i].copy()
+-        if stopped:
+-            break
+ 
+-    # Subgoal ẑ^{(2)}: first macro step from the upper plan.
+-    z2_subgoal = predict_l2(
+-        z2_0, best_macros[0], float(1.0 if macro_dts is None else macro_dts[0])
+-    )
++    # Subgoal: first macro step
++    z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
+ 
+-    # ---- Lower CEM (raw actions → match E₂(z1) to subgoal) -----------------
++    # ---- Lower CEM (raw actions -> match E2(z1) to subgoal, terminal cost) ---
+     lower_start = counter.total
+     lower_discrete = config.n_categories is not None
+     if lower_discrete:
+@@ -402,6 +508,12 @@ def hierarchical_cem_plan(
+     best_lower_cost = float("inf")
+     lower_costs_last: list[float] = []
+ 
++    h_raw_dts = (
++        np.ones(config.s2, dtype=np.float64)
++        if raw_dts is None
++        else np.asarray(raw_dts, dtype=np.float64).reshape(-1)
++    )
++
+     for _ in range(config.lower_iters):
+         if config.lower_budget > 0 and (counter.total - lower_start) >= config.lower_budget:
+             break
+@@ -409,36 +521,202 @@ def hierarchical_cem_plan(
+             pop = _sample_categorical(rng, probs_a, config.lower_pop)
+         else:
+             pop = _sample_actions(rng, mean_a, std_a, low_a, high_a, config.lower_pop)
+-        costs = np.full(config.lower_pop, np.inf, dtype=np.float64)
+-        stopped = False
++        costs = np.empty(config.lower_pop, dtype=np.float64)
+         for i in range(config.lower_pop):
+-            if config.lower_budget > 0 and (counter.total - lower_start) >= config.lower_budget:
+-                stopped = True
+-                break
+-            z1_T = rollout_l1(predict_l1, z1_0, pop[i], raw_dts)
+-            # Cost MUST go through E₂ / encode_l2 (DESIGN §4).
+-            z2_pred = encode_l2(z1_T)
++            z1_curr = z1_0.copy()
++            for t in range(config.s2):
++                z1_curr = predict_l1(z1_curr, pop[i, t], float(h_raw_dts[t]))
++            z2_pred = encode_l2(z1_curr)
+             costs[i] = squared_distance(z2_pred, z2_subgoal)
+-        finite = np.isfinite(costs)
+-        if not np.any(finite):
+-            break
+-        work_costs = np.where(finite, costs, np.inf)
+         n_elite = _elite_count(config.lower_pop, config.lower_elite_frac)
+-        n_elite = max(1, min(n_elite, config.lower_pop))
+-        elite_idx = np.argpartition(work_costs, n_elite - 1)[:n_elite]
++        elite_idx = np.argsort(costs)[:n_elite]
+         elites = pop[elite_idx]
+-        lower_costs_last = [float(c) for c in work_costs[elite_idx]]
++        lower_costs_last = [float(c) for c in costs[elite_idx]]
+         if lower_discrete:
+             probs_a = _update_categorical_probs(elites, n_cat)
+         else:
+             mean_a = elites.mean(axis=0)
+             std_a = elites.std(axis=0) + 1e-6
+-        best_i = _pick_modal_first_elite(pop, work_costs, elite_idx)
+-        if work_costs[best_i] < best_lower_cost:
+-            best_lower_cost = float(work_costs[best_i])
++        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
++        if costs[best_i] < best_lower_cost:
++            best_lower_cost = float(costs[best_i])
+             best_raw = pop[best_i].copy()
+-        if stopped:
++
++    n_exec = max(1, min(config.n_exec, config.s2))
++    exec_actions = best_raw[:n_exec].copy()
++    snap = counter.snapshot()
++    info = {
++        "best_upper_cost": best_upper_cost,
++        "best_lower_cost": best_lower_cost,
++        "lower_elite_costs": lower_costs_last,
++        "z2_subgoal": z2_subgoal,
++        "macros": best_macros,
++        "n_exec": n_exec,
++        "upper_forwards": int(lower_start - upper_start),
++        "lower_forwards": int(counter.total - lower_start),
++        "forwards_this_decision": int(counter.total - start_total),
++        "upper_budget": config.upper_budget,
++        "lower_budget": config.lower_budget,
++        "full_raw_sequence": best_raw,
++    }
++    return PlanResult(actions=exec_actions, counts=snap, info=info)
++
++
++def hierarchical_cem_plan(
++    *,
++    encode: ArrayFn,
++    predict_l1: ArrayFn,
++    predict_l2: ArrayFn,
++    encode_l2: ArrayFn,
++    obs: np.ndarray,
++    goal_obs: np.ndarray,
++    config: HierCEMConfig,
++    rng: np.random.Generator,
++    counter: ForwardCounter,
++    z2_current: np.ndarray | None = None,
++    macro_dts: np.ndarray | None = None,
++    raw_dts: np.ndarray | None = None,
++) -> PlanResult:
++    """Two-level batched CEM with a shared ``ForwardCounter`` / ``N_fwd`` (Appendix E).
++
++    Upper: macro sequence toward goal encoding in L2 (trajectory sum cost).
++    Lower: s2 raw actions with terminal cost ||encode_l2(z1_{t+s2}) - z2_subgoal||^2.
++    Evaluates predict_l2, predict_l1, encode_l2 in batches for the entire population.
++    """
++    if not isinstance(rng, np.random.Generator):
++        raise TypeError("rng must be an explicit numpy.random.Generator")
++    if config.upper_budget < 0 or config.lower_budget < 0:
++        raise ValueError("budget shares must be >= 0")
++    if counter.budget is not None:
++        expected = config.upper_budget + config.lower_budget
++        if expected > 0 and expected > counter.budget:
++            raise ValueError(
++                f"upper_budget+lower_budget ({expected}) exceeds N_fwd ({counter.budget})"
++            )
++
++    start_total = counter.total
++    z1_0 = encode(obs)
++    z1_goal = counter.goal_embedding(goal_obs, encode)
++    if z2_current is None:
++        z2_0 = encode_l2(z1_0)
++    else:
++        z2_0 = np.asarray(z2_current, dtype=np.float64)
++    z2_goal = encode_l2(z1_goal)
++
++    # ---- Upper CEM (macro -> goal encoding in L2, batched trajectory sum) ---
++    upper_start = counter.total
++    upper_discrete = config.n_macro_categories is not None
++    if upper_discrete:
++        n_macro_cat = int(config.n_macro_categories)
++        probs_m = np.full(
++            (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
++        )
++        best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
++    else:
++        low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
++        high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
++        mean_m = 0.5 * (low_m + high_m)
++        std_m = np.full_like(mean_m, float(config.upper_init_std))
++        best_macros = mean_m.copy()
++    best_upper_cost = float("inf")
++
++    h_macro_dts = (
++        np.ones(config.macro_horizon, dtype=np.float64)
++        if macro_dts is None
++        else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
++    )
++
++    for _ in range(config.upper_iters):
++        if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
++            break
++        if upper_discrete:
++            pop = _sample_categorical(rng, probs_m, config.upper_pop)
++        else:
++            pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
++
++        z2 = np.tile(np.asarray(z2_0, dtype=np.float64).reshape(1, -1), (config.upper_pop, 1))
++        costs = np.zeros(config.upper_pop, dtype=np.float64)
++
++        for t in range(config.macro_horizon):
++            macro_t = pop[:, t, :]
++            dt_t = float(h_macro_dts[t])
++            z2 = predict_l2(z2, macro_t, dt_t)
++            diff = z2 - np.asarray(z2_goal, dtype=np.float64).reshape(1, -1)
++            costs += np.sum(diff * diff, axis=-1)
++
++        n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
++        elite_idx = np.argsort(costs)[:n_elite]
++        elites = pop[elite_idx]
++        if upper_discrete:
++            probs_m = _update_categorical_probs(elites, n_macro_cat)
++        else:
++            mean_m = elites.mean(axis=0)
++            std_m = elites.std(axis=0) + 1e-6
++        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
++        if costs[best_i] < best_upper_cost:
++            best_upper_cost = float(costs[best_i])
++            best_macros = pop[best_i].copy()
++
++    # Subgoal: first macro step
++    z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
++
++    # ---- Lower CEM (raw actions -> match E2(z1) to subgoal, batched terminal)
++    lower_start = counter.total
++    lower_discrete = config.n_categories is not None
++    if lower_discrete:
++        n_cat = int(config.n_categories)
++        probs_a = np.full((config.s2, n_cat), 1.0 / n_cat, dtype=np.float64)
++        best_raw = np.zeros((config.s2, 1), dtype=np.float64)
++    else:
++        low_a = _as_bounds(config.action_low, config.action_dim, config.s2)
++        high_a = _as_bounds(config.action_high, config.action_dim, config.s2)
++        mean_a = 0.5 * (low_a + high_a)
++        std_a = np.full_like(mean_a, float(config.lower_init_std))
++        best_raw = mean_a.copy()
++    best_lower_cost = float("inf")
++    lower_costs_last: list[float] = []
++
++    h_raw_dts = (
++        np.ones(config.s2, dtype=np.float64)
++        if raw_dts is None
++        else np.asarray(raw_dts, dtype=np.float64).reshape(-1)
++    )
++
++    for _ in range(config.lower_iters):
++        if config.lower_budget > 0 and (counter.total - lower_start) >= config.lower_budget:
+             break
++        if lower_discrete:
++            pop = _sample_categorical(rng, probs_a, config.lower_pop)
++        else:
++            pop = _sample_actions(rng, mean_a, std_a, low_a, high_a, config.lower_pop)
++
++        z1 = np.tile(np.asarray(z1_0, dtype=np.float64).reshape(1, -1), (config.lower_pop, 1))
++        for t in range(config.s2):
++            act_t = pop[:, t, :]
++            dt_t = float(h_raw_dts[t])
++            z1 = predict_l1(z1, act_t, dt_t)
++
++        z2_pred = encode_l2(z1)
++        z2_sub = np.asarray(z2_subgoal, dtype=np.float64).reshape(1, -1)
++        if z2_pred.ndim == 1 and z1.ndim == 2:
++            z2_pred = z2_pred.reshape(z1.shape[0], -1)
++        diff = z2_pred - z2_sub
++        costs = np.sum(diff * diff, axis=-1)
++
++        n_elite = _elite_count(config.lower_pop, config.lower_elite_frac)
++        elite_idx = np.argsort(costs)[:n_elite]
++        elites = pop[elite_idx]
++        lower_costs_last = [float(c) for c in costs[elite_idx]]
++        if lower_discrete:
++            probs_a = _update_categorical_probs(elites, n_cat)
++        else:
++            mean_a = elites.mean(axis=0)
++            std_a = elites.std(axis=0) + 1e-6
++        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
++        if costs[best_i] < best_lower_cost:
++            best_lower_cost = float(costs[best_i])
++            best_raw = pop[best_i].copy()
++
+     n_exec = max(1, min(config.n_exec, config.s2))
+     exec_actions = best_raw[:n_exec].copy()
+     snap = counter.snapshot()
+diff --git a/src/ainerzero/v9/experiments/s2/spec.py b/src/ainerzero/v9/experiments/s2/spec.py
+index 674b227..51ad23f 100644
+--- a/src/ainerzero/v9/experiments/s2/spec.py
++++ b/src/ainerzero/v9/experiments/s2/spec.py
+@@ -288,3 +288,11 @@ MACRO_DXY_SCALE = float(S2_MACRO_STEPS * max(K_DISTRIBUTION))
+ # 目标观察的特征化约定（与回合起点一致）：last_action = WAIT(3)，dt = 1
+ GOAL_FEATURE_LAST_ACTION = 3
+ GOAL_FEATURE_DT = 1
++
++# --- 附录 E 规划协议可行性修正（r2.6，2026-11-07）---
++PLAN_REPLAN_EVERY_OBS_STEPS: int = 1
++PLAN_FUTURE_DT_L1: int = 1
++PLAN_FUTURE_DT_L2: int = 14  # round(S2_MACRO_STEPS * 1.7) = round(13.6) = 14
++PLAN_COST_TRAJECTORY_SUM: str = "trajectory_sum"
++PLAN_COST_TERMINAL: str = "terminal"
++
+diff --git a/tests/v9/experiments/test_s2_learned_planning.py b/tests/v9/experiments/test_s2_learned_planning.py
+index c0f44a2..13ec061 100644
+--- a/tests/v9/experiments/test_s2_learned_planning.py
++++ b/tests/v9/experiments/test_s2_learned_planning.py
+@@ -88,10 +88,22 @@ class PoseArm:
+         return _z(*self._table.pose(x))
+ 
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+-        x, y, h = _unz(z)
+-        act = int(np.asarray(a).reshape(-1)[0])
+-        nxt = world.step(self._layout, world.State(x=x, y=y, heading=h), act, k=max(1, int(round(dt))))
+-        return _z(nxt.x, nxt.y, nxt.heading)
++        z = np.asarray(z, dtype=np.float64)
++        if z.ndim == 1:
++            x, y, h = _unz(z)
++            act = int(np.asarray(a).reshape(-1)[0])
++            nxt = world.step(self._layout, world.State(x=x, y=y, heading=h), act, k=max(1, int(round(dt))))
++            return _z(nxt.x, nxt.y, nxt.heading)
++        B = z.shape[0]
++        a_arr = np.asarray(a).reshape(B, -1)
++        k_val = max(1, int(round(dt)))
++        out = np.empty((B, 4), dtype=np.float64)
++        for i in range(B):
++            x, y, h = _unz(z[i])
++            act = int(a_arr[i, 0])
++            nxt = world.step(self._layout, world.State(x=x, y=y, heading=h), act, k=k_val)
++            out[i] = _z(nxt.x, nxt.y, nxt.heading)
++        return out
+ 
+ 
+ class GeoPoseArm:
+@@ -116,22 +128,45 @@ class GeoPoseArm:
+ 
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+         z = np.asarray(z, dtype=np.float64)
+-        x, y, h = (int(round(v / self._EPS)) for v in z[1:4])
+-        act = int(np.asarray(a).reshape(-1)[0])
+-        nxt = world.step(self._layout, world.State(x=x, y=y, heading=h % 4), act, k=max(1, int(round(dt))))
+-        return self._zp(nxt.x, nxt.y, nxt.heading)
++        if z.ndim == 1:
++            x, y, h = (int(round(v / self._EPS)) for v in z[1:4])
++            act = int(np.asarray(a).reshape(-1)[0])
++            nxt = world.step(self._layout, world.State(x=x, y=y, heading=h % 4), act, k=max(1, int(round(dt))))
++            return self._zp(nxt.x, nxt.y, nxt.heading)
++        B = z.shape[0]
++        a_arr = np.asarray(a).reshape(B, -1)
++        k_val = max(1, int(round(dt)))
++        out = np.empty((B, 4), dtype=np.float64)
++        for i in range(B):
++            x, y, h = (int(round(v / self._EPS)) for v in z[i, 1:4])
++            act = int(a_arr[i, 0])
++            nxt = world.step(self._layout, world.State(x=x, y=y, heading=h % 4), act, k=k_val)
++            out[i] = self._zp(nxt.x, nxt.y, nxt.heading)
++        return out
+ 
+ 
+ class HierPoseArm(PoseArm):
+     """Good hierarchical fake arm: z2 = position; macro (dx, dy) moves z2 in world frame."""
+ 
+     def encode_l2(self, z1: np.ndarray) -> np.ndarray:
+-        return np.asarray(z1, dtype=np.float64)[:2].copy()
++        z = np.asarray(z1, dtype=np.float64)
++        if z.ndim == 1:
++            return z[:2].copy()
++        return z[:, :2].copy()
+ 
+     def predict_l2(self, z2: np.ndarray, macro_a: np.ndarray, macro_dt: float = 1.0) -> np.ndarray:
+-        m = np.asarray(macro_a, dtype=np.float64).reshape(-1)
+-        assert m.shape[0] == spec.MACRO_ACTION_DIM
+-        return np.asarray(z2, dtype=np.float64) + m[:2] / float(spec.MACRO_DXY_SCALE) * float(spec.S2_MACRO_STEPS)
++        z2_arr = np.asarray(z2, dtype=np.float64)
++        m = np.asarray(macro_a, dtype=np.float64)
++        scale = float(spec.MACRO_DXY_SCALE)
++        s2 = float(spec.S2_MACRO_STEPS)
++        if z2_arr.ndim == 1:
++            m = m.reshape(-1)
++            assert m.shape[0] == spec.MACRO_ACTION_DIM
++            return z2_arr + m[:2] / scale * s2
++        B = z2_arr.shape[0]
++        m = m.reshape(B, -1)
++        assert m.shape[1] == spec.MACRO_ACTION_DIM
++        return z2_arr + m[:, :2] / scale * s2
+ 
+ 
+ class RandomArm:
+@@ -146,7 +181,10 @@ class RandomArm:
+         return self._rng.normal(size=4)
+ 
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+-        return self._rng.normal(size=4)
++        z = np.asarray(z, dtype=np.float64)
++        if z.ndim == 1:
++            return self._rng.normal(size=4)
++        return self._rng.normal(size=(z.shape[0], 4))
+ 
+ 
+ class TruthGuard:
+@@ -178,7 +216,7 @@ def _run(arm: Any, kind: str, choice: dict, layout: world.Layout, ep_spec: dict,
+     plan_fn = lp.make_plan_fn(arm, kind, choice, n_fwd)
+     counter = ForwardCounter(budget=n_fwd)
+     return s2_eval.run_episode(
+-        layout, ep_spec, plan_fn, counter, seed, m=int(spec.REPLAN_M_STEPS), catch_budget_exceeded=True
++        layout, ep_spec, plan_fn, counter, seed, m=int(spec.PLAN_REPLAN_EVERY_OBS_STEPS), catch_budget_exceeded=True
+     )
+ 
+ 
+@@ -191,7 +229,7 @@ def test_flat_population_follows_registered_rule(n_fwd: int, h: int) -> None:
+     cfg = lp.cem_config_for_budget("arm_b", {"H": h}, n_fwd)
+     assert cfg.pop_size == (n_fwd - spec.CEM_ENCODE_RESERVE) // (spec.CEM_N_ITERS * h)
+     assert cfg.n_iters == spec.CEM_N_ITERS and cfg.horizon == h
+-    assert cfg.n_exec == spec.REPLAN_M_STEPS and cfg.n_categories == spec.ACTION_DIM
++    assert cfg.n_exec == spec.PLAN_REPLAN_EVERY_OBS_STEPS and cfg.n_categories == spec.ACTION_DIM
+     assert cfg.pop_size * cfg.n_iters * h + spec.CEM_ENCODE_RESERVE <= n_fwd
+ 
+ 
+@@ -278,7 +316,7 @@ def test_hierarchical_arm_runs_two_levels_and_charges_l2() -> None:
+     assert names.get("encode_l2", 0) > 0 and names.get("predict_l2", 0) > 0
+     assert names.get("predict_l1", 0) > 0
+     assert counter.total <= TEST_N_FWD
+-    assert len(np.asarray(res.actions).reshape(-1)) == spec.REPLAN_M_STEPS
++    assert len(np.asarray(res.actions).reshape(-1)) == spec.PLAN_REPLAN_EVERY_OBS_STEPS
+ 
+ 
+ # ---------------------------------------------------------------- counting
+@@ -391,3 +429,80 @@ def test_load_for_planning_requires_seed(tmp_path: Any) -> None:
+ 
+     with pytest.raises(TypeError):
+         adapters_mlx.load_trained_models_for_planning(tmp_path, ledger_path=tmp_path / "x")  # type: ignore[call-arg]
++
++
++def test_r26_closed_loop_geopose_success_rate() -> None:
++    """Appendix E validation: GeoPoseArm reaches >= 10/12 success on 2 worlds x 6 long goals; RandomArm is low."""
++    worlds = _worlds(2, 6)
++    geo_ok = 0
++    rand_ok = 0
++    total = 0
++
++    for w, (layout, specs) in enumerate(worlds):
++        for i, ep in enumerate(specs):
++            arm_geo = GeoPoseArm(layout, s2_eval._to_state(ep["goal"]))
++            plan_fn_geo = lp.make_plan_fn(arm_geo, "flat", {"H": 16}, int(spec.N_FWD))
++            counter_geo = ForwardCounter(budget=int(spec.N_FWD))
++            res_geo = s2_eval.run_episode(
++                layout, ep, plan_fn_geo, counter_geo, 100 * w + i, m=int(spec.PLAN_REPLAN_EVERY_OBS_STEPS), catch_budget_exceeded=True
++            )
++            geo_ok += int(res_geo.success)
++
++            plan_fn_rand = s2_eval.make_random_planner(42 + 100 * w + i)
++            res_rand = s2_eval.run_episode(
++                layout, ep, plan_fn_rand, None, 100 * w + i, m=int(spec.PLAN_REPLAN_EVERY_OBS_STEPS)
++            )
++            rand_ok += int(res_rand.success)
++            total += 1
++
++    assert total == 12
++    assert geo_ok >= 10, f"GeoPoseArm success {geo_ok}/12 < 10/12"
++    assert rand_ok <= 2, f"RandomArm success {rand_ok}/12 not significantly lower"
++
++
++def test_learned_planning_batch_parity_consistency() -> None:
++    """Verify batched plan_fn vs unbatched reference produces identical actions and counts."""
++    layout, specs = _worlds(1, 1)[0]
++    ep = specs[0]
++    goal_state = s2_eval._to_state(ep["goal"])
++
++    arm = GeoPoseArm(layout, goal_state)
++    choice = {"H": 16}
++    n_fwd = int(spec.N_FWD)
++
++    plan_fn_batched = lp.make_plan_fn(arm, "flat", choice, n_fwd)
++
++    config = lp.cem_config_for_budget("flat", choice, n_fwd)
++    dts = np.full(config.horizon, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
++    dts[0] = 1.0
++
++    st = s2_eval._to_state(ep["start"])
++    obs = world.student_obs(layout, st, last_action=world.ACTION_WAIT, dt=1)
++    goal_obs = {
++        "view": world.compute_ego_view(layout, goal_state.x, goal_state.y, goal_state.heading),
++        "heading": [1 if i == goal_state.heading else 0 for i in range(4)],
++    }
++
++    c_batch = ForwardCounter(budget=n_fwd)
++    res_b = plan_fn_batched(obs, goal_obs, 1, c_batch, np.random.default_rng(999))
++
++    c_ref = ForwardCounter(budget=n_fwd)
++    enc_r = c_ref.wrap("encode", arm.encode)
++    p1_r = c_ref.wrap("predict_l1", arm.predict_l1)
++    x_obs = lp.featurize_obs(obs, 1)
++    x_goal = lp.featurize_goal(goal_obs)
++    res_r = planner.flat_cem_plan_reference(
++        encode=enc_r,
++        predict_l1=p1_r,
++        obs=x_obs,
++        goal_obs=x_goal,
++        config=config,
++        rng=np.random.default_rng(999),
++        counter=c_ref,
++        dts=dts,
++        cost_mode=spec.PLAN_COST_TRAJECTORY_SUM,
++    )
++
++    np.testing.assert_array_equal(res_b.actions, res_r.actions)
++    assert c_batch.total == c_ref.total
++    assert c_batch.by_name == c_ref.by_name
+diff --git a/tests/v9/experiments/test_s2_learned_planning_native.py b/tests/v9/experiments/test_s2_learned_planning_native.py
+index aab0f41..46eed42 100644
+--- a/tests/v9/experiments/test_s2_learned_planning_native.py
++++ b/tests/v9/experiments/test_s2_learned_planning_native.py
+@@ -6,13 +6,14 @@ Collected only with ``--native-mlx`` (see tests/conftest.py NATIVE_MODULES).
+ from __future__ import annotations
+ 
+ import random
++import time
+ 
+ import mlx.core  # noqa: F401  (native module: module-level MLX import)
+ import numpy as np
+ import pytest
+ 
+ from ainerzero.v9.experiments.s2 import learned_planning as lp
+-from ainerzero.v9.experiments.s2 import spec, world
++from ainerzero.v9.experiments.s2 import planner, spec, world
+ from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
+ 
+ pytestmark = pytest.mark.native_mlx
+@@ -50,3 +51,83 @@ def test_native_one_decision_per_arm_respects_budget() -> None:
+         if kind == "hierarchical":
+             assert counter.by_name.get("encode_l2", 0) > 0 and counter.by_name.get("predict_l2", 0) > 0
+         assert np.asarray(res.actions).size >= 1
++
++
++def test_native_batching_wall_clock_and_parity_per_arm() -> None:
++    """Benchmark and verify parity between batched and unbatched reference across 3 MLX arms."""
++    from ainerzero.v9.experiments.s2 import adapters_mlx
++
++    obs, goal_obs = _obs_pair()
++    timing_records = {}
++
++    for arm_id in ("arm_a", "arm_b", "arm_c"):
++        arm = adapters_mlx.make_mlx_arm(arm_id)
++        arm.init(42)
++        kind = lp.arm_kind_of(arm_id)
++        choice = dict(spec.SMOKE_PLAN_CHOICE[kind])
++        n_fwd = int(spec.N_FWD)
++
++        # 1. Batched plan_fn
++        plan_fn_b = lp.make_plan_fn(arm, arm_id, choice, n_fwd)
++        counter_b = ForwardCounter(budget=n_fwd)
++        counter_b.begin_episode()
++        t0 = time.perf_counter()
++        res_b = plan_fn_b(obs, goal_obs, 1, counter_b, np.random.default_rng(100))
++        t_batched = time.perf_counter() - t0
++
++        # 2. Sequential reference
++        cfg = lp.cem_config_for_budget(arm_id, choice, n_fwd)
++        counter_r = ForwardCounter(budget=n_fwd)
++        counter_r.begin_episode()
++        t0 = time.perf_counter()
++        enc_r = counter_r.wrap("encode", arm.encode)
++        p1_r = counter_r.wrap("predict_l1", arm.predict_l1)
++        x_obs = lp.featurize_obs(obs, 1)
++        x_goal = lp.featurize_goal(goal_obs)
++
++        if kind == "flat":
++            dts = np.full(cfg.horizon, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
++            dts[0] = 1.0
++            res_r = planner.flat_cem_plan_reference(
++                encode=enc_r,
++                predict_l1=p1_r,
++                obs=x_obs,
++                goal_obs=x_goal,
++                config=cfg,
++                rng=np.random.default_rng(100),
++                counter=counter_r,
++                dts=dts,
++                cost_mode=spec.PLAN_COST_TRAJECTORY_SUM,
++            )
++        else:
++            enc2_r = counter_r.wrap("encode_l2", arm.encode_l2)
++            raw_p2 = arm.predict_l2
++            p2_r = counter_r.wrap("predict_l2", lambda z, u, dt: raw_p2(z, lp.denormalize_macro(u), dt))
++            macro_dts = np.full(cfg.macro_horizon, float(spec.PLAN_FUTURE_DT_L2), dtype=np.float64)
++            macro_dts[0] = 1.0 + float(round((cfg.s2 - 1) * lp.expected_k()))
++            raw_dts = np.full(cfg.s2, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
++            raw_dts[0] = 1.0
++            res_r = planner.hierarchical_cem_plan_reference(
++                encode=enc_r,
++                predict_l1=p1_r,
++                predict_l2=p2_r,
++                encode_l2=enc2_r,
++                obs=x_obs,
++                goal_obs=x_goal,
++                config=cfg,
++                rng=np.random.default_rng(100),
++                counter=counter_r,
++                macro_dts=macro_dts,
++                raw_dts=raw_dts,
++            )
++        t_ref = time.perf_counter() - t0
++
++        timing_records[arm_id] = {
++            "wall_batched_sec": t_batched,
++            "wall_ref_sec": t_ref,
++            "speedup": t_ref / max(t_batched, 1e-9),
++        }
++
++        np.testing.assert_array_equal(res_b.actions, res_r.actions)
++        assert counter_b.total == counter_r.total
++        assert counter_b.by_name == counter_r.by_name
+diff --git a/tests/v9/experiments/test_s2_planner.py b/tests/v9/experiments/test_s2_planner.py
+index d7cff6e..edf18ca 100644
+--- a/tests/v9/experiments/test_s2_planner.py
++++ b/tests/v9/experiments/test_s2_planner.py
+@@ -20,7 +20,9 @@ from ainerzero.v9.experiments.s2.planner import (
+     FlatCEMConfig,
+     HierCEMConfig,
+     flat_cem_plan,
++    flat_cem_plan_reference,
+     hierarchical_cem_plan,
++    hierarchical_cem_plan_reference,
+     rollout_l1,
+     squared_distance,
+ )
+@@ -79,27 +81,46 @@ def identity_encode(obs: np.ndarray) -> np.ndarray:
+ 
+ def predict_l1_analytic(z: np.ndarray, a: np.ndarray, dt: float) -> np.ndarray:
+     """Discrete cardinal step from action index (float scalar / length-1)."""
+-    a = np.asarray(a, dtype=np.float64).reshape(-1)
+-    idx = int(np.clip(np.round(a[0]), 0, N_ACT - 1))
+-    delta = CARDINAL[idx]
+-    steps = max(1, int(round(float(dt))))
+-    pos = np.asarray(z, dtype=np.float64).reshape(-1)[:2].copy()
+-    for _ in range(steps):
+-        pos = _clip_move(pos, delta)
+-    return pos
++    z_arr = np.asarray(z, dtype=np.float64)
++    if z_arr.ndim == 1:
++        a = np.asarray(a, dtype=np.float64).reshape(-1)
++        idx = int(np.clip(np.round(a[0]), 0, N_ACT - 1))
++        delta = CARDINAL[idx]
++        steps = max(1, int(round(float(dt))))
++        pos = z_arr.reshape(-1)[:2].copy()
++        for _ in range(steps):
++            pos = _clip_move(pos, delta)
++        return pos
++    B = z_arr.shape[0]
++    a_arr = np.asarray(a, dtype=np.float64).reshape(B, -1)
++    out = np.empty_like(z_arr)
++    for i in range(B):
++        out[i] = predict_l1_analytic(z_arr[i], a_arr[i], dt)
++    return out
+ 
+ 
+ def encode_l2_identity(z1: np.ndarray) -> np.ndarray:
+-    return np.asarray(z1, dtype=np.float64).reshape(-1).copy()
++    z1_arr = np.asarray(z1, dtype=np.float64)
++    if z1_arr.ndim == 1:
++        return z1_arr.reshape(-1).copy()
++    return z1_arr.copy()
+ 
+ 
+ def predict_l2_oracle(z2: np.ndarray, macro: np.ndarray, dt: float) -> np.ndarray:
+     """Oracle macro: apply the same cardinal index for ``dt`` (≈ s₂) micro-steps."""
+-    steps = max(1, int(round(float(dt)))) if dt else S2_STRIDE
+-    pos = np.asarray(z2, dtype=np.float64).reshape(-1)[:2].copy()
+-    for _ in range(steps):
+-        pos = predict_l1_analytic(pos, macro, 1.0)
+-    return pos
++    z2_arr = np.asarray(z2, dtype=np.float64)
++    if z2_arr.ndim == 1:
++        steps = max(1, int(round(float(dt)))) if dt else S2_STRIDE
++        pos = z2_arr.reshape(-1)[:2].copy()
++        for _ in range(steps):
++            pos = predict_l1_analytic(pos, macro, 1.0)
++        return pos
++    B = z2_arr.shape[0]
++    macro_arr = np.asarray(macro, dtype=np.float64).reshape(B, -1)
++    out = np.empty_like(z2_arr)
++    for i in range(B):
++        out[i] = predict_l2_oracle(z2_arr[i], macro_arr[i], dt)
++    return out
+ 
+ 
+ def shortest_path_len(start: np.ndarray, goal: np.ndarray) -> int:
+@@ -575,8 +596,10 @@ def test_hierarchical_lower_cost_goes_through_e2():
+     p1 = counter.wrap("predict_l1", predict_l1_analytic)
+ 
+     def zero_e2(z1: np.ndarray) -> np.ndarray:
+-        z = np.asarray(z1, dtype=np.float64).reshape(-1)
+-        return np.zeros_like(z)
++        z = np.asarray(z1, dtype=np.float64)
++        if z.ndim == 1:
++            return np.zeros_like(z.reshape(-1))
++        return np.zeros((z.shape[0], 2), dtype=np.float64)
+ 
+     e2 = counter.wrap("encode_l2", zero_e2)
+     cfg_s2 = 4
+@@ -664,6 +687,7 @@ def test_hierarchical_far_goal_vs_flat_same_budget():
+         action_dim=1,
+         n_exec=1,
+         n_categories=N_ACT,
++        cost_mode="terminal",
+     )
+     assert 2 + flat_cfg.n_iters * flat_cfg.pop_size * flat_cfg.horizon <= N_FWD_COMPARE
+ 
+@@ -794,3 +818,101 @@ def test_flat_cem_cost_fn_forward_counter_and_custom_cost() -> None:
+             counter=counter_tight,
+             cost_fn=lambda z, g: float(np.sum(wrapped_tight(z) - g)),
+         )
++
++
++def test_batched_vs_unbatched_consistency_flat() -> None:
++    """Verify batched flat_cem_plan produces bit-for-bit identical actions and counts to reference."""
++    start = np.array([1.0, 2.0], dtype=np.float64)
++    goal = np.array([15.0, 2.0], dtype=np.float64)
++    cfg = FlatCEMConfig(
++        horizon=8,
++        n_iters=3,
++        pop_size=12,
++        elite_frac=0.25,
++        action_dim=1,
++        n_categories=4,
++        cost_mode="trajectory_sum",
++    )
++
++    c_batched = ForwardCounter(budget=1000)
++    enc_b, p1_b, _, _ = _wrap_all(c_batched)
++    res_b = flat_cem_plan(
++        encode=enc_b,
++        predict_l1=p1_b,
++        obs=start,
++        goal_obs=goal,
++        config=cfg,
++        rng=np.random.default_rng(12345),
++        counter=c_batched,
++    )
++
++    c_ref = ForwardCounter(budget=1000)
++    enc_r, p1_r, _, _ = _wrap_all(c_ref)
++    res_r = flat_cem_plan_reference(
++        encode=enc_r,
++        predict_l1=p1_r,
++        obs=start,
++        goal_obs=goal,
++        config=cfg,
++        rng=np.random.default_rng(12345),
++        counter=c_ref,
++    )
++
++    np.testing.assert_array_equal(res_b.actions, res_r.actions)
++    assert c_batched.total == c_ref.total
++    assert c_batched.by_name == c_ref.by_name
++    assert np.isclose(res_b.info["best_cost"], res_r.info["best_cost"])
++
++
++def test_batched_vs_unbatched_consistency_hierarchical() -> None:
++    """Verify batched hierarchical_cem_plan produces bit-for-bit identical actions and counts to reference."""
++    start = np.array([1.0, 2.0], dtype=np.float64)
++    goal = np.array([25.0, 2.0], dtype=np.float64)
++    cfg = HierCEMConfig(
++        macro_horizon=4,
++        upper_iters=2,
++        upper_pop=6,
++        upper_elite_frac=0.5,
++        macro_dim=1,
++        s2=4,
++        lower_iters=2,
++        lower_pop=8,
++        lower_elite_frac=0.5,
++        action_dim=1,
++        n_categories=4,
++        n_macro_categories=4,
++    )
++
++    c_batched = ForwardCounter(budget=2000)
++    enc_b, p1_b, p2_b, e2_b = _wrap_all(c_batched)
++    res_b = hierarchical_cem_plan(
++        encode=enc_b,
++        predict_l1=p1_b,
++        predict_l2=p2_b,
++        encode_l2=e2_b,
++        obs=start,
++        goal_obs=goal,
++        config=cfg,
++        rng=np.random.default_rng(54321),
++        counter=c_batched,
++    )
++
++    c_ref = ForwardCounter(budget=2000)
++    enc_r, p1_r, p2_r, e2_r = _wrap_all(c_ref)
++    res_r = hierarchical_cem_plan_reference(
++        encode=enc_r,
++        predict_l1=p1_r,
++        predict_l2=p2_r,
++        encode_l2=e2_r,
++        obs=start,
++        goal_obs=goal,
++        config=cfg,
++        rng=np.random.default_rng(54321),
++        counter=c_ref,
++    )
++
++    np.testing.assert_array_equal(res_b.actions, res_r.actions)
++    assert c_batched.total == c_ref.total
++    assert c_batched.by_name == c_ref.by_name
++    assert np.isclose(res_b.info["best_upper_cost"], res_r.info["best_upper_cost"])
++    assert np.isclose(res_b.info["best_lower_cost"], res_r.info["best_lower_cost"])

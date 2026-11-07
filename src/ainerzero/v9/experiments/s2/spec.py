@@ -288,3 +288,11 @@ MACRO_DXY_SCALE = float(S2_MACRO_STEPS * max(K_DISTRIBUTION))
 # 目标观察的特征化约定（与回合起点一致）：last_action = WAIT(3)，dt = 1
 GOAL_FEATURE_LAST_ACTION = 3
 GOAL_FEATURE_DT = 1
+
+# --- 附录 E 规划协议可行性修正（r2.6，2026-11-07）---
+PLAN_REPLAN_EVERY_OBS_STEPS: int = 1
+PLAN_FUTURE_DT_L1: int = 1
+PLAN_FUTURE_DT_L2: int = 14  # round(S2_MACRO_STEPS * 1.7) = round(13.6) = 14
+PLAN_COST_TRAJECTORY_SUM: str = "trajectory_sum"
+PLAN_COST_TERMINAL: str = "terminal"
+

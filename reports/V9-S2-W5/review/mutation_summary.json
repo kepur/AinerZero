@@ -1,0 +1,67 @@
+{
+  "protocol": "r2.6 (Appendix E)",
+  "baseline": {
+    "geopose_success": "12/12",
+    "geopose_rate": 1.0,
+    "random_success": "0/12",
+    "random_rate": 0.0,
+    "parity_matched": true
+  },
+  "mutations": [
+    {
+      "id": "W5-M1",
+      "name": "flat reverts to terminal cost",
+      "target_file": "src/ainerzero/v9/experiments/s2/learned_planning.py",
+      "test": "tests/v9/experiments/test_s2_learned_planning.py::test_r26_closed_loop_geopose_success_rate",
+      "returncode": 1,
+      "expected": "RED (success rate drops significantly below 10/12)",
+      "observed": "RED: success=6/12 (threshold >= 10/12)",
+      "passed_threshold": false,
+      "status": "KILLED"
+    },
+    {
+      "id": "W5-M2",
+      "name": "future dt reverts to E[k] = 1.7",
+      "target_file": "src/ainerzero/v9/experiments/s2/learned_planning.py",
+      "test": "tests/v9/experiments/test_s2_learned_planning.py::test_r26_closed_loop_geopose_success_rate",
+      "returncode": 1,
+      "expected": "RED (success rate drops significantly below 10/12)",
+      "observed": "RED: success=6/12 (threshold >= 10/12)",
+      "passed_threshold": false,
+      "status": "KILLED"
+    },
+    {
+      "id": "W5-M3",
+      "name": "n_exec reverts to 4 (open-loop replanning)",
+      "target_file": "src/ainerzero/v9/experiments/s2/spec.py",
+      "test": "tests/v9/experiments/test_s2_learned_planning.py::test_r26_closed_loop_geopose_success_rate",
+      "returncode": 1,
+      "expected": "RED (open-loop steering drift under variable k causes failure)",
+      "observed": "RED: success=2/12 (threshold >= 10/12)",
+      "passed_threshold": false,
+      "status": "KILLED"
+    },
+    {
+      "id": "W5-M4",
+      "name": "batched path undercounts elements (batch_size=1)",
+      "target_file": "src/ainerzero/v9/experiments/s2/planner.py",
+      "test": "tests/v9/experiments/test_s2_planner.py::test_batched_vs_unbatched_consistency_flat",
+      "returncode": 1,
+      "expected": "RED (consistency test detects ForwardCounter charge mismatch)",
+      "observed": "RED: c_batched.total=26 vs c_ref.total=290",
+      "passed_threshold": false,
+      "status": "KILLED"
+    },
+    {
+      "id": "W5-M5",
+      "name": "custom control: subsequent L1 dt set to 2",
+      "target_file": "src/ainerzero/v9/experiments/s2/spec.py",
+      "test": "tests/v9/experiments/test_s2_learned_planning.py::test_r26_closed_loop_geopose_success_rate",
+      "returncode": 1,
+      "expected": "RED (subsequent dt mismatch drops success rate below 10/12)",
+      "observed": "RED: assert 6 >= 10 (success=6/12)",
+      "passed_threshold": false,
+      "status": "KILLED"
+    }
+  ]
+}

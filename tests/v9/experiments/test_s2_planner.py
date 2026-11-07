@@ -20,7 +20,9 @@ from ainerzero.v9.experiments.s2.planner import (
     FlatCEMConfig,
     HierCEMConfig,
     flat_cem_plan,
+    flat_cem_plan_reference,
     hierarchical_cem_plan,
+    hierarchical_cem_plan_reference,
     rollout_l1,
     squared_distance,
 )
@@ -79,27 +81,46 @@ def identity_encode(obs: np.ndarray) -> np.ndarray:
 
 def predict_l1_analytic(z: np.ndarray, a: np.ndarray, dt: float) -> np.ndarray:
     """Discrete cardinal step from action index (float scalar / length-1)."""
-    a = np.asarray(a, dtype=np.float64).reshape(-1)
-    idx = int(np.clip(np.round(a[0]), 0, N_ACT - 1))
-    delta = CARDINAL[idx]
-    steps = max(1, int(round(float(dt))))
-    pos = np.asarray(z, dtype=np.float64).reshape(-1)[:2].copy()
-    for _ in range(steps):
-        pos = _clip_move(pos, delta)
-    return pos
+    z_arr = np.asarray(z, dtype=np.float64)
+    if z_arr.ndim == 1:
+        a = np.asarray(a, dtype=np.float64).reshape(-1)
+        idx = int(np.clip(np.round(a[0]), 0, N_ACT - 1))
+        delta = CARDINAL[idx]
+        steps = max(1, int(round(float(dt))))
+        pos = z_arr.reshape(-1)[:2].copy()
+        for _ in range(steps):
+            pos = _clip_move(pos, delta)
+        return pos
+    B = z_arr.shape[0]
+    a_arr = np.asarray(a, dtype=np.float64).reshape(B, -1)
+    out = np.empty_like(z_arr)
+    for i in range(B):
+        out[i] = predict_l1_analytic(z_arr[i], a_arr[i], dt)
+    return out
 
 
 def encode_l2_identity(z1: np.ndarray) -> np.ndarray:
-    return np.asarray(z1, dtype=np.float64).reshape(-1).copy()
+    z1_arr = np.asarray(z1, dtype=np.float64)
+    if z1_arr.ndim == 1:
+        return z1_arr.reshape(-1).copy()
+    return z1_arr.copy()
 
 
 def predict_l2_oracle(z2: np.ndarray, macro: np.ndarray, dt: float) -> np.ndarray:
     """Oracle macro: apply the same cardinal index for ``dt`` (≈ s₂) micro-steps."""
-    steps = max(1, int(round(float(dt)))) if dt else S2_STRIDE
-    pos = np.asarray(z2, dtype=np.float64).reshape(-1)[:2].copy()
-    for _ in range(steps):
-        pos = predict_l1_analytic(pos, macro, 1.0)
-    return pos
+    z2_arr = np.asarray(z2, dtype=np.float64)
+    if z2_arr.ndim == 1:
+        steps = max(1, int(round(float(dt)))) if dt else S2_STRIDE
+        pos = z2_arr.reshape(-1)[:2].copy()
+        for _ in range(steps):
+            pos = predict_l1_analytic(pos, macro, 1.0)
+        return pos
+    B = z2_arr.shape[0]
+    macro_arr = np.asarray(macro, dtype=np.float64).reshape(B, -1)
+    out = np.empty_like(z2_arr)
+    for i in range(B):
+        out[i] = predict_l2_oracle(z2_arr[i], macro_arr[i], dt)
+    return out
 
 
 def shortest_path_len(start: np.ndarray, goal: np.ndarray) -> int:
@@ -575,8 +596,10 @@ def test_hierarchical_lower_cost_goes_through_e2():
     p1 = counter.wrap("predict_l1", predict_l1_analytic)
 
     def zero_e2(z1: np.ndarray) -> np.ndarray:
-        z = np.asarray(z1, dtype=np.float64).reshape(-1)
-        return np.zeros_like(z)
+        z = np.asarray(z1, dtype=np.float64)
+        if z.ndim == 1:
+            return np.zeros_like(z.reshape(-1))
+        return np.zeros((z.shape[0], 2), dtype=np.float64)
 
     e2 = counter.wrap("encode_l2", zero_e2)
     cfg_s2 = 4
@@ -664,6 +687,7 @@ def test_hierarchical_far_goal_vs_flat_same_budget():
         action_dim=1,
         n_exec=1,
         n_categories=N_ACT,
+        cost_mode="terminal",
     )
     assert 2 + flat_cfg.n_iters * flat_cfg.pop_size * flat_cfg.horizon <= N_FWD_COMPARE
 
@@ -794,3 +818,101 @@ def test_flat_cem_cost_fn_forward_counter_and_custom_cost() -> None:
             counter=counter_tight,
             cost_fn=lambda z, g: float(np.sum(wrapped_tight(z) - g)),
         )
+
+
+def test_batched_vs_unbatched_consistency_flat() -> None:
+    """Verify batched flat_cem_plan produces bit-for-bit identical actions and counts to reference."""
+    start = np.array([1.0, 2.0], dtype=np.float64)
+    goal = np.array([15.0, 2.0], dtype=np.float64)
+    cfg = FlatCEMConfig(
+        horizon=8,
+        n_iters=3,
+        pop_size=12,
+        elite_frac=0.25,
+        action_dim=1,
+        n_categories=4,
+        cost_mode="trajectory_sum",
+    )
+
+    c_batched = ForwardCounter(budget=1000)
+    enc_b, p1_b, _, _ = _wrap_all(c_batched)
+    res_b = flat_cem_plan(
+        encode=enc_b,
+        predict_l1=p1_b,
+        obs=start,
+        goal_obs=goal,
+        config=cfg,
+        rng=np.random.default_rng(12345),
+        counter=c_batched,
+    )
+
+    c_ref = ForwardCounter(budget=1000)
+    enc_r, p1_r, _, _ = _wrap_all(c_ref)
+    res_r = flat_cem_plan_reference(
+        encode=enc_r,
+        predict_l1=p1_r,
+        obs=start,
+        goal_obs=goal,
+        config=cfg,
+        rng=np.random.default_rng(12345),
+        counter=c_ref,
+    )
+
+    np.testing.assert_array_equal(res_b.actions, res_r.actions)
+    assert c_batched.total == c_ref.total
+    assert c_batched.by_name == c_ref.by_name
+    assert np.isclose(res_b.info["best_cost"], res_r.info["best_cost"])
+
+
+def test_batched_vs_unbatched_consistency_hierarchical() -> None:
+    """Verify batched hierarchical_cem_plan produces bit-for-bit identical actions and counts to reference."""
+    start = np.array([1.0, 2.0], dtype=np.float64)
+    goal = np.array([25.0, 2.0], dtype=np.float64)
+    cfg = HierCEMConfig(
+        macro_horizon=4,
+        upper_iters=2,
+        upper_pop=6,
+        upper_elite_frac=0.5,
+        macro_dim=1,
+        s2=4,
+        lower_iters=2,
+        lower_pop=8,
+        lower_elite_frac=0.5,
+        action_dim=1,
+        n_categories=4,
+        n_macro_categories=4,
+    )
+
+    c_batched = ForwardCounter(budget=2000)
+    enc_b, p1_b, p2_b, e2_b = _wrap_all(c_batched)
+    res_b = hierarchical_cem_plan(
+        encode=enc_b,
+        predict_l1=p1_b,
+        predict_l2=p2_b,
+        encode_l2=e2_b,
+        obs=start,
+        goal_obs=goal,
+        config=cfg,
+        rng=np.random.default_rng(54321),
+        counter=c_batched,
+    )
+
+    c_ref = ForwardCounter(budget=2000)
+    enc_r, p1_r, p2_r, e2_r = _wrap_all(c_ref)
+    res_r = hierarchical_cem_plan_reference(
+        encode=enc_r,
+        predict_l1=p1_r,
+        predict_l2=p2_r,
+        encode_l2=e2_r,
+        obs=start,
+        goal_obs=goal,
+        config=cfg,
+        rng=np.random.default_rng(54321),
+        counter=c_ref,
+    )
+
+    np.testing.assert_array_equal(res_b.actions, res_r.actions)
+    assert c_batched.total == c_ref.total
+    assert c_batched.by_name == c_ref.by_name
+    assert np.isclose(res_b.info["best_upper_cost"], res_r.info["best_upper_cost"])
+    assert np.isclose(res_b.info["best_lower_cost"], res_r.info["best_lower_cost"])

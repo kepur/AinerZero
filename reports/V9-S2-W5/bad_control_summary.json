@@ -1,0 +1,48 @@
+{
+  "protocol": "r2.6 (Appendix E)",
+  "baseline": {
+    "geopose_success": "12/12",
+    "geopose_rate": 1.0,
+    "random_success": "0/12",
+    "random_rate": 0.0,
+    "parity_matched": true
+  },
+  "mutations": [
+    {
+      "id": "W5-M1",
+      "name": "flat reverts to terminal cost",
+      "description": "flat_cem_plan uses terminal squared distance to goal instead of trajectory sum",
+      "expected": "RED (success rate drops significantly below 10/12)",
+      "observed": "RED: success=6/12 (threshold >= 10/12)",
+      "passed_threshold": false,
+      "caught": true
+    },
+    {
+      "id": "W5-M2",
+      "name": "future dt reverts to E[k] = 1.7",
+      "description": "subsequent step dt in learned_planning uses fractional 1.7 instead of integer 1.0",
+      "expected": "RED (success rate drops significantly below 10/12)",
+      "observed": "RED: success=6/12 (threshold >= 10/12)",
+      "passed_threshold": false,
+      "caught": true
+    },
+    {
+      "id": "W5-M3",
+      "name": "n_exec reverts to 4 (open-loop replanning)",
+      "description": "replan every 4 observation steps instead of m=1 MPC",
+      "expected": "RED (open-loop steering drift under variable k causes failure)",
+      "observed": "RED: success=2/12 (threshold >= 10/12)",
+      "passed_threshold": false,
+      "caught": true
+    },
+    {
+      "id": "W5-M4",
+      "name": "batched path undercounts elements",
+      "description": "batched predict_l1 charges 1 (or batch_size=1) instead of population size B",
+      "expected": "RED (consistency test detects ForwardCounter charge mismatch)",
+      "observed": "RED: c_mut.total=26 vs c_ref.total=290",
+      "passed_threshold": false,
+      "caught": true
+    }
+  ]
+}
