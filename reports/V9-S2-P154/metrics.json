@@ -1,0 +1,82 @@
+{
+  "task_id": "ainerzero.V9.P154",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-7k2q",
+  "deliverables": {
+    "smoke_module": "src/ainerzero/v9/experiments/s2/smoke.py",
+    "smoke_checks_module": "src/ainerzero/v9/experiments/s2/smoke_checks.py",
+    "spec_module": "src/ainerzero/v9/experiments/s2/spec.py",
+    "test_wiring": "tests/v9/experiments/test_s2_wiring.py",
+    "test_smoke_checks": "tests/v9/experiments/test_s2_smoke_checks.py"
+  },
+  "step_3_short_train": {
+    "S_steps": 200,
+    "loss_decrease_verified": true,
+    "nan_loss_fails": true,
+    "sigreg_stability_verified": true,
+    "action_sensitivity_recorded": true
+  },
+  "step_4_oracle_feasibility": {
+    "planner": "s2_planner",
+    "n_fwd": 4096,
+    "total_episodes": 12,
+    "actual_success_rate": 0.8333333333333334,
+    "threshold": 0.05,
+    "fuse_triggered": false,
+    "budget_exhaustion_test": {
+      "n_fwd": 8,
+      "success_rate": 0.0,
+      "fuse_triggered": true
+    }
+  },
+  "smoke_partition": {
+    "n_worlds": 4,
+    "episodes_per_world": 4,
+    "total_episodes": 16,
+    "long_goal_specs_count": 12,
+    "seed_namespace": "smoke_isolated",
+    "disjoint_from_train_dev_final": true
+  },
+  "tests": {
+    "wiring_suite_passed": 21,
+    "wiring_suite_failed": 0,
+    "smoke_checks_suite_passed": 14,
+    "smoke_checks_suite_failed": 0,
+    "full_pure_cpu_suite_passed": 3602,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P154-M1": {
+      "name": "step4_gate_uses_default_oracle_mpc",
+      "target_test": "test_smoke_p154_m1_default_oracle_mpc_red",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P154-M2": {
+      "name": "step3_ignore_arm_failure",
+      "target_test": "test_smoke_p154_m2_ignore_step3_arm_failure_red",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P154-M3": {
+      "name": "bypass_seed_namespace_check",
+      "target_test": "test_smoke_p154_m3_rejects_train_dev_namespace",
+      "status": "KILLED",
+      "exit_code": 1
+    }
+  },
+  "sha256": {
+    "src/ainerzero/v9/experiments/s2/smoke.py": "41c07f3d9381d43d3b12928f08982aa638e3ef24df5b69ead93c0ac77ee4929e",
+    "src/ainerzero/v9/experiments/s2/smoke_checks.py": "13a03b7565be654191ffc8b2092a086fa7eabf0aa62893a8f1edfecebd8eb560",
+    "src/ainerzero/v9/experiments/s2/spec.py": "b1992a6407453c68083c0236c188dd15877bde28d90a10fa69f6ac160f5d5522",
+    "tests/v9/experiments/test_s2_wiring.py": "c04b5cdb298b470a0d6e0c4ee9cbebb09277210dda4db15af0e91013100e0ec0",
+    "tests/v9/experiments/test_s2_smoke_checks.py": "d4ed6e933f83e26c45c6a13230299b583020d66ea4678ce4fe91e441802b6c3b"
+  },
+  "zero_mlx_imported": true,
+  "no_constant_metrics_verified": true,
+  "no_native_mlx_run": true
+}

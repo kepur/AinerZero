@@ -1,0 +1,56 @@
+{
+  "task_id": "ainerzero.V9.A20",
+  "status": "completed",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-e4b2",
+  "fixture_choice": {
+    "file": "tests/v9/experiments/conftest.py",
+    "fixture_name": "_hermetic_s1_disk_probe",
+    "scope": "autouse=True",
+    "justification": "tests/v9/experiments/conftest.py 是 pytest 针对 tests/v9/experiments/ 的官方夹具配置文件。相比 s1_testkit.py，采用 conftest.py 并设置 autouse=True 能天然覆盖当前目录下所有 S1/S2 测试模块（包括 32 个未显式导入 s1_testkit 的测试文件），无需在每个测试文件中侵入性修改导入；且与 A39 的 _no_real_mlx_in_resource_probe 保持统一设计风格与隔离规范；严格遵守 S1 冻结规则，零改动 src/ 代码。"
+  },
+  "full_regression": {
+    "total_collected": 3602,
+    "deselected": 6,
+    "selected": 3596,
+    "passed": 3596,
+    "failed": 0,
+    "exit_code": 0,
+    "duration_seconds": 330.09,
+    "s1_disk_repaired_count": 40
+  },
+  "artifacts_stat_audit": {
+    "total_entries_before": 80929,
+    "total_entries_after": 80929,
+    "diff_count": 0,
+    "differences": {}
+  },
+  "bad_control": {
+    "revert_fixture_under_24_9_gib_disk": {
+      "status": "RED (CONFIRMED)",
+      "exit_code": 1,
+      "s1_tests_failed_immediately": 38,
+      "s1_tests_total_affected": 39,
+      "reproduced_failure": "disk_free_limit: free 24.90 GiB < 50.0 GiB"
+    },
+    "fixture_active_under_24_9_gib_disk": {
+      "status": "GREEN (PASS)",
+      "exit_code": 0,
+      "passed_tests": 181,
+      "failed_tests": 0
+    },
+    "explicit_low_probe_rejection": {
+      "status": "PASS",
+      "exit_code": 0,
+      "assert_start_refusal": "disk_free_limit: free 10.00 GiB < 50.0 GiB",
+      "runtime_guard_refusal": "disk_free_limit: free 10.00 GiB < 50.0 GiB"
+    },
+    "restoration_verification": {
+      "initial_sha256": "73a42123657fe3fd716c71677e9e07b01204eb58aaa5494e635de3d5e92def1b",
+      "restored_sha256": "73a42123657fe3fd716c71677e9e07b01204eb58aaa5494e635de3d5e92def1b",
+      "match": true
+    }
+  },
+  "src_modified": false
+}

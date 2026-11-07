@@ -41,6 +41,29 @@ def _no_real_mlx_in_resource_probe(request, monkeypatch):
     monkeypatch.setattr(resource_gate, "mlx_memory_probe", _unavailable)
 
 
+@pytest.fixture(autouse=True)
+def _hermetic_s1_disk_probe(monkeypatch):
+    """S1 test hermeticity (ainerzero.V9.A20): tests must not depend on host disk free space.
+
+    ``resource_gate.collect`` falls back to ``psutil.disk_usage`` when ``disk_probe``
+    is not provided, making test outcomes depend on ephemeral host disk space.
+    When host free disk is below 50 GiB (``spec.RESOURCE_LIMITS['disk_min_free_gib']``),
+    unshielded S1 tests fail on start-up gate refusal. This fixture defaults ``disk_probe``
+    to a generous 500 GiB fake probe while preserving explicit injections (e.g. tests
+    specifically verifying refusal on low disk space).
+    """
+    from ainerzero.v9.experiments.s1 import resource_gate
+
+    _orig_collect = resource_gate.collect
+
+    def _collect_with_fake_disk_probe(*args, disk_probe=None, **kwargs):
+        if disk_probe is None:
+            disk_probe = lambda: 500.0 * resource_gate.GIB
+        return _orig_collect(*args, disk_probe=disk_probe, **kwargs)
+
+    monkeypatch.setattr(resource_gate, "collect", _collect_with_fake_disk_probe)
+
+
 @pytest.fixture
 def synthetic_dataset(tmp_path):
     """Finalize a synthetic dataset; returns (manifest, dataset_dir, plan)."""

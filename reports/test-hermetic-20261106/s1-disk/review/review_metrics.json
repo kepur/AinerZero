@@ -1,0 +1,54 @@
+{
+  "task_id": "ainerzero.V9.A21",
+  "verified_task_id": "ainerzero.V9.A20",
+  "reviewer_agent": "gemini-8f4b",
+  "reviewer_session": "sess-4bc4b7ff4dc0",
+  "author_agent": "gemini-e4b2",
+  "self_review_check": "INDEPENDENT_CONFIRMED (agent and session are distinct from author)",
+  "recommendation": "RECOMMEND_ACCEPT",
+  "change_scope": {
+    "modified_files": [
+      "tests/v9/experiments/conftest.py"
+    ],
+    "src_s1_diff_bytes": 0,
+    "conftest_sha256": "73a42123657fe3fd716c71677e9e07b01204eb58aaa5494e635de3d5e92def1b",
+    "patch_match": true
+  },
+  "bad_control": {
+    "simulated_free_disk_gib": 10.0,
+    "threshold_gib": 50.0,
+    "with_fixture": {
+      "passed": 39,
+      "failed": 0,
+      "status": "PASS"
+    },
+    "without_fixture": {
+      "failed": 38,
+      "passed": 1,
+      "failed_reason": "ResourceGateRefused: disk_free_limit: free 10.00 GiB < 50.0 GiB",
+      "status": "RED_CONFIRMED"
+    }
+  },
+  "threshold_tests_verified": [
+    "tests/v9/experiments/test_s1_resource_gate.py::test_each_protection_line_refuses_with_an_explicit_reason[overrides5-disk_free_limit]",
+    "tests/v9/experiments/test_s1_resource_gate.py::test_loosened_limits_are_refused[overrides5-disk_min_free_gib]",
+    "tests/v9/experiments/test_s1_resource_gate.py::test_assert_start_with_injected_probes",
+    "resource_gate.assert_start(explicit_disk_probe_10GiB) -> Refused",
+    "resource_gate.RuntimeGuard(explicit_disk_probe_10GiB).sample() -> Refused",
+    "resource_gate.evaluate(snapshot_10GiB) -> Refused"
+  ],
+  "full_regression": {
+    "total_collected": 3608,
+    "deselected": 6,
+    "selected": 3602,
+    "passed": 3602,
+    "failed": 0,
+    "exit_code": 0,
+    "duration_seconds": 335.35
+  },
+  "artifacts_stat_audit": {
+    "total_entries_before": 80929,
+    "total_entries_after": 80929,
+    "diff_count": 0
+  }
+}

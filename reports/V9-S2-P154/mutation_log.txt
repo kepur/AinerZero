@@ -1,0 +1,134 @@
+=== Mutation P154-M1 ===
+Name: step4_gate_uses_default_oracle_mpc
+Target test: tests/v9/experiments/test_s2_wiring.py::test_smoke_p154_m1_default_oracle_mpc_red
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmph7fq64pg/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_wiring.py F                                 [100%]
+
+=================================== FAILURES ===================================
+__________________ test_smoke_p154_m1_default_oracle_mpc_red ___________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-69/test_smoke_p154_m1_default_ora0')
+
+    def test_smoke_p154_m1_default_oracle_mpc_red(tmp_path: Path) -> None:
+        """P154-M1 坏对照检测：熔断门必须由 oracle_feasibility_with_s2_planner 提供。"""
+        from ainerzero.v9.experiments.s2 import param_count
+    
+        smoke_out = tmp_path / "smoke_p154_m1"
+        fake_arms = {
+            "arm_a": _DummySmokeArm(param_count.count_arm_a_closed_form(), decreasing=True),
+            "arm_b": _DummySmokeArm(param_count.count_arm_b_closed_form(), decreasing=True),
+            "arm_c": _DummySmokeArm(param_count.count_arm_c_closed_form(), decreasing=True),
+        }
+        fake_step_times = {"arm_a": 0.05, "arm_b": 0.04, "arm_c": 0.06}
+    
+        res = smoke.run_smoke(smoke_out, arms_by_id=fake_arms, step_times=fake_step_times)
+>       assert res["step_4_feasibility"].get("planner") == "s2_planner", (
+            "熔断门必须由 s2 规划器驱动 (planner='s2_planner')"
+        )
+E       AssertionError: 熔断门必须由 s2 规划器驱动 (planner='s2_planner')
+E       assert None == 's2_planner'
+E        +  where None = <built-in method get of dict object at 0x10ad1a980>('planner')
+E        +    where <built-in method get of dict object at 0x10ad1a980> = {'passed': True, 'fuse_triggered': False, 'success_rate': 0.8333333333333334, 'total_episodes': 12, ...}.get
+
+tests/v9/experiments/test_s2_wiring.py:538: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_wiring.py::test_smoke_p154_m1_default_oracle_mpc_red
+============================== 1 failed in 6.67s ===============================
+
+Stderr:
+
+
+=== Mutation P154-M2 ===
+Name: step3_ignore_arm_failure
+Target test: tests/v9/experiments/test_s2_wiring.py::test_smoke_p154_m2_ignore_step3_arm_failure_red
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmph7fq64pg/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_wiring.py F                                 [100%]
+
+=================================== FAILURES ===================================
+_______________ test_smoke_p154_m2_ignore_step3_arm_failure_red ________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-70/test_smoke_p154_m2_ignore_step0')
+
+    def test_smoke_p154_m2_ignore_step3_arm_failure_red(tmp_path: Path) -> None:
+        """P154-M2 坏对照检测：第 3 步任一臂失败时整体必须判 failed。"""
+        from ainerzero.v9.experiments.s2 import param_count
+    
+        smoke_out = tmp_path / "smoke_p154_m2"
+        fake_arms = {
+            "arm_a": _DummySmokeArm(param_count.count_arm_a_closed_form(), decreasing=True),
+            "arm_b": _DummySmokeArm(param_count.count_arm_b_closed_form(), decreasing=False),
+            "arm_c": _DummySmokeArm(param_count.count_arm_c_closed_form(), decreasing=True),
+        }
+        fake_step_times = {"arm_a": 0.05, "arm_b": 0.04, "arm_c": 0.06}
+    
+        res = smoke.run_smoke(smoke_out, arms_by_id=fake_arms, step_times=fake_step_times)
+>       assert res["passed"] is False, "任一臂失败整体必须判 failed"
+E       AssertionError: 任一臂失败整体必须判 failed
+E       assert True is False
+
+tests/v9/experiments/test_s2_wiring.py:556: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_wiring.py::test_smoke_p154_m2_ignore_step3_arm_failure_red
+============================== 1 failed in 6.63s ===============================
+
+Stderr:
+
+
+=== Mutation P154-M3 ===
+Name: bypass_seed_namespace_check
+Target test: tests/v9/experiments/test_s2_wiring.py::test_smoke_p154_m3_rejects_train_dev_namespace
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmph7fq64pg/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_wiring.py F                                 [100%]
+
+=================================== FAILURES ===================================
+________________ test_smoke_p154_m3_rejects_train_dev_namespace ________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-71/test_smoke_p154_m3_rejects_tra0')
+
+    def test_smoke_p154_m3_rejects_train_dev_namespace(tmp_path: Path) -> None:
+        """P154-M3 坏对照检测：smoke 严禁读取 train/dev/final 分区或使用其种子命名空间。"""
+        from ainerzero.v9.experiments.s2 import param_count
+    
+        smoke_out = tmp_path / "smoke_p154_m3"
+        fake_arms = {
+            "arm_a": _DummySmokeArm(param_count.count_arm_a_closed_form(), decreasing=True),
+            "arm_b": _DummySmokeArm(param_count.count_arm_b_closed_form(), decreasing=True),
+            "arm_c": _DummySmokeArm(param_count.count_arm_c_closed_form(), decreasing=True),
+        }
+        fake_step_times = {"arm_a": 0.05, "arm_b": 0.04, "arm_c": 0.06}
+    
+        for bad_ns in ("train", "dev", "final"):
+>           with pytest.raises(ValueError, match="must not overlap"):
+E           Failed: DID NOT RAISE ValueError
+
+tests/v9/experiments/test_s2_wiring.py:574: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_wiring.py::test_smoke_p154_m3_rejects_train_dev_namespace
+============================== 1 failed in 0.89s ===============================
+
+Stderr:
+
