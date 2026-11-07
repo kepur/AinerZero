@@ -1,0 +1,71 @@
+{
+  "task_id": "ainerzero.V9.P161",
+  "review_target": "ainerzero.V9.P160",
+  "reviewer_agent": "gemini-b7x4",
+  "tier": 2,
+  "kind": "gemini",
+  "recommendation": "RECOMMEND_ACCEPT",
+  "scope_verification": {
+    "delivered_files_verified": [
+      "src/ainerzero/v9/experiments/s2/smoke.py",
+      "src/ainerzero/v9/experiments/s2/smoke_checks.py",
+      "tests/v9/experiments/test_s2_smoke_checks.py",
+      "tests/v9/experiments/test_s2_wiring.py"
+    ],
+    "sha256": {
+      "src/ainerzero/v9/experiments/s2/smoke.py": "c5be1859a3d14ad801c540abcad2c483e03f578f6cd4cc1f17a2f9b4f549a7fa",
+      "src/ainerzero/v9/experiments/s2/smoke_checks.py": "8749e22002b56f69db7def4b5bf7f3f2140d711450a084364516979c1957a226",
+      "tests/v9/experiments/test_s2_smoke_checks.py": "23c96b62a689f8d724e3b0a89e4fe285ef678d38aad1dbb3d7c64e2356a5d0f7",
+      "tests/v9/experiments/test_s2_wiring.py": "5d7631c803b602e3bbceaef2c35b650daef7a697597c281e87ca332f89f6cb9d"
+    },
+    "source_integrity": "src/ files outside P160 scope strictly intact"
+  },
+  "package_ast_scan": {
+    "total_getattr_spec_with_default": 3,
+    "whitelisted_in_data_runner": 3,
+    "other_modules_violations": 0,
+    "smoke_constant_used": "spec.SMOKE_SHORT_TRAIN_STEPS",
+    "retired_constant_usage": "SMOKE_SHORT_STEPS zero callers in smoke.py"
+  },
+  "missing_field_rejection": {
+    "oracle_feasibility_missing_bfs_distance": "ValueError raised: Missing bfs_distance in episode spec 0",
+    "oracle_feasibility_with_s2_planner_missing_bfs_distance": "ValueError raised: Missing bfs_distance in episode spec 0",
+    "oracle_feasibility_missing_goal": "ValueError raised: Missing goal in episode spec 0",
+    "oracle_feasibility_with_s2_planner_missing_goal": "ValueError raised: Missing goal in episode spec 0",
+    "oracle_feasibility_missing_start": "ValueError raised: Missing start in episode spec 0",
+    "oracle_feasibility_with_s2_planner_missing_start": "ValueError raised: Missing start in episode spec 0"
+  },
+  "reviewer_mutations": {
+    "REV-P160-M1": {
+      "name": "fallback_missing_goal_to_start",
+      "target_file": "src/ainerzero/v9/experiments/s2/smoke_checks.py",
+      "target_test": "tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_missing_start_or_goal_raises",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "REV-P160-M2": {
+      "name": "hardcode_total_short_steps_in_generate_partition",
+      "target_file": "src/ainerzero/v9/experiments/s2/smoke.py",
+      "target_test": "tests/v9/experiments/test_s2_wiring.py::test_smoke_fails_when_smoke_short_train_steps_missing",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "REV-P160-M3": {
+      "name": "fallback_missing_start_to_origin",
+      "target_file": "src/ainerzero/v9/experiments/s2/smoke_checks.py",
+      "target_test": "tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_missing_start_or_goal_raises",
+      "status": "KILLED",
+      "exit_code": 1
+    }
+  },
+  "full_regression": {
+    "total_collected": 3627,
+    "deselected": 6,
+    "selected": 3621,
+    "passed": 3621,
+    "failed": 0,
+    "duration_seconds": 297.43,
+    "artifacts_audited": 80929,
+    "artifacts_stat_diff": 0
+  }
+}

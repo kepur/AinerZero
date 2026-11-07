@@ -1,0 +1,52 @@
+--- /tmp/commands_p148_r3.py	2026-11-07 01:27:55
++++ src/ainerzero/v9/experiments/s2/commands.py	2026-11-07 01:15:55
+@@ -447,8 +447,47 @@
+                 "paths": {k: str(v) for k, v in paths.items()},
+             }, EXIT_FAILED
+ 
+-    # 2. Non-verify modes: Preflight A (Approval check)
+-    approved, approval_info = _check_approval_preflight(paths["research_log"])
++    # 2. Non-verify modes: Preflight 0 (frozen prereg + frozen source identity).
++    # Every run mode must execute exactly the frozen code: the prereg must exist, the current
++    # sources must match its source_digests, and the approval line must name its document SHA.
++    from ainerzero.v9.experiments.s2 import identity
++
++    prereg_file = paths["prereg"]
++    if not prereg_file.is_file():
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "unfrozen",
++            "message": f"未冻结：运行模式需要冻结的 prereg.json（{prereg_file}）",
++        }, EXIT_REFUSED_APPROVAL
++    try:
++        frozen = identity.verify_frozen_identity(prereg_file, repo_root=paths["repo_root"])
++    except identity.FrozenIdentityMismatchError as exc:
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "identity_mismatch",
++            "message": str(exc),
++            "mismatches": exc.mismatches,
++        }, EXIT_FAILED
++    except Exception as exc:  # unreadable prereg / sha file: fail closed
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "identity_verification",
++            "message": f"{type(exc).__name__}: {exc}",
++        }, EXIT_FAILED
++    frozen_sha = frozen.get("document_sha256") if isinstance(frozen, Mapping) else None
++    if not isinstance(frozen_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", frozen_sha):
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "identity_verification",
++            "message": f"frozen document_sha256 unavailable or malformed: {frozen_sha!r}",
++        }, EXIT_FAILED
++
++    # Preflight A (Approval check), bound to the frozen document SHA.
++    approved, approval_info = _check_approval_preflight(paths["research_log"], expected_sha256=frozen_sha)
+     if not approved:
+         return {
+             "status": "refused",

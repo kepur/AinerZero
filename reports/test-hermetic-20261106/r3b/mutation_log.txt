@@ -1,0 +1,42 @@
+=== HERMETIC GUARD ADVERSARIAL MUTATION VERIFICATION (R3B REAL CONFTEST IN ISOLATED REPLICA) ===
+
+[Step 1] Taking pre-mutation snapshot of real artifacts/ ...
+Pre-mutation real artifacts recorded: 80851 entries (3.78s)
+
+[Step 2] Staging isolated replica under /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/hermetic-r3b-iso-mpyqur2l/replica ...
+[Step 3] Asserting import resolution strictly targets replica ...
+-> Verified conftest import: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/hermetic-r3b-iso-mpyqur2l/replica/tests/conftest.py
+Replica tests/conftest.py SHA-256: 4910298bc5bcfa6c92d31e83ca5e46aceb0c0c3d2a940e2571f28328b7235a12 (14268 bytes)
+
+[Step 4] Running baseline suite on tests/test_hermetic_guards.py in replica ...
+Baseline return code: 0
+Baseline verification: PASSED (GREEN, 5 passed)
+
+[Step 5] Executing 4 adversarial mutations against real tests/conftest.py ...
+
+--- Mutation M1_connect_unguarded: make_guarded_connect check disabled ---
+M1_connect_unguarded exit code: 1 (Expected: non-zero)
+M1_connect_unguarded VERIFIED: turned RED as expected (RuntimeError caught).
+M1_connect_unguarded restored and validated (SHA match: 4910298bc5bcfa6c...)
+
+--- Mutation M2_flock_unguarded: make_guarded_flock check disabled ---
+M2_flock_unguarded exit code: 1 (Expected: non-zero)
+M2_flock_unguarded VERIFIED: turned RED as expected (RuntimeError caught).
+M2_flock_unguarded restored and validated (SHA match: 4910298bc5bcfa6c...)
+
+--- Mutation M3_snapshot_skips_shm: guard_snapshot skips -shm files ---
+M3_snapshot_skips_shm exit code: 1 (Expected: non-zero)
+M3_snapshot_skips_shm VERIFIED: turned RED as expected (AssertionError caught).
+M3_snapshot_skips_shm restored and validated (SHA match: 4910298bc5bcfa6c...)
+
+--- Mutation M4_installation_deleted: _install_hermetic_function_guards deleted/disabled ---
+M4_installation_deleted exit code: 1 (Expected: non-zero)
+M4_installation_deleted VERIFIED: turned RED as expected (AssertionError caught).
+M4_installation_deleted restored and validated (SHA match: 4910298bc5bcfa6c...)
+
+Replica post-mutations baseline: 5 passed (GREEN).
+
+[Step 6] Taking post-mutation snapshot of real artifacts/ ...
+Post-mutation real artifacts recorded: 80851 entries.
+Real artifacts differences detected during mutation phase: 0
+Real artifacts integrity VERIFIED: 0 modifications, 0 additions, 0 deletions.

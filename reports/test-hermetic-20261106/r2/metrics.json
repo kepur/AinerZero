@@ -1,0 +1,50 @@
+{
+  "task_id": "ainerzero.V9.A17",
+  "round": "r2",
+  "status": "completed",
+  "remediation": {
+    "R1_modular_guards": "Extracted guard_snapshot(root), guard_compare(before, after), make_guarded_connect(root), make_guarded_flock(root), make_guarded_lockf(root). Conftest uses registered root. No env-var bypass backdoor.",
+    "R2_mutation_script": "Delivered standalone script reports/test-hermetic-20261106/run_mutations.py executing mutations strictly on an isolated fake root under tempdir.",
+    "R3_dual_stat_coverage": "Real tree stat comparison covers both full test suite and mutation script runs: 84248 entries compared, 0 diffs (including -shm and -wal)."
+  },
+  "guard_layers": 2,
+  "guard_location": "tests/conftest.py",
+  "guard_selftests": "tests/test_hermetic_guards.py (4 passed)",
+  "pytest_summary": {
+    "passed": 3435,
+    "failed": 0,
+    "deselected": 6,
+    "total_collected": 3435,
+    "total_items": 3441,
+    "duration_seconds": 231.72
+  },
+  "nodes_diff_count": 4,
+  "real_artifacts_stat": {
+    "total_entries": 84248,
+    "diff_count": 0,
+    "shm_wal_diff_count": 0
+  },
+  "mutations_on_fake_root": {
+    "mutation_1_function_guard": {
+      "result": "RED",
+      "exit_code": 1,
+      "caught_by": "RuntimeError (guarded_connect on fake control.sqlite3)"
+    },
+    "mutation_2_session_stat_guard": {
+      "result": "RED",
+      "exit_code": 1,
+      "caught_by": "AssertionError (hermetic_artifacts_guard session stat on fake control.sqlite3-shm)"
+    },
+    "real_tree_touched": false
+  },
+  "static_audit_native_tests": {
+    "modules_count": 22,
+    "e1_modules": 19,
+    "e1_tests": 272,
+    "s1_modules": 3,
+    "s1_tests": 24,
+    "native_tests_timing": 1,
+    "total_native_tests": 296,
+    "unmodified": true
+  }
+}

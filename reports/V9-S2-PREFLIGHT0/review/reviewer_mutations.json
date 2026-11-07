@@ -1,0 +1,44 @@
+[
+  {
+    "mutation": "mutation_1_remove_expected_sha256",
+    "description": "Remove expected_sha256=frozen_sha in commands.py",
+    "target_test": "test_h_run_mode_refused_when_approval_names_other_document",
+    "returncode": 1,
+    "failed_as_expected": true,
+    "snippet": [
+      "tests/v9/experiments/test_s2_lifecycle.py::test_h_run_mode_refused_when_approval_names_other_document FAILED [100%]",
+      "    assert code == commands.EXIT_REFUSED_APPROVAL",
+      "E   assert 0 == 3",
+      "FAILED tests/v9/experiments/test_s2_lifecycle.py::test_h_run_mode_refused_when_approval_names_other_document"
+    ],
+    "restored_sha_match": true
+  },
+  {
+    "mutation": "mutation_2_skip_verify_frozen_identity",
+    "description": "Skip identity.verify_frozen_identity in commands.py",
+    "target_test": "test_i_run_mode_refused_on_source_identity_mismatch",
+    "returncode": 1,
+    "failed_as_expected": true,
+    "snippet": [
+      "tests/v9/experiments/test_s2_lifecycle.py::test_i_run_mode_refused_on_source_identity_mismatch FAILED [100%]",
+      "    assert report[\"stage\"] == \"identity_mismatch\"",
+      "E   AssertionError: assert 'identity_verification' == 'identity_mismatch'",
+      "FAILED tests/v9/experiments/test_s2_lifecycle.py::test_i_run_mode_refused_on_source_identity_mismatch"
+    ],
+    "restored_sha_match": true
+  },
+  {
+    "mutation": "mutation_3_remove_prereg_exists_check",
+    "description": "Remove prereg_file.is_file() check in commands.py",
+    "target_test": "test_g_run_mode_refused_when_unfrozen",
+    "returncode": 1,
+    "failed_as_expected": true,
+    "snippet": [
+      "tests/v9/experiments/test_s2_lifecycle.py::test_g_run_mode_refused_when_unfrozen FAILED [100%]",
+      "    assert code == commands.EXIT_REFUSED_APPROVAL",
+      "E   assert 1 == 3",
+      "FAILED tests/v9/experiments/test_s2_lifecycle.py::test_g_run_mode_refused_when_unfrozen"
+    ],
+    "restored_sha_match": true
+  }
+]

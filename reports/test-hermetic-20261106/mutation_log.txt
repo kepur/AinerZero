@@ -1,0 +1,17 @@
+=== HERMETIC GUARD MUTATION VERIFICATION ===
+Copying src, tests, pyproject.toml to sandbox...
+Copied 340 source files into /tmp/hermetic_mutation_sandbox
+Import check: /tmp/hermetic_mutation_sandbox/src/ainerzero/__init__.py
+Baseline run exit code: 0
+Baseline test PASSED (GREEN)
+
+--- Mutation 1: Reverted test_the_real_ledger_is_untouched_by_the_anchor_checks to un-staged ---
+Mutation 1 run exit code: 1 (Expected non-zero)
+Mutation 1 caught by function-level guard (RED): Verified!
+
+--- Mutation 2: Removed sqlite3.connect check from guarded_connect (function-level bypassed) ---
+Mutation 2 run exit code: 1 (Expected non-zero)
+Mutation 2 caught by session-level stat guard (RED): Verified!
+Restored real control.sqlite3-shm mtime bit-for-bit.
+All 340 sandbox source files restored and verified bit-for-bit against initial SHA256.
+Cleaned up sandbox directory.

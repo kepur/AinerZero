@@ -1,0 +1,66 @@
+{
+  "task_id": "ainerzero.V9.A19",
+  "round": "r3",
+  "status": "completed",
+  "remediation": {
+    "P1_global_install_assertions": "Added test_hermetic_guards_installed_globally in tests/test_hermetic_guards.py asserting sqlite3.connect is conftest.guarded_connect, fcntl.flock is conftest.guarded_flock, fcntl.lockf is conftest.guarded_lockf, and s.connect is conftest.guarded_connect.",
+    "P2_real_conftest_mutations": "Rewrote run_mutations.py in r3 directory: stages isolated replica of src, tests, pyproject.toml; asserts replica import resolution; mutates REAL tests/conftest.py in replica across 4 scenarios; restores byte-for-byte and verifies SHA-256.",
+    "P3_quad_mutations_all_red": "4 mutations all turned RED: M1 make_guarded_connect check disabled (RuntimeError); M2 make_guarded_flock check disabled (RuntimeError); M3 guard_snapshot skips -shm (AssertionError); M4 _install_hermetic_function_guards deleted (AssertionError on global installation).",
+    "P4_real_artifacts_untouched": "Real tree stat comparison covers both full test suite and mutation script runs: 80851 entries compared, 0 diffs, 0 -shm/-wal changes. Zero utime manipulation."
+  },
+  "guard_layers": 2,
+  "guard_location": "tests/conftest.py",
+  "guard_selftests": "tests/test_hermetic_guards.py (5 passed)",
+  "pytest_summary": {
+    "passed": 3436,
+    "failed": 0,
+    "deselected": 6,
+    "total_collected": 3436,
+    "total_items": 3442,
+    "duration_seconds": 254.74
+  },
+  "nodes_diff_count": 1,
+  "real_artifacts_stat": {
+    "total_entries": 80851,
+    "diff_count": 0,
+    "shm_wal_diff_count": 0
+  },
+  "mutations_on_real_conftest_replica": {
+    "M1_connect_unguarded": {
+      "result": "RED",
+      "exit_code": 1,
+      "caught_by": "RuntimeError",
+      "sha_restored": true
+    },
+    "M2_flock_unguarded": {
+      "result": "RED",
+      "exit_code": 1,
+      "caught_by": "RuntimeError",
+      "sha_restored": true
+    },
+    "M3_snapshot_skips_shm": {
+      "result": "RED",
+      "exit_code": 1,
+      "caught_by": "AssertionError (Session guard missed -shm)",
+      "sha_restored": true
+    },
+    "M4_installation_deleted": {
+      "result": "RED",
+      "exit_code": 1,
+      "caught_by": "AssertionError (test_hermetic_guards_installed_globally)",
+      "sha_restored": true
+    },
+    "real_tree_touched": false,
+    "utime_used": false
+  },
+  "static_audit_native_tests": {
+    "modules_count": 22,
+    "e1_modules": 19,
+    "e1_tests": 272,
+    "s1_modules": 3,
+    "s1_tests": 24,
+    "native_tests_timing": 1,
+    "total_native_tests": 296,
+    "unmodified": true
+  }
+}

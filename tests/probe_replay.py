@@ -45,7 +45,7 @@ def replay_probe(script: Path, tmp_path: Path, *, timeout: int = 600):
     ledger_dir.mkdir()
     try:
         proc = subprocess.run(
-            [sys.executable, "-P", "-c", _DRIVER, str(script), str(out), str(ledger_dir)],
+            [sys.executable, "-B", "-P", "-c", _DRIVER, str(script), str(out), str(ledger_dir)],
             cwd=ROOT, capture_output=True, text=True, timeout=timeout,
         )
     finally:

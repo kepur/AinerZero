@@ -2475,3 +2475,49 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
   - 修改已冻结的参数或门槛；
   - 读封存 final 之外的额外评测；
   - 云 GPU、下载、付费。
+
+## R20261107-E1-ledger-rw-open：11-06 11:32 有进程以读写方式打开过已收口的 E1 账本（一级 claude 记录，2026-11-07）
+
+- **发现：** 一级做 A18 合并复核时，用 ctime 审计实盘 artifacts，发现目录 `artifacts/v9/e1/phase2/` 的目录项在 11-06 11:32:18 发生过变化。
+  - E1 账本是 WAL 模式，目前没有 `-wal`/`-shm`。可见当时有进程以读写方式打开过账本，关闭时又删掉了附属文件。
+  - 主库字节与 A2 r4 基线一致，sha 为 `5990ed6cc0b1a58089934653413e495a1f0c9f703ff2461c41a314d939bc77b5`。
+  - e1 目录下其他文件的 ctime 都没有变化，sealed_final 的元数据也没变。
+- **归属：** 无法确定。同一分钟内有两个活动：
+  - A19 r3 开发 `run_mutations.py`，文件写于 11:32:08；
+  - P109-inventory 通读 E1 的 worker/commands，文件写于 11:32:31–11:33:23。
+  - 这次打开发生在受守卫的 pytest 会话之外，或发生在子进程里，所以没有被拦住。
+- **A17 事件补记：** 除 `-shm` 外，S1 的 `-wal`（ctime 09:53:34）和 `locks/m0-worker.lock`（ctime 09:39:26）也在 A17 r1 期间发生过只改元数据的操作，mtime 都没变。
+- **之后：**
+  - 09:55 之后实盘没有其他改动；
+  - 一级在 11-07 跑全量 3621 passed，跑前跑后对实盘 84,247 个条目做 lstat 对比，差异为 0。
+  - 子进程守卫的缺口交 `ainerzero.V9.A22` 补，A23 做非作者复核。
+
+## R20261106-S2-approval：S2 第一阶段预登记冻结与批准行（一级 claude，2026-11-07）
+
+- **依据：**
+  - 用户 11-06「批 10 小时」，见 R20261106-S2-budget：总实际用时 ≤ 10 h，本机，不付费，不下载；
+  - 用户 11-07「你直接一级二级全做」：一级可以直接执行已登记的运行。
+- **冻结：**
+  - 文件 `artifacts/v9/s2/phase1/prereg.json`，冻结于 2026-11-07 01:41，由一级 claude 执行；
+  - 文件 sha 与 document_sha256 均为 `397b2de1fda78a0a34acbbbad9818d396b51c07dccdbd20e66e49d53c18f15eb`；
+  - `identity.verify_frozen_identity` 核对通过；
+  - 设计依据为 `reports/V9-S2-DESIGN/DESIGN-r2.md` r2.4，sha `5d9db99663057aa68a85dc5d0dfae7933d0b5eb8d9bf3aacb2e2f02a20bbf283`；
+  - 实验 ID `s2-phase1-20261106-r0`。
+- **冻结前已完成的非作者复核：** S2 全部 CPU 模块与 MLX 三臂均已验收，最后几张是：
+  - P154/P155：smoke 收口；
+  - P156/P157：训练后两道门；
+  - P158/P159：冻结准备；
+  - P160/P161：去掉默认值；
+  - Preflight 0（一级改动）/ P162：运行前核对冻结身份，批准行绑定文档 SHA。
+- **次序说明：**
+  - R20261106-S2-budget 原写「冻结前完成 smoke 计时」。这一条已由附录 C（r2.4）取代：预登记只冻结步数规则；smoke 实测后，步数记入账本和本日志，不改预登记。
+  - 另外，Preflight 0 规定，除 verify 外，所有模式（包括 smoke）都必须在冻结并批准之后才能运行。
+  - 如果 smoke 第 2 步按实测算出的总预算超过 10 h，smoke 判失败，回到用户。
+- **相对 r2.2 的改动：**
+  - 臂、主门（成功率差 ≥ 0.10 且 bootstrap 下界 > 0）、dev/final 回合数、预算口径都没有变。
+  - r2.3 把 smoke 熔断从「短训模型成功率」改为「oracle 可行性」，又在 dev 前加了两道只会提前叫停的门。
+  - r2.4 补齐了 train 规模、留出集、种子命名空间。
+  - 这些都不放宽任何门，按 R20261106-S2-budget 的标准不属于实质改动。用户如有异议，可在 dev 前叫停。
+- **final：** 这一行不批准 final-eval。final 需要另一条单独的批准行，并须先问用户。
+
+APPROVED s2-phase1 prereg document_sha256=397b2de1fda78a0a34acbbbad9818d396b51c07dccdbd20e66e49d53c18f15eb

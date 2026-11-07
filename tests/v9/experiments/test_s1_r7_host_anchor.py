@@ -233,10 +233,23 @@ def test_entry_refuses_when_the_phase1_root_and_anchor_disagree(tmp_path, monkey
     assert refusal["stage"] == "host_anchor_mismatch"
 
 
-def test_the_real_ledger_is_untouched_by_the_anchor_checks():
+def test_the_real_ledger_is_untouched_by_the_anchor_checks(tmp_path, monkeypatch):
+    import shutil
     import sqlite3
 
-    ledger = Path(spec.REGISTERED_HOST_LEDGER)
+    real_ledger = Path(spec.REGISTERED_HOST_LEDGER)
+    staged_host = tmp_path / "host"
+    staged_phase1 = staged_host / "artifacts" / "v9" / "s1" / "phase1"
+    staged_phase1.mkdir(parents=True, exist_ok=True)
+    staged_log = staged_host / "RESEARCH_LOG.md"
+    staged_log.write_text(spec.RESEARCH_LOG.read_text(encoding="utf-8"), encoding="utf-8")
+    ledger = staged_phase1 / "control.sqlite3"
+    shutil.copyfile(real_ledger, ledger)
+
+    monkeypatch.setattr(spec, "REGISTERED_HOST_ROOT", staged_host)
+    monkeypatch.setattr(spec, "PHASE1_ROOT", staged_phase1)
+    monkeypatch.setattr(spec, "RESEARCH_LOG", staged_log)
+
     before = hashlib.sha256(ledger.read_bytes()).hexdigest()
     spec.host_anchor_state()
     state = worker.canonical_ledger_state()

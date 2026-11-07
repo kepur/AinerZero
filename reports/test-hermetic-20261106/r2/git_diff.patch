@@ -1,0 +1,338 @@
+diff --git a/tests/conftest.py b/tests/conftest.py
+index a09e1aa..1c3afaa 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -10,8 +10,182 @@ RunStore and the registered budget (see AGENTS.md). No registered native pytest
+ runner exists; do not run these bare.
+ """
+ 
++import fcntl
++import glob
++import os
++import sqlite3
++import sys
++from pathlib import Path
++from urllib.parse import urlparse
++
++# Ensure bytecode is never written into artifacts/
++sys.dont_write_bytecode = True
++os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
++
+ import pytest
+ 
++REAL_REPO_ROOT = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
++LOCAL_REPO_ROOT = Path(__file__).resolve().parent.parent
++
++HERMETIC_SENSITIVE_PATTERNS = [
++    "artifacts/locks/**",
++    "artifacts/locks",
++    "artifacts/control.sqlite3*",
++    "artifacts/v9/**/control.sqlite3*",
++    "artifacts/v9/s1/**/*.sqlite3*",
++    "artifacts/v9/e1/**",
++]
++
++# Whitelist for legitimate real-artifact access (real_path -> reason).
++# The default pure-CPU suite must be hermetic, so this whitelist is empty by default.
++HERMETIC_WHITELIST: dict[str, str] = {}
++
++_hermetic_guards_active = True
++_orig_flock = fcntl.flock
++_orig_lockf = fcntl.lockf
++_orig_sqlite_connect = sqlite3.connect
++
++
++def guard_resolve_path(target) -> str | None:
++    if target is None:
++        return None
++    if isinstance(target, int):
++        try:
++            buf = b" " * 1024
++            res_buf = fcntl.fcntl(target, 50, buf)
++            raw = res_buf.split(b"\x00", 1)[0].decode("utf-8", "replace")
++            if raw:
++                return os.path.realpath(raw)
++        except OSError:
++            pass
++        try:
++            proc_path = f"/proc/self/fd/{target}"
++            if os.path.islink(proc_path):
++                return os.path.realpath(proc_path)
++        except Exception:
++            pass
++        return None
++    if hasattr(target, "fileno"):
++        try:
++            return guard_resolve_path(target.fileno())
++        except Exception:
++            return None
++    target_str = str(target)
++    if not target_str or target_str == ":memory:":
++        return None
++    if target_str.startswith("file:"):
++        target_str = urlparse(target_str).path
++    try:
++        return os.path.realpath(target_str)
++    except Exception:
++        return None
++
++
++def check_hermetic_access(
++    target,
++    op_name: str,
++    root: Path = REAL_REPO_ROOT,
++    whitelist: dict | None = None,
++) -> None:
++    if not _hermetic_guards_active:
++        return
++    resolved = guard_resolve_path(target)
++    if not resolved:
++        return
++    active_whitelist = HERMETIC_WHITELIST if whitelist is None else whitelist
++    roots = [root]
++    if root == REAL_REPO_ROOT and LOCAL_REPO_ROOT != REAL_REPO_ROOT and LOCAL_REPO_ROOT.is_dir():
++        roots.append(LOCAL_REPO_ROOT)
++    for r in roots:
++        art_dir = os.path.realpath(r / "artifacts")
++        if resolved == art_dir or resolved.startswith(art_dir + os.sep):
++            if resolved not in active_whitelist:
++                raise RuntimeError(
++                    f"Hermetic test guard violation: {op_name} called on protected artifact: {resolved}. "
++                    f"Tests must use tmp_path or staged copies and must never touch real artifacts."
++                )
++
++
++def make_guarded_flock(root: Path = REAL_REPO_ROOT, orig_flock=_orig_flock, whitelist=None):
++    def _flock(fd, operation):
++        check_hermetic_access(fd, "fcntl.flock", root=root, whitelist=whitelist)
++        return orig_flock(fd, operation)
++    return _flock
++
++
++def make_guarded_lockf(root: Path = REAL_REPO_ROOT, orig_lockf=_orig_lockf, whitelist=None):
++    def _lockf(fd, cmd, *args, **kwargs):
++        check_hermetic_access(fd, "fcntl.lockf", root=root, whitelist=whitelist)
++        return orig_lockf(fd, cmd, *args, **kwargs)
++    return _lockf
++
++
++def make_guarded_connect(root: Path = REAL_REPO_ROOT, orig_connect=_orig_sqlite_connect, whitelist=None):
++    def _connect(database, *args, **kwargs):
++        check_hermetic_access(database, "sqlite3.connect", root=root, whitelist=whitelist)
++        return orig_connect(database, *args, **kwargs)
++    return _connect
++
++
++guarded_flock = make_guarded_flock(REAL_REPO_ROOT)
++guarded_lockf = make_guarded_lockf(REAL_REPO_ROOT)
++guarded_connect = make_guarded_connect(REAL_REPO_ROOT)
++
++
++def _install_hermetic_function_guards() -> None:
++    fcntl.flock = guarded_flock
++    fcntl.lockf = guarded_lockf
++    sqlite3.connect = guarded_connect
++    if "sqlite3" in sys.modules:
++        sys.modules["sqlite3"].connect = guarded_connect
++
++
++def guard_snapshot(root: Path = REAL_REPO_ROOT) -> dict[str, tuple[int, int, int]]:
++    """Record {path_str: (st_mtime_ns, st_size, st_ino)} for sensitive paths.
++
++    Only performs stat; does NOT read file contents (especially sealed_final).
++    """
++    snapshot = {}
++    roots = [root]
++    if root == REAL_REPO_ROOT and LOCAL_REPO_ROOT != REAL_REPO_ROOT and LOCAL_REPO_ROOT.is_dir():
++        roots.append(LOCAL_REPO_ROOT)
++    for r in roots:
++        for pattern in HERMETIC_SENSITIVE_PATTERNS:
++            full_pattern = str(r / pattern)
++            for p in glob.glob(full_pattern, recursive=True):
++                try:
++                    st = os.stat(p)
++                    snapshot[os.path.realpath(p)] = (st.st_mtime_ns, st.st_size, st.st_ino)
++                except OSError:
++                    pass
++    return snapshot
++
++
++def guard_compare(before: dict, after: dict) -> dict[str, str]:
++    diffs = {}
++    all_keys = set(before.keys()) | set(after.keys())
++    for k in sorted(all_keys):
++        if k not in before:
++            diffs[k] = "ADDED"
++        elif k not in after:
++            diffs[k] = "DELETED"
++        elif before[k] != after[k]:
++            b_mtime, b_size, b_ino = before[k]
++            a_mtime, a_size, a_ino = after[k]
++            changes = []
++            if b_mtime != a_mtime:
++                changes.append(f"mtime_ns: {b_mtime} -> {a_mtime}")
++            if b_size != a_size:
++                changes.append(f"size: {b_size} -> {a_size}")
++            if b_ino != a_ino:
++                changes.append(f"inode: {b_ino} -> {a_ino}")
++            diffs[k] = "MODIFIED (" + ", ".join(changes) + ")"
++    return diffs
++
++
++# Install function-level patches immediately on module load
++_install_hermetic_function_guards()
++
+ NATIVE_OPTION = "--native-mlx"
+ 
+ # Modules importing real MLX at collection time (collection would import MLX), either
+@@ -88,6 +262,42 @@ def pytest_configure(config):
+     config.addinivalue_line(
+         "markers", "native_mlx: imports real MLX or performs real model updates; "
+         "excluded from the default pure-CPU entry (opt-in via --native-mlx)")
++    if _native_enabled(config):
++        global _hermetic_guards_active
++        _hermetic_guards_active = False
++
++
++def pytest_sessionstart(session):
++    if not _native_enabled(session.config):
++        session._hermetic_stat_before = guard_snapshot(REAL_REPO_ROOT)
++
++
++@pytest.fixture(scope="session", autouse=True)
++def hermetic_artifacts_guard(request):
++    yield
++    if _native_enabled(request.config):
++        return
++    before = getattr(request.session, "_hermetic_stat_before", {})
++    after = guard_snapshot(REAL_REPO_ROOT)
++    diff = guard_compare(before, after)
++    assert not diff, (
++        f"Hermetic session guard violation: real artifacts modified during test session:\n"
++        + "\n".join(f"  {k}: {v}" for k, v in diff.items())
++    )
++
++
++def pytest_sessionfinish(session, exitstatus):
++    if not _native_enabled(session.config):
++        before = getattr(session, "_hermetic_stat_before", {})
++        after = guard_snapshot(REAL_REPO_ROOT)
++        diff = guard_compare(before, after)
++        if diff:
++            session.exitstatus = 1
++            print(
++                "\n[HERMETIC GUARD ERROR] Real artifacts modified during test session:\n"
++                + "\n".join(f"  {k}: {v}" for k, v in diff.items()),
++                file=sys.stderr,
++            )
+ 
+ 
+ def _native_enabled(config):
+diff --git a/tests/probe_replay.py b/tests/probe_replay.py
+index 1a3f15b..4fae0f6 100644
+--- a/tests/probe_replay.py
++++ b/tests/probe_replay.py
+@@ -45,7 +45,7 @@ def replay_probe(script: Path, tmp_path: Path, *, timeout: int = 600):
+     ledger_dir.mkdir()
+     try:
+         proc = subprocess.run(
+-            [sys.executable, "-P", "-c", _DRIVER, str(script), str(out), str(ledger_dir)],
++            [sys.executable, "-B", "-P", "-c", _DRIVER, str(script), str(out), str(ledger_dir)],
+             cwd=ROOT, capture_output=True, text=True, timeout=timeout,
+         )
+     finally:
+diff --git a/tests/v9/experiments/test_s1_r7_host_anchor.py b/tests/v9/experiments/test_s1_r7_host_anchor.py
+index e4263a5..5f6c3f1 100644
+--- a/tests/v9/experiments/test_s1_r7_host_anchor.py
++++ b/tests/v9/experiments/test_s1_r7_host_anchor.py
+@@ -233,10 +233,23 @@ def test_entry_refuses_when_the_phase1_root_and_anchor_disagree(tmp_path, monkey
+     assert refusal["stage"] == "host_anchor_mismatch"
+ 
+ 
+-def test_the_real_ledger_is_untouched_by_the_anchor_checks():
++def test_the_real_ledger_is_untouched_by_the_anchor_checks(tmp_path, monkeypatch):
++    import shutil
+     import sqlite3
+ 
+-    ledger = Path(spec.REGISTERED_HOST_LEDGER)
++    real_ledger = Path(spec.REGISTERED_HOST_LEDGER)
++    staged_host = tmp_path / "host"
++    staged_phase1 = staged_host / "artifacts" / "v9" / "s1" / "phase1"
++    staged_phase1.mkdir(parents=True, exist_ok=True)
++    staged_log = staged_host / "RESEARCH_LOG.md"
++    staged_log.write_text(spec.RESEARCH_LOG.read_text(encoding="utf-8"), encoding="utf-8")
++    ledger = staged_phase1 / "control.sqlite3"
++    shutil.copyfile(real_ledger, ledger)
++
++    monkeypatch.setattr(spec, "REGISTERED_HOST_ROOT", staged_host)
++    monkeypatch.setattr(spec, "PHASE1_ROOT", staged_phase1)
++    monkeypatch.setattr(spec, "RESEARCH_LOG", staged_log)
++
+     before = hashlib.sha256(ledger.read_bytes()).hexdigest()
+     spec.host_anchor_state()
+     state = worker.canonical_ledger_state()
+diff --git a/tests/v9/experiments/test_s1_r7_lock.py b/tests/v9/experiments/test_s1_r7_lock.py
+index 969db2e..bc84e59 100644
+--- a/tests/v9/experiments/test_s1_r7_lock.py
++++ b/tests/v9/experiments/test_s1_r7_lock.py
+@@ -19,8 +19,12 @@ from s1_testkit import checkout_anchor, make_source_checkout
+ 
+ _TRY_LOCK = """
+ import sys
++from pathlib import Path
+ from ainerzero.cli import WorkerLockBusy, worker_lock
+-from ainerzero.v9.experiments.s1 import commands
++from ainerzero.v9.experiments.s1 import commands, spec
++
++if len(sys.argv) > 1 and sys.argv[1]:
++    spec.REGISTERED_HOST_ROOT = Path(sys.argv[1])
+ 
+ try:
+     with worker_lock(commands._lock_path()):
+@@ -31,11 +35,14 @@ except WorkerLockBusy:
+ """
+ 
+ 
+-def _run_from_checkout(checkout: Path) -> subprocess.CompletedProcess:
++def _run_from_checkout(checkout: Path, host_root: Path | None = None) -> subprocess.CompletedProcess:
+     env = dict(os.environ)
+     env["PYTHONPATH"] = str(checkout / "src")
++    args = [sys.executable, "-c", _TRY_LOCK]
++    if host_root is not None:
++        args.append(str(host_root))
+     return subprocess.run(
+-        [sys.executable, "-c", _TRY_LOCK],
++        args,
+         cwd=str(checkout),
+         env=env,
+         capture_output=True,
+@@ -52,16 +59,26 @@ def test_every_checkout_names_the_same_lock_file(tmp_path):
+     assert str(tmp_path / "a") not in first["lock"]
+ 
+ 
+-def test_two_checkouts_cannot_hold_the_lock_at_the_same_time(tmp_path):
++def test_two_checkouts_cannot_hold_the_lock_at_the_same_time(tmp_path, monkeypatch):
+     first = make_source_checkout(tmp_path / "a")
+     second = make_source_checkout(tmp_path / "b")
+ 
++    staged_host = tmp_path / "host"
++    staged_phase1 = staged_host / "artifacts" / "v9" / "s1" / "phase1"
++    staged_phase1.mkdir(parents=True, exist_ok=True)
++    staged_locks = staged_host / "artifacts" / "locks"
++    staged_locks.mkdir(parents=True, exist_ok=True)
++    staged_log = staged_host / "RESEARCH_LOG.md"
++    staged_log.write_text("# log\n", encoding="utf-8")
++
++    monkeypatch.setattr(spec, "REGISTERED_HOST_ROOT", staged_host)
++
+     with worker_lock(Path(spec.host_anchor()["lock"])):
+-        blocked = _run_from_checkout(second)
++        blocked = _run_from_checkout(second, host_root=staged_host)
+         assert blocked.returncode == 3
+         assert blocked.stdout.strip() == "busy"
+ 
+     # Released: the *other* checkout can now take the same anchored lock.
+-    acquired = _run_from_checkout(first)
++    acquired = _run_from_checkout(first, host_root=staged_host)
+     assert acquired.returncode == 0
+     assert acquired.stdout.strip() == "acquired"
