@@ -372,6 +372,7 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
             if raw_steps is None:
                 raise ValueError("smoke shared_train_steps missing from ledger")
             steps = int(raw_steps)
+            wall_budget = kwargs.pop("cell_wall_budget", None)
             return train_runner.run_train_cell(
                 arm_factory=arm_factory,
                 arm_id=arm_id,
@@ -381,6 +382,7 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
                 steps=steps,
                 ledger=ledger,
                 run_id=run_id,
+                wall_budget_seconds=wall_budget,
                 **kwargs,
             )
         return _train_runner
@@ -389,52 +391,208 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
         from ainerzero.v9.experiments.s2 import eval_runner
 
         def _plan_select_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            out_root = Path(output_root)
             model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
             if model_by_arm is None:
                 from ainerzero.v9.experiments.s2 import adapters_mlx
-                model_by_arm = adapters_mlx.load_trained_models_for_planning(output_root)
-            specs = kwargs.get("train_episode_specs") or getattr(args, "train_episode_specs", None) or []
-            return eval_runner.run_plan_select(
+                model_by_arm = {}
+                for a in ("arm_a", "arm_b", "arm_c"):
+                    try:
+                        model_by_arm[a] = adapters_mlx.load_trained_model(out_root, a, 42, ledger=ledger)
+                    except Exception as exc:
+                        raise RuntimeError(f"plan-select missing seed 42 checkpoint for {a}: {exc}") from exc
+
+            specs = kwargs.get("train_episode_specs") or getattr(args, "train_episode_specs", None)
+            train_dir = out_root / "datasets" / "train"
+            if specs is None:
+                holdout_path = train_dir / "HOLDOUT_WORLDS.json"
+                if not holdout_path.is_file():
+                    raise RuntimeError("plan-select missing train holdout specs: HOLDOUT_WORLDS.json not found")
+                holdout_info = json.loads(holdout_path.read_text(encoding="utf-8"))
+                holdout_worlds = holdout_info.get("holdout_worlds", [])
+                loaded_specs: list[dict[str, Any]] = []
+                for w in holdout_worlds:
+                    w_dir = train_dir / f"world_{int(w):04d}"
+                    w_specs_path = w_dir / "goal_episode_specs.json"
+                    if w_specs_path.is_file():
+                        sp_list = json.loads(w_specs_path.read_text(encoding="utf-8"))
+                        layout_file = w_dir / "layout.json"
+                        for s in sp_list:
+                            s["partition"] = "train"
+                            if layout_file.is_file() and "layout" not in s:
+                                s["layout_path"] = str(layout_file)
+                            loaded_specs.append(s)
+                if len(loaded_specs) < min(50, len(holdout_worlds) * 6):
+                    raise RuntimeError(f"plan-select found insufficient train holdout specs: {len(loaded_specs)} < 50")
+                specs = loaded_specs[:50]
+
+            plan_out = out_root / "plan_config.json"
+            plan_res = eval_runner.run_plan_select(
                 model_by_arm=model_by_arm,
                 train_episode_specs=specs,
-                output_path=Path(output_root) / "plan_config.json",
-                **kwargs,
+                output_path=plan_out,
+                dataset_dir=train_dir,
+                **{
+                    "n_fwd": int(spec.N_FWD),
+                    "max_episodes": int(spec.HYPERPARAM_SELECTION_MAX_EPISODES),
+                    **kwargs,
+                },
             )
+            # Record plan_config sha in sqlite ledger if supported
+            plan_sha = hashlib.sha256(plan_out.read_bytes()).hexdigest()
+            if hasattr(ledger, "record_plan_config"):
+                ledger.record_plan_config(plan_out, plan_sha)
+
+            # Post-train gates: load all 9 models (3 arms x 3 seeds)
+            models_9 = kwargs.get("models_all_9") or getattr(args, "models_all_9", None)
+            if models_9 is None:
+                passed_mba = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
+                if passed_mba is not None:
+                    if any("/" in str(k) for k in passed_mba.keys()):
+                        models_9 = passed_mba
+                    else:
+                        models_9 = {f"{a}/{s}": m for a, m in passed_mba.items() for s in (42, 43, 44)}
+            if models_9 is None:
+                from ainerzero.v9.experiments.s2 import adapters_mlx
+                models_9 = {}
+                for a in ("arm_a", "arm_b", "arm_c"):
+                    for s in (42, 43, 44):
+                        key = f"{a}/{s}"
+                        try:
+                            models_9[key] = adapters_mlx.load_trained_model(out_root, a, s, ledger=ledger)
+                        except Exception as exc:
+                            raise RuntimeError(f"plan-select missing checkpoint for {key}: {exc}") from exc
+
+            gates_out = out_root / "post_train_gates.json"
+            dev_ledger_path = out_root / "dev_ledger.json"
+            gates_res = eval_runner.run_post_train_gates(
+                model_by_arm=models_9,
+                train_episode_specs=specs,
+                output_path=gates_out,
+                ledger_path=dev_ledger_path,
+                plan_config=plan_res,
+                dataset_dir=train_dir,
+                n_fwd=int(spec.N_FWD),
+            )
+
+            return {
+                "status": "completed",
+                "plan_select": plan_res,
+                "plan_config_sha256": plan_sha,
+                "post_train_gates": gates_res,
+            }
         return _plan_select_runner
 
     elif mode == "dev-eval":
         from ainerzero.v9.experiments.s2 import eval_runner
 
         def _dev_eval_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            out_root = Path(output_root)
+            dev_ledger_path = out_root / "dev_ledger.json"
+            if not dev_ledger_path.is_file():
+                raise RuntimeError("dev-eval refused: dev_ledger.json not found (must run plan-select and pass post_train_gates first)")
+
+            plan_cfg = kwargs.get("frozen_plan_config") or getattr(args, "frozen_plan_config", None)
+            if plan_cfg is None:
+                plan_cfg_path = out_root / "plan_config.json"
+                if not plan_cfg_path.is_file():
+                    raise RuntimeError("dev-eval missing plan_config.json: must run plan-select first")
+                plan_cfg = json.loads(plan_cfg_path.read_text(encoding="utf-8"))
+
+            dev_dir = out_root / "datasets" / "dev"
+            long_specs = kwargs.get("long_specs") or getattr(args, "long_specs", None)
+            if long_specs is None:
+                if not dev_dir.is_dir():
+                    raise RuntimeError("dev-eval missing datasets/dev directory")
+                dev_specs: list[dict[str, Any]] = []
+                for spec_file in sorted(dev_dir.glob("world_*/goal_episode_specs.json")):
+                    sp_list = json.loads(spec_file.read_text(encoding="utf-8"))
+                    layout_file = spec_file.parent / "layout.json"
+                    for s in sp_list:
+                        s["partition"] = "dev"
+                        if layout_file.is_file() and "layout" not in s:
+                            s["layout_path"] = str(layout_file)
+                        dev_specs.append(s)
+                if not dev_specs:
+                    raise RuntimeError("dev-eval found no goal_episode_specs in datasets/dev")
+                long_specs = dev_specs
+
             model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
             if model_by_arm is None:
                 from ainerzero.v9.experiments.s2 import adapters_mlx
-                model_by_arm = adapters_mlx.load_trained_models_for_planning(output_root)
-            plan_cfg = kwargs.get("frozen_plan_config") or getattr(args, "frozen_plan_config", None) or {}
-            long_specs = kwargs.get("long_specs") or getattr(args, "long_specs", None) or []
-            ledger_path = getattr(ledger, "path", None) or paths["ledger"]
-            return eval_runner.run_dev_eval(
+                model_by_arm = {}
+                for a in ("arm_a", "arm_b", "arm_c"):
+                    for s in (42, 43, 44):
+                        key = f"{a}/{s}"
+                        try:
+                            model_by_arm[key] = adapters_mlx.load_trained_model(out_root, a, s, ledger=ledger)
+                        except Exception as exc:
+                            raise RuntimeError(f"dev-eval missing checkpoint for {key}: {exc}") from exc
+
+            res = eval_runner.run_dev_eval(
                 model_by_arm=model_by_arm,
                 frozen_plan_config=plan_cfg,
                 long_specs=long_specs,
-                ledger_path=ledger_path,
-                **kwargs,
+                ledger_path=dev_ledger_path,
+                dataset_dir=dev_dir,
+                **{
+                    "n_fwd_curve": tuple(spec.N_FWD_DEV_LEVELS),
+                    "n_boot": int(spec.BOOTSTRAP_RESAMPLES),
+                    **kwargs,
+                },
             )
+            res["status"] = "completed"
+            return res
         return _dev_eval_runner
 
     elif mode == "final-eval":
         from ainerzero.v9.experiments.s2 import eval_runner
 
         def _final_eval_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            out_root = Path(output_root)
+            plan_cfg = kwargs.get("frozen_plan_config") or getattr(args, "frozen_plan_config", None)
+            if plan_cfg is None:
+                plan_cfg_path = out_root / "plan_config.json"
+                if not plan_cfg_path.is_file():
+                    raise RuntimeError("final-eval missing plan_config.json: must run plan-select first")
+                plan_cfg = json.loads(plan_cfg_path.read_text(encoding="utf-8"))
+
+            sealed_dir = kwargs.get("sealed_final_dir") or getattr(args, "sealed_final_dir", None)
+            if sealed_dir is None:
+                sealed_dir = out_root / "datasets" / "sealed_final"
+            sealed_dir = Path(sealed_dir)
+            if not sealed_dir.is_dir():
+                raise RuntimeError(f"final-eval missing sealed_final directory: {sealed_dir}")
+
+            long_specs = kwargs.get("long_specs") or getattr(args, "long_specs", None)
+            if long_specs is None:
+                final_specs: list[dict[str, Any]] = []
+                for spec_file in sorted(sealed_dir.glob("world_*/goal_episode_specs.json")):
+                    sp_list = json.loads(spec_file.read_text(encoding="utf-8"))
+                    layout_file = spec_file.parent / "layout.json"
+                    for s in sp_list:
+                        s["partition"] = "final"
+                        if layout_file.is_file() and "layout" not in s:
+                            s["layout_path"] = str(layout_file)
+                        final_specs.append(s)
+                if not final_specs:
+                    raise RuntimeError("final-eval found no goal_episode_specs in sealed_final")
+                long_specs = final_specs
+
             model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
             if model_by_arm is None:
                 from ainerzero.v9.experiments.s2 import adapters_mlx
-                model_by_arm = adapters_mlx.load_trained_models_for_planning(output_root)
-            plan_cfg = kwargs.get("frozen_plan_config") or getattr(args, "frozen_plan_config", None) or {}
-            long_specs = kwargs.get("long_specs") or getattr(args, "long_specs", None) or []
-            sealed_dir = kwargs.get("sealed_final_dir") or getattr(args, "sealed_final_dir", None) or (Path(output_root) / "sealed_final")
+                model_by_arm = {}
+                for a in ("arm_a", "arm_b", "arm_c"):
+                    for s in (42, 43, 44):
+                        key = f"{a}/{s}"
+                        try:
+                            model_by_arm[key] = adapters_mlx.load_trained_model(out_root, a, s, ledger=ledger)
+                        except Exception as exc:
+                            raise RuntimeError(f"final-eval missing checkpoint for {key}: {exc}") from exc
+
             res_log = kwargs.get("research_log") or getattr(args, "research_log", None) or paths["research_log"]
-            return eval_runner.run_final_eval(
+            res = eval_runner.run_final_eval(
                 model_by_arm=model_by_arm,
                 frozen_plan_config=plan_cfg,
                 sealed_final_dir=sealed_dir,
@@ -442,6 +600,8 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
                 long_specs=long_specs,
                 **kwargs,
             )
+            res["status"] = "completed"
+            return res
         return _final_eval_runner
 
     elif mode == "smoke":
@@ -627,7 +787,7 @@ def s2_phase1_command(args: Any) -> tuple[dict[str, Any], int]:
         }, EXIT_REFUSED_APPROVAL
 
     # 3. Preflight B: Anti-duplicate check
-    if worker.check_cell_already_completed(paths["ledger"], mode, arm, seed):
+    if mode != "dev-eval" and worker.check_cell_already_completed(paths["ledger"], mode, arm, seed):
         return {
             "status": "refused",
             "mode": mode,
@@ -681,7 +841,7 @@ def s2_phase1_command(args: Any) -> tuple[dict[str, Any], int]:
                     runner=runner,
                     output_root=paths["output_root"],
                 )
-                r_status = result.get("status") if isinstance(result, dict) else "completed"
+                r_status = result.get("status", "completed") if isinstance(result, dict) else "completed"
                 return {
                     "status": r_status,
                     "mode": mode,

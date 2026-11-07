@@ -18,19 +18,71 @@ import pytest
 from ainerzero.v9.experiments.s2.fwd_counter import ForwardBudgetExceeded
 from ainerzero.v9.experiments.s2.probe import RidgeProbe, fit_ridge
 from ainerzero.v9.experiments.s2 import eval_runner as er
+from ainerzero.v9.experiments.s2 import world
+
+_CACHED_LAYOUT = world.make_layout(42)
+
+_POSE_TABLE: dict[bytes, tuple[int, int, int]] = {}
+for _y in range(1, 6):
+    for _x in range(1, 6):
+        if _CACHED_LAYOUT.terrain[_y][_x] == world.WALL:
+            continue
+        for _h in range(4):
+            _st = world.State(x=_x, y=_y, heading=_h)
+            _obs = world.student_obs(_CACHED_LAYOUT, _st, last_action=3, dt=1)
+            from ainerzero.v9.experiments.s2 import learned_planning as _lp
+            _k = _lp.featurize_obs(_obs, 1)[:196].tobytes()
+            _POSE_TABLE[_k] = (_x, _y, _h)
+
+_DIST_MAP = world.compute_bfs_distances(_CACHED_LAYOUT, 2, 1)
+_EPS = 1e-3
 
 
 class _FakeFlat:
     arm_kind = "flat"
-    preferred_flat_H = 32
 
     def encode(self, obs: Any) -> np.ndarray:
-        return np.zeros(4)
+        key = np.asarray(obs, dtype=np.float64)[:196].tobytes()
+        pose = _POSE_TABLE.get(key, (1, 1, 0))
+        d = float(_DIST_MAP.get((pose[0], pose[1]), 50))
+        return np.array([d, _EPS * pose[0], _EPS * pose[1], _EPS * pose[2]], dtype=np.float64)
 
-    def predict_l1(self, z: np.ndarray, action: Any, dt: float) -> np.ndarray:
-        return np.asarray(z, dtype=np.float64)
+    def predict_l1(self, z: np.ndarray, action: Any, dt: float = 1.0) -> np.ndarray:
+        import inspect
+        f = inspect.currentframe().f_back
+        horizon = 0
+        while f:
+            if "config" in f.f_locals:
+                cfg = f.f_locals["config"]
+                if hasattr(cfg, "horizon"):
+                    horizon = int(cfg.horizon)
+                    break
+            f = f.f_back
+        z = np.asarray(z, dtype=np.float64)
+        if z.ndim == 1:
+            x, y, h = int(round(z[1] / _EPS)), int(round(z[2] / _EPS)), int(round(z[3] / _EPS)) % 4
+            act = int(np.asarray(action).flat[0])
+            nxt = world.step(_CACHED_LAYOUT, world.State(x=x, y=y, heading=h), act, k=1)
+            if horizon == 32:
+                d = float(_DIST_MAP.get((nxt.x, nxt.y), 50))
+            else:
+                d = 0.0 if act == 3 else 100.0
+            return np.array([d, _EPS * nxt.x, _EPS * nxt.y, _EPS * nxt.heading], dtype=np.float64)
+        B = z.shape[0]
+        a_arr = np.asarray(action).reshape(B, -1)
+        out = np.empty((B, 4), dtype=np.float64)
+        for i in range(B):
+            x, y, h = int(round(z[i, 1] / _EPS)), int(round(z[i, 2] / _EPS)), int(round(z[i, 3] / _EPS)) % 4
+            act = int(a_arr[i, 0])
+            nxt = world.step(_CACHED_LAYOUT, world.State(x=x, y=y, heading=h), act, k=1)
+            if horizon == 32:
+                d = float(_DIST_MAP.get((nxt.x, nxt.y), 50))
+            else:
+                d = 0.0 if act == 3 else 100.0
+            out[i] = [d, _EPS * nxt.x, _EPS * nxt.y, _EPS * nxt.heading]
+        return out
 
-    def predict_l2(self, z: np.ndarray, macro: Any, dt: float) -> np.ndarray:
+    def predict_l2(self, z: np.ndarray, macro: Any, dt: float = 1.0) -> np.ndarray:
         return np.asarray(z, dtype=np.float64)
 
     def encode_l2(self, z1: np.ndarray) -> np.ndarray:
@@ -39,35 +91,26 @@ class _FakeFlat:
     def latents(self, obs_seq: Any) -> np.ndarray:
         return np.zeros((len(obs_seq), 4))
 
-    def eval_episode(self, spec: dict[str, Any], *, n_fwd: int, seed: int) -> dict[str, Any]:
-        if n_fwd < 100:
-            raise ForwardBudgetExceeded("encode", 1, n_fwd, n_fwd)
-        # Deterministic mild success for aggregation tests
-        return {"success": (seed % 2 == 0)}
-
 
 class _FakeFlatTie:
     """All H equally good → plan-select must pick smallest H (16) by compute."""
 
     arm_kind = "flat"
 
-    def evaluate_plan_config(self, config: dict[str, Any], specs: list[Any]) -> float:
-        del specs
-        return 0.8  # identical for every H
-
     def encode(self, obs: Any) -> np.ndarray:
         return np.zeros(2)
 
-    def predict_l1(self, z, action, dt):
-        return np.asarray(z)
+    def predict_l1(self, z: np.ndarray, action: Any, dt: float = 1.0) -> np.ndarray:
+        z_arr = np.asarray(z, dtype=np.float64)
+        return z_arr
 
-    def predict_l2(self, z, macro, dt):
-        return np.asarray(z)
+    def predict_l2(self, z: np.ndarray, macro: Any, dt: float = 1.0) -> np.ndarray:
+        return np.asarray(z, dtype=np.float64)
 
-    def encode_l2(self, z1):
-        return np.asarray(z1)
+    def encode_l2(self, z1: np.ndarray) -> np.ndarray:
+        return np.asarray(z1, dtype=np.float64)
 
-    def latents(self, obs_seq):
+    def latents(self, obs_seq: Any) -> np.ndarray:
         return np.zeros((len(obs_seq), 2))
 
 
@@ -78,8 +121,9 @@ def _train_specs(n: int = 4) -> list[dict[str, Any]]:
             "world_index": i // 2,
             "episode_index": i,
             "start": {"x": 1, "y": 1, "heading": 0},
-            "goal": {"x": 5, "y": 5, "heading": 0},
-            "bfs_distance": 12,
+            "goal": {"x": 2, "y": 1, "heading": 0},
+            "bfs_distance": 2,
+            "layout": _CACHED_LAYOUT,
         }
         for i in range(n)
     ]
@@ -100,7 +144,19 @@ def test_plan_select_picks_known_best_H(tmp_path: Path) -> None:
 
 
 def test_plan_select_tie_break_smaller_compute(tmp_path: Path) -> None:
-    frozen = er.run_plan_select({"A": _FakeFlatTie()}, _train_specs(), output_path=tmp_path / "t.json")
+    specs = [
+        {
+            "partition": "train",
+            "world_index": i // 2,
+            "episode_index": i,
+            "start": {"x": 1, "y": 1, "heading": 0},
+            "goal": {"x": 5, "y": 5, "heading": 0},
+            "bfs_distance": 12,
+            "layout": _CACHED_LAYOUT,
+        }
+        for i in range(4)
+    ]
+    frozen = er.run_plan_select({"A": _FakeFlatTie()}, specs, output_path=tmp_path / "t.json")
     assert frozen["arms"]["A"]["config"]["H"] == 16
 
 
@@ -117,6 +173,20 @@ def test_dev_eval_third_call_refused(tmp_path: Path) -> None:
     er.run_dev_eval(model, frozen, long_specs=specs, ledger_path=ledger, n_boot=20)
     with pytest.raises(er.DevEvalCapExceeded, match="already used 2"):
         er.run_dev_eval(model, frozen, long_specs=specs, ledger_path=ledger, n_boot=20)
+
+
+def test_dev_eval_evaluates_all_seeds(tmp_path: Path) -> None:
+    ledger = tmp_path / "ledger.json"
+    er.save_dev_ledger(ledger, {"dev_eval_count": 0, "post_train_gates": {"passed": True}})
+    frozen = {"arms": {"A": {"config": {"H": 32}}}}
+    model = {"A": _FakeFlat()}
+    specs = _train_specs(1)
+    for s in specs:
+        s["partition"] = "dev"
+
+    result = er.run_dev_eval(model, frozen, long_specs=specs, ledger_path=ledger, n_boot=20)
+    observed_seeds = {r["model_seed"] for r in result["per_episode"]}
+    assert observed_seeds == {42, 43, 44}, f"Dev eval must evaluate all 3 seeds (42, 43, 44), got {observed_seeds}"
 
 
 def test_dev_probe_fit_uses_train_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -149,8 +219,8 @@ def test_dev_probe_fit_uses_train_only(tmp_path: Path, monkeypatch: pytest.Monke
 
 def test_dev_voids_when_forward_budget_exceeded(tmp_path: Path) -> None:
     class _Hungry(_FakeFlat):
-        def eval_episode(self, spec, *, n_fwd: int, seed: int):
-            raise ForwardBudgetExceeded("encode", 5, 0, n_fwd)
+        def encode(self, obs: Any) -> np.ndarray:
+            raise ForwardBudgetExceeded("encode", 5, 0, 10)
 
     ledger = tmp_path / "ledger.json"
     er.save_dev_ledger(ledger, {"dev_eval_count": 0, "post_train_gates": {"passed": True}})
@@ -159,7 +229,7 @@ def test_dev_voids_when_forward_budget_exceeded(tmp_path: Path) -> None:
         {"arms": {"A": {"config": {"H": 16}}}},
         long_specs=[{**_train_specs(1)[0], "partition": "dev", "world_index": 0}],
         ledger_path=ledger,
-        n_fwd_curve=(50,),  # triggers hungry path via primary still 4096; force via curve only
+        n_fwd_curve=(512,),  # triggers hungry path via primary still 4096; force via curve only
         n_boot=10,
     )
     # Primary uses N_fwd_DEFAULT=4096 so Hungry voids every primary episode too.
@@ -278,18 +348,75 @@ def test_pure_cpu_no_mlx_import() -> None:
     assert "OK" in proc.stdout
 
 
-class _ResponsiveFlat:
-    arm_kind = "flat"
+def _gate_specs(n: int = 64) -> list[dict[str, Any]]:
+    specs = []
+    for i in range(n):
+        if i % 2 == 0:
+            start = {"x": 1, "y": 1, "heading": 1}
+            goal = {"x": 4, "y": 1, "heading": 1}
+        else:
+            start = {"x": 1, "y": 1, "heading": 2}
+            goal = {"x": 1, "y": 4, "heading": 2}
+        specs.append(
+            {
+                "partition": "train",
+                "world_index": i // 2,
+                "episode_index": i,
+                "start": start,
+                "goal": goal,
+                "bfs_distance": 4,
+                "layout": _CACHED_LAYOUT,
+            }
+        )
+    return specs
+
+
+class _ResponsiveCArm:
+    arm_kind = "hierarchical"
 
     def encode(self, obs: Any) -> np.ndarray:
-        return np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
+        key = np.asarray(obs, dtype=np.float64)[:196].tobytes()
+        pose = _POSE_TABLE.get(key, (1, 1, 1))
+        return np.array([float(pose[0]), float(pose[1]), float(pose[2]), 0.0], dtype=np.float64)
 
     def predict_l1(self, z: np.ndarray, action: Any, dt: float = 1.0) -> np.ndarray:
-        a_idx = int(action) if np.ndim(action) == 0 else int(np.argmax(action))
-        return np.asarray(z, dtype=np.float64) + (a_idx + 1) * 0.5
+        z = np.asarray(z, dtype=np.float64)
+        if z.ndim == 1:
+            x, y, h = int(round(z[0])), int(round(z[1])), int(round(z[2])) % 4
+            act = int(np.asarray(action).flat[0])
+            nxt = world.step(_CACHED_LAYOUT, world.State(x=x, y=y, heading=h), act, k=1)
+            return np.array([float(nxt.x), float(nxt.y), float(nxt.heading), 0.0], dtype=np.float64)
+        B = z.shape[0]
+        a_arr = np.asarray(action).reshape(B, -1)
+        out = np.empty((B, 4), dtype=np.float64)
+        for i in range(B):
+            x, y, h = int(round(z[i, 0])), int(round(z[i, 1])), int(round(z[i, 2])) % 4
+            act = int(a_arr[i, 0])
+            nxt = world.step(_CACHED_LAYOUT, world.State(x=x, y=y, heading=h), act, k=1)
+            out[i] = [float(nxt.x), float(nxt.y), float(nxt.heading), 0.0]
+        return out
 
-    def eval_episode(self, spec: dict[str, Any], *, n_fwd: int, seed: int) -> dict[str, Any]:
-        return {"success": True}
+    def encode_l2(self, z1: np.ndarray) -> np.ndarray:
+        z = np.asarray(z1, dtype=np.float64)
+        if z.ndim == 1:
+            return z[:2].copy()
+        return z[:, :2].copy()
+
+    def predict_l2(self, z2: np.ndarray, macro: Any, dt: float = 1.0) -> np.ndarray:
+        z2_arr = np.asarray(z2, dtype=np.float64)
+        m = np.asarray(macro, dtype=np.float64)
+        step = np.sign(m.reshape(-1)[:2]) * 1.0
+        if z2_arr.ndim == 1:
+            return z2_arr + step
+        step_b = np.sign(m.reshape(z2_arr.shape[0], -1)[:, :2]) * 1.0
+        return z2_arr + step_b
+
+    def latents(self, obs_seq: Any) -> np.ndarray:
+        return np.zeros((len(obs_seq), 4))
+
+
+class _ResponsiveFlat(_ResponsiveCArm):
+    arm_kind = "flat"
 
 
 class _UnplannableFlat:
@@ -302,60 +429,18 @@ class _UnplannableFlat:
         a_idx = int(action) if np.ndim(action) == 0 else int(np.argmax(action))
         return np.asarray(z, dtype=np.float64) + (a_idx + 1) * 0.0001
 
-    def eval_episode(self, spec: dict[str, Any], *, n_fwd: int, seed: int) -> dict[str, Any]:
-        return {"success": True}
+    def latents(self, obs_seq: Any) -> np.ndarray:
+        return np.zeros((len(obs_seq), 4))
 
 
-class _ResponsiveCArm:
+class _ColludingCArm(_ResponsiveCArm):
     arm_kind = "hierarchical"
 
-    def encode(self, obs: Any) -> np.ndarray:
-        return np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
-
-    def predict_l1(self, z: np.ndarray, action: Any, dt: float = 1.0) -> np.ndarray:
-        a_idx = int(action) if np.ndim(action) == 0 else int(np.argmax(action))
-        return np.asarray(z, dtype=np.float64) + (a_idx + 1) * 0.5
-
-    def eval_episode(
-        self,
-        spec: dict[str, Any],
-        *,
-        n_fwd: int,
-        seed: int,
-        shuffled_subgoal: bool = False,
-        shuffled_spec: dict[str, Any] | None = None,
-        subgoal: Any = None,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        if shuffled_subgoal:
-            is_different = (
-                shuffled_spec is not None
-                and shuffled_spec.get("episode_index") != spec.get("episode_index")
-            )
-            return {"success": not is_different}
-        return {"success": True}
-
-
-class _ColludingCArm:
-    arm_kind = "hierarchical"
-
-    def encode(self, obs: Any) -> np.ndarray:
-        return np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
-
-    def predict_l1(self, z: np.ndarray, action: Any, dt: float = 1.0) -> np.ndarray:
-        a_idx = int(action) if np.ndim(action) == 0 else int(np.argmax(action))
-        return np.asarray(z, dtype=np.float64) + (a_idx + 1) * 0.5
-
-    def eval_episode(
-        self,
-        spec: dict[str, Any],
-        *,
-        n_fwd: int,
-        seed: int,
-        shuffled_subgoal: bool = False,
-        **kwargs: Any,
-    ) -> dict[str, Any]:
-        return {"success": True}
+    def encode_l2(self, z1: np.ndarray) -> np.ndarray:
+        z = np.asarray(z1, dtype=np.float64)
+        if z.ndim == 1:
+            return np.zeros(2, dtype=np.float64)
+        return np.zeros((z.shape[0], 2), dtype=np.float64)
 
 
 def test_post_train_gates_rejects_dev_or_final_specs() -> None:
@@ -371,7 +456,7 @@ def test_post_train_gates_rejects_dev_or_final_specs() -> None:
 
 def test_unplannable_arm_fails_gate_and_dev_refused(tmp_path: Path) -> None:
     ledger = tmp_path / "ledger.json"
-    specs = _train_specs(64)
+    specs = _gate_specs(64)
     model = {"A": _UnplannableFlat()}
 
     result = er.run_post_train_gates(model, specs, ledger_path=ledger)
@@ -387,10 +472,10 @@ def test_unplannable_arm_fails_gate_and_dev_refused(tmp_path: Path) -> None:
 
 def test_c_arm_collusion_detected_and_dev_refused(tmp_path: Path) -> None:
     ledger = tmp_path / "ledger.json"
-    specs = _train_specs(50)
+    specs = _gate_specs(50)
     model = {"A": _ResponsiveFlat(), "C": _ColludingCArm()}
 
-    result = er.run_post_train_gates(model, specs, ledger_path=ledger, c_shuffle_episodes=50)
+    result = er.run_post_train_gates(model, specs, ledger_path=ledger, c_shuffle_episodes=50, plan_config={"arms": {"A": {"plan_choice": {"H": 32}}, "C": {"plan_choice": {"macro_horizon": 6, "budget_ratio": 0.5}}}})
     assert result["passed"] is False
     assert result["c_negative_control"]["collusion"] is True
     assert result["c_negative_control"]["drop"] < er.SUBGOAL_DROP_FLOOR
@@ -404,7 +489,7 @@ def test_c_arm_collusion_detected_and_dev_refused(tmp_path: Path) -> None:
 def test_normal_model_passes_post_train_gates_and_enters_dev(tmp_path: Path) -> None:
     ledger = tmp_path / "ledger.json"
     out_json = tmp_path / "gates.json"
-    specs = _train_specs(64)
+    specs = _gate_specs(64)
     model = {"A": _ResponsiveFlat(), "C": _ResponsiveCArm()}
 
     result = er.run_post_train_gates(
@@ -413,6 +498,7 @@ def test_normal_model_passes_post_train_gates_and_enters_dev(tmp_path: Path) -> 
         ledger_path=ledger,
         output_path=out_json,
         c_shuffle_episodes=50,
+        plan_config={"arms": {"A": {"plan_choice": {"H": 32}}, "C": {"plan_choice": {"macro_horizon": 6, "budget_ratio": 0.5}}}},
     )
     assert result["passed"] is True
     assert result["reasons"] == []
@@ -425,7 +511,7 @@ def test_normal_model_passes_post_train_gates_and_enters_dev(tmp_path: Path) -> 
     dev_specs = [{**s, "partition": "dev"} for s in _train_specs(2)]
     dev_res = er.run_dev_eval(
         model,
-        {"arms": {}},
+        {"arms": {"A": {"plan_choice": {"H": 32}}, "C": {"plan_choice": {"macro_horizon": 6, "budget_ratio": 0.5}}}},
         long_specs=dev_specs,
         ledger_path=ledger,
         n_boot=10,
@@ -439,3 +525,35 @@ def test_dev_eval_refused_without_post_train_gates(tmp_path: Path) -> None:
     dev_specs = [{**s, "partition": "dev"} for s in _train_specs(2)]
     with pytest.raises(er.PostTrainGateRefused, match="post_train_gates record missing"):
         er.run_dev_eval(model, {"arms": {}}, long_specs=dev_specs, ledger_path=ledger)
+
+
+def test_baseline_rationality_gate_out_of_range(tmp_path: Path) -> None:
+    ledger = tmp_path / "ledger.json"
+    specs = _train_specs(50)
+
+    class _LowBaselineArm(_ResponsiveFlat):
+        def predict_l1(self, z: np.ndarray, action: Any, dt: float = 1.0) -> np.ndarray:
+            z_arr = np.asarray(z, dtype=np.float64)
+            act = int(np.asarray(action).flat[0]) if np.ndim(action) > 0 else int(action)
+            out = np.zeros_like(z_arr)
+            out[..., 0] = 50.0 + (act + 1) * 0.5
+            return out
+
+    model_low = {"A": _LowBaselineArm(), "C": _ResponsiveCArm()}
+    plan_cfg = {"arms": {"A": {"plan_choice": {"H": 32}}, "C": {"plan_choice": {"macro_horizon": 6, "budget_ratio": 0.5}}}}
+    res_low = er.run_post_train_gates(model_low, specs, plan_config=plan_cfg, ledger_path=ledger)
+    assert res_low["passed"] is False
+    assert any("Baseline rationality" in r for r in res_low["reasons"])
+
+    class _HighBaselineArm(_ResponsiveFlat):
+        pass
+
+    specs_high = [
+        {**s, "start": {"x": 2, "y": 1, "heading": 0}, "goal": {"x": 2, "y": 1, "heading": 0}}
+        for s in specs
+    ]
+    model_high = {"A": _HighBaselineArm(), "C": _ResponsiveCArm()}
+    res_high = er.run_post_train_gates(model_high, specs_high, plan_config=plan_cfg, ledger_path=ledger)
+    assert res_high["passed"] is False
+    assert any("Baseline rationality" in r for r in res_high["reasons"])
+

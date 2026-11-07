@@ -6,6 +6,7 @@ Specifications per reports/V9-S2-DESIGN/DESIGN-r2.md §4, §5, §7.
 
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
 import hashlib
 import inspect
@@ -18,7 +19,11 @@ from typing import Any, Callable, Mapping, Protocol, Sequence
 
 import numpy as np
 
+from ainerzero.v9.experiments.s2 import eval as s2_eval
+from ainerzero.v9.experiments.s2 import learned_planning as lp
 from ainerzero.v9.experiments.s2 import smoke_checks
+from ainerzero.v9.experiments.s2 import spec as spec_mod
+from ainerzero.v9.experiments.s2 import world
 from ainerzero.v9.experiments.s2.fwd_counter import ForwardBudgetExceeded, ForwardCounter
 from ainerzero.v9.experiments.s2.probe import RidgeProbe, eval_error, fit_ridge
 from ainerzero.v9.experiments.s2.stats import BootstrapResult, cluster_paired_bootstrap
@@ -55,12 +60,13 @@ __all__ = [
 ]
 
 # Registered candidate grids (DESIGN-r2 §4)
-FLAT_H_CANDIDATES: tuple[int, ...] = (16, 32, 48)
-HIER_MACRO_HORIZONS: tuple[int, ...] = (4, 6, 8)
-HIER_BUDGET_RATIOS: tuple[float, ...] = (0.25, 0.5)
+# Aliases of the registered spec values (spec is the authority; call sites read spec_mod at call time).
+FLAT_H_CANDIDATES: tuple[int, ...] = tuple(spec_mod.FLAT_H_CANDIDATES)
+HIER_MACRO_HORIZONS: tuple[int, ...] = tuple(spec_mod.HIERARCHICAL_HORIZON_CANDIDATES)
+HIER_BUDGET_RATIOS: tuple[float, ...] = tuple(spec_mod.HIERARCHICAL_BUDGET_RATIO_CANDIDATES)
 
-N_FWD_DEFAULT: int = 4096
-N_FWD_CURVE: tuple[int, ...] = (2048, 4096, 8192)
+N_FWD_DEFAULT: int = int(spec_mod.N_FWD)
+N_FWD_CURVE: tuple[int, ...] = tuple(spec_mod.N_FWD_DEV_LEVELS)
 MAX_DEV_EVALS: int = 2
 DELTA_PRED: float = 1.0
 SUCCESS_DIFF_GATE: float = 0.10
@@ -173,53 +179,119 @@ def _config_compute_cost(kind: str, config: Mapping[str, Any]) -> float:
     return float(config["macro_horizon"]) * (1.0 + float(config["budget_ratio"]))
 
 
+
+def _require_plan_choice(arm_cfg: Any, arm_name: str) -> dict[str, Any]:
+    """Plan choice of one arm from the frozen plan-select result; missing means refuse."""
+    choice = None
+    if isinstance(arm_cfg, Mapping):
+        choice = arm_cfg.get("plan_choice")
+        if choice is None:
+            choice = arm_cfg.get("config")
+    if not isinstance(choice, Mapping) or not choice:
+        raise ValueError(f"frozen plan config has no plan_choice for arm {arm_name!r}")
+    return dict(choice)
+
 def _candidate_grid(kind: str) -> list[dict[str, Any]]:
     if kind == "flat":
-        return [{"H": int(h)} for h in FLAT_H_CANDIDATES]
+        return [{"H": int(h)} for h in spec_mod.FLAT_H_CANDIDATES]
     return [
         {"macro_horizon": int(mh), "budget_ratio": float(br)}
-        for mh in HIER_MACRO_HORIZONS
-        for br in HIER_BUDGET_RATIOS
+        for mh in spec_mod.HIERARCHICAL_HORIZON_CANDIDATES
+        for br in spec_mod.HIERARCHICAL_BUDGET_RATIO_CANDIDATES
     ]
+
+
+def _resolve_layout_for_spec(
+    spec: Mapping[str, Any], *, dataset_dir: Path | None = None
+) -> world.Layout:
+    if "layout" in spec:
+        val = spec["layout"]
+        if isinstance(val, world.Layout):
+            return val
+        if isinstance(val, Mapping):
+            return world.Layout(
+                seed=int(val["seed"]),
+                terrain=[list(row) for row in val["terrain"]],
+                rooms=[tuple(r) for r in val["rooms"]],
+                doors=[tuple(d) for d in val["doors"]],
+                pillars=[tuple(p) for p in val["pillars"]],
+                layout_sha256=str(val["layout_sha256"]),
+            )
+    if "layout_path" in spec:
+        lp_path = Path(spec["layout_path"])
+        if lp_path.is_file():
+            val = json.loads(lp_path.read_text(encoding="utf-8"))
+            return world.Layout(
+                seed=int(val["seed"]),
+                terrain=[list(row) for row in val["terrain"]],
+                rooms=[tuple(r) for r in val["rooms"]],
+                doors=[tuple(d) for d in val["doors"]],
+                pillars=[tuple(p) for p in val["pillars"]],
+                layout_sha256=str(val["layout_sha256"]),
+            )
+    w_idx = spec.get("world_index", spec.get("world_id"))
+    if w_idx is not None and dataset_dir is not None:
+        lp_path = Path(dataset_dir) / f"world_{int(w_idx):04d}" / "layout.json"
+        if lp_path.is_file():
+            val = json.loads(lp_path.read_text(encoding="utf-8"))
+            return world.Layout(
+                seed=int(val["seed"]),
+                terrain=[list(row) for row in val["terrain"]],
+                rooms=[tuple(r) for r in val["rooms"]],
+                doors=[tuple(d) for d in val["doors"]],
+                pillars=[tuple(p) for p in val["pillars"]],
+                layout_sha256=str(val["layout_sha256"]),
+            )
+    if "layout_dict" in spec:
+        val = spec["layout_dict"]
+        return world.Layout(
+            seed=int(val["seed"]),
+            terrain=[list(row) for row in val["terrain"]],
+            rooms=[tuple(r) for r in val["rooms"]],
+            doors=[tuple(d) for d in val["doors"]],
+            pillars=[tuple(p) for p in val["pillars"]],
+            layout_sha256=str(val["layout_sha256"]),
+        )
+    raise ValueError(f"Episode spec missing layout or valid layout path: {spec.get('episode_index', spec)}")
 
 
 def _score_config_on_train(
     model: Any,
     config: Mapping[str, Any],
     specs: Sequence[Mapping[str, Any]],
+    *,
+    n_fwd: int = N_FWD_DEFAULT,
+    dataset_dir: Path | None = None,
 ) -> float:
-    """Mean success on train plan-select specs.
+    """Mean success on train plan-select specs via real learned planning execution.
 
-    Fake models may expose ``plan_select_success(config, spec) -> bool`` (or a
-    preferred hyper-parameter attribute) so CPU tests can pin the optimum without
-    training. Real models should override via ``evaluate_plan_config``.
+    Zero fallbacks: evaluated directly using learned_planning.make_plan_fn and
+    eval.run_episode under r2.6 planning protocol (fail-closed, no test mocks).
     """
-    if hasattr(model, "evaluate_plan_config"):
-        return float(model.evaluate_plan_config(dict(config), list(specs)))
-
     kind = _arm_kind(model)
-    preferred = getattr(model, "preferred_config", None)
-    if preferred is not None:
-        # Exact match → 1.0; else 0.0 (deterministic oracle for unit tests).
-        return 1.0 if dict(preferred) == dict(config) else 0.0
+    plan_fn = lp.make_plan_fn(model, kind, config, n_fwd)
+    hits: list[float] = []
+    m_val = int(spec_mod.PLAN_REPLAN_EVERY_OBS_STEPS)
 
-    if kind == "flat":
-        best_h = getattr(model, "preferred_flat_H", None)
-        if best_h is not None:
-            return 1.0 if int(config["H"]) == int(best_h) else 0.0
-    else:
-        pref_mh = getattr(model, "preferred_macro_horizon", None)
-        pref_br = getattr(model, "preferred_budget_ratio", None)
-        if pref_mh is not None and pref_br is not None:
-            ok = (
-                int(config["macro_horizon"]) == int(pref_mh)
-                and abs(float(config["budget_ratio"]) - float(pref_br)) < 1e-12
-            )
-            return 1.0 if ok else 0.0
+    for i, sp in enumerate(specs):
+        layout = _resolve_layout_for_spec(sp, dataset_dir=dataset_dir)
+        counter = ForwardCounter(budget=n_fwd)
+        rng = np.random.default_rng(42 + i)
+        res = s2_eval.run_episode(
+            layout,
+            sp,
+            plan_fn,
+            counter,
+            rng,
+            dt_mode="irregular",
+            m=m_val,
+            catch_budget_exceeded=True,
+        )
+        hits.append(1.0 if res.success and not res.void else 0.0)
 
-    # Fallback: treat every config equally successful (tie-break by compute).
-    del specs
-    return 0.5
+    if not hits:
+        raise PlanSelectError("specs must be non-empty for plan-select evaluation")
+    return float(np.mean(hits))
 
 
 def run_plan_select(
@@ -229,21 +301,25 @@ def run_plan_select(
     output_path: str | Path | None = None,
     max_episodes: int = 50,
     n_fwd: int = N_FWD_DEFAULT,
+    dataset_dir: str | Path | None = None,
+    **extra_kwargs: Any,
 ) -> dict[str, Any]:
-    """Select planner hyper-parameters on train-only planning episodes (§4).
+    """Select planner hyper-parameters on train-only planning episodes (§4, D4).
 
     Refuses immediately if any episode spec is labeled ``dev`` or ``final``.
     Tie-break: equal success → smaller compute cost.
+    Records plan_choice and derived CEM parameters in plan_config.json.
     """
-    del n_fwd  # reserved for real CEM budget derivation
     if not train_episode_specs:
         raise PlanSelectError("train_episode_specs must be non-empty")
     _assert_train_only(train_episode_specs)
     specs = list(train_episode_specs[: max(1, int(max_episodes))])
+    d_dir = Path(dataset_dir) if dataset_dir is not None else None
 
     frozen: dict[str, Any] = {
         "schema": "s2.plan_select.v1",
         "n_episodes_used": len(specs),
+        "n_fwd": int(n_fwd),
         "arms": {},
     }
 
@@ -255,7 +331,7 @@ def run_plan_select(
         trials: list[dict[str, Any]] = []
 
         for cand in _candidate_grid(kind):
-            score = _score_config_on_train(model, cand, specs)
+            score = _score_config_on_train(model, cand, specs, n_fwd=n_fwd, dataset_dir=d_dir)
             cost = _config_compute_cost(kind, cand)
             trials.append({"config": dict(cand), "success_rate": score, "compute_cost": cost})
             better = score > best_score + 1e-15
@@ -266,9 +342,12 @@ def run_plan_select(
                 best = dict(cand)
 
         assert best is not None
+        cem_cfg = lp.cem_config_for_budget(kind, best, n_fwd)
         frozen["arms"][arm_name] = {
             "arm_kind": kind,
+            "plan_choice": best,
             "config": best,
+            "cem_config": dataclasses.asdict(cem_cfg),
             "success_rate": best_score,
             "compute_cost": best_cost,
             "trials": trials,
@@ -297,6 +376,10 @@ def run_post_train_gates(
     train_states_by_arm: Mapping[str, Sequence[Any] | np.ndarray] | None = None,
     n_actions: int = 4,
     n_fwd: int = N_FWD_DEFAULT,
+    plan_config: Mapping[str, Any] | None = None,
+    baseline_success_range: tuple[float, float] = (0.10, 0.80),
+    dataset_dir: str | Path | None = None,
+    **extra_kwargs: Any,
 ) -> dict[str, Any]:
     """Execute post-train, pre-dev gates per DESIGN-r2 Appendix B.
 
@@ -324,7 +407,56 @@ def run_post_train_gates(
     sensitivity_by_arm: dict[str, float] = {}
     unplannable_arms: list[str] = []
 
-    # 1. Action sensitivity gate for all arms
+    # 1. Action sensitivity gate for all arms (DESIGN-r2 §5, Appendix D5.1)
+    cand_steps: list[tuple[dict[str, Any], int]] = []
+    d_dir = Path(dataset_dir) if dataset_dir is not None else None
+    if d_dir is not None and d_dir.exists():
+        holdout_path = d_dir / "HOLDOUT_WORLDS.json"
+        h_worlds: list[Any] = []
+        if holdout_path.is_file():
+            try:
+                h_info = json.loads(holdout_path.read_text(encoding="utf-8"))
+                h_worlds = h_info.get("holdout_worlds", [])
+            except Exception:
+                pass
+        ep_files: list[Path] = []
+        if h_worlds:
+            for w in h_worlds:
+                w_dir = d_dir / f"world_{int(w):04d}"
+                if w_dir.is_dir():
+                    ep_files.extend(sorted(w_dir.glob("episode_*.json")))
+        if not ep_files:
+            ep_files = sorted(d_dir.glob("world_*/episode_*.json"))
+        for ep_f in ep_files:
+            try:
+                payload = json.loads(ep_f.read_text(encoding="utf-8"))
+                for st in payload.get("steps", []):
+                    if "student_obs" in st:
+                        cand_steps.append((st["student_obs"], int(st.get("dt", st.get("k", 1)))))
+            except Exception:
+                continue
+
+    if not cand_steps:
+        for sp in train_episode_specs:
+            if "start" in sp and "layout" in sp:
+                layout = _resolve_layout_for_spec(sp, dataset_dir=d_dir)
+                start_st = s2_eval._to_state(sp["start"])
+                obs = world.student_obs(layout, start_st, last_action=3, dt=1)
+                cand_steps.append((obs, 1))
+            elif "student_obs" in sp:
+                cand_steps.append((sp["student_obs"], int(sp.get("dt", 1))))
+            elif "obs" in sp:
+                cand_steps.append((sp["obs"], int(sp.get("dt", 1))))
+
+    rng_sens = np.random.default_rng(seed)
+    sampled_feats: list[np.ndarray] = []
+    if cand_steps:
+        n_take = min(n_sensitivity_states, len(cand_steps))
+        chosen_indices = rng_sens.choice(len(cand_steps), size=n_take, replace=False)
+        for c_idx in chosen_indices:
+            obs_dict, k_val = cand_steps[int(c_idx)]
+            sampled_feats.append(lp.featurize_obs(obs_dict, k=k_val))
+
     for arm_name, model in model_by_arm.items():
         def _predict(z: np.ndarray, a: Any, m: Any = model) -> np.ndarray:
             try:
@@ -332,24 +464,18 @@ def run_post_train_gates(
             except TypeError:
                 return m.predict_l1(z, a)
 
-        states: Sequence[Any] | np.ndarray | None = None
         if train_states_by_arm is not None and arm_name in train_states_by_arm:
-            states = train_states_by_arm[arm_name]
-        elif hasattr(model, "states_sample"):
-            states = getattr(model, "states_sample")
-        elif hasattr(model, "sample_states"):
-            states = getattr(model, "sample_states")
-        elif hasattr(model, "train_states"):
-            states = getattr(model, "train_states")
+            states_list = list(train_states_by_arm[arm_name])[:n_sensitivity_states]
+        elif sampled_feats:
+            states_list = [model.encode(f) for f in sampled_feats]
         elif hasattr(model, "encode"):
-            states = [
+            states_list = [
                 model.encode(spec.get("start", spec.get("start_obs", spec.get("obs", spec))))
                 for spec in train_episode_specs[:n_sensitivity_states]
             ]
         else:
             raise PostTrainGateError(f"Cannot extract sensitivity states for arm {arm_name!r}")
 
-        states_list = list(states)[:n_sensitivity_states]
         if not states_list:
             raise PostTrainGateError(f"No states available for arm {arm_name!r} action sensitivity")
 
@@ -368,19 +494,23 @@ def run_post_train_gates(
                 f"Arm {arm_name} action sensitivity {sens:.4f} < {sensitivity_threshold:.4f} (不可规划)"
             )
 
-    # 2. C-arm shuffled subgoal negative control
+    # 2. C-arm shuffled subgoal negative control (DESIGN-r2 Appendix D5.1)
     c_arm_name: str | None = None
-    if "C" in model_by_arm:
-        c_arm_name = "C"
-    else:
+    c_model: Any = None
+    for cand in ("arm_c", "C"):
+        if cand in model_by_arm:
+            c_arm_name = cand
+            c_model = model_by_arm[cand]
+            break
+    if c_model is None:
         for name, m in model_by_arm.items():
             if getattr(m, "arm_kind", None) == "hierarchical" or getattr(m, "kind", None) == "hierarchical":
-                c_arm_name = name
+                c_arm_name = str(name)
+                c_model = m
                 break
 
     c_control_result: dict[str, Any] | None = None
-    if c_arm_name is not None:
-        c_model = model_by_arm[c_arm_name]
+    if c_model is not None:
         c_specs = list(train_episode_specs[: max(1, int(c_shuffle_episodes))])
         n_c_eps = len(c_specs)
 
@@ -392,70 +522,80 @@ def run_post_train_gates(
             if len(fixed) > 0:
                 perm = (perm + 1) % n_c_eps
 
-        if hasattr(c_model, "eval_c_negative_control"):
-            ctrl = c_model.eval_c_negative_control(
-                c_specs,
-                n_fwd=n_fwd,
-                seed=seed,
-                shuffle_seed=shuffle_seed,
-                subgoal_drop_threshold=subgoal_drop_threshold,
+        c_cfg_info = None
+        c_base_arm = str(c_arm_name).split("/", 1)[0]  # models keyed "<arm>/<seed>"; plan_config keyed by arm
+        if plan_config is not None:
+            c_cfg_info = plan_config.get("arms", {}).get(c_base_arm)
+        if c_cfg_info is None:
+            raise ValueError(
+                f"C-arm negative control needs the plan-select choice for {c_arm_name!r}; none in plan_config"
             )
-            rate_true = float(ctrl["success_rate_true"])
-            rate_shuffled = float(ctrl["success_rate_shuffled"])
-            drop = float(ctrl.get("drop", rate_true - rate_shuffled))
-        elif hasattr(c_model, "eval_episode"):
-            sig = inspect.signature(c_model.eval_episode)
-            accepts_shuffled = "shuffled_subgoal" in sig.parameters or any(
-                p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
-            )
-            accepts_subgoal = "subgoal" in sig.parameters
+        c_plan_choice = _require_plan_choice(c_cfg_info, c_arm_name)
 
-            if hasattr(c_model, "plan_subgoal") and accepts_subgoal:
-                subgoals = [c_model.plan_subgoal(s) for s in c_specs]
-                true_hits = []
-                shuf_hits = []
-                for i, s in enumerate(c_specs):
-                    r_true = c_model.eval_episode(s, n_fwd=n_fwd, seed=seed + i, subgoal=subgoals[i])
-                    r_shuf = c_model.eval_episode(s, n_fwd=n_fwd, seed=seed + i, subgoal=subgoals[perm[i]])
-                    true_hits.append(1.0 if r_true.get("success", False) else 0.0)
-                    shuf_hits.append(1.0 if r_shuf.get("success", False) else 0.0)
-                rate_true = float(np.mean(true_hits)) if true_hits else 0.0
-                rate_shuffled = float(np.mean(shuf_hits)) if shuf_hits else 0.0
-                drop = rate_true - rate_shuffled
-            elif accepts_shuffled:
-                true_hits = []
-                shuf_hits = []
-                for i, s in enumerate(c_specs):
-                    r_true = c_model.eval_episode(s, n_fwd=n_fwd, seed=seed + i, shuffled_subgoal=False)
-                    r_shuf = c_model.eval_episode(
-                        s,
-                        n_fwd=n_fwd,
-                        seed=seed + i,
-                        shuffled_subgoal=True,
-                        shuffled_spec=dict(c_specs[perm[i]]),
-                    )
-                    true_hits.append(1.0 if r_true.get("success", False) else 0.0)
-                    shuf_hits.append(1.0 if r_shuf.get("success", False) else 0.0)
-                rate_true = float(np.mean(true_hits)) if true_hits else 0.0
-                rate_shuffled = float(np.mean(shuf_hits)) if shuf_hits else 0.0
-                drop = rate_true - rate_shuffled
-            elif hasattr(c_model, "subgoal_drop"):
-                drop = float(c_model.subgoal_drop)
-                rate_true = float(getattr(c_model, "true_success_rate", 0.5))
-                rate_shuffled = rate_true - drop
-            else:
-                raise PostTrainGateError(
-                    f"C arm {c_arm_name!r} eval_episode must accept 'shuffled_subgoal' or 'subgoal'"
-                )
-        elif hasattr(c_model, "subgoal_drop"):
-            drop = float(c_model.subgoal_drop)
-            rate_true = float(getattr(c_model, "true_success_rate", 0.5))
-            rate_shuffled = rate_true - drop
-        else:
-            raise PostTrainGateError(
-                f"C arm {c_arm_name!r} missing negative control implementation (eval_c_negative_control or eval_episode)"
-            )
+        m_val = int(spec_mod.PLAN_REPLAN_EVERY_OBS_STEPS)
 
+        # Pass 1: True subgoals under real learned planning execution
+        true_hits: list[float] = []
+        subgoals_by_ep: list[list[Any]] = []
+        for i, sp in enumerate(c_specs):
+            layout = _resolve_layout_for_spec(sp, dataset_dir=d_dir)
+            counter = ForwardCounter(budget=n_fwd)
+            rng_ep = np.random.default_rng(seed + i)
+            recorded_subgoals: list[Any] = []
+            base_plan_fn = lp.make_plan_fn(c_model, "hierarchical", c_plan_choice, n_fwd)
+
+            def recording_plan_fn(obs: Any, goal_obs: Any, k: int, counter: Any, rng: Any) -> Any:
+                res = base_plan_fn(obs, goal_obs, k, counter, rng)
+                if res.info and "z2_subgoal" in res.info:
+                    recorded_subgoals.append(res.info["z2_subgoal"])
+                return res
+
+            res_true = s2_eval.run_episode(
+                layout,
+                sp,
+                recording_plan_fn,
+                counter,
+                rng_ep,
+                dt_mode="irregular",
+                m=m_val,
+                catch_budget_exceeded=True,
+            )
+            true_hits.append(1.0 if res_true.success and not res_true.void else 0.0)
+            subgoals_by_ep.append(recorded_subgoals)
+
+        # Pass 2: Injected deranged subgoals via subgoal_source
+        shuf_hits: list[float] = []
+        for i, sp in enumerate(c_specs):
+            layout = _resolve_layout_for_spec(sp, dataset_dir=d_dir)
+            counter = ForwardCounter(budget=n_fwd)
+            rng_ep = np.random.default_rng(seed + i)
+            injected_seq = subgoals_by_ep[int(perm[i])]
+
+            def _subgoal_src(decision_idx: int, s_seq: list[Any] = injected_seq) -> Any:
+                if not s_seq:
+                    z2_d = int(spec_mod.ARM_DIMS["arm_c"].get("z2_dim", 64))
+                    return np.zeros(z2_d, dtype=np.float64)
+                idx = min(decision_idx, len(s_seq) - 1)
+                return s_seq[idx]
+
+            shuf_plan_fn = lp.make_plan_fn(
+                c_model, "hierarchical", c_plan_choice, n_fwd, subgoal_source=_subgoal_src
+            )
+            res_shuf = s2_eval.run_episode(
+                layout,
+                sp,
+                shuf_plan_fn,
+                counter,
+                rng_ep,
+                dt_mode="irregular",
+                m=m_val,
+                catch_budget_exceeded=True,
+            )
+            shuf_hits.append(1.0 if res_shuf.success and not res_shuf.void else 0.0)
+
+        rate_true = float(np.mean(true_hits)) if true_hits else 0.0
+        rate_shuffled = float(np.mean(shuf_hits)) if shuf_hits else 0.0
+        drop = float(rate_true - rate_shuffled)
         collusion = bool(drop < subgoal_drop_threshold)
         c_control_result = {
             "arm": c_arm_name,
@@ -474,6 +614,50 @@ def run_post_train_gates(
                 f"{subgoal_drop_threshold:.4f} (E₂ 合谋/下层没用子目标)"
             )
 
+    # 3. Baseline rationality gate (DESIGN-r2 §5, Appendix B, D4)
+    baseline_result: dict[str, Any] | None = None
+    if plan_config is not None:
+        try:
+            a_model = _resolve_model(model_by_arm, "arm_a", 42)
+        except KeyError:
+            a_model = None
+        try:
+            b_model = _resolve_model(model_by_arm, "arm_b", 42)
+        except KeyError:
+            b_model = None
+        if a_model is None and b_model is None:
+            raise PostTrainGateError("At least one baseline model (arm_a or arm_b) is required for baseline rationality gate")
+        scores: list[float] = []
+        ab_specs = list(train_episode_specs[: min(len(train_episode_specs), 50)])
+        for arm_key, arm_m in [("arm_a", a_model), ("arm_b", b_model)]:
+            if arm_m is not None:
+                arm_cfg_info = (
+                    plan_config.get("arms", {}).get(arm_key)
+                    or plan_config.get("arms", {}).get(arm_key.replace("arm_", "").upper())
+                    or plan_config.get("arms", {}).get(arm_key.replace("arm_", ""))
+                )
+                if arm_cfg_info is None:
+                    raise PostTrainGateError(f"plan_config missing configuration for arm {arm_key}")
+                p_choice = arm_cfg_info.get("plan_choice", arm_cfg_info.get("config"))
+                if p_choice is None:
+                    raise PostTrainGateError(f"plan_config missing plan_choice for arm {arm_key}")
+                s_rate = _score_config_on_train(arm_m, p_choice, ab_specs, n_fwd=n_fwd, dataset_dir=d_dir)
+                scores.append(s_rate)
+        if scores:
+            max_ab = float(max(scores))
+            p_min, p_max = baseline_success_range
+            base_passed = bool(p_min <= max_ab <= p_max)
+            baseline_result = {
+                "max_ab_success": max_ab,
+                "range": [p_min, p_max],
+                "passed": base_passed,
+            }
+            if not base_passed:
+                reasons.append(
+                    f"Baseline rationality failed: max(A, B) success rate {max_ab:.4f} "
+                    f"not in [{p_min:.2f}, {p_max:.2f}] (§5 基线不合理)"
+                )
+
     passed = (len(reasons) == 0)
 
     verdict_record = {
@@ -483,6 +667,7 @@ def run_post_train_gates(
         "sensitivity_by_arm": sensitivity_by_arm,
         "unplannable_arms": unplannable_arms,
         "c_negative_control": c_control_result,
+        "baseline_rationality": baseline_result,
         "n_sensitivity_states": n_sensitivity_states,
         "sensitivity_threshold": sensitivity_threshold,
         "subgoal_drop_threshold": subgoal_drop_threshold,
@@ -531,44 +716,104 @@ def _require_dev_capacity(ledger_path: str | Path) -> dict[str, Any]:
     return ledger
 
 
+def _resolve_model(model_by_arm: Mapping[Any, Any], arm_name: str, seed: int) -> Any:
+    """Resolve model instance for given arm and training seed."""
+    if (arm_name, seed) in model_by_arm:
+        return model_by_arm[(arm_name, seed)]
+    key_slash = f"{arm_name}/{seed}"
+    if key_slash in model_by_arm:
+        return model_by_arm[key_slash]
+    from ainerzero.v9.experiments.s2.adapters_mlx import canonical_arm
+    c_arm = canonical_arm(arm_name)
+    candidates = (
+        arm_name,
+        c_arm,
+        c_arm.replace("arm_", "").upper(),
+        c_arm.replace("arm_", "").lower(),
+        str(arm_name).lower(),
+    )
+    for k in candidates:
+        if (k, seed) in model_by_arm:
+            return model_by_arm[(k, seed)]
+        if f"{k}/{seed}" in model_by_arm:
+            return model_by_arm[f"{k}/{seed}"]
+        if k in model_by_arm and isinstance(model_by_arm[k], Mapping) and seed in model_by_arm[k]:
+            return model_by_arm[k][seed]
+        if k in model_by_arm:
+            return model_by_arm[k]
+    raise KeyError(f"Cannot resolve model for arm={arm_name!r}, seed={seed}")
+
+
+def _run_planning_episode_for_model(
+    model: Any,
+    spec: Mapping[str, Any],
+    *,
+    arm_kind: str | None = None,
+    plan_choice: Mapping[str, Any] | None = None,
+    n_fwd: int = N_FWD_DEFAULT,
+    seed: int = 42,
+    dt_mode: str = "irregular",
+    dataset_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Execute one episode using real learned planning without any fallbacks.
+
+    Calls learned_planning.make_plan_fn and eval.run_episode under r2.6 protocol.
+    Zero random branches, zero base_success_rate fallbacks, zero eval_episode branches.
+    """
+    kind = arm_kind or _arm_kind(model)
+    if plan_choice is None:
+        raise ValueError("plan_choice is required (frozen plan-select result); no default configuration")
+
+    layout = _resolve_layout_for_spec(spec, dataset_dir=dataset_dir)
+    plan_fn = lp.make_plan_fn(model, kind, plan_choice, n_fwd)
+    counter = ForwardCounter(budget=n_fwd)
+    rng = np.random.default_rng(seed)
+    m_val = int(spec_mod.PLAN_REPLAN_EVERY_OBS_STEPS)
+
+    res = s2_eval.run_episode(
+        layout,
+        spec,
+        plan_fn,
+        counter,
+        rng,
+        dt_mode=dt_mode,
+        m=m_val,
+        catch_budget_exceeded=True,
+    )
+
+    return {
+        "success": bool(res.success),
+        "strict_success": bool(res.strict_success),
+        "void": bool(res.void),
+        "void_reason": res.info.get("void_reason") if res.void else None,
+        "steps_used": res.steps_used,
+        "obs_steps_used": res.obs_steps_used,
+        "total_forwards": res.total_forwards,
+        "n_fwd": int(n_fwd),
+        "seed": int(seed),
+    }
+
+
 def _episode_success_stub(
     model: Any,
     spec: Mapping[str, Any],
     *,
     n_fwd: int,
     seed: int,
+    arm_kind: str | None = None,
+    plan_choice: Mapping[str, Any] | None = None,
+    dataset_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Evaluate one episode under a frozen config / budget.
-
-    Fake models may implement ``eval_episode(spec, n_fwd=..., seed=...)``.
-    Exceeding ``n_fwd`` must raise ``ForwardBudgetExceeded`` so the runner can void.
-    """
-    if hasattr(model, "eval_episode"):
-        try:
-            result = model.eval_episode(dict(spec), n_fwd=int(n_fwd), seed=int(seed))
-        except ForwardBudgetExceeded as exc:
-            return {
-                "success": False,
-                "void": True,
-                "void_reason": "forward_budget_exceeded",
-                "error": str(exc),
-                "n_fwd": int(n_fwd),
-                "seed": int(seed),
-            }
-        success = bool(result.get("success", False)) if isinstance(result, Mapping) else bool(result)
-        return {
-            "success": success,
-            "void": bool(result.get("void", False)) if isinstance(result, Mapping) else False,
-            "n_fwd": int(n_fwd),
-            "seed": int(seed),
-            "detail": result if isinstance(result, Mapping) else {"success": success},
-        }
-
-    # Default: prefer models that expose a deterministic success probability.
-    base = float(getattr(model, "base_success_rate", 0.5))
-    rng = np.random.default_rng(int(seed) + 17 * int(n_fwd))
-    success = bool(rng.random() < base)
-    return {"success": success, "void": False, "n_fwd": int(n_fwd), "seed": int(seed)}
+    """Evaluate one episode under a frozen config / budget without fallbacks."""
+    return _run_planning_episode_for_model(
+        model,
+        spec,
+        arm_kind=arm_kind,
+        plan_choice=plan_choice,
+        n_fwd=n_fwd,
+        seed=seed,
+        dataset_dir=dataset_dir,
+    )
 
 
 def _fit_probe_train_only(
@@ -599,13 +844,15 @@ def run_dev_eval(
     long_specs: Sequence[Mapping[str, Any]],
     short_specs: Sequence[Mapping[str, Any]] | None = None,
     regular_dt_specs: Sequence[Mapping[str, Any]] | None = None,
-    seeds: Sequence[int] = (0, 1, 2),
+    seeds: Sequence[int] = (42, 43, 44),
     n_fwd_curve: Sequence[int] = N_FWD_CURVE,
     ledger_path: str | Path,
     train_latents_by_arm: Mapping[str, Mapping[str, Any]] | None = None,
     fit_ridge_fn: Callable[..., RidgeProbe] = fit_ridge,
-    n_boot: int = 200,
+    n_boot: int = spec_mod.BOOTSTRAP_RESAMPLES,
     require_post_train_gates: bool = True,
+    dataset_dir: str | Path | None = None,
+    **extra_kwargs: Any,
 ) -> dict[str, Any]:
     """Run capped dev evaluation with N_fwd curve, probes, and clustered diffs.
 
@@ -627,26 +874,55 @@ def run_dev_eval(
                 f"dev eval refused: post_train_gates failed: {gate_reasons}"
             )
 
-    primary_n_fwd = int(N_FWD_DEFAULT)
+    d_dir = Path(dataset_dir) if dataset_dir is not None else None
+    primary_n_fwd = int(spec_mod.N_FWD)
     per_episode: list[dict[str, Any]] = []
     voided: list[dict[str, Any]] = []
-    arm_names = list(model_by_arm.keys())
+    if "arms" in frozen_plan_config and frozen_plan_config["arms"]:
+        arm_names = list(frozen_plan_config["arms"].keys())
+    else:
+        seen_arms: list[str] = []
+        for k in model_by_arm.keys():
+            arm_part = k.split("/")[0] if isinstance(k, str) else str(k)
+            if arm_part not in seen_arms:
+                seen_arms.append(arm_part)
+        arm_names = seen_arms
 
     # Primary long-goal results at N_fwd=4096 for pairwise diffs
     success_by_arm_world: dict[str, dict[Any, list[float]]] = {a: {} for a in arm_names}
 
     for spec in long_specs:
         world_id = spec.get("world_index", spec.get("world_id", 0))
-        for arm_name, model in model_by_arm.items():
+        spec_id = spec.get("episode_index", spec.get("id", 0))
+        for arm_name in arm_names:
+            arm_cfg = frozen_plan_config.get("arms", {}).get(arm_name, {})
+            model_sample = _resolve_model(model_by_arm, arm_name, seeds[0])
+            kind = arm_cfg.get("arm_kind") or _arm_kind(model_sample)
+            p_choice = _require_plan_choice(arm_cfg, arm_name)
+
             seed_successes: list[float] = []
             for seed in seeds:
-                row = _episode_success_stub(model, spec, n_fwd=primary_n_fwd, seed=int(seed))
+                model = _resolve_model(model_by_arm, arm_name, seed)
+                derived_seed = int(
+                    hashlib.sha256(f"dev|{world_id}|{spec_id}|{seed}".encode("utf-8")).hexdigest()[:8],
+                    16,
+                )
+                row = _run_planning_episode_for_model(
+                    model,
+                    spec,
+                    arm_kind=kind,
+                    plan_choice=p_choice,
+                    n_fwd=primary_n_fwd,
+                    seed=derived_seed,
+                    dataset_dir=d_dir,
+                )
                 row = {
                     **row,
                     "arm": arm_name,
+                    "model_seed": seed,
                     "subset": "long",
                     "world_id": world_id,
-                    "spec_id": spec.get("episode_index", spec.get("id")),
+                    "spec_id": spec_id,
                 }
                 if row.get("void"):
                     voided.append(row)
@@ -664,60 +940,113 @@ def run_dev_eval(
         ("regular_dt", regular_dt_specs or ()),
     ):
         for spec in subset_specs:
-            for arm_name, model in model_by_arm.items():
+            world_id = spec.get("world_index", spec.get("world_id", 0))
+            spec_id = spec.get("episode_index", spec.get("id", 0))
+            for arm_name in arm_names:
+                arm_cfg = frozen_plan_config.get("arms", {}).get(arm_name, {})
+                model_sample = _resolve_model(model_by_arm, arm_name, seeds[0])
+                kind = arm_cfg.get("arm_kind") or _arm_kind(model_sample)
+                p_choice = _require_plan_choice(arm_cfg, arm_name)
                 for seed in seeds:
-                    row = _episode_success_stub(model, spec, n_fwd=primary_n_fwd, seed=int(seed))
+                    model = _resolve_model(model_by_arm, arm_name, seed)
+                    derived_seed = int(
+                        hashlib.sha256(f"dev_{subset_name}|{world_id}|{spec_id}|{seed}".encode("utf-8")).hexdigest()[:8],
+                        16,
+                    )
+                    row = _run_planning_episode_for_model(
+                        model,
+                        spec,
+                        arm_kind=kind,
+                        plan_choice=p_choice,
+                        n_fwd=primary_n_fwd,
+                        seed=derived_seed,
+                        dt_mode="regular" if subset_name == "regular_dt" else "irregular",
+                        dataset_dir=d_dir,
+                    )
                     per_episode.append(
                         {
                             **row,
                             "arm": arm_name,
+                            "model_seed": seed,
                             "subset": subset_name,
-                            "world_id": spec.get("world_index", spec.get("world_id", 0)),
+                            "world_id": world_id,
+                            "spec_id": spec_id,
                         }
                     )
 
     # N_fwd curve (dev only)
     n_fwd_curve_results: dict[str, dict[int, float]] = {a: {} for a in arm_names}
     for n_fwd in n_fwd_curve:
-        for arm_name, model in model_by_arm.items():
+        for arm_name in arm_names:
+            arm_cfg = frozen_plan_config.get("arms", {}).get(arm_name, {})
+            model_sample = _resolve_model(model_by_arm, arm_name, seeds[0])
+            kind = arm_cfg.get("arm_kind") or _arm_kind(model_sample)
+            p_choice = _require_plan_choice(arm_cfg, arm_name)
             rates: list[float] = []
             for spec in long_specs:
+                world_id = spec.get("world_index", spec.get("world_id", 0))
+                spec_id = spec.get("episode_index", spec.get("id", 0))
                 for seed in seeds:
-                    row = _episode_success_stub(model, spec, n_fwd=int(n_fwd), seed=int(seed))
+                    model = _resolve_model(model_by_arm, arm_name, seed)
+                    derived_seed = int(
+                        hashlib.sha256(f"dev_curve_{n_fwd}|{world_id}|{spec_id}|{seed}".encode("utf-8")).hexdigest()[:8],
+                        16,
+                    )
+                    row = _run_planning_episode_for_model(
+                        model,
+                        spec,
+                        arm_kind=kind,
+                        plan_choice=p_choice,
+                        n_fwd=int(n_fwd),
+                        seed=derived_seed,
+                        dataset_dir=d_dir,
+                    )
                     if row.get("void"):
                         voided.append({**row, "arm": arm_name, "subset": "long_curve"})
                         continue
                     rates.append(1.0 if row["success"] else 0.0)
             n_fwd_curve_results[arm_name][int(n_fwd)] = float(np.mean(rates)) if rates else 0.0
 
-    # Probe: fit on train latents only, evaluate on a light dev latent bundle if provided via model
+    # Probe: fit on train latents only, evaluate on dev partition (dev only reports, §5 / Appendix D5.1)
     probe_results: dict[str, Any] = {}
-    for arm_name, model in model_by_arm.items():
-        bundle = None if train_latents_by_arm is None else train_latents_by_arm.get(arm_name)
-        probe = _fit_probe_train_only(model, bundle, fit_fn=fit_ridge_fn)
-        if probe is None:
-            probe_results[arm_name] = {"fitted": False}
-            continue
-        # Optional held-out eval vectors on the model
-        Z_dev = getattr(model, "dev_Z", None)
-        XY_dev = getattr(model, "dev_XY", None)
-        if Z_dev is not None and XY_dev is not None:
-            probe_results[arm_name] = {
-                "fitted": True,
-                "fit_partition": "train",
-                "error": eval_error(probe, Z_dev, XY_dev),
-            }
-        else:
-            probe_results[arm_name] = {"fitted": True, "fit_partition": "train"}
+    train_root = extra_kwargs.get("train_root") or (d_dir.parent / "train" if d_dir and (d_dir.parent / "train").is_dir() else None)
+    if train_root and Path(train_root).is_dir() and d_dir and d_dir.is_dir():
+        from ainerzero.v9.experiments.s2 import probe_eval
+        holdout_path = Path(train_root) / "HOLDOUT_WORLDS.json"
+        h_worlds = None
+        if holdout_path.is_file():
+            try:
+                h_worlds = json.loads(holdout_path.read_text(encoding="utf-8")).get("holdout_worlds")
+            except Exception:
+                pass
+        for arm_name in arm_names:
+            model = _resolve_model(model_by_arm, arm_name, seeds[0])
+            try:
+                probe_model = probe_eval.fit_probe(model, train_root, holdout_worlds=h_worlds)
+                errs = probe_eval.probe_errors(model, probe_model, d_dir)
+                probe_results[arm_name] = {
+                    "fitted": True,
+                    "fit_partition": "train",
+                    "mean_by_k": errs.get("mean_by_k", {}),
+                }
+            except Exception as exc:
+                probe_results[arm_name] = {"fitted": False, "reason": str(exc)}
+    elif train_latents_by_arm is not None:
+        for arm_name in arm_names:
+            model = _resolve_model(model_by_arm, arm_name, seeds[0])
+            bundle = train_latents_by_arm.get(arm_name)
+            probe = _fit_probe_train_only(model, bundle, fit_fn=fit_ridge_fn)
+            probe_results[arm_name] = {"fitted": probe is not None, "fit_partition": "train" if probe is not None else None}
+    else:
+        for arm_name in arm_names:
+            probe_results[arm_name] = {"fitted": False, "fit_partition": "train"}
 
     # Clustered bootstrap of C − max(A,B) when arms present; else empty
     pairwise: dict[str, Any] = {}
     if len(arm_names) >= 2:
-        # Build per-world episode diffs vs reference (first arm as baseline if no C)
-        ref = "C" if "C" in success_by_arm_world else arm_names[-1]
+        ref = "C" if "C" in success_by_arm_world else ("arm_c" if "arm_c" in success_by_arm_world else arm_names[-1])
         base_arms = [a for a in arm_names if a != ref]
         if base_arms:
-            # max(A,B) per episode index aligned by world
             worlds = sorted(
                 set().union(*[set(success_by_arm_world[a].keys()) for a in arm_names])
             )
@@ -729,7 +1058,6 @@ def run_dev_eval(
                 base_stacks = []
                 for a in base_arms:
                     base_stacks.append(success_by_arm_world[a].get(w, [0.0] * len(ref_eps)))
-                # Align lengths
                 n = min(len(ref_eps), *(len(b) for b in base_stacks))
                 if n == 0:
                     continue
@@ -741,12 +1069,13 @@ def run_dev_eval(
                 diff_by_world.append(ref_arr - base_max)
             if len(diff_by_world) >= 2:
                 boot = cluster_paired_bootstrap(diff_by_world, n_boot=int(n_boot), rng=0)
-                pairwise["C_minus_max_AB"] = boot.to_dict()
+                pairwise["C_minus_max_AB"] = {**boot.to_dict(), "n_boot": int(n_boot)}
             elif len(diff_by_world) == 1:
                 pairwise["C_minus_max_AB"] = {
                     "mean": float(np.mean(diff_by_world[0])),
                     "ci_lower": float("nan"),
                     "ci_upper": float("nan"),
+                    "n_boot": int(n_boot),
                     "note": "insufficient worlds for clustered bootstrap",
                 }
 
@@ -958,7 +1287,7 @@ def run_final_eval(
     research_log: str | Path,
     long_specs: Sequence[Mapping[str, Any]],
     short_specs: Sequence[Mapping[str, Any]] | None = None,
-    seeds: Sequence[int] = (0, 1, 2),
+    seeds: Sequence[int] = (42, 43, 44),
     expected_document_sha256: str | None = None,
     reader: Mapping[str, Any] | None = None,
     train_latents_by_arm: Mapping[str, Mapping[str, Any]] | None = None,
@@ -966,6 +1295,7 @@ def run_final_eval(
     success_ci_lower: float | None = None,
     pred_delta_ci_upper: float | None = None,
     m2_ok: bool = True,
+    **extra_kwargs: Any,
 ) -> dict[str, Any]:
     """One-shot sealed final evaluation under a separate final-eval approval line.
 
@@ -979,40 +1309,123 @@ def run_final_eval(
         reader=reader or {"component": "s2.eval_runner.run_final_eval"},
     )
 
+    sealed_dir = Path(sealed_final_dir)
+    if "arms" in frozen_plan_config and frozen_plan_config["arms"]:
+        arm_names = list(frozen_plan_config["arms"].keys())
+    else:
+        seen_arms: list[str] = []
+        for k in model_by_arm.keys():
+            arm_part = k.split("/")[0] if isinstance(k, str) else str(k)
+            if arm_part not in seen_arms:
+                seen_arms.append(arm_part)
+        arm_names = seen_arms
+
     # Evaluate once at N_fwd default (no N_fwd curve on final)
     per_episode: list[dict[str, Any]] = []
     for spec in long_specs:
-        for arm_name, model in model_by_arm.items():
+        world_id = spec.get("world_index", spec.get("world_id", 0))
+        spec_id = spec.get("episode_index", spec.get("id", 0))
+        for arm_name in arm_names:
+            arm_cfg = frozen_plan_config.get("arms", {}).get(arm_name, {})
+            model_sample = _resolve_model(model_by_arm, arm_name, seeds[0])
+            kind = arm_cfg.get("arm_kind") or _arm_kind(model_sample)
+            p_choice = _require_plan_choice(arm_cfg, arm_name)
             for seed in seeds:
-                row = _episode_success_stub(
-                    model, spec, n_fwd=N_FWD_DEFAULT, seed=int(seed)
+                model = _resolve_model(model_by_arm, arm_name, seed)
+                derived_seed = int(
+                    hashlib.sha256(f"final|{world_id}|{spec_id}|{seed}".encode("utf-8")).hexdigest()[:8],
+                    16,
+                )
+                row = _run_planning_episode_for_model(
+                    model,
+                    spec,
+                    arm_kind=kind,
+                    plan_choice=p_choice,
+                    n_fwd=int(spec_mod.N_FWD),
+                    seed=derived_seed,
+                    dataset_dir=sealed_dir,
                 )
                 per_episode.append(
                     {
                         **row,
                         "arm": arm_name,
+                        "model_seed": seed,
                         "subset": "long",
-                        "world_id": spec.get("world_index", spec.get("world_id", 0)),
+                        "world_id": world_id,
+                        "spec_id": spec_id,
                     }
                 )
     for spec in short_specs or ():
-        for arm_name, model in model_by_arm.items():
+        world_id = spec.get("world_index", spec.get("world_id", 0))
+        spec_id = spec.get("episode_index", spec.get("id", 0))
+        for arm_name in arm_names:
+            arm_cfg = frozen_plan_config.get("arms", {}).get(arm_name, {})
+            model_sample = _resolve_model(model_by_arm, arm_name, seeds[0])
+            kind = arm_cfg.get("arm_kind") or _arm_kind(model_sample)
+            p_choice = _require_plan_choice(arm_cfg, arm_name)
             for seed in seeds:
-                row = _episode_success_stub(
-                    model, spec, n_fwd=N_FWD_DEFAULT, seed=int(seed)
+                model = _resolve_model(model_by_arm, arm_name, seed)
+                derived_seed = int(
+                    hashlib.sha256(f"final_short|{world_id}|{spec_id}|{seed}".encode("utf-8")).hexdigest()[:8],
+                    16,
+                )
+                row = _run_planning_episode_for_model(
+                    model,
+                    spec,
+                    arm_kind=kind,
+                    plan_choice=p_choice,
+                    n_fwd=int(spec_mod.N_FWD),
+                    seed=derived_seed,
+                    dataset_dir=sealed_dir,
                 )
                 per_episode.append(
                     {
                         **row,
                         "arm": arm_name,
+                        "model_seed": seed,
                         "subset": "short",
-                        "world_id": spec.get("world_index", spec.get("world_id", 0)),
+                        "world_id": world_id,
+                        "spec_id": spec_id,
                     }
                 )
 
-    # Optional probe fit still train-only
+    # Gate 2: Linear probe prediction non-inferiority (§5, Appendix D5.1)
     probe_results: dict[str, Any] = {}
-    if train_latents_by_arm is not None:
+    train_root = extra_kwargs.get("train_root") or (sealed_dir.parent / "train" if (sealed_dir.parent / "train").is_dir() else None)
+    if train_root and Path(train_root).is_dir() and sealed_dir.is_dir():
+        from ainerzero.v9.experiments.s2 import probe_eval
+        holdout_path = Path(train_root) / "HOLDOUT_WORLDS.json"
+        h_worlds = None
+        if holdout_path.is_file():
+            try:
+                h_worlds = json.loads(holdout_path.read_text(encoding="utf-8")).get("holdout_worlds")
+            except Exception:
+                pass
+
+        errors_by_arm_seed: dict[str, dict[int, Any]] = {}
+        for arm_name in ("arm_a", "arm_b", "arm_c"):
+            errors_by_arm_seed[arm_name] = {}
+            for s in seeds:
+                try:
+                    m = _resolve_model(model_by_arm, arm_name, s)
+                    p_model = probe_eval.fit_probe(m, train_root, holdout_worlds=h_worlds)
+                    p_errs = probe_eval.probe_errors(m, p_model, sealed_dir)
+                    errors_by_arm_seed[arm_name][s] = p_errs
+                except Exception as exc:
+                    probe_results[f"{arm_name}/{s}"] = {"fitted": False, "reason": str(exc)}
+
+        if len(errors_by_arm_seed.get("arm_a", {})) == len(seeds) and \
+           len(errors_by_arm_seed.get("arm_b", {})) == len(seeds) and \
+           len(errors_by_arm_seed.get("arm_c", {})) == len(seeds):
+            try:
+                noninf_res = probe_eval.prediction_noninferiority(errors_by_arm_seed, k=30)
+                probe_results["prediction_noninferiority"] = noninf_res
+                if pred_delta_ci_upper is None:
+                    pred_delta_ci_upper = float(noninf_res["ci_upper"])
+            except Exception as exc:
+                probe_results["prediction_noninferiority_error"] = str(exc)
+
+    elif train_latents_by_arm is not None:
         for arm_name, model in model_by_arm.items():
             bundle = train_latents_by_arm.get(arm_name)
             probe = _fit_probe_train_only(model, bundle)
