@@ -236,6 +236,7 @@ NATIVE_MODULES = {
     # S2 (tests/v9/experiments): S2 arms MLX implementation.
     "test_s2_arms_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 arms)",
     "test_s2_adapters_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 MLX arm adapters)",
+    "test_s2_learned_planning_native.py": "runs real MLX arms through learned planning (S2 W2)",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).

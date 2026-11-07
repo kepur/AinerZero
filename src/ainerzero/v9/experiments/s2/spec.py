@@ -271,3 +271,20 @@ TRAIN_STEPS_RULE = "floor(1200*0.8/t_min_over_arms)"
 DATA_ESTIMATED_SECONDS_PER_EPISODE = 0.145
 
 
+
+# --- 附录 D3.1：CEM 参数由 N_fwd 推出的登记规则（r2.5，2026-11-07）---
+CEM_N_ITERS = 4
+CEM_ELITE_FRAC = 0.1
+CEM_ENCODE_RESERVE = 8  # 每决策为 encode/E2 预留的计数
+CEM_MIN_POP = 2
+# smoke 计时与 oracle 熔断使用候选网格中位
+SMOKE_PLAN_CHOICE = {
+    "flat": {"H": 32},
+    "hierarchical": {"macro_horizon": 6, "budget_ratio": 0.5},
+}
+# 上层 CEM 在 [-1, 1]^7 上搜索；还原尺度：dx, dy 乘 s2 * max(k)，dpsi 乘 pi，
+# 直方图分量取 (u + 1) / 2 后归一化
+MACRO_DXY_SCALE = float(S2_MACRO_STEPS * max(K_DISTRIBUTION))
+# 目标观察的特征化约定（与回合起点一致）：last_action = WAIT(3)，dt = 1
+GOAL_FEATURE_LAST_ACTION = 3
+GOAL_FEATURE_DT = 1

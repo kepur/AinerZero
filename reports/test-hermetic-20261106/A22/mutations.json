@@ -1,0 +1,44 @@
+[
+  {
+    "mutation": "A22-M1",
+    "name": "fixture_assert_constant_true",
+    "description": "assert_session_stat_clean / fixture assertion changed to 'assert True'",
+    "target_test": "tests/test_hermetic_guards.py::test_session_fixture_assertion_fails_on_tampered_artifacts",
+    "returncode": 1,
+    "turned_red": true,
+    "restored_sha_match": true,
+    "snippet": [
+      "tests/test_hermetic_guards.py::test_session_fixture_assertion_fails_on_tampered_artifacts FAILED [100%]",
+      "E   Failed: DID NOT RAISE AssertionError",
+      "FAILED tests/test_hermetic_guards.py::test_session_fixture_assertion_fails_on_tampered_artifacts"
+    ]
+  },
+  {
+    "mutation": "A22-M2",
+    "name": "sessionfinish_no_exitstatus",
+    "description": "apply_sessionfinish_exitstatus does not set session.exitstatus = 1",
+    "target_test": "tests/test_hermetic_guards.py::test_sessionfinish_sets_exitstatus_on_tampered_artifacts",
+    "returncode": 1,
+    "turned_red": true,
+    "restored_sha_match": true,
+    "snippet": [
+      "tests/test_hermetic_guards.py::test_sessionfinish_sets_exitstatus_on_tampered_artifacts FAILED [100%]",
+      "    assert session.exitstatus == 1",
+      "E   assert 0 == 1"
+    ]
+  },
+  {
+    "mutation": "A22-M3",
+    "name": "child_subprocess_no_guard_injection",
+    "description": "conftest.py does not inject _HERMETIC_SITE_DIR into child PYTHONPATH",
+    "target_test": "tests/test_hermetic_guards.py::test_subprocess_sqlite_connect_intercepted_by_sitecustomize",
+    "returncode": 1,
+    "turned_red": true,
+    "restored_sha_match": true,
+    "snippet": [
+      "tests/test_hermetic_guards.py::test_subprocess_sqlite_connect_intercepted_by_sitecustomize FAILED [100%]",
+      "    assert proc.returncode != 0",
+      "E   assert 0 != 0"
+    ]
+  }
+]

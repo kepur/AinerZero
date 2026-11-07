@@ -1,0 +1,137 @@
+=== Mutation A23-REV-M1 ===
+Name: fixture_assertion_changed_to_tautology
+Target test: tests/test_hermetic_guards.py::test_session_fixture_assertion_fails_on_tampered_artifacts
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmp4nw248_i/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/test_hermetic_guards.py F                                          [100%]
+
+=================================== FAILURES ===================================
+__________ test_session_fixture_assertion_fails_on_tampered_artifacts __________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-129/test_session_fixture_assertion0')
+
+    def test_session_fixture_assertion_fails_on_tampered_artifacts(tmp_path):
+        """Verify that assert_session_stat_clean raises AssertionError when artifacts are tampered."""
+        fake_root = _stage_fake_root(tmp_path)
+        before = conftest.guard_snapshot(fake_root)
+    
+        # Tamper with sensitive artifact under fake_root
+        lock_file = fake_root / "artifacts" / "locks" / "m0-worker.lock"
+        lock_file.write_text("tampered", encoding="utf-8")
+    
+>       with pytest.raises(AssertionError, match="Hermetic session guard violation"):
+E       Failed: DID NOT RAISE AssertionError
+
+tests/test_hermetic_guards.py:166: Failed
+=========================== short test summary info ============================
+FAILED tests/test_hermetic_guards.py::test_session_fixture_assertion_fails_on_tampered_artifacts
+============================== 1 failed in 2.09s ===============================
+
+Stderr:
+
+
+=== Mutation A23-REV-M2 ===
+Name: sessionfinish_exitstatus_omitted
+Target test: tests/test_hermetic_guards.py::test_sessionfinish_sets_exitstatus_on_tampered_artifacts
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmp4nw248_i/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/test_hermetic_guards.py F                                          [100%]
+
+=================================== FAILURES ===================================
+___________ test_sessionfinish_sets_exitstatus_on_tampered_artifacts ___________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-130/test_sessionfinish_sets_exitst0')
+
+    def test_sessionfinish_sets_exitstatus_on_tampered_artifacts(tmp_path):
+        """Verify that apply_sessionfinish_exitstatus sets session.exitstatus = 1 on diff."""
+        fake_root = _stage_fake_root(tmp_path)
+        before = conftest.guard_snapshot(fake_root)
+    
+        # Tamper with sensitive artifact under fake_root
+        lock_file = fake_root / "artifacts" / "locks" / "m0-worker.lock"
+        lock_file.write_text("tampered", encoding="utf-8")
+    
+        class DummySession:
+            exitstatus = 0
+    
+        session = DummySession()
+        diff = conftest.apply_sessionfinish_exitstatus(session, before, root=fake_root)
+        assert diff
+>       assert session.exitstatus == 1
+E       assert 0 == 1
+E        +  where 0 = <test_hermetic_guards.test_sessionfinish_sets_exitstatus_on_tampered_artifacts.<locals>.DummySession object at 0x103a37c20>.exitstatus
+
+tests/test_hermetic_guards.py:185: AssertionError
+----------------------------- Captured stderr call -----------------------------
+
+[HERMETIC GUARD ERROR] Real artifacts modified during test session:
+  /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-130/test_sessionfinish_sets_exitst0/fake_repo/artifacts/locks/m0-worker.lock: MODIFIED (mtime_ns: 1794016576943619913 -> 1794016576945660052, size: 0 -> 8)
+=========================== short test summary info ============================
+FAILED tests/test_hermetic_guards.py::test_sessionfinish_sets_exitstatus_on_tampered_artifacts
+============================== 1 failed in 0.69s ===============================
+
+Stderr:
+
+
+=== Mutation A23-REV-M3 ===
+Name: omit_sitecustomize_pythonpath_injection
+Target test: tests/test_hermetic_guards.py::test_subprocess_sqlite_connect_intercepted_by_sitecustomize
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmp4nw248_i/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/test_hermetic_guards.py F                                          [100%]
+
+=================================== FAILURES ===================================
+_________ test_subprocess_sqlite_connect_intercepted_by_sitecustomize __________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-131/test_subprocess_sqlite_connect0')
+
+    def test_subprocess_sqlite_connect_intercepted_by_sitecustomize(tmp_path):
+        """Verify that child Python processes inherit sitecustomize and intercept protected connects."""
+        fake_root = _stage_fake_root(tmp_path)
+        protected_db = fake_root / "artifacts" / "v9" / "s1" / "phase1" / "control.sqlite3"
+    
+        code = f"""
+    import sqlite3
+    sqlite3.connect({str(protected_db)!r})
+    """
+        env = dict(os.environ)
+        env["_HERMETIC_SUBPROCESS_TEST_ROOT"] = str(fake_root)
+    
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+>       assert proc.returncode != 0
+E       assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-c', "\nimport sqlite3\nsqlite3.connect..._subprocess_sqlite_connect0/fake_repo/artifacts/v9/s1/phase1/control.sqlite3')\n"], returncode=0, stdout='', stderr='').returncode
+
+tests/test_hermetic_guards.py:206: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_hermetic_guards.py::test_subprocess_sqlite_connect_intercepted_by_sitecustomize
+============================== 1 failed in 0.89s ===============================
+
+Stderr:
+

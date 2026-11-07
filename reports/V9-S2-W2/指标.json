@@ -1,0 +1,45 @@
+{
+  "任务卡号": "ainerzero.V9.P164",
+  "执行者": "gemini-b7x4",
+  "层级": 2,
+  "阶段": "S2 Phase 1 生产路径集成 W2（附录 D3）",
+  "纯CPU运行": true,
+  "运行MLX": false,
+  "测试汇总": {
+    "测试套件": "tests/v9/experiments/test_s2_learned_planning.py",
+    "通过数量": 10,
+    "失败数量": 0,
+    "native套件": "tests/v9/experiments/test_s2_learned_planning_native.py (标记为 pytest.mark.native_mlx，默认不跑)"
+  },
+  "GridLab-S2基准评测": {
+    "世界数": 2,
+    "每世界长目标数": 6,
+    "总回合数": 12,
+    "有效臂成功数": 12,
+    "有效臂成功率": 1.0,
+    "随机臂成功数": 0,
+    "随机臂成功率": 0.0
+  },
+  "变异测试": {
+    "总数": 4,
+    "变红数量": 4,
+    "存活数量": 0,
+    "变异结果": {
+      "W2-M1 (目标编码计数遗漏或重计)": "已杀 (变红)",
+      "W2-M2 (超出N_fwd预算截断未抛错)": "已杀 (变红)",
+      "W2-M3 (检查点加载跳过sha校验)": "已杀 (变红)",
+      "W2-M4 (臂C降级为平铺规划未走分层)": "已杀 (变红)"
+    }
+  },
+  "契约规范": {
+    "目标编码每回合只算1次并计入计数": true,
+    "超预算记为void且终止": true,
+    "检查点加载强制校验sha": true,
+    "臂C分层规划准确调用并计费L2": true
+  },
+  "环境隔离与artifacts守护": {
+    "artifacts未受影响": true,
+    "diff数量": 0,
+    "sys_modules中无mlx泄漏": true
+  }
+}

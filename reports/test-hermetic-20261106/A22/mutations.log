@@ -1,0 +1,68 @@
+=== A22-M1 ===
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/ainerzero_a22_bad_control
+configfile: pyproject.toml
+collecting ... collected 1 item
+
+tests/test_hermetic_guards.py::test_session_fixture_assertion_fails_on_tampered_artifacts FAILED [100%]
+
+=================================== FAILURES ===================================
+__________ test_session_fixture_assertion_fails_on_tampered_artifacts __________
+tests/test_hermetic_guards.py:166: in test_session_fixture_assertion_fails_on_tampered_artifacts
+    with pytest.raises(AssertionError, match="Hermetic session guard violation"):
+E   Failed: DID NOT RAISE AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_hermetic_guards.py::test_session_fixture_assertion_fails_on_tampered_artifacts
+============================== 1 failed in 0.66s ===============================
+
+
+=== A22-M2 ===
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/ainerzero_a22_bad_control
+configfile: pyproject.toml
+collecting ... collected 1 item
+
+tests/test_hermetic_guards.py::test_sessionfinish_sets_exitstatus_on_tampered_artifacts FAILED [100%]
+
+=================================== FAILURES ===================================
+___________ test_sessionfinish_sets_exitstatus_on_tampered_artifacts ___________
+tests/test_hermetic_guards.py:185: in test_sessionfinish_sets_exitstatus_on_tampered_artifacts
+    assert session.exitstatus == 1
+E   assert 0 == 1
+E    +  where 0 = <test_hermetic_guards.test_sessionfinish_sets_exitstatus_on_tampered_artifacts.<locals>.DummySession object at 0x103dd2ff0>.exitstatus
+----------------------------- Captured stderr call -----------------------------
+
+[HERMETIC GUARD ERROR] Real artifacts modified during test session:
+  /private/tmp/pytest-of-mac/pytest-254/test_sessionfinish_sets_exitst0/fake_repo/artifacts/locks/m0-worker.lock: MODIFIED (mtime_ns: 1794016035189142667 -> 1794016035191654601, size: 0 -> 8)
+=========================== short test summary info ============================
+FAILED tests/test_hermetic_guards.py::test_sessionfinish_sets_exitstatus_on_tampered_artifacts
+============================== 1 failed in 0.67s ===============================
+
+
+=== A22-M3 ===
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/ainerzero_a22_bad_control
+configfile: pyproject.toml
+collecting ... collected 1 item
+
+tests/test_hermetic_guards.py::test_subprocess_sqlite_connect_intercepted_by_sitecustomize FAILED [100%]
+
+=================================== FAILURES ===================================
+_________ test_subprocess_sqlite_connect_intercepted_by_sitecustomize __________
+tests/test_hermetic_guards.py:206: in test_subprocess_sqlite_connect_intercepted_by_sitecustomize
+    assert proc.returncode != 0
+E   assert 0 != 0
+E    +  where 0 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-c', "\nimport sqlite3\nsqlite3.connect('/private/tmp/pytest-of-mac/pytest-255/test_subprocess_sqlite_connect0/fake_repo/artifacts/v9/s1/phase1/control.sqlite3')\n"], returncode=0, stdout='', stderr='').returncode
+=========================== short test summary info ============================
+FAILED tests/test_hermetic_guards.py::test_subprocess_sqlite_connect_intercepted_by_sitecustomize
+============================== 1 failed in 0.72s ===============================
+

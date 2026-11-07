@@ -61,6 +61,7 @@ class EpisodeResult:
     trajectory: list[dict[str, Any]]
     perturb_applied: bool
     info: dict[str, Any]
+    void: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -77,6 +78,7 @@ class EpisodeResult:
             "actions_taken": self.actions_taken,
             "perturb_applied": self.perturb_applied,
             "info": self.info,
+            "void": self.void,
         }
 
     def __getitem__(self, key: str) -> Any:
@@ -185,6 +187,7 @@ def run_episode(
     m: int = 4,
     *,
     max_steps: int | None = None,
+    catch_budget_exceeded: bool = False,
 ) -> EpisodeResult:
     """Execute a single evaluated planning episode.
 
@@ -301,16 +304,49 @@ def run_episode(
         if counter is not None:
             counter.reset()
 
-        plan_res = _call_plan_fn(
-            plan_fn,
-            obs=obs,
-            goal_obs=goal_obs,
-            k=k_next,
-            counter=counter,
-            rng=plan_rng,
-            state=state,
-            layout=layout,
-        )
+        try:
+            plan_res = _call_plan_fn(
+                plan_fn,
+                obs=obs,
+                goal_obs=goal_obs,
+                k=k_next,
+                counter=counter,
+                rng=plan_rng,
+                state=state,
+                layout=layout,
+            )
+        except ForwardBudgetExceeded as exc:
+            if not catch_budget_exceeded:
+                raise
+            wall_time = time.perf_counter() - t0
+            total_fwd = sum(int(d.get("total", 0)) for d in decision_counts)
+            if counter is not None:
+                total_fwd += int(counter.total)
+            info_dict = {
+                "final_state": truth(state),
+                "target_state": truth(goal_state),
+                "wall_bumps": state.wall_bumps,
+                "void": True,
+                "void_reason": "forward_budget_exceeded",
+                "error": str(exc),
+            }
+            return EpisodeResult(
+                success=False,
+                strict_success=False,
+                steps_used=steps_used,
+                obs_steps_used=obs_steps_used,
+                bfs_distance=bfs_distance,
+                max_steps=limit_steps,
+                wall_time=wall_time,
+                decision_counts=decision_counts,
+                total_forwards=total_fwd,
+                k_history=k_history,
+                actions_taken=actions_taken,
+                trajectory=trajectory,
+                perturb_applied=perturbed,
+                info=info_dict,
+                void=True,
+            )
 
         if counter is not None:
             decision_counts.append(counter.snapshot())

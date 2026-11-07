@@ -1,0 +1,334 @@
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 70514b7..bd58c43 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -22,6 +22,15 @@ from urllib.parse import urlparse
+ sys.dont_write_bytecode = True
+ os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+ 
++# Ensure child Python processes load hermetic sitecustomize guards via PYTHONPATH
++_HERMETIC_SITE_DIR = str((Path(__file__).resolve().parent / "_hermetic_site").resolve())
++if _HERMETIC_SITE_DIR not in sys.path:
++    sys.path.insert(0, _HERMETIC_SITE_DIR)
++_cur_pp = os.environ.get("PYTHONPATH", "")
++_pp_entries = [p for p in _cur_pp.split(os.pathsep) if p]
++if _HERMETIC_SITE_DIR not in _pp_entries:
++    os.environ["PYTHONPATH"] = os.pathsep.join([_HERMETIC_SITE_DIR] + _pp_entries)
++
+ import pytest
+ 
+ REAL_REPO_ROOT = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
+@@ -275,32 +284,54 @@ def pytest_sessionstart(session):
+         session._hermetic_stat_before = guard_snapshot(REAL_REPO_ROOT)
+ 
+ 
++def check_session_stat_diff(before: dict, root: Path = REAL_REPO_ROOT) -> dict[str, str]:
++    """Compare a pre-recorded stat snapshot against the current state under root."""
++    after = guard_snapshot(root)
++    return guard_compare(before, after)
++
++
++def assert_session_stat_clean(before: dict, root: Path = REAL_REPO_ROOT) -> dict[str, str]:
++    """Assert no sensitive artifact paths under root have been modified.
++
++    Used by the session fixture and covered by self-tests.
++    """
++    diff = check_session_stat_diff(before, root=root)
++    assert not diff, (
++        f"Hermetic session guard violation: real artifacts modified during test session:\n"
++        + "\n".join(f"  {k}: {v}" for k, v in diff.items())
++    )
++    return diff
++
++
++def apply_sessionfinish_exitstatus(session, before: dict, root: Path = REAL_REPO_ROOT) -> dict[str, str]:
++    """Enforce exitstatus = 1 if sensitive artifacts under root were modified.
++
++    Used by pytest_sessionfinish and covered by self-tests.
++    """
++    diff = check_session_stat_diff(before, root=root)
++    if diff:
++        session.exitstatus = 1
++        print(
++            "\n[HERMETIC GUARD ERROR] Real artifacts modified during test session:\n"
++            + "\n".join(f"  {k}: {v}" for k, v in diff.items()),
++            file=sys.stderr,
++        )
++    return diff
++
++
+ @pytest.fixture(scope="session", autouse=True)
+ def hermetic_artifacts_guard(request):
+     yield
+     if _native_enabled(request.config):
+         return
+     before = getattr(request.session, "_hermetic_stat_before", {})
+-    after = guard_snapshot(REAL_REPO_ROOT)
+-    diff = guard_compare(before, after)
+-    assert not diff, (
+-        f"Hermetic session guard violation: real artifacts modified during test session:\n"
+-        + "\n".join(f"  {k}: {v}" for k, v in diff.items())
+-    )
++    assert_session_stat_clean(before, root=REAL_REPO_ROOT)
+ 
+ 
+ def pytest_sessionfinish(session, exitstatus):
+     if not _native_enabled(session.config):
+         before = getattr(session, "_hermetic_stat_before", {})
+-        after = guard_snapshot(REAL_REPO_ROOT)
+-        diff = guard_compare(before, after)
+-        if diff:
+-            session.exitstatus = 1
+-            print(
+-                "\n[HERMETIC GUARD ERROR] Real artifacts modified during test session:\n"
+-                + "\n".join(f"  {k}: {v}" for k, v in diff.items()),
+-                file=sys.stderr,
+-            )
++        apply_sessionfinish_exitstatus(session, before, root=REAL_REPO_ROOT)
+ 
+ 
+ def _native_enabled(config):
+diff --git a/tests/test_hermetic_guards.py b/tests/test_hermetic_guards.py
+index e89e04f..9fadbec 100644
+--- a/tests/test_hermetic_guards.py
++++ b/tests/test_hermetic_guards.py
+@@ -4,11 +4,15 @@ Verifies against an isolated fake root staged under tmp_path:
+ 1. Function-level guard: fcntl.flock, fcntl.lockf, sqlite3.connect are intercepted
+    and raise RuntimeError when targeting protected artifacts.
+ 2. Function-level guard: un-protected paths and whitelisted paths are permitted.
+-3. Session-level stat guard: detects file modification, addition, deletion,
+-   and SQLite WAL -shm/-wal changes.
+-4. Subprocess adversarial verification:
+-   - Mutation 1: direct protected connect turns RED (RuntimeError);
+-   - Mutation 2: bypassed function guard causes session stat guard to turn RED (AssertionError on -shm).
++3. Function-level guard: installed globally into sqlite3 and fcntl modules.
++4. Session-level stat guard: detects file modification, addition, deletion,
++   and SQLite WAL -shm changes.
++5. Session-level enforcement:
++   - assert_session_stat_clean raises AssertionError on tampered artifacts;
++   - apply_sessionfinish_exitstatus sets session.exitstatus = 1 on tampered artifacts.
++6. Subprocess guard:
++   - child Python processes automatically inherit sitecustomize via PYTHONPATH;
++   - protected sqlite3.connect calls from child processes are intercepted with RuntimeError.
+ 
+ Zero interaction with real repository artifacts.
+ """
+@@ -16,14 +20,19 @@ Zero interaction with real repository artifacts.
+ from __future__ import annotations
+ 
+ import fcntl
++import importlib.util
++import os
++from pathlib import Path
+ import sqlite3
+ import subprocess
+ import sys
+-from pathlib import Path
+ 
+ import pytest
+ 
+-import conftest
++_root_conftest_path = Path(__file__).resolve().parent / "conftest.py"
++_spec = importlib.util.spec_from_file_location("tests_conftest", _root_conftest_path)
++conftest = importlib.util.module_from_spec(_spec)
++_spec.loader.exec_module(conftest)
+ 
+ 
+ def _stage_fake_root(base: Path) -> Path:
+@@ -144,3 +153,56 @@ def test_hermetic_guards_installed_globally():
+     assert f.lockf is conftest.guarded_lockf
+     assert sys.modules["sqlite3"].connect is conftest.guarded_connect
+ 
++
++def test_session_fixture_assertion_fails_on_tampered_artifacts(tmp_path):
++    """Verify that assert_session_stat_clean raises AssertionError when artifacts are tampered."""
++    fake_root = _stage_fake_root(tmp_path)
++    before = conftest.guard_snapshot(fake_root)
++
++    # Tamper with sensitive artifact under fake_root
++    lock_file = fake_root / "artifacts" / "locks" / "m0-worker.lock"
++    lock_file.write_text("tampered", encoding="utf-8")
++
++    with pytest.raises(AssertionError, match="Hermetic session guard violation"):
++        conftest.assert_session_stat_clean(before, root=fake_root)
++
++
++def test_sessionfinish_sets_exitstatus_on_tampered_artifacts(tmp_path):
++    """Verify that apply_sessionfinish_exitstatus sets session.exitstatus = 1 on diff."""
++    fake_root = _stage_fake_root(tmp_path)
++    before = conftest.guard_snapshot(fake_root)
++
++    # Tamper with sensitive artifact under fake_root
++    lock_file = fake_root / "artifacts" / "locks" / "m0-worker.lock"
++    lock_file.write_text("tampered", encoding="utf-8")
++
++    class DummySession:
++        exitstatus = 0
++
++    session = DummySession()
++    diff = conftest.apply_sessionfinish_exitstatus(session, before, root=fake_root)
++    assert diff
++    assert session.exitstatus == 1
++
++
++def test_subprocess_sqlite_connect_intercepted_by_sitecustomize(tmp_path):
++    """Verify that child Python processes inherit sitecustomize and intercept protected connects."""
++    fake_root = _stage_fake_root(tmp_path)
++    protected_db = fake_root / "artifacts" / "v9" / "s1" / "phase1" / "control.sqlite3"
++
++    code = f"""
++import sqlite3
++sqlite3.connect({str(protected_db)!r})
++"""
++    env = dict(os.environ)
++    env["_HERMETIC_SUBPROCESS_TEST_ROOT"] = str(fake_root)
++
++    proc = subprocess.run(
++        [sys.executable, "-c", code],
++        env=env,
++        capture_output=True,
++        text=True,
++    )
++    assert proc.returncode != 0
++    assert "Hermetic test guard violation: sqlite3.connect called on protected artifact" in proc.stderr
++    assert "RuntimeError" in proc.stderr
+--- /dev/null	2026-11-07 01:48:01
++++ tests/_hermetic_site/sitecustomize.py	2026-11-07 01:43:55
+@@ -0,0 +1,137 @@
++"""Hermetic sitecustomize for child Python processes.
++
++Installs function-level guards for fcntl.flock, fcntl.lockf, and sqlite3.connect
++to prevent any child Python process from touching protected repository artifacts.
++"""
++
++from __future__ import annotations
++
++import fcntl
++import os
++from pathlib import Path
++import sqlite3
++import sys
++from urllib.parse import urlparse
++
++# Production guard root is hardcoded to the real repository root; never redirected away.
++REAL_REPO_ROOT = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
++LOCAL_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
++
++HERMETIC_SENSITIVE_PATTERNS = [
++    "artifacts/locks/**",
++    "artifacts/locks",
++    "artifacts/control.sqlite3*",
++    "artifacts/v9/**/control.sqlite3*",
++    "artifacts/v9/s1/**/*.sqlite3*",
++    "artifacts/v9/e1/**",
++]
++
++HERMETIC_WHITELIST: dict[str, str] = {}
++
++_hermetic_guards_active = True
++_orig_flock = fcntl.flock
++_orig_lockf = fcntl.lockf
++_orig_sqlite_connect = sqlite3.connect
++
++
++def guard_resolve_path(target) -> str | None:
++    if target is None:
++        return None
++    if isinstance(target, int):
++        try:
++            buf = b" " * 1024
++            res_buf = fcntl.fcntl(target, 50, buf)
++            raw = res_buf.split(b"\x00", 1)[0].decode("utf-8", "replace")
++            if raw:
++                return os.path.realpath(raw)
++        except OSError:
++            pass
++        try:
++            proc_path = f"/proc/self/fd/{target}"
++            if os.path.islink(proc_path):
++                return os.path.realpath(proc_path)
++        except Exception:
++            pass
++        return None
++    if hasattr(target, "fileno"):
++        try:
++            return guard_resolve_path(target.fileno())
++        except Exception:
++            return None
++    target_str = str(target)
++    if not target_str or target_str == ":memory:":
++        return None
++    if target_str.startswith("file:"):
++        target_str = urlparse(target_str).path
++    try:
++        return os.path.realpath(target_str)
++    except Exception:
++        return None
++
++
++def check_hermetic_access(
++    target,
++    op_name: str,
++    root: Path = REAL_REPO_ROOT,
++    whitelist: dict | None = None,
++) -> None:
++    if not _hermetic_guards_active:
++        return
++    resolved = guard_resolve_path(target)
++    if not resolved:
++        return
++    active_whitelist = HERMETIC_WHITELIST if whitelist is None else whitelist
++    roots = [root]
++    if root == REAL_REPO_ROOT and LOCAL_REPO_ROOT != REAL_REPO_ROOT and LOCAL_REPO_ROOT.is_dir():
++        roots.append(LOCAL_REPO_ROOT)
++    # Extra test root for isolated self-testing of child processes
++    extra_test_root = os.environ.get("_HERMETIC_SUBPROCESS_TEST_ROOT")
++    if extra_test_root:
++        roots.append(Path(extra_test_root).resolve())
++
++    for r in roots:
++        art_dir = os.path.realpath(r / "artifacts")
++        if resolved == art_dir or resolved.startswith(art_dir + os.sep):
++            if resolved not in active_whitelist:
++                raise RuntimeError(
++                    f"Hermetic test guard violation: {op_name} called on protected artifact: {resolved}. "
++                    f"Tests must use tmp_path or staged copies and must never touch real artifacts."
++                )
++
++
++def make_guarded_flock(root: Path = REAL_REPO_ROOT, orig_flock=_orig_flock, whitelist=None):
++    def _flock(fd, operation):
++        check_hermetic_access(fd, "fcntl.flock", root=root, whitelist=whitelist)
++        return orig_flock(fd, operation)
++    return _flock
++
++
++def make_guarded_lockf(root: Path = REAL_REPO_ROOT, orig_lockf=_orig_lockf, whitelist=None):
++    def _lockf(fd, cmd, *args, **kwargs):
++        check_hermetic_access(fd, "fcntl.lockf", root=root, whitelist=whitelist)
++        return orig_lockf(fd, cmd, *args, **kwargs)
++    return _lockf
++
++
++def make_guarded_connect(root: Path = REAL_REPO_ROOT, orig_connect=_orig_sqlite_connect, whitelist=None):
++    def _connect(database, *args, **kwargs):
++        check_hermetic_access(database, "sqlite3.connect", root=root, whitelist=whitelist)
++        return orig_connect(database, *args, **kwargs)
++    return _connect
++
++
++guarded_flock = make_guarded_flock(REAL_REPO_ROOT)
++guarded_lockf = make_guarded_lockf(REAL_REPO_ROOT)
++guarded_connect = make_guarded_connect(REAL_REPO_ROOT)
++
++
++def install_hermetic_function_guards() -> None:
++    fcntl.flock = guarded_flock
++    fcntl.lockf = guarded_lockf
++    sqlite3.connect = guarded_connect
++    if "sqlite3" in sys.modules:
++        sys.modules["sqlite3"].connect = guarded_connect
++
++
++# Auto-install when sitecustomize is loaded by Python
++install_hermetic_function_guards()

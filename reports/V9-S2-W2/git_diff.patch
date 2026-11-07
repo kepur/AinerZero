@@ -1,0 +1,379 @@
+diff --git a/src/ainerzero/v9/experiments/s2/adapters_mlx.py b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+index eba0eb3..010e48f 100644
+--- a/src/ainerzero/v9/experiments/s2/adapters_mlx.py
++++ b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+@@ -22,18 +22,50 @@ Implements backend adapters wrapping MLX models from arms_mlx.py to satisfy:
+ from __future__ import annotations
+ 
+ import hashlib
++import json
+ from pathlib import Path
+ from typing import Any, Callable, Mapping, Sequence
+ 
+-import mlx.core as mx
+-import mlx.nn as nn
+-import mlx.optimizers as optim
+ import numpy as np
+ 
+-from ainerzero.v9.experiments.s2 import arms_mlx, param_count, spec
++from ainerzero.v9.experiments.s2 import param_count, spec
+ from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
+ 
+ 
++class _MLXProxy:
++    def __getattr__(self, name: str) -> Any:
++        import mlx.core as _real_mx
++        globals()["mx"] = _real_mx
++        return getattr(_real_mx, name)
++
++
++class _NNProxy:
++    def __getattr__(self, name: str) -> Any:
++        import mlx.nn as _real_nn
++        globals()["nn"] = _real_nn
++        return getattr(_real_nn, name)
++
++
++class _OptimProxy:
++    def __getattr__(self, name: str) -> Any:
++        import mlx.optimizers as _real_optim
++        globals()["optim"] = _real_optim
++        return getattr(_real_optim, name)
++
++
++class _ArmsMLXProxy:
++    def __getattr__(self, name: str) -> Any:
++        from ainerzero.v9.experiments.s2 import arms_mlx as _real_arms_mlx
++        globals()["arms_mlx"] = _real_arms_mlx
++        return getattr(_real_arms_mlx, name)
++
++
++mx: Any = _MLXProxy()
++nn: Any = _NNProxy()
++optim: Any = _OptimProxy()
++arms_mlx: Any = _ArmsMLXProxy()
++
++
+ def _sha256_file(path: Path) -> str:
+     h = hashlib.sha256()
+     with path.open("rb") as f:
+@@ -118,6 +150,21 @@ class MLXArmAAdapter:
+         np.savez(p, **flat_dict)
+         return _sha256_file(p)
+ 
++    def load(self, path: str | Path) -> None:
++        p = Path(path)
++        if not p.is_file():
++            raise FileNotFoundError(f"Checkpoint not found at {p}")
++        data = np.load(p)
++        flat = {k: mx.array(data[k]) for k in data.files}
++        nested: dict[str, Any] = {}
++        for k, v in flat.items():
++            parts = k.split(".")
++            curr = nested
++            for part in parts[:-1]:
++                curr = curr.setdefault(part, {})
++            curr[parts[-1]] = v
++        self.model.update(nested)
++
+     def n_params(self) -> int:
+         return arms_mlx.count_params(self.model)
+ 
+@@ -253,6 +300,21 @@ class MLXArmBAdapter:
+         np.savez(p, **flat_dict)
+         return _sha256_file(p)
+ 
++    def load(self, path: str | Path) -> None:
++        p = Path(path)
++        if not p.is_file():
++            raise FileNotFoundError(f"Checkpoint not found at {p}")
++        data = np.load(p)
++        flat = {k: mx.array(data[k]) for k in data.files}
++        nested: dict[str, Any] = {}
++        for k, v in flat.items():
++            parts = k.split(".")
++            curr = nested
++            for part in parts[:-1]:
++                curr = curr.setdefault(part, {})
++            curr[parts[-1]] = v
++        self.model.update(nested)
++
+     def n_params(self) -> int:
+         return arms_mlx.count_params(self.model)
+ 
+@@ -399,6 +461,21 @@ class MLXArmCAdapter:
+         np.savez(p, **flat_dict)
+         return _sha256_file(p)
+ 
++    def load(self, path: str | Path) -> None:
++        p = Path(path)
++        if not p.is_file():
++            raise FileNotFoundError(f"Checkpoint not found at {p}")
++        data = np.load(p)
++        flat = {k: mx.array(data[k]) for k in data.files}
++        nested: dict[str, Any] = {}
++        for k, v in flat.items():
++            parts = k.split(".")
++            curr = nested
++            for part in parts[:-1]:
++                curr = curr.setdefault(part, {})
++            curr[parts[-1]] = v
++        self.model.update(nested)
++
+     def n_params(self) -> int:
+         return arms_mlx.count_params(self.model)
+ 
+@@ -447,13 +524,142 @@ def make_mlx_arm(arm_id: str, counter: ForwardCounter | None = None) -> Any:
+         raise ValueError(f"Unknown arm_id for MLX adapter: {arm_id!r}")
+ 
+ 
++def _find_checkpoint(output_root: Path | str, arm: str, seed: int) -> Path:
++    root = Path(output_root)
++    candidates = [
++        root / "checkpoints" / str(arm) / str(int(seed)) / "best.ckpt",
++        root / "checkpoints" / str(arm) / str(int(seed)) / "best.npz",
++        root / "checkpoints" / str(arm) / f"seed{seed}" / "best.ckpt",
++        root / "checkpoints" / str(arm) / f"seed{seed}" / "best.npz",
++        root / str(arm) / str(int(seed)) / "best.ckpt",
++        root / str(arm) / str(int(seed)) / "best.npz",
++        root / str(arm) / f"seed{seed}" / "best.ckpt",
++        root / str(arm) / f"seed{seed}" / "best.npz",
++        root / "best.ckpt",
++        root / "best.npz",
++    ]
++    norm = arm.lower().replace("-", "_")
++    short = norm.removeprefix("arm_") if norm.startswith("arm_") else norm
++    candidates.extend([
++        root / "checkpoints" / short / str(int(seed)) / "best.ckpt",
++        root / "checkpoints" / short / str(int(seed)) / "best.npz",
++        root / short / str(int(seed)) / "best.ckpt",
++        root / short / str(int(seed)) / "best.npz",
++    ])
++    for cand in candidates:
++        if cand.is_file():
++            return cand
++    raise FileNotFoundError(f"Checkpoint for arm={arm}, seed={seed} not found under {output_root}")
++
++
++def _extract_expected_sha(ledger: Any, arm: str, seed: int) -> str | None:
++    if ledger is None:
++        return None
++    if isinstance(ledger, str):
++        if len(ledger) == 64 and all(c in "0123456789abcdefABCDEF" for c in ledger):
++            return ledger
++        p = Path(ledger)
++        if p.is_file():
++            try:
++                data = json.loads(p.read_text(encoding="utf-8"))
++                return _extract_expected_sha(data, arm, seed)
++            except Exception:
++                pass
++    if isinstance(ledger, dict):
++        if (arm, seed) in ledger:
++            val = ledger[(arm, seed)]
++            return val if isinstance(val, str) else val.get("checkpoint_sha256") or val.get("sha256")
++        if (arm, int(seed)) in ledger:
++            val = ledger[(arm, int(seed))]
++            return val if isinstance(val, str) else val.get("checkpoint_sha256") or val.get("sha256")
++        if f"{arm}:{seed}" in ledger:
++            val = ledger[f"{arm}:{seed}"]
++            return val if isinstance(val, str) else val.get("checkpoint_sha256") or val.get("sha256")
++        if f"{arm}_{seed}" in ledger:
++            val = ledger[f"{arm}_{seed}"]
++            return val if isinstance(val, str) else val.get("checkpoint_sha256") or val.get("sha256")
++        if arm in ledger and isinstance(ledger[arm], dict):
++            sub = ledger[arm]
++            if seed in sub:
++                val = sub[seed]
++                return val if isinstance(val, str) else val.get("checkpoint_sha256") or val.get("sha256")
++            if str(seed) in sub:
++                val = sub[str(seed)]
++                return val if isinstance(val, str) else val.get("checkpoint_sha256") or val.get("sha256")
++        if "checkpoint_sha256" in ledger:
++            return ledger["checkpoint_sha256"]
++        if "sha256" in ledger:
++            return ledger["sha256"]
++    return None
++
++
++def load_trained_model(
++    output_root: Path | str,
++    arm: str,
++    seed: int,
++    *,
++    ledger: Any = None,
++    counter: ForwardCounter | None = None,
++    model_factory: Callable[..., Any] | None = None,
++) -> Any:
++    """Load a trained arm model from checkpoint, strictly verifying sha integrity."""
++    ckpt_path = _find_checkpoint(output_root, arm, seed)
++    actual_sha = _sha256_file(ckpt_path)
++
++    expected_sha = _extract_expected_sha(ledger, arm, seed)
++    meta_path = ckpt_path.parent / "meta.json"
++    meta_sha = None
++    if meta_path.is_file():
++        try:
++            meta_data = json.loads(meta_path.read_text(encoding="utf-8"))
++            meta_sha = meta_data.get("checkpoint_sha256")
++        except Exception:
++            pass
++
++    if expected_sha is None and meta_sha is None:
++        raise ValueError(
++            f"Checkpoint integrity verification failed: no expected sha found in ledger or meta.json for {ckpt_path}"
++        )
++
++    if expected_sha is not None and actual_sha != expected_sha:
++        raise ValueError(
++            f"Checkpoint sha mismatch against ledger for {arm} seed={seed}: expected {expected_sha}, got {actual_sha}"
++        )
++
++    if meta_sha is not None and actual_sha != meta_sha:
++        raise ValueError(
++            f"Checkpoint sha mismatch against meta.json for {arm} seed={seed}: expected {meta_sha}, got {actual_sha}"
++        )
++
++    if model_factory is not None:
++        try:
++            model = model_factory(arm, counter=counter)
++        except TypeError:
++            model = model_factory(arm)
++    else:
++        model = make_mlx_arm(arm, counter=counter)
++
++    model.load(ckpt_path)
++    return model
++
++
+ def load_trained_models_for_planning(
+     output_root: Path | str,
+     arms: Sequence[str] = ("arm_a", "arm_b", "arm_c"),
++    seed: int = 42,
+     counter: ForwardCounter | None = None,
++    ledger: Any = None,
++    model_factory: Callable[..., Any] | None = None,
+ ) -> dict[str, Any]:
+     """Load adapted models ready for plan selection or evaluation."""
+     models = {}
+     for arm in arms:
+-        models[arm] = make_mlx_arm(arm, counter=counter)
++        models[arm] = load_trained_model(
++            output_root,
++            arm=arm,
++            seed=seed,
++            ledger=ledger,
++            counter=counter,
++            model_factory=model_factory,
++        )
+     return models
+diff --git a/src/ainerzero/v9/experiments/s2/eval.py b/src/ainerzero/v9/experiments/s2/eval.py
+index 34753c8..f816958 100644
+--- a/src/ainerzero/v9/experiments/s2/eval.py
++++ b/src/ainerzero/v9/experiments/s2/eval.py
+@@ -61,6 +61,7 @@ class EpisodeResult:
+     trajectory: list[dict[str, Any]]
+     perturb_applied: bool
+     info: dict[str, Any]
++    void: bool = False
+ 
+     def to_dict(self) -> dict[str, Any]:
+         return {
+@@ -77,6 +78,7 @@ class EpisodeResult:
+             "actions_taken": self.actions_taken,
+             "perturb_applied": self.perturb_applied,
+             "info": self.info,
++            "void": self.void,
+         }
+ 
+     def __getitem__(self, key: str) -> Any:
+@@ -142,6 +144,8 @@ def _call_plan_fn(
+     rng: np.random.Generator,
+     state: State,
+     layout: Layout,
++    goal_state: State | None = None,
++    spec: Mapping[str, Any] | None = None,
+ ) -> Any:
+     """Call plan_fn with signature inspection and graceful fallback."""
+     sig = inspect.signature(plan_fn)
+@@ -167,6 +171,10 @@ def _call_plan_fn(
+         kwargs["truth_state"] = truth(state)
+     if "layout" in params or has_varkw:
+         kwargs["layout"] = layout
++    if "goal_state" in params or has_varkw:
++        kwargs["goal_state"] = goal_state
++    if "spec" in params or has_varkw:
++        kwargs["spec"] = spec
+ 
+     try:
+         return plan_fn(**kwargs)
+@@ -185,6 +193,7 @@ def run_episode(
+     m: int = 4,
+     *,
+     max_steps: int | None = None,
++    catch_budget_exceeded: bool = False,
+ ) -> EpisodeResult:
+     """Execute a single evaluated planning episode.
+ 
+@@ -301,16 +310,51 @@ def run_episode(
+         if counter is not None:
+             counter.reset()
+ 
+-        plan_res = _call_plan_fn(
+-            plan_fn,
+-            obs=obs,
+-            goal_obs=goal_obs,
+-            k=k_next,
+-            counter=counter,
+-            rng=plan_rng,
+-            state=state,
+-            layout=layout,
+-        )
++        try:
++            plan_res = _call_plan_fn(
++                plan_fn,
++                obs=obs,
++                goal_obs=goal_obs,
++                k=k_next,
++                counter=counter,
++                rng=plan_rng,
++                state=state,
++                layout=layout,
++                goal_state=goal_state,
++                spec=spec,
++            )
++        except ForwardBudgetExceeded as exc:
++            if not catch_budget_exceeded:
++                raise
++            wall_time = time.perf_counter() - t0
++            total_fwd = sum(int(d.get("total", 0)) for d in decision_counts)
++            if counter is not None:
++                total_fwd += int(counter.total)
++            info_dict = {
++                "final_state": truth(state),
++                "target_state": truth(goal_state),
++                "wall_bumps": state.wall_bumps,
++                "void": True,
++                "void_reason": "forward_budget_exceeded",
++                "error": str(exc),
++            }
++            return EpisodeResult(
++                success=False,
++                strict_success=False,
++                steps_used=steps_used,
++                obs_steps_used=obs_steps_used,
++                bfs_distance=bfs_distance,
++                max_steps=limit_steps,
++                wall_time=wall_time,
++                decision_counts=decision_counts,
++                total_forwards=total_fwd,
++                k_history=k_history,
++                actions_taken=actions_taken,
++                trajectory=trajectory,
++                perturb_applied=perturbed,
++                info=info_dict,
++                void=True,
++            )
+ 
+         if counter is not None:
+             decision_counts.append(counter.snapshot())
