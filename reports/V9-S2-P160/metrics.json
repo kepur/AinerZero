@@ -1,0 +1,38 @@
+{
+  "task_id": "ainerzero.V9.P160",
+  "status": "completed",
+  "tier": 2,
+  "agent": "gemini-8f4b",
+  "cleanup_summary": {
+    "getattr_removed_count": 5,
+    "unified_constant": "spec.SMOKE_SHORT_TRAIN_STEPS",
+    "retired_constant_usage": "spec.SMOKE_SHORT_STEPS (retained in spec.py per append-only rule, zero callers in smoke)",
+    "missing_field_enforcement": "ValueError raised on missing bfs_distance, start, or goal in episode spec"
+  },
+  "bad_control": {
+    "P160-M1": {
+      "name": "恢复一处 getattr(spec, 'SMOKE_SHORT_STEPS', 200) 默认值",
+      "status": "RED (CONFIRMED)",
+      "exit_code": 1
+    },
+    "P160-M2": {
+      "name": "恢复 bfs_distance 默认 40（缺字段不再报错）",
+      "status": "RED (CONFIRMED)",
+      "exit_code": 1
+    }
+  },
+  "full_regression": {
+    "total_collected": 3623,
+    "deselected": 6,
+    "selected": 3617,
+    "passed": 3617,
+    "failed": 0,
+    "exit_code": 0,
+    "duration_seconds": 298.32
+  },
+  "artifacts_stat_audit": {
+    "total_entries_before": 80929,
+    "total_entries_after": 80929,
+    "diff_count": 0
+  }
+}

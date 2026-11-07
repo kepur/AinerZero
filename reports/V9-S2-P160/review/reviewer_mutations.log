@@ -1,0 +1,119 @@
+=== Mutation REV-P160-M1 ===
+Name: fallback_missing_goal_to_start
+Target test: tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_missing_start_or_goal_raises
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpvhj3s45o/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_smoke_checks.py F                           [100%]
+
+=================================== FAILURES ===================================
+_____________ test_oracle_feasibility_missing_start_or_goal_raises _____________
+
+    def test_oracle_feasibility_missing_start_or_goal_raises() -> None:
+        """When episode spec lacks start or goal, ValueError must name the missing field."""
+        layout, pairs, _ = world.prepare_world_with_long_pairs(seed=101, rng=random.Random(101))
+    
+        bad_pair_start = dict(pairs[0])
+        del bad_pair_start["start"]
+        with pytest.raises(ValueError, match="Missing start in episode spec 0"):
+            smoke_checks.oracle_feasibility([{"layout": layout, "spec": bad_pair_start}], n_fwd=16)
+    
+        bad_pair_goal = dict(pairs[0])
+        del bad_pair_goal["goal"]
+>       with pytest.raises(ValueError, match="Missing goal in episode spec 0"):
+E       Failed: DID NOT RAISE ValueError
+
+tests/v9/experiments/test_s2_smoke_checks.py:412: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_missing_start_or_goal_raises
+============================== 1 failed in 0.87s ===============================
+
+Stderr:
+
+
+=== Mutation REV-P160-M2 ===
+Name: hardcode_total_short_steps_in_generate_partition
+Target test: tests/v9/experiments/test_s2_wiring.py::test_smoke_fails_when_smoke_short_train_steps_missing
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpvhj3s45o/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_wiring.py F                                 [100%]
+
+=================================== FAILURES ===================================
+____________ test_smoke_fails_when_smoke_short_train_steps_missing _____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-108/test_smoke_fails_when_smoke_sh0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1210dbc20>
+
+    def test_smoke_fails_when_smoke_short_train_steps_missing(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When spec.SMOKE_SHORT_TRAIN_STEPS is deleted, smoke must fail with AttributeError and not fall back silently."""
+        from ainerzero.v9.experiments.s2 import param_count
+    
+        monkeypatch.delattr(spec, "SMOKE_SHORT_TRAIN_STEPS", raising=False)
+        smoke_out = tmp_path / "smoke_no_train_steps"
+        fake_arms = {
+            "arm_a": _DummySmokeArm(param_count.count_arm_a_closed_form(), decreasing=True),
+            "arm_b": _DummySmokeArm(param_count.count_arm_b_closed_form(), decreasing=True),
+            "arm_c": _DummySmokeArm(param_count.count_arm_c_closed_form(), decreasing=True),
+        }
+        fake_batches = [{"observations": np.zeros((32, 17, 205), dtype=np.float32)}]
+    
+        # 1. generate_smoke_partition path must raise AttributeError
+>       with pytest.raises(AttributeError, match="SMOKE_SHORT_TRAIN_STEPS"):
+E       Failed: DID NOT RAISE AttributeError
+
+tests/v9/experiments/test_s2_wiring.py:730: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_wiring.py::test_smoke_fails_when_smoke_short_train_steps_missing
+============================== 1 failed in 2.13s ===============================
+
+Stderr:
+
+
+=== Mutation REV-P160-M3 ===
+Name: fallback_missing_start_to_origin
+Target test: tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_missing_start_or_goal_raises
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpvhj3s45o/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_smoke_checks.py F                           [100%]
+
+=================================== FAILURES ===================================
+_____________ test_oracle_feasibility_missing_start_or_goal_raises _____________
+
+    def test_oracle_feasibility_missing_start_or_goal_raises() -> None:
+        """When episode spec lacks start or goal, ValueError must name the missing field."""
+        layout, pairs, _ = world.prepare_world_with_long_pairs(seed=101, rng=random.Random(101))
+    
+        bad_pair_start = dict(pairs[0])
+        del bad_pair_start["start"]
+>       with pytest.raises(ValueError, match="Missing start in episode spec 0"):
+E       Failed: DID NOT RAISE ValueError
+
+tests/v9/experiments/test_s2_smoke_checks.py:407: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_missing_start_or_goal_raises
+============================== 1 failed in 0.90s ===============================
+
+Stderr:
+

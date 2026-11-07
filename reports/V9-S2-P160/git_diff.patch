@@ -1,0 +1,174 @@
+--- a/src/ainerzero/v9/experiments/s2/smoke.py
++++ b/src/ainerzero/v9/experiments/s2/smoke.py
+@@ -39,7 +39,7 @@
+ SMOKE_CIRCUIT_BREAKER_THRESHOLD: float = float(spec.SMOKE_CIRCUIT_BREAKER_THRESHOLD)  # 0.05
+ SMOKE_ACTION_SENSITIVITY_THRESHOLD: float = 0.05
+ SMOKE_SUBGOAL_SHUFFLE_DROP_THRESHOLD: float = 0.10
+-SMOKE_SHORT_STEPS: int = getattr(spec, "SMOKE_SHORT_STEPS", 200)
++SMOKE_SHORT_TRAIN_STEPS: int = spec.SMOKE_SHORT_TRAIN_STEPS
+ SMOKE_SEED_NAMESPACE: str = "smoke_seed_ns"
+ FORBIDDEN_PARTITIONS: frozenset[str] = frozenset({"train", "dev", "final", "sealed_final"})
+ 
+@@ -244,9 +244,9 @@
+     datasets_dir.mkdir(parents=True, exist_ok=True)
+     smoke_dir = datasets_dir / "smoke"
+ 
+-    n_worlds = getattr(spec, "SMOKE_N_WORLDS", 4)
+-    episodes_per_world = getattr(spec, "SMOKE_EPISODES_PER_WORLD", 4)
+-    total_short_steps = getattr(spec, "SMOKE_SHORT_STEPS", 200)
++    n_worlds = spec.SMOKE_N_WORLDS
++    episodes_per_world = spec.SMOKE_EPISODES_PER_WORLD
++    total_short_steps = spec.SMOKE_SHORT_TRAIN_STEPS
+ 
+     # 1. Generate small smoke partition if not already present
+     if not (smoke_dir / "manifest.json").is_file():
+@@ -415,7 +415,7 @@
+ 
+         # (c) Step 3: Short-training sanity on smoke batches
+         step_3_res: dict[str, Any] = {"arms": {}, "passed": True}
+-        S_steps = getattr(spec, "SMOKE_SHORT_STEPS", 200)
++        S_steps = spec.SMOKE_SHORT_TRAIN_STEPS
+ 
+         for arm_id, arm in arms_by_id.items():
+             # Define SIGReg probe for B and C
+@@ -567,7 +567,7 @@
+             reasons.append(f"Step 3 short-train sanity failed: {step_3_res.get('reasons', [])}")
+     elif arms_by_id is not None and batches is not None:
+         step_3_res = {"arms": {}, "passed": True}
+-        S_steps = getattr(spec, "SMOKE_SHORT_STEPS", 200)
++        S_steps = spec.SMOKE_SHORT_TRAIN_STEPS
+ 
+         for arm_id, arm in arms_by_id.items():
+             probe_fn = getattr(arm, "evaluate_sigreg", None)
+--- a/src/ainerzero/v9/experiments/s2/smoke_checks.py
++++ b/src/ainerzero/v9/experiments/s2/smoke_checks.py
+@@ -388,11 +388,17 @@
+             raise ValueError(f"Missing layout in episode {idx}")
+ 
+         start_raw = spec_data.get("start") if isinstance(spec_data, Mapping) else getattr(spec_data, "start", None)
++        if start_raw is None:
++            raise ValueError(f"Missing start in episode spec {idx}")
++
+         goal_raw = spec_data.get("goal") if isinstance(spec_data, Mapping) else getattr(spec_data, "goal", None)
+-        bfs_dist = int(spec_data.get("bfs_distance", 40) if isinstance(spec_data, Mapping) else getattr(spec_data, "bfs_distance", 40))
+-
+-        if start_raw is None or goal_raw is None:
+-            raise ValueError(f"Missing start or goal in episode spec {idx}")
++        if goal_raw is None:
++            raise ValueError(f"Missing goal in episode spec {idx}")
++
++        bfs_dist_raw = spec_data.get("bfs_distance") if isinstance(spec_data, Mapping) else getattr(spec_data, "bfs_distance", None)
++        if bfs_dist_raw is None:
++            raise ValueError(f"Missing bfs_distance in episode spec {idx}")
++        bfs_dist = int(bfs_dist_raw)
+ 
+         start_state = world.State(int(start_raw["x"]), int(start_raw["y"]), int(start_raw["heading"]))
+         goal_state = world.State(int(goal_raw["x"]), int(goal_raw["y"]), int(goal_raw["heading"]))
+--- a/tests/v9/experiments/test_s2_smoke_checks.py
++++ b/tests/v9/experiments/test_s2_smoke_checks.py
+@@ -383,3 +383,33 @@
+     assert res_low["passed"] is False
+     assert res_low["success_rate"] < 0.05
+ 
++
++def test_oracle_feasibility_missing_bfs_distance_raises() -> None:
++    """When episode spec lacks bfs_distance, both oracle_feasibility and oracle_feasibility_with_s2_planner must raise ValueError."""
++    layout, pairs, _ = world.prepare_world_with_long_pairs(seed=101, rng=random.Random(101))
++    bad_pair = dict(pairs[0])
++    del bad_pair["bfs_distance"]
++    episodes = [{"layout": layout, "spec": bad_pair}]
++
++    with pytest.raises(ValueError, match="Missing bfs_distance in episode spec 0"):
++        smoke_checks.oracle_feasibility(episodes, n_fwd=16)
++
++    with pytest.raises(ValueError, match="Missing bfs_distance in episode spec 0"):
++        smoke_checks.oracle_feasibility_with_s2_planner(episodes, n_fwd=16)
++
++
++def test_oracle_feasibility_missing_start_or_goal_raises() -> None:
++    """When episode spec lacks start or goal, ValueError must name the missing field."""
++    layout, pairs, _ = world.prepare_world_with_long_pairs(seed=101, rng=random.Random(101))
++
++    bad_pair_start = dict(pairs[0])
++    del bad_pair_start["start"]
++    with pytest.raises(ValueError, match="Missing start in episode spec 0"):
++        smoke_checks.oracle_feasibility([{"layout": layout, "spec": bad_pair_start}], n_fwd=16)
++
++    bad_pair_goal = dict(pairs[0])
++    del bad_pair_goal["goal"]
++    with pytest.raises(ValueError, match="Missing goal in episode spec 0"):
++        smoke_checks.oracle_feasibility([{"layout": layout, "spec": bad_pair_goal}], n_fwd=16)
++
++
+--- a/tests/v9/experiments/test_s2_wiring.py
++++ b/tests/v9/experiments/test_s2_wiring.py
+@@ -665,3 +665,69 @@
+     assert res.returncode == 0, f"Pure CPU check failed:\nstdout:\n{res.stdout}\nstderr:\n{res.stderr}"
+     assert "PURE_CPU_CLEAN" in res.stdout
+ 
++
++# ==============================================================================
++# 6. S2 Clean-up Tests (ainerzero.V9.P160)
++# ==============================================================================
++
++
++def test_no_getattr_spec_with_default_in_s2_package() -> None:
++    """AST scan of all s2 Python source files: forbid getattr(spec, <str>, <default>).
++
++    Exception whitelist:
++    - data_runner.py: getattr(spec, 'REGISTERED_HOST_ROOT', None) or ... (P138 transitional fallback).
++    """
++    repo_root = _find_repo_root()
++    s2_dir = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s2"
++    assert s2_dir.is_dir()
++
++    violations = []
++    for py_file in sorted(s2_dir.glob("*.py")):
++        tree = ast.parse(py_file.read_text(encoding="utf-8"), filename=str(py_file))
++        for node in ast.walk(tree):
++            if (
++                isinstance(node, ast.Call)
++                and isinstance(node.func, ast.Name)
++                and node.func.id == "getattr"
++            ):
++                if len(node.args) >= 3:
++                    obj, attr = node.args[0], node.args[1]
++                    if isinstance(obj, ast.Name) and obj.id == "spec":
++                        attr_name = attr.value if isinstance(attr, ast.Constant) else None
++                        # Whitelist check for data_runner.py P138 transitional fallback
++                        if (
++                            py_file.name == "data_runner.py"
++                            and attr_name in ("REGISTERED_HOST_ROOT", "REGISTERED_OUTPUT_ROOT")
++                        ):
++                            continue
++                        violations.append(
++                            f"{py_file.name}:{node.lineno}: getattr(spec, {attr_name!r}, ...)"
++                        )
++
++    assert not violations, "Found forbidden getattr(spec, ..., default) calls:\n" + "\n".join(violations)
++
++
++def test_smoke_fails_when_smoke_short_train_steps_missing(
++    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
++) -> None:
++    """When spec.SMOKE_SHORT_TRAIN_STEPS is deleted, smoke must fail with AttributeError and not fall back silently."""
++    from ainerzero.v9.experiments.s2 import param_count
++
++    monkeypatch.delattr(spec, "SMOKE_SHORT_TRAIN_STEPS", raising=False)
++    smoke_out = tmp_path / "smoke_no_train_steps"
++    fake_arms = {
++        "arm_a": _DummySmokeArm(param_count.count_arm_a_closed_form(), decreasing=True),
++        "arm_b": _DummySmokeArm(param_count.count_arm_b_closed_form(), decreasing=True),
++        "arm_c": _DummySmokeArm(param_count.count_arm_c_closed_form(), decreasing=True),
++    }
++    fake_batches = [{"observations": np.zeros((32, 17, 205), dtype=np.float32)}]
++
++    # 1. generate_smoke_partition path must raise AttributeError
++    with pytest.raises(AttributeError, match="SMOKE_SHORT_TRAIN_STEPS"):
++        smoke.generate_smoke_partition(output_root=smoke_out)
++
++    # 2. run_smoke step 3 path must raise AttributeError
++    with pytest.raises(AttributeError, match="SMOKE_SHORT_TRAIN_STEPS"):
++        smoke.run_smoke(smoke_out, arms_by_id=fake_arms, batches=fake_batches)
++
++
