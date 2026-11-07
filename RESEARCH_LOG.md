@@ -2520,7 +2520,18 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
   - 这些都不放宽任何门，按 R20261106-S2-budget 的标准不属于实质改动。用户如有异议，可在 dev 前叫停。
 - **final：** 这一行不批准 final-eval。final 需要另一条单独的批准行，并须先问用户。
 
-APPROVED s2-phase1 prereg document_sha256=397b2de1fda78a0a34acbbbad9818d396b51c07dccdbd20e66e49d53c18f15eb
+- **r0 作废（11-07 01:45）：** r0 的批准行（`397b2de1…`）随 r0 撤回一并作废，见 R20261107-S2-r0-withdrawn。
+- **r1 冻结（一级 claude，2026-11-07 23:1x）：**
+  - 文件：`artifacts/v9/s2/phase1/prereg.json`；文件 sha 与 document_sha256 均为 `726eb56b6ca3a1822e4cc05533d671977b2772778ef7a6e0004ee989e9b30382`。
+  - identity：26 个源文件核对通过；源码对应提交 `406dac9`。
+  - 设计：DESIGN-r2.md，已加入附录 D、D3.1、E（r2.6）、D5.1，sha `0b0443d9…`。
+  - 冻结前全部验收：W1（P163/P165）、W2（P164/P166）、W3（P168/P170）、W4（P167/P169）、W5（P171/P172）、W6（P173/P174）、W6b（P177/P178）、W7（P175/P176）。
+  - 冻结前置：完美假臂按 r2.6 协议闭环成功 12/12，已入默认套件；native 实测单决策 0.02–0.06 s。
+  - 默认全量：3721 passed，0 failed。
+- **相对 r2.2 的改动：** 臂、主门、回合数、预算口径都没有变。规划协议改为 r2.6，原因是原协议连 oracle 都无法到达长目标；新增 dev 前的三道门（附录 B、D4）；训练后门的阈值收进 spec 和预登记。用户 11-07 已授权一级全权推进。
+- **final：** 本行不批准 final-eval，final 需要另起一条批准行，并须先问用户。
+
+APPROVED s2-phase1 prereg document_sha256=726eb56b6ca3a1822e4cc05533d671977b2772778ef7a6e0004ee989e9b30382
 
 ## R20261107-S2-r0-withdrawn：S2 预登记 r0 在任何运行前撤回（一级 claude，2026-11-07）
 
