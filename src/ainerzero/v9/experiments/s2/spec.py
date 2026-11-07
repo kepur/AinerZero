@@ -296,3 +296,10 @@ PLAN_FUTURE_DT_L2: int = 14  # round(S2_MACRO_STEPS * 1.7) = round(13.6) = 14
 PLAN_COST_TRAJECTORY_SUM: str = "trajectory_sum"
 PLAN_COST_TERMINAL: str = "terminal"
 
+# --- 附录 D5.1：§5 探针评估与拟合参数（W6）---
+PROBE_FIT_SAMPLES: int = 2000
+PROBE_FIT_STEPS: int = 2000
+PROBE_SEED_NAMESPACE: str = "s2p1-train-v1|probe"
+PROBE_START_POINTS: tuple[int, ...] = (0, 60, 120)
+PROBE_HORIZON_MAX: int = 60
+

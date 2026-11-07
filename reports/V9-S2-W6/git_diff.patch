@@ -1,0 +1,1391 @@
+diff --git a/src/ainerzero/v9/experiments/s2/learned_planning.py b/src/ainerzero/v9/experiments/s2/learned_planning.py
+index bd796df..7fb3d8a 100644
+--- a/src/ainerzero/v9/experiments/s2/learned_planning.py
++++ b/src/ainerzero/v9/experiments/s2/learned_planning.py
+@@ -197,14 +197,20 @@ def make_plan_fn(
+     arm_kind: str,
+     plan_choice: Mapping[str, Any],
+     n_fwd: int,
++    *,
++    subgoal_source: Callable[[int], Any] | None = None,
+ ) -> Callable[..., planner.PlanResult]:
+     """Build the ``plan_fn`` that ``eval.run_episode`` calls at each decision.
+ 
+     The returned callable accepts exactly ``obs, goal_obs, k, counter, rng``;
+     ``run_episode`` inspects the signature and therefore never passes truth.
+     ``counter`` must be the episode's ``ForwardCounter`` (budget set to N_fwd).
++    ``subgoal_source`` is an optional callable(decision_index) -> z2 for C-arm
++    negative control / gate injection (DESIGN-r2 Appendix D5.1).
+     """
+     kind = arm_kind_of(arm_kind)
++    if subgoal_source is not None and kind != "hierarchical":
++        raise ValueError("subgoal_source only supported for hierarchical arm")
+     config = cem_config_for_budget(arm_kind, plan_choice, n_fwd)
+     n_fwd = int(n_fwd)
+     e_k = expected_k()
+@@ -220,6 +226,8 @@ def make_plan_fn(
+     if getattr(model, "counter", None) is not None:
+         raise ValueError("model must be built with counter=None; plan_fn charges the episode counter")
+ 
++    decision_index = 0
++
+     def plan_fn(
+         obs: Mapping[str, Any],
+         goal_obs: Mapping[str, Any],
+@@ -227,6 +235,7 @@ def make_plan_fn(
+         counter: ForwardCounter,
+         rng: np.random.Generator,
+     ) -> planner.PlanResult:
++        nonlocal decision_index
+         if not isinstance(rng, np.random.Generator):
+             raise TypeError("rng must be a numpy Generator supplied by the caller")
+         if not isinstance(counter, ForwardCounter):
+@@ -266,6 +275,12 @@ def make_plan_fn(
+         macro_dts[0] = float(k) + float(round((s2 - 1) * e_k))
+         raw_dts = np.full(s2, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
+         raw_dts[0] = float(k)
++
++        z2_override = None
++        if subgoal_source is not None:
++            z2_override = subgoal_source(decision_index)
++        decision_index += 1
++
+         return planner.hierarchical_cem_plan(
+             encode=enc,
+             predict_l1=p1,
+@@ -278,6 +293,7 @@ def make_plan_fn(
+             counter=counter,
+             macro_dts=macro_dts,
+             raw_dts=raw_dts,
++            z2_subgoal_override=z2_override,
+         )
+ 
+     return plan_fn
+diff --git a/src/ainerzero/v9/experiments/s2/planner.py b/src/ainerzero/v9/experiments/s2/planner.py
+index 0268e8c..562c189 100644
+--- a/src/ainerzero/v9/experiments/s2/planner.py
++++ b/src/ainerzero/v9/experiments/s2/planner.py
+@@ -416,6 +416,7 @@ def hierarchical_cem_plan_reference(
+     z2_current: np.ndarray | None = None,
+     macro_dts: np.ndarray | None = None,
+     raw_dts: np.ndarray | None = None,
++    z2_subgoal_override: np.ndarray | Sequence[float] | None = None,
+ ) -> PlanResult:
+     """Sequential (unbatched) reference implementation of hierarchical CEM planning."""
+     if not isinstance(rng, np.random.Generator):
+@@ -432,65 +433,77 @@ def hierarchical_cem_plan_reference(
+     start_total = counter.total
+     z1_0 = encode(obs)
+     z1_goal = counter.goal_embedding(goal_obs, encode)
+-    if z2_current is None:
+-        z2_0 = encode_l2(z1_0)
+-    else:
+-        z2_0 = np.asarray(z2_current, dtype=np.float64)
+-    z2_goal = encode_l2(z1_goal)
+-
+-    # ---- Upper CEM (macro -> goal encoding in L2, trajectory sum) ----------
+-    upper_start = counter.total
+-    upper_discrete = config.n_macro_categories is not None
+-    if upper_discrete:
+-        n_macro_cat = int(config.n_macro_categories)
+-        probs_m = np.full(
+-            (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
++
++    if z2_subgoal_override is not None:
++        z2_subgoal = np.asarray(z2_subgoal_override, dtype=np.float64)
++        best_upper_cost = 0.0
++        best_macros = np.zeros(
++            (config.macro_horizon, 1 if config.n_macro_categories is not None else config.macro_dim),
++            dtype=np.float64,
+         )
+-        best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
++        upper_start = counter.total
++        lower_start = counter.total
+     else:
+-        low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
+-        high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
+-        mean_m = 0.5 * (low_m + high_m)
+-        std_m = np.full_like(mean_m, float(config.upper_init_std))
+-        best_macros = mean_m.copy()
+-    best_upper_cost = float("inf")
+-
+-    h_macro_dts = (
+-        np.ones(config.macro_horizon, dtype=np.float64)
+-        if macro_dts is None
+-        else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
+-    )
+-
+-    for _ in range(config.upper_iters):
+-        if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
+-            break
+-        if upper_discrete:
+-            pop = _sample_categorical(rng, probs_m, config.upper_pop)
++        if z2_current is None:
++            z2_0 = encode_l2(z1_0)
+         else:
+-            pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
+-        costs = np.empty(config.upper_pop, dtype=np.float64)
+-        for i in range(config.upper_pop):
+-            z2_curr = z2_0.copy()
+-            acc = 0.0
+-            for t in range(config.macro_horizon):
+-                z2_curr = predict_l2(z2_curr, pop[i, t], float(h_macro_dts[t]))
+-                acc += squared_distance(z2_curr, z2_goal)
+-            costs[i] = acc
+-        n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
+-        elite_idx = np.argsort(costs)[:n_elite]
+-        elites = pop[elite_idx]
++            z2_0 = np.asarray(z2_current, dtype=np.float64)
++        z2_goal = encode_l2(z1_goal)
++
++        # ---- Upper CEM (macro -> goal encoding in L2, trajectory sum) ----------
++        upper_start = counter.total
++        upper_discrete = config.n_macro_categories is not None
+         if upper_discrete:
+-            probs_m = _update_categorical_probs(elites, n_macro_cat)
++            n_macro_cat = int(config.n_macro_categories)
++            probs_m = np.full(
++                (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
++            )
++            best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
+         else:
+-            mean_m = elites.mean(axis=0)
+-            std_m = elites.std(axis=0) + 1e-6
+-        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
+-        if costs[best_i] < best_upper_cost:
+-            best_upper_cost = float(costs[best_i])
+-            best_macros = pop[best_i].copy()
++            low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
++            high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
++            mean_m = 0.5 * (low_m + high_m)
++            std_m = np.full_like(mean_m, float(config.upper_init_std))
++            best_macros = mean_m.copy()
++        best_upper_cost = float("inf")
++
++        h_macro_dts = (
++            np.ones(config.macro_horizon, dtype=np.float64)
++            if macro_dts is None
++            else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
++        )
++
++        for _ in range(config.upper_iters):
++            if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
++                break
++            if upper_discrete:
++                pop = _sample_categorical(rng, probs_m, config.upper_pop)
++            else:
++                pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
++            costs = np.empty(config.upper_pop, dtype=np.float64)
++            for i in range(config.upper_pop):
++                z2_curr = z2_0.copy()
++                acc = 0.0
++                for t in range(config.macro_horizon):
++                    z2_curr = predict_l2(z2_curr, pop[i, t], float(h_macro_dts[t]))
++                    acc += squared_distance(z2_curr, z2_goal)
++                costs[i] = acc
++            n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
++            elite_idx = np.argsort(costs)[:n_elite]
++            elites = pop[elite_idx]
++            if upper_discrete:
++                probs_m = _update_categorical_probs(elites, n_macro_cat)
++            else:
++                mean_m = elites.mean(axis=0)
++                std_m = elites.std(axis=0) + 1e-6
++            best_i = _pick_modal_first_elite(pop, costs, elite_idx)
++            if costs[best_i] < best_upper_cost:
++                best_upper_cost = float(costs[best_i])
++                best_macros = pop[best_i].copy()
+ 
+-    # Subgoal: first macro step
+-    z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
++        # Subgoal: first macro step
++        z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
++        lower_start = counter.total
+ 
+     # ---- Lower CEM (raw actions -> match E2(z1) to subgoal, terminal cost) ---
+     lower_start = counter.total
+@@ -576,6 +589,7 @@ def hierarchical_cem_plan(
+     z2_current: np.ndarray | None = None,
+     macro_dts: np.ndarray | None = None,
+     raw_dts: np.ndarray | None = None,
++    z2_subgoal_override: np.ndarray | Sequence[float] | None = None,
+ ) -> PlanResult:
+     """Two-level batched CEM with a shared ``ForwardCounter`` / ``N_fwd`` (Appendix E).
+ 
+@@ -597,68 +611,80 @@ def hierarchical_cem_plan(
+     start_total = counter.total
+     z1_0 = encode(obs)
+     z1_goal = counter.goal_embedding(goal_obs, encode)
+-    if z2_current is None:
+-        z2_0 = encode_l2(z1_0)
+-    else:
+-        z2_0 = np.asarray(z2_current, dtype=np.float64)
+-    z2_goal = encode_l2(z1_goal)
+-
+-    # ---- Upper CEM (macro -> goal encoding in L2, batched trajectory sum) ---
+-    upper_start = counter.total
+-    upper_discrete = config.n_macro_categories is not None
+-    if upper_discrete:
+-        n_macro_cat = int(config.n_macro_categories)
+-        probs_m = np.full(
+-            (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
++
++    if z2_subgoal_override is not None:
++        z2_subgoal = np.asarray(z2_subgoal_override, dtype=np.float64)
++        best_upper_cost = 0.0
++        best_macros = np.zeros(
++            (config.macro_horizon, 1 if config.n_macro_categories is not None else config.macro_dim),
++            dtype=np.float64,
+         )
+-        best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
++        upper_start = counter.total
++        lower_start = counter.total
+     else:
+-        low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
+-        high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
+-        mean_m = 0.5 * (low_m + high_m)
+-        std_m = np.full_like(mean_m, float(config.upper_init_std))
+-        best_macros = mean_m.copy()
+-    best_upper_cost = float("inf")
+-
+-    h_macro_dts = (
+-        np.ones(config.macro_horizon, dtype=np.float64)
+-        if macro_dts is None
+-        else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
+-    )
++        if z2_current is None:
++            z2_0 = encode_l2(z1_0)
++        else:
++            z2_0 = np.asarray(z2_current, dtype=np.float64)
++        z2_goal = encode_l2(z1_goal)
+ 
+-    for _ in range(config.upper_iters):
+-        if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
+-            break
++        # ---- Upper CEM (macro -> goal encoding in L2, batched trajectory sum) ---
++        upper_start = counter.total
++        upper_discrete = config.n_macro_categories is not None
+         if upper_discrete:
+-            pop = _sample_categorical(rng, probs_m, config.upper_pop)
++            n_macro_cat = int(config.n_macro_categories)
++            probs_m = np.full(
++                (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
++            )
++            best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
+         else:
+-            pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
++            low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
++            high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
++            mean_m = 0.5 * (low_m + high_m)
++            std_m = np.full_like(mean_m, float(config.upper_init_std))
++            best_macros = mean_m.copy()
++        best_upper_cost = float("inf")
++
++        h_macro_dts = (
++            np.ones(config.macro_horizon, dtype=np.float64)
++            if macro_dts is None
++            else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
++        )
+ 
+-        z2 = np.tile(np.asarray(z2_0, dtype=np.float64).reshape(1, -1), (config.upper_pop, 1))
+-        costs = np.zeros(config.upper_pop, dtype=np.float64)
++        for _ in range(config.upper_iters):
++            if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
++                break
++            if upper_discrete:
++                pop = _sample_categorical(rng, probs_m, config.upper_pop)
++            else:
++                pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
+ 
+-        for t in range(config.macro_horizon):
+-            macro_t = pop[:, t, :]
+-            dt_t = float(h_macro_dts[t])
+-            z2 = predict_l2(z2, macro_t, dt_t)
+-            diff = z2 - np.asarray(z2_goal, dtype=np.float64).reshape(1, -1)
+-            costs += np.sum(diff * diff, axis=-1)
++            z2 = np.tile(np.asarray(z2_0, dtype=np.float64).reshape(1, -1), (config.upper_pop, 1))
++            costs = np.zeros(config.upper_pop, dtype=np.float64)
+ 
+-        n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
+-        elite_idx = np.argsort(costs)[:n_elite]
+-        elites = pop[elite_idx]
+-        if upper_discrete:
+-            probs_m = _update_categorical_probs(elites, n_macro_cat)
+-        else:
+-            mean_m = elites.mean(axis=0)
+-            std_m = elites.std(axis=0) + 1e-6
+-        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
+-        if costs[best_i] < best_upper_cost:
+-            best_upper_cost = float(costs[best_i])
+-            best_macros = pop[best_i].copy()
++            for t in range(config.macro_horizon):
++                macro_t = pop[:, t, :]
++                dt_t = float(h_macro_dts[t])
++                z2 = predict_l2(z2, macro_t, dt_t)
++                diff = z2 - np.asarray(z2_goal, dtype=np.float64).reshape(1, -1)
++                costs += np.sum(diff * diff, axis=-1)
+ 
+-    # Subgoal: first macro step
+-    z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
++            n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
++            elite_idx = np.argsort(costs)[:n_elite]
++            elites = pop[elite_idx]
++            if upper_discrete:
++                probs_m = _update_categorical_probs(elites, n_macro_cat)
++            else:
++                mean_m = elites.mean(axis=0)
++                std_m = elites.std(axis=0) + 1e-6
++            best_i = _pick_modal_first_elite(pop, costs, elite_idx)
++            if costs[best_i] < best_upper_cost:
++                best_upper_cost = float(costs[best_i])
++                best_macros = pop[best_i].copy()
++
++        # Subgoal: first macro step
++        z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
++        lower_start = counter.total
+ 
+     # ---- Lower CEM (raw actions -> match E2(z1) to subgoal, batched terminal)
+     lower_start = counter.total
+diff --git a/src/ainerzero/v9/experiments/s2/probe_eval.py b/src/ainerzero/v9/experiments/s2/probe_eval.py
+new file mode 100644
+index 0000000..2074a6f
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s2/probe_eval.py
+@@ -0,0 +1,470 @@
++"""S2 linear probe evaluation & prediction non-inferiority gate.
++
++Pure CPU, NumPy / standard library only. Strictly ZERO MLX imports.
++Authority:
++- reports/V9-S2-DESIGN/DESIGN-r2.md §5, Appendix D5.1, Appendix E
++- Ridge regression: ainerzero.v9.experiments.s2.probe.fit_ridge / eval_error
++- Bootstrap: ainerzero.v9.experiments.s2.stats.cluster_paired_bootstrap
++- Observation featurization: ainerzero.v9.experiments.s2.learned_planning.featurize_obs
++- Spec constants: ainerzero.v9.experiments.s2.spec
++"""
++
++from __future__ import annotations
++
++import collections
++import hashlib
++import json
++from pathlib import Path
++import random
++from typing import Any, Mapping, Sequence
++
++import numpy as np
++
++from ainerzero.v9.experiments.s2 import learned_planning, probe, spec, stats
++
++__all__ = [
++    "derive_probe_seed",
++    "fit_probe",
++    "probe_errors",
++    "prediction_noninferiority",
++]
++
++
++def derive_probe_seed(namespace: str, *keys: Any) -> int:
++    """Deterministic 31-bit integer seed derived from namespace and keys."""
++    raw = ":".join([namespace, *(str(k) for k in keys)]) if keys else namespace
++    h = hashlib.sha256(raw.encode("utf-8")).hexdigest()
++    return int(h[:16], 16) & 0x7FFFFFFF
++
++
++def _canonical_arm_id(arm: str) -> str:
++    norm = str(arm).strip().lower()
++    if norm in ("arm_a", "a"):
++        return "arm_a"
++    if norm in ("arm_b", "b"):
++        return "arm_b"
++    if norm in ("arm_c", "c"):
++        return "arm_c"
++    return norm
++
++
++def fit_probe(
++    model: Any,
++    train_root: str | Path,
++    holdout_worlds: Sequence[Any] | set[Any] | None = None,
++    *,
++    n_samples: int = spec.PROBE_FIT_SAMPLES,
++    seed_namespace: str = spec.PROBE_SEED_NAMESPACE,
++    lam: float = spec.PROBE_RIDGE_LAMBDA,
++) -> probe.RidgeProbe:
++    """Fit closed-form ridge regression probe from training non-holdout episodes.
++
++    Per DESIGN-r2.md §5 & Appendix D5.1:
++    - Strictly forbids reading model.dev_Z, model.dev_XY or test hooks.
++    - Excludes all holdout worlds in train partition.
++    - Samples n_samples (default 2000) steps across non-holdout episodes using
++      deterministic seed derived from seed_namespace (default 's2p1-train-v1|probe').
++    - Observation featurization follows learned_planning.featurize_obs(student_obs, k=dt).
++    - Ground truth target (x, y) read from truth_before.
++    - Ridge regression lambda = spec.PROBE_RIDGE_LAMBDA (default 1.0).
++    """
++    if getattr(model, "dev_Z", None) is not None or getattr(model, "dev_XY", None) is not None:
++        raise ValueError("model must not expose dev_Z or dev_XY test hooks; fail-closed per §5")
++
++    if not callable(getattr(model, "encode", None)):
++        raise AttributeError("model must provide callable encode method")
++
++    root = Path(train_root)
++    if not root.exists():
++        raise FileNotFoundError(f"train_root {root} does not exist")
++
++    # Determine holdout world identifiers
++    holdout_set: set[Any] = set()
++    if holdout_worlds is not None:
++        for w in holdout_worlds:
++            holdout_set.add(w)
++            if isinstance(w, int):
++                holdout_set.add(f"world_{w:04d}")
++                holdout_set.add(str(w))
++            elif isinstance(w, str):
++                if w.startswith("world_"):
++                    try:
++                        holdout_set.add(int(w.split("_")[1]))
++                    except (IndexError, ValueError):
++                        pass
++                else:
++                    try:
++                        holdout_set.add(int(w))
++                    except ValueError:
++                        pass
++    else:
++        holdout_file = root / "HOLDOUT_WORLDS.json"
++        if holdout_file.exists():
++            payload = json.loads(holdout_file.read_text(encoding="utf-8"))
++            for w in payload.get("holdout_worlds", []):
++                holdout_set.add(w)
++                if isinstance(w, int):
++                    holdout_set.add(f"world_{w:04d}")
++                    holdout_set.add(str(w))
++
++    # Discover candidate world directories or episode files
++    world_dirs = sorted([d for d in root.iterdir() if d.is_dir() and d.name.startswith("world_")])
++    candidate_files: list[Path] = []
++
++    if world_dirs:
++        for w_dir in world_dirs:
++            w_name = w_dir.name
++            w_idx: int | None = None
++            try:
++                w_idx = int(w_name.split("_")[1])
++            except (IndexError, ValueError):
++                pass
++
++            if w_name in holdout_set or (w_idx is not None and w_idx in holdout_set):
++                continue
++
++            ep_files = sorted(w_dir.glob("episode_*.json"))
++            if not ep_files:
++                ep_files = sorted(w_dir.glob("*.json"))
++                # Filter out metadata files
++                ep_files = [f for f in ep_files if f.name not in ("layout.json", "goal_episode_specs.json")]
++            candidate_files.extend(ep_files)
++    else:
++        # Direct episode files in root
++        ep_files = sorted(root.glob("episode_*.json"))
++        if not ep_files:
++            ep_files = [f for f in sorted(root.glob("*.json")) if f.name not in ("manifest.json", "HOLDOUT_WORLDS.json")]
++        candidate_files.extend(ep_files)
++
++    if not candidate_files:
++        raise FileNotFoundError(f"No non-holdout episode files found in {root}")
++
++    # Gather all candidate steps
++    all_steps: list[tuple[dict[str, Any], int, float, float]] = []
++    for ep_file in candidate_files:
++        payload = json.loads(ep_file.read_text(encoding="utf-8"))
++        steps = payload.get("steps")
++        if steps is None:
++            raise ValueError(f"Episode file {ep_file} missing 'steps' field")
++        for st in steps:
++            if "student_obs" not in st:
++                raise ValueError(f"Step missing 'student_obs' in {ep_file}")
++            if "truth_before" not in st:
++                raise ValueError(f"Step missing 'truth_before' in {ep_file}")
++            truth_before = st["truth_before"]
++            if "x" not in truth_before or "y" not in truth_before:
++                raise ValueError(f"Step missing 'x' or 'y' in truth_before in {ep_file}")
++
++            obs = st["student_obs"]
++            dt = int(st.get("dt", 1))
++            x_coord = float(truth_before["x"])
++            y_coord = float(truth_before["y"])
++            all_steps.append((obs, dt, x_coord, y_coord))
++
++    if len(all_steps) < n_samples:
++        raise ValueError(
++            f"Insufficient steps for probe fitting: required {n_samples}, found {len(all_steps)}"
++        )
++
++    # Deterministic sampling without replacement
++    if isinstance(seed_namespace, int):
++        seed = seed_namespace
++    else:
++        seed = derive_probe_seed(seed_namespace)
++    rng = random.Random(seed)
++    sampled = rng.sample(all_steps, n_samples)
++
++    # Encode observations and assemble arrays
++    z_list: list[np.ndarray] = []
++    xy_list: list[list[float]] = []
++    for obs, dt, x_coord, y_coord in sampled:
++        feat = learned_planning.featurize_obs(obs, dt)
++        z = model.encode(feat)
++        z_arr = np.asarray(z, dtype=np.float64).reshape(-1)
++        z_list.append(z_arr)
++        xy_list.append([x_coord, y_coord])
++
++    Z = np.asarray(z_list, dtype=np.float64)
++    XY = np.asarray(xy_list, dtype=np.float64)
++
++    return probe.fit_ridge(Z, XY, lam=float(lam))
++
++
++def probe_errors(
++    model: Any,
++    probe_model: probe.RidgeProbe,
++    partition_root: str | Path,
++    *,
++    steps: Sequence[int] = spec.PROBE_EVAL_STEPS,
++    start_points: Sequence[int] = spec.PROBE_START_POINTS,
++    max_horizon: int = spec.PROBE_HORIZON_MAX,
++) -> dict[str, Any]:
++    """Evaluate multi-step rollout position prediction errors on partition episodes.
++
++    Per DESIGN-r2.md §5 & Appendix D5.1:
++    - Rolls out from start points t in start_points (t + max_horizon <= len).
++    - For offsets k in steps, rolls out with predict_l1 and decodes pose with probe.
++    - Error e_k = ||W*z_{t+k} - XY_{t+k}||_2 (grid units).
++    - Averages error across valid start points within each episode.
++    - Groups errors by world id and horizon step k.
++    """
++    if getattr(model, "dev_Z", None) is not None or getattr(model, "dev_XY", None) is not None:
++        raise ValueError("model must not expose dev_Z or dev_XY test hooks; fail-closed per §5")
++
++    for method in ("encode", "predict_l1"):
++        if not callable(getattr(model, method, None)):
++            raise AttributeError(f"model must provide callable {method!r} method")
++
++    root = Path(partition_root)
++    if not root.exists():
++        raise FileNotFoundError(f"partition_root {root} does not exist")
++
++    steps_tuple = tuple(int(k) for k in steps)
++    if not steps_tuple:
++        raise ValueError("steps must not be empty")
++    max_step = max(steps_tuple)
++    if max_step > max_horizon:
++        raise ValueError(f"max step horizon {max_step} exceeds max_horizon {max_horizon}")
++
++    # Discover world dirs or flat episode files
++    world_dirs = sorted([d for d in root.iterdir() if d.is_dir() and d.name.startswith("world_")])
++    world_episodes: list[tuple[int, Path]] = []
++
++    if world_dirs:
++        for w_dir in world_dirs:
++            w_idx = 0
++            try:
++                w_idx = int(w_dir.name.split("_")[1])
++            except (IndexError, ValueError):
++                pass
++            ep_files = sorted(w_dir.glob("episode_*.json"))
++            if not ep_files:
++                ep_files = [f for f in sorted(w_dir.glob("*.json")) if f.name not in ("layout.json", "goal_episode_specs.json")]
++            for ep_file in ep_files:
++                world_episodes.append((w_idx, ep_file))
++    else:
++        ep_files = sorted(root.glob("episode_*.json"))
++        if not ep_files:
++            ep_files = [f for f in sorted(root.glob("*.json")) if f.name not in ("manifest.json", "HOLDOUT_WORLDS.json")]
++        for ep_file in ep_files:
++            world_episodes.append((0, ep_file))
++
++    if not world_episodes:
++        raise FileNotFoundError(f"No episode files found in {root}")
++
++    records: list[dict[str, Any]] = []
++    by_world: dict[int, dict[int, list[float]]] = collections.defaultdict(lambda: collections.defaultdict(list))
++    errors_by_k: dict[int, list[float]] = collections.defaultdict(list)
++
++    for w_idx, ep_file in world_episodes:
++        payload = json.loads(ep_file.read_text(encoding="utf-8"))
++        steps_data = payload.get("steps")
++        if not steps_data:
++            raise ValueError(f"Episode {ep_file} missing 'steps' field")
++
++        L = len(steps_data)
++        valid_starts = [int(t) for t in start_points if t + max_horizon <= L]
++        if not valid_starts:
++            raise ValueError(
++                f"Episode {ep_file} length {L} has no valid start points for max_horizon {max_horizon}"
++            )
++
++        # Compute errors for each start point
++        start_errors: dict[int, dict[int, float]] = collections.defaultdict(dict)
++        for t in valid_starts:
++            st_0 = steps_data[t]
++            if "student_obs" not in st_0:
++                raise ValueError(f"Step {t} missing 'student_obs' in {ep_file}")
++            dt_0 = int(st_0.get("dt", 1))
++            x_obs_0 = learned_planning.featurize_obs(st_0["student_obs"], dt_0)
++            z_curr = model.encode(x_obs_0)
++
++            for j in range(max_step):
++                curr_idx = t + j
++                st_j = steps_data[curr_idx]
++                act = np.asarray(st_j["action"])
++                dt = float(st_j.get("dt", 1))
++                z_curr = model.predict_l1(z_curr, act, dt)
++
++                k = j + 1
++                if k in steps_tuple:
++                    pred_xy = probe_model.predict(z_curr).reshape(-1)
++                    if t + k < L:
++                        tgt = steps_data[t + k].get("truth_before")
++                    else:
++                        tgt = steps_data[t + k - 1].get("truth_after")
++
++                    if tgt is None or "x" not in tgt or "y" not in tgt:
++                        raise ValueError(f"Target coordinates missing at offset {k} in {ep_file}")
++
++                    true_xy = np.array([float(tgt["x"]), float(tgt["y"])], dtype=np.float64)
++                    dist = float(np.linalg.norm(pred_xy - true_xy))
++                    start_errors[t][k] = dist
++
++        # Average errors across valid start points within episode
++        ep_errors: dict[int, float] = {}
++        for k in steps_tuple:
++            k_mean = float(np.mean([start_errors[t][k] for t in valid_starts]))
++            ep_errors[k] = k_mean
++            by_world[w_idx][k].append(k_mean)
++            errors_by_k[k].append(k_mean)
++
++        records.append({
++            "world_id": w_idx,
++            "episode_file": str(ep_file),
++            "errors": ep_errors,
++        })
++
++    # Convert defaultdicts to regular dicts
++    clean_by_world: dict[int, dict[int, list[float]]] = {
++        w: {k: list(v) for k, v in k_map.items()}
++        for w, k_map in by_world.items()
++    }
++    clean_errors_by_k: dict[int, list[float]] = {
++        k: list(v) for k, v in errors_by_k.items()
++    }
++    mean_by_k: dict[int, float] = {
++        k: float(np.mean(clean_errors_by_k[k])) for k in steps_tuple
++    }
++
++    return {
++        "steps": steps_tuple,
++        "world_ids": [r["world_id"] for r in records],
++        "records": records,
++        "by_world": clean_by_world,
++        "errors_by_k": clean_errors_by_k,
++        "mean_by_k": mean_by_k,
++    }
++
++
++def _extract_world_errors(seed_data: Any, k: int) -> dict[Any, list[float]]:
++    """Helper to extract {world_id: [episode_errors_at_k]} from varied valid inputs."""
++    if isinstance(seed_data, dict) and "by_world" in seed_data:
++        out: dict[Any, list[float]] = {}
++        for w, k_dict in seed_data["by_world"].items():
++            if k not in k_dict:
++                raise KeyError(f"Step horizon k={k} not found in probe result for world {w}")
++            out[w] = [float(v) for v in k_dict[k]]
++        return out
++
++    if isinstance(seed_data, dict) and "records" in seed_data:
++        temp: dict[Any, list[float]] = collections.defaultdict(list)
++        for r in seed_data["records"]:
++            w = r["world_id"]
++            if k not in r["errors"]:
++                raise KeyError(f"Step horizon k={k} not found in episode record errors")
++            temp[w].append(float(r["errors"][k]))
++        return dict(temp)
++
++    if isinstance(seed_data, dict):
++        out = {}
++        for w, val in seed_data.items():
++            if isinstance(val, dict):
++                if k not in val:
++                    raise KeyError(f"Step horizon k={k} not found in world {w} error dict")
++                out[w] = [float(x) for x in val[k]]
++            elif isinstance(val, (list, tuple, np.ndarray)):
++                out[w] = [float(x) for x in val]
++            else:
++                raise TypeError(f"Unsupported world error data type: {type(val)}")
++        return out
++
++    raise TypeError(f"Unsupported seed data format: {type(seed_data)}")
++
++
++def prediction_noninferiority(
++    errors_by_arm_seed: Mapping[str, Any],
++    *,
++    k: int = 30,
++    delta_pred: float = spec.DELTA_PRED,
++    n_boot: int = spec.BOOTSTRAP_RESAMPLES,
++    alpha: float = 0.05,
++    rng: np.random.Generator | int | None = None,
++) -> dict[str, Any]:
++    """Test non-inferiority gate of Arm C against Arm A and Arm B at step horizon k.
++
++    Per DESIGN-r2.md §5 & Appendix D5.1:
++    - Arm errors are averaged across seeds for each paired episode:
++        e_arm(i) = mean_{seed}(e_{arm, seed}(i))
++    - Pairwise delta:
++        Delta(i) = e_C(i) - min(e_A(i), e_B(i))
++    - Clustered paired bootstrap (stats.cluster_paired_bootstrap) with n_boot resamples.
++    - Gate passes if 95% upper confidence bound <= delta_pred (default 1.0 grid unit).
++    """
++    arm_map: dict[str, Any] = {}
++    for arm_raw, val in errors_by_arm_seed.items():
++        canonical = _canonical_arm_id(arm_raw)
++        arm_map[canonical] = val
++
++    for required_arm in ("arm_a", "arm_b", "arm_c"):
++        if required_arm not in arm_map:
++            raise KeyError(f"Missing required arm {required_arm!r} in errors_by_arm_seed")
++
++    arm_world_seed_data: dict[str, list[dict[Any, list[float]]]] = {}
++    for arm_name in ("arm_a", "arm_b", "arm_c"):
++        seeds_data = arm_map[arm_name]
++        if not isinstance(seeds_data, Mapping):
++            raise TypeError(f"Errors for {arm_name} must be a mapping of seed -> data")
++        if not seeds_data:
++            raise ValueError(f"No seed data provided for {arm_name}")
++
++        seed_list: list[dict[Any, list[float]]] = []
++        for seed_key, seed_val in seeds_data.items():
++            parsed = _extract_world_errors(seed_val, k=k)
++            seed_list.append(parsed)
++        arm_world_seed_data[arm_name] = seed_list
++
++    # Ensure all arms and seeds share identical worlds
++    base_worlds = sorted(arm_world_seed_data["arm_a"][0].keys())
++    if len(base_worlds) < 2:
++        raise ValueError(f"At least 2 worlds required for clustered bootstrap, found {len(base_worlds)}")
++
++    for arm_name, seed_list in arm_world_seed_data.items():
++        for s_idx, world_dict in enumerate(seed_list):
++            if sorted(world_dict.keys()) != base_worlds:
++                raise ValueError(
++                    f"Mismatched worlds between arms/seeds: {sorted(world_dict.keys())} vs {base_worlds}"
++                )
++
++    # Compute episode-level errors and pairwise differences grouped by world
++    diff_by_world: dict[Any, list[float]] = {}
++    for w in base_worlds:
++        diff_by_world[w] = []
++        # Number of episodes in world w
++        n_eps = len(arm_world_seed_data["arm_a"][0][w])
++        for arm_name, seed_list in arm_world_seed_data.items():
++            for s_idx, world_dict in enumerate(seed_list):
++                if len(world_dict[w]) != n_eps:
++                    raise ValueError(
++                        f"Episode count mismatch in world {w} for {arm_name} seed index {s_idx}: "
++                        f"{len(world_dict[w])} vs {n_eps}"
++                    )
++
++        for ep_idx in range(n_eps):
++            e_a = float(np.mean([seed_list[w][ep_idx] for seed_list in arm_world_seed_data["arm_a"]]))
++            e_b = float(np.mean([seed_list[w][ep_idx] for seed_list in arm_world_seed_data["arm_b"]]))
++            e_c = float(np.mean([seed_list[w][ep_idx] for seed_list in arm_world_seed_data["arm_c"]]))
++
++            delta = e_c - min(e_a, e_b)
++            diff_by_world[w].append(delta)
++
++    boot_res = stats.cluster_paired_bootstrap(
++        diff_by_world,
++        n_boot=n_boot,
++        rng=rng,
++        alpha=alpha,
++    )
++
++    passed = bool(boot_res.ci_upper <= float(delta_pred))
++
++    return {
++        "k": int(k),
++        "delta_pred": float(delta_pred),
++        "ci_upper": float(boot_res.ci_upper),
++        "ci_lower": float(boot_res.ci_lower),
++        "mean_diff": float(boot_res.mean),
++        "passed": passed,
++        "n_worlds": int(boot_res.n_worlds),
++        "n_episodes": int(boot_res.n_episodes),
++        "bootstrap": boot_res.to_dict(),
++    }
+diff --git a/src/ainerzero/v9/experiments/s2/spec.py b/src/ainerzero/v9/experiments/s2/spec.py
+index 51ad23f..8eb94a4 100644
+--- a/src/ainerzero/v9/experiments/s2/spec.py
++++ b/src/ainerzero/v9/experiments/s2/spec.py
+@@ -296,3 +296,10 @@ PLAN_FUTURE_DT_L2: int = 14  # round(S2_MACRO_STEPS * 1.7) = round(13.6) = 14
+ PLAN_COST_TRAJECTORY_SUM: str = "trajectory_sum"
+ PLAN_COST_TERMINAL: str = "terminal"
+ 
++# --- 附录 D5.1：§5 探针评估与拟合参数（W6）---
++PROBE_FIT_SAMPLES: int = 2000
++PROBE_FIT_STEPS: int = 2000
++PROBE_SEED_NAMESPACE: str = "s2p1-train-v1|probe"
++PROBE_START_POINTS: tuple[int, ...] = (0, 60, 120)
++PROBE_HORIZON_MAX: int = 60
++
+diff --git a/tests/v9/experiments/test_s2_probe_eval.py b/tests/v9/experiments/test_s2_probe_eval.py
+new file mode 100644
+index 0000000..71ba463
+--- /dev/null
++++ b/tests/v9/experiments/test_s2_probe_eval.py
+@@ -0,0 +1,443 @@
++"""Unit tests for S2 probe module & subgoal injection (pure CPU).
++
++No MLX imports allowed in this default test suite.
++"""
++
++from __future__ import annotations
++
++import json
++from pathlib import Path
++import subprocess
++import sys
++from typing import Any
++
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s2 import (
++    fwd_counter,
++    learned_planning as lp,
++    planner,
++    probe,
++    probe_eval,
++    spec,
++)
++
++
++def _encode_xy_into_view(x: float, y: float) -> np.ndarray:
++    """Deterministic reversible base-3 encoding of coordinates into 7x7 view."""
++    v = np.zeros((spec.FOV_SIZE, spec.FOV_SIZE), dtype=np.int64)
++    ix, iy = int(round(x)), int(round(y))
++    v[0, 0] = ix % 3
++    v[0, 1] = (ix // 3) % 3
++    v[0, 2] = (ix // 9) % 3
++    v[0, 3] = iy % 3
++    v[0, 4] = (iy // 3) % 3
++    v[0, 5] = (iy // 9) % 3
++    return v
++
++
++def _decode_xy_from_feat(feat: np.ndarray) -> tuple[float, float]:
++    """Inverse extraction of coordinates from featurized observation."""
++    onehot = feat[:spec.TERRAIN_ONE_HOT_DIM].reshape(spec.FOV_SIZE, spec.FOV_SIZE, spec.NUM_TERRAIN_CLASSES)
++    c0 = int(np.argmax(onehot[0, 0]))
++    c1 = int(np.argmax(onehot[0, 1]))
++    c2 = int(np.argmax(onehot[0, 2]))
++    c3 = int(np.argmax(onehot[0, 3]))
++    c4 = int(np.argmax(onehot[0, 4]))
++    c5 = int(np.argmax(onehot[0, 5]))
++    x = float(c0 + 3 * c1 + 9 * c2)
++    y = float(c3 + 3 * c4 + 9 * c5)
++    return x, y
++
++
++class LinearPoseArm:
++    """Linear fake arm: latent is exact [x, y]; predict_l1 simulates true grid action step."""
++
++    def encode(self, feat: np.ndarray) -> np.ndarray:
++        x, y = _decode_xy_from_feat(feat)
++        return np.array([x, y], dtype=np.float64)
++
++    def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        z_arr = np.asarray(z, dtype=np.float64)
++        if z_arr.ndim == 1:
++            x, y = float(z_arr[0]), float(z_arr[1])
++            act = int(np.asarray(a).reshape(-1)[0])
++            nx, ny = x, y
++            if act == 0: ny = max(1.0, y - 1.0)
++            elif act == 1: ny = min(23.0, y + 1.0)
++            elif act == 2: nx = max(1.0, x - 1.0)
++            elif act == 3: nx = min(23.0, x + 1.0)
++            return np.array([nx, ny], dtype=np.float64)
++
++        B = z_arr.shape[0]
++        a_arr = np.asarray(a).reshape(B, -1)
++        out = np.empty((B, 2), dtype=np.float64)
++        for i in range(B):
++            x, y = float(z_arr[i, 0]), float(z_arr[i, 1])
++            act = int(a_arr[i, 0])
++            nx, ny = x, y
++            if act == 0: ny = max(1.0, y - 1.0)
++            elif act == 1: ny = min(23.0, y + 1.0)
++            elif act == 2: nx = max(1.0, x - 1.0)
++            elif act == 3: nx = min(23.0, x + 1.0)
++            out[i] = [nx, ny]
++        return out
++
++
++class RandomArm:
++    """Random fake arm: latents and dynamics uncorrelated with true world pose."""
++
++    def __init__(self, rng_seed: int = 999) -> None:
++        self._rng = np.random.default_rng(rng_seed)
++
++    def encode(self, feat: np.ndarray) -> np.ndarray:
++        return self._rng.normal(0.0, 1.0, size=(2,)).astype(np.float64)
++
++    def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        z_arr = np.asarray(z, dtype=np.float64)
++        if z_arr.ndim == 1:
++            return self._rng.normal(0.0, 1.0, size=(2,)).astype(np.float64)
++        return self._rng.normal(0.0, 1.0, size=z_arr.shape).astype(np.float64)
++
++
++def _make_synthetic_episode(start_x: int, start_y: int, n_steps: int = 120) -> dict[str, Any]:
++    """Generate a valid episode payload whose observations embed pose."""
++    steps: list[dict[str, Any]] = []
++    x, y = float(start_x), float(start_y)
++    for i in range(n_steps):
++        act = i % 4
++        nx, ny = x, y
++        if act == 0: ny = max(1.0, y - 1.0)
++        elif act == 1: ny = min(23.0, y + 1.0)
++        elif act == 2: nx = max(1.0, x - 1.0)
++        elif act == 3: nx = min(23.0, x + 1.0)
++
++        obs = {
++            "view": _encode_xy_into_view(x, y).tolist(),
++            "heading": [1, 0, 0, 0],
++            "last_action": [1, 0, 0, 0],
++            "dt": 1,
++        }
++        steps.append({
++            "student_obs": obs,
++            "action": act,
++            "dt": 1,
++            "truth_before": {"x": float(x), "y": float(y)},
++            "truth_after": {"x": float(nx), "y": float(ny)},
++        })
++        x, y = nx, ny
++    return {"steps": steps}
++
++
++def _create_synthetic_dataset(root: Path, starts_by_world: dict[int, list[tuple[int, int]]], n_steps: int = 120) -> None:
++    root.mkdir(parents=True, exist_ok=True)
++    for w_idx, starts in starts_by_world.items():
++        w_dir = root / f"world_{w_idx:04d}"
++        w_dir.mkdir(parents=True, exist_ok=True)
++        for ep_idx, (sx, sy) in enumerate(starts):
++            ep_data = _make_synthetic_episode(sx, sy, n_steps=n_steps)
++            (w_dir / f"episode_{ep_idx:04d}.json").write_text(json.dumps(ep_data), encoding="utf-8")
++
++
++def test_linear_vs_random_arm_probe_errors(tmp_path: Path) -> None:
++    """Card W6: Linear arm k=1 error < 0.1 grid; Random arm error significantly larger (>3.0)."""
++    train_dir = tmp_path / "train"
++    dev_dir = tmp_path / "dev"
++
++    train_starts = {0: [(3, 3), (12, 12), (18, 18), (5, 20)]}
++    dev_starts = {0: [(7, 7), (15, 10)]}
++    _create_synthetic_dataset(train_dir, train_starts, n_steps=120)
++    _create_synthetic_dataset(dev_dir, dev_starts, n_steps=120)
++
++    # 1. Linear PoseArm on train and dev
++    linear_arm = LinearPoseArm()
++    trained_probe = probe_eval.fit_probe(
++        linear_arm,
++        train_dir,
++        n_samples=200,
++        seed_namespace="s2p1-train-v1|probe",
++    )
++    assert isinstance(trained_probe, probe.RidgeProbe)
++
++    results_linear = probe_eval.probe_errors(
++        linear_arm,
++        trained_probe,
++        dev_dir,
++        steps=(1, 5, 10),
++        start_points=(0, 30),
++        max_horizon=60,
++    )
++    k1_error_linear = results_linear["mean_by_k"][1]
++    assert k1_error_linear < 0.1, f"Expected k=1 error < 0.1 grid, got {k1_error_linear:.4f}"
++
++    # 2. RandomArm
++    random_arm = RandomArm(rng_seed=999)
++    trained_random_probe = probe_eval.fit_probe(
++        random_arm,
++        train_dir,
++        n_samples=200,
++        seed_namespace="s2p1-train-v1|probe",
++    )
++    results_random = probe_eval.probe_errors(
++        random_arm,
++        trained_random_probe,
++        dev_dir,
++        steps=(1, 5, 10),
++        start_points=(0, 30),
++        max_horizon=60,
++    )
++    k1_error_random = results_random["mean_by_k"][1]
++    assert k1_error_random > 3.0, f"Expected random arm error > 3.0 grids, got {k1_error_random:.4f}"
++
++
++def test_fit_probe_strictly_excludes_holdout_worlds(tmp_path: Path) -> None:
++    """Card W6: Assert fit_probe strictly excludes holdout worlds."""
++    train_dir = tmp_path / "train_holdout_test"
++    dataset_starts = {
++        0: [(3, 3), (12, 12)],
++        1: [(99, 99), (99, 99)],  # poisoned world
++    }
++    _create_synthetic_dataset(train_dir, dataset_starts, n_steps=100)
++
++    # Corrupt coordinates in all episodes of world 1
++    for w1_file in (train_dir / "world_0001").glob("episode_*.json"):
++        w1_data = json.loads(w1_file.read_text(encoding="utf-8"))
++        for st in w1_data["steps"]:
++            st["truth_before"] = {"x": 99999.0, "y": 99999.0}
++        w1_file.write_text(json.dumps(w1_data), encoding="utf-8")
++
++    linear_arm = LinearPoseArm()
++
++    # 1. When holdout_worlds includes world 1, fitting ignores poisoned world_0001
++    probe_clean = probe_eval.fit_probe(
++        linear_arm,
++        train_dir,
++        holdout_worlds={1},
++        n_samples=100,
++        seed_namespace="s2p1-train-v1|probe",
++    )
++    test_obs = {"view": _encode_xy_into_view(5, 5).tolist(), "heading": [1, 0, 0, 0], "last_action": [1, 0, 0, 0], "dt": 1}
++    pred = probe_clean.predict(linear_arm.encode(lp.featurize_obs(test_obs, 1)))
++    np.testing.assert_allclose(pred, np.array([5.0, 5.0]), atol=0.1)
++
++    # 2. When HOLDOUT_WORLDS.json exists, fit_probe automatically honors it
++    (train_dir / "HOLDOUT_WORLDS.json").write_text(
++        json.dumps({"holdout_worlds": [1]}), encoding="utf-8"
++    )
++    probe_from_file = probe_eval.fit_probe(
++        linear_arm,
++        train_dir,
++        holdout_worlds=None,
++        n_samples=100,
++        seed_namespace="s2p1-train-v1|probe",
++    )
++    pred_file = probe_from_file.predict(linear_arm.encode(lp.featurize_obs(test_obs, 1)))
++    np.testing.assert_allclose(pred_file, np.array([5.0, 5.0]), atol=0.1)
++
++
++def test_prediction_noninferiority_matches_hand_calc() -> None:
++    """Card W6: Assert non-inferiority gate CI upper bound matches hand-calculated values."""
++    # Synthetic errors across 2 worlds, each having 3 episodes
++    # Hand calculation 1: all pairwise diffs Delta = 0.4
++    # e_c = 1.4, e_a = 1.0, e_b = 1.1 -> min(e_a, e_b) = 1.0 -> Delta = 0.4
++    data_passing = {
++        "arm_a": {
++            42: {0: [1.0, 1.0, 1.0], 1: [1.0, 1.0, 1.0]},
++            43: {0: [1.0, 1.0, 1.0], 1: [1.0, 1.0, 1.0]},
++        },
++        "arm_b": {
++            42: {0: [1.1, 1.1, 1.1], 1: [1.1, 1.1, 1.1]},
++            43: {0: [1.1, 1.1, 1.1], 1: [1.1, 1.1, 1.1]},
++        },
++        "arm_c": {
++            42: {0: [1.4, 1.4, 1.4], 1: [1.4, 1.4, 1.4]},
++            43: {0: [1.4, 1.4, 1.4], 1: [1.4, 1.4, 1.4]},
++        },
++    }
++    res_passing = probe_eval.prediction_noninferiority(
++        data_passing,
++        k=30,
++        delta_pred=1.0,
++        n_boot=500,
++        rng=np.random.default_rng(123),
++    )
++    assert res_passing["ci_upper"] == pytest.approx(0.4, abs=1e-5)
++    assert res_passing["mean_diff"] == pytest.approx(0.4, abs=1e-5)
++    assert res_passing["passed"] is True
++
++    # Hand calculation 2: all pairwise diffs Delta = 1.5 (> delta_pred = 1.0)
++    data_failing = {
++        "arm_a": {42: {0: [1.0], 1: [1.0]}},
++        "arm_b": {42: {0: [1.0], 1: [1.0]}},
++        "arm_c": {42: {0: [2.5], 1: [2.5]}},
++    }
++    res_failing = probe_eval.prediction_noninferiority(
++        data_failing,
++        k=30,
++        delta_pred=1.0,
++        n_boot=500,
++        rng=np.random.default_rng(123),
++    )
++    assert res_failing["ci_upper"] == pytest.approx(1.5, abs=1e-5)
++    assert res_failing["passed"] is False
++
++
++def test_subgoal_override_skips_upper_cem_and_records_info() -> None:
++    """Card W6: When z2_subgoal_override is given, upper forwards count is 0 and info records it."""
++    config = planner.HierCEMConfig(
++        upper_pop=4,
++        upper_iters=2,
++        upper_elite_frac=0.1,
++        lower_pop=4,
++        lower_iters=2,
++        lower_elite_frac=0.1,
++        macro_horizon=3,
++        s2=4,
++        macro_dim=spec.MACRO_ACTION_DIM,
++        action_dim=spec.ACTION_DIM,
++        upper_budget=100,
++        lower_budget=100,
++    )
++    target_subgoal = np.array([2.5, 3.5, 0.0, 1.0], dtype=np.float64)
++
++    # Dummy functions
++    def dummy_encode(x: np.ndarray) -> np.ndarray:
++        return np.zeros(4, dtype=np.float64)
++
++    def dummy_p1(z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        return z
++
++    def dummy_p2(z: np.ndarray, u: np.ndarray, dt: float = 1.0) -> np.ndarray:
++        return z
++
++    def dummy_enc2(z1: np.ndarray) -> np.ndarray:
++        return z1
++
++    counter = fwd_counter.ForwardCounter(budget=500)
++    rng = np.random.default_rng(42)
++
++    # 1. Batched planner with override
++    res = planner.hierarchical_cem_plan(
++        encode=dummy_encode,
++        predict_l1=dummy_p1,
++        predict_l2=dummy_p2,
++        encode_l2=dummy_enc2,
++        obs=np.zeros(spec.OBS_DIM),
++        goal_obs=np.zeros(spec.OBS_DIM),
++        config=config,
++        rng=rng,
++        counter=counter,
++        z2_subgoal_override=target_subgoal,
++    )
++    assert res.info["upper_forwards"] == 0
++    np.testing.assert_allclose(res.info["z2_subgoal"], target_subgoal)
++
++    # 2. Sequential reference planner with override
++    counter.reset()
++    res_ref = planner.hierarchical_cem_plan_reference(
++        encode=dummy_encode,
++        predict_l1=dummy_p1,
++        predict_l2=dummy_p2,
++        encode_l2=dummy_enc2,
++        obs=np.zeros(spec.OBS_DIM),
++        goal_obs=np.zeros(spec.OBS_DIM),
++        config=config,
++        rng=rng,
++        counter=counter,
++        z2_subgoal_override=target_subgoal,
++    )
++    assert res_ref.info["upper_forwards"] == 0
++    np.testing.assert_allclose(res_ref.info["z2_subgoal"], target_subgoal)
++
++
++def test_make_plan_fn_subgoal_source() -> None:
++    """Card W6: make_plan_fn receives subgoal_source and passes to hierarchical planner."""
++    class DummyHierModel:
++        counter = None
++
++        def encode(self, obs: np.ndarray) -> np.ndarray:
++            return np.zeros(4, dtype=np.float64)
++
++        def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
++            return z
++
++        def encode_l2(self, z1: np.ndarray) -> np.ndarray:
++            return z1
++
++        def predict_l2(self, z2: np.ndarray, u: np.ndarray, dt: float = 1.0) -> np.ndarray:
++            return z2
++
++    target_subgoal = np.array([7.0, 8.0, 0.0, 0.0], dtype=np.float64)
++    called_indices: list[int] = []
++
++    def mock_subgoal_source(t: int) -> np.ndarray:
++        called_indices.append(t)
++        return target_subgoal
++
++    plan_fn = lp.make_plan_fn(
++        DummyHierModel(),
++        "arm_c",
++        spec.SMOKE_PLAN_CHOICE["hierarchical"],
++        n_fwd=500,
++        subgoal_source=mock_subgoal_source,
++    )
++
++    dummy_obs = {"view": np.zeros((spec.FOV_SIZE, spec.FOV_SIZE), dtype=np.int64), "heading": [1, 0, 0, 0], "last_action": [1, 0, 0, 0], "dt": 1}
++    dummy_goal = {"view": np.zeros((spec.FOV_SIZE, spec.FOV_SIZE), dtype=np.int64), "heading": [1, 0, 0, 0], "last_action": [1, 0, 0, 0], "dt": 1}
++    counter = fwd_counter.ForwardCounter(budget=500)
++    rng = np.random.default_rng(42)
++
++    plan_res = plan_fn(dummy_obs, dummy_goal, k=1, counter=counter, rng=rng)
++    assert plan_res.info["upper_forwards"] == 0
++    np.testing.assert_allclose(plan_res.info["z2_subgoal"], target_subgoal)
++    assert called_indices == [0]
++
++    # Calling for second decision gets t=1
++    plan_fn(dummy_obs, dummy_goal, k=1, counter=counter, rng=rng)
++    assert called_indices == [0, 1]
++
++    # Flat arm rejects subgoal_source
++    with pytest.raises(ValueError, match="only supported for hierarchical arm"):
++        lp.make_plan_fn(
++            DummyHierModel(),
++            "arm_a",
++            spec.SMOKE_PLAN_CHOICE["flat"],
++            n_fwd=500,
++            subgoal_source=mock_subgoal_source,
++        )
++
++
++def test_fail_closed_on_prohibited_attributes() -> None:
++    """Card W6: Fail-closed if model exposes dev_Z or dev_XY test hooks."""
++    class BadModel:
++        dev_Z = np.array([1.0])
++
++        def encode(self, obs: Any) -> np.ndarray:
++            return np.zeros(4)
++
++        def predict_l1(self, z: Any, a: Any, dt: float = 1.0) -> np.ndarray:
++            return z
++
++    with pytest.raises(ValueError, match="must not expose dev_Z or dev_XY"):
++        probe_eval.fit_probe(BadModel(), "/tmp", n_samples=10)
++
++    with pytest.raises(ValueError, match="must not expose dev_Z or dev_XY"):
++        probe_eval.probe_errors(BadModel(), None, "/tmp")
++
++
++def test_pure_cpu_no_mlx_in_sys_modules() -> None:
++    """Card W6: Subprocess import of probe_eval must never load mlx."""
++    cmd = [
++        sys.executable,
++        "-c",
++        (
++            "import sys; "
++            "import ainerzero.v9.experiments.s2.probe_eval; "
++            "assert 'mlx' not in sys.modules, f'mlx leaked: {sys.modules.get(\"mlx\")}'; "
++            "assert 'mlx.core' not in sys.modules, 'mlx.core leaked'; "
++            "print('CPU_OK')"
++        ),
++    ]
++    res = subprocess.run(cmd, capture_output=True, text=True, check=True)
++    assert "CPU_OK" in res.stdout.strip()
+diff --git a/tests/v9/experiments/test_s2_probe_eval_native.py b/tests/v9/experiments/test_s2_probe_eval_native.py
+new file mode 100644
+index 0000000..12d6801
+--- /dev/null
++++ b/tests/v9/experiments/test_s2_probe_eval_native.py
+@@ -0,0 +1,97 @@
++"""Native (MLX) test for S2 probe fitting and error evaluation on real MLX arms.
++
++Runs only when --native-mlx is provided (Card W6: inference only, no training, <= 30s).
++"""
++
++from __future__ import annotations
++
++import json
++from pathlib import Path
++import time
++from typing import Any
++
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s2 import probe_eval, spec
++
++pytestmark = pytest.mark.native_mlx
++
++
++def _make_native_test_dataset(root: Path) -> None:
++    """Create a minimal synthetic partition for fast MLX probe rollout smoke."""
++    root.mkdir(parents=True, exist_ok=True)
++    w_dir = root / "world_0000"
++    w_dir.mkdir(parents=True, exist_ok=True)
++
++    for ep_idx in range(2):
++        steps: list[dict[str, Any]] = []
++        for i in range(120):
++            view = np.zeros((spec.FOV_SIZE, spec.FOV_SIZE), dtype=np.int64)
++            obs = {
++                "view": view.tolist(),
++                "heading": [1, 0, 0, 0],
++                "last_action": [1, 0, 0, 0],
++                "dt": 1,
++            }
++            steps.append({
++                "student_obs": obs,
++                "action": i % spec.ACTION_DIM,
++                "dt": 1,
++                "truth_before": {"x": float(i % 10), "y": float((i // 10) % 10)},
++                "truth_after": {"x": float((i + 1) % 10), "y": float(((i + 1) // 10) % 10)},
++            })
++        ep_data = {"steps": steps}
++        (w_dir / f"episode_{ep_idx:04d}.json").write_text(json.dumps(ep_data), encoding="utf-8")
++
++
++def test_native_three_arms_fit_and_probe_errors_smoke(tmp_path: Path) -> None:
++    """Card W6: Real MLX 3 arms randomly initialized; fit_probe and probe_errors run cleanly in <= 30s."""
++    from ainerzero.v9.experiments.s2 import adapters_mlx
++
++    train_dir = tmp_path / "native_train"
++    dev_dir = tmp_path / "native_dev"
++    _make_native_test_dataset(train_dir)
++    _make_native_test_dataset(dev_dir)
++
++    t_start = time.perf_counter()
++    timings: dict[str, float] = {}
++    mean_errors: dict[str, dict[int, float]] = {}
++
++    for arm_id in ("arm_a", "arm_b", "arm_c"):
++        t0 = time.perf_counter()
++        arm = adapters_mlx.make_mlx_arm(arm_id)
++        arm.init(seed=42)
++
++        # 1. Fit probe (scaled down to 50 samples for speed)
++        fitted_probe = probe_eval.fit_probe(
++            arm,
++            train_dir,
++            n_samples=50,
++            seed_namespace="s2p1-train-v1|probe",
++        )
++        expected_latent_dim = arm.encode(np.zeros(spec.OBS_DIM)).shape[0]
++        assert fitted_probe.weights.shape == (expected_latent_dim, 2)
++
++        # 2. Evaluate multi-step probe errors
++        results = probe_eval.probe_errors(
++            arm,
++            fitted_probe,
++            dev_dir,
++            steps=(1, 5),
++            start_points=(0, 30),
++            max_horizon=35,
++        )
++        assert 1 in results["mean_by_k"]
++        assert 5 in results["mean_by_k"]
++        assert results["mean_by_k"][1] >= 0.0
++
++        t1 = time.perf_counter()
++        timings[arm_id] = t1 - t0
++        mean_errors[arm_id] = results["mean_by_k"]
++
++    total_time = time.perf_counter() - t_start
++    print(f"\n[NATIVE MLX W6 PROBE TIMINGS] total={total_time:.3f}s per_arm={timings}")
++    print(f"[NATIVE MLX W6 ERRORS] {mean_errors}")
++
++    assert total_time <= 30.0, f"Native smoke took {total_time:.2f}s, expected <= 30s"

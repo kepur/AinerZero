@@ -416,6 +416,7 @@ def hierarchical_cem_plan_reference(
     z2_current: np.ndarray | None = None,
     macro_dts: np.ndarray | None = None,
     raw_dts: np.ndarray | None = None,
+    z2_subgoal_override: np.ndarray | Sequence[float] | None = None,
 ) -> PlanResult:
     """Sequential (unbatched) reference implementation of hierarchical CEM planning."""
     if not isinstance(rng, np.random.Generator):
@@ -432,65 +433,77 @@ def hierarchical_cem_plan_reference(
     start_total = counter.total
     z1_0 = encode(obs)
     z1_goal = counter.goal_embedding(goal_obs, encode)
-    if z2_current is None:
-        z2_0 = encode_l2(z1_0)
-    else:
-        z2_0 = np.asarray(z2_current, dtype=np.float64)
-    z2_goal = encode_l2(z1_goal)
 
-    # ---- Upper CEM (macro -> goal encoding in L2, trajectory sum) ----------
-    upper_start = counter.total
-    upper_discrete = config.n_macro_categories is not None
-    if upper_discrete:
-        n_macro_cat = int(config.n_macro_categories)
-        probs_m = np.full(
-            (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
+    if z2_subgoal_override is not None:
+        z2_subgoal = np.asarray(z2_subgoal_override, dtype=np.float64)
+        best_upper_cost = 0.0
+        best_macros = np.zeros(
+            (config.macro_horizon, 1 if config.n_macro_categories is not None else config.macro_dim),
+            dtype=np.float64,
         )
-        best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
+        upper_start = counter.total
+        lower_start = counter.total
     else:
-        low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
-        high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
-        mean_m = 0.5 * (low_m + high_m)
-        std_m = np.full_like(mean_m, float(config.upper_init_std))
-        best_macros = mean_m.copy()
-    best_upper_cost = float("inf")
-
-    h_macro_dts = (
-        np.ones(config.macro_horizon, dtype=np.float64)
-        if macro_dts is None
-        else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
-    )
-
-    for _ in range(config.upper_iters):
-        if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
-            break
-        if upper_discrete:
-            pop = _sample_categorical(rng, probs_m, config.upper_pop)
+        if z2_current is None:
+            z2_0 = encode_l2(z1_0)
         else:
-            pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
-        costs = np.empty(config.upper_pop, dtype=np.float64)
-        for i in range(config.upper_pop):
-            z2_curr = z2_0.copy()
-            acc = 0.0
-            for t in range(config.macro_horizon):
-                z2_curr = predict_l2(z2_curr, pop[i, t], float(h_macro_dts[t]))
-                acc += squared_distance(z2_curr, z2_goal)
-            costs[i] = acc
-        n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
-        elite_idx = np.argsort(costs)[:n_elite]
-        elites = pop[elite_idx]
-        if upper_discrete:
-            probs_m = _update_categorical_probs(elites, n_macro_cat)
-        else:
-            mean_m = elites.mean(axis=0)
-            std_m = elites.std(axis=0) + 1e-6
-        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
-        if costs[best_i] < best_upper_cost:
-            best_upper_cost = float(costs[best_i])
-            best_macros = pop[best_i].copy()
+            z2_0 = np.asarray(z2_current, dtype=np.float64)
+        z2_goal = encode_l2(z1_goal)
 
-    # Subgoal: first macro step
-    z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
+        # ---- Upper CEM (macro -> goal encoding in L2, trajectory sum) ----------
+        upper_start = counter.total
+        upper_discrete = config.n_macro_categories is not None
+        if upper_discrete:
+            n_macro_cat = int(config.n_macro_categories)
+            probs_m = np.full(
+                (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
+            )
+            best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
+        else:
+            low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
+            high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
+            mean_m = 0.5 * (low_m + high_m)
+            std_m = np.full_like(mean_m, float(config.upper_init_std))
+            best_macros = mean_m.copy()
+        best_upper_cost = float("inf")
+
+        h_macro_dts = (
+            np.ones(config.macro_horizon, dtype=np.float64)
+            if macro_dts is None
+            else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
+        )
+
+        for _ in range(config.upper_iters):
+            if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
+                break
+            if upper_discrete:
+                pop = _sample_categorical(rng, probs_m, config.upper_pop)
+            else:
+                pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
+            costs = np.empty(config.upper_pop, dtype=np.float64)
+            for i in range(config.upper_pop):
+                z2_curr = z2_0.copy()
+                acc = 0.0
+                for t in range(config.macro_horizon):
+                    z2_curr = predict_l2(z2_curr, pop[i, t], float(h_macro_dts[t]))
+                    acc += squared_distance(z2_curr, z2_goal)
+                costs[i] = acc
+            n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
+            elite_idx = np.argsort(costs)[:n_elite]
+            elites = pop[elite_idx]
+            if upper_discrete:
+                probs_m = _update_categorical_probs(elites, n_macro_cat)
+            else:
+                mean_m = elites.mean(axis=0)
+                std_m = elites.std(axis=0) + 1e-6
+            best_i = _pick_modal_first_elite(pop, costs, elite_idx)
+            if costs[best_i] < best_upper_cost:
+                best_upper_cost = float(costs[best_i])
+                best_macros = pop[best_i].copy()
+
+        # Subgoal: first macro step
+        z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
+        lower_start = counter.total
 
     # ---- Lower CEM (raw actions -> match E2(z1) to subgoal, terminal cost) ---
     lower_start = counter.total
@@ -576,6 +589,7 @@ def hierarchical_cem_plan(
     z2_current: np.ndarray | None = None,
     macro_dts: np.ndarray | None = None,
     raw_dts: np.ndarray | None = None,
+    z2_subgoal_override: np.ndarray | Sequence[float] | None = None,
 ) -> PlanResult:
     """Two-level batched CEM with a shared ``ForwardCounter`` / ``N_fwd`` (Appendix E).
 
@@ -597,68 +611,80 @@ def hierarchical_cem_plan(
     start_total = counter.total
     z1_0 = encode(obs)
     z1_goal = counter.goal_embedding(goal_obs, encode)
-    if z2_current is None:
-        z2_0 = encode_l2(z1_0)
-    else:
-        z2_0 = np.asarray(z2_current, dtype=np.float64)
-    z2_goal = encode_l2(z1_goal)
 
-    # ---- Upper CEM (macro -> goal encoding in L2, batched trajectory sum) ---
-    upper_start = counter.total
-    upper_discrete = config.n_macro_categories is not None
-    if upper_discrete:
-        n_macro_cat = int(config.n_macro_categories)
-        probs_m = np.full(
-            (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
+    if z2_subgoal_override is not None:
+        z2_subgoal = np.asarray(z2_subgoal_override, dtype=np.float64)
+        best_upper_cost = 0.0
+        best_macros = np.zeros(
+            (config.macro_horizon, 1 if config.n_macro_categories is not None else config.macro_dim),
+            dtype=np.float64,
         )
-        best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
+        upper_start = counter.total
+        lower_start = counter.total
     else:
-        low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
-        high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
-        mean_m = 0.5 * (low_m + high_m)
-        std_m = np.full_like(mean_m, float(config.upper_init_std))
-        best_macros = mean_m.copy()
-    best_upper_cost = float("inf")
-
-    h_macro_dts = (
-        np.ones(config.macro_horizon, dtype=np.float64)
-        if macro_dts is None
-        else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
-    )
-
-    for _ in range(config.upper_iters):
-        if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
-            break
-        if upper_discrete:
-            pop = _sample_categorical(rng, probs_m, config.upper_pop)
+        if z2_current is None:
+            z2_0 = encode_l2(z1_0)
         else:
-            pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
+            z2_0 = np.asarray(z2_current, dtype=np.float64)
+        z2_goal = encode_l2(z1_goal)
 
-        z2 = np.tile(np.asarray(z2_0, dtype=np.float64).reshape(1, -1), (config.upper_pop, 1))
-        costs = np.zeros(config.upper_pop, dtype=np.float64)
-
-        for t in range(config.macro_horizon):
-            macro_t = pop[:, t, :]
-            dt_t = float(h_macro_dts[t])
-            z2 = predict_l2(z2, macro_t, dt_t)
-            diff = z2 - np.asarray(z2_goal, dtype=np.float64).reshape(1, -1)
-            costs += np.sum(diff * diff, axis=-1)
-
-        n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
-        elite_idx = np.argsort(costs)[:n_elite]
-        elites = pop[elite_idx]
+        # ---- Upper CEM (macro -> goal encoding in L2, batched trajectory sum) ---
+        upper_start = counter.total
+        upper_discrete = config.n_macro_categories is not None
         if upper_discrete:
-            probs_m = _update_categorical_probs(elites, n_macro_cat)
+            n_macro_cat = int(config.n_macro_categories)
+            probs_m = np.full(
+                (config.macro_horizon, n_macro_cat), 1.0 / n_macro_cat, dtype=np.float64
+            )
+            best_macros = np.zeros((config.macro_horizon, 1), dtype=np.float64)
         else:
-            mean_m = elites.mean(axis=0)
-            std_m = elites.std(axis=0) + 1e-6
-        best_i = _pick_modal_first_elite(pop, costs, elite_idx)
-        if costs[best_i] < best_upper_cost:
-            best_upper_cost = float(costs[best_i])
-            best_macros = pop[best_i].copy()
+            low_m = _as_bounds(config.macro_low, config.macro_dim, config.macro_horizon)
+            high_m = _as_bounds(config.macro_high, config.macro_dim, config.macro_horizon)
+            mean_m = 0.5 * (low_m + high_m)
+            std_m = np.full_like(mean_m, float(config.upper_init_std))
+            best_macros = mean_m.copy()
+        best_upper_cost = float("inf")
 
-    # Subgoal: first macro step
-    z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
+        h_macro_dts = (
+            np.ones(config.macro_horizon, dtype=np.float64)
+            if macro_dts is None
+            else np.asarray(macro_dts, dtype=np.float64).reshape(-1)
+        )
+
+        for _ in range(config.upper_iters):
+            if config.upper_budget > 0 and (counter.total - upper_start) >= config.upper_budget:
+                break
+            if upper_discrete:
+                pop = _sample_categorical(rng, probs_m, config.upper_pop)
+            else:
+                pop = _sample_actions(rng, mean_m, std_m, low_m, high_m, config.upper_pop)
+
+            z2 = np.tile(np.asarray(z2_0, dtype=np.float64).reshape(1, -1), (config.upper_pop, 1))
+            costs = np.zeros(config.upper_pop, dtype=np.float64)
+
+            for t in range(config.macro_horizon):
+                macro_t = pop[:, t, :]
+                dt_t = float(h_macro_dts[t])
+                z2 = predict_l2(z2, macro_t, dt_t)
+                diff = z2 - np.asarray(z2_goal, dtype=np.float64).reshape(1, -1)
+                costs += np.sum(diff * diff, axis=-1)
+
+            n_elite = _elite_count(config.upper_pop, config.upper_elite_frac)
+            elite_idx = np.argsort(costs)[:n_elite]
+            elites = pop[elite_idx]
+            if upper_discrete:
+                probs_m = _update_categorical_probs(elites, n_macro_cat)
+            else:
+                mean_m = elites.mean(axis=0)
+                std_m = elites.std(axis=0) + 1e-6
+            best_i = _pick_modal_first_elite(pop, costs, elite_idx)
+            if costs[best_i] < best_upper_cost:
+                best_upper_cost = float(costs[best_i])
+                best_macros = pop[best_i].copy()
+
+        # Subgoal: first macro step
+        z2_subgoal = predict_l2(z2_0, best_macros[0], float(h_macro_dts[0]))
+        lower_start = counter.total
 
     # ---- Lower CEM (raw actions -> match E2(z1) to subgoal, batched terminal)
     lower_start = counter.total

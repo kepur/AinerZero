@@ -197,14 +197,20 @@ def make_plan_fn(
     arm_kind: str,
     plan_choice: Mapping[str, Any],
     n_fwd: int,
+    *,
+    subgoal_source: Callable[[int], Any] | None = None,
 ) -> Callable[..., planner.PlanResult]:
     """Build the ``plan_fn`` that ``eval.run_episode`` calls at each decision.
 
     The returned callable accepts exactly ``obs, goal_obs, k, counter, rng``;
     ``run_episode`` inspects the signature and therefore never passes truth.
     ``counter`` must be the episode's ``ForwardCounter`` (budget set to N_fwd).
+    ``subgoal_source`` is an optional callable(decision_index) -> z2 for C-arm
+    negative control / gate injection (DESIGN-r2 Appendix D5.1).
     """
     kind = arm_kind_of(arm_kind)
+    if subgoal_source is not None and kind != "hierarchical":
+        raise ValueError("subgoal_source only supported for hierarchical arm")
     config = cem_config_for_budget(arm_kind, plan_choice, n_fwd)
     n_fwd = int(n_fwd)
     e_k = expected_k()
@@ -220,6 +226,8 @@ def make_plan_fn(
     if getattr(model, "counter", None) is not None:
         raise ValueError("model must be built with counter=None; plan_fn charges the episode counter")
 
+    decision_index = 0
+
     def plan_fn(
         obs: Mapping[str, Any],
         goal_obs: Mapping[str, Any],
@@ -227,6 +235,7 @@ def make_plan_fn(
         counter: ForwardCounter,
         rng: np.random.Generator,
     ) -> planner.PlanResult:
+        nonlocal decision_index
         if not isinstance(rng, np.random.Generator):
             raise TypeError("rng must be a numpy Generator supplied by the caller")
         if not isinstance(counter, ForwardCounter):
@@ -266,6 +275,12 @@ def make_plan_fn(
         macro_dts[0] = float(k) + float(round((s2 - 1) * e_k))
         raw_dts = np.full(s2, float(spec.PLAN_FUTURE_DT_L1), dtype=np.float64)
         raw_dts[0] = float(k)
+
+        z2_override = None
+        if subgoal_source is not None:
+            z2_override = subgoal_source(decision_index)
+        decision_index += 1
+
         return planner.hierarchical_cem_plan(
             encode=enc,
             predict_l1=p1,
@@ -278,6 +293,7 @@ def make_plan_fn(
             counter=counter,
             macro_dts=macro_dts,
             raw_dts=raw_dts,
+            z2_subgoal_override=z2_override,
         )
 
     return plan_fn
