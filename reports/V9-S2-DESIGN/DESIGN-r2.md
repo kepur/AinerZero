@@ -212,3 +212,89 @@
   - smoke 跑完后，把这个数字记进账本与 RESEARCH_LOG，不改预登记文档。做法与 E1 由 smoke 推出 training_updates 相同。
 - **模型选择间隔**：每 200 步，在留出集上计算一次 H_train 步滚动误差。
 - **smoke 短训步数**：S = 200。smoke 分区为 4 个世界 × 4 回合，另加 12 个长目标规格（spec 中已有）。
+
+## 附录 D　生产路径集成（r2.5，一级 claude，2026-11-07）
+
+**起因：** 11-07 01:41 冻结 r0 后，一级读了各模式在 CLI 下真实走的路径（不注入参数时），发现 smoke 之后的各段没有接上真实模型与真实世界。r0 已在任何运行之前撤回，文件改名为 `prereg.r0.json`，见 RESEARCH_LOG R20261107-S2-r0-withdrawn。
+
+- 发现的问题：
+  - **generate-data**：把 `--arm` 当成分区名，可 CLI 的 `--arm` 只接受 arm_*，所以 train/final 根本生成不了；train 规模要求显式传参，CLI 没有提供。
+  - **train**：
+    - 数据目录默认是 `output_root/data`，而生成器写的是 `datasets/<分区>`；
+    - 步数默认取 `H_TRAIN`=16，没有读 smoke 的实测值；
+    - 留出集按序列、按种子切分，不是附录 C 规定的按世界切；
+    - 模型选择间隔写死为 5（spec 是 200）。
+  - **plan-select / dev / final**：
+    - `load_trained_models_for_planning` 返回的是新初始化的臂，没有加载检查点；
+    - `_score_config_on_train` 对真实模型一律给 0.5；
+    - `_episode_success_stub` 在模型没有 `eval_episode` 时按 0.5 的概率随机判成功；
+    - 回合规格默认 `[]`，规划配置默认 `{}`；
+    - dev 账本把 sqlite 路径当 JSON 读；
+    - bootstrap 次数为 200（预登记是 10,000）。
+- **原则（同附录 B）：** 生产路径不得有任何回退值。缺模型、缺检查点、缺规格、缺配置、缺实测，一律拒绝或报错。测试钩子（`eval_episode`、`preferred_*` 之类）只能在测试注入的假模型上存在，生产代码不得为它们写默认分支。
+
+以下各项都不改臂、主门、回合数、预算口径。
+
+### D1 数据
+- `generate-data` 改用新增的 `--partition {train,dev,final}`，不再借用 `--arm`。
+- train 的规模由 commands 从 spec 的 `TRAIN_N_WORLDS`、`TRAIN_EPISODES_PER_WORLD` 传入。
+- **留出世界集：** 在生成 train 时确定，与训练种子、臂无关。
+  - 规则：按 `sha256("s2p1-train-v1|holdout|" + 世界序号)` 升序取前 10%（100 个世界）。
+  - 写入 `datasets/train/HOLDOUT_WORLDS.json`，并记进清单。
+- 留出世界另按 dev 的同一程序生成长目标规格（每世界 6 对，用 train 命名空间派生的种子），共 600 条。这些规格只供 plan-select 和训练后的门使用。
+
+### D2 训练
+- 数据目录固定为 `output_root/datasets/train`。
+- 训练只用非留出世界；模型选择时，在留出世界的回合上算 H_TRAIN 步滚动误差。
+- 间隔取 `spec.MODEL_SELECTION_EVERY_STEPS`（200）。
+- **步数：** 只从账本里那条已完成、且 passed 的 smoke 记录读 `shared_train_steps`。
+  - 没有这条记录，或 smoke 未通过，就拒绝训练。
+  - 生产 CLI 不提供任何步数覆盖参数。
+- **检查点：** 写到 `checkpoints/<arm>/seed<k>/`，最优检查点的 sha 写入账本。
+
+### D3 学习模型的规划回合
+- 用学习模型构造 `plan_fn`，交给 `eval.run_episode` 在真实 GridLab-S2 里闭环执行。规则按 §4：
+  - flat（A、B）：`planner.flat_cem_plan`，代价为终点潜状态与目标观察编码的平方距离；
+  - C：`planner.hierarchical_cem_plan`；
+  - 每个决策用一个 `ForwardCounter`，上限为 N_fwd；超出即报错，该回合记为 void；
+  - 目标观察的编码每回合算 1 次，计入计数。
+- 加载检查点后，把这个功能挂在适配器上：
+  - 新增 `load_trained_model(output_root, arm, seed)`：读最优检查点并核对它的 sha；
+  - 删除 `load_trained_models_for_planning` 里新建臂的行为。
+
+### D4 plan-select 与训练后的门（只用 train 留出世界）
+- **plan-select：**
+  - 每个臂用种子 42 的模型；
+  - 在留出世界规格的前 50 条（按固定顺序）上，对登记的候选网格逐一实测成功率；
+  - 选成功率最高的配置；并列时选计算量小的；
+  - 结果写入 `plan_config.json`，并把它的 sha 记进账本。
+- **训练后的门（附录 B）：**
+  - 动作敏感性：9 个模型全部计算，64 个状态取自留出世界的回合；任一模型低于 0.05，即判不可规划。
+  - C 的打乱子目标对照：用种子 42 的 C 模型，在 50 条留出规格上分别用真子目标和打乱后的子目标规划。打乱是把子目标序列在回合之间做置换，置换的种子登记在案。
+  - **基线合理性**（§5，原写在 smoke 里，因为短训模型无法测成功率，按附录 B 的理由移到这里）：在 plan-select 选出的配置下，max(A, B) 在那 50 条规格上的成功率必须落在 [0.1, 0.8]，否则停在 dev 之前。
+  - 三道门的结果写入 `post_train_gates.json` 和 dev 账本（JSON，放在 `output_root/dev_ledger.json`，不是 sqlite 账本）。
+
+### D5 dev / final
+- **回合与聚合：**
+  - 长目标规格从 `datasets/dev/*/goal_episode_specs.json` 读，共 300 条；
+  - 每个臂用 3 个种子模型，回合成功率取三者的均值；
+  - 规划器的随机种子由（分区、回合、模型种子）派生，不再用 0/1/2；
+  - 臂间差值做分簇 bootstrap，次数取预登记的 `bootstrap_resamples`（10,000）。
+- **dev 额外项：** dev 另跑 N_fwd 三档、短目标和规则 dt 子集；dev 的使用次数上限 2，计在 dev 账本里。
+- **final：**
+  - 只读 `datasets/sealed_final`，且只读一次；
+  - 需要单独的 final 批准行；
+  - 判门用 `judge_hs2_gate`，并接上 §5 的探针（岭回归只在 train 潜状态上拟合）。
+
+### D6 smoke 的预算核算补充
+- smoke 第 2 步之外，每臂再用随机初始化的模型、按 N_fwd=4096 实测 2 个规划回合的墙钟。
+- 据此推算 plan-select、门、dev、final 的总用时。推算结果与训练、数据的预计用时合计超过 10 h 时，smoke 判失败，回用户。
+- 不准用常数代替实测。
+
+### D7 生产路径测试
+- 默认套件里要有端到端测试，经 `ainerzero.cli.main([...])` 走完 smoke → generate-data（三分区，规模缩小）→ train → plan-select → dev-eval：
+  - 用真冻结的临时 prereg 和批准行；
+  - 只在 `adapters_mlx` 的边界（建臂、加载检查点）换成 NumPy 假臂；
+  - 不许向 runner 注入其他参数。
+- 另有 `--native-mlx` 选入的同一流程测试，用真实 MLX，在缩小规模下跑。
+- 坏对照要能抓到上面「发现的问题」里的每一项回退。

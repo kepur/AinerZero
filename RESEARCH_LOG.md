@@ -2521,3 +2521,15 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
 - **final：** 这一行不批准 final-eval。final 需要另一条单独的批准行，并须先问用户。
 
 APPROVED s2-phase1 prereg document_sha256=397b2de1fda78a0a34acbbbad9818d396b51c07dccdbd20e66e49d53c18f15eb
+
+## R20261107-S2-r0-withdrawn：S2 预登记 r0 在任何运行前撤回（一级 claude，2026-11-07）
+
+- **经过：** r0 冻结于 01:41（`397b2de1…`），verify 通过。一级随后读各模式在 CLI 下的真实路径（不注入参数时），发现 smoke 之后的各段没有接上真实模型和真实世界，详见设计稿附录 D（r2.5）。其中最严重的两条：
+  - dev 的 `_episode_success_stub` 会对真实模型按 0.5 的概率随机判成功；
+  - `load_trained_models_for_planning` 不加载检查点。
+- **处理：**
+  - 01:45 把 `artifacts/v9/s2/phase1/prereg.json`（及 `.sha256`）改名为 `prereg.r0.json`，现在所有运行模式都以 `unfrozen` 拒绝（已实测 smoke 被拒）；
+  - 账本未创建，没有任何运行，预算消耗为 0；
+  - R20261106-S2-approval 中那条 r0 批准行随之作废，等 r1 冻结时替换。
+- **之后：** 按附录 D 拆卡修复，即 D1–D7，每张卡都配非作者复核。修完重新冻结为 r1、写新批准行，然后才跑 smoke。臂、主门、回合数、预算口径都不变，用户批准的 10 h 仍然适用。
+- **教训：** 这次和 P148 的「默认通过值」属于同一类问题：测试只覆盖注入了参数的路径，生产调用点却什么都没传。今后冻结之前，一级必须逐个模式读一遍 CLI 实际传给 runner 的参数；不注入参数的端到端测试（附录 D7）列为冻结的前置条件。
