@@ -1,0 +1,2030 @@
+........................................................................ [  1%]
+........................................................................ [  3%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [  9%]
+........................................................................ [ 11%]
+........................................................................ [ 13%]
+........................................................................ [ 15%]
+........................................................................ [ 17%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 23%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 29%]
+........................................................................ [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 36%]
+........................................................................ [ 38%]
+........................................................................ [ 40%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 46%]
+........................................................................ [ 48%]
+........................................................................ [ 50%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 56%]
+........................................................................ [ 58%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 69%]
+........................................................................ [ 71%]
+........................................................................ [ 73%]
+........................................................................ [ 75%]
+........................................................................ [ 77%]
+........................................................................ [ 79%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 89%]
+..................................................FFF................... [ 90%]
+...................................................F.................... [ 92%]
+.............F.......................................................... [ 94%]
+..............................................F......................... [ 96%]
+........................................................................ [ 98%]
+...............................................                          [100%]
+=================================== FAILURES ===================================
+_________________________ test_production_e2e_pipeline _________________________
+
+tmp_env = {'tmp_path': PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_product...977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_pipeline0/artifacts/locks/m0-worker.lock'), ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10bd9e180>
+
+    def test_production_e2e_pipeline(tmp_env: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+        """Run full production CLI pipeline end-to-end under scaled-down parameters."""
+        output_root = tmp_env["output_root"]
+        ledger_path = tmp_env["ledger"]
+    
+        # 1. Scale down spec constants for fast hermetic test
+        monkeypatch.setattr(eval_runner, "N_FWD_DEFAULT", 512)
+        monkeypatch.setattr(spec, "N_FWD", 512)
+        monkeypatch.setattr(spec, "SMOKE_PLAN_CHOICE", {"flat": {"H": 16}, "hierarchical": {"macro_horizon": 6, "budget_ratio": 0.5}})
+        monkeypatch.setattr(world, "world_rejection_requires_redraw", lambda *a, **kw: False)
+        monkeypatch.setattr(spec, "TRAIN_N_WORLDS", 10)
+        monkeypatch.setattr(spec, "TRAIN_EPISODES_PER_WORLD", 6)
+        monkeypatch.setattr(spec, "DEV_WORLDS_COUNT", 2)
+        monkeypatch.setattr(spec, "DEV_PAIRS_PER_WORLD", 2)
+        monkeypatch.setattr(spec, "FINAL_WORLDS_COUNT", 2)
+        monkeypatch.setattr(spec, "FINAL_PAIRS_PER_WORLD", 2)
+        monkeypatch.setattr(spec, "BOOTSTRAP_RESAMPLES", 20)
+        monkeypatch.setattr(spec, "SMOKE_SHORT_TRAIN_STEPS", 25)
+        monkeypatch.setattr(spec, "MODEL_SELECTION_EVERY_STEPS", 10)
+        monkeypatch.setattr(world, "WORLD_REJECTION_RATE_THRESHOLD", 1.0)
+    
+        # Scale down train steps from smoke calculation (prevent multi-million steps on mock arms)
+        from ainerzero.v9.experiments.s2 import smoke
+        orig_steps_rule = smoke.compute_training_steps
+        def _mock_fast_steps_rule(step_times: Any, budget_seconds: float = 1200.0, efficiency: float = 0.8) -> dict[str, Any]:
+            res = orig_steps_rule(step_times, budget_seconds=budget_seconds, efficiency=efficiency)
+            res["shared_train_steps"] = 20
+            res["per_arm_steps"] = {k: 20 for k in step_times}
+            return res
+        monkeypatch.setattr(smoke, "compute_training_steps", _mock_fast_steps_rule)
+    
+        # 2. Mock adapters_mlx boundary with ProductionFakeArm
+        fake_instances: dict[str, ProductionFakeArm] = {}
+    
+        def _mock_make_arm(arm_name: str) -> ProductionFakeArm:
+            c_name = adapters_mlx.canonical_arm(arm_name)
+            inst = ProductionFakeArm(c_name)
+            fake_instances[c_name] = inst
+            return inst
+    
+        monkeypatch.setattr(adapters_mlx, "make_mlx_arm", _mock_make_arm)
+        monkeypatch.setattr(
+            "ainerzero.v9.experiments.s2.arms_mlx.compute_sigreg_mlx",
+            lambda arr: core_math.compute_sigreg_numpy(np.asarray(arr)),
+            raising=False,
+        )
+    
+        # 3. Freeze prereg and approve
+        _freeze_and_approve(tmp_env)
+    
+        # Step 1: Smoke
+>       code = _run_cli(tmp_env, "smoke")
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: smoke failed
+E       assert 1 == 0
+
+tests/v9/experiments/test_s2_production_e2e.py:232: AssertionError
+----------------------------- Captured stdout call -----------------------------
+{
+  "status": "failed",
+  "mode": "smoke",
+  "arm": null,
+  "seed": null,
+  "result": {
+    "mode": "smoke",
+    "passed": false,
+    "status": "failed",
+    "reasons": [
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05",
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05",
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05"
+    ],
+    "elapsed_seconds": 13.187004804611206,
+    "seed_namespace": "smoke_seed_ns",
+    "param_checks": {
+      "arm_a": true,
+      "arm_b": true,
+      "arm_c": true
+    },
+    "timing_and_steps": {
+      "per_arm_step_times": {
+        "arm_a": 0.0001,
+        "arm_b": 0.0001,
+        "arm_c": 0.0001
+      },
+      "per_arm_steps": {
+        "arm_a": 20,
+        "arm_b": 20,
+        "arm_c": 20
+      },
+      "shared_train_steps": 20,
+      "budget_seconds": 1200.0,
+      "efficiency_factor": 0.8
+    },
+    "planning_timing": {
+      "arm_a": {
+        "median_seconds": 0.2663426399230957,
+        "episode_times": [
+          0.26786112785339355,
+          0.26482415199279785
+        ],
+        "n_episodes": 2
+      },
+      "arm_b": {
+        "median_seconds": 0.26641738414764404,
+        "episode_times": [
+          0.2762739658355713,
+          0.2565608024597168
+        ],
+        "n_episodes": 2
+      },
+      "arm_c": {
+        "median_seconds": 0.1492530107498169,
+        "episode_times": [
+          0.15208196640014648,
+          0.1464240550994873
+        ],
+        "n_episodes": 2
+      }
+    },
+    "step_3_short_train": {
+      "arms": {
+        "arm_a": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": null,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": null,
+          "final_sigreg": null,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.2836861379301261
+        },
+        "arm_b": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": true,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": 0.5726603763781781,
+          "final_sigreg": 0.5726603763781781,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.14184306896506305
+        },
+        "arm_c": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": true,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": 0.5726603763781781,
+          "final_sigreg": 0.5726603763781781,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.14184306896506305
+        }
+      },
+      "passed": true
+    },
+    "step_4_feasibility": {
+      "passed": false,
+      "fuse_triggered": true,
+      "success_rate": 0.0,
+      "total_episodes": 12,
+      "successful_episodes": 0,
+      "threshold": 0.05,
+      "episodes": [
+        {
+          "episode_index": 0,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 1,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 2,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 3,
+          "success": false,
+          "steps": 132,
+          "max_steps": 132,
+          "bfs_distance": 44,
+          "errors": []
+        },
+        {
+          "episode_index": 4,
+          "success": false,
+          "steps": 126,
+          "max_steps": 126,
+          "bfs_distance": 42,
+          "errors": []
+        },
+        {
+          "episode_index": 5,
+          "success": false,
+          "steps": 129,
+          "max_steps": 129,
+          "bfs_distance": 43,
+          "errors": []
+        },
+        {
+          "episode_index": 6,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 7,
+          "success": false,
+          "steps": 138,
+          "max_steps": 138,
+          "bfs_distance": 46,
+          "errors": []
+        },
+        {
+          "episode_index": 8,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 9,
+          "success": false,
+          "steps": 153,
+          "max_steps": 153,
+          "bfs_distance": 51,
+          "errors": []
+        },
+        {
+          "episode_index": 10,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 11,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        }
+      ],
+      "planner": "s2_planner"
+    },
+    "step_4_default_oracle_comparison": {
+      "passed": true,
+      "fuse_triggered": false,
+      "success_rate": 0.9166666666666666,
+      "total_episodes": 12,
+      "successful_episodes": 11,
+      "threshold": 0.05,
+      "episodes": [
+        {
+          "episode_index": 0,
+          "success": true,
+          "steps": 88,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 1,
+          "success": true,
+          "steps": 73,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 2,
+          "success": true,
+          "steps": 57,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 3,
+          "success": true,
+          "steps": 79,
+          "max_steps": 132,
+          "bfs_distance": 44,
+          "errors": []
+        },
+        {
+          "episode_index": 4,
+          "success": true,
+          "steps": 93,
+          "max_steps": 126,
+          "bfs_distance": 42,
+          "errors": []
+        },
+        {
+          "episode_index": 5,
+          "success": true,
+          "steps": 89,
+          "max_steps": 129,
+          "bfs_distance": 43,
+          "errors": []
+        },
+        {
+          "episode_index": 6,
+          "success": true,
+          "steps": 91,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 7,
+          "success": true,
+          "steps": 93,
+          "max_steps": 138,
+          "bfs_distance": 46,
+          "errors": []
+        },
+        {
+          "episode_index": 8,
+          "success": false,
+          "steps": 124,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 9,
+          "success": true,
+          "steps": 101,
+          "max_steps": 153,
+          "bfs_distance": 51,
+          "errors": []
+        },
+        {
+          "episode_index": 10,
+          "success": true,
+          "steps": 61,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 11,
+          "success": true,
+          "steps": 97,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        }
+      ]
+    },
+    "budget_analysis": {
+      "budget_10h_ceiling_seconds": 36000.0,
+      "estimated_train_total_seconds": 0.018000000000000002,
+      "total_estimated_seconds": 4519.693819826126,
+      "sufficient": true,
+      "passed": true,
+      "reasons": [],
+      "breakdown": {
+        "smoke": {
+          "formula": "BUDGET_SMOKE_MAX_SECONDS",
+          "estimated_seconds": 1200.0,
+          "ceiling_seconds": 1200.0,
+          "exceeded": false
+        },
+        "data": {
+          "formula": "60 episodes * 0.145 s/ep",
+          "estimated_seconds": 8.7,
+          "ceiling_seconds": 3600.0,
+          "exceeded": false
+        },
+        "train": {
+          "formula": "3 seeds * sum_{arm in (A,B,C)} min(1200, shared_train_steps * step_time[arm])",
+          "estimated_seconds": 0.018000000000000002,
+          "ceiling_seconds": 10800.0,
+          "per_arm_seconds": {
+            "arm_a": 0.006,
+            "arm_b": 0.006,
+            "arm_c": 0.006
+          },
+          "shared_train_steps": 20,
+          "exceeded": false
+        },
+        "plan_select": {
+          "formula": "sum_{arm} (grid_size[arm] * 50 * episode_plan_time[arm])",
+          "estimated_seconds": 124.68990683555603,
+          "ceiling_seconds": 1800.0,
+          "per_arm_seconds": {
+            "arm_a": 39.951395988464355,
+            "arm_b": 39.962607622146606,
+            "arm_c": 44.77590322494507
+          },
+          "grid_sizes": {
+            "arm_a": 3,
+            "arm_b": 3,
+            "arm_c": 6
+          },
+          "exceeded": false
+        },
+        "post_train_gates": {
+          "formula": "100 episodes * episode_plan_time['arm_c']",
+          "estimated_seconds": 14.92530107498169,
+          "ceiling_seconds": null,
+          "exceeded": false
+        },
+        "dev": {
+          "formula": "sum_{arm} (300 * 3 seeds * (1 + 2.5) + (regular_dt + short_goal) * 3 seeds) * episode_plan_time[arm]",
+          "estimated_seconds": 2557.5488805770874,
+          "ceiling_seconds": 9000.0,
+          "per_arm_seconds": {
+            "arm_a": 998.7848997116089,
+            "arm_b": 999.0651905536652,
+            "arm_c": 559.6987903118134
+          },
+          "exceeded": false
+        },
+        "final": {
+          "formula": "sum_{arm} 300 episodes * 3 seeds * episode_plan_time[arm]",
+          "estimated_seconds": 613.811731338501,
+          "ceiling_seconds": 5400.0,
+          "per_arm_seconds": {
+            "arm_a": 239.70837593078613,
+            "arm_b": 239.77564573287964,
+            "arm_c": 134.3277096748352
+          },
+          "exceeded": false
+        },
+        "total": {
+          "estimated_seconds": 4519.693819826126,
+          "ceiling_seconds": 36000.0,
+          "exceeded": false
+        }
+      }
+    }
+  }
+}
+__________________ test_production_e2e_blocks_unplannable_arm __________________
+
+tmp_env = {'tmp_path': PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_product...7x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_unp0/artifacts/locks/m0-worker.lock'), ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a7e2a50>
+
+    
+    def test_production_e2e_blocks_unplannable_arm(tmp_env: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+        """Post-train gate detects arm with sensitivity < 0.05 and halts pipeline before dev."""
+        output_root = tmp_env["output_root"]
+        monkeypatch.setattr(eval_runner, "N_FWD_DEFAULT", 512)
+        monkeypatch.setattr(spec, "N_FWD", 512)
+        monkeypatch.setattr(spec, "SMOKE_PLAN_CHOICE", {"flat": {"H": 16}, "hierarchical": {"macro_horizon": 6, "budget_ratio": 0.5}})
+        monkeypatch.setattr(world, "world_rejection_requires_redraw", lambda *a, **kw: False)
+        monkeypatch.setattr(spec, "TRAIN_N_WORLDS", 10)
+        monkeypatch.setattr(spec, "TRAIN_EPISODES_PER_WORLD", 6)
+        monkeypatch.setattr(spec, "DEV_WORLDS_COUNT", 2)
+        monkeypatch.setattr(spec, "DEV_PAIRS_PER_WORLD", 2)
+        monkeypatch.setattr(spec, "FINAL_WORLDS_COUNT", 2)
+        monkeypatch.setattr(spec, "FINAL_PAIRS_PER_WORLD", 2)
+        monkeypatch.setattr(spec, "BOOTSTRAP_RESAMPLES", 20)
+        monkeypatch.setattr(spec, "SMOKE_SHORT_TRAIN_STEPS", 25)
+        monkeypatch.setattr(spec, "MODEL_SELECTION_EVERY_STEPS", 10)
+        monkeypatch.setattr(world, "WORLD_REJECTION_RATE_THRESHOLD", 1.0)
+    
+        # Scale down train steps from smoke calculation (prevent multi-million steps on mock arms)
+        from ainerzero.v9.experiments.s2 import smoke
+        orig_steps_rule = smoke.compute_training_steps
+        def _mock_fast_steps_rule(step_times: Any, budget_seconds: float = 1200.0, efficiency: float = 0.8) -> dict[str, Any]:
+            res = orig_steps_rule(step_times, budget_seconds=budget_seconds, efficiency=efficiency)
+            res["shared_train_steps"] = 20
+            res["per_arm_steps"] = {k: 20 for k in step_times}
+            return res
+        monkeypatch.setattr(smoke, "compute_training_steps", _mock_fast_steps_rule)
+    
+        # Arm A has near-zero sensitivity
+        def _mock_unplannable(arm_name: str) -> ProductionFakeArm:
+            c = adapters_mlx.canonical_arm(arm_name)
+            sens = 0.0001 if c == "arm_a" else 0.5
+            return ProductionFakeArm(c, sensitivity=sens)
+    
+        monkeypatch.setattr(adapters_mlx, "make_mlx_arm", _mock_unplannable)
+        monkeypatch.setattr(
+            "ainerzero.v9.experiments.s2.arms_mlx.compute_sigreg_mlx",
+            lambda arr: core_math.compute_sigreg_numpy(np.asarray(arr)),
+            raising=False,
+        )
+    
+        _freeze_and_approve(tmp_env)
+        _run_cli(tmp_env, "smoke")
+        _run_cli(tmp_env, "generate-data", "--partition", "train")
+        _run_cli(tmp_env, "generate-data", "--partition", "dev")
+    
+        for arm in ("arm_a", "arm_b", "arm_c"):
+            for seed in (42, 43, 44):
+                _run_cli(tmp_env, "train", "--arm", arm, "--seed", str(seed))
+    
+        # Plan-select runs post-train gates: gates must fail
+>       _run_cli(tmp_env, "plan-select")
+                               ^^^^^^^^^^
+
+tests/v9/experiments/test_s2_production_e2e.py:346: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_unp0/artifacts/v9/s2/phase1/post_train_gates.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_unp0/artifacts/v9/s2/phase1/post_train_gates.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+----------------------------- Captured stdout call -----------------------------
+{
+  "status": "failed",
+  "mode": "smoke",
+  "arm": null,
+  "seed": null,
+  "result": {
+    "mode": "smoke",
+    "passed": false,
+    "status": "failed",
+    "reasons": [
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05",
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05",
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05"
+    ],
+    "elapsed_seconds": 12.788238048553467,
+    "seed_namespace": "smoke_seed_ns",
+    "param_checks": {
+      "arm_a": true,
+      "arm_b": true,
+      "arm_c": true
+    },
+    "timing_and_steps": {
+      "per_arm_step_times": {
+        "arm_a": 0.0001,
+        "arm_b": 0.0001,
+        "arm_c": 0.0001
+      },
+      "per_arm_steps": {
+        "arm_a": 20,
+        "arm_b": 20,
+        "arm_c": 20
+      },
+      "shared_train_steps": 20,
+      "budget_seconds": 1200.0,
+      "efficiency_factor": 0.8
+    },
+    "planning_timing": {
+      "arm_a": {
+        "median_seconds": 0.26337099075317383,
+        "episode_times": [
+          0.26467204093933105,
+          0.2620699405670166
+        ],
+        "n_episodes": 2
+      },
+      "arm_b": {
+        "median_seconds": 0.26258742809295654,
+        "episode_times": [
+          0.26903200149536133,
+          0.25614285469055176
+        ],
+        "n_episodes": 2
+      },
+      "arm_c": {
+        "median_seconds": 0.1513911485671997,
+        "episode_times": [
+          0.1547231674194336,
+          0.14805912971496582
+        ],
+        "n_episodes": 2
+      }
+    },
+    "step_3_short_train": {
+      "arms": {
+        "arm_a": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": null,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": null,
+          "final_sigreg": null,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.23064724873741574
+        },
+        "arm_b": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": true,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": 0.5726603763781781,
+          "final_sigreg": 0.5726603763781781,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.14184306896506305
+        },
+        "arm_c": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": true,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": 0.5726603763781781,
+          "final_sigreg": 0.5726603763781781,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.14184306896506305
+        }
+      },
+      "passed": true
+    },
+    "step_4_feasibility": {
+      "passed": false,
+      "fuse_triggered": true,
+      "success_rate": 0.0,
+      "total_episodes": 12,
+      "successful_episodes": 0,
+      "threshold": 0.05,
+      "episodes": [
+        {
+          "episode_index": 0,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 1,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 2,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 3,
+          "success": false,
+          "steps": 132,
+          "max_steps": 132,
+          "bfs_distance": 44,
+          "errors": []
+        },
+        {
+          "episode_index": 4,
+          "success": false,
+          "steps": 126,
+          "max_steps": 126,
+          "bfs_distance": 42,
+          "errors": []
+        },
+        {
+          "episode_index": 5,
+          "success": false,
+          "steps": 129,
+          "max_steps": 129,
+          "bfs_distance": 43,
+          "errors": []
+        },
+        {
+          "episode_index": 6,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 7,
+          "success": false,
+          "steps": 138,
+          "max_steps": 138,
+          "bfs_distance": 46,
+          "errors": []
+        },
+        {
+          "episode_index": 8,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 9,
+          "success": false,
+          "steps": 153,
+          "max_steps": 153,
+          "bfs_distance": 51,
+          "errors": []
+        },
+        {
+          "episode_index": 10,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 11,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        }
+      ],
+      "planner": "s2_planner"
+    },
+    "step_4_default_oracle_comparison": {
+      "passed": true,
+      "fuse_triggered": false,
+      "success_rate": 0.9166666666666666,
+      "total_episodes": 12,
+      "successful_episodes": 11,
+      "threshold": 0.05,
+      "episodes": [
+        {
+          "episode_index": 0,
+          "success": true,
+          "steps": 88,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 1,
+          "success": true,
+          "steps": 73,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 2,
+          "success": true,
+          "steps": 57,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 3,
+          "success": true,
+          "steps": 79,
+          "max_steps": 132,
+          "bfs_distance": 44,
+          "errors": []
+        },
+        {
+          "episode_index": 4,
+          "success": true,
+          "steps": 93,
+          "max_steps": 126,
+          "bfs_distance": 42,
+          "errors": []
+        },
+        {
+          "episode_index": 5,
+          "success": true,
+          "steps": 89,
+          "max_steps": 129,
+          "bfs_distance": 43,
+          "errors": []
+        },
+        {
+          "episode_index": 6,
+          "success": true,
+          "steps": 91,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 7,
+          "success": true,
+          "steps": 93,
+          "max_steps": 138,
+          "bfs_distance": 46,
+          "errors": []
+        },
+        {
+          "episode_index": 8,
+          "success": false,
+          "steps": 124,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 9,
+          "success": true,
+          "steps": 101,
+          "max_steps": 153,
+          "bfs_distance": 51,
+          "errors": []
+        },
+        {
+          "episode_index": 10,
+          "success": true,
+          "steps": 61,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 11,
+          "success": true,
+          "steps": 97,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        }
+      ]
+    },
+    "budget_analysis": {
+      "budget_10h_ceiling_seconds": 36000.0,
+      "estimated_train_total_seconds": 0.018000000000000002,
+      "total_estimated_seconds": 4497.843710725784,
+      "sufficient": true,
+      "passed": true,
+      "reasons": [],
+      "breakdown": {
+        "smoke": {
+          "formula": "BUDGET_SMOKE_MAX_SECONDS",
+          "estimated_seconds": 1200.0,
+          "ceiling_seconds": 1200.0,
+          "exceeded": false
+        },
+        "data": {
+          "formula": "60 episodes * 0.145 s/ep",
+          "estimated_seconds": 8.7,
+          "ceiling_seconds": 3600.0,
+          "exceeded": false
+        },
+        "train": {
+          "formula": "3 seeds * sum_{arm in (A,B,C)} min(1200, shared_train_steps * step_time[arm])",
+          "estimated_seconds": 0.018000000000000002,
+          "ceiling_seconds": 10800.0,
+          "per_arm_seconds": {
+            "arm_a": 0.006,
+            "arm_b": 0.006,
+            "arm_c": 0.006
+          },
+          "shared_train_steps": 20,
+          "exceeded": false
+        },
+        "plan_select": {
+          "formula": "sum_{arm} (grid_size[arm] * 50 * episode_plan_time[arm])",
+          "estimated_seconds": 124.31110739707947,
+          "ceiling_seconds": 1800.0,
+          "per_arm_seconds": {
+            "arm_a": 39.505648612976074,
+            "arm_b": 39.38811421394348,
+            "arm_c": 45.41734457015991
+          },
+          "grid_sizes": {
+            "arm_a": 3,
+            "arm_b": 3,
+            "arm_c": 6
+          },
+          "exceeded": false
+        },
+        "post_train_gates": {
+          "formula": "100 episodes * episode_plan_time['arm_c']",
+          "estimated_seconds": 15.13911485671997,
+          "ceiling_seconds": null,
+          "exceeded": false
+        },
+        "dev": {
+          "formula": "sum_{arm} (300 * 3 seeds * (1 + 2.5) + (regular_dt + short_goal) * 3 seeds) * episode_plan_time[arm]",
+          "estimated_seconds": 2540.060877799988,
+          "ceiling_seconds": 9000.0,
+          "per_arm_seconds": {
+            "arm_a": 987.6412153244019,
+            "arm_b": 984.702855348587,
+            "arm_c": 567.7168071269989
+          },
+          "exceeded": false
+        },
+        "final": {
+          "formula": "sum_{arm} 300 episodes * 3 seeds * episode_plan_time[arm]",
+          "estimated_seconds": 609.6146106719971,
+          "ceiling_seconds": 5400.0,
+          "per_arm_seconds": {
+            "arm_a": 237.03389167785645,
+            "arm_b": 236.3286852836609,
+            "arm_c": 136.25203371047974
+          },
+          "exceeded": false
+        },
+        "total": {
+          "estimated_seconds": 4497.843710725784,
+          "ceiling_seconds": 36000.0,
+          "exceeded": false
+        }
+      }
+    }
+  }
+}
+{
+  "status": "completed",
+  "mode": "generate-data",
+  "arm": "train",
+  "seed": null,
+  "result": {
+    "status": "completed",
+    "partition": "train",
+    "target_dir": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_unp0/artifacts/v9/s2/phase1/datasets/train",
+    "n_worlds": 10,
+    "episodes_per_world": 6,
+    "total_episodes": 60,
+    "non_bfs_ratio": 0.5985416666666666,
+    "world_redraw_count": 0,
+    "sha256sums_hash": "ec7afa840489c390a20995343d3bcaf134b01dac6befd235e26b6aa4e49267a0",
+    "elapsed_s": 3.2958,
+    "manifest_file": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_unp0/artifacts/v9/s2/phase1/datasets/train/manifest.json"
+  }
+}
+{
+  "status": "completed",
+  "mode": "generate-data",
+  "arm": "dev",
+  "seed": null,
+  "result": {
+    "status": "completed",
+    "partition": "dev",
+    "target_dir": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_unp0/artifacts/v9/s2/phase1/datasets/dev",
+    "n_worlds": 50,
+    "episodes_per_world": 6,
+    "total_episodes": 300,
+    "non_bfs_ratio": 0.5915972222222222,
+    "world_redraw_count": 0,
+    "sha256sums_hash": "1f244c889a41fe2f58a3c6407945f279f99c4aecfd46ecc1cfa71275a31964bc",
+    "elapsed_s": 28.1767,
+    "manifest_file": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_unp0/artifacts/v9/s2/phase1/datasets/dev/manifest.json"
+  }
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "failed",
+  "mode": "plan-select",
+  "stage": "execution",
+  "message": "plan-select missing seed 42 checkpoint for arm_a: checkpoint missing: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_unp0/artifacts/v9/s2/phase1/checkpoints/arm_a/seed42/best.ckpt"
+}
+__________________ test_production_e2e_blocks_colluding_c_arm __________________
+
+tmp_env = {'tmp_path': PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_product...7x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_col0/artifacts/locks/m0-worker.lock'), ...}
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a798650>
+
+>   ???
+
+tests/v9/experiments/test_s2_production_e2e.py:404: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1027: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_col0/artifacts/v9/s2/phase1/post_train_gates.json')
+mode = 'r', buffering = -1, encoding = 'utf-8', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_col0/artifacts/v9/s2/phase1/post_train_gates.json'
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py:1013: FileNotFoundError
+----------------------------- Captured stdout call -----------------------------
+{
+  "status": "failed",
+  "mode": "smoke",
+  "arm": null,
+  "seed": null,
+  "result": {
+    "mode": "smoke",
+    "passed": false,
+    "status": "failed",
+    "reasons": [
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05",
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05",
+      "Step 4 oracle feasibility circuit breaker triggered: success_rate=0.0000 < threshold=0.05"
+    ],
+    "elapsed_seconds": 12.863802909851074,
+    "seed_namespace": "smoke_seed_ns",
+    "param_checks": {
+      "arm_a": true,
+      "arm_b": true,
+      "arm_c": true
+    },
+    "timing_and_steps": {
+      "per_arm_step_times": {
+        "arm_a": 0.0001,
+        "arm_b": 0.0001,
+        "arm_c": 0.0001
+      },
+      "per_arm_steps": {
+        "arm_a": 20,
+        "arm_b": 20,
+        "arm_c": 20
+      },
+      "shared_train_steps": 20,
+      "budget_seconds": 1200.0,
+      "efficiency_factor": 0.8
+    },
+    "planning_timing": {
+      "arm_a": {
+        "median_seconds": 0.26499438285827637,
+        "episode_times": [
+          0.27402687072753906,
+          0.25596189498901367
+        ],
+        "n_episodes": 2
+      },
+      "arm_b": {
+        "median_seconds": 0.27526748180389404,
+        "episode_times": [
+          0.27839207649230957,
+          0.2721428871154785
+        ],
+        "n_episodes": 2
+      },
+      "arm_c": {
+        "median_seconds": 0.14954710006713867,
+        "episode_times": [
+          0.1533510684967041,
+          0.14574313163757324
+        ],
+        "n_episodes": 2
+      }
+    },
+    "step_3_short_train": {
+      "arms": {
+        "arm_a": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": null,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": null,
+          "final_sigreg": null,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.2836861379301261
+        },
+        "arm_b": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": true,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": 0.5726603763781781,
+          "final_sigreg": 0.5726603763781781,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.14184306896506305
+        },
+        "arm_c": {
+          "passed": true,
+          "all_losses_finite": true,
+          "loss_decreased": true,
+          "sigreg_stable": true,
+          "mean_first_window": 0.4232976539782267,
+          "mean_last_window": 0.33166106749604984,
+          "window_size": 12,
+          "initial_sigreg": 0.5726603763781781,
+          "final_sigreg": 0.5726603763781781,
+          "total_steps": 25,
+          "losses": [
+            0.47619047619047616,
+            0.4651162790697674,
+            0.45454545454545453,
+            0.4444444444444444,
+            0.4347826086956522,
+            0.425531914893617,
+            0.41666666666666663,
+            0.4081632653061224,
+            0.4,
+            0.3921568627450981,
+            0.3846153846153846,
+            0.3773584905660377,
+            0.37037037037037035,
+            0.36363636363636365,
+            0.35714285714285715,
+            0.3508771929824561,
+            0.3448275862068965,
+            0.3389830508474576,
+            0.3333333333333333,
+            0.32786885245901637,
+            0.3225806451612903,
+            0.31746031746031744,
+            0.3125,
+            0.3076923076923077,
+            0.303030303030303
+          ],
+          "reasons": [],
+          "action_sensitivity": 0.14184306896506305
+        }
+      },
+      "passed": true
+    },
+    "step_4_feasibility": {
+      "passed": false,
+      "fuse_triggered": true,
+      "success_rate": 0.0,
+      "total_episodes": 12,
+      "successful_episodes": 0,
+      "threshold": 0.05,
+      "episodes": [
+        {
+          "episode_index": 0,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 1,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 2,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 3,
+          "success": false,
+          "steps": 132,
+          "max_steps": 132,
+          "bfs_distance": 44,
+          "errors": []
+        },
+        {
+          "episode_index": 4,
+          "success": false,
+          "steps": 126,
+          "max_steps": 126,
+          "bfs_distance": 42,
+          "errors": []
+        },
+        {
+          "episode_index": 5,
+          "success": false,
+          "steps": 129,
+          "max_steps": 129,
+          "bfs_distance": 43,
+          "errors": []
+        },
+        {
+          "episode_index": 6,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 7,
+          "success": false,
+          "steps": 138,
+          "max_steps": 138,
+          "bfs_distance": 46,
+          "errors": []
+        },
+        {
+          "episode_index": 8,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 9,
+          "success": false,
+          "steps": 153,
+          "max_steps": 153,
+          "bfs_distance": 51,
+          "errors": []
+        },
+        {
+          "episode_index": 10,
+          "success": false,
+          "steps": 120,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 11,
+          "success": false,
+          "steps": 123,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        }
+      ],
+      "planner": "s2_planner"
+    },
+    "step_4_default_oracle_comparison": {
+      "passed": true,
+      "fuse_triggered": false,
+      "success_rate": 0.9166666666666666,
+      "total_episodes": 12,
+      "successful_episodes": 11,
+      "threshold": 0.05,
+      "episodes": [
+        {
+          "episode_index": 0,
+          "success": true,
+          "steps": 88,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 1,
+          "success": true,
+          "steps": 73,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 2,
+          "success": true,
+          "steps": 57,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 3,
+          "success": true,
+          "steps": 79,
+          "max_steps": 132,
+          "bfs_distance": 44,
+          "errors": []
+        },
+        {
+          "episode_index": 4,
+          "success": true,
+          "steps": 93,
+          "max_steps": 126,
+          "bfs_distance": 42,
+          "errors": []
+        },
+        {
+          "episode_index": 5,
+          "success": true,
+          "steps": 89,
+          "max_steps": 129,
+          "bfs_distance": 43,
+          "errors": []
+        },
+        {
+          "episode_index": 6,
+          "success": true,
+          "steps": 91,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 7,
+          "success": true,
+          "steps": 93,
+          "max_steps": 138,
+          "bfs_distance": 46,
+          "errors": []
+        },
+        {
+          "episode_index": 8,
+          "success": false,
+          "steps": 124,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        },
+        {
+          "episode_index": 9,
+          "success": true,
+          "steps": 101,
+          "max_steps": 153,
+          "bfs_distance": 51,
+          "errors": []
+        },
+        {
+          "episode_index": 10,
+          "success": true,
+          "steps": 61,
+          "max_steps": 120,
+          "bfs_distance": 40,
+          "errors": []
+        },
+        {
+          "episode_index": 11,
+          "success": true,
+          "steps": 97,
+          "max_steps": 123,
+          "bfs_distance": 41,
+          "errors": []
+        }
+      ]
+    },
+    "budget_analysis": {
+      "budget_10h_ceiling_seconds": 36000.0,
+      "estimated_train_total_seconds": 0.018000000000000002,
+      "total_estimated_seconds": 4557.187805717468,
+      "sufficient": true,
+      "passed": true,
+      "reasons": [],
+      "breakdown": {
+        "smoke": {
+          "formula": "BUDGET_SMOKE_MAX_SECONDS",
+          "estimated_seconds": 1200.0,
+          "ceiling_seconds": 1200.0,
+          "exceeded": false
+        },
+        "data": {
+          "formula": "60 episodes * 0.145 s/ep",
+          "estimated_seconds": 8.7,
+          "ceiling_seconds": 3600.0,
+          "exceeded": false
+        },
+        "train": {
+          "formula": "3 seeds * sum_{arm in (A,B,C)} min(1200, shared_train_steps * step_time[arm])",
+          "estimated_seconds": 0.018000000000000002,
+          "ceiling_seconds": 10800.0,
+          "per_arm_seconds": {
+            "arm_a": 0.006,
+            "arm_b": 0.006,
+            "arm_c": 0.006
+          },
+          "shared_train_steps": 20,
+          "exceeded": false
+        },
+        "plan_select": {
+          "formula": "sum_{arm} (grid_size[arm] * 50 * episode_plan_time[arm])",
+          "estimated_seconds": 125.90340971946716,
+          "ceiling_seconds": 1800.0,
+          "per_arm_seconds": {
+            "arm_a": 39.749157428741455,
+            "arm_b": 41.290122270584106,
+            "arm_c": 44.8641300201416
+          },
+          "grid_sizes": {
+            "arm_a": 3,
+            "arm_b": 3,
+            "arm_c": 6
+          },
+          "exceeded": false
+        },
+        "post_train_gates": {
+          "formula": "100 episodes * episode_plan_time['arm_c']",
+          "estimated_seconds": 14.954710006713867,
+          "ceiling_seconds": null,
+          "exceeded": false
+        },
+        "dev": {
+          "formula": "sum_{arm} (300 * 3 seeds * (1 + 2.5) + (regular_dt + short_goal) * 3 seeds) * episode_plan_time[arm]",
+          "estimated_seconds": 2586.783617734909,
+          "ceiling_seconds": 9000.0,
+          "per_arm_seconds": {
+            "arm_a": 993.7289357185364,
+            "arm_b": 1032.2530567646027,
+            "arm_c": 560.80162525177
+          },
+          "exceeded": false
+        },
+        "final": {
+          "formula": "sum_{arm} 300 episodes * 3 seeds * episode_plan_time[arm]",
+          "estimated_seconds": 620.8280682563782,
+          "ceiling_seconds": 5400.0,
+          "per_arm_seconds": {
+            "arm_a": 238.49494457244873,
+            "arm_b": 247.74073362350464,
+            "arm_c": 134.5923900604248
+          },
+          "exceeded": false
+        },
+        "total": {
+          "estimated_seconds": 4557.187805717468,
+          "ceiling_seconds": 36000.0,
+          "exceeded": false
+        }
+      }
+    }
+  }
+}
+{
+  "status": "completed",
+  "mode": "generate-data",
+  "arm": "train",
+  "seed": null,
+  "result": {
+    "status": "completed",
+    "partition": "train",
+    "target_dir": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_col0/artifacts/v9/s2/phase1/datasets/train",
+    "n_worlds": 10,
+    "episodes_per_world": 6,
+    "total_episodes": 60,
+    "non_bfs_ratio": 0.5985416666666666,
+    "world_redraw_count": 0,
+    "sha256sums_hash": "ec7afa840489c390a20995343d3bcaf134b01dac6befd235e26b6aa4e49267a0",
+    "elapsed_s": 2.2298,
+    "manifest_file": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_col0/artifacts/v9/s2/phase1/datasets/train/manifest.json"
+  }
+}
+{
+  "status": "completed",
+  "mode": "generate-data",
+  "arm": "dev",
+  "seed": null,
+  "result": {
+    "status": "completed",
+    "partition": "dev",
+    "target_dir": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_col0/artifacts/v9/s2/phase1/datasets/dev",
+    "n_worlds": 50,
+    "episodes_per_world": 6,
+    "total_episodes": 300,
+    "non_bfs_ratio": 0.5915972222222222,
+    "world_redraw_count": 0,
+    "sha256sums_hash": "1f244c889a41fe2f58a3c6407945f279f99c4aecfd46ecc1cfa71275a31964bc",
+    "elapsed_s": 23.9685,
+    "manifest_file": "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_col0/artifacts/v9/s2/phase1/datasets/dev/manifest.json"
+  }
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "refused",
+  "mode": "train",
+  "stage": "smoke_steps_missing",
+  "message": "Missing or non-passed smoke run in ledger providing shared_train_steps"
+}
+{
+  "status": "failed",
+  "mode": "plan-select",
+  "stage": "execution",
+  "message": "plan-select missing seed 42 checkpoint for arm_a: checkpoint missing: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_production_e2e_blocks_col0/artifacts/v9/s2/phase1/checkpoints/arm_a/seed42/best.ckpt"
+}
+______________________ test_commands_dispatch_to_runners _______________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_commands_dispatch_to_runn0')
+
+    def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
+        """Verify that s2_phase1_command dispatches to each runner correctly."""
+        repo_root = _find_repo_root()
+        output_root = tmp_path / "output"
+        output_root.mkdir(exist_ok=True)
+        (output_root / "datasets" / "dev").mkdir(parents=True, exist_ok=True)
+        (output_root / "datasets" / "sealed_final").mkdir(parents=True, exist_ok=True)
+        (output_root / "dev_ledger.json").write_text(json.dumps({"passed": True}))
+        (output_root / "plan_config.json").write_text(json.dumps({}))
+        log_path = tmp_path / "RESEARCH_LOG.md"
+        # Run modes require a frozen prereg + approval bound to its document SHA (commands Preflight 0, 11-07).
+        from ainerzero.v9.experiments.s2 import prereg as s2_prereg
+    
+        frozen_sha = freeze.freeze(s2_prereg.build_draft(repo_root=repo_root), out_dir=output_root, repo_root=repo_root)
+        _make_dummy_research_log(log_path, frozen_sha)
+    
+        # 1. generate-data
+        with patch("ainerzero.v9.experiments.s2.data_runner.run_generate_data") as mock_data:
+            def _data_side_effect(ledger, run_id, **kwargs):
+                ledger.complete_run(run_id)
+                return {"status": "completed", "n_episodes": 10}
+            mock_data.side_effect = _data_side_effect
+    
+            args = argparse.Namespace(
+                mode="generate-data",
+                partition="train",
+                seed=42,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=tmp_path / "control_gen.sqlite3",
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+            )
+            res, code = commands.s2_phase1_command(args)
+            assert code == 0
+            assert mock_data.called
+            assert mock_data.call_args.kwargs["partition"] == "train"
+    
+        # 2. train
+        train_ledger_path = tmp_path / "control_train.sqlite3"
+        led = worker.S2Ledger(train_ledger_path)
+        rid = led.open_run(
+            mode="smoke",
+            arm=None,
+            seed=None,
+            cell_wall_budget=1200.0,
+            snapshot_extra={"passed": True, "shared_train_steps": 200, "status": "completed"},
+        )
+        led.begin_run(rid, state="training")
+        led.complete_run(rid, metrics={"passed": True, "shared_train_steps": 200, "status": "completed"})
+        led.close()
+    
+        with patch("ainerzero.v9.experiments.s2.train_runner.run_train_cell") as mock_train:
+            def _train_side_effect(ledger, run_id, **kwargs):
+                ledger.complete_run(run_id)
+                return {"status": "completed", "steps": 16}
+            mock_train.side_effect = _train_side_effect
+    
+            args = argparse.Namespace(
+                mode="train",
+                arm="arm_a",
+                seed=43,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=train_ledger_path,
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+            )
+            res, code = commands.s2_phase1_command(args)
+            assert code == 0
+            assert mock_train.called
+            assert mock_train.call_args.kwargs["arm_id"] == "arm_a"
+            assert mock_train.call_args.kwargs["seed"] == 43
+    
+        # 3. plan-select
+        with patch("ainerzero.v9.experiments.s2.eval_runner.run_plan_select") as mock_ps, \
+             patch("ainerzero.v9.experiments.s2.eval_runner.run_post_train_gates", create=True) as mock_gates:
+            def _ps_side_effect(**kwargs):
+                (output_root / "plan_config.json").write_text("{}")
+                return {"status": "completed"}
+            mock_ps.side_effect = _ps_side_effect
+            mock_gates.return_value = {"passed": True}
+    
+            fake_model = MagicMock()
+            args = argparse.Namespace(
+                mode="plan-select",
+                arm="arm_a",
+                seed=None,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=tmp_path / "control_ps.sqlite3",
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+                model_by_arm={"arm_a": fake_model, "arm_b": fake_model, "arm_c": fake_model},
+                train_episode_specs=[{"partition": "train", "id": 1}],
+            )
+            res, code = commands.s2_phase1_command(args)
+>           assert code == 0 or res.get("result", {}).get("plan_select", {}).get("status") == "completed", f"Plan select failed: {res}"
+E           AssertionError: Plan select failed: {'status': 'failed', 'mode': 'plan-select', 'stage': 'execution', 'message': 'plan-select missing checkpoint for arm_a/42: checkpoint missing: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_commands_dispatch_to_runn0/output/checkpoints/arm_a/seed42/best.ckpt'}
+E           assert (1 == 0 or None == 'completed')
+E            +  where None = <built-in method get of dict object at 0x109903e80>('status')
+E            +    where <built-in method get of dict object at 0x109903e80> = {}.get
+E            +      where {} = <built-in method get of dict object at 0x10df60180>('plan_select', {})
+E            +        where <built-in method get of dict object at 0x10df60180> = {}.get
+E            +          where {} = <built-in method get of dict object at 0x10df60880>('result', {})
+E            +            where <built-in method get of dict object at 0x10df60880> = {'status': 'failed', 'mode': 'plan-select', 'stage': 'execution', 'message': 'plan-select missing checkpoint for arm_a...zzyccqx3br0000gn/T/pytest-of-mac/pytest-486/test_commands_dispatch_to_runn0/output/checkpoints/arm_a/seed42/best.ckpt'}.get
+
+tests/v9/experiments/test_s2_wiring.py:162: AssertionError
+____________________________ test_cpu_only_imports _____________________________
+
+    def test_cpu_only_imports():
+        forbidden = {"mlx", "torch", "onnxruntime", "tensorflow", "jax"}
+>       assert not any(name.split(".")[0] in forbidden for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_cpu_only_imports.<locals>.<genexpr> at 0x109f63d80>)
+
+tests/v9/geometry/test_canonical.py:116: AssertionError
+__________________________ test_imports_are_cpu_only ___________________________
+
+    def test_imports_are_cpu_only():
+>       assert not any(name.split('.')[0] in {'mlx', 'torch', 'onnxruntime', 'tensorflow'} for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_imports_are_cpu_only.<locals>.<genexpr> at 0x117358520>)
+
+tests/v9/geometry/test_geometry.py:260: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_production_e2e.py::test_production_e2e_pipeline
+FAILED tests/v9/experiments/test_s2_production_e2e.py::test_production_e2e_blocks_unplannable_arm
+FAILED tests/v9/experiments/test_s2_production_e2e.py::test_production_e2e_blocks_colluding_c_arm
+FAILED tests/v9/experiments/test_s2_wiring.py::test_commands_dispatch_to_runners
+FAILED tests/v9/geometry/test_canonical.py::test_cpu_only_imports - assert no...
+FAILED tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only - assert...
+6 failed, 3713 passed, 7 deselected in 640.97s (0:10:40)
+[relay exec] 墙钟监督证据：{"wall_s": null, "cap_s": null, "pgid": 34825, "timeout": false, "elapsed_s": 642.031, "kind": "exited", "confirmed_empty": true, "members_left": [], "confirmed_by": "ps", "attempts": [{"method": "ps", "outcome": "empty", "reason": "enumerated"}], "leader_returncode": 1, "confirmed_at_s": 642.0299}
+[relay exec] 归档耗时：{"archive_s": 0.008}
