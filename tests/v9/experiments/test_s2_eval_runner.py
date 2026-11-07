@@ -557,3 +557,22 @@ def test_baseline_rationality_gate_out_of_range(tmp_path: Path) -> None:
     assert res_high["passed"] is False
     assert any("Baseline rationality" in r for r in res_high["reasons"])
 
+
+
+def test_missing_frozen_plan_choice_is_refused_not_defaulted(tmp_path: Path) -> None:
+    """No default plan configuration: a frozen config without an arm's choice must raise (W3 r3)."""
+    with pytest.raises(ValueError, match="no plan_choice"):
+        er._require_plan_choice({}, "arm_a")
+    with pytest.raises(ValueError, match="no plan_choice"):
+        er._require_plan_choice({"plan_choice": {}}, "arm_b")
+    assert er._require_plan_choice({"plan_choice": {"H": 16}}, "arm_a") == {"H": 16}
+
+
+def test_c_negative_control_refuses_without_c_plan_choice(tmp_path: Path) -> None:
+    ledger = tmp_path / "dev_ledger.json"
+    specs = _train_specs(4)
+    model = {"A": _ResponsiveFlat(), "C": _ResponsiveCArm()}
+    with pytest.raises(ValueError, match="plan-select choice"):
+        er.run_post_train_gates(
+            model, specs, ledger_path=ledger, plan_config={"arms": {"A": {"plan_choice": {"H": 32}}}}
+        )

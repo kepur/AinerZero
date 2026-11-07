@@ -193,6 +193,9 @@ def build_draft(
             "probe_eval_steps": list(spec.PROBE_EVAL_STEPS),
             "smoke_circuit_breaker_threshold": spec.SMOKE_CIRCUIT_BREAKER_THRESHOLD,
             "baseline_success_plausible_range": list(spec.BASELINE_SUCCESS_PLAUSIBLE_RANGE),
+            "action_sensitivity_floor": spec.ACTION_SENSITIVITY_FLOOR,
+            "subgoal_drop_floor": spec.SUBGOAL_DROP_FLOOR,
+            "max_dev_evals": spec.MAX_DEV_EVALS,
         },
         "training": {
             "optimizer": spec.OPTIMIZER_NAME,
@@ -339,6 +342,17 @@ def validate(document: Mapping[str, Any]) -> None:
     allowed_costs = {spec.PLAN_COST_TRAJECTORY_SUM, spec.PLAN_COST_TERMINAL}
     if not set(planning.get("cost_mode", {}).values()) <= allowed_costs:
         raise SpecValidationError(f"cost_mode values must be in {sorted(allowed_costs)}")
+
+    # Post-train gate thresholds and dev cap (appendix B, §7)
+    gates_doc = document.get("gates") or {}
+    for key, expected in (
+        ("action_sensitivity_floor", spec.ACTION_SENSITIVITY_FLOOR),
+        ("subgoal_drop_floor", spec.SUBGOAL_DROP_FLOOR),
+        ("max_dev_evals", spec.MAX_DEV_EVALS),
+        ("baseline_success_plausible_range", list(spec.BASELINE_SUCCESS_PLAUSIBLE_RANGE)),
+    ):
+        if gates_doc.get(key) != expected:
+            raise SpecValidationError(f"Gates {key} mismatch: expected {expected!r}, got {gates_doc.get(key)!r}")
 
     # Probe validation (DESIGN-r2 appendix D5.1)
     probe_doc = document.get("probe")

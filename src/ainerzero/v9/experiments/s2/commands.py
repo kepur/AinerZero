@@ -473,6 +473,9 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
                 plan_config=plan_res,
                 dataset_dir=train_dir,
                 n_fwd=int(spec.N_FWD),
+                sensitivity_threshold=float(spec.ACTION_SENSITIVITY_FLOOR),
+                subgoal_drop_threshold=float(spec.SUBGOAL_DROP_FLOOR),
+                baseline_success_range=tuple(spec.BASELINE_SUCCESS_PLAUSIBLE_RANGE),
             )
 
             return {

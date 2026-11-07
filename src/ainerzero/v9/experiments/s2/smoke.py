@@ -595,6 +595,16 @@ def generate_smoke_partition(
     return smoke_dir, batches, layout_specs
 
 
+def mlx_sigreg_alignment(Z_test: np.ndarray) -> float:
+    """MLX boundary of the smoke native self-check: SIGReg computed with MLX (lazy MLX import)."""
+    import mlx.core as mx
+
+    from ainerzero.v9.experiments.s2 import arms_mlx
+
+    val = arms_mlx.compute_sigreg_mlx(mx.array(Z_test))
+    return float(val.item() if hasattr(val, "item") else val)
+
+
 def measure_real_smoke(
     output_root: Path,
     repo_root: Path | None = None,
@@ -616,8 +626,7 @@ def measure_real_smoke(
     """
     reasons: list[str] = []
     try:
-        import mlx.core as mx
-        from ainerzero.v9.experiments.s2 import adapters_mlx, arms_mlx, core_math
+        from ainerzero.v9.experiments.s2 import adapters_mlx, core_math
     except Exception as e:
         reasons.append(f"Real smoke measurement failed to import MLX dependencies: {e}")
         return None, None, None, None, None, reasons
@@ -657,8 +666,7 @@ def measure_real_smoke(
         np_rng = np.random.RandomState(42)
         Z_test = np_rng.randn(32, 16).astype(np.float32)
         sigreg_np = core_math.compute_sigreg_numpy(Z_test)
-        sigreg_val = arms_mlx.compute_sigreg_mlx(mx.array(Z_test))
-        sigreg_mlx = float(sigreg_val.item() if hasattr(sigreg_val, "item") else sigreg_val)
+        sigreg_mlx = mlx_sigreg_alignment(Z_test)
         if abs(sigreg_np - sigreg_mlx) > 1e-4:
             reasons.append(f"SIGReg MLX vs NumPy alignment mismatch: {sigreg_np:.6f} vs {sigreg_mlx:.6f}")
 

@@ -67,11 +67,11 @@ HIER_BUDGET_RATIOS: tuple[float, ...] = tuple(spec_mod.HIERARCHICAL_BUDGET_RATIO
 
 N_FWD_DEFAULT: int = int(spec_mod.N_FWD)
 N_FWD_CURVE: tuple[int, ...] = tuple(spec_mod.N_FWD_DEV_LEVELS)
-MAX_DEV_EVALS: int = 2
+MAX_DEV_EVALS: int = int(spec_mod.MAX_DEV_EVALS)
 DELTA_PRED: float = 1.0
 SUCCESS_DIFF_GATE: float = 0.10
-ACTION_SENSITIVITY_FLOOR: float = 0.05
-SUBGOAL_DROP_FLOOR: float = 0.10
+ACTION_SENSITIVITY_FLOOR: float = float(spec_mod.ACTION_SENSITIVITY_FLOOR)
+SUBGOAL_DROP_FLOOR: float = float(spec_mod.SUBGOAL_DROP_FLOOR)
 
 FINAL_APPROVAL_PREFIX = "APPROVED s2-phase1 final-eval document_sha256="
 PREREG_APPROVAL_PREFIX = "APPROVED s2-phase1 prereg document_sha256="
@@ -377,7 +377,7 @@ def run_post_train_gates(
     n_actions: int = 4,
     n_fwd: int = N_FWD_DEFAULT,
     plan_config: Mapping[str, Any] | None = None,
-    baseline_success_range: tuple[float, float] = (0.10, 0.80),
+    baseline_success_range: tuple[float, float] = tuple(spec_mod.BASELINE_SUCCESS_PLAUSIBLE_RANGE),
     dataset_dir: str | Path | None = None,
     **extra_kwargs: Any,
 ) -> dict[str, Any]:
@@ -709,7 +709,7 @@ def _require_dev_capacity(ledger_path: str | Path) -> dict[str, Any]:
     """
     ledger = load_dev_ledger(ledger_path)
     count = int(ledger.get("dev_eval_count", 0))
-    if count >= MAX_DEV_EVALS:
+    if count >= int(spec_mod.MAX_DEV_EVALS):
         raise DevEvalCapExceeded(
             f"dev eval refused: already used {count} times (cap={MAX_DEV_EVALS})"
         )

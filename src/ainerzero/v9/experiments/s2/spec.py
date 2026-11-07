@@ -305,3 +305,8 @@ PROBE_HORIZON_MAX: int = 60
 
 # --- W6b：§5 第 2 道门的探针步数 ---
 PROBE_GATE_STEP: int = 30
+
+# --- 附录 B / §7：训练后门与 dev 次数的登记阈值（原只写在 eval_runner 字面量中，2026-11-07 收入 spec）---
+ACTION_SENSITIVITY_FLOOR: float = 0.05
+SUBGOAL_DROP_FLOOR: float = 0.10
+MAX_DEV_EVALS: int = 2
