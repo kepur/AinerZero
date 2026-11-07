@@ -1,0 +1,180 @@
+diff --git a/src/ainerzero/v9/experiments/s2/prereg.py b/src/ainerzero/v9/experiments/s2/prereg.py
+index 9e05d22..bc2fc23 100644
+--- a/src/ainerzero/v9/experiments/s2/prereg.py
++++ b/src/ainerzero/v9/experiments/s2/prereg.py
+@@ -67,6 +67,41 @@ def collect_source_digests(repo_root: Path | str | None = None) -> dict[str, str
+     return digests
+ 
+ 
++
++def _r26_planning_fields() -> dict[str, Any]:
++    """Registered planning fields of appendix D3.1 / E (r2.6); every value comes from spec."""
++    return {
++        "replan_every_obs_steps": spec.PLAN_REPLAN_EVERY_OBS_STEPS,
++        "cem_n_iters": spec.CEM_N_ITERS,
++        "cem_elite_frac": spec.CEM_ELITE_FRAC,
++        "cem_encode_reserve": spec.CEM_ENCODE_RESERVE,
++        "cem_min_pop": spec.CEM_MIN_POP,
++        "smoke_plan_choice": {k: dict(v) for k, v in spec.SMOKE_PLAN_CHOICE.items()},
++        "macro_dxy_scale": spec.MACRO_DXY_SCALE,
++        "future_dt_l1": spec.PLAN_FUTURE_DT_L1,
++        "future_dt_l2": spec.PLAN_FUTURE_DT_L2,
++        "cost_mode": {
++            "flat": spec.PLAN_COST_TRAJECTORY_SUM,
++            "upper": spec.PLAN_COST_TRAJECTORY_SUM,
++            "lower": spec.PLAN_COST_TERMINAL,
++        },
++        "goal_feature": {"last_action": spec.GOAL_FEATURE_LAST_ACTION, "dt": spec.GOAL_FEATURE_DT},
++    }
++
++
++def _probe_fields() -> dict[str, Any]:
++    """Registered probe protocol of appendix D5.1; every value comes from spec."""
++    return {
++        "ridge_lambda": spec.PROBE_RIDGE_LAMBDA,
++        "eval_steps": list(spec.PROBE_EVAL_STEPS),
++        "fit_samples": spec.PROBE_FIT_SAMPLES,
++        "seed_namespace": spec.PROBE_SEED_NAMESPACE,
++        "start_points": list(spec.PROBE_START_POINTS),
++        "horizon_max": spec.PROBE_HORIZON_MAX,
++        "gate_step": spec.PROBE_GATE_STEP,
++        "delta_pred": spec.DELTA_PRED,
++    }
++
+ def build_draft(
+     *,
+     repo_root: Path | str | None = None,
+@@ -141,12 +176,14 @@ def build_draft(
+             "n_fwd": spec.N_FWD,
+             "n_fwd_dev_levels": list(spec.N_FWD_DEV_LEVELS),
+             "s2_macro_steps": spec.S2_MACRO_STEPS,
+-            "replan_m_steps": spec.REPLAN_M_STEPS,
++            # r2.6 (appendix E) supersedes replan_m_steps
++            **_r26_planning_fields(),
+             "flat_h_candidates": list(spec.FLAT_H_CANDIDATES),
+             "hierarchical_horizon_candidates": list(spec.HIERARCHICAL_HORIZON_CANDIDATES),
+             "hierarchical_budget_ratio_candidates": list(spec.HIERARCHICAL_BUDGET_RATIO_CANDIDATES),
+             "hyperparam_selection_max_episodes": spec.HYPERPARAM_SELECTION_MAX_EPISODES,
+         },
++        "probe": _probe_fields(),
+         "gates": {
+             "success_rate_diff_min": spec.SUCCESS_RATE_DIFF_MIN,
+             "bootstrap_resamples": spec.BOOTSTRAP_RESAMPLES,
+@@ -235,6 +272,7 @@ def validate(document: Mapping[str, Any]) -> None:
+         "evaluation",
+         "planning",
+         "gates",
++        "probe",
+         "training",
+         "budget",
+         "stopping_rules",
+@@ -291,10 +329,24 @@ def validate(document: Mapping[str, Any]) -> None:
+         raise SpecValidationError(
+             f"Planning s2 mismatch: expected {spec.S2_MACRO_STEPS}, got {planning.get('s2_macro_steps')}"
+         )
+-    if planning.get("replan_m_steps") != spec.REPLAN_M_STEPS:
+-        raise SpecValidationError(
+-            f"Planning m mismatch: expected {spec.REPLAN_M_STEPS}, got {planning.get('replan_m_steps')}"
+-        )
++    if "replan_m_steps" in planning:
++        raise SpecValidationError("replan_m_steps is superseded by replan_every_obs_steps (r2.6)")
++    if spec.PLAN_REPLAN_EVERY_OBS_STEPS != 1 or planning.get("replan_every_obs_steps") != 1:
++        raise SpecValidationError("r2.6 requires replanning every observation step (m = 1)")
++    for key, expected in _r26_planning_fields().items():
++        if planning.get(key) != expected:
++            raise SpecValidationError(f"Planning {key} mismatch: expected {expected!r}, got {planning.get(key)!r}")
++    allowed_costs = {spec.PLAN_COST_TRAJECTORY_SUM, spec.PLAN_COST_TERMINAL}
++    if not set(planning.get("cost_mode", {}).values()) <= allowed_costs:
++        raise SpecValidationError(f"cost_mode values must be in {sorted(allowed_costs)}")
++
++    # Probe validation (DESIGN-r2 appendix D5.1)
++    probe_doc = document.get("probe")
++    if not isinstance(probe_doc, Mapping):
++        raise SpecValidationError("Missing or invalid probe section")
++    for key, expected in _probe_fields().items():
++        if probe_doc.get(key) != expected:
++            raise SpecValidationError(f"Probe {key} mismatch: expected {expected!r}, got {probe_doc.get(key)!r}")
+ 
+     # Gates validation
+     gates = document.get("gates")
+diff --git a/tests/v9/experiments/test_s2_prereg.py b/tests/v9/experiments/test_s2_prereg.py
+index f7aeb6f..6f79c38 100644
+--- a/tests/v9/experiments/test_s2_prereg.py
++++ b/tests/v9/experiments/test_s2_prereg.py
+@@ -198,3 +198,76 @@ def test_trial_freeze_determinism_and_verification(tmp_path: Path) -> None:
+     assert verif1["document_sha256"] == sha1
+     assert verif2["document_sha256"] == sha2
+ 
++
++
++# --- W7 (P175): r2.6 / D3.1 / D5.1 registered fields -------------------------------------
++
++import copy as _copy
++
++import pytest as _pytest
++
++from ainerzero.v9.experiments.s2 import freeze as _freeze
++from ainerzero.v9.experiments.s2 import prereg as _prereg
++from ainerzero.v9.experiments.s2 import spec as _spec
++
++
++def _w7_draft():
++    from pathlib import Path
++
++    return _prereg.build_draft(repo_root=Path(__file__).resolve().parents[3])
++
++
++def test_w7_r26_and_probe_fields_match_spec():
++    d = _w7_draft()
++    pl = d["planning"]
++    assert "replan_m_steps" not in pl
++    assert pl["replan_every_obs_steps"] == _spec.PLAN_REPLAN_EVERY_OBS_STEPS == 1
++    assert pl["cem_n_iters"] == _spec.CEM_N_ITERS and pl["cem_elite_frac"] == _spec.CEM_ELITE_FRAC
++    assert pl["future_dt_l1"] == _spec.PLAN_FUTURE_DT_L1 and pl["future_dt_l2"] == _spec.PLAN_FUTURE_DT_L2
++    assert pl["cost_mode"] == {"flat": "trajectory_sum", "upper": "trajectory_sum", "lower": "terminal"}
++    pr = d["probe"]
++    assert pr["gate_step"] == _spec.PROBE_GATE_STEP and pr["delta_pred"] == _spec.DELTA_PRED
++    assert pr["start_points"] == list(_spec.PROBE_START_POINTS)
++    _prereg.validate(d)
++
++
++@_pytest.mark.parametrize(
++    "path,value",
++    [
++        (("planning", "replan_every_obs_steps"), 4),
++        (("planning", "future_dt_l1"), 1.7),
++        (("planning", "cem_n_iters"), 3),
++        (("probe", "delta_pred"), 2.0),
++        (("probe", "gate_step"), 1),
++    ],
++)
++def test_w7_validate_rejects_tampering(path, value):
++    d = _copy.deepcopy(_w7_draft())
++    d[path[0]][path[1]] = value
++    with _pytest.raises(_prereg.SpecValidationError):
++        _prereg.validate(d)
++
++
++def test_w7_validate_rejects_old_m_key_terminal_flat_cost_and_missing_probe():
++    d = _copy.deepcopy(_w7_draft())
++    d["planning"]["replan_m_steps"] = 4
++    with _pytest.raises(_prereg.SpecValidationError):
++        _prereg.validate(d)
++    d = _copy.deepcopy(_w7_draft())
++    d["planning"]["cost_mode"]["flat"] = "terminal"
++    with _pytest.raises(_prereg.SpecValidationError):
++        _prereg.validate(d)
++    d = _copy.deepcopy(_w7_draft())
++    del d["probe"]
++    with _pytest.raises(_prereg.SpecValidationError):
++        _prereg.validate(d)
++
++
++def test_w7_trial_freeze_is_deterministic(tmp_path):
++    from pathlib import Path
++
++    repo = Path(__file__).resolve().parents[3]
++    d = _w7_draft()  # one draft: created_utc has second resolution
++    a = _freeze.freeze(_copy.deepcopy(d), out_dir=tmp_path / "a", repo_root=repo)
++    b = _freeze.freeze(_copy.deepcopy(d), out_dir=tmp_path / "b", repo_root=repo)
++    assert a == b

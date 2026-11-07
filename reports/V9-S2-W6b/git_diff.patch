@@ -1,0 +1,288 @@
+diff --git a/src/ainerzero/v9/experiments/s2/probe_eval.py b/src/ainerzero/v9/experiments/s2/probe_eval.py
+index 2074a6f..7cd9481 100644
+--- a/src/ainerzero/v9/experiments/s2/probe_eval.py
++++ b/src/ainerzero/v9/experiments/s2/probe_eval.py
+@@ -48,6 +48,33 @@ def _canonical_arm_id(arm: str) -> str:
+     return norm
+ 
+ 
++def _world_index(w: Any) -> int:
++    """Strict world id parse: int, digit string or ``world_NNNN``; anything else raises."""
++    if isinstance(w, (int, np.integer)):
++        return int(w)
++    text = str(w)
++    if text.startswith("world_"):
++        text = text.split("_", 1)[1]
++    if not text.isdigit():
++        raise ValueError(f"unparseable world id {w!r}")
++    return int(text)
++
++
++def _episode_files_by_world(root: Path) -> list[tuple[int, Path]]:
++    """Registered layout only: ``root/world_NNNN/episode_*.json``; anything else raises."""
++    world_dirs = sorted(d for d in root.iterdir() if d.is_dir() and d.name.startswith("world_"))
++    if not world_dirs:
++        raise FileNotFoundError(f"no world_NNNN directories under {root}")
++    out: list[tuple[int, Path]] = []
++    for w_dir in world_dirs:
++        w_idx = _world_index(w_dir.name)
++        eps = sorted(w_dir.glob("episode_*.json"))
++        if not eps:
++            raise FileNotFoundError(f"no episode_*.json in {w_dir}")
++        out.extend((w_idx, ep) for ep in eps)
++    return out
++
++
+ def fit_probe(
+     model: Any,
+     train_root: str | Path,
+@@ -78,64 +105,20 @@ def fit_probe(
+     if not root.exists():
+         raise FileNotFoundError(f"train_root {root} does not exist")
+ 
+-    # Determine holdout world identifiers
+-    holdout_set: set[Any] = set()
++    # Holdout worlds: the train_runner authority (file required, tamper-checked).
++    from ainerzero.v9.experiments.s2.train_runner import get_holdout_world_indices
++
++    holdout_idx = {int(w) for w in get_holdout_world_indices(root)}
+     if holdout_worlds is not None:
+-        for w in holdout_worlds:
+-            holdout_set.add(w)
+-            if isinstance(w, int):
+-                holdout_set.add(f"world_{w:04d}")
+-                holdout_set.add(str(w))
+-            elif isinstance(w, str):
+-                if w.startswith("world_"):
+-                    try:
+-                        holdout_set.add(int(w.split("_")[1]))
+-                    except (IndexError, ValueError):
+-                        pass
+-                else:
+-                    try:
+-                        holdout_set.add(int(w))
+-                    except ValueError:
+-                        pass
+-    else:
+-        holdout_file = root / "HOLDOUT_WORLDS.json"
+-        if holdout_file.exists():
+-            payload = json.loads(holdout_file.read_text(encoding="utf-8"))
+-            for w in payload.get("holdout_worlds", []):
+-                holdout_set.add(w)
+-                if isinstance(w, int):
+-                    holdout_set.add(f"world_{w:04d}")
+-                    holdout_set.add(str(w))
+-
+-    # Discover candidate world directories or episode files
+-    world_dirs = sorted([d for d in root.iterdir() if d.is_dir() and d.name.startswith("world_")])
+-    candidate_files: list[Path] = []
+-
+-    if world_dirs:
+-        for w_dir in world_dirs:
+-            w_name = w_dir.name
+-            w_idx: int | None = None
+-            try:
+-                w_idx = int(w_name.split("_")[1])
+-            except (IndexError, ValueError):
+-                pass
+-
+-            if w_name in holdout_set or (w_idx is not None and w_idx in holdout_set):
+-                continue
+-
+-            ep_files = sorted(w_dir.glob("episode_*.json"))
+-            if not ep_files:
+-                ep_files = sorted(w_dir.glob("*.json"))
+-                # Filter out metadata files
+-                ep_files = [f for f in ep_files if f.name not in ("layout.json", "goal_episode_specs.json")]
+-            candidate_files.extend(ep_files)
+-    else:
+-        # Direct episode files in root
+-        ep_files = sorted(root.glob("episode_*.json"))
+-        if not ep_files:
+-            ep_files = [f for f in sorted(root.glob("*.json")) if f.name not in ("manifest.json", "HOLDOUT_WORLDS.json")]
+-        candidate_files.extend(ep_files)
++        given = {_world_index(w) for w in holdout_worlds}
++        if given != holdout_idx:
++            raise ValueError(
++                f"holdout_worlds argument {sorted(given)} != HOLDOUT_WORLDS.json {sorted(holdout_idx)}"
++            )
+ 
++    candidate_files: list[Path] = [
++        ep for w_idx, ep in _episode_files_by_world(root) if w_idx not in holdout_idx
++    ]
+     if not candidate_files:
+         raise FileNotFoundError(f"No non-holdout episode files found in {root}")
+ 
+@@ -226,28 +209,7 @@ def probe_errors(
+     if max_step > max_horizon:
+         raise ValueError(f"max step horizon {max_step} exceeds max_horizon {max_horizon}")
+ 
+-    # Discover world dirs or flat episode files
+-    world_dirs = sorted([d for d in root.iterdir() if d.is_dir() and d.name.startswith("world_")])
+-    world_episodes: list[tuple[int, Path]] = []
+-
+-    if world_dirs:
+-        for w_dir in world_dirs:
+-            w_idx = 0
+-            try:
+-                w_idx = int(w_dir.name.split("_")[1])
+-            except (IndexError, ValueError):
+-                pass
+-            ep_files = sorted(w_dir.glob("episode_*.json"))
+-            if not ep_files:
+-                ep_files = [f for f in sorted(w_dir.glob("*.json")) if f.name not in ("layout.json", "goal_episode_specs.json")]
+-            for ep_file in ep_files:
+-                world_episodes.append((w_idx, ep_file))
+-    else:
+-        ep_files = sorted(root.glob("episode_*.json"))
+-        if not ep_files:
+-            ep_files = [f for f in sorted(root.glob("*.json")) if f.name not in ("manifest.json", "HOLDOUT_WORLDS.json")]
+-        for ep_file in ep_files:
+-            world_episodes.append((0, ep_file))
++    world_episodes: list[tuple[int, Path]] = _episode_files_by_world(root)
+ 
+     if not world_episodes:
+         raise FileNotFoundError(f"No episode files found in {root}")
+@@ -375,7 +337,7 @@ def _extract_world_errors(seed_data: Any, k: int) -> dict[Any, list[float]]:
+ def prediction_noninferiority(
+     errors_by_arm_seed: Mapping[str, Any],
+     *,
+-    k: int = 30,
++    k: int = spec.PROBE_GATE_STEP,
+     delta_pred: float = spec.DELTA_PRED,
+     n_boot: int = spec.BOOTSTRAP_RESAMPLES,
+     alpha: float = 0.05,
+diff --git a/src/ainerzero/v9/experiments/s2/spec.py b/src/ainerzero/v9/experiments/s2/spec.py
+index 8eb94a4..6649be6 100644
+--- a/src/ainerzero/v9/experiments/s2/spec.py
++++ b/src/ainerzero/v9/experiments/s2/spec.py
+@@ -303,3 +303,5 @@ PROBE_SEED_NAMESPACE: str = "s2p1-train-v1|probe"
+ PROBE_START_POINTS: tuple[int, ...] = (0, 60, 120)
+ PROBE_HORIZON_MAX: int = 60
+ 
++# --- W6b：§5 第 2 道门的探针步数 ---
++PROBE_GATE_STEP: int = 30
+diff --git a/tests/v9/experiments/test_s2_probe_eval.py b/tests/v9/experiments/test_s2_probe_eval.py
+index 71ba463..659f731 100644
+--- a/tests/v9/experiments/test_s2_probe_eval.py
++++ b/tests/v9/experiments/test_s2_probe_eval.py
+@@ -138,6 +138,19 @@ def _create_synthetic_dataset(root: Path, starts_by_world: dict[int, list[tuple[
+         for ep_idx, (sx, sy) in enumerate(starts):
+             ep_data = _make_synthetic_episode(sx, sy, n_steps=n_steps)
+             (w_dir / f"episode_{ep_idx:04d}.json").write_text(json.dumps(ep_data), encoding="utf-8")
++    _write_registered_holdout(root, sorted(starts_by_world))
++
++
++def _write_registered_holdout(root: Path, worlds: list[int]) -> set[int]:
++    """HOLDOUT_WORLDS.json per the registered rule (train_runner tamper check recomputes it)."""
++    import hashlib
++
++    from ainerzero.v9.experiments.s2 import spec
++
++    ranked = sorted(worlds, key=lambda w: hashlib.sha256(f"s2p1-train-v1|holdout|{w}".encode()).hexdigest())
++    hold = ranked[: max(1, int(round(len(worlds) * spec.TRAIN_HOLDOUT_WORLD_FRACTION)))]
++    (root / "HOLDOUT_WORLDS.json").write_text(json.dumps({"holdout_worlds": hold}), encoding="utf-8")
++    return set(hold)
+ 
+ 
+ def test_linear_vs_random_arm_probe_errors(tmp_path: Path) -> None:
+@@ -145,7 +158,7 @@ def test_linear_vs_random_arm_probe_errors(tmp_path: Path) -> None:
+     train_dir = tmp_path / "train"
+     dev_dir = tmp_path / "dev"
+ 
+-    train_starts = {0: [(3, 3), (12, 12), (18, 18), (5, 20)]}
++    train_starts = {0: [(3, 3), (12, 12), (18, 18), (5, 20)], 1: [(4, 9), (13, 6), (19, 15), (8, 17)]}
+     dev_starts = {0: [(7, 7), (15, 10)]}
+     _create_synthetic_dataset(train_dir, train_starts, n_steps=120)
+     _create_synthetic_dataset(dev_dir, dev_starts, n_steps=120)
+@@ -192,48 +205,54 @@ def test_linear_vs_random_arm_probe_errors(tmp_path: Path) -> None:
+ 
+ 
+ def test_fit_probe_strictly_excludes_holdout_worlds(tmp_path: Path) -> None:
+-    """Card W6: Assert fit_probe strictly excludes holdout worlds."""
++    """W6/W6b: holdout comes from the tamper-checked HOLDOUT_WORLDS.json; poisoned holdout is never fit."""
+     train_dir = tmp_path / "train_holdout_test"
+-    dataset_starts = {
+-        0: [(3, 3), (12, 12)],
+-        1: [(99, 99), (99, 99)],  # poisoned world
+-    }
+-    _create_synthetic_dataset(train_dir, dataset_starts, n_steps=100)
+-
+-    # Corrupt coordinates in all episodes of world 1
+-    for w1_file in (train_dir / "world_0001").glob("episode_*.json"):
+-        w1_data = json.loads(w1_file.read_text(encoding="utf-8"))
+-        for st in w1_data["steps"]:
++    _create_synthetic_dataset(train_dir, {0: [(3, 3), (12, 12)], 1: [(6, 6), (9, 9)]}, n_steps=100)
++    hold = json.loads((train_dir / "HOLDOUT_WORLDS.json").read_text())["holdout_worlds"]
++    assert len(hold) == 1
++    poisoned = train_dir / f"world_{hold[0]:04d}"
++    for f in poisoned.glob("episode_*.json"):
++        data = json.loads(f.read_text(encoding="utf-8"))
++        for st in data["steps"]:
+             st["truth_before"] = {"x": 99999.0, "y": 99999.0}
+-        w1_file.write_text(json.dumps(w1_data), encoding="utf-8")
++        f.write_text(json.dumps(data), encoding="utf-8")
+ 
+     linear_arm = LinearPoseArm()
+-
+-    # 1. When holdout_worlds includes world 1, fitting ignores poisoned world_0001
+-    probe_clean = probe_eval.fit_probe(
+-        linear_arm,
+-        train_dir,
+-        holdout_worlds={1},
+-        n_samples=100,
+-        seed_namespace="s2p1-train-v1|probe",
+-    )
+     test_obs = {"view": _encode_xy_into_view(5, 5).tolist(), "heading": [1, 0, 0, 0], "last_action": [1, 0, 0, 0], "dt": 1}
+-    pred = probe_clean.predict(linear_arm.encode(lp.featurize_obs(test_obs, 1)))
+-    np.testing.assert_allclose(pred, np.array([5.0, 5.0]), atol=0.1)
++    for arg in (set(hold), None):
++        probe = probe_eval.fit_probe(linear_arm, train_dir, holdout_worlds=arg, n_samples=100)
++        pred = probe.predict(linear_arm.encode(lp.featurize_obs(test_obs, 1)))
++        np.testing.assert_allclose(pred, np.array([5.0, 5.0]), atol=0.1)
+ 
+-    # 2. When HOLDOUT_WORLDS.json exists, fit_probe automatically honors it
+-    (train_dir / "HOLDOUT_WORLDS.json").write_text(
+-        json.dumps({"holdout_worlds": [1]}), encoding="utf-8"
+-    )
+-    probe_from_file = probe_eval.fit_probe(
+-        linear_arm,
+-        train_dir,
+-        holdout_worlds=None,
+-        n_samples=100,
+-        seed_namespace="s2p1-train-v1|probe",
+-    )
+-    pred_file = probe_from_file.predict(linear_arm.encode(lp.featurize_obs(test_obs, 1)))
+-    np.testing.assert_allclose(pred_file, np.array([5.0, 5.0]), atol=0.1)
++    other = 1 - hold[0]
++    with pytest.raises(ValueError, match="holdout_worlds argument"):
++        probe_eval.fit_probe(linear_arm, train_dir, holdout_worlds={other}, n_samples=100)
++
++
++def test_fit_probe_requires_holdout_file(tmp_path: Path) -> None:
++    train_dir = tmp_path / "t"
++    _create_synthetic_dataset(train_dir, {0: [(3, 3)], 1: [(6, 6)]}, n_steps=100)
++    (train_dir / "HOLDOUT_WORLDS.json").unlink()
++    with pytest.raises(FileNotFoundError):
++        probe_eval.fit_probe(LinearPoseArm(), train_dir, n_samples=50)
++
++
++def test_flat_layout_is_refused(tmp_path: Path) -> None:
++    flat = tmp_path / "flat"
++    flat.mkdir()
++    (flat / "episode_0000.json").write_text(json.dumps(_make_synthetic_episode(3, 3, n_steps=100)))
++    arm = LinearPoseArm()
++    with pytest.raises(FileNotFoundError):
++        probe_eval.probe_errors(arm, None, flat)
++
++
++def test_gate_step_default_is_registered() -> None:
++    import inspect
++
++    from ainerzero.v9.experiments.s2 import spec
++
++    k_default = inspect.signature(probe_eval.prediction_noninferiority).parameters["k"].default
++    assert k_default == spec.PROBE_GATE_STEP == 30
+ 
+ 
+ def test_prediction_noninferiority_matches_hand_calc() -> None:

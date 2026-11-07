@@ -138,6 +138,19 @@ def _create_synthetic_dataset(root: Path, starts_by_world: dict[int, list[tuple[
         for ep_idx, (sx, sy) in enumerate(starts):
             ep_data = _make_synthetic_episode(sx, sy, n_steps=n_steps)
             (w_dir / f"episode_{ep_idx:04d}.json").write_text(json.dumps(ep_data), encoding="utf-8")
+    _write_registered_holdout(root, sorted(starts_by_world))
+
+
+def _write_registered_holdout(root: Path, worlds: list[int]) -> set[int]:
+    """HOLDOUT_WORLDS.json per the registered rule (train_runner tamper check recomputes it)."""
+    import hashlib
+
+    from ainerzero.v9.experiments.s2 import spec
+
+    ranked = sorted(worlds, key=lambda w: hashlib.sha256(f"s2p1-train-v1|holdout|{w}".encode()).hexdigest())
+    hold = ranked[: max(1, int(round(len(worlds) * spec.TRAIN_HOLDOUT_WORLD_FRACTION)))]
+    (root / "HOLDOUT_WORLDS.json").write_text(json.dumps({"holdout_worlds": hold}), encoding="utf-8")
+    return set(hold)
 
 
 def test_linear_vs_random_arm_probe_errors(tmp_path: Path) -> None:
@@ -145,7 +158,7 @@ def test_linear_vs_random_arm_probe_errors(tmp_path: Path) -> None:
     train_dir = tmp_path / "train"
     dev_dir = tmp_path / "dev"
 
-    train_starts = {0: [(3, 3), (12, 12), (18, 18), (5, 20)]}
+    train_starts = {0: [(3, 3), (12, 12), (18, 18), (5, 20)], 1: [(4, 9), (13, 6), (19, 15), (8, 17)]}
     dev_starts = {0: [(7, 7), (15, 10)]}
     _create_synthetic_dataset(train_dir, train_starts, n_steps=120)
     _create_synthetic_dataset(dev_dir, dev_starts, n_steps=120)
@@ -192,48 +205,54 @@ def test_linear_vs_random_arm_probe_errors(tmp_path: Path) -> None:
 
 
 def test_fit_probe_strictly_excludes_holdout_worlds(tmp_path: Path) -> None:
-    """Card W6: Assert fit_probe strictly excludes holdout worlds."""
+    """W6/W6b: holdout comes from the tamper-checked HOLDOUT_WORLDS.json; poisoned holdout is never fit."""
     train_dir = tmp_path / "train_holdout_test"
-    dataset_starts = {
-        0: [(3, 3), (12, 12)],
-        1: [(99, 99), (99, 99)],  # poisoned world
-    }
-    _create_synthetic_dataset(train_dir, dataset_starts, n_steps=100)
-
-    # Corrupt coordinates in all episodes of world 1
-    for w1_file in (train_dir / "world_0001").glob("episode_*.json"):
-        w1_data = json.loads(w1_file.read_text(encoding="utf-8"))
-        for st in w1_data["steps"]:
+    _create_synthetic_dataset(train_dir, {0: [(3, 3), (12, 12)], 1: [(6, 6), (9, 9)]}, n_steps=100)
+    hold = json.loads((train_dir / "HOLDOUT_WORLDS.json").read_text())["holdout_worlds"]
+    assert len(hold) == 1
+    poisoned = train_dir / f"world_{hold[0]:04d}"
+    for f in poisoned.glob("episode_*.json"):
+        data = json.loads(f.read_text(encoding="utf-8"))
+        for st in data["steps"]:
             st["truth_before"] = {"x": 99999.0, "y": 99999.0}
-        w1_file.write_text(json.dumps(w1_data), encoding="utf-8")
+        f.write_text(json.dumps(data), encoding="utf-8")
 
     linear_arm = LinearPoseArm()
-
-    # 1. When holdout_worlds includes world 1, fitting ignores poisoned world_0001
-    probe_clean = probe_eval.fit_probe(
-        linear_arm,
-        train_dir,
-        holdout_worlds={1},
-        n_samples=100,
-        seed_namespace="s2p1-train-v1|probe",
-    )
     test_obs = {"view": _encode_xy_into_view(5, 5).tolist(), "heading": [1, 0, 0, 0], "last_action": [1, 0, 0, 0], "dt": 1}
-    pred = probe_clean.predict(linear_arm.encode(lp.featurize_obs(test_obs, 1)))
-    np.testing.assert_allclose(pred, np.array([5.0, 5.0]), atol=0.1)
+    for arg in (set(hold), None):
+        probe = probe_eval.fit_probe(linear_arm, train_dir, holdout_worlds=arg, n_samples=100)
+        pred = probe.predict(linear_arm.encode(lp.featurize_obs(test_obs, 1)))
+        np.testing.assert_allclose(pred, np.array([5.0, 5.0]), atol=0.1)
 
-    # 2. When HOLDOUT_WORLDS.json exists, fit_probe automatically honors it
-    (train_dir / "HOLDOUT_WORLDS.json").write_text(
-        json.dumps({"holdout_worlds": [1]}), encoding="utf-8"
-    )
-    probe_from_file = probe_eval.fit_probe(
-        linear_arm,
-        train_dir,
-        holdout_worlds=None,
-        n_samples=100,
-        seed_namespace="s2p1-train-v1|probe",
-    )
-    pred_file = probe_from_file.predict(linear_arm.encode(lp.featurize_obs(test_obs, 1)))
-    np.testing.assert_allclose(pred_file, np.array([5.0, 5.0]), atol=0.1)
+    other = 1 - hold[0]
+    with pytest.raises(ValueError, match="holdout_worlds argument"):
+        probe_eval.fit_probe(linear_arm, train_dir, holdout_worlds={other}, n_samples=100)
+
+
+def test_fit_probe_requires_holdout_file(tmp_path: Path) -> None:
+    train_dir = tmp_path / "t"
+    _create_synthetic_dataset(train_dir, {0: [(3, 3)], 1: [(6, 6)]}, n_steps=100)
+    (train_dir / "HOLDOUT_WORLDS.json").unlink()
+    with pytest.raises(FileNotFoundError):
+        probe_eval.fit_probe(LinearPoseArm(), train_dir, n_samples=50)
+
+
+def test_flat_layout_is_refused(tmp_path: Path) -> None:
+    flat = tmp_path / "flat"
+    flat.mkdir()
+    (flat / "episode_0000.json").write_text(json.dumps(_make_synthetic_episode(3, 3, n_steps=100)))
+    arm = LinearPoseArm()
+    with pytest.raises(FileNotFoundError):
+        probe_eval.probe_errors(arm, None, flat)
+
+
+def test_gate_step_default_is_registered() -> None:
+    import inspect
+
+    from ainerzero.v9.experiments.s2 import spec
+
+    k_default = inspect.signature(probe_eval.prediction_noninferiority).parameters["k"].default
+    assert k_default == spec.PROBE_GATE_STEP == 30
 
 
 def test_prediction_noninferiority_matches_hand_calc() -> None:

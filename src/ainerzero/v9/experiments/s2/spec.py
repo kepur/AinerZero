@@ -303,3 +303,5 @@ PROBE_SEED_NAMESPACE: str = "s2p1-train-v1|probe"
 PROBE_START_POINTS: tuple[int, ...] = (0, 60, 120)
 PROBE_HORIZON_MAX: int = 60
 
+# --- W6b：§5 第 2 道门的探针步数 ---
+PROBE_GATE_STEP: int = 30

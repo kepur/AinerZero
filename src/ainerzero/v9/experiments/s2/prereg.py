@@ -67,6 +67,41 @@ def collect_source_digests(repo_root: Path | str | None = None) -> dict[str, str
     return digests
 
 
+
+def _r26_planning_fields() -> dict[str, Any]:
+    """Registered planning fields of appendix D3.1 / E (r2.6); every value comes from spec."""
+    return {
+        "replan_every_obs_steps": spec.PLAN_REPLAN_EVERY_OBS_STEPS,
+        "cem_n_iters": spec.CEM_N_ITERS,
+        "cem_elite_frac": spec.CEM_ELITE_FRAC,
+        "cem_encode_reserve": spec.CEM_ENCODE_RESERVE,
+        "cem_min_pop": spec.CEM_MIN_POP,
+        "smoke_plan_choice": {k: dict(v) for k, v in spec.SMOKE_PLAN_CHOICE.items()},
+        "macro_dxy_scale": spec.MACRO_DXY_SCALE,
+        "future_dt_l1": spec.PLAN_FUTURE_DT_L1,
+        "future_dt_l2": spec.PLAN_FUTURE_DT_L2,
+        "cost_mode": {
+            "flat": spec.PLAN_COST_TRAJECTORY_SUM,
+            "upper": spec.PLAN_COST_TRAJECTORY_SUM,
+            "lower": spec.PLAN_COST_TERMINAL,
+        },
+        "goal_feature": {"last_action": spec.GOAL_FEATURE_LAST_ACTION, "dt": spec.GOAL_FEATURE_DT},
+    }
+
+
+def _probe_fields() -> dict[str, Any]:
+    """Registered probe protocol of appendix D5.1; every value comes from spec."""
+    return {
+        "ridge_lambda": spec.PROBE_RIDGE_LAMBDA,
+        "eval_steps": list(spec.PROBE_EVAL_STEPS),
+        "fit_samples": spec.PROBE_FIT_SAMPLES,
+        "seed_namespace": spec.PROBE_SEED_NAMESPACE,
+        "start_points": list(spec.PROBE_START_POINTS),
+        "horizon_max": spec.PROBE_HORIZON_MAX,
+        "gate_step": spec.PROBE_GATE_STEP,
+        "delta_pred": spec.DELTA_PRED,
+    }
+
 def build_draft(
     *,
     repo_root: Path | str | None = None,
@@ -141,12 +176,14 @@ def build_draft(
             "n_fwd": spec.N_FWD,
             "n_fwd_dev_levels": list(spec.N_FWD_DEV_LEVELS),
             "s2_macro_steps": spec.S2_MACRO_STEPS,
-            "replan_m_steps": spec.REPLAN_M_STEPS,
+            # r2.6 (appendix E) supersedes replan_m_steps
+            **_r26_planning_fields(),
             "flat_h_candidates": list(spec.FLAT_H_CANDIDATES),
             "hierarchical_horizon_candidates": list(spec.HIERARCHICAL_HORIZON_CANDIDATES),
             "hierarchical_budget_ratio_candidates": list(spec.HIERARCHICAL_BUDGET_RATIO_CANDIDATES),
             "hyperparam_selection_max_episodes": spec.HYPERPARAM_SELECTION_MAX_EPISODES,
         },
+        "probe": _probe_fields(),
         "gates": {
             "success_rate_diff_min": spec.SUCCESS_RATE_DIFF_MIN,
             "bootstrap_resamples": spec.BOOTSTRAP_RESAMPLES,
@@ -235,6 +272,7 @@ def validate(document: Mapping[str, Any]) -> None:
         "evaluation",
         "planning",
         "gates",
+        "probe",
         "training",
         "budget",
         "stopping_rules",
@@ -291,10 +329,24 @@ def validate(document: Mapping[str, Any]) -> None:
         raise SpecValidationError(
             f"Planning s2 mismatch: expected {spec.S2_MACRO_STEPS}, got {planning.get('s2_macro_steps')}"
         )
-    if planning.get("replan_m_steps") != spec.REPLAN_M_STEPS:
-        raise SpecValidationError(
-            f"Planning m mismatch: expected {spec.REPLAN_M_STEPS}, got {planning.get('replan_m_steps')}"
-        )
+    if "replan_m_steps" in planning:
+        raise SpecValidationError("replan_m_steps is superseded by replan_every_obs_steps (r2.6)")
+    if spec.PLAN_REPLAN_EVERY_OBS_STEPS != 1 or planning.get("replan_every_obs_steps") != 1:
+        raise SpecValidationError("r2.6 requires replanning every observation step (m = 1)")
+    for key, expected in _r26_planning_fields().items():
+        if planning.get(key) != expected:
+            raise SpecValidationError(f"Planning {key} mismatch: expected {expected!r}, got {planning.get(key)!r}")
+    allowed_costs = {spec.PLAN_COST_TRAJECTORY_SUM, spec.PLAN_COST_TERMINAL}
+    if not set(planning.get("cost_mode", {}).values()) <= allowed_costs:
+        raise SpecValidationError(f"cost_mode values must be in {sorted(allowed_costs)}")
+
+    # Probe validation (DESIGN-r2 appendix D5.1)
+    probe_doc = document.get("probe")
+    if not isinstance(probe_doc, Mapping):
+        raise SpecValidationError("Missing or invalid probe section")
+    for key, expected in _probe_fields().items():
+        if probe_doc.get(key) != expected:
+            raise SpecValidationError(f"Probe {key} mismatch: expected {expected!r}, got {probe_doc.get(key)!r}")
 
     # Gates validation
     gates = document.get("gates")

@@ -48,6 +48,33 @@ def _canonical_arm_id(arm: str) -> str:
     return norm
 
 
+def _world_index(w: Any) -> int:
+    """Strict world id parse: int, digit string or ``world_NNNN``; anything else raises."""
+    if isinstance(w, (int, np.integer)):
+        return int(w)
+    text = str(w)
+    if text.startswith("world_"):
+        text = text.split("_", 1)[1]
+    if not text.isdigit():
+        raise ValueError(f"unparseable world id {w!r}")
+    return int(text)
+
+
+def _episode_files_by_world(root: Path) -> list[tuple[int, Path]]:
+    """Registered layout only: ``root/world_NNNN/episode_*.json``; anything else raises."""
+    world_dirs = sorted(d for d in root.iterdir() if d.is_dir() and d.name.startswith("world_"))
+    if not world_dirs:
+        raise FileNotFoundError(f"no world_NNNN directories under {root}")
+    out: list[tuple[int, Path]] = []
+    for w_dir in world_dirs:
+        w_idx = _world_index(w_dir.name)
+        eps = sorted(w_dir.glob("episode_*.json"))
+        if not eps:
+            raise FileNotFoundError(f"no episode_*.json in {w_dir}")
+        out.extend((w_idx, ep) for ep in eps)
+    return out
+
+
 def fit_probe(
     model: Any,
     train_root: str | Path,
@@ -78,64 +105,20 @@ def fit_probe(
     if not root.exists():
         raise FileNotFoundError(f"train_root {root} does not exist")
 
-    # Determine holdout world identifiers
-    holdout_set: set[Any] = set()
+    # Holdout worlds: the train_runner authority (file required, tamper-checked).
+    from ainerzero.v9.experiments.s2.train_runner import get_holdout_world_indices
+
+    holdout_idx = {int(w) for w in get_holdout_world_indices(root)}
     if holdout_worlds is not None:
-        for w in holdout_worlds:
-            holdout_set.add(w)
-            if isinstance(w, int):
-                holdout_set.add(f"world_{w:04d}")
-                holdout_set.add(str(w))
-            elif isinstance(w, str):
-                if w.startswith("world_"):
-                    try:
-                        holdout_set.add(int(w.split("_")[1]))
-                    except (IndexError, ValueError):
-                        pass
-                else:
-                    try:
-                        holdout_set.add(int(w))
-                    except ValueError:
-                        pass
-    else:
-        holdout_file = root / "HOLDOUT_WORLDS.json"
-        if holdout_file.exists():
-            payload = json.loads(holdout_file.read_text(encoding="utf-8"))
-            for w in payload.get("holdout_worlds", []):
-                holdout_set.add(w)
-                if isinstance(w, int):
-                    holdout_set.add(f"world_{w:04d}")
-                    holdout_set.add(str(w))
+        given = {_world_index(w) for w in holdout_worlds}
+        if given != holdout_idx:
+            raise ValueError(
+                f"holdout_worlds argument {sorted(given)} != HOLDOUT_WORLDS.json {sorted(holdout_idx)}"
+            )
 
-    # Discover candidate world directories or episode files
-    world_dirs = sorted([d for d in root.iterdir() if d.is_dir() and d.name.startswith("world_")])
-    candidate_files: list[Path] = []
-
-    if world_dirs:
-        for w_dir in world_dirs:
-            w_name = w_dir.name
-            w_idx: int | None = None
-            try:
-                w_idx = int(w_name.split("_")[1])
-            except (IndexError, ValueError):
-                pass
-
-            if w_name in holdout_set or (w_idx is not None and w_idx in holdout_set):
-                continue
-
-            ep_files = sorted(w_dir.glob("episode_*.json"))
-            if not ep_files:
-                ep_files = sorted(w_dir.glob("*.json"))
-                # Filter out metadata files
-                ep_files = [f for f in ep_files if f.name not in ("layout.json", "goal_episode_specs.json")]
-            candidate_files.extend(ep_files)
-    else:
-        # Direct episode files in root
-        ep_files = sorted(root.glob("episode_*.json"))
-        if not ep_files:
-            ep_files = [f for f in sorted(root.glob("*.json")) if f.name not in ("manifest.json", "HOLDOUT_WORLDS.json")]
-        candidate_files.extend(ep_files)
-
+    candidate_files: list[Path] = [
+        ep for w_idx, ep in _episode_files_by_world(root) if w_idx not in holdout_idx
+    ]
     if not candidate_files:
         raise FileNotFoundError(f"No non-holdout episode files found in {root}")
 
@@ -226,28 +209,7 @@ def probe_errors(
     if max_step > max_horizon:
         raise ValueError(f"max step horizon {max_step} exceeds max_horizon {max_horizon}")
 
-    # Discover world dirs or flat episode files
-    world_dirs = sorted([d for d in root.iterdir() if d.is_dir() and d.name.startswith("world_")])
-    world_episodes: list[tuple[int, Path]] = []
-
-    if world_dirs:
-        for w_dir in world_dirs:
-            w_idx = 0
-            try:
-                w_idx = int(w_dir.name.split("_")[1])
-            except (IndexError, ValueError):
-                pass
-            ep_files = sorted(w_dir.glob("episode_*.json"))
-            if not ep_files:
-                ep_files = [f for f in sorted(w_dir.glob("*.json")) if f.name not in ("layout.json", "goal_episode_specs.json")]
-            for ep_file in ep_files:
-                world_episodes.append((w_idx, ep_file))
-    else:
-        ep_files = sorted(root.glob("episode_*.json"))
-        if not ep_files:
-            ep_files = [f for f in sorted(root.glob("*.json")) if f.name not in ("manifest.json", "HOLDOUT_WORLDS.json")]
-        for ep_file in ep_files:
-            world_episodes.append((0, ep_file))
+    world_episodes: list[tuple[int, Path]] = _episode_files_by_world(root)
 
     if not world_episodes:
         raise FileNotFoundError(f"No episode files found in {root}")
@@ -375,7 +337,7 @@ def _extract_world_errors(seed_data: Any, k: int) -> dict[Any, list[float]]:
 def prediction_noninferiority(
     errors_by_arm_seed: Mapping[str, Any],
     *,
-    k: int = 30,
+    k: int = spec.PROBE_GATE_STEP,
     delta_pred: float = spec.DELTA_PRED,
     n_boot: int = spec.BOOTSTRAP_RESAMPLES,
     alpha: float = 0.05,

@@ -198,3 +198,76 @@ def test_trial_freeze_determinism_and_verification(tmp_path: Path) -> None:
     assert verif1["document_sha256"] == sha1
     assert verif2["document_sha256"] == sha2
 
+
+
+# --- W7 (P175): r2.6 / D3.1 / D5.1 registered fields -------------------------------------
+
+import copy as _copy
+
+import pytest as _pytest
+
+from ainerzero.v9.experiments.s2 import freeze as _freeze
+from ainerzero.v9.experiments.s2 import prereg as _prereg
+from ainerzero.v9.experiments.s2 import spec as _spec
+
+
+def _w7_draft():
+    from pathlib import Path
+
+    return _prereg.build_draft(repo_root=Path(__file__).resolve().parents[3])
+
+
+def test_w7_r26_and_probe_fields_match_spec():
+    d = _w7_draft()
+    pl = d["planning"]
+    assert "replan_m_steps" not in pl
+    assert pl["replan_every_obs_steps"] == _spec.PLAN_REPLAN_EVERY_OBS_STEPS == 1
+    assert pl["cem_n_iters"] == _spec.CEM_N_ITERS and pl["cem_elite_frac"] == _spec.CEM_ELITE_FRAC
+    assert pl["future_dt_l1"] == _spec.PLAN_FUTURE_DT_L1 and pl["future_dt_l2"] == _spec.PLAN_FUTURE_DT_L2
+    assert pl["cost_mode"] == {"flat": "trajectory_sum", "upper": "trajectory_sum", "lower": "terminal"}
+    pr = d["probe"]
+    assert pr["gate_step"] == _spec.PROBE_GATE_STEP and pr["delta_pred"] == _spec.DELTA_PRED
+    assert pr["start_points"] == list(_spec.PROBE_START_POINTS)
+    _prereg.validate(d)
+
+
+@_pytest.mark.parametrize(
+    "path,value",
+    [
+        (("planning", "replan_every_obs_steps"), 4),
+        (("planning", "future_dt_l1"), 1.7),
+        (("planning", "cem_n_iters"), 3),
+        (("probe", "delta_pred"), 2.0),
+        (("probe", "gate_step"), 1),
+    ],
+)
+def test_w7_validate_rejects_tampering(path, value):
+    d = _copy.deepcopy(_w7_draft())
+    d[path[0]][path[1]] = value
+    with _pytest.raises(_prereg.SpecValidationError):
+        _prereg.validate(d)
+
+
+def test_w7_validate_rejects_old_m_key_terminal_flat_cost_and_missing_probe():
+    d = _copy.deepcopy(_w7_draft())
+    d["planning"]["replan_m_steps"] = 4
+    with _pytest.raises(_prereg.SpecValidationError):
+        _prereg.validate(d)
+    d = _copy.deepcopy(_w7_draft())
+    d["planning"]["cost_mode"]["flat"] = "terminal"
+    with _pytest.raises(_prereg.SpecValidationError):
+        _prereg.validate(d)
+    d = _copy.deepcopy(_w7_draft())
+    del d["probe"]
+    with _pytest.raises(_prereg.SpecValidationError):
+        _prereg.validate(d)
+
+
+def test_w7_trial_freeze_is_deterministic(tmp_path):
+    from pathlib import Path
+
+    repo = Path(__file__).resolve().parents[3]
+    d = _w7_draft()  # one draft: created_utc has second resolution
+    a = _freeze.freeze(_copy.deepcopy(d), out_dir=tmp_path / "a", repo_root=repo)
+    b = _freeze.freeze(_copy.deepcopy(d), out_dir=tmp_path / "b", repo_root=repo)
+    assert a == b
