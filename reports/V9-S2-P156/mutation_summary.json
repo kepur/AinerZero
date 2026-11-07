@@ -1,0 +1,32 @@
+{
+  "P156-M1": {
+    "name": "disable_dev_precheck",
+    "description": "Disable dev pre-check in run_dev_eval",
+    "targeted_test": "tests/v9/experiments/test_s2_eval_runner.py::test_dev_eval_refused_without_post_train_gates",
+    "status": "KILLED",
+    "mutation_detected": true,
+    "exit_code": 1,
+    "stdout_tail": "n\": \"dev\"} for s in _train_specs(2)]\n>       with pytest.raises(er.PostTrainGateRefused, match=\"post_train_gates record missing\"):\nE       Failed: DID NOT RAISE PostTrainGateRefused\n\ntests/v9/experiments/test_s2_eval_runner.py:440: Failed\n=========================== short test summary info ============================\nFAILED tests/v9/experiments/test_s2_eval_runner.py::test_dev_eval_refused_without_post_train_gates\n============================== 1 failed in 1.18s ===============================\n",
+    "stderr_tail": ""
+  },
+  "P156-M2": {
+    "name": "relax_collusion_threshold",
+    "description": "Relax collusion threshold to -1.0 in run_post_train_gates",
+    "targeted_test": "tests/v9/experiments/test_s2_eval_runner.py::test_c_arm_collusion_detected_and_dev_refused",
+    "status": "KILLED",
+    "mutation_detected": true,
+    "exit_code": 1,
+    "stdout_tail": "}\n    \n        result = er.run_post_train_gates(model, specs, ledger_path=ledger, c_shuffle_episodes=50)\n>       assert result[\"passed\"] is False\nE       assert True is False\n\ntests/v9/experiments/test_s2_eval_runner.py:394: AssertionError\n=========================== short test summary info ============================\nFAILED tests/v9/experiments/test_s2_eval_runner.py::test_c_arm_collusion_detected_and_dev_refused\n============================== 1 failed in 1.15s ===============================\n",
+    "stderr_tail": ""
+  },
+  "P156-M3": {
+    "name": "identity_subgoal_shuffle",
+    "description": "Identity permutation for C-arm subgoal shuffle (no derangement/shuffle)",
+    "targeted_test": "tests/v9/experiments/test_s2_eval_runner.py::test_normal_model_passes_post_train_gates_and_enters_dev",
+    "status": "KILLED",
+    "mutation_detected": true,
+    "exit_code": 1,
+    "stdout_tail": "er_path=ledger,\n            output_path=out_json,\n            c_shuffle_episodes=50,\n        )\n>       assert result[\"passed\"] is True\nE       assert False is True\n\ntests/v9/experiments/test_s2_eval_runner.py:417: AssertionError\n=========================== short test summary info ============================\nFAILED tests/v9/experiments/test_s2_eval_runner.py::test_normal_model_passes_post_train_gates_and_enters_dev\n============================== 1 failed in 1.12s ===============================\n",
+    "stderr_tail": ""
+  }
+}

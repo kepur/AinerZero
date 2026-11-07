@@ -1,0 +1,169 @@
+=== Mutation REV-M1 ===
+Name: forge_planner_identity_string
+Target test: tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_with_s2_planner_two_worlds
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpfw1x4ldv/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_smoke_checks.py F                           [100%]
+
+=================================== FAILURES ===================================
+______________ test_oracle_feasibility_with_s2_planner_two_worlds ______________
+
+    def test_oracle_feasibility_with_s2_planner_two_worlds() -> None:
+        """P154: 在 GridLab-S2 上用 s2 规划器跑 2 个世界 x 6 个长目标：
+        成功率应明显高于 0.50，并在 N_fwd=8 极端紧缩时触发熔断。
+        """
+        episodes: list[dict[str, Any]] = []
+        for w_seed in (101, 102):
+            rng = random.Random(w_seed)
+            layout, pairs, _ = world.prepare_world_with_long_pairs(seed=w_seed, rng=rng)
+            for pair in pairs:
+                episodes.append({"layout": layout, "spec": pair})
+    
+        assert len(episodes) == 12
+    
+        # 1. N_fwd = 4096 (正常规划预算) -> 成功率 > 0.50
+        res = smoke_checks.oracle_feasibility_with_s2_planner(episodes, n_fwd=4096, rng=42)
+        assert res["passed"] is True
+        assert res["fuse_triggered"] is False
+        assert res["threshold"] == 0.05
+        assert res["total_episodes"] == 12
+>       assert res["planner"] == "s2_planner"
+E       AssertionError: assert 'default_oracle' == 's2_planner'
+E         
+E         - s2_planner
+E         + default_oracle
+
+tests/v9/experiments/test_s2_smoke_checks.py:376: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_with_s2_planner_two_worlds
+============================== 1 failed in 4.71s ===============================
+
+Stderr:
+
+
+=== Mutation REV-M2 ===
+Name: violate_minimum_arm_steps_budget_rule
+Target test: tests/v9/experiments/test_s2_wiring.py::test_smoke_timing_and_training_steps_minimum_rule
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpfw1x4ldv/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_wiring.py F                                 [100%]
+
+=================================== FAILURES ===================================
+______________ test_smoke_timing_and_training_steps_minimum_rule _______________
+
+    def test_smoke_timing_and_training_steps_minimum_rule() -> None:
+        """Verify training steps = floor(1200 * 0.8 / t) and strictly takes minimum across arms."""
+        step_times = {
+            "arm_a": 0.05,  # 1200 * 0.8 / 0.05 = 19200
+            "arm_b": 0.04,  # 1200 * 0.8 / 0.04 = 24000
+            "arm_c": 0.06,  # 1200 * 0.8 / 0.06 = 16000
+        }
+        res = smoke.compute_training_steps(step_times)
+        assert res["per_arm_steps"]["arm_a"] == 19200
+        assert res["per_arm_steps"]["arm_b"] == 24000
+        assert res["per_arm_steps"]["arm_c"] == 16000
+        # Must be minimum, not maximum or mean
+>       assert res["shared_train_steps"] == 16000
+E       assert 24000 == 16000
+
+tests/v9/experiments/test_s2_wiring.py:393: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_wiring.py::test_smoke_timing_and_training_steps_minimum_rule
+============================== 1 failed in 1.28s ===============================
+
+Stderr:
+
+
+=== Mutation REV-M3 ===
+Name: unconditional_smoke_passed_true
+Target test: tests/v9/experiments/test_s2_wiring.py::test_smoke_no_injected_measurements_fails_with_named_reasons
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpfw1x4ldv/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_wiring.py F                                 [100%]
+
+=================================== FAILURES ===================================
+_________ test_smoke_no_injected_measurements_fails_with_named_reasons _________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-92/test_smoke_no_injected_measure0')
+
+    def test_smoke_no_injected_measurements_fails_with_named_reasons(tmp_path: Path) -> None:
+        """Requirement (3): No injected measurements fails closed with status=failed, reasons naming missing items."""
+        smoke_out = tmp_path / "smoke_no_measure"
+        res = smoke.run_smoke(smoke_out)
+    
+>       assert res["passed"] is False
+E       assert True is False
+
+tests/v9/experiments/test_s2_wiring.py:430: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_wiring.py::test_smoke_no_injected_measurements_fails_with_named_reasons
+============================== 1 failed in 3.68s ===============================
+
+Stderr:
+
+
+=== Mutation REV-M4 ===
+Name: suppress_oracle_feasibility_circuit_breaker
+Target test: tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_with_s2_planner_two_worlds
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpfw1x4ldv/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_smoke_checks.py F                           [100%]
+
+=================================== FAILURES ===================================
+______________ test_oracle_feasibility_with_s2_planner_two_worlds ______________
+
+    def test_oracle_feasibility_with_s2_planner_two_worlds() -> None:
+        """P154: 在 GridLab-S2 上用 s2 规划器跑 2 个世界 x 6 个长目标：
+        成功率应明显高于 0.50，并在 N_fwd=8 极端紧缩时触发熔断。
+        """
+        episodes: list[dict[str, Any]] = []
+        for w_seed in (101, 102):
+            rng = random.Random(w_seed)
+            layout, pairs, _ = world.prepare_world_with_long_pairs(seed=w_seed, rng=rng)
+            for pair in pairs:
+                episodes.append({"layout": layout, "spec": pair})
+    
+        assert len(episodes) == 12
+    
+        # 1. N_fwd = 4096 (正常规划预算) -> 成功率 > 0.50
+        res = smoke_checks.oracle_feasibility_with_s2_planner(episodes, n_fwd=4096, rng=42)
+        assert res["passed"] is True
+        assert res["fuse_triggered"] is False
+>       assert res["threshold"] == 0.05
+E       assert -1.0 == 0.05
+
+tests/v9/experiments/test_s2_smoke_checks.py:374: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_smoke_checks.py::test_oracle_feasibility_with_s2_planner_two_worlds
+============================== 1 failed in 4.89s ===============================
+
+Stderr:
+

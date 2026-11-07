@@ -1,0 +1,51 @@
+{
+  "task_id": "ainerzero.V9.P155",
+  "deliverables_tag": "P156",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-k4m9",
+  "deliverables": {
+    "eval_runner": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+    "test_eval_runner": "tests/v9/experiments/test_s2_eval_runner.py"
+  },
+  "gates": {
+    "action_sensitivity_floor": 0.05,
+    "subgoal_drop_floor": 0.10,
+    "action_sensitivity_unplannable_rule": "低于 0.05 判为不可规划并拒绝 dev",
+    "c_arm_subgoal_shuffle_negative_control": "降幅小于 0.10 判为 E₂ 合谋并拒绝 dev",
+    "train_only_enforcement": "非 train 分区立即抛出 PostTrainGateError"
+  },
+  "tests": {
+    "eval_runner_suite_passed": 16,
+    "eval_runner_suite_failed": 0,
+    "full_pure_cpu_suite_passed": 3607,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "mutations": {
+    "P156-M1": {
+      "name": "disable_dev_precheck",
+      "target_test": "test_dev_eval_refused_without_post_train_gates",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P156-M2": {
+      "name": "relax_collusion_threshold",
+      "target_test": "test_c_arm_collusion_detected_and_dev_refused",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "P156-M3": {
+      "name": "identity_subgoal_shuffle",
+      "target_test": "test_normal_model_passes_post_train_gates_and_enters_dev",
+      "status": "KILLED",
+      "exit_code": 1
+    }
+  },
+  "pure_cpu": {
+    "no_mlx_import_verified": true,
+    "zero_gpu_required": true
+  }
+}

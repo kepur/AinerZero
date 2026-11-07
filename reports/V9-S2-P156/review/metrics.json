@@ -1,0 +1,55 @@
+{
+  "task_id": "ainerzero.V9.P157",
+  "reviewing_task_id": "ainerzero.V9.P155",
+  "verdict": "RECOMMEND_ACCEPT",
+  "tier": 2,
+  "kind": "gemini",
+  "reviewer_agent": "gemini-7k2q",
+  "author_agent": "gemini-k4m9",
+  "self_certification": "复核者为 gemini-7k2q，非被复核任务 ainerzero.V9.P155 作者（gemini-k4m9），亦非其同会话别名；本次复核为纯 CPU 独立只读复核，未修改任何生产源码或测试用例。",
+  "verification": {
+    "scope_clean": true,
+    "train_only_enforced": true,
+    "dev_final_rejected": true,
+    "permutation_derangement_tested": true,
+    "action_sensitivity_floor": 0.05,
+    "subgoal_drop_floor": 0.10,
+    "dev_eval_precheck_verified": true,
+    "existing_functions_intact": true,
+    "zero_mlx_in_sys_modules": true,
+    "no_fabrication_verified": true
+  },
+  "tests": {
+    "eval_runner_suite_passed": 16,
+    "eval_runner_suite_failed": 0,
+    "full_pure_cpu_suite_passed": 3607,
+    "full_pure_cpu_suite_failed": 0,
+    "full_pure_cpu_deselected": 6,
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "reviewer_mutations": {
+    "REV-M1": {
+      "name": "omit_post_train_partition_check",
+      "target_test": "test_post_train_gates_rejects_dev_or_final_specs",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "REV-M2": {
+      "name": "disable_action_sensitivity_floor_check",
+      "target_test": "test_unplannable_arm_fails_gate_and_dev_refused",
+      "status": "KILLED",
+      "exit_code": 1
+    },
+    "REV-M3": {
+      "name": "omit_dev_eval_gate_failure_refusal",
+      "target_test": "test_c_arm_collusion_detected_and_dev_refused",
+      "status": "KILLED",
+      "exit_code": 1
+    }
+  },
+  "sha256": {
+    "src/ainerzero/v9/experiments/s2/eval_runner.py": "b19fa70c06269d53af16cf9a02f59a658a2d86732beaa45ba9d3d73ed553ddbc",
+    "tests/v9/experiments/test_s2_eval_runner.py": "8124a22fd3b135f7e1e230b943cdd99f326c6470c4d269be21b8bede0581d1a0"
+  }
+}

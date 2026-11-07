@@ -1,0 +1,108 @@
+=== Mutation REV-M1 ===
+Name: omit_post_train_partition_check
+Target test: tests/v9/experiments/test_s2_eval_runner.py::test_post_train_gates_rejects_dev_or_final_specs
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmp7x3u15g_/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_eval_runner.py F                            [100%]
+
+=================================== FAILURES ===================================
+_______________ test_post_train_gates_rejects_dev_or_final_specs _______________
+
+    def test_post_train_gates_rejects_dev_or_final_specs() -> None:
+        specs = _train_specs(4)
+        specs[2]["partition"] = "dev"
+>       with pytest.raises(er.PostTrainGateError, match="refuses non-train"):
+E       Failed: DID NOT RAISE PostTrainGateError
+
+tests/v9/experiments/test_s2_eval_runner.py:364: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_eval_runner.py::test_post_train_gates_rejects_dev_or_final_specs
+============================== 1 failed in 1.30s ===============================
+
+Stderr:
+
+
+=== Mutation REV-M2 ===
+Name: disable_action_sensitivity_floor_check
+Target test: tests/v9/experiments/test_s2_eval_runner.py::test_unplannable_arm_fails_gate_and_dev_refused
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmp7x3u15g_/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_eval_runner.py F                            [100%]
+
+=================================== FAILURES ===================================
+_______________ test_unplannable_arm_fails_gate_and_dev_refused ________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-93/test_unplannable_arm_fails_gat0')
+
+    def test_unplannable_arm_fails_gate_and_dev_refused(tmp_path: Path) -> None:
+        ledger = tmp_path / "ledger.json"
+        specs = _train_specs(64)
+        model = {"A": _UnplannableFlat()}
+    
+        result = er.run_post_train_gates(model, specs, ledger_path=ledger)
+>       assert result["passed"] is False
+E       assert True is False
+
+tests/v9/experiments/test_s2_eval_runner.py:378: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_eval_runner.py::test_unplannable_arm_fails_gate_and_dev_refused
+============================== 1 failed in 1.12s ===============================
+
+Stderr:
+
+
+=== Mutation REV-M3 ===
+Name: omit_dev_eval_gate_failure_refusal
+Target test: tests/v9/experiments/test_s2_eval_runner.py::test_c_arm_collusion_detected_and_dev_refused
+Status: KILLED (exit_code: 1)
+Stdout:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmp7x3u15g_/ainerzero_sandbox
+configfile: pyproject.toml
+collected 1 item
+
+tests/v9/experiments/test_s2_eval_runner.py F                            [100%]
+
+=================================== FAILURES ===================================
+________________ test_c_arm_collusion_detected_and_dev_refused _________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-94/test_c_arm_collusion_detected_0')
+
+    def test_c_arm_collusion_detected_and_dev_refused(tmp_path: Path) -> None:
+        ledger = tmp_path / "ledger.json"
+        specs = _train_specs(50)
+        model = {"A": _ResponsiveFlat(), "C": _ColludingCArm()}
+    
+        result = er.run_post_train_gates(model, specs, ledger_path=ledger, c_shuffle_episodes=50)
+        assert result["passed"] is False
+        assert result["c_negative_control"]["collusion"] is True
+        assert result["c_negative_control"]["drop"] < er.SUBGOAL_DROP_FLOOR
+        assert any("合谋" in r for r in result["reasons"])
+    
+        dev_specs = [{**s, "partition": "dev"} for s in _train_specs(2)]
+>       with pytest.raises(er.PostTrainGateRefused, match="合谋"):
+E       Failed: DID NOT RAISE PostTrainGateRefused
+
+tests/v9/experiments/test_s2_eval_runner.py:400: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_eval_runner.py::test_c_arm_collusion_detected_and_dev_refused
+============================== 1 failed in 1.18s ===============================
+
+Stderr:
+

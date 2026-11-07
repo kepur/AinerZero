@@ -1,0 +1,32 @@
+[
+  {
+    "id": "REV-M1",
+    "name": "omit_post_train_partition_check",
+    "description": "run_post_train_gates omits checking episode spec partition == 'train'",
+    "target_file": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+    "target_test": "tests/v9/experiments/test_s2_eval_runner.py::test_post_train_gates_rejects_dev_or_final_specs",
+    "status": "KILLED",
+    "exit_code": 1,
+    "killed": true
+  },
+  {
+    "id": "REV-M2",
+    "name": "disable_action_sensitivity_floor_check",
+    "description": "run_post_train_gates ignores when action sensitivity is below threshold",
+    "target_file": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+    "target_test": "tests/v9/experiments/test_s2_eval_runner.py::test_unplannable_arm_fails_gate_and_dev_refused",
+    "status": "KILLED",
+    "exit_code": 1,
+    "killed": true
+  },
+  {
+    "id": "REV-M3",
+    "name": "omit_dev_eval_gate_failure_refusal",
+    "description": "run_dev_eval does not raise PostTrainGateRefused when post_train_gates.passed is False",
+    "target_file": "src/ainerzero/v9/experiments/s2/eval_runner.py",
+    "target_test": "tests/v9/experiments/test_s2_eval_runner.py::test_c_arm_collusion_detected_and_dev_refused",
+    "status": "KILLED",
+    "exit_code": 1,
+    "killed": true
+  }
+]
