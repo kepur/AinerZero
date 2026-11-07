@@ -24,17 +24,13 @@ from ainerzero.v9.experiments.s2.worker import (
     check_cell_already_completed,
 )
 
-# --- Registered training constants (DESIGN-r2 Appendix A / s2.spec) ---
+# Registered training constants (DESIGN-r2 Appendix A / s2.spec)
 BATCH_SIZE = int(spec.BATCH_SIZE)  # 32
 H_TRAIN = int(spec.H_TRAIN)  # 16
 SEQUENCE_LENGTH = int(spec.SEQUENCE_LENGTH)  # 17
 OBS_DIM = int(spec.OBS_DIM)  # 205
 NUM_TERRAIN_CLASSES = int(spec.NUM_TERRAIN_CLASSES)  # 4
 FOV_SIZE = int(spec.FOV_SIZE)  # 7
-
-# Holdout + eval cadence registered here (spec has no S2 holdout field yet).
-HOLDOUT_FRACTION = 0.1
-EVAL_EVERY_STEPS = 5
 
 FORBIDDEN_PATH_PARTS = frozenset({"dev", "sealed_final"})
 
@@ -158,10 +154,120 @@ def load_train_sequences(train_root: Path) -> tuple[list[np.ndarray], list[str]]
     return sequences, rel_files
 
 
+def get_holdout_world_indices(
+    train_root: Path,
+    n_worlds: int | None = None,
+    holdout_fraction: float | None = None,
+) -> set[int]:
+    """Retrieve and verify holdout world indices for train partition (DESIGN-r2 Appendix D1/D2).
+
+    F5:
+    - HOLDOUT_WORLDS.json must exist and be valid JSON (file missing or corrupted raises error; no fallback recompute).
+    - Recorded holdout worlds are recomputed from world directories and compared; mismatch raises error (tamper check).
+    - Holdout set cannot be empty; world directory names must be parseable.
+    """
+    holdout_file = train_root / "HOLDOUT_WORLDS.json"
+    if not holdout_file.is_file():
+        raise FileNotFoundError(f"Missing HOLDOUT_WORLDS.json in train data directory: {holdout_file}")
+
+    try:
+        data = json.loads(holdout_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ValueError(f"Corrupted HOLDOUT_WORLDS.json in {train_root}: {exc}")
+
+    if not isinstance(data, dict) or "holdout_worlds" not in data:
+        raise ValueError(f"Invalid HOLDOUT_WORLDS.json schema in {train_root}: missing 'holdout_worlds'")
+
+    recorded_raw = data.get("holdout_worlds")
+    if not isinstance(recorded_raw, list) or len(recorded_raw) == 0:
+        raise ValueError(f"HOLDOUT_WORLDS.json in {train_root} has empty or non-list holdout_worlds")
+
+    recorded_worlds = set(int(w) for w in recorded_raw)
+
+    # Extract existing world directories
+    world_dirs = [d for d in train_root.iterdir() if d.is_dir() and d.name.startswith("world_")]
+    if not world_dirs:
+        raise ValueError(f"No world directories found in {train_root}")
+    world_indices = []
+    for d in world_dirs:
+        parts = d.name.split("_")
+        if len(parts) != 2 or not parts[1].isdigit():
+            raise ValueError(f"Unparseable world directory name: {d.name}")
+        world_indices.append(int(parts[1]))
+    world_indices.sort()
+
+    frac = float(spec.TRAIN_HOLDOUT_WORLD_FRACTION) if holdout_fraction is None else float(holdout_fraction)
+    expected_holdout = sorted(
+        world_indices,
+        key=lambda w: hashlib.sha256(f"s2p1-train-v1|holdout|{w}".encode("utf-8")).hexdigest(),
+    )[:max(1, int(round(len(world_indices) * frac)))]
+
+    if recorded_worlds != set(expected_holdout):
+        raise ValueError(
+            f"HOLDOUT_WORLDS.json tamper detected in {train_root}: "
+            f"recorded {sorted(recorded_worlds)} != expected {expected_holdout}"
+        )
+
+    return recorded_worlds
+
+
+def load_train_and_holdout_sequences(
+    train_root: Path,
+    holdout_fraction: float | None = None,
+) -> tuple[list[np.ndarray], list[np.ndarray], list[str]]:
+    """Load train-partition sequences separated by world into train vs holdout.
+
+    Per DESIGN-r2 Appendix D2:
+    - Training batches only take non-holdout worlds.
+    - Model selection only takes holdout worlds (world-cut, independent of seed).
+    """
+    train_root = train_root.resolve()
+    _reject_forbidden_parts(train_root)
+    holdout_worlds = get_holdout_world_indices(train_root, holdout_fraction=holdout_fraction)
+
+    episode_files = sorted(train_root.rglob("episode_*.json"))
+    if not episode_files:
+        raise FileNotFoundError(f"no episode_*.json under train partition {train_root}")
+
+    train_seqs: list[np.ndarray] = []
+    hold_seqs: list[np.ndarray] = []
+    rel_files: list[str] = []
+
+    for ep in episode_files:
+        _reject_forbidden_parts(ep)
+        w_idx = None
+        if ep.parent.name.startswith("world_"):
+            try:
+                w_idx = int(ep.parent.name.split("_")[1])
+            except ValueError:
+                pass
+        if w_idx is None:
+            try:
+                payload = json.loads(ep.read_text(encoding="utf-8"))
+                w_idx = payload.get("world_index")
+            except Exception:
+                pass
+
+        wins = _load_episode_sequences(ep)
+        if wins:
+            rel_files.append(str(ep.relative_to(train_root)))
+            if w_idx is not None and w_idx in holdout_worlds:
+                hold_seqs.extend(wins)
+            else:
+                train_seqs.extend(wins)
+
+    if not train_seqs:
+        raise ValueError(f"no training sequences found under non-holdout worlds in {train_root}")
+    if not hold_seqs:
+        raise ValueError(f"no holdout sequences found under holdout worlds in {train_root}")
+
+    return train_seqs, hold_seqs, rel_files
+
+
 def split_holdout(
     sequences: Sequence[np.ndarray],
     seed: int,
-    holdout_fraction: float = HOLDOUT_FRACTION,
+    holdout_fraction: float = spec.TRAIN_HOLDOUT_WORLD_FRACTION,
 ) -> tuple[list[np.ndarray], list[np.ndarray]]:
     """Deterministic train/holdout split from the training partition only."""
     n = len(sequences)
@@ -225,8 +331,8 @@ def run_train_cell(
     *,
     wall_budget_seconds: float | None = None,
     clock: Callable[[], float] | None = None,
-    eval_every: int = EVAL_EVERY_STEPS,
-    holdout_fraction: float = HOLDOUT_FRACTION,
+    eval_every: int = spec.MODEL_SELECTION_EVERY_STEPS,
+    holdout_fraction: float = spec.TRAIN_HOLDOUT_WORLD_FRACTION,
     batch_size: int = BATCH_SIZE,
     H: int = H_TRAIN,
     ledger: S2Ledger | None = None,
@@ -257,11 +363,12 @@ def run_train_cell(
     out_root = assert_output_root_is_permitted(output_root)
     train_root = resolve_train_partition(data_dir)
 
-    sequences, rel_files = load_train_sequences(train_root)
-    train_seqs, hold_seqs = split_holdout(sequences, seed=int(seed), holdout_fraction=holdout_fraction)
+    train_seqs, hold_seqs, rel_files = load_train_and_holdout_sequences(
+        train_root, holdout_fraction=holdout_fraction
+    )
     data_sha = _data_manifest_sha(rel_files, train_root)
 
-    ckpt_dir = out_root / "checkpoints" / str(arm_id) / str(int(seed))
+    ckpt_dir = out_root / "checkpoints" / str(arm_id) / f"seed{int(seed)}"
     ckpt_dir.mkdir(parents=True, exist_ok=True)
     best_path = ckpt_dir / "best.ckpt"
     meta_path = ckpt_dir / "meta.json"
@@ -334,6 +441,7 @@ def run_train_cell(
         "source_digest": source_digest(),
         "data_manifest_sha256": data_sha,
         "checkpoint_sha256": best_sha,
+        "best_checkpoint_sha": best_sha,
         "checkpoint_path": str(best_path),
         "holdout_fraction": float(holdout_fraction),
         "eval_every": int(eval_every),
@@ -359,6 +467,7 @@ def run_train_cell(
         "holdout_curve": holdout_curve,
         "n_params": int(arm.n_params()),
         "checkpoint_sha256": best_sha,
+        "best_checkpoint_sha": best_sha,
         "checkpoint_path": str(best_path),
         "meta_path": str(meta_path),
         "elapsed_seconds": float(elapsed),
@@ -394,8 +503,8 @@ def make_worker_train_runner(
     data_dir: str | Path,
     steps: int,
     *,
-    eval_every: int = EVAL_EVERY_STEPS,
-    holdout_fraction: float = HOLDOUT_FRACTION,
+    eval_every: int = spec.MODEL_SELECTION_EVERY_STEPS,
+    holdout_fraction: float = spec.TRAIN_HOLDOUT_WORLD_FRACTION,
 ) -> Callable[..., dict[str, Any]]:
     """Build an ``execute_work_cell``-compatible runner that calls ``run_train_cell``."""
 

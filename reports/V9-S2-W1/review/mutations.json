@@ -1,0 +1,73 @@
+{
+  "all_turned_red": true,
+  "mutation_count": 6,
+  "killed_count": 6,
+  "mutations": [
+    {
+      "id": "W1-M1",
+      "name": "fallback_steps_to_h_train",
+      "description": "Fallback step count to spec.H_TRAIN (16) if smoke steps missing",
+      "file": "src/ainerzero/v9/experiments/s2/commands.py",
+      "target_test": "tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_rejects_missing_or_failed_smoke",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "assert code == commands.EXIT_FAILED",
+      "sha_mutated": "17cbf530ffefd746f937f0fab74e6577235691b08fad6ef5417fae20caf8f65b"
+    },
+    {
+      "id": "W1-M2",
+      "name": "holdout_by_sequence_permutation",
+      "description": "Holdout set cut by random sequence permutation instead of world-cut",
+      "file": "src/ainerzero/v9/experiments/s2/train_runner.py",
+      "target_test": "tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_runner_holdout_separation_and_checkpoint_path",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": ">       assert len(train_seqs) > 0",
+      "sha_mutated": "cc9eb80b849988040236a671c956fb61abd61bb0f74151483d3b7cda367e2edb"
+    },
+    {
+      "id": "W1-M3",
+      "name": "model_selection_interval_default_5",
+      "description": "Model selection interval defaults to 5 instead of spec.MODEL_SELECTION_EVERY_STEPS",
+      "file": "src/ainerzero/v9/experiments/s2/train_runner.py",
+      "target_test": "tests/v9/experiments/test_s2_w1_integration.py::test_w1_model_selection_interval_defaults_to_spec",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "assert spec.MODEL_SELECTION_EVERY_STEPS == 200",
+      "sha_mutated": "9ec31a9a18c2fec1bbc98a78fa3556496da95949ce0b9852c72e8e0a290f1add"
+    },
+    {
+      "id": "W1-M4",
+      "name": "data_dir_default_output_root_data",
+      "description": "Training data directory defaults to output_root / 'data' instead of datasets/train",
+      "file": "src/ainerzero/v9/experiments/s2/commands.py",
+      "target_test": "tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_resolves_steps_from_passed_smoke_and_executes",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "assert steps == 400",
+      "sha_mutated": "d72a5f12b01a0d94bf8b14a9c06ff4ce432376c978640b9ab537959fa729abb8"
+    },
+    {
+      "id": "W1-M5",
+      "name": "generate_data_allows_arm_flag",
+      "description": "Commands generate-data allows passing --arm without rejection",
+      "file": "src/ainerzero/v9/experiments/s2/commands.py",
+      "target_test": "tests/v9/experiments/test_s2_w1_integration.py::test_w1_cli_generate_data_argument_validation",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "self.error(msg % ' '.join(argv))",
+      "sha_mutated": "e49bb852c48ea3bc891604836bf954e466460fe33fda679d2d85f1fba5c293d8"
+    },
+    {
+      "id": "REV-M6",
+      "name": "omit_holdout_worlds_json_generation",
+      "description": "Omit writing HOLDOUT_WORLDS.json during train partition generation",
+      "file": "src/ainerzero/v9/experiments/s2/data.py",
+      "target_test": "tests/v9/experiments/test_s2_w1_integration.py::test_w1_data_holdout_worlds_generation",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": ">       assert holdout_file.is_file()",
+      "sha_mutated": "d10ea24b3c356cac5fb5f78b76190a4d5cfe151887a75926ec8fb951745809b2"
+    }
+  ]
+}

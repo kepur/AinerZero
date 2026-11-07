@@ -13,6 +13,7 @@ from pathlib import Path
 import random
 from typing import Any, Sequence
 
+from . import spec
 from .world import (
     SIZE,
     FREE,
@@ -394,10 +395,32 @@ def generate_partition(
     aggregate_bfs = 0
     goal_specs_all: list[dict[str, Any]] = []
 
+    holdout_worlds: list[int] = []
+    if partition == "train":
+        ranked = sorted(
+            range(n_worlds),
+            key=lambda w: hashlib.sha256(f"s2p1-train-v1|holdout|{w}".encode("utf-8")).hexdigest(),
+        )
+        n_hold = max(1, int(round(n_worlds * spec.TRAIN_HOLDOUT_WORLD_FRACTION)))
+        holdout_worlds = sorted(ranked[:n_hold])
+
+        holdout_file = part_dir / "HOLDOUT_WORLDS.json"
+        holdout_payload = {
+            "partition": "train",
+            "n_worlds": n_worlds,
+            "holdout_fraction": spec.TRAIN_HOLDOUT_WORLD_FRACTION,
+            "n_holdout_worlds": len(holdout_worlds),
+            "holdout_worlds": holdout_worlds,
+            "rule": "sha256('s2p1-train-v1|holdout|' + str(w_idx)) ascending",
+        }
+        holdout_file.write_text(json.dumps(holdout_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        generated_files.append(holdout_file)
+
     for w_idx in range(n_worlds):
         w_seed = _get_derived_seed(seed_namespace, partition, "world", w_idx)
         prep_rng = random.Random(_get_derived_seed(seed_namespace, partition, "prep", w_idx))
-        n_pairs = LONG_PAIRS_PER_WORLD if partition in ("dev", "final") else max(
+        is_holdout = (partition == "train" and w_idx in holdout_worlds)
+        n_pairs = LONG_PAIRS_PER_WORLD if (partition in ("dev", "final") or is_holdout) else max(
             1, min(episodes_per_world, LONG_PAIRS_PER_WORLD)
         )
         layout, pairs, prep_summary = prepare_world_with_long_pairs(
@@ -432,13 +455,14 @@ def generate_partition(
             ep_file.write_text(json.dumps(ep_data, indent=2, sort_keys=True) + "\n")
             generated_files.append(ep_file)
 
-        if partition in ("dev", "final"):
+        if partition in ("dev", "final") or is_holdout:
             spec_rng = random.Random(
                 _get_derived_seed(seed_namespace, partition, "specs", w_idx)
             )
-            specs = make_goal_episode_specs(layout, pairs, spec_rng, partition=partition)
-            for spec in specs:
-                spec["world_index"] = w_idx
+            specs = make_goal_episode_specs(layout, pairs, spec_rng, partition="dev")
+            for spec_item in specs:
+                spec_item["world_index"] = w_idx
+                spec_item["partition"] = partition
             goal_specs_all.extend(specs)
             specs_file = world_dir / "goal_episode_specs.json"
             specs_file.write_text(json.dumps(specs, indent=2, sort_keys=True) + "\n")

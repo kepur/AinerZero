@@ -83,7 +83,7 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
 
         args = argparse.Namespace(
             mode="generate-data",
-            arm="train",
+            partition="train",
             seed=42,
             repo_root=repo_root,
             output_root=output_root,
@@ -97,6 +97,19 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
         assert mock_data.call_args.kwargs["partition"] == "train"
 
     # 2. train
+    train_ledger_path = tmp_path / "control_train.sqlite3"
+    led = worker.S2Ledger(train_ledger_path)
+    rid = led.open_run(
+        mode="smoke",
+        arm=None,
+        seed=None,
+        cell_wall_budget=1200.0,
+        snapshot_extra={"passed": True, "shared_train_steps": 200, "status": "completed"},
+    )
+    led.begin_run(rid, state="training")
+    led.complete_run(rid, metrics={"passed": True, "shared_train_steps": 200, "status": "completed"})
+    led.close()
+
     with patch("ainerzero.v9.experiments.s2.train_runner.run_train_cell") as mock_train:
         def _train_side_effect(ledger, run_id, **kwargs):
             ledger.complete_run(run_id)
@@ -109,7 +122,7 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
             seed=43,
             repo_root=repo_root,
             output_root=output_root,
-            ledger=tmp_path / "control_train.sqlite3",
+            ledger=train_ledger_path,
             lock_file=tmp_path / "worker.lock",
             research_log=log_path,
         )

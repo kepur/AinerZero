@@ -1,0 +1,46 @@
+{
+  "task_id": "ainerzero.V9.P163",
+  "task_name": "S2 生产路径集成 W1：数据与训练接线（附录 D1/D2）",
+  "status": "completed",
+  "agent_id": "gemini-k4m9",
+  "timestamp": "2026-11-07T02:15:30Z",
+  "pure_cpu": true,
+  "zero_mlx_imports": true,
+  "artifacts_stat_clean": true,
+  "artifacts_files_written": 0,
+  "test_summary": {
+    "total_tests": 56,
+    "passed": 56,
+    "failed": 0,
+    "skipped": 0,
+    "elapsed_seconds": 38.92
+  },
+  "mutations_summary": {
+    "total": 5,
+    "turned_red": 5,
+    "restored_cleanly": true
+  },
+  "d1_data_wiring": {
+    "cli_partition_flag_enforced": true,
+    "cli_rejects_missing_partition": true,
+    "cli_rejects_arm_flag": true,
+    "holdout_selection_rule": "sha256('s2p1-train-v1|holdout|' + str(w_idx)) ascending top 10%",
+    "holdout_worlds_json_generated": true,
+    "holdout_worlds_have_goal_specs": true,
+    "non_holdout_worlds_no_goal_specs": true
+  },
+  "d2_train_wiring": {
+    "data_dir_fixed": "datasets/train",
+    "fallback_data_dir_removed": true,
+    "train_batches_from_non_holdout_only": true,
+    "model_selection_from_holdout_only": true,
+    "world_cut_independent_of_seed": true,
+    "model_selection_every_steps": 200,
+    "eval_every_private_constant_removed": true,
+    "holdout_fraction_private_constant_removed": true,
+    "steps_resolved_from_smoke_ledger": true,
+    "missing_or_failed_smoke_rejected_with_smoke_steps_missing": true,
+    "checkpoint_dir_format": "checkpoints/<arm>/seed<k>/",
+    "best_checkpoint_sha_recorded": true
+  }
+}

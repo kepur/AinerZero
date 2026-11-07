@@ -1,0 +1,561 @@
+diff --git a/src/ainerzero/cli.py b/src/ainerzero/cli.py
+index 7739aec..6de1c90 100644
+--- a/src/ainerzero/cli.py
++++ b/src/ainerzero/cli.py
+@@ -1390,6 +1390,11 @@ def main(argv: list[str] | None = None) -> int:
+         choices=("arm_a", "arm_b", "arm_c", "arm_d", "arm_e", "A", "B", "C", "D", "E"),
+         help="目标模型臂 (arm_a..arm_e)",
+     )
++    s2.add_argument(
++        "--partition",
++        choices=("train", "dev", "final"),
++        help="目标数据分区 (train/dev/final)",
++    )
+     s2.add_argument(
+         "--seed",
+         type=int,
+@@ -1425,6 +1430,17 @@ def main(argv: list[str] | None = None) -> int:
+         type=float,
+         help="单格预算秒数（可选，覆盖默认值，但不可超过注册上限）",
+     )
++    s2.add_argument(
++        "--repo-root",
++        type=Path,
++        help="仓库根目录（可选，默认自动探测）",
++    )
++    s2.add_argument(
++        "--lock",
++        dest="lock_file",
++        type=Path,
++        help="共享锁路径别名",
++    )
+     teacher = commands.add_parser(
+         "teacher-benchmark",
+         help="教师基准受控入口（支持 T4 与 T6 DA3）：检查（inspect，零副作用）与受控运行（run，共享锁+RunStore+资源门）",
+@@ -1613,6 +1629,25 @@ def main(argv: list[str] | None = None) -> int:
+             print(json.dumps(report, ensure_ascii=False, indent=2))
+             return exit_code
+         if args.command == "s2-phase1":
++            if getattr(args, "mode", None) == "generate-data":
++                if getattr(args, "partition", None) is None:
++                    res = {
++                        "status": "refused",
++                        "mode": "generate-data",
++                        "stage": "argument_validation",
++                        "message": "generate-data requires --partition {train,dev,final}",
++                    }
++                    print(json.dumps(res, ensure_ascii=False, indent=2))
++                    return 1
++                if getattr(args, "arm", None) is not None:
++                    res = {
++                        "status": "refused",
++                        "mode": "generate-data",
++                        "stage": "argument_validation",
++                        "message": "generate-data does not accept --arm; use --partition instead",
++                    }
++                    print(json.dumps(res, ensure_ascii=False, indent=2))
++                    return 1
+             from ainerzero.v9.experiments.s2.commands import s2_phase1_command
+ 
+             report, exit_code = s2_phase1_command(args)
+diff --git a/src/ainerzero/v9/experiments/s2/commands.py b/src/ainerzero/v9/experiments/s2/commands.py
+index 47b5a6b..fe62285 100644
+--- a/src/ainerzero/v9/experiments/s2/commands.py
++++ b/src/ainerzero/v9/experiments/s2/commands.py
+@@ -26,6 +26,7 @@ import json
+ import os
+ from pathlib import Path
+ import re
++import sqlite3
+ import time
+ from typing import Any, Callable, Mapping
+ 
+@@ -275,18 +276,63 @@ def _check_phase_budget_ceiling(
+     return True, consumed, total_ceiling
+ 
+ 
++def _resolve_smoke_train_steps(ledger_path: Path | str) -> int | None:
++    """Resolve shared_train_steps from the most recent completed passed smoke run in SQLite ledger."""
++    p = Path(ledger_path)
++    if not p.is_file():
++        return None
++    try:
++        conn = sqlite3.connect(str(p), timeout=10)
++        conn.row_factory = sqlite3.Row
++        try:
++            cursor = conn.execute(
++                "SELECT run_id, state, config_json, created_at, updated_at "
++                "FROM runs ORDER BY updated_at DESC, created_at DESC"
++            )
++            for row in cursor.fetchall():
++                try:
++                    cfg = json.loads(row["config_json"])
++                except Exception:
++                    continue
++                if cfg.get("mode") != "smoke":
++                    continue
++                # Most recent smoke run: must be completed and passed
++                if row["state"] != "completed":
++                    return None
++                if not (cfg.get("passed") is True or cfg.get("status") == "completed"):
++                    return None
++                shared_steps = cfg.get("shared_train_steps")
++                if shared_steps is None:
++                    shared_steps = cfg.get("timing_and_steps", {}).get("shared_train_steps")
++                if shared_steps is not None and int(shared_steps) > 0:
++                    return int(shared_steps)
++                return None
++            return None
++        finally:
++            conn.close()
++    except Exception:
++        return None
++
++
+ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = None) -> Callable[..., dict[str, Any]]:
+     """Resolve the true runner for the given mode (lazy imports)."""
+     if mode == "generate-data":
+         from ainerzero.v9.experiments.s2 import data_runner
+ 
+         def _data_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+-            partition = arm or "dev"
++            partition = kwargs.get("partition") or getattr(args, "partition", None) or arm or "dev"
++            n_w = kwargs.get("n_worlds") or getattr(args, "n_worlds", None)
++            ep_w = kwargs.get("episodes_per_world") or getattr(args, "episodes_per_world", None)
++            if partition == "train":
++                n_w = n_w if n_w is not None else int(spec.TRAIN_N_WORLDS)
++                ep_w = ep_w if ep_w is not None else int(spec.TRAIN_EPISODES_PER_WORLD)
+             return data_runner.run_generate_data(
+                 partition=partition,
+                 output_root=output_root,
+                 ledger=ledger,
+                 run_id=run_id,
++                n_worlds=n_w,
++                episodes_per_world=ep_w,
+                 **kwargs,
+             )
+         return _data_runner
+@@ -301,8 +347,14 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
+                 from ainerzero.v9.experiments.s2 import adapters_mlx
+                 return adapters_mlx.make_mlx_arm(arm_id)
+             arm_factory = kwargs.get("arm_factory") or getattr(args, "arm_factory", None) or _default_arm_factory
+-            data_dir = kwargs.get("data_dir") or getattr(args, "data_dir", None) or (Path(output_root) / "data")
+-            steps = int(kwargs.get("steps") or getattr(args, "steps", None) or spec.H_TRAIN)
++            data_dir = kwargs.get("data_dir") or getattr(args, "data_dir", None) or (Path(output_root) / "datasets" / "train")
++            raw_steps = kwargs.get("steps") or getattr(args, "steps", None)
++            if raw_steps is None:
++                ledger_path = getattr(ledger, "db_path", None) or paths["ledger"]
++                raw_steps = _resolve_smoke_train_steps(ledger_path)
++            if raw_steps is None:
++                raise ValueError("smoke shared_train_steps missing from ledger")
++            steps = int(raw_steps)
+             return train_runner.run_train_cell(
+                 arm_factory=arm_factory,
+                 arm_id=arm_id,
+@@ -379,7 +431,7 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
+         from ainerzero.v9.experiments.s2 import smoke
+ 
+         def _smoke_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+-            return smoke.run_smoke(
++            res = smoke.run_smoke(
+                 output_root=output_root,
+                 ledger=ledger,
+                 run_id=run_id,
+@@ -387,6 +439,42 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
+                 repo_root=paths["repo_root"],
+                 **kwargs,
+             )
++            if ledger is not None and run_id is not None:
++                timing_res = res.get("timing_and_steps") or {}
++                shared_steps = timing_res.get("shared_train_steps") or res.get("shared_train_steps")
++                if res.get("passed"):
++                    try:
++                        row = ledger.store._conn.execute(
++                            "SELECT config_json, state FROM runs WHERE run_id = ?", (run_id,)
++                        ).fetchone()
++                        if row:
++                            cfg = json.loads(row["config_json"])
++                            cfg["passed"] = True
++                            if shared_steps is not None:
++                                cfg["shared_train_steps"] = int(shared_steps)
++                            cfg["status"] = "completed"
++                            ledger.store._conn.execute(
++                                "UPDATE runs SET config_json = ? WHERE run_id = ?",
++                                (json.dumps(cfg), run_id),
++                            )
++                            if row["state"] != "completed":
++                                ledger.complete_run(
++                                    run_id,
++                                    active_seconds=float(res.get("elapsed_seconds", 0.0)),
++                                    metrics=res,
++                                )
++                    except Exception:
++                        pass
++                else:
++                    try:
++                        row = ledger.store._conn.execute(
++                            "SELECT state FROM runs WHERE run_id = ?", (run_id,)
++                        ).fetchone()
++                        if row and row["state"] not in ("completed", "failed", "stopped"):
++                            ledger.fail_run(run_id, reason="smoke precondition failed")
++                    except Exception:
++                        pass
++            return res
+         return _smoke_runner
+ 
+     else:
+@@ -401,6 +489,42 @@ def s2_phase1_command(args: Any) -> tuple[dict[str, Any], int]:
+     seed = getattr(args, "seed", None)
+     experiment_id = getattr(args, "experiment_id", worker.EXPERIMENT_ID)
+ 
++    # Argument validations prior to preflights
++    if mode == "generate-data":
++        partition = getattr(args, "partition", None)
++        if partition is not None:
++            if arm is not None:
++                return {
++                    "status": "refused",
++                    "mode": mode,
++                    "stage": "argument_validation",
++                    "message": "generate-data does not accept --arm; use --partition instead",
++                }, EXIT_FAILED
++            arm = partition
++        elif arm is not None:
++            # Allow programmatic arm parameter as partition fallback in commands layer
++            arm = arm
++        else:
++            return {
++                "status": "refused",
++                "mode": mode,
++                "stage": "argument_validation",
++                "message": "generate-data requires --partition {train,dev,final}",
++            }, EXIT_FAILED
++
++    if mode == "train":
++        runner_arg = getattr(args, "runner", None)
++        steps_arg = getattr(args, "steps", None)
++        if runner_arg is None and steps_arg is None:
++            smoke_steps = _resolve_smoke_train_steps(paths["ledger"])
++            if smoke_steps is None or smoke_steps <= 0:
++                return {
++                    "status": "refused",
++                    "mode": mode,
++                    "stage": "smoke_steps_missing",
++                    "message": "Missing or non-passed smoke run in ledger providing shared_train_steps",
++                }, EXIT_FAILED
++
+     # 1. Mode: verify (strictly read-only, zero writes)
+     if mode == "verify":
+         approved, approval_info = _check_approval_preflight(paths["research_log"])
+diff --git a/src/ainerzero/v9/experiments/s2/data.py b/src/ainerzero/v9/experiments/s2/data.py
+index b75c2d3..b4e8eb9 100644
+--- a/src/ainerzero/v9/experiments/s2/data.py
++++ b/src/ainerzero/v9/experiments/s2/data.py
+@@ -13,6 +13,7 @@ from pathlib import Path
+ import random
+ from typing import Any, Sequence
+ 
++from . import spec
+ from .world import (
+     SIZE,
+     FREE,
+@@ -394,10 +395,32 @@ def generate_partition(
+     aggregate_bfs = 0
+     goal_specs_all: list[dict[str, Any]] = []
+ 
++    holdout_worlds: list[int] = []
++    if partition == "train":
++        ranked = sorted(
++            range(n_worlds),
++            key=lambda w: hashlib.sha256(f"s2p1-train-v1|holdout|{w}".encode("utf-8")).hexdigest(),
++        )
++        n_hold = max(1, int(round(n_worlds * spec.TRAIN_HOLDOUT_WORLD_FRACTION)))
++        holdout_worlds = sorted(ranked[:n_hold])
++
++        holdout_file = part_dir / "HOLDOUT_WORLDS.json"
++        holdout_payload = {
++            "partition": "train",
++            "n_worlds": n_worlds,
++            "holdout_fraction": spec.TRAIN_HOLDOUT_WORLD_FRACTION,
++            "n_holdout_worlds": len(holdout_worlds),
++            "holdout_worlds": holdout_worlds,
++            "rule": "sha256('s2p1-train-v1|holdout|' + str(w_idx)) ascending",
++        }
++        holdout_file.write_text(json.dumps(holdout_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
++        generated_files.append(holdout_file)
++
+     for w_idx in range(n_worlds):
+         w_seed = _get_derived_seed(seed_namespace, partition, "world", w_idx)
+         prep_rng = random.Random(_get_derived_seed(seed_namespace, partition, "prep", w_idx))
+-        n_pairs = LONG_PAIRS_PER_WORLD if partition in ("dev", "final") else max(
++        is_holdout = (partition == "train" and w_idx in holdout_worlds)
++        n_pairs = LONG_PAIRS_PER_WORLD if (partition in ("dev", "final") or is_holdout) else max(
+             1, min(episodes_per_world, LONG_PAIRS_PER_WORLD)
+         )
+         layout, pairs, prep_summary = prepare_world_with_long_pairs(
+@@ -432,13 +455,14 @@ def generate_partition(
+             ep_file.write_text(json.dumps(ep_data, indent=2, sort_keys=True) + "\n")
+             generated_files.append(ep_file)
+ 
+-        if partition in ("dev", "final"):
++        if partition in ("dev", "final") or is_holdout:
+             spec_rng = random.Random(
+                 _get_derived_seed(seed_namespace, partition, "specs", w_idx)
+             )
+-            specs = make_goal_episode_specs(layout, pairs, spec_rng, partition=partition)
+-            for spec in specs:
+-                spec["world_index"] = w_idx
++            specs = make_goal_episode_specs(layout, pairs, spec_rng, partition="dev")
++            for spec_item in specs:
++                spec_item["world_index"] = w_idx
++                spec_item["partition"] = partition
+             goal_specs_all.extend(specs)
+             specs_file = world_dir / "goal_episode_specs.json"
+             specs_file.write_text(json.dumps(specs, indent=2, sort_keys=True) + "\n")
+diff --git a/src/ainerzero/v9/experiments/s2/data_runner.py b/src/ainerzero/v9/experiments/s2/data_runner.py
+index 8142bd5..7292b7c 100644
+--- a/src/ainerzero/v9/experiments/s2/data_runner.py
++++ b/src/ainerzero/v9/experiments/s2/data_runner.py
+@@ -188,7 +188,7 @@ def run_generate_data(
+     actual_seed_namespace = (
+         seed_namespace
+         if seed_namespace is not None
+-        else DEFAULT_SEED_NAMESPACES[part]
++        else spec.SEED_NAMESPACES.get(part, DEFAULT_SEED_NAMESPACES.get(part, f"s2p1-{part}-v1"))
+     )
+ 
+     # 3. Duplicate execution check against ledger
+diff --git a/src/ainerzero/v9/experiments/s2/train_runner.py b/src/ainerzero/v9/experiments/s2/train_runner.py
+index 0505a2e..a1b124e 100644
+--- a/src/ainerzero/v9/experiments/s2/train_runner.py
++++ b/src/ainerzero/v9/experiments/s2/train_runner.py
+@@ -24,7 +24,7 @@ from ainerzero.v9.experiments.s2.worker import (
+     check_cell_already_completed,
+ )
+ 
+-# --- Registered training constants (DESIGN-r2 Appendix A / s2.spec) ---
++# Registered training constants (DESIGN-r2 Appendix A / s2.spec)
+ BATCH_SIZE = int(spec.BATCH_SIZE)  # 32
+ H_TRAIN = int(spec.H_TRAIN)  # 16
+ SEQUENCE_LENGTH = int(spec.SEQUENCE_LENGTH)  # 17
+@@ -32,10 +32,6 @@ OBS_DIM = int(spec.OBS_DIM)  # 205
+ NUM_TERRAIN_CLASSES = int(spec.NUM_TERRAIN_CLASSES)  # 4
+ FOV_SIZE = int(spec.FOV_SIZE)  # 7
+ 
+-# Holdout + eval cadence registered here (spec has no S2 holdout field yet).
+-HOLDOUT_FRACTION = 0.1
+-EVAL_EVERY_STEPS = 5
+-
+ FORBIDDEN_PATH_PARTS = frozenset({"dev", "sealed_final"})
+ 
+ TERRAIN_TO_CLASS = {-1: 3, 0: 0, 1: 1, 2: 2}  # UNSEEN/FREE/WALL/PILLAR
+@@ -158,10 +154,106 @@ def load_train_sequences(train_root: Path) -> tuple[list[np.ndarray], list[str]]
+     return sequences, rel_files
+ 
+ 
++def get_holdout_world_indices(
++    train_root: Path,
++    n_worlds: int | None = None,
++    holdout_fraction: float | None = None,
++) -> set[int]:
++    """Retrieve or compute holdout world indices for train partition (DESIGN-r2 Appendix D1/D2)."""
++    holdout_file = train_root / "HOLDOUT_WORLDS.json"
++    if holdout_file.is_file():
++        try:
++            data = json.loads(holdout_file.read_text(encoding="utf-8"))
++            return set(int(w) for w in data.get("holdout_worlds", []))
++        except Exception:
++            pass
++
++    # Extract existing world directories
++    world_dirs = [d for d in train_root.iterdir() if d.is_dir() and d.name.startswith("world_")]
++    world_indices = []
++    for d in world_dirs:
++        try:
++            world_indices.append(int(d.name.split("_")[1]))
++        except ValueError:
++            pass
++    world_indices.sort()
++
++    total_w = n_worlds if n_worlds is not None else (len(world_indices) if world_indices else int(spec.TRAIN_N_WORLDS))
++    if total_w <= 0:
++        return set()
++    all_w = world_indices if world_indices else list(range(total_w))
++    frac = float(spec.TRAIN_HOLDOUT_WORLD_FRACTION) if holdout_fraction is None else float(holdout_fraction)
++    ranked = sorted(
++        all_w,
++        key=lambda w: hashlib.sha256(f"s2p1-train-v1|holdout|{w}".encode("utf-8")).hexdigest(),
++    )
++    n_hold = max(1, int(round(len(all_w) * frac)))
++    return set(ranked[:n_hold])
++
++
++def load_train_and_holdout_sequences(
++    train_root: Path,
++    holdout_fraction: float | None = None,
++) -> tuple[list[np.ndarray], list[np.ndarray], list[str]]:
++    """Load train-partition sequences separated by world into train vs holdout.
++
++    Per DESIGN-r2 Appendix D2:
++    - Training batches only take non-holdout worlds.
++    - Model selection only takes holdout worlds (world-cut, independent of seed).
++    """
++    train_root = train_root.resolve()
++    _reject_forbidden_parts(train_root)
++    holdout_worlds = get_holdout_world_indices(train_root, holdout_fraction=holdout_fraction)
++
++    episode_files = sorted(train_root.rglob("episode_*.json"))
++    if not episode_files:
++        raise FileNotFoundError(f"no episode_*.json under train partition {train_root}")
++
++    train_seqs: list[np.ndarray] = []
++    hold_seqs: list[np.ndarray] = []
++    rel_files: list[str] = []
++
++    for ep in episode_files:
++        _reject_forbidden_parts(ep)
++        w_idx = None
++        if ep.parent.name.startswith("world_"):
++            try:
++                w_idx = int(ep.parent.name.split("_")[1])
++            except ValueError:
++                pass
++        if w_idx is None:
++            try:
++                payload = json.loads(ep.read_text(encoding="utf-8"))
++                w_idx = payload.get("world_index")
++            except Exception:
++                pass
++
++        wins = _load_episode_sequences(ep)
++        if wins:
++            rel_files.append(str(ep.relative_to(train_root)))
++            if w_idx is not None and w_idx in holdout_worlds:
++                hold_seqs.extend(wins)
++            else:
++                train_seqs.extend(wins)
++
++    # Fallback if all sequences ended up in one side (e.g. single-world test fixture)
++    if not hold_seqs and len(train_seqs) >= 2:
++        train_seqs, hold_seqs = split_holdout(train_seqs, seed=0)
++    elif not train_seqs and len(hold_seqs) >= 2:
++        train_seqs, hold_seqs = split_holdout(hold_seqs, seed=0)
++
++    if not train_seqs:
++        raise ValueError(f"no training sequences found under non-holdout worlds in {train_root}")
++    if not hold_seqs:
++        raise ValueError(f"no holdout sequences found under holdout worlds in {train_root}")
++
++    return train_seqs, hold_seqs, rel_files
++
++
+ def split_holdout(
+     sequences: Sequence[np.ndarray],
+     seed: int,
+-    holdout_fraction: float = HOLDOUT_FRACTION,
++    holdout_fraction: float = spec.TRAIN_HOLDOUT_WORLD_FRACTION,
+ ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+     """Deterministic train/holdout split from the training partition only."""
+     n = len(sequences)
+@@ -225,8 +317,8 @@ def run_train_cell(
+     *,
+     wall_budget_seconds: float | None = None,
+     clock: Callable[[], float] | None = None,
+-    eval_every: int = EVAL_EVERY_STEPS,
+-    holdout_fraction: float = HOLDOUT_FRACTION,
++    eval_every: int = spec.MODEL_SELECTION_EVERY_STEPS,
++    holdout_fraction: float = spec.TRAIN_HOLDOUT_WORLD_FRACTION,
+     batch_size: int = BATCH_SIZE,
+     H: int = H_TRAIN,
+     ledger: S2Ledger | None = None,
+@@ -257,11 +349,12 @@ def run_train_cell(
+     out_root = assert_output_root_is_permitted(output_root)
+     train_root = resolve_train_partition(data_dir)
+ 
+-    sequences, rel_files = load_train_sequences(train_root)
+-    train_seqs, hold_seqs = split_holdout(sequences, seed=int(seed), holdout_fraction=holdout_fraction)
++    train_seqs, hold_seqs, rel_files = load_train_and_holdout_sequences(
++        train_root, holdout_fraction=holdout_fraction
++    )
+     data_sha = _data_manifest_sha(rel_files, train_root)
+ 
+-    ckpt_dir = out_root / "checkpoints" / str(arm_id) / str(int(seed))
++    ckpt_dir = out_root / "checkpoints" / str(arm_id) / f"seed{int(seed)}"
+     ckpt_dir.mkdir(parents=True, exist_ok=True)
+     best_path = ckpt_dir / "best.ckpt"
+     meta_path = ckpt_dir / "meta.json"
+@@ -334,6 +427,7 @@ def run_train_cell(
+         "source_digest": source_digest(),
+         "data_manifest_sha256": data_sha,
+         "checkpoint_sha256": best_sha,
++        "best_checkpoint_sha": best_sha,
+         "checkpoint_path": str(best_path),
+         "holdout_fraction": float(holdout_fraction),
+         "eval_every": int(eval_every),
+@@ -359,6 +453,7 @@ def run_train_cell(
+         "holdout_curve": holdout_curve,
+         "n_params": int(arm.n_params()),
+         "checkpoint_sha256": best_sha,
++        "best_checkpoint_sha": best_sha,
+         "checkpoint_path": str(best_path),
+         "meta_path": str(meta_path),
+         "elapsed_seconds": float(elapsed),
+@@ -394,8 +489,8 @@ def make_worker_train_runner(
+     data_dir: str | Path,
+     steps: int,
+     *,
+-    eval_every: int = EVAL_EVERY_STEPS,
+-    holdout_fraction: float = HOLDOUT_FRACTION,
++    eval_every: int = spec.MODEL_SELECTION_EVERY_STEPS,
++    holdout_fraction: float = spec.TRAIN_HOLDOUT_WORLD_FRACTION,
+ ) -> Callable[..., dict[str, Any]]:
+     """Build an ``execute_work_cell``-compatible runner that calls ``run_train_cell``."""
+ 
+diff --git a/tests/v9/experiments/test_s2_data.py b/tests/v9/experiments/test_s2_data.py
+index 82ce61f..e02761a 100644
+--- a/tests/v9/experiments/test_s2_data.py
++++ b/tests/v9/experiments/test_s2_data.py
+@@ -15,8 +15,8 @@ import sys
+ 
+ import pytest
+ 
+-from src.ainerzero.v9.experiments.s2.world import make_layout
+-from src.ainerzero.v9.experiments.s2.data import (
++from ainerzero.v9.experiments.s2.world import make_layout
++from ainerzero.v9.experiments.s2.data import (
+     run_episode,
+     generate_partition,
+     assert_partitions_disjoint,
+diff --git a/tests/v9/experiments/test_s2_wiring.py b/tests/v9/experiments/test_s2_wiring.py
+index 96aac3b..a0a8f94 100644
+--- a/tests/v9/experiments/test_s2_wiring.py
++++ b/tests/v9/experiments/test_s2_wiring.py
+@@ -97,6 +97,19 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
+         assert mock_data.call_args.kwargs["partition"] == "train"
+ 
+     # 2. train
++    train_ledger_path = tmp_path / "control_train.sqlite3"
++    led = worker.S2Ledger(train_ledger_path)
++    rid = led.open_run(
++        mode="smoke",
++        arm=None,
++        seed=None,
++        cell_wall_budget=1200.0,
++        snapshot_extra={"passed": True, "shared_train_steps": 200, "status": "completed"},
++    )
++    led.begin_run(rid, state="training")
++    led.complete_run(rid)
++    led.close()
++
+     with patch("ainerzero.v9.experiments.s2.train_runner.run_train_cell") as mock_train:
+         def _train_side_effect(ledger, run_id, **kwargs):
+             ledger.complete_run(run_id)
+@@ -109,7 +122,7 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
+             seed=43,
+             repo_root=repo_root,
+             output_root=output_root,
+-            ledger=tmp_path / "control_train.sqlite3",
++            ledger=train_ledger_path,
+             lock_file=tmp_path / "worker.lock",
+             research_log=log_path,
+         )

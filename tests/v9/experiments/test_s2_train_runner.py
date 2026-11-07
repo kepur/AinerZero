@@ -95,6 +95,21 @@ def write_synthetic_train_partition(
     A[0, 1] = 0.05
     A[1, 0] = -0.03
     train_root = phase_root / "datasets" / "train"
+    import hashlib
+    holdout_worlds = sorted(
+        range(n_episodes),
+        key=lambda w: hashlib.sha256(f"s2p1-train-v1|holdout|{w}".encode("utf-8")).hexdigest(),
+    )[:max(1, int(round(n_episodes * 0.1)))]
+    train_root.mkdir(parents=True, exist_ok=True)
+    (train_root / "HOLDOUT_WORLDS.json").write_text(
+        json.dumps({
+            "partition": "train",
+            "n_worlds": n_episodes,
+            "n_holdout_worlds": len(holdout_worlds),
+            "holdout_worlds": holdout_worlds,
+        }, indent=2) + "\n",
+        encoding="utf-8",
+    )
     for e in range(n_episodes):
         world = train_root / f"world_{e:04d}"
         world.mkdir(parents=True, exist_ok=True)
@@ -328,6 +343,13 @@ def test_duplicate_execution_via_worker_commands(synth_env: dict[str, Any], tmp_
         encoding="utf-8",
     )
     prereg = output_root / "prereg.json"
+
+    # Pre-record passed smoke run in ledger
+    led = worker.S2Ledger(ledger)
+    s_rid = led.open_run(mode="smoke", arm=None, seed=None, cell_wall_budget=1200.0)
+    led.begin_run(s_rid, state="training")
+    led.complete_run(s_rid, metrics={"passed": True, "shared_train_steps": 10})
+    led.close()
 
     runner = make_worker_train_runner(
         arm_factory=lambda: FakeLinearArm(lr=0.1),

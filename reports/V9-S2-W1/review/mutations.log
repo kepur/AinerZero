@@ -1,0 +1,285 @@
+=== Mutation W1-M1: fallback_steps_to_h_train ===
+Target: tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_rejects_missing_or_failed_smoke
+Exit Code: 1
+Turned Red: True
+Stdout:
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_w1_train_rejects_missing_or_failed_smoke _________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-185/test_w1_train_rejects_missing_0')
+
+    def test_w1_train_rejects_missing_or_failed_smoke(tmp_path: Path) -> None:
+        """Train mode without a passed smoke run in ledger is rejected with smoke_steps_missing."""
+        env = _setup_test_env(tmp_path)
+    
+        # 1. No smoke run in ledger -> rejected
+        args = argparse.Namespace(
+            mode="train",
+            arm="arm_a",
+            seed=0,
+            repo_root=env["repo_root"],
+            output_root=env["output_root"],
+            ledger=env["ledger_path"],
+            lock_file=env["lock_path"],
+            research_log=env["log_path"],
+            prereg=env["prereg_path"],
+            budget=600.0,
+        )
+        res, code = commands.s2_phase1_command(args)
+        assert code == commands.EXIT_FAILED
+>       assert res["status"] == "refused"
+E       AssertionError: assert 'failed' == 'refused'
+E         
+E         - refused
+E         + failed
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py:162: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_rejects_missing_or_failed_smoke
+1 failed in 0.83s
+
+Stderr:
+
+
+=== Mutation W1-M2: holdout_by_sequence_permutation ===
+Target: tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_runner_holdout_separation_and_checkpoint_path
+Exit Code: 1
+Turned Red: True
+Stdout:
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_w1_train_runner_holdout_separation_and_checkpoint_path __________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-186/test_w1_train_runner_holdout_s0')
+
+    def test_w1_train_runner_holdout_separation_and_checkpoint_path(tmp_path: Path) -> None:
+        """Verify train batches only take non-holdout worlds, selection only holdout worlds, and checkpoint path seed<k>."""
+        env = _setup_test_env(tmp_path)
+        datasets_dir = env["output_root"] / "datasets"
+    
+        # Generate 10 worlds with 2 episodes each
+        data.generate_partition(
+            partition="train",
+            n_worlds=10,
+            episodes_per_world=2,
+            output_root=datasets_dir,
+            seed_namespace="s2p1-train-v1",
+            enforce_rejection_redraw=False,
+        )
+        train_dir = datasets_dir / "train"
+    
+        # Separate sequences
+        train_seqs, hold_seqs, rel_files = train_runner.load_train_and_holdout_sequences(train_dir)
+>       assert len(train_seqs) > 0
+E       assert 0 > 0
+E        +  where 0 = len([])
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py:249: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_runner_holdout_separation_and_checkpoint_path
+1 failed in 2.74s
+
+Stderr:
+
+
+=== Mutation W1-M3: model_selection_interval_default_5 ===
+Target: tests/v9/experiments/test_s2_w1_integration.py::test_w1_model_selection_interval_defaults_to_spec
+Exit Code: 1
+Turned Red: True
+Stdout:
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_w1_model_selection_interval_defaults_to_spec _______________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-187/test_w1_model_selection_interv0')
+
+    def test_w1_model_selection_interval_defaults_to_spec(tmp_path: Path) -> None:
+        """Verify train_runner default eval_every is spec.MODEL_SELECTION_EVERY_STEPS (200)."""
+        assert spec.MODEL_SELECTION_EVERY_STEPS == 200
+        assert not hasattr(train_runner, "EVAL_EVERY_STEPS")
+        assert not hasattr(train_runner, "HOLDOUT_FRACTION")
+        import inspect
+        sig = inspect.signature(train_runner.run_train_cell)
+>       assert sig.parameters["eval_every"].default == spec.MODEL_SELECTION_EVERY_STEPS
+E       assert 5 == 200
+E        +  where 5 = <Parameter "eval_every: 'int' = 5">.default
+E        +  and   200 = spec.MODEL_SELECTION_EVERY_STEPS
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py:326: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py::test_w1_model_selection_interval_defaults_to_spec
+1 failed in 0.81s
+
+Stderr:
+
+
+=== Mutation W1-M4: data_dir_default_output_root_data ===
+Target: tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_resolves_steps_from_passed_smoke_and_executes
+Exit Code: 1
+Turned Red: True
+Stdout:
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________ test_w1_train_resolves_steps_from_passed_smoke_and_executes __________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-188/test_w1_train_resolves_steps_f0')
+
+    def test_w1_train_resolves_steps_from_passed_smoke_and_executes(tmp_path: Path) -> None:
+        """Train mode resolves steps from the most recent passed smoke run."""
+        env = _setup_test_env(tmp_path)
+    
+        # Record passed smoke run with shared_train_steps = 400
+        led = worker.S2Ledger(env["ledger_path"])
+        rid = led.open_run(
+            mode="smoke",
+            arm=None,
+            seed=None,
+            cell_wall_budget=1200.0,
+            snapshot_extra={"passed": True, "shared_train_steps": 400, "status": "completed"},
+        )
+        led.begin_run(rid, state="training")
+        led.complete_run(rid)
+        led.close()
+    
+        # Verify step resolution helper
+        steps = commands._resolve_smoke_train_steps(env["ledger_path"])
+        assert steps == 400
+    
+        # Test runner receives resolved steps
+        with patch("ainerzero.v9.experiments.s2.train_runner.run_train_cell") as mock_train:
+            def _train_side_effect(ledger, run_id, **kwargs):
+                ledger.complete_run(run_id)
+                return {"status": "completed", "steps": kwargs.get("steps")}
+            mock_train.side_effect = _train_side_effect
+    
+            args = argparse.Namespace(
+                mode="train",
+                arm="arm_a",
+                seed=0,
+                repo_root=env["repo_root"],
+                output_root=env["output_root"],
+                ledger=env["ledger_path"],
+                lock_file=env["lock_path"],
+                research_log=env["log_path"],
+                prereg=env["prereg_path"],
+                budget=600.0,
+            )
+            res, code = commands.s2_phase1_command(args)
+            assert code == commands.EXIT_COMPLETED
+            assert mock_train.called
+            assert mock_train.call_args.kwargs["steps"] == 400
+>           assert mock_train.call_args.kwargs["data_dir"] == env["output_root"] / "datasets" / "train"
+E           AssertionError: assert PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-188/test_w1_train_resolves_steps_f0/artifacts/v9/s2/phase1/data') == ((PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-188/test_w1_train_resolves_steps_f0/artifacts/v9/s2/phase1') / 'datasets') / 'train')
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py:228: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py::test_w1_train_resolves_steps_from_passed_smoke_and_executes
+1 failed in 0.82s
+
+Stderr:
+
+
+=== Mutation W1-M5: generate_data_allows_arm_flag ===
+Target: tests/v9/experiments/test_s2_w1_integration.py::test_w1_cli_generate_data_argument_validation
+Exit Code: 1
+Turned Red: True
+Stdout:
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_w1_cli_generate_data_argument_validation _________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-189/test_w1_cli_generate_data_argu0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1081bb080>
+
+    def test_w1_cli_generate_data_argument_validation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """CLI generate-data only recognizes --partition; missing or passing --arm is rejected."""
+        env = _setup_test_env(tmp_path)
+    
+        # 1. Missing --partition is rejected with stage="argument_validation"
+>       ret = cli_main([
+            "s2-phase1",
+            "--mode", "generate-data",
+            "--repo-root", str(env["repo_root"]),
+            "--output-root", str(env["output_root"]),
+            "--ledger", str(env["ledger_path"]),
+            "--lock", str(env["lock_path"]),
+            "--prereg", str(env["prereg_path"]),
+            "--research-log", str(env["log_path"]),
+        ])
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/src/ainerzero/cli.py:1598: in main
+    args = parser.parse_args(argv)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/argparse.py:1894: in parse_args
+    self.error(msg % ' '.join(argv))
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/argparse.py:2655: in error
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = ArgumentParser(prog='ainerzero', usage=None, description='AinerZero 工程自检与实验声明', formatter_class=<class 'argparse.HelpFormatter'>, conflict_handler='error', add_help=True)
+status = 2
+message = 'ainerzero: error: unrecognized arguments: --repo-root /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox\n'
+
+    def exit(self, status=0, message=None):
+        if message:
+            self._print_message(message, _sys.stderr)
+>       _sys.exit(status)
+E       SystemExit: 2
+
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/argparse.py:2642: SystemExit
+----------------------------- Captured stderr call -----------------------------
+usage: ainerzero [-h] [--version]
+                 {check-config,check-pilot,train-pilot,diagnose-pilot,train-observation,train-dynamics,diagnose-history,diagnose-recall,diagnose-residual-recall,train-memory,train-micro-memory,train-diverse-memory,train-relabel-memory,train-action-preserved-memory,train-action-preserved-mixed-memory,train-action-preserved-mixed-weight025-memory,train-action-preserved-mixed-weight0-control-memory,train-action-preserved-mixed-onestep-memory,train-action-preserved-mixed-tailself-memory,train-action-preserved-mixed-tailself-halfproj-memory,train-action-preserved-mixed-fullproj-memory,train-action-preserved-mixed-tailself-fullproj-memory,train-action-preserved-history-memory,train-action-preserved-distill-memory,train-action-preserved-lambda10-memory,probe-action-preserved-memory,diagnose-interference,diagnose-paired-memory,diagnose-memory-coverage,collect-c0,replay-c0,doctor,smoke,s1-phase1,e1-phase2,s2-phase1,teacher-benchmark,teacher-da3}
+                 ...
+ainerzero: error: unrecognized arguments: --repo-root /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py::test_w1_cli_generate_data_argument_validation
+1 failed in 0.87s
+
+Stderr:
+
+
+=== Mutation REV-M6: omit_holdout_worlds_json_generation ===
+Target: tests/v9/experiments/test_s2_w1_integration.py::test_w1_data_holdout_worlds_generation
+Exit Code: 1
+Turned Red: True
+Stdout:
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________________ test_w1_data_holdout_worlds_generation ____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-190/test_w1_data_holdout_worlds_ge0')
+
+    def test_w1_data_holdout_worlds_generation(tmp_path: Path) -> None:
+        """Generate train partition and verify holdout world determination & spec generation (D1)."""
+        env = _setup_test_env(tmp_path)
+        datasets_dir = env["output_root"] / "datasets"
+    
+        # Generate small train partition (10 worlds, 2 episodes per world)
+        manifest = data.generate_partition(
+            partition="train",
+            n_worlds=10,
+            episodes_per_world=2,
+            output_root=datasets_dir,
+            seed_namespace="s2p1-train-v1",
+            enforce_rejection_redraw=False,
+        )
+    
+        train_dir = datasets_dir / "train"
+        holdout_file = train_dir / "HOLDOUT_WORLDS.json"
+>       assert holdout_file.is_file()
+E       AssertionError: assert False
+E        +  where False = is_file()
+E        +    where is_file = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-190/test_w1_data_holdout_worlds_ge0/artifacts/v9/s2/phase1/datasets/train/HOLDOUT_WORLDS.json').is_file
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py:114: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmpicq67w4_/ainerzero_sandbox/tests/v9/experiments/test_s2_w1_integration.py::test_w1_data_holdout_worlds_generation
+1 failed in 2.61s
+
+Stderr:
+
+

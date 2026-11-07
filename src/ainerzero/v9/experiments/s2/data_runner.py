@@ -149,18 +149,20 @@ def run_generate_data(
         enforce_rejection_redraw: Whether to enforce redraw when ambiguity exceeds 30%.
         max_steps_per_episode: Steps per episode.
     """
-    if output_root is None:
-        raise ValueError("output_root must be explicitly specified and non-empty")
-
-    # 1. Output root permission check
-    out_path = assert_output_root_is_permitted(output_root)
-
-    # 2. Partition specification check
+    # 1. Partition specification check
+    if not partition:
+        raise ValueError("generate-data requires explicit partition ('train', 'dev', or 'final')")
     part = partition.lower()
     if part not in ("train", "dev", "final"):
         raise ValueError(
             f"Invalid partition {partition!r}; must be one of ('train', 'dev', 'final')"
         )
+
+    if output_root is None:
+        raise ValueError("output_root must be explicitly specified and non-empty")
+
+    # 2. Output root permission check
+    out_path = assert_output_root_is_permitted(output_root)
 
     # Scale resolution
     if part == "train":
@@ -188,7 +190,7 @@ def run_generate_data(
     actual_seed_namespace = (
         seed_namespace
         if seed_namespace is not None
-        else DEFAULT_SEED_NAMESPACES[part]
+        else spec.SEED_NAMESPACES[part]
     )
 
     # 3. Duplicate execution check against ledger

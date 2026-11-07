@@ -1,0 +1,50 @@
+{
+  "mutations": [
+    {
+      "id": "W1-M1",
+      "description": "Fallback step count to spec.H_TRAIN (16) if smoke steps missing",
+      "file": "src/ainerzero/v9/experiments/s2/commands.py",
+      "target_test": "test_w1_train_rejects_missing_or_failed_smoke",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "assert code == commands.EXIT_FAILED"
+    },
+    {
+      "id": "W1-M2",
+      "description": "Holdout set cut by random sequence permutation instead of world-cut",
+      "file": "src/ainerzero/v9/experiments/s2/train_runner.py",
+      "target_test": "test_w1_train_runner_holdout_separation_and_checkpoint_path",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "assert len(train_seqs) > 0"
+    },
+    {
+      "id": "W1-M3",
+      "description": "Model selection interval defaults to 5 instead of spec.MODEL_SELECTION_EVERY_STEPS",
+      "file": "src/ainerzero/v9/experiments/s2/train_runner.py",
+      "target_test": "test_w1_model_selection_interval_defaults_to_spec",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "assert spec.MODEL_SELECTION_EVERY_STEPS == 200"
+    },
+    {
+      "id": "W1-M4",
+      "description": "Training data directory defaults to output_root / 'data' instead of datasets/train",
+      "file": "src/ainerzero/v9/experiments/s2/commands.py",
+      "target_test": "test_w1_train_resolves_steps_from_passed_smoke_and_executes",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "assert steps == 400"
+    },
+    {
+      "id": "W1-M5",
+      "description": "Commands generate-data allows passing --arm without rejection",
+      "file": "src/ainerzero/v9/experiments/s2/commands.py",
+      "target_test": "test_w1_cli_generate_data_argument_validation",
+      "turned_red": true,
+      "exit_code": 1,
+      "failure_summary": "assert ret == 1"
+    }
+  ],
+  "all_turned_red": true
+}

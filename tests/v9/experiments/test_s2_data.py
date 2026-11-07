@@ -15,8 +15,8 @@ import sys
 
 import pytest
 
-from src.ainerzero.v9.experiments.s2.world import make_layout
-from src.ainerzero.v9.experiments.s2.data import (
+from ainerzero.v9.experiments.s2.world import make_layout
+from ainerzero.v9.experiments.s2.data import (
     run_episode,
     generate_partition,
     assert_partitions_disjoint,

@@ -229,13 +229,56 @@ class S2Ledger:
                 active_seconds=float(active_seconds),
                 optimizer_steps=int(optimizer_steps),
             )
-        self.store.transition(run_id, "completed", reason="execution completed")
+        reason_str = "execution completed"
+        if metrics is not None:
+            self.record_metrics(run_id, metrics)
+            try:
+                reason_str = json.dumps(dict(metrics))
+            except Exception:
+                reason_str = "execution completed"
+        self.store.transition(run_id, "completed", reason=reason_str)
+
+    def record_metrics(self, run_id: str, metrics: Mapping[str, Any]) -> None:
+        """Record run metrics into the ledger metadata table (run:<run_id>:metrics)."""
+        val = json.dumps(dict(metrics))
+        with self.store._transaction() as db:
+            db.execute(
+                "INSERT OR REPLACE INTO metadata (key, value) VALUES (?, ?)",
+                (f"run:{run_id}:metrics", val),
+            )
+
+    def get_run_metrics(self, run_id: str) -> dict[str, Any] | None:
+        """Retrieve metrics recorded for a run from metadata or reason fallback."""
+        return get_run_metrics(self.store, run_id)
 
     def fail_run(self, run_id: str, reason: str = "execution failed") -> None:
         self.store.transition(run_id, "failed", reason=reason)
 
     def stop_run(self, run_id: str, reason: str = "execution stopped") -> None:
         self.store.transition(run_id, "stopped", reason=reason)
+
+
+def get_run_metrics(store: RunStore, run_id: str) -> dict[str, Any] | None:
+    """Retrieve run metrics from RunStore metadata or reason column."""
+    with store._transaction() as db:
+        row = db.execute(
+            "SELECT value FROM metadata WHERE key = ?",
+            (f"run:{run_id}:metrics",),
+        ).fetchone()
+        if row:
+            try:
+                return json.loads(row[0])
+            except Exception:
+                pass
+        row = db.execute("SELECT reason FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+        if row and row[0]:
+            try:
+                d = json.loads(row[0])
+                if isinstance(d, dict):
+                    return d
+            except Exception:
+                pass
+    return None
 
 
 def default_stub_runner(
@@ -290,7 +333,29 @@ def execute_work_cell(
             clock=clock,
             output_root=output_root,
         )
+        # If the runner returned a result and the run has not been transitioned to a terminal state:
+        run_record = ledger.store.get_run(run_id)
+        if run_record.state not in TERMINAL_STATES:
+            if isinstance(result, dict) and result.get("passed") is False:
+                fail_reason = result.get("failure_reason") or "smoke precondition failed"
+                if isinstance(result, dict):
+                    ledger.record_metrics(run_id, result)
+                ledger.fail_run(run_id, reason=str(fail_reason))
+            else:
+                active_sec = float(result.get("active_seconds", result.get("elapsed_seconds", 0.0))) if isinstance(result, dict) else 0.0
+                opt_steps = int(result.get("optimizer_steps", 0)) if isinstance(result, dict) else 0
+                ledger.complete_run(
+                    run_id,
+                    active_seconds=active_sec,
+                    optimizer_steps=opt_steps,
+                    metrics=result if isinstance(result, dict) else None,
+                )
         return result
     except Exception as exc:
-        ledger.fail_run(run_id, reason=str(exc))
+        try:
+            run_record = ledger.store.get_run(run_id)
+            if run_record.state not in TERMINAL_STATES:
+                ledger.fail_run(run_id, reason=str(exc))
+        except Exception:
+            pass
         raise

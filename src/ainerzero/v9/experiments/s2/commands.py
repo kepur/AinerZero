@@ -26,6 +26,7 @@ import json
 import os
 from pathlib import Path
 import re
+import sqlite3
 import time
 from typing import Any, Callable, Mapping
 
@@ -53,7 +54,16 @@ _ANY_H2_RE = re.compile(r"^##\s+")
 
 
 def _resolve_paths(args: Any) -> dict[str, Path]:
-    repo_root = Path(getattr(args, "repo_root", None) or Path.cwd()).resolve()
+    repo_root = getattr(args, "repo_root", None)
+    if repo_root is not None:
+        repo_root = Path(repo_root).resolve()
+    else:
+        repo_root = Path(__file__).resolve().parents[5]
+    expected_self = (repo_root / "src/ainerzero/v9/experiments/s2/commands.py").resolve()
+    if not expected_self.is_file() or expected_self != Path(__file__).resolve():
+        raise RuntimeError(
+            f"Code identity mismatch: repo_root {repo_root} does not contain currently executing {Path(__file__).resolve()}"
+        )
     output_root = Path(getattr(args, "output_root", None) or (repo_root / "artifacts/v9/s2/phase1")).resolve()
     ledger_path = Path(getattr(args, "ledger", None) or (output_root / "control.sqlite3")).resolve()
     lock_path = Path(getattr(args, "lock_file", None) or (repo_root / "artifacts/locks/m0-worker.lock")).resolve()
@@ -275,18 +285,67 @@ def _check_phase_budget_ceiling(
     return True, consumed, total_ceiling
 
 
+def _resolve_smoke_train_steps(ledger_path: Path | str) -> int | None:
+    """Resolve shared_train_steps from the most recent completed passed smoke run in SQLite ledger.
+
+    F1:
+    - Reads via worker.ledger_read_snapshot.
+    - Pass criterion: smoke result passed must be True (deleted 'or status == completed').
+    - Reads steps from the run completion record (metrics/result), not from config_json.
+    """
+    p = Path(ledger_path)
+    if not p.is_file():
+        return None
+    try:
+        with worker.ledger_read_snapshot(p) as store:
+            if store is None:
+                return None
+            runs = store.list_runs()
+            runs_sorted = sorted(runs, key=lambda r: (r.updated_at, r.created_at), reverse=True)
+            for r in runs_sorted:
+                cfg = r.config_snapshot or {}
+                if cfg.get("mode") != "smoke":
+                    continue
+                # Most recent smoke run: must be in completed state
+                if r.state != "completed":
+                    return None
+                metrics = worker.get_run_metrics(store, r.run_id)
+                if not metrics:
+                    return None
+                # Sole criterion: passed must be True
+                if metrics.get("passed") is not True:
+                    return None
+                timing = metrics.get("timing_and_steps") or {}
+                shared_steps = timing.get("shared_train_steps") or metrics.get("shared_train_steps")
+                if shared_steps is not None and int(shared_steps) > 0:
+                    return int(shared_steps)
+                return None
+            return None
+    except Exception:
+        return None
+
+
 def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = None) -> Callable[..., dict[str, Any]]:
     """Resolve the true runner for the given mode (lazy imports)."""
     if mode == "generate-data":
         from ainerzero.v9.experiments.s2 import data_runner
 
         def _data_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
-            partition = arm or "dev"
+            partition = kwargs.get("partition") or getattr(args, "partition", None)
+            if not partition:
+                raise ValueError("generate-data requires explicit partition")
+            n_w = kwargs.get("n_worlds") or getattr(args, "n_worlds", None)
+            ep_w = kwargs.get("episodes_per_world") or getattr(args, "episodes_per_world", None)
+            if partition == "train":
+                n_w = n_w if n_w is not None else int(spec.TRAIN_N_WORLDS)
+                ep_w = ep_w if ep_w is not None else int(spec.TRAIN_EPISODES_PER_WORLD)
             return data_runner.run_generate_data(
                 partition=partition,
                 output_root=output_root,
                 ledger=ledger,
                 run_id=run_id,
+                n_worlds=n_w,
+                episodes_per_world=ep_w,
                 **kwargs,
             )
         return _data_runner
@@ -295,14 +354,24 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
         from ainerzero.v9.experiments.s2 import train_runner
 
         def _train_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
-            arm_id = str(arm or "arm_a")
-            arm_seed = int(seed if seed is not None else 42)
+            if not arm:
+                raise ValueError("train requires explicit arm")
+            if seed is None:
+                raise ValueError("train requires explicit seed")
+            arm_id = str(arm)
+            arm_seed = int(seed)
             def _default_arm_factory():
                 from ainerzero.v9.experiments.s2 import adapters_mlx
                 return adapters_mlx.make_mlx_arm(arm_id)
             arm_factory = kwargs.get("arm_factory") or getattr(args, "arm_factory", None) or _default_arm_factory
-            data_dir = kwargs.get("data_dir") or getattr(args, "data_dir", None) or (Path(output_root) / "data")
-            steps = int(kwargs.get("steps") or getattr(args, "steps", None) or spec.H_TRAIN)
+            data_dir = kwargs.get("data_dir") or getattr(args, "data_dir", None) or (Path(output_root) / "datasets" / "train")
+            raw_steps = kwargs.get("steps")
+            if raw_steps is None:
+                ledger_path = getattr(ledger, "db_path", None) or paths["ledger"]
+                raw_steps = _resolve_smoke_train_steps(ledger_path)
+            if raw_steps is None:
+                raise ValueError("smoke shared_train_steps missing from ledger")
+            steps = int(raw_steps)
             return train_runner.run_train_cell(
                 arm_factory=arm_factory,
                 arm_id=arm_id,
@@ -379,7 +448,7 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
         from ainerzero.v9.experiments.s2 import smoke
 
         def _smoke_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
-            return smoke.run_smoke(
+            res = smoke.run_smoke(
                 output_root=output_root,
                 ledger=ledger,
                 run_id=run_id,
@@ -387,6 +456,7 @@ def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = No
                 repo_root=paths["repo_root"],
                 **kwargs,
             )
+            return res
         return _smoke_runner
 
     else:
@@ -400,6 +470,65 @@ def s2_phase1_command(args: Any) -> tuple[dict[str, Any], int]:
     arm = getattr(args, "arm", None)
     seed = getattr(args, "seed", None)
     experiment_id = getattr(args, "experiment_id", worker.EXPERIMENT_ID)
+
+    # Argument validations prior to preflights
+    if mode == "generate-data":
+        partition = getattr(args, "partition", None)
+        if arm is not None:
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": "generate-data does not accept --arm; use --partition instead",
+            }, EXIT_FAILED
+        if not partition or partition not in ("train", "dev", "final"):
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": "generate-data requires --partition {train,dev,final}",
+            }, EXIT_FAILED
+        arm = partition
+
+    if mode == "train":
+        allowed_arms = ("arm_a", "arm_b", "arm_c", "a", "b", "c")
+        if not arm or str(arm).lower() not in allowed_arms:
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": f"train requires explicit --arm in {('arm_a', 'arm_b', 'arm_c', 'A', 'B', 'C')}; got {arm!r}",
+            }, EXIT_FAILED
+        if seed not in tuple(spec.TRAINING_SEEDS):
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": f"train requires explicit --seed in (42, 43, 44); got {seed!r}",
+            }, EXIT_FAILED
+        # Canonical arm id everywhere downstream (ledger config, checkpoint dir, loaders).
+        from ainerzero.v9.experiments.s2.adapters_mlx import canonical_arm
+
+        arm = canonical_arm(arm)
+
+        runner_arg = getattr(args, "runner", None)
+        steps_arg = getattr(args, "steps", None)
+        if steps_arg is not None:
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": "Explicit steps override in train args is prohibited; steps must resolve from smoke ledger",
+            }, EXIT_FAILED
+        if runner_arg is None:
+            smoke_steps = _resolve_smoke_train_steps(paths["ledger"])
+            if smoke_steps is None or smoke_steps <= 0:
+                return {
+                    "status": "refused",
+                    "mode": mode,
+                    "stage": "smoke_steps_missing",
+                    "message": "Missing or non-passed smoke run in ledger providing shared_train_steps",
+                }, EXIT_FAILED
 
     # 1. Mode: verify (strictly read-only, zero writes)
     if mode == "verify":

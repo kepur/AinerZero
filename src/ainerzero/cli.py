@@ -1391,6 +1391,11 @@ def main(argv: list[str] | None = None) -> int:
         help="目标模型臂 (arm_a..arm_e)",
     )
     s2.add_argument(
+        "--partition",
+        choices=("train", "dev", "final"),
+        help="目标数据分区 (train/dev/final)",
+    )
+    s2.add_argument(
         "--seed",
         type=int,
         help="随机种子（train 必选 42/43/44；eval 可选）",
@@ -1613,6 +1618,25 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return exit_code
         if args.command == "s2-phase1":
+            if getattr(args, "mode", None) == "generate-data":
+                if getattr(args, "partition", None) is None:
+                    res = {
+                        "status": "refused",
+                        "mode": "generate-data",
+                        "stage": "argument_validation",
+                        "message": "generate-data requires --partition {train,dev,final}",
+                    }
+                    print(json.dumps(res, ensure_ascii=False, indent=2))
+                    return 1
+                if getattr(args, "arm", None) is not None:
+                    res = {
+                        "status": "refused",
+                        "mode": "generate-data",
+                        "stage": "argument_validation",
+                        "message": "generate-data does not accept --arm; use --partition instead",
+                    }
+                    print(json.dumps(res, ensure_ascii=False, indent=2))
+                    return 1
             from ainerzero.v9.experiments.s2.commands import s2_phase1_command
 
             report, exit_code = s2_phase1_command(args)
