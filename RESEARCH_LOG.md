@@ -2544,3 +2544,25 @@ APPROVED s2-phase1 prereg document_sha256=726eb56b6ca3a1822e4cc05533d671977b2772
   - R20261106-S2-approval 中那条 r0 批准行随之作废，等 r1 冻结时替换。
 - **之后：** 按附录 D 拆卡修复，即 D1–D7，每张卡都配非作者复核。修完重新冻结为 r1、写新批准行，然后才跑 smoke。臂、主门、回合数、预算口径都不变，用户批准的 10 h 仍然适用。
 - **教训：** 这次和 P148 的「默认通过值」属于同一类问题：测试只覆盖注入了参数的路径，生产调用点却什么都没传。今后冻结之前，一级必须逐个模式读一遍 CLI 实际传给 runner 的参数；不注入参数的端到端测试（附录 D7）列为冻结的前置条件。
+
+## R20261107-S2-smoke-r1-failed：S2 smoke（r1）在原生自检阶段失败——训练批次接口没有接上（一级 claude，2026-11-07 23:2x）
+
+- **运行：**
+  - 运行卡 `ainerzero.V9.P179`；`relay exec --wall-timeout 1320`，只用 CLI 默认值；
+  - 预登记 r1 `726eb56b…`；墙钟 1.8 s，按登记规则不重试、不调参；
+  - 原样输出见 `reports/V9-S2-SMOKE-r1/`；账本里这条 smoke 记为 failed。
+- **失败原因（代码缺陷，与参数无关；用 MLX 在临时目录复现并拿到了报错栈）：**
+  1. **训练批次接口没有接上。**
+     - `train_runner._load_episode_sequences` 只读观察窗口，`sample_batch` 返回 `{"obs": ...}`；
+     - 三个 MLX 适配器的 `train_step` 和 `rollout_error` 都要 `observations`、`actions`、`dts`，所以真实训练第一步就会因为缺字段而报错；
+     - 动作和 dt 根本没有从回合文件中读出；
+     - 训练相关测试用的是只认 `obs` 的 CPU 假臂，所以没有暴露。
+  2. **smoke 自造的批次与臂 A 损失函数的形状不符：** dts 为 (B, T, 1)，而 `arm_a_loss_mlx` 需要 1 维，拼接时报错。
+  3. **SIGReg 的 MLX 版与 NumPy 版不一致：** 0.018592 对 0.015506，两边各自生成投影方向。
+- **处理：**
+  - 开修复卡 W8，统一训练批次格式并让真实 MLX 训练走通，附非作者复核；
+  - 修完后冻结 r2：r1 归档为 `prereg.r1.json`，批准行换成 r2；
+  - 再作为新的登记运行跑 smoke。r1 这次只用了约 1.5 s，预算影响可忽略。
+- **教训：**
+  - 默认套件不能导入 MLX，所以「真实 MLX 能训练一步」只能靠 native 用例证明；
+  - 冻结前必须实际跑一遍 native 全流程用例（`test_s2_production_e2e_native.py`、`test_s2_learned_planning_native.py`、W8 新增的训练 native 用例）。
