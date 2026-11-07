@@ -1,0 +1,245 @@
+{
+  "schema": "ainerzero.v9.s2.preregistration.v1",
+  "spec_name": "s2-phase1-v1",
+  "experiment_id": "s2-phase1-20261106-r0",
+  "task_id": "ainerzero.V9.P124",
+  "status": "draft_awaiting_approval",
+  "created_utc": "2026-11-07T00:52:32Z",
+  "design_reference": {
+    "path": "reports/V9-S2-DESIGN/DESIGN-r2.md",
+    "sha256": "5d9db99663057aa68a85dc5d0dfae7933d0b5eb8d9bf3aacb2e2f02a20bbf283"
+  },
+  "target_parameters": {
+    "target": 300000,
+    "tolerance_fraction": 0.1,
+    "min": 270000,
+    "max": 330000
+  },
+  "arm_dims": {
+    "arm_a": {
+      "name": "flat_rssm",
+      "description": "flat RSSM with GRU deterministic state and Gaussian latent",
+      "e1_input": 205,
+      "e1_hidden": 256,
+      "e1_output": 128,
+      "latent_dim": 32,
+      "gru_input": 37,
+      "gru_hidden": 160,
+      "prior_hidden": 128,
+      "posterior_hidden": 128,
+      "decoder_hidden": 128
+    },
+    "arm_b": {
+      "name": "flat_jepa",
+      "description": "flat JEPA with shared E1, residual predictor P1, and IDM",
+      "e1_input": 205,
+      "e1_hidden": 256,
+      "e1_output": 128,
+      "p1_input": 133,
+      "p1_hidden_1": 320,
+      "p1_hidden_2": 320,
+      "p1_output": 128,
+      "idm_input": 256,
+      "idm_hidden": 128,
+      "idm_output": 4
+    },
+    "arm_c": {
+      "name": "hierarchical_hjepa",
+      "description": "two-layer hierarchical H-JEPA; layer 1 + layer 2 macro dynamics",
+      "e1_input": 205,
+      "e1_hidden": 256,
+      "e1_output": 128,
+      "p1_input": 133,
+      "p1_hidden_1": 256,
+      "p1_hidden_2": 256,
+      "p1_output": 128,
+      "idm_input": 256,
+      "idm_hidden": 128,
+      "idm_output": 4,
+      "e2_input": 128,
+      "e2_hidden": 128,
+      "z2_dim": 64,
+      "p2_input": 72,
+      "p2_hidden": 128,
+      "p2_output": 64,
+      "idm2_input": 128,
+      "idm2_hidden": 64,
+      "idm2_output": 7
+    }
+  },
+  "arm_parameter_counts": {
+    "arm_a": 306093,
+    "arm_b": 305732,
+    "arm_c": 303115
+  },
+  "world": {
+    "world_size": 25,
+    "rooms_x": 3,
+    "rooms_y": 3,
+    "total_rooms": 9,
+    "room_interior_size": 7,
+    "fov_size": 7,
+    "terrain_classes": 4,
+    "num_actions": 4,
+    "k_distribution": {
+      "1": 0.5,
+      "2": 0.3,
+      "3": 0.2
+    },
+    "episode_steps": 240,
+    "non_bfs_ratio_min": 0.5,
+    "segment_len_range": [
+      20,
+      60
+    ],
+    "long_goal_min_steps": 40,
+    "short_goal_max_steps": 10,
+    "room_pillars_range": [
+      0,
+      3
+    ],
+    "max_rejection_rate": 0.3,
+    "max_redraw_retries": 5
+  },
+  "evaluation": {
+    "dev_worlds": 50,
+    "dev_pairs_per_world": 6,
+    "dev_long_goal_episodes": 300,
+    "final_worlds": 50,
+    "final_pairs_per_world": 6,
+    "final_long_goal_episodes": 300,
+    "episode_l_factor": 3.0,
+    "perturb_fraction": 0.3333333333333333,
+    "perturb_insert_step": 20,
+    "perturb_action_count": 5,
+    "regular_dt_subset_episodes": 100,
+    "num_seeds": 3,
+    "training_seeds": [
+      42,
+      43,
+      44
+    ]
+  },
+  "planning": {
+    "n_fwd": 4096,
+    "n_fwd_dev_levels": [
+      2048,
+      4096,
+      8192
+    ],
+    "s2_macro_steps": 8,
+    "replan_m_steps": 4,
+    "flat_h_candidates": [
+      16,
+      32,
+      48
+    ],
+    "hierarchical_horizon_candidates": [
+      4,
+      6,
+      8
+    ],
+    "hierarchical_budget_ratio_candidates": [
+      0.25,
+      0.5
+    ],
+    "hyperparam_selection_max_episodes": 50
+  },
+  "gates": {
+    "success_rate_diff_min": 0.1,
+    "bootstrap_resamples": 10000,
+    "bootstrap_confidence": 0.95,
+    "delta_pred": 1.0,
+    "probe_ridge_lambda": 1.0,
+    "probe_eval_steps": [
+      1,
+      5,
+      10,
+      30,
+      60
+    ],
+    "smoke_circuit_breaker_threshold": 0.05,
+    "baseline_success_plausible_range": [
+      0.1,
+      0.8
+    ]
+  },
+  "training": {
+    "optimizer": "Adam",
+    "learning_rate": 0.0003,
+    "batch_size": 32,
+    "h_train": 16,
+    "sequence_length": 17,
+    "sigreg_lambda": 0.1,
+    "sigreg_directions": 256,
+    "sigreg_quadrature_points": 17,
+    "idm_mu": 1.0,
+    "free_bits": 1.0,
+    "train_step_time_budget_seconds": 1200,
+    "train_step_efficiency_factor": 0.8,
+    "model_selection_every_steps": 200,
+    "smoke_short_train_steps": 200,
+    "train_steps_rule": "floor(1200*0.8/t_min_over_arms)"
+  },
+  "data": {
+    "train_n_worlds": 1000,
+    "train_episodes_per_world": 8,
+    "train_holdout_world_fraction": 0.1,
+    "seed_namespaces": {
+      "train": "s2p1-train-v1",
+      "dev": "s2p1-dev-v1",
+      "final": "s2p1-final-v1",
+      "smoke": "s2p1-smoke-v1"
+    },
+    "data_estimated_seconds_per_episode": 0.145
+  },
+  "budget": {
+    "smoke_max_seconds": 1200,
+    "data_max_seconds": 3600,
+    "train_per_slot_seconds": 1200,
+    "train_slots_main": 9,
+    "train_main_total_seconds": 10800,
+    "arm_d_seconds": 3600,
+    "baseline_e_seconds": 300,
+    "hyperparam_selection_seconds": 1800,
+    "dev_eval_seconds": 9000,
+    "final_eval_seconds": 5400,
+    "total_wallclock_hours": 10.0,
+    "total_wallclock_seconds": 36000,
+    "calendar_window_hours": 72.0,
+    "calendar_window_seconds": 259200
+  },
+  "stopping_rules": [
+    "If both Arm B and Arm C are non-plannable in smoke pre-check: stop before full training.",
+    "dev partition decisions allowed at most 2 times; 3rd requires new dev partition.",
+    "GridLab-S2 world is incommensurable with S1; M2 reported as incommensurable.",
+    "Any arm parameter count outside +/- 10% voids the comparison.",
+    "Any planning forward evaluation exceeding N_fwd voids the comparison.",
+    "delta_pred frozen at 1.0; no post-hoc tuning permitted on dev or final."
+  ],
+  "source_digests": {
+    "src/ainerzero/v9/experiments/s2/__init__.py": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+    "src/ainerzero/v9/experiments/s2/adapters_mlx.py": "bd1a1bc77420898d34e024cc0678a15da736805b4de66749aacfd7b0e55c7512",
+    "src/ainerzero/v9/experiments/s2/arms_mlx.py": "4650e55443616811dc8aab47c1f15ea0fd340e31ea1897d3cdd07050c314ff70",
+    "src/ainerzero/v9/experiments/s2/commands.py": "dae571426f9fd44d539318860267b2350c9dc4ab157fca7bdabad5ec4ebe4e30",
+    "src/ainerzero/v9/experiments/s2/core_math.py": "3d0311e7edbc7f421bea662ab30e023f25a8c6eac7aa0756bcf6cd7f1ed7f972",
+    "src/ainerzero/v9/experiments/s2/data.py": "8fd195af598fcc618392bbc694e164dfa7e79a88c503f408824bb402081cf3e8",
+    "src/ainerzero/v9/experiments/s2/data_runner.py": "4cb7aae15a3fdcd5f74f8db36f24d70c46482183c28c692c16cb72c24b21b45b",
+    "src/ainerzero/v9/experiments/s2/eval.py": "9a98ef7e3042241f662bf66cc520f8f00c8b1e4d3c0de3b584cec954c9a4614c",
+    "src/ainerzero/v9/experiments/s2/eval_runner.py": "b19fa70c06269d53af16cf9a02f59a658a2d86732beaa45ba9d3d73ed553ddbc",
+    "src/ainerzero/v9/experiments/s2/freeze.py": "0ffcd663dfa800f9c7ac70d6f5f3f916ebc1544ee99b6551550c0711501e4381",
+    "src/ainerzero/v9/experiments/s2/fwd_counter.py": "2dbe4002805ae4dafb3a965a30c8f9127d00af526909eefeb3ed929845b31e20",
+    "src/ainerzero/v9/experiments/s2/identity.py": "5fd51e1f4174db98dc1f7f97d10d45d56272015e9b630586d44b121457d36dc3",
+    "src/ainerzero/v9/experiments/s2/param_count.py": "e09afde313ad09507e4ea0592b0baadf7f9c8904f42c23a73fbad1ee901ae5cc",
+    "src/ainerzero/v9/experiments/s2/planner.py": "d87e0e369ac81c0ad4fd9127e53d67b25bfe54ca9abc4843759baa341ff24b95",
+    "src/ainerzero/v9/experiments/s2/prereg.py": "7609273333469a957c0ccd0f34aef6af168e5c1287e11cfaa7d9f08a311a01e4",
+    "src/ainerzero/v9/experiments/s2/probe.py": "707015d7a5f6d22212809841dd687975ad556de68c7daa028ddc2c425f40445d",
+    "src/ainerzero/v9/experiments/s2/smoke.py": "41c07f3d9381d43d3b12928f08982aa638e3ef24df5b69ead93c0ac77ee4929e",
+    "src/ainerzero/v9/experiments/s2/smoke_checks.py": "13a03b7565be654191ffc8b2092a086fa7eabf0aa62893a8f1edfecebd8eb560",
+    "src/ainerzero/v9/experiments/s2/spec.py": "4e13ac8469b5473c6b5043281383be681ba690a8257339798a2f4e42edc71d24",
+    "src/ainerzero/v9/experiments/s2/stats.py": "ac6e3fed713f7a160a379b683dd19fd5d33be5baacbe577c2d13900e45d67a8b",
+    "src/ainerzero/v9/experiments/s2/train_runner.py": "50ac39d8df890b14a3dec503c3ab112b0227dbc6eaf1f1264e8b80068f5d4fd8",
+    "src/ainerzero/v9/experiments/s2/worker.py": "b283f0fa2ef3354601c360faf814e0f94b44952d9c27a4610cc2a9c4270359ef",
+    "src/ainerzero/v9/experiments/s2/world.py": "f4d4ff246a5f078ec1500fe11c8a06ffe1221d47fb4d78d103eaba645b7abbdd"
+  }
+}

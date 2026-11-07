@@ -1,0 +1,65 @@
+import json
+from pathlib import Path
+
+REPORT_DIR = Path("/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S2-P158")
+
+metrics = {
+    "task_id": "ainerzero.V9.P158",
+    "status": "completed",
+    "tier": 2,
+    "agent": "gemini-8f4b",
+    "appendix_c_constants": {
+        "TRAIN_N_WORLDS": 1000,
+        "TRAIN_EPISODES_PER_WORLD": 8,
+        "TRAIN_HOLDOUT_WORLD_FRACTION": 0.10,
+        "SEED_NAMESPACES": {
+            "train": "s2p1-train-v1",
+            "dev": "s2p1-dev-v1",
+            "final": "s2p1-final-v1",
+            "smoke": "s2p1-smoke-v1"
+        },
+        "MODEL_SELECTION_EVERY_STEPS": 200,
+        "SMOKE_SHORT_TRAIN_STEPS": 200,
+        "TRAIN_STEPS_RULE": "floor(1200*0.8/t_min_over_arms)",
+        "DATA_ESTIMATED_SECONDS_PER_EPISODE": 0.145
+    },
+    "trial_freeze": {
+        "document_sha256": "2a2ae4ba175471c5b9b54943f752f415e97f35aca70304dbb49d72a6c56ee749",
+        "determinism_verified": True,
+        "identity_verification": "passed",
+        "source_file_count": 24,
+        "approval_line_candidate": "APPROVED s2-phase1 prereg document_sha256=2a2ae4ba175471c5b9b54943f752f415e97f35aca70304dbb49d72a6c56ee749"
+    },
+    "bad_control": {
+        "P158-M1": {
+            "name": "dev与final命名空间相同",
+            "status": "RED (CONFIRMED)",
+            "exit_code": 1
+        },
+        "P158-M2": {
+            "name": "validate去掉数据预算估算",
+            "status": "RED (CONFIRMED)",
+            "exit_code": 1
+        }
+    },
+    "full_regression": {
+        "total_collected": 3619,
+        "deselected": 6,
+        "selected": 3613,
+        "passed": 3613,
+        "failed": 0,
+        "exit_code": 0,
+        "duration_seconds": 297.00
+    },
+    "artifacts_stat_audit": {
+        "total_entries_before": 80929,
+        "total_entries_after": 80929,
+        "diff_count": 0
+    }
+}
+
+for filename in ("metrics.json", "指标.json"):
+    with open(REPORT_DIR / filename, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2, ensure_ascii=False)
+
+print("Saved metrics.json and 指标.json.")

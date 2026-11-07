@@ -1,0 +1,253 @@
+--- a/src/ainerzero/v9/experiments/s2/spec.py
++++ b/src/ainerzero/v9/experiments/s2/spec.py
+@@ -246,3 +246,28 @@
+ SMOKE_LONG_GOAL_SPECS_COUNT: int = 12
+ SMOKE_SHORT_STEPS: int = 200
+ 
++# --- 附录 C 冻结前补齐的登记参数（r2.4，2026-11-07）---
++# 附录 C：train 分区与留出集
++TRAIN_N_WORLDS = 1000
++TRAIN_EPISODES_PER_WORLD = 8
++TRAIN_HOLDOUT_WORLD_FRACTION = 0.10
++
++# 附录 C：分区种子命名空间（互不重叠，由 validate 核验）
++SEED_NAMESPACES = {
++    "train": "s2p1-train-v1",
++    "dev": "s2p1-dev-v1",
++    "final": "s2p1-final-v1",
++    "smoke": "s2p1-smoke-v1",
++}
++
++# 附录 C：模型选择与 smoke 短训步数
++MODEL_SELECTION_EVERY_STEPS = 200
++SMOKE_SHORT_TRAIN_STEPS = 200
++
++# 附录 C：训练步数规则（具体步数由 smoke 实测后记账，不入预登记）
++TRAIN_STEPS_RULE = "floor(1200*0.8/t_min_over_arms)"
++
++# 附录 C：数据生成耗时估算系数（来源：P133 实测 0.145 s/回合）
++DATA_ESTIMATED_SECONDS_PER_EPISODE = 0.145
++
++
+--- a/src/ainerzero/v9/experiments/s2/prereg.py
++++ b/src/ainerzero/v9/experiments/s2/prereg.py
+@@ -170,6 +170,16 @@
+             "free_bits": spec.ARM_A_FREE_BITS,
+             "train_step_time_budget_seconds": spec.TRAIN_STEP_TIME_BUDGET_SECONDS,
+             "train_step_efficiency_factor": spec.TRAIN_STEP_EFFICIENCY_FACTOR,
++            "model_selection_every_steps": spec.MODEL_SELECTION_EVERY_STEPS,
++            "smoke_short_train_steps": spec.SMOKE_SHORT_TRAIN_STEPS,
++            "train_steps_rule": spec.TRAIN_STEPS_RULE,
++        },
++        "data": {
++            "train_n_worlds": spec.TRAIN_N_WORLDS,
++            "train_episodes_per_world": spec.TRAIN_EPISODES_PER_WORLD,
++            "train_holdout_world_fraction": spec.TRAIN_HOLDOUT_WORLD_FRACTION,
++            "seed_namespaces": copy.deepcopy(spec.SEED_NAMESPACES),
++            "data_estimated_seconds_per_episode": spec.DATA_ESTIMATED_SECONDS_PER_EPISODE,
+         },
+         "budget": {
+             "smoke_max_seconds": spec.BUDGET_SMOKE_MAX_SECONDS,
+@@ -229,6 +239,7 @@
+         "budget",
+         "stopping_rules",
+         "source_digests",
++        "data",
+     ]
+     for key in required_keys:
+         if key not in document:
+@@ -340,3 +351,81 @@
+     for src_path, d in digests.items():
+         if not isinstance(d, str) or len(d) != 64:
+             raise SpecValidationError(f"Invalid SHA256 digest for {src_path}: {d!r}")
++
++    # Training Appendix C constants validation
++    training = document.get("training")
++    if not isinstance(training, Mapping):
++        raise SpecValidationError("Missing or invalid training section")
++    if training.get("model_selection_every_steps") != spec.MODEL_SELECTION_EVERY_STEPS:
++        raise SpecValidationError(
++            f"model_selection_every_steps mismatch: expected {spec.MODEL_SELECTION_EVERY_STEPS}, "
++            f"got {training.get('model_selection_every_steps')}"
++        )
++    if training.get("smoke_short_train_steps") != spec.SMOKE_SHORT_TRAIN_STEPS:
++        raise SpecValidationError(
++            f"smoke_short_train_steps mismatch: expected {spec.SMOKE_SHORT_TRAIN_STEPS}, "
++            f"got {training.get('smoke_short_train_steps')}"
++        )
++    if training.get("train_steps_rule") != spec.TRAIN_STEPS_RULE:
++        raise SpecValidationError(
++            f"train_steps_rule mismatch: expected {spec.TRAIN_STEPS_RULE!r}, "
++            f"got {training.get('train_steps_rule')!r}"
++        )
++
++    # Data & partition contracts (Appendix C)
++    data_section = document.get("data")
++    if not isinstance(data_section, Mapping):
++        data_section = document.get("partitions")
++    if not isinstance(data_section, Mapping):
++        raise SpecValidationError("Missing or invalid data section")
++
++    # 1. Four seed namespaces must be pairwise distinct
++    namespaces = data_section.get("seed_namespaces")
++    if not isinstance(namespaces, Mapping):
++        raise SpecValidationError("seed_namespaces must be a mapping")
++    required_ns_keys = {"train", "dev", "final", "smoke"}
++    if not required_ns_keys.issubset(namespaces.keys()):
++        raise SpecValidationError(
++            f"seed_namespaces missing required keys: {required_ns_keys - set(namespaces.keys())}"
++        )
++    ns_values = [namespaces[k] for k in sorted(required_ns_keys)]
++    if len(set(ns_values)) != len(ns_values):
++        raise SpecValidationError(
++            f"Seed namespaces must be pairwise distinct, got duplicates: {namespaces}"
++        )
++
++    # 2. Holdout fraction must be in (0, 0.5)
++    holdout = data_section.get("train_holdout_world_fraction")
++    if holdout is None or not (0.0 < float(holdout) < 0.5):
++        raise SpecValidationError(
++            f"train_holdout_world_fraction must be strictly in (0, 0.5), got {holdout!r}"
++        )
++
++    # 3. Train scale * 0.145 s/episode estimate <= data budget (3600 s)
++    train_n_worlds = data_section.get("train_n_worlds")
++    train_episodes_per_world = data_section.get("train_episodes_per_world")
++    est_sec = data_section.get(
++        "data_estimated_seconds_per_episode", spec.DATA_ESTIMATED_SECONDS_PER_EPISODE
++    )
++
++    if not isinstance(train_n_worlds, int) or train_n_worlds <= 0:
++        raise SpecValidationError(
++            f"train_n_worlds must be a positive integer, got {train_n_worlds!r}"
++        )
++    if not isinstance(train_episodes_per_world, int) or train_episodes_per_world <= 0:
++        raise SpecValidationError(
++            f"train_episodes_per_world must be a positive integer, got {train_episodes_per_world!r}"
++        )
++    if not isinstance(est_sec, (int, float)) or est_sec <= 0:
++        raise SpecValidationError(
++            f"data_estimated_seconds_per_episode must be a positive number, got {est_sec!r}"
++        )
++
++    estimated_data_seconds = train_n_worlds * train_episodes_per_world * float(est_sec)
++    data_budget_seconds = spec.BUDGET_DATA_MAX_SECONDS
++    if estimated_data_seconds > data_budget_seconds:
++        raise SpecValidationError(
++            f"Estimated train data generation time ({estimated_data_seconds:.1f} s) "
++            f"exceeds data budget ({data_budget_seconds} s)"
++        )
++
+--- a/tests/v9/experiments/test_s2_spec.py
++++ b/tests/v9/experiments/test_s2_spec.py
+@@ -159,3 +159,55 @@
+     assert arm_c["p2_hidden"] == 128
+     assert arm_c["idm2_hidden"] == 64
+ 
++
++def test_appendix_c_constants_match_design_document() -> None:
++    """Verify Appendix C constants match DESIGN-r2.md text and numerical definitions."""
++    design_file = _find_repo_root() / spec.DESIGN_DOCUMENT_PATH
++    assert design_file.is_file(), f"Design document missing at {design_file}"
++    content = design_file.read_text(encoding="utf-8")
++
++    # Check presence of Appendix C needles in design document
++    appendix_c_needles = [
++        "附录 C",
++        "1000 个世界",
++        "8 回合",
++        "10%",
++        "s2p1-train-v1",
++        "s2p1-dev-v1",
++        "s2p1-final-v1",
++        "s2p1-smoke-v1",
++        "0.145 s/回合",
++        "200 步",
++    ]
++    for needle in appendix_c_needles:
++        assert needle in content, f"Expected needle {needle!r} in {spec.DESIGN_DOCUMENT_PATH}"
++
++    # Verify spec constant values
++    assert spec.TRAIN_N_WORLDS == 1000
++    assert spec.TRAIN_EPISODES_PER_WORLD == 8
++    assert spec.TRAIN_HOLDOUT_WORLD_FRACTION == 0.10
++    assert spec.SEED_NAMESPACES == {
++        "train": "s2p1-train-v1",
++        "dev": "s2p1-dev-v1",
++        "final": "s2p1-final-v1",
++        "smoke": "s2p1-smoke-v1",
++    }
++    assert spec.MODEL_SELECTION_EVERY_STEPS == 200
++    assert spec.SMOKE_SHORT_TRAIN_STEPS == 200
++    assert "floor(1200*0.8/t" in spec.TRAIN_STEPS_RULE
++    assert spec.DATA_ESTIMATED_SECONDS_PER_EPISODE == 0.145
++
++
++def test_spec_existing_prefix_byte_for_byte_unchanged() -> None:
++    """Verify spec.py prefix (prior to Appendix C append) is byte-for-byte identical to P124/HEAD."""
++    import hashlib
++
++    spec_file = Path(spec.__file__).resolve()
++    raw_bytes = spec_file.read_bytes()
++    prefix_bytes = raw_bytes[:8721]
++    expected_sha = "b1992a6407453c68083c0236c188dd15877bde28d90a10fa69f6ac160f5d5522"
++    actual_sha = hashlib.sha256(prefix_bytes).hexdigest()
++    assert (
++        actual_sha == expected_sha
++    ), f"spec.py prefix SHA256 mismatch! expected {expected_sha}, got {actual_sha}"
++
+--- a/tests/v9/experiments/test_s2_prereg.py
++++ b/tests/v9/experiments/test_s2_prereg.py
+@@ -149,3 +149,52 @@
+     with pytest.raises(prereg.SpecValidationError, match="Planning N_fwd mismatch"):
+         prereg.validate(draft)
+ 
++
++def test_tamper_namespaces_duplicate_fails() -> None:
++    """Appendix C Tamper: Duplicate seed namespaces must raise SpecValidationError."""
++    draft = prereg.build_draft()
++    draft["data"]["seed_namespaces"]["final"] = draft["data"]["seed_namespaces"]["dev"]
++    with pytest.raises(prereg.SpecValidationError, match="Seed namespaces must be pairwise distinct"):
++        prereg.validate(draft)
++
++
++def test_tamper_holdout_fraction_out_of_range_fails() -> None:
++    """Appendix C Tamper: Holdout fraction of 0.6 (> 0.5) must raise SpecValidationError."""
++    draft = prereg.build_draft()
++    draft["data"]["train_holdout_world_fraction"] = 0.6
++    with pytest.raises(
++        prereg.SpecValidationError, match="train_holdout_world_fraction must be strictly in"
++    ):
++        prereg.validate(draft)
++
++
++def test_tamper_train_scale_exceeds_data_budget_fails() -> None:
++    """Appendix C Tamper: Oversized train scale exceeding data budget must raise SpecValidationError."""
++    draft = prereg.build_draft()
++    draft["data"]["train_n_worlds"] = 10_000
++    with pytest.raises(prereg.SpecValidationError, match="exceeds data budget"):
++        prereg.validate(draft)
++
++
++def test_trial_freeze_determinism_and_verification(tmp_path: Path) -> None:
++    """Verify trial freeze in temporary directories produces identical document_sha256 and passes verify_frozen_identity."""
++    from ainerzero.v9.experiments.s2 import freeze, identity
++
++    draft = prereg.build_draft()
++    dir1 = tmp_path / "trial_freeze_1"
++    dir2 = tmp_path / "trial_freeze_2"
++
++    sha1 = freeze.freeze(draft, out_dir=dir1)
++    sha2 = freeze.freeze(draft, out_dir=dir2)
++
++    assert sha1 == sha2, f"Trial freeze non-deterministic: {sha1} != {sha2}"
++    assert len(sha1) == 64
++
++    verif1 = identity.verify_frozen_identity(dir1 / "prereg.json")
++    verif2 = identity.verify_frozen_identity(dir2 / "prereg.json")
++
++    assert verif1["status"] == "passed"
++    assert verif2["status"] == "passed"
++    assert verif1["document_sha256"] == sha1
++    assert verif2["document_sha256"] == sha2
++
