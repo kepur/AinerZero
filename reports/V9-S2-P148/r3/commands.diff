@@ -1,0 +1,550 @@
+--- /dev/null	2026-11-06 21:57:54
++++ src/ainerzero/v9/experiments/s2/commands.py	2026-11-06 17:51:59
+@@ -0,0 +1,547 @@
++"""Supervisor commands and lifecycle entry for S2 Phase 1.
++
++Supported modes:
++- verify: Read-only verification of identity, preregistration, and coordinator approval line. Zero writes.
++- smoke: 20 min sanity run under hard budget.
++- generate-data: Deterministic GridLab-S2 data generation under hard budget.
++- train: Preflight-guarded training for models A, B, C, D, E under hard budget.
++- plan-select: Planning hyperparameter selection on train partition.
++- dev-eval: Evaluation on dev partition.
++- final-eval: Evaluation on sealed final partition.
++
++All compute modes enforce:
++1. Approval preflight scanning RESEARCH_LOG.md for the qualified S2 approval line.
++2. Anti-duplicate execution check on (mode, arm, seed).
++3. 10 h total phase wall-clock ceiling across ledger experiment lineage.
++4. 72 h calendar window separation via RunStore experiment budget.
++5. Shared worker lock acquisition (fcntl flock).
++"""
++
++from __future__ import annotations
++
++import argparse
++from datetime import datetime, timezone
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import time
++from typing import Any, Callable, Mapping
++
++from ainerzero.cli import WorkerLockBusy, worker_lock
++from ainerzero.runtime.lifecycle import BudgetExceeded
++from ainerzero.v9.experiments.s2 import spec, worker
++
++EXIT_COMPLETED = 0
++EXIT_FAILED = 1
++EXIT_REFUSED_RESOURCE = 2
++EXIT_REFUSED_APPROVAL = 3
++EXIT_LOCK_BUSY = 4
++
++APPROVAL_SECTION = "R20261106-S2-approval"
++_SECTION_HEADING_RE = re.compile(
++    r"^##\s+(?:R20261106-S2-approval|S2-approval|[A-Za-z0-9_-]*S2[A-Za-z0-9_-]*approval[A-Za-z0-9_-]*)\b",
++    re.IGNORECASE,
++)
++_APPROVAL_LINE_PREFIX = "APPROVED s2-phase1 prereg document_sha256="
++_APPROVAL_RE = re.compile(
++    r"^APPROVED\s+s2-phase1\s+prereg\s+document_sha256=([0-9a-f]{64})$"
++)
++_FENCE_RE = re.compile(r"^(?:```|~~~)")
++_ANY_H2_RE = re.compile(r"^##\s+")
++
++
++def _resolve_paths(args: Any) -> dict[str, Path]:
++    repo_root = Path(getattr(args, "repo_root", None) or Path.cwd()).resolve()
++    output_root = Path(getattr(args, "output_root", None) or (repo_root / "artifacts/v9/s2/phase1")).resolve()
++    ledger_path = Path(getattr(args, "ledger", None) or (output_root / "control.sqlite3")).resolve()
++    lock_path = Path(getattr(args, "lock_file", None) or (repo_root / "artifacts/locks/m0-worker.lock")).resolve()
++    research_log = Path(getattr(args, "research_log", None) or (repo_root / "RESEARCH_LOG.md")).resolve()
++    prereg_path = Path(getattr(args, "prereg", None) or (output_root / "prereg.json")).resolve()
++
++    return {
++        "repo_root": repo_root,
++        "output_root": output_root,
++        "ledger": ledger_path,
++        "lock": lock_path,
++        "research_log": research_log,
++        "prereg": prereg_path,
++    }
++
++
++def scan_approval_log(
++    log_path: Path | str,
++    *,
++    line_re: re.Pattern[str] = _APPROVAL_RE,
++) -> dict[str, Any]:
++    """Read the research log and scan for candidate approval lines in S2 approval section.
++
++    Rules (strictly mirroring E1):
++    - Must be within a level-2 heading matching S2 approval.
++    - If multiple sections with matching heading exist, refuses (ambiguous).
++    - Lines inside fenced code (``` or ~~~) are ignored.
++    - Lines inside blockquotes ('>') are ignored.
++    - Lines indented by 4 spaces or tabs (indented code) are ignored.
++    - Candidate lines must strictly match the regex: APPROVED s2-phase1 prereg document_sha256=<64hex>.
++    """
++    path = Path(log_path)
++    if not path.is_file():
++        return {
++            "found": False,
++            "reasons": [f"research log is missing: {path}"],
++            "rows": [],
++        }
++
++    text = path.read_text(encoding="utf-8")
++    log_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
++
++    rows: list[dict[str, Any]] = []
++    spans: list[list[int | None]] = []
++    skipped: dict[str, list[int]] = {"fenced_code": [], "blockquote": [], "indented_code": []}
++    in_fence = False
++    in_section = False
++
++    for number, raw in enumerate(text.splitlines(), start=1):
++        stripped = raw.strip()
++        if _FENCE_RE.match(raw):
++            in_fence = not in_fence
++            continue
++        if in_fence:
++            if in_section:
++                skipped["fenced_code"].append(number)
++            continue
++
++        if _ANY_H2_RE.match(stripped):
++            if _SECTION_HEADING_RE.match(stripped):
++                if in_section and spans:
++                    spans[-1][1] = number - 1
++                spans.append([number, None])
++                in_section = True
++            else:
++                if in_section and spans:
++                    spans[-1][1] = number - 1
++                in_section = False
++            continue
++
++        if not in_section:
++            continue
++
++        if stripped.startswith(">"):
++            skipped["blockquote"].append(number)
++            continue
++        if raw.startswith("    ") or raw.startswith("\t"):
++            skipped["indented_code"].append(number)
++            continue
++
++        match = line_re.match(stripped)
++        if not match:
++            continue
++
++        rows.append(
++            {
++                "line": stripped,
++                "line_number": number,
++                "document_sha256": match.group(1),
++            }
++        )
++
++    if in_section and spans and spans[-1][1] is None:
++        spans[-1][1] = len(text.splitlines())
++
++    if len(spans) == 0:
++        return {
++            "found": False,
++            "reasons": [f"approval section matching '{APPROVAL_SECTION}' not found in {path}"],
++            "rows": [],
++            "skipped": skipped,
++        }
++    if len(spans) > 1:
++        return {
++            "found": False,
++            "reasons": [f"multiple approval sections matching '{APPROVAL_SECTION}' found in {path}"],
++            "rows": [],
++            "skipped": skipped,
++        }
++    if len(rows) == 0:
++        return {
++            "found": False,
++            "reasons": [f"no qualifying approval line found in S2 approval section in {path}"],
++            "rows": [],
++            "skipped": skipped,
++        }
++    if len(rows) > 1:
++        return {
++            "found": False,
++            "reasons": [f"multiple ({len(rows)}) qualifying approval lines found in S2 approval section"],
++            "rows": rows,
++            "skipped": skipped,
++        }
++
++    return {
++        "found": True,
++        "line": rows[0]["line"],
++        "line_number": rows[0]["line_number"],
++        "document_sha256": rows[0]["document_sha256"],
++        "log_path": str(path),
++        "log_sha256": log_sha256,
++        "skipped": skipped,
++    }
++
++
++def _check_approval_preflight(
++    research_log: Path,
++    expected_sha256: str | None = None,
++) -> tuple[bool, dict[str, Any]]:
++    scan = scan_approval_log(research_log)
++    if not scan.get("found"):
++        return False, scan
++    if expected_sha256 is not None and scan.get("document_sha256") != expected_sha256:
++        return False, {
++            "reasons": [
++                f"document SHA256 mismatch in approval line: expected {expected_sha256}, "
++                f"got {scan.get('document_sha256')}"
++            ],
++            "detail": scan,
++        }
++    return True, scan
++
++
++def _get_cell_budget(
++    mode: str,
++    arm: str | None,
++    requested_budget: float | None = None,
++) -> float:
++    if mode == "smoke":
++        default_budget = float(spec.BUDGET_SMOKE_MAX_SECONDS)
++    elif mode == "generate-data":
++        default_budget = float(spec.BUDGET_DATA_MAX_SECONDS)
++    elif mode == "train":
++        norm_arm = (arm or "").lower()
++        if norm_arm in ("arm_d", "d"):
++            default_budget = float(spec.BUDGET_ARM_D_SECONDS) / 3.0  # 1200s per slot
++        elif norm_arm in ("arm_e", "e"):
++            default_budget = float(spec.BUDGET_BASELINE_E_SECONDS)   # 300s
++        else:
++            default_budget = float(spec.BUDGET_TRAIN_PER_SLOT_SECONDS)  # 1200s
++    elif mode == "plan-select":
++        default_budget = float(spec.BUDGET_HYPERPARAM_SELECTION_SECONDS)
++    elif mode == "dev-eval":
++        default_budget = float(spec.BUDGET_DEV_EVAL_SECONDS)
++    elif mode == "final-eval":
++        default_budget = float(spec.BUDGET_FINAL_EVAL_SECONDS)
++    else:
++        default_budget = 300.0
++
++    if requested_budget is not None:
++        req = float(requested_budget)
++        if req > default_budget:
++            raise ValueError(
++                f"Requested budget {req} s exceeds registered ceiling {default_budget} s"
++            )
++        return req
++    return default_budget
++
++
++def _check_phase_budget_ceiling(
++    ledger_path: Path,
++    new_cell_budget: float,
++    experiment_ids: tuple[str, ...] = worker.LEDGER_EXPERIMENT_IDS,
++) -> tuple[bool, float, float]:
++    """Check whether adding this cell exceeds the total phase wall clock ceiling (10 h)."""
++    total_ceiling = float(spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS)
++    consumed = 0.0
++
++    with worker.ledger_read_snapshot(ledger_path) as store:
++        if store is not None:
++            placeholders = ", ".join("?" for _ in experiment_ids)
++            cursor = store._conn.execute(
++                f"SELECT active_seconds, config_json FROM runs WHERE experiment_id IN ({placeholders})",
++                list(experiment_ids),
++            )
++            for row in cursor.fetchall():
++                val = row["active_seconds"]
++                if val is not None and float(val) > 0:
++                    consumed += float(val)
++                else:
++                    try:
++                        cfg = json.loads(row["config_json"])
++                        consumed += float(cfg.get("cell_wall_budget_seconds", 0.0))
++                    except Exception:
++                        pass
++
++    if consumed + new_cell_budget > total_ceiling:
++        return False, consumed, total_ceiling
++    return True, consumed, total_ceiling
++
++
++def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = None) -> Callable[..., dict[str, Any]]:
++    """Resolve the true runner for the given mode (lazy imports)."""
++    if mode == "generate-data":
++        from ainerzero.v9.experiments.s2 import data_runner
++
++        def _data_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
++            partition = arm or "dev"
++            return data_runner.run_generate_data(
++                partition=partition,
++                output_root=output_root,
++                ledger=ledger,
++                run_id=run_id,
++                **kwargs,
++            )
++        return _data_runner
++
++    elif mode == "train":
++        from ainerzero.v9.experiments.s2 import train_runner
++
++        def _train_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
++            arm_id = str(arm or "arm_a")
++            arm_seed = int(seed if seed is not None else 42)
++            def _default_arm_factory():
++                from ainerzero.v9.experiments.s2 import adapters_mlx
++                return adapters_mlx.make_mlx_arm(arm_id)
++            arm_factory = kwargs.get("arm_factory") or getattr(args, "arm_factory", None) or _default_arm_factory
++            data_dir = kwargs.get("data_dir") or getattr(args, "data_dir", None) or (Path(output_root) / "data")
++            steps = int(kwargs.get("steps") or getattr(args, "steps", None) or spec.H_TRAIN)
++            return train_runner.run_train_cell(
++                arm_factory=arm_factory,
++                arm_id=arm_id,
++                seed=arm_seed,
++                data_dir=data_dir,
++                output_root=output_root,
++                steps=steps,
++                ledger=ledger,
++                run_id=run_id,
++                **kwargs,
++            )
++        return _train_runner
++
++    elif mode == "plan-select":
++        from ainerzero.v9.experiments.s2 import eval_runner
++
++        def _plan_select_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
++            model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
++            if model_by_arm is None:
++                from ainerzero.v9.experiments.s2 import adapters_mlx
++                model_by_arm = adapters_mlx.load_trained_models_for_planning(output_root)
++            specs = kwargs.get("train_episode_specs") or getattr(args, "train_episode_specs", None) or []
++            return eval_runner.run_plan_select(
++                model_by_arm=model_by_arm,
++                train_episode_specs=specs,
++                output_path=Path(output_root) / "plan_config.json",
++                **kwargs,
++            )
++        return _plan_select_runner
++
++    elif mode == "dev-eval":
++        from ainerzero.v9.experiments.s2 import eval_runner
++
++        def _dev_eval_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
++            model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
++            if model_by_arm is None:
++                from ainerzero.v9.experiments.s2 import adapters_mlx
++                model_by_arm = adapters_mlx.load_trained_models_for_planning(output_root)
++            plan_cfg = kwargs.get("frozen_plan_config") or getattr(args, "frozen_plan_config", None) or {}
++            long_specs = kwargs.get("long_specs") or getattr(args, "long_specs", None) or []
++            ledger_path = getattr(ledger, "path", None) or paths["ledger"]
++            return eval_runner.run_dev_eval(
++                model_by_arm=model_by_arm,
++                frozen_plan_config=plan_cfg,
++                long_specs=long_specs,
++                ledger_path=ledger_path,
++                **kwargs,
++            )
++        return _dev_eval_runner
++
++    elif mode == "final-eval":
++        from ainerzero.v9.experiments.s2 import eval_runner
++
++        def _final_eval_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
++            model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
++            if model_by_arm is None:
++                from ainerzero.v9.experiments.s2 import adapters_mlx
++                model_by_arm = adapters_mlx.load_trained_models_for_planning(output_root)
++            plan_cfg = kwargs.get("frozen_plan_config") or getattr(args, "frozen_plan_config", None) or {}
++            long_specs = kwargs.get("long_specs") or getattr(args, "long_specs", None) or []
++            sealed_dir = kwargs.get("sealed_final_dir") or getattr(args, "sealed_final_dir", None) or (Path(output_root) / "sealed_final")
++            res_log = kwargs.get("research_log") or getattr(args, "research_log", None) or paths["research_log"]
++            return eval_runner.run_final_eval(
++                model_by_arm=model_by_arm,
++                frozen_plan_config=plan_cfg,
++                sealed_final_dir=sealed_dir,
++                research_log=res_log,
++                long_specs=long_specs,
++                **kwargs,
++            )
++        return _final_eval_runner
++
++    elif mode == "smoke":
++        from ainerzero.v9.experiments.s2 import smoke
++
++        def _smoke_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
++            return smoke.run_smoke(
++                output_root=output_root,
++                ledger=ledger,
++                run_id=run_id,
++                execute_real=True,
++                repo_root=paths["repo_root"],
++                **kwargs,
++            )
++        return _smoke_runner
++
++    else:
++        raise ValueError(f"Unknown mode: {mode!r}")
++
++
++def s2_phase1_command(args: Any) -> tuple[dict[str, Any], int]:
++    """Execute s2-phase1 lifecycle entry."""
++    paths = _resolve_paths(args)
++    mode = getattr(args, "mode", "verify")
++    arm = getattr(args, "arm", None)
++    seed = getattr(args, "seed", None)
++    experiment_id = getattr(args, "experiment_id", worker.EXPERIMENT_ID)
++
++    # 1. Mode: verify (strictly read-only, zero writes)
++    if mode == "verify":
++        approved, approval_info = _check_approval_preflight(paths["research_log"])
++        prereg_file = paths["prereg"]
++        if not prereg_file.is_file():
++            return {
++                "status": "verified",
++                "mode": mode,
++                "approved": approved,
++                "approval_info": approval_info,
++                "prereg_status": "unfrozen",
++                "message": "未冻结：prereg.json 不存在",
++                "prereg_exists": False,
++                "paths": {k: str(v) for k, v in paths.items()},
++            }, EXIT_COMPLETED
++
++        from ainerzero.v9.experiments.s2 import identity
++        try:
++            verif_res = identity.verify_frozen_identity(prereg_file, repo_root=paths["repo_root"])
++            return {
++                "status": "verified",
++                "mode": mode,
++                "approved": approved,
++                "approval_info": approval_info,
++                "prereg_exists": True,
++                "identity_verification": verif_res,
++                "paths": {k: str(v) for k, v in paths.items()},
++            }, EXIT_COMPLETED
++        except identity.FrozenIdentityMismatchError as exc:
++            return {
++                "status": "failed",
++                "mode": mode,
++                "stage": "identity_mismatch",
++                "message": str(exc),
++                "mismatches": exc.mismatches,
++                "paths": {k: str(v) for k, v in paths.items()},
++            }, EXIT_FAILED
++        except Exception as exc:
++            return {
++                "status": "failed",
++                "mode": mode,
++                "stage": "identity_verification",
++                "message": str(exc),
++                "paths": {k: str(v) for k, v in paths.items()},
++            }, EXIT_FAILED
++
++    # 2. Non-verify modes: Preflight A (Approval check)
++    approved, approval_info = _check_approval_preflight(paths["research_log"])
++    if not approved:
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "approval",
++            "reasons": approval_info.get("reasons", ["Approval line missing"]),
++            "detail": approval_info,
++        }, EXIT_REFUSED_APPROVAL
++
++    # 3. Preflight B: Anti-duplicate check
++    if worker.check_cell_already_completed(paths["ledger"], mode, arm, seed):
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "duplicate_execution",
++            "message": f"Cell ({mode}, arm={arm}, seed={seed}) has already completed in ledger",
++        }, EXIT_FAILED
++
++    # 4. Preflight C: Per-cell budget & Phase ceiling check (10 h = 36,000 s)
++    try:
++        requested_budget = getattr(args, "budget", None)
++        cell_budget = _get_cell_budget(mode, arm, requested_budget)
++    except ValueError as exc:
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "budget_validation",
++            "message": str(exc),
++        }, EXIT_REFUSED_RESOURCE
++
++    budget_ok, consumed, ceiling = _check_phase_budget_ceiling(paths["ledger"], cell_budget)
++    if not budget_ok:
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "phase_budget_exceeded",
++            "consumed_seconds": consumed,
++            "cell_budget_seconds": cell_budget,
++            "ceiling_seconds": ceiling,
++            "message": f"Adding cell budget ({cell_budget} s) to consumed ({consumed} s) exceeds ceiling ({ceiling} s)",
++        }, EXIT_REFUSED_RESOURCE
++
++    # 5. Preflights passed: Acquire worker lock and execute via ledger
++    clock = getattr(args, "fake_clock", None)
++    clock_fn = clock.time if hasattr(clock, "time") else (clock if callable(clock) else time.time)
++    runner = getattr(args, "runner", None)
++    if runner is None:
++        runner = _resolve_default_runner(mode, paths, args=args)
++
++    try:
++        with worker_lock(paths["lock"]):
++            ledger = worker.S2Ledger(paths["ledger"], clock=clock_fn)
++            try:
++                result = worker.execute_work_cell(
++                    ledger=ledger,
++                    mode=mode,
++                    arm=arm,
++                    seed=seed,
++                    cell_wall_budget=cell_budget,
++                    experiment_id=experiment_id,
++                    clock=clock_fn,
++                    runner=runner,
++                    output_root=paths["output_root"],
++                )
++                r_status = result.get("status") if isinstance(result, dict) else "completed"
++                return {
++                    "status": r_status,
++                    "mode": mode,
++                    "arm": arm,
++                    "seed": seed,
++                    "result": result,
++                }, (EXIT_COMPLETED if r_status == "completed" else EXIT_FAILED)
++            finally:
++                ledger.close()
++
++    except WorkerLockBusy:
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "lock_busy",
++            "message": f"Worker lock {paths['lock']} is busy",
++        }, EXIT_LOCK_BUSY
++    except BudgetExceeded as exc:
++        return {
++            "status": "refused",
++            "mode": mode,
++            "stage": "experiment_budget_exceeded",
++            "message": str(exc),
++        }, EXIT_REFUSED_RESOURCE
++    except Exception as exc:
++        return {
++            "status": "failed",
++            "mode": mode,
++            "stage": "execution",
++            "message": str(exc),
++        }, EXIT_FAILED

@@ -1,0 +1,264 @@
+=== P148-M1: verify skips identity check ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox
+configfile: pyproject.toml
+collecting ... collected 16 items / 15 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py::test_verify_case_tampered_byte_fails_and_names_file FAILED [100%]
+
+=================================== FAILURES ===================================
+_____________ test_verify_case_tampered_byte_fails_and_names_file ______________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-462/test_verify_case_tampered_byte0')
+
+    def test_verify_case_tampered_byte_fails_and_names_file(tmp_path: Path) -> None:
+        """Case 3: If an S2 file has a modified byte, verify fails non-zero and names the file."""
+        repo_root = _find_repo_root()
+        log_path = tmp_path / "RESEARCH_LOG.md"
+    
+        from ainerzero.v9.experiments.s2 import prereg
+        draft = prereg.build_draft(repo_root=repo_root)
+        frozen_dir = tmp_path / "frozen_tampered"
+        doc_sha = freeze.freeze(draft, frozen_dir, repo_root=repo_root)
+        prereg_path = frozen_dir / "prereg.json"
+    
+        # Tamper one file's hash in prereg.json
+        target_file = "src/ainerzero/v9/experiments/s2/spec.py"
+        doc_json = json.loads(prereg_path.read_text(encoding="utf-8"))
+        assert target_file in doc_json["source_digests"]
+        doc_json["source_digests"][target_file] = "f" * 64
+    
+        # Re-save tampered prereg.json and update companion sha
+        new_bytes = json.dumps(doc_json, indent=2, sort_keys=True).encode("utf-8")
+        prereg_path.write_bytes(new_bytes)
+        new_doc_sha = hashlib.sha256(new_bytes).hexdigest()
+        (frozen_dir / "prereg.json.sha256").write_text(f"{new_doc_sha}  prereg.json\n", encoding="utf-8")
+    
+        _make_dummy_research_log(log_path, new_doc_sha)
+    
+        args = argparse.Namespace(
+            mode="verify",
+            repo_root=repo_root,
+            prereg=prereg_path,
+            research_log=log_path,
+        )
+        res, code = commands.s2_phase1_command(args)
+>       assert code != 0, f"Tampered byte must return non-zero exit code, got {code}"
+E       AssertionError: Tampered byte must return non-zero exit code, got 0
+E       assert 0 != 0
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py:292: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py::test_verify_case_tampered_byte_fails_and_names_file
+======================= 1 failed, 15 deselected in 0.82s =======================
+
+
+
+=== P148-M2: circuit breaker threshold = 0.5 ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox
+configfile: pyproject.toml
+collecting ... collected 16 items / 15 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py::test_smoke_logic_circuit_breaker_when_all_arms_below_floor FAILED [100%]
+
+=================================== FAILURES ===================================
+__________ test_smoke_logic_circuit_breaker_when_all_arms_below_floor __________
+
+    def test_smoke_logic_circuit_breaker_when_all_arms_below_floor() -> None:
+        """Verify circuit breaker triggers when all arms long-goal success rate < 0.05."""
+        metrics = {
+            "delta_sigreg": -0.05,
+            "action_sensitivity": 0.10,
+            "subgoal_shuffle_drop": 0.15,
+            "long_goal_success_rates": {"arm_a": 0.02, "arm_b": 0.04, "arm_c": 0.03},
+        }
+        res = smoke.check_smoke_preconditions(metrics)
+        assert res["passed"] is False
+        assert res["circuit_breaker"] is True
+        assert any("Circuit breaker triggered" in r for r in res["reasons"])
+    
+        # If at least one arm is above threshold, circuit breaker does not trigger
+        metrics_one_good = copy.deepcopy(metrics)
+        metrics_one_good["long_goal_success_rates"]["arm_c"] = 0.20
+        res_good = smoke.check_smoke_preconditions(metrics_one_good)
+>       assert res_good["circuit_breaker"] is False
+E       assert True is False
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py:377: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py::test_smoke_logic_circuit_breaker_when_all_arms_below_floor
+======================= 1 failed, 15 deselected in 0.90s =======================
+
+
+
+=== P148-M3: training steps takes max ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox
+configfile: pyproject.toml
+collecting ... collected 16 items / 15 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py::test_smoke_timing_and_training_steps_minimum_rule FAILED [100%]
+
+=================================== FAILURES ===================================
+______________ test_smoke_timing_and_training_steps_minimum_rule _______________
+
+    def test_smoke_timing_and_training_steps_minimum_rule() -> None:
+        """Verify training steps = floor(1200 * 0.8 / t) and strictly takes minimum across arms."""
+        step_times = {
+            "arm_a": 0.05,  # 1200 * 0.8 / 0.05 = 19200
+            "arm_b": 0.04,  # 1200 * 0.8 / 0.04 = 24000
+            "arm_c": 0.06,  # 1200 * 0.8 / 0.06 = 16000
+        }
+        res = smoke.compute_training_steps(step_times)
+        assert res["per_arm_steps"]["arm_a"] == 19200
+        assert res["per_arm_steps"]["arm_b"] == 24000
+        assert res["per_arm_steps"]["arm_c"] == 16000
+        # Must be minimum, not maximum or mean
+>       assert res["shared_train_steps"] == 16000
+E       assert 24000 == 16000
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py:392: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py::test_smoke_timing_and_training_steps_minimum_rule
+======================= 1 failed, 15 deselected in 0.83s =======================
+
+
+
+=== P148-M4: commands top-level import adapters_mlx ===
+Exit code: 2 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox
+configfile: pyproject.toml
+collecting ... collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+___________ ERROR collecting tests/v9/experiments/test_s2_wiring.py ____________
+/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/_pytest/python.py:508: in importtestmodule
+    mod = import_path(
+/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/_pytest/pathlib.py:596: in import_path
+    importlib.import_module(module_name)
+/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+<frozen importlib._bootstrap>:1387: in _gcd_import
+    ???
+<frozen importlib._bootstrap>:1360: in _find_and_load
+    ???
+<frozen importlib._bootstrap>:1331: in _find_and_load_unlocked
+    ???
+<frozen importlib._bootstrap>:935: in _load_unlocked
+    ???
+/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/_pytest/assertion/rewrite.py:188: in exec_module
+    exec(co, module.__dict__)
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py:39: in <module>
+    from ainerzero.v9.experiments.s2 import commands, freeze, smoke, spec, worker
+E     File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/src/ainerzero/v9/experiments/s2/commands.py", line 21
+E       from __future__ import annotations
+E       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   SyntaxError: from __future__ imports must occur at the beginning of the file
+=========================== short test summary info ============================
+ERROR ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 0.46s ===============================
+
+
+
+=== P148-M5: smoke step 3 restores constant metrics ===
+Exit code: 1 (KILLED (RED))
+Output:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox
+configfile: pyproject.toml
+collecting ... collected 16 items / 15 deselected / 1 selected
+
+../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py::test_smoke_step3_step4_unimplemented_must_fail FAILED [100%]
+
+=================================== FAILURES ===================================
+________________ test_smoke_step3_step4_unimplemented_must_fail ________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-463/test_smoke_step3_step4_unimple0')
+
+    def test_smoke_step3_step4_unimplemented_must_fail(tmp_path: Path) -> None:
+        """Requirement (3): Steps 3 & 4 are not implemented in P148; smoke MUST fail (never pass).
+    
+        Reasons must specify '短训健全性与可行性熔断待 P152 实现', and NO constant metrics may exist.
+        """
+        from ainerzero.v9.experiments.s2 import param_count
+    
+        smoke_out = tmp_path / "smoke_step3_4_unimplemented"
+        fake_arms = {
+            "arm_a": _DummySmokeArm(param_count.count_arm_a_closed_form()),
+            "arm_b": _DummySmokeArm(param_count.count_arm_b_closed_form()),
+            "arm_c": _DummySmokeArm(param_count.count_arm_c_closed_form()),
+        }
+        fake_step_times = {
+            "arm_a": 0.05,
+            "arm_b": 0.04,
+            "arm_c": 0.06,
+        }
+    
+        # Even with valid arms and step times, smoke MUST fail because step 3 and 4 are not implemented
+        res = smoke.run_smoke(
+            smoke_out,
+            arms_by_id=fake_arms,
+            step_times=fake_step_times,
+        )
+    
+        assert res["passed"] is False, "Smoke must NOT pass when steps 3 and 4 are unimplemented"
+        assert res["status"] == "failed"
+        reasons_str = " ".join(res["reasons"])
+        assert "短训健全性与可行性熔断待 P152 实现" in reasons_str
+        assert res["step_3_short_train"]["status"] == "not_implemented"
+        assert res["step_4_feasibility"]["status"] == "not_implemented"
+        # Forbid any constant metrics
+        assert "delta_sigreg" not in str(res["step_3_short_train"])
+        assert "action_sensitivity" not in str(res["step_3_short_train"])
+        assert "long_goal_success_rates" not in str(res["step_4_feasibility"])
+    
+        # Source inspection: verify measure_real_smoke has zero hardcoded constant metrics
+        import inspect
+        src = inspect.getsource(smoke.measure_real_smoke)
+        forbidden_constants = ["delta_sigreg", "action_sensitivity", "subgoal_shuffle_drop", "long_goal_success_rates"]
+        for const in forbidden_constants:
+>           assert const not in src, f"measure_real_smoke must not contain constant metric {const!r}"
+E           AssertionError: measure_real_smoke must not contain constant metric 'delta_sigreg'
+E           assert 'delta_sigreg' not in 'def measure...e, reasons\n'
+E             
+E             'delta_sigreg' is contained here:
+E               def measure_real_smoke(
+E                   output_root: Path,
+E                   repo_root: Path | None = None,
+E                   seed_namespace: str = SMOKE_SEED_NAMESPACE,
+E                   clock: Callable[[], float] | None = None,...
+E             
+E             ...Full output truncated (72 lines hidden), use '-vv' to show
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py:471: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p148_r3_mut_4gcvu2bn/sandbox/tests/v9/experiments/test_s2_wiring.py::test_smoke_step3_step4_unimplemented_must_fail
+======================= 1 failed, 15 deselected in 0.80s =======================
+
+

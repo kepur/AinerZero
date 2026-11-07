@@ -1,103 +1,350 @@
-=== Mutation REV-P148-M1 ===
-Name: bypass_compute_approval_preflight
-Target check: test_commands_refuse_unapproved_compute
-Status: KILLED (exit_code: 1)
+=== Mutation P148-M5 ===
+Description: smoke step 3 restores constant metrics instead of failing closed as not_implemented
+Test targeted: test_smoke_step3_step4_unimplemented_must_fail
+Status: KILLED (RED)
+Exit code: 1
 Stdout:
-Running P149 independent verification suite...
-✓ Scope and conftest check passed.
-✓ Forward counter wiring check passed.
-✓ Verify mode tampering detection check passed.
-✓ Smoke logic 5 independent cases check passed.
-✓ Hand calculated training steps rule check passed.
-✓ Seed namespace and zero readback check passed.
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_smoke_step3_step4_unimplemented_must_fail ________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-11/test_smoke_step3_step4_unimple0')
+
+    def test_smoke_step3_step4_unimplemented_must_fail(tmp_path: Path) -> None:
+        """Requirement (3): Steps 3 & 4 are not implemented in P148; smoke MUST fail (never pass).
+    
+        Reasons must specify '短训健全性与可行性熔断待 P152 实现', and NO constant metrics may exist.
+        """
+        from ainerzero.v9.experiments.s2 import param_count
+    
+        smoke_out = tmp_path / "smoke_step3_4_unimplemented"
+        fake_arms = {
+            "arm_a": _DummySmokeArm(param_count.count_arm_a_closed_form()),
+            "arm_b": _DummySmokeArm(param_count.count_arm_b_closed_form()),
+            "arm_c": _DummySmokeArm(param_count.count_arm_c_closed_form()),
+        }
+        fake_step_times = {
+            "arm_a": 0.05,
+            "arm_b": 0.04,
+            "arm_c": 0.06,
+        }
+    
+        # Even with valid arms and step times, smoke MUST fail because step 3 and 4 are not implemented
+        res = smoke.run_smoke(
+            smoke_out,
+            arms_by_id=fake_arms,
+            step_times=fake_step_times,
+        )
+    
+        assert res["passed"] is False, "Smoke must NOT pass when steps 3 and 4 are unimplemented"
+        assert res["status"] == "failed"
+        reasons_str = " ".join(res["reasons"])
+        assert "短训健全性与可行性熔断待 P152 实现" in reasons_str
+        assert res["step_3_short_train"]["status"] == "not_implemented"
+        assert res["step_4_feasibility"]["status"] == "not_implemented"
+        # Forbid any constant metrics
+        assert "delta_sigreg" not in str(res["step_3_short_train"])
+        assert "action_sensitivity" not in str(res["step_3_short_train"])
+        assert "long_goal_success_rates" not in str(res["step_4_feasibility"])
+    
+        # Source inspection: verify measure_real_smoke has zero hardcoded constant metrics
+        import inspect
+        src = inspect.getsource(smoke.measure_real_smoke)
+        forbidden_constants = ["delta_sigreg", "action_sensitivity", "subgoal_shuffle_drop", "long_goal_success_rates"]
+        for const in forbidden_constants:
+>           assert const not in src, f"measure_real_smoke must not contain constant metric {const!r}"
+E           AssertionError: measure_real_smoke must not contain constant metric 'delta_sigreg'
+E           assert 'delta_sigreg' not in 'def measure...e, reasons\n'
+E             
+E             'delta_sigreg' is contained here:
+E                        "delta_sigreg": -0.01,
+E             ?           ++++++++++++
+E                           "action_sensitivity": 0.08,
+E                           "subgoal_shuffle_drop": 0.15,
+E                           "long_goal_success_rates": {"arm_a": 0.20, "arm_b": 0.25, "arm_c": 0.35},...
+E             
+E             ...Full output truncated (6 lines hidden), use '-vv' to show
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py:471: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py::test_smoke_step3_step4_unimplemented_must_fail
+1 failed, 15 deselected in 1.36s
 
 Stderr:
-Traceback (most recent call last):
-  File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/reports/V9-S2-P148/review/verify_all.py", line 300, in <module>
-    test_pure_cpu_isolation_no_mlx_in_sys_modules()
-  File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/reports/V9-S2-P148/review/verify_all.py", line 215, in test_pure_cpu_isolation_no_mlx_in_sys_modules
-    res = subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 548, in run
-    with Popen(*popenargs, **kwargs) as process:
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 1026, in __init__
-    self._execute_child(args, executable, preexec_fn, close_fds,
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 1953, in _execute_child
-    raise child_exception_type(errno_num, err_msg, err_filename)
-FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/.venv/bin/python'
 
+Byte restoration SHA matched: True
 
-=== Mutation REV-P148-M2 ===
-Name: bypass_phase_budget_ceiling_check
-Target check: test_commands_refuse_budget_ceiling_exceeded
-Status: KILLED (exit_code: 1)
+=== Mutation REV-M1 ===
+Description: check_smoke_seed_namespace allows forbidden partitions (replaces raise with pass)
+Test targeted: test_smoke_seed_namespace_rejects_overlapping
+Status: KILLED (RED)
+Exit code: 1
 Stdout:
-Running P149 independent verification suite...
-✓ Scope and conftest check passed.
-✓ Forward counter wiring check passed.
-✓ Verify mode tampering detection check passed.
-✓ Smoke logic 5 independent cases check passed.
-✓ Hand calculated training steps rule check passed.
-✓ Seed namespace and zero readback check passed.
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________ test_smoke_seed_namespace_rejects_overlapping _________________
+
+    def test_smoke_seed_namespace_rejects_overlapping() -> None:
+        """Verify smoke rejects seed namespaces overlapping with train, dev, or final."""
+        for bad_ns in ("train", "train_seed_1", "dev", "my_dev_eval", "final", "sealed_final"):
+>           with pytest.raises(ValueError, match="must not overlap"):
+E           Failed: DID NOT RAISE ValueError
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py:519: Failed
+=========================== short test summary info ============================
+FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py::test_smoke_seed_namespace_rejects_overlapping
+1 failed, 15 deselected in 1.57s
 
 Stderr:
-Traceback (most recent call last):
-  File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/reports/V9-S2-P148/review/verify_all.py", line 300, in <module>
-    test_pure_cpu_isolation_no_mlx_in_sys_modules()
-  File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/reports/V9-S2-P148/review/verify_all.py", line 215, in test_pure_cpu_isolation_no_mlx_in_sys_modules
-    res = subprocess.run(cmd, cwd=str(REPO_ROOT), capture_output=True, text=True)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 548, in run
-    with Popen(*popenargs, **kwargs) as process:
-         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 1026, in __init__
-    self._execute_child(args, executable, preexec_fn, close_fds,
-  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 1953, in _execute_child
-    raise child_exception_type(errno_num, err_msg, err_filename)
-FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/.venv/bin/python'
 
+Byte restoration SHA matched: True
 
-=== Mutation REV-P148-M3 ===
-Name: invert_action_sensitivity_threshold_check
-Target check: test_smoke_logic_five_independent_cases
-Status: KILLED (exit_code: 1)
+=== Mutation REV-M2 ===
+Description: make_smoke_timing_batch alters registered batch size from spec.BATCH_SIZE (32) to 16
+Test targeted: test_smoke_batch_shape_registered
+Status: KILLED (RED)
+Exit code: 1
 Stdout:
-Running P149 independent verification suite...
-✓ Scope and conftest check passed.
-✓ Forward counter wiring check passed.
-✓ Verify mode tampering detection check passed.
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________________ test_smoke_batch_shape_registered _______________________
+
+    def test_smoke_batch_shape_registered() -> None:
+        """Requirement (2) & (3): Timing batch shape must strictly be (32, H_train+1, ...)."""
+        batch = smoke.make_smoke_timing_batch()
+>       assert batch["observations"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1, spec.OBS_DIM)
+E       assert (16, 17, 205) == (32, 17, 205)
+E         
+E         At index 0 diff: 16 != 32
+E         Use -v to get more diff
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py:406: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py::test_smoke_batch_shape_registered
+1 failed, 15 deselected in 1.31s
 
 Stderr:
-Traceback (most recent call last):
-  File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/reports/V9-S2-P148/review/verify_all.py", line 294, in <module>
-    test_smoke_logic_five_independent_cases()
-  File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/reports/V9-S2-P148/review/verify_all.py", line 138, in test_smoke_logic_five_independent_cases
-    assert res_normal["passed"] is True
-AssertionError
 
+Byte restoration SHA matched: True
 
-=== Mutation REV-P148-M4 ===
-Name: disable_seed_namespace_disjointness_check
-Target check: test_seed_namespace_and_no_partition_readback
-Status: KILLED (exit_code: 1)
+=== Mutation REV-M3 ===
+Description: _resolve_default_runner for mode smoke returns dummy runner with wrong output
+Test targeted: test_commands_dispatch_to_runners
+Status: KILLED (RED)
+Exit code: 1
 Stdout:
-Running P149 independent verification suite...
-✓ Scope and conftest check passed.
-✓ Forward counter wiring check passed.
-✓ Verify mode tampering detection check passed.
-✓ Smoke logic 5 independent cases check passed.
-✓ Hand calculated training steps rule check passed.
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________________ test_commands_dispatch_to_runners _______________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-12/test_commands_dispatch_to_runn0')
+
+    def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
+        """Verify that s2_phase1_command dispatches to each runner correctly."""
+        repo_root = _find_repo_root()
+        output_root = tmp_path / "output"
+        output_root.mkdir(exist_ok=True)
+        log_path = tmp_path / "RESEARCH_LOG.md"
+        _make_dummy_research_log(log_path, "0" * 64)
+    
+        # 1. generate-data
+        with patch("ainerzero.v9.experiments.s2.data_runner.run_generate_data") as mock_data:
+            def _data_side_effect(ledger, run_id, **kwargs):
+                ledger.complete_run(run_id)
+                return {"status": "completed", "n_episodes": 10}
+            mock_data.side_effect = _data_side_effect
+    
+            args = argparse.Namespace(
+                mode="generate-data",
+                arm="train",
+                seed=42,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=tmp_path / "control_gen.sqlite3",
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+            )
+            res, code = commands.s2_phase1_command(args)
+            assert code == 0
+            assert mock_data.called
+            assert mock_data.call_args.kwargs["partition"] == "train"
+    
+        # 2. train
+        with patch("ainerzero.v9.experiments.s2.train_runner.run_train_cell") as mock_train:
+            def _train_side_effect(ledger, run_id, **kwargs):
+                ledger.complete_run(run_id)
+                return {"status": "completed", "steps": 16}
+            mock_train.side_effect = _train_side_effect
+    
+            args = argparse.Namespace(
+                mode="train",
+                arm="arm_a",
+                seed=43,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=tmp_path / "control_train.sqlite3",
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+            )
+            res, code = commands.s2_phase1_command(args)
+            assert code == 0
+            assert mock_train.called
+            assert mock_train.call_args.kwargs["arm_id"] == "arm_a"
+            assert mock_train.call_args.kwargs["seed"] == 43
+    
+        # 3. plan-select
+        with patch("ainerzero.v9.experiments.s2.eval_runner.run_plan_select") as mock_ps:
+            def _ps_side_effect(**kwargs):
+                return {"status": "completed"}
+            mock_ps.side_effect = _ps_side_effect
+    
+            fake_model = MagicMock()
+            args = argparse.Namespace(
+                mode="plan-select",
+                arm="arm_a",
+                seed=None,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=tmp_path / "control_ps.sqlite3",
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+                model_by_arm={"arm_a": fake_model},
+                train_episode_specs=[{"partition": "train", "id": 1}],
+            )
+            res, code = commands.s2_phase1_command(args)
+            assert code == 0
+            assert mock_ps.called
+    
+        # 4. dev-eval
+        with patch("ainerzero.v9.experiments.s2.eval_runner.run_dev_eval") as mock_dev:
+            def _dev_side_effect(**kwargs):
+                return {"status": "completed"}
+            mock_dev.side_effect = _dev_side_effect
+    
+            args = argparse.Namespace(
+                mode="dev-eval",
+                arm=None,
+                seed=None,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=tmp_path / "control_dev.sqlite3",
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+                model_by_arm={"arm_a": MagicMock()},
+                frozen_plan_config={"arms": {}},
+                long_specs=[{"world_id": 0, "subset": "long"}],
+            )
+            res, code = commands.s2_phase1_command(args)
+            assert code == 0
+            assert mock_dev.called
+    
+        # 5. final-eval
+        with patch("ainerzero.v9.experiments.s2.eval_runner.run_final_eval") as mock_final:
+            def _final_side_effect(**kwargs):
+                return {"status": "completed"}
+            mock_final.side_effect = _final_side_effect
+    
+            args = argparse.Namespace(
+                mode="final-eval",
+                arm=None,
+                seed=None,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=tmp_path / "control_final.sqlite3",
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+                model_by_arm={"arm_a": MagicMock()},
+                frozen_plan_config={"arms": {}},
+                long_specs=[{"world_id": 0, "subset": "long"}],
+            )
+            res, code = commands.s2_phase1_command(args)
+            assert code == 0
+            assert mock_final.called
+    
+        # 6. smoke
+        with patch("ainerzero.v9.experiments.s2.smoke.run_smoke") as mock_smoke:
+            def _smoke_side_effect(ledger, run_id, **kwargs):
+                ledger.complete_run(run_id)
+                return {"status": "completed", "passed": True}
+            mock_smoke.side_effect = _smoke_side_effect
+    
+            args = argparse.Namespace(
+                mode="smoke",
+                arm=None,
+                seed=None,
+                repo_root=repo_root,
+                output_root=output_root,
+                ledger=tmp_path / "control_smoke.sqlite3",
+                lock_file=tmp_path / "worker.lock",
+                research_log=log_path,
+            )
+            res, code = commands.s2_phase1_command(args)
+>           assert code == 0
+E           assert 1 == 0
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py:204: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py::test_commands_dispatch_to_runners
+1 failed, 15 deselected in 1.62s
 
 Stderr:
-Traceback (most recent call last):
-  File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/reports/V9-S2-P148/review/verify_all.py", line 298, in <module>
-    test_seed_namespace_and_no_partition_readback()
-  File "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmprg9n_53_/ainerzero_sandbox/reports/V9-S2-P148/review/verify_all.py", line 188, in test_seed_namespace_and_no_partition_readback
-    with pytest.raises(ValueError, match="must not overlap"):
-  File "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/_pytest/raises.py", line 699, in __exit__
-    fail(f"DID NOT RAISE {self.expected_exceptions[0].__name__}")
-  File "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/_pytest/outcomes.py", line 162, in __call__
-    raise Failed(msg=reason, pytrace=pytrace)
-Failed: DID NOT RAISE ValueError
+
+Byte restoration SHA matched: True
+
+=== Mutation REV-M4 ===
+Description: check_smoke_budget forces sufficient = True even when total exceeds ceiling
+Test targeted: test_smoke_over_budget_fails
+Status: KILLED (RED)
+Exit code: 1
+Stdout:
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________________________ test_smoke_over_budget_fails _________________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-13/test_smoke_over_budget_fails0')
+
+    def test_smoke_over_budget_fails(tmp_path: Path) -> None:
+        """Requirement (4): Measured total wall-clock exceeding 10h ceiling causes sufficient=False and fails smoke."""
+        from ainerzero.v9.experiments.s2 import param_count
+    
+        smoke_out = tmp_path / "smoke_over_budget"
+        fake_arms = {
+            "arm_a": _DummySmokeArm(param_count.count_arm_a_closed_form()),
+            "arm_b": _DummySmokeArm(param_count.count_arm_b_closed_form()),
+            "arm_c": _DummySmokeArm(param_count.count_arm_c_closed_form()),
+        }
+        fake_step_times = {
+            "arm_a": 0.05,
+            "arm_b": 0.04,
+            "arm_c": 0.06,
+        }
+        fake_metrics = {
+            "delta_sigreg": -0.06,
+            "action_sensitivity": 0.14,
+            "subgoal_shuffle_drop": 0.22,
+            "long_goal_success_rates": {"arm_a": 0.28, "arm_b": 0.32, "arm_c": 0.45},
+        }
+    
+        # Pass a tiny ceiling (e.g. 1000 seconds) so total estimated (28200s) exceeds it
+        res = smoke.run_smoke(
+            smoke_out,
+            arms_by_id=fake_arms,
+            step_times=fake_step_times,
+            preconditions_metrics=fake_metrics,
+            budget_ceiling_seconds=1000.0,
+        )
+    
+        assert res["passed"] is False
+        assert res["status"] == "failed"
+>       assert res["budget_analysis"]["sufficient"] is False
+E       assert True is False
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py:507: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmps1fem4iu/tests/v9/experiments/test_s2_wiring.py::test_smoke_over_budget_fails
+1 failed, 15 deselected in 1.73s
+
+Stderr:
+
+Byte restoration SHA matched: True
 

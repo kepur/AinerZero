@@ -1,96 +1,91 @@
-自证声明：复核者为独立二级代理 gemini-a5b8（会话 sess-7b3b52555339），绝非 V9.P148 作者 gemini-w4x2，亦非其同会话别名。本次为全新独立会话纯 CPU 只读复核。
+本人 gemini-7k2q 自证非 ainerzero.V9.P148 之作者（原作者 gemini-w4x2 / gemini-r7m2 / gemini-m8d2），亦非作者之同会话别名，且非排除代理 gemini-a5b8，全程独立纯 CPU 核验证据。
 
-# 非作者复核报告：V9.P148 S2 接线收尾（ainerzero.V9.P149）
+# S2 接线收尾非作者独立复核报告（ainerzero.V9.P149）
 
-- **复核结论**：`RECOMMEND_ACCEPT`（强烈建议接受 P148，各项契约完备，纯 CPU 隔离彻底）
-- **复核代理**：`gemini-a5b8`（二级执行 Agent）· 纯 CPU 独立复核（零 GPU/MLX 导入、只读核对、零源码污染）
-- **被复核任务**：`ainerzero.V9.P148`（作者：`gemini-w4x2`）
-
----
-
-## 1. 改动范围核实（文件边界）
-
-1. **`git status` 与 `git diff --stat HEAD` 审查**：
-   - 卡面涉及的新模块：
-     - `src/ainerzero/v9/experiments/s2/adapters_mlx.py`：MLX 臂适配层；
-     - `src/ainerzero/v9/experiments/s2/smoke.py`：smoke 冒烟模式；
-     - `src/ainerzero/v9/experiments/s2/commands.py`：supervisor 生命周期入口与 runner 接线；
-     - `tests/v9/experiments/test_s2_wiring.py`：纯 CPU 挂接单测；
-     - `tests/v9/experiments/test_s2_adapters_mlx_native.py`：隔离 native MLX 测试；
-   - 现有代码改动：
-     - `src/ainerzero/cli.py`：仅添加 `s2-phase1` 子命令挂接至 `s2_phase1_command`；
-     - `tests/conftest.py`：严格只在 `NATIVE_MODULES` 中添加 1 行 `"test_s2_adapters_mlx_native.py"`。
-   - 确认 `src/` 下原有历史文件与 HEAD 逐字节一致，零越界改动。
+- **复核代理**：`gemini-7k2q`（二级执行 Agent）· 纯 CPU（零 MLX 运行，零 GPU 占用）
+- **复核对象**：`ainerzero.V9.P148` r3（作者：`gemini-m8d2`）
+- **复核依据**：`reports/V9-S2-DESIGN/DESIGN-r2.md` §5、§6、附录 A、附录 B（r2.3）以及任务参数 v1、一级 Claude 通知（#775、#778）
+- **最终结论**：**`RECOMMEND_ACCEPT`**
 
 ---
 
-## 2. 接线、Verify 模式与 ForwardCounter 核查
+## 1. 独立核实摘要与 r2_review_focus 五点对照
 
-1. **各模式接线与前置门禁**：
-   - `commands.s2_phase1_command` 对全部 6 个计算模式（`generate-data`, `train`, `plan-select`, `dev-eval`, `final-eval`, `smoke`）逐一在 `worker.execute_work_cell` 内延迟导入对应 runner 并执行；
-   - 全部经过三大前置安全门：
-     - 预检 A：`_check_approval_preflight` 严格扫描 `RESEARCH_LOG.md` 提取合规批注文档；
-     - 预检 B：`check_cell_already_completed` 严格防重；
-     - 预检 C：`_check_phase_budget_ceiling` 严格限制单格与 10 小时总相位墙钟上限；
-     - 全程在 `worker_lock`（`artifacts/locks/m0-worker.lock`）互斥锁内运行。
-2. **`verify` 模式三种状态与篡改检测**：
-   - 缺 `prereg.json` 时返回状态 `verified`，标记 `prereg_status: "unfrozen"`，退出码 0；
-   - 存在合法 `prereg.json` 且身份吻合时返回状态 `verified`，退出码 0；
-   - **篡改检测自测**：在独立的临时隔离仓库中，对 `src/ainerzero/v9/experiments/s2/worker.py` 的 SHA256 修改 1 个字节，运行 `verify` 立即返回非零退出码（exit 1），状态为 `failed`，stage 为 `identity_mismatch`，并在报告中明确点名该文件。
-3. **ForwardCounter 评估计费核查**：
-   - 静态 AST 检查确认：`MLXArmAAdapter`、`MLXArmBAdapter`、`MLXArmCAdapter` 在规划接口（`encode`, `predict_l1`, `predict_l2`, `encode_l2`, `cost_fn`）中均严格包含 `self.counter.charge(...)`，规划期间评估调用全额计费。
+| # | 核验项 / 关注点 | 规定标准 | 独立复核实测结论 | 状态 |
+|---|---|---|---|:---:|
+| 1 | **无写死/常数指标** | `smoke.py` 及调用链无写死耗时、指标或通过值；缺实测只判失败并说明缺项 | 源码静态 AST 与执行审计：`measure_real_smoke` 中彻底移除所有常数指标；第 3/4 步标记 `status="not_implemented"`，smoke 必定判 `failed` 并提示「短训健全性与可行性熔断待 P152 实现」；未注入实测时 fail-closed 逐项点名缺项 | **PASS** |
+| 2 | **真实 Runner 接线** | `commands.py` 的 smoke runner 真实组装传入实测，MLX 模块在函数内懒加载 | `_resolve_default_runner` 延迟引入 `smoke.run_smoke(execute_real=True)`；顶层无任何 MLX 导入；`-I` 子进程导入 `s2`、`commands`、`smoke` 后 `mlx` 不在 `sys.modules` | **PASS** |
+| 3 | **预算实测核算** | `budget_analysis.sufficient` 由实测数字核算，超预算判 False 并使 smoke 失败 | 手写独立假臂，在超预算场景下（实测总用时 29640s > 设定预算上限 25000s）实测：`sufficient` 严格判定为 `False`，smoke 判 `failed` 并点名超额原因 | **PASS** |
+| 4 | **P148-M5 变异红** | 恢复默认数字用例精准变红 | 隔离沙盒中将 `measure_real_smoke` 塞回常数指标，`test_smoke_step3_step4_unimplemented_must_fail` 精准报错红（exit code 1, KILLED），还原后 SHA-256 逐字节一致 | **PASS** |
+| 5 | **纯 CPU 全量回归** | 不运行 MLX，默认全量纯 CPU 运行，0 failed | 全量回归 3596 passed / 0 failed / 6 deselected（355.42s），退出码 0；80929 处 artifacts stat 审计 0 差异；S2 纯 CPU 单测 162 项全部 0 失败通过 | **PASS** |
 
 ---
 
-## 3. Smoke 冒烟模式独立假臂与规则手算核查
+## 2. 详细独立验证记录
 
-1. **训练步数规则手算核查**：
-   - 公式：$\text{steps} = \lfloor 1200 \times 0.8 / t_{\text{step}} \rfloor = \lfloor 960 / t_{\text{step}} \rfloor$；
-   - 验证单步耗时：$t_A = 0.08\,\text{s} \to 12000$ 步，$t_B = 0.05\,\text{s} \to 19200$ 步，$t_C = 0.10\,\text{s} \to 9600$ 步；
-   - 三臂取最小值：$\min(12000, 19200, 9600) = 9600$ 步，计算规则完全符合附录 A。
-2. **独立编写假臂与指标数据测试 5 种情形**：
-   - **Case 1（正常放行）**：$\Delta\text{SIGReg} = -0.045 < 0$，敏感度 $0.08 \ge 0.05$，打乱 drop $0.18 \ge 0.10$，长目标成功率 $\ge 0.05$ $\to$ `passed: True`, `circuit_breaker: False`；
-   - **Case 2（SIGReg 未下降）**：$\Delta\text{SIGReg} = 0.005 \ge 0$ $\to$ `passed: False`，拦截点名 `SIGReg did not decrease`；
-   - **Case 3（动作不敏感）**：敏感度 $0.04 < 0.05$ $\to$ `passed: False`，拦截点名 `Action sensitivity below threshold`；
-   - **Case 4（宏观子目标打乱 drop 不足）**：drop $0.09 < 0.10$ $\to$ `passed: False`，拦截点名 `Subgoal shuffle drop below threshold`；
-   - **Case 5（熔断器触发）**：所有臂长目标成功率均 $< 0.05$（$0.049, 0.030, 0.048$）$\to$ `passed: False`, `circuit_breaker: True`，拦截点名 `Circuit breaker triggered`。
-3. **种子空间隔离与分区零读取**：
-   - 命名空间含 `train`, `dev`, `final`, `sealed_final` 均被 `check_smoke_seed_namespace` 拒绝；
-   - 源码审计确认 `smoke.py` 绝不打开或读取实盘任何数据分区。
+### 2.1 范围与代码一致性
+- `git status` 与 `git diff --name-only HEAD src/` 核对：
+  - `src/` 目录下仅 `src/ainerzero/cli.py` 补充了 `s2-phase1` 子命令接入（包含 verify/smoke/generate-data/train/plan-select/dev-eval/final-eval 等必要参数）；
+  - `src/` 下其余文件与 HEAD 逐字节一致，无任何未登记代码变动；
+  - P148 卡面登记的新增/修改文件（`adapters_mlx.py`, `smoke.py`, `commands.py`, `test_s2_wiring.py`, `test_s2_adapters_mlx_native.py`, `tests/conftest.py`）SHA-256 均已校验并记录。
+
+### 2.2 接线、verify 模式与 ForwardCounter
+- **模式调度**：
+  - `verify`：只读核验，无任何写操作。
+  - `generate-data`, `train`, `plan-select`, `dev-eval`, `final-eval`, `smoke`：统一在 `s2_phase1_command` 中执行，前置依次通过：
+    1. 协调员批准行扫描预检（`_check_approval_preflight`，匹配 `APPROVAL_SECTION`）；
+    2. 防重入防重复执行校验（`worker.check_cell_already_completed`）；
+    3. 单格预算及 10 小时总预算上限校验（`_check_phase_budget_ceiling`）；
+    4. 获取中央共享锁 `worker_lock(paths["lock"])` 后，在 `worker.execute_work_cell` 内调用对应 runner。
+- **verify 篡改自测（临时伪造仓库）**：
+  - 在临时隔离目录生成冻结 `prereg.json` 与对应 `prereg.json.sha256`；
+  - 篡改 `src/ainerzero/v9/experiments/s2/spec.py` 的 digest 为全零并更新文档哈希；
+  - 执行 `s2_phase1_command(mode='verify')`：返回退出码 1，`stage="identity_mismatch"`，并明确点名差异文件 `src/ainerzero/v9/experiments/s2/spec.py`。
+- **ForwardCounter 前向计数审计**：
+  - `MLXArmAAdapter`：`encode`（charge "encode", 1）、`predict_l1`（charge "predict_l1", 1）、`cost_fn`（charge "decode", 1）；
+  - `MLXArmBAdapter`：`encode`（charge "encode", 1）、`predict_l1`（charge "predict_l1", 1）；
+  - `MLXArmCAdapter`：`encode`（charge "encode", 1）、`predict_l1`（charge "predict_l1", 1）、`encode_l2`（charge "encode_l2", 1）、`predict_l2`（charge "predict_l2", 1）；
+  - 决策期所有网络函数求值均严格接入 `ForwardCounter`，代码审计确认无遗漏，且纯 CPU 复核未执行任何 MLX。
+
+### 2.3 Smoke 判定、手算与种子隔离
+- **4 种失败情形 + 1 种正常情形判定**（复核者独立手写假臂数据测试）：
+  1. 正常情形：`delta_sigreg = -0.05 < 0`，`action_sensitivity = 0.12 >= 0.05`，`subgoal_shuffle_drop = 0.18 >= 0.10`，成功率均 `>= 0.05` $\implies$ `passed = True`。
+  2. 失败情形 1（SIGReg 不降）：`delta_sigreg = 0.01 >= 0` $\implies$ 判定失败，原因准确记录。
+  3. 失败情形 2（动作不敏感）：`action_sensitivity = 0.02 < 0.05` $\implies$ 判定失败，原因准确记录。
+  4. 失败情形 3（子目标打乱降幅不足）：`subgoal_shuffle_drop = 0.04 < 0.10` $\implies$ 判定失败，原因准确记录。
+  5. 失败情形 4（熔断触发）：所有臂长目标成功率均 `< 0.05` $\implies$ `circuit_breaker = True`，判定失败。
+- **手算训练步数规则**：
+  - 设定各臂单步耗时：A 臂 0.02s，B 臂 0.03s，C 臂 0.05s；有效预算 $1200 \times 0.8 = 960$s；
+  - 手算：A 臂 $\lfloor 960 / 0.02 \rfloor = 48000$ 步，B 臂 $\lfloor 960 / 0.03 \rfloor = 32000$ 步，C 臂 $\lfloor 960 / 0.05 \rfloor = 19200$ 步；
+  - 三臂取最小值共用：$\min(48000, 32000, 19200) = 19200$ 步；
+  - `smoke.compute_training_steps` 代码实算结果与手算完全一致（19200）。
+- **种子命名空间无重叠**：
+  - 传入含 `train`、`dev`、`final`、`sealed_final` 的命名空间均被 `check_smoke_seed_namespace` 拦截并抛出 `ValueError`。
+
+### 2.4 测试真伪核查
+- 对 `tests/v9/experiments/test_s2_wiring.py` 中全部 16 项单测进行 AST 调用树与内容核查：
+  - 均真实调用被测模块（`commands.s2_phase1_command`、`smoke.run_smoke`、`smoke.check_smoke_preconditions`、`smoke.compute_training_steps` 等）；
+  - 无在单测中重写实现逻辑或常数自比断言。
+
+### 2.5 复核者独立变异测试（5/5 全部红杀）
+在隔离沙盒中（断言 `ainerzero` 模块导入路径指向沙盒，每处变异跑完按字节恢复并校验 SHA-256）：
+1. **P148-M5**（恢复常数默认）：将 `measure_real_smoke` 中 `not_implemented` 替换回常数指标 $\implies$ `test_smoke_step3_step4_unimplemented_must_fail` 变红失败（exit code 1，KILLED）。
+2. **REV-M1**（放宽种子命名空间检查）：将 `check_smoke_seed_namespace` 中的 `raise ValueError` 改为 `pass` $\implies$ `test_smoke_seed_namespace_rejects_overlapping` 变红失败（exit code 1，KILLED）。
+3. **REV-M2**（篡改计时批次尺寸）：将 `make_smoke_timing_batch` 的 `batch_size` 默认值 32 改为 16 $\implies$ `test_smoke_batch_shape_registered` 变红失败（exit code 1，KILLED）。
+4. **REV-M3**（破坏 smoke runner 调度）：将 `_resolve_default_runner` 在 smoke 模式下的返回值篡改为 `None` $\implies$ `test_commands_dispatch_to_runners` 变红失败（exit code 1，KILLED）。
+5. **REV-M4**（破坏预算判定）：将 `check_smoke_budget` 的 `sufficient` 强制设为 `True` $\implies$ `test_smoke_over_budget_fails` 变红失败（exit code 1，KILLED）。
+
+全部 5 处变异全部变红（KILLED），还原后哈希校验 100% 一致。
+
+### 2.6 纯 CPU 与环境全量回归
+- `-I` 子进程导入验证：`python3 -I -c "from ainerzero.v9.experiments.s2 import commands, smoke; import sys; assert 'mlx' not in sys.modules"` 执行通过，无 MLX 导入泄漏。
+- S2 纯 CPU 专属测试：162 项全部通过（162 passed, 0 failed）。
+- 全量回归测试：全量 3602 collected / 3596 selected / 6 deselected，实跑结果 3596 passed / 0 failed（用时 355.42s），退出码 0；80929 项真实 artifact stat 审计差异数严格为 0。
 
 ---
 
-## 4. 测试真伪核查
+## 3. 验收建议与后续说明
 
-- 审查 `tests/v9/experiments/test_s2_wiring.py` 中 12 项测试：
-  - 测试直接调用真实的被测入口 `commands.s2_phase1_command`、`smoke.check_smoke_preconditions`、`smoke.compute_training_steps`、`smoke.check_smoke_seed_namespace`；
-  - 没有在测试中重新实现算法逻辑，亦非假常量比对，断言精细有效。
+基于以上逐项实测，确认 P148 r3 已彻底清除之前 r1、r2 的硬编码与常数伪造问题，严格落实了 DESIGN-r2.md 附录 B（r2.3）的设计收敛，五项关注点全部实测闭环。
 
----
-
-## 5. 复核者自做变异（4 处隔离沙盒坏对照，全部变红 KILLED）
-
-复核者在完全隔离的沙盒副本（完整拷贝 `src/`、`tests/`、`pyproject.toml`，断言导入严格解析至副本）中，自做了 4 处**完全独立于作者变异表（P148-M1..M4 之外）**的对抗变异：
-
-| 变异编号 | 变异位置与内容 | 拦截测试用例 | 运行结果 |
-|---|---|---|---|
-| **REV-P148-M1** | `commands.py` 绕过计算模式的批准预检（`if False:` 替代 `if not approved:`） | `test_commands_refuse_unapproved_compute` | **变红 KILLED** (exit 1) |
-| **REV-P148-M2** | `commands.py` 绕过 10 小时总相位预算上限检查（`if False:` 替代 `if not budget_ok:`） | `test_commands_refuse_budget_ceiling_exceeded` | **变红 KILLED** (exit 1) |
-| **REV-P148-M3** | `smoke.py` 将动作敏感度阈值判断反转（`act_sens < threshold`） | `test_smoke_logic_five_independent_cases` | **变红 KILLED** (exit 1) |
-| **REV-P148-M4** | `smoke.py` 禁用禁止分区种子命名空间断言检查（`if False:` 替代 `if forbidden in norm:`） | `test_seed_namespace_and_no_partition_readback` | **变红 KILLED** (exit 1) |
-
-- 沙盒变异跑完后经 SHA256 逐字节比对，100% 干净还原。
-
----
-
-## 6. 纯 CPU 隔离验证与全量回归审计
-
-1. **子进程 `-I` 隔离验证**：
-   - 运行 `python -I -c "import ainerzero.v9.experiments.s2 as s2, ainerzero.v9.experiments.s2.commands, ainerzero.v9.experiments.s2.smoke; assert 'mlx' not in sys.modules"`；
-   - 确认无任何 MLX 模块被载入。
-2. **前台全量纯 CPU 回归（SIG_DFL 还原）**：
-   - 测试通过计数：**3579 passed, 6 deselected, 0 failed**（总计 3585 项，用时 270.83s）；
-3. **实盘 `artifacts/` stat 差异审计**：
-   - 测试前扫描：80,929 项；
-   - 测试后扫描：80,929 项；
-   - **差异数：0 新增、0 删除、0 修改（严格零差异）**。
+**建议统筹与一级协调员：`RECOMMEND_ACCEPT`。**

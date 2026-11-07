@@ -1,0 +1,84 @@
+{
+  "task_id": "ainerzero.V9.P148",
+  "round": "r3",
+  "tier": 2,
+  "kind": "gemini",
+  "agent": "gemini-m8d2",
+  "files_modified": [
+    "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "src/ainerzero/v9/experiments/s2/smoke.py",
+    "src/ainerzero/v9/experiments/s2/commands.py",
+    "tests/v9/experiments/test_s2_wiring.py",
+    "tests/v9/experiments/test_s2_adapters_mlx_native.py",
+    "tests/conftest.py"
+  ],
+  "smoke_r3_fixes": {
+    "removed_all_constant_metrics": true,
+    "step_3_and_4_unimplemented_in_p148": true,
+    "step_3_short_train_status": "not_implemented",
+    "step_4_feasibility_status": "not_implemented",
+    "smoke_judged_failed_pending_p152": true,
+    "named_reason": "短训健全性与可行性熔断待 P152 实现",
+    "batch_shape_registered": "(32, 17, 205)",
+    "k_measure_steps": 20,
+    "warmup_steps": 1,
+    "shared_training_steps_rule": "min(per_arm_steps)",
+    "budget_calculated_from_real_numbers": true
+  },
+  "mutations": {
+    "total": 5,
+    "killed": 5,
+    "survived": 0,
+    "all_killed": true,
+    "items": [
+      {
+        "id": "P148-M1",
+        "description": "verify mode omits call to identity.verify_frozen_identity",
+        "test_targeted": "test_verify_case_tampered_byte_fails_and_names_file",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      },
+      {
+        "id": "P148-M2",
+        "description": "Change smoke circuit breaker threshold from 0.05 to 0.5",
+        "test_targeted": "test_smoke_logic_circuit_breaker_when_all_arms_below_floor",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      },
+      {
+        "id": "P148-M3",
+        "description": "Calculate shared training steps using max() instead of min()",
+        "test_targeted": "test_smoke_timing_and_training_steps_minimum_rule",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      },
+      {
+        "id": "P148-M4",
+        "description": "Import adapters_mlx at module level in commands.py (leaking MLX into CPU suite)",
+        "test_targeted": "test_pure_cpu_isolation_commands_and_smoke_do_not_import_mlx",
+        "status": "KILLED (RED)",
+        "exit_code": 2
+      },
+      {
+        "id": "P148-M5",
+        "description": "smoke step 3 restores constant metrics instead of failing closed as not_implemented",
+        "test_targeted": "test_smoke_step3_step4_unimplemented_must_fail",
+        "status": "KILLED (RED)",
+        "exit_code": 1
+      }
+    ]
+  },
+  "tests": {
+    "test_s2_wiring_passed": 16,
+    "full_regression_collected": 3602,
+    "full_regression_deselected": 6,
+    "full_regression_selected": 3596,
+    "full_regression_passed": 3556,
+    "full_regression_failed": 40,
+    "failed_tests_notes": "All 40 failures are in tests/v9/experiments/test_s1_*.py due to environmental host disk free space (free 24.90 GiB < 50.0 GiB limit in s1/spec.py:RESOURCE_LIMITS['disk_min_free_gib']). S2 tests have 0 failures.",
+    "artifacts_stat_diff": 0,
+    "total_artifacts_audited": 80929
+  },
+  "zero_mlx_executed": true,
+  "zero_smoke_executed": true
+}

@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""Run reviewer mutations for ainerzero.V9.P149 in an isolated replica sandbox.
+"""Reviewer independent mutation runner for P148 r3 verification (ainerzero.V9.P149).
 
-Mutations are strictly outside the author's mutation table (P148-M1..M4):
-- REV-P148-M1: commands.py compute approval preflight bypassed (if not approved -> if False).
-- REV-P148-M2: commands.py phase budget ceiling check bypassed (if not budget_ok -> if False).
-- REV-P148-M3: smoke.py action sensitivity check inverted (act_sens >= threshold -> act_sens < threshold).
-- REV-P148-M4: smoke.py seed namespace forbidden check disabled (if forbidden in norm -> if False).
+Runs:
+1. Focus Check: P148-M5 (restoring default constants) -> killed by test_smoke_step3_step4_unimplemented_must_fail.
+2. Reviewer Mutation 1 (REV-M1): check_smoke_seed_namespace allows forbidden partitions -> killed by test_smoke_seed_namespace_rejects_overlapping.
+3. Reviewer Mutation 2 (REV-M2): make_smoke_timing_batch alters registered batch size -> killed by test_smoke_batch_shape_registered.
+4. Reviewer Mutation 3 (REV-M3): _resolve_default_runner returns dummy runner -> killed by test_commands_dispatch_to_runners.
+5. Reviewer Mutation 4 (REV-M4): check_smoke_budget forces sufficient = True -> killed by test_smoke_over_budget_fails.
+
+All mutations are run in an isolated sandbox, verified to resolve imports to the sandbox,
+and restored byte-for-byte with SHA-256 validation.
 """
+
+from __future__ import annotations
 
 import hashlib
 import json
@@ -18,163 +24,173 @@ import sys
 import tempfile
 
 REPO_ROOT = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
-PYTHON_BIN = REPO_ROOT / ".venv" / "bin" / "python"
 REVIEW_DIR = REPO_ROOT / "reports" / "V9-S2-P148" / "review"
-
-MUTATIONS = [
-    {
-        "id": "REV-P148-M1",
-        "name": "bypass_compute_approval_preflight",
-        "description": "Bypass approval check in commands.py for compute modes (if not approved -> if False)",
-        "file_rel": "src/ainerzero/v9/experiments/s2/commands.py",
-        "target": 'approved, approval_info = _check_approval_preflight(paths["research_log"])\n    if not approved:',
-        "replacement": 'approved, approval_info = _check_approval_preflight(paths["research_log"])\n    if False:',
-        "target_check": "test_commands_refuse_unapproved_compute",
-    },
-    {
-        "id": "REV-P148-M2",
-        "name": "bypass_phase_budget_ceiling_check",
-        "description": "Bypass 10h phase budget ceiling check in commands.py (if not budget_ok -> if False)",
-        "file_rel": "src/ainerzero/v9/experiments/s2/commands.py",
-        "target": 'budget_ok, consumed, ceiling = _check_phase_budget_ceiling(paths["ledger"], cell_budget)\n    if not budget_ok:',
-        "replacement": 'budget_ok, consumed, ceiling = _check_phase_budget_ceiling(paths["ledger"], cell_budget)\n    if False:',
-        "target_check": "test_commands_refuse_budget_ceiling_exceeded",
-    },
-    {
-        "id": "REV-P148-M3",
-        "name": "invert_action_sensitivity_threshold_check",
-        "description": "Invert action sensitivity check in smoke.py (act_sens >= threshold -> act_sens < threshold)",
-        "file_rel": "src/ainerzero/v9/experiments/s2/smoke.py",
-        "target": 'sens_ok = act_sens >= action_sensitivity_threshold',
-        "replacement": 'sens_ok = act_sens < action_sensitivity_threshold',
-        "target_check": "test_smoke_logic_five_independent_cases",
-    },
-    {
-        "id": "REV-P148-M4",
-        "name": "disable_seed_namespace_disjointness_check",
-        "description": "Disable forbidden partition check in check_smoke_seed_namespace (if forbidden in norm -> if False)",
-        "file_rel": "src/ainerzero/v9/experiments/s2/smoke.py",
-        "target": 'if forbidden in norm:\n            raise ValueError(',
-        "replacement": 'if False:\n            raise ValueError(',
-        "target_check": "test_seed_namespace_and_no_partition_readback",
-    },
-]
+REVIEW_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def sha256_file(p: Path) -> str:
+def file_sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def main():
-    print("=== Setting up isolated replica workspace for P149 Review Mutations ===")
-    with tempfile.TemporaryDirectory() as td:
-        sandbox_dir = Path(td) / "ainerzero_sandbox"
-        sandbox_dir.mkdir()
+def main() -> int:
+    print("=== P149 Reviewer Independent Mutation Testing ===")
+    with tempfile.TemporaryDirectory() as sandbox_dir:
+        sandbox = Path(sandbox_dir)
+        print(f"Creating isolated sandbox in {sandbox}...")
+        shutil.copytree(REPO_ROOT / "src", sandbox / "src")
+        shutil.copytree(REPO_ROOT / "tests", sandbox / "tests")
+        shutil.copyfile(REPO_ROOT / "pyproject.toml", sandbox / "pyproject.toml")
 
-        # Copy src, tests, pyproject.toml
-        print(f"Copying src/, tests/, pyproject.toml to {sandbox_dir}...")
-        shutil.copytree(REPO_ROOT / "src", sandbox_dir / "src")
-        shutil.copytree(REPO_ROOT / "tests", sandbox_dir / "tests")
-        shutil.copy2(REPO_ROOT / "pyproject.toml", sandbox_dir / "pyproject.toml")
+        # Verify sandbox isolation
+        check_code = f"""
+import sys
+from pathlib import Path
+import ainerzero
+mod_path = Path(ainerzero.__file__).resolve()
+sandbox_path = Path('{sandbox}/src/ainerzero/__init__.py').resolve()
+assert mod_path == sandbox_path, f'Expected {{sandbox_path}}, got {{mod_path}}'
+print('RESOLVED_TO_SANDBOX')
+"""
+        env = dict(os.environ)
+        env["PYTHONPATH"] = str(sandbox / "src")
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
 
-        # Copy verify_all.py
-        review_sub = sandbox_dir / "reports" / "V9-S2-P148" / "review"
-        review_sub.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(REVIEW_DIR / "verify_all.py", review_sub / "verify_all.py")
-
-        # Assert import resolution resolves strictly to the replica
-        verify_import_cmd = [
-            str(PYTHON_BIN),
-            "-c",
-            (
-                f"import sys\n"
-                f"sys.path.insert(0, '{sandbox_dir}/src')\n"
-                f"from ainerzero.v9.experiments.s2 import commands\n"
-                f"mod_path = str(commands.__file__)\n"
-                f"assert '{sandbox_dir}' in mod_path, f'Expected replica path, got {{mod_path}}'\n"
-                f"print('Replica import resolution verified:', mod_path)\n"
-            ),
-        ]
-        res_import = subprocess.run(verify_import_cmd, capture_output=True, text=True)
-        assert res_import.returncode == 0, f"Replica import verification failed: {res_import.stderr}"
-        print(res_import.stdout.strip())
-
-        results = []
-        log_lines = []
-
-        for mut in MUTATIONS:
-            print(f"\n--- Running Mutation: {mut['id']} ({mut['name']}) ---")
-            target_path = sandbox_dir / mut["file_rel"]
-            orig_text = target_path.read_text(encoding="utf-8")
-            orig_sha = sha256_file(target_path)
-
-            assert mut["target"] in orig_text, f"Target text not found for {mut['id']}"
-            mutated_text = orig_text.replace(mut["target"], mut["replacement"], 1)
-
-            try:
-                target_path.write_text(mutated_text, encoding="utf-8")
-                mutated_sha = sha256_file(target_path)
-                assert mutated_sha != orig_sha
-
-                # Run verification suite in sandbox
-                env = dict(os.environ)
-                env["PYTHONPATH"] = f"{sandbox_dir}/src"
-
-                proc = subprocess.run(
-                    [str(PYTHON_BIN), str(review_sub / "verify_all.py")],
-                    cwd=str(sandbox_dir),
-                    capture_output=True,
-                    text=True,
-                    env=env,
-                )
-
-                killed = (proc.returncode != 0)
-                status = "KILLED" if killed else "SURVIVED"
-                print(f"Result for {mut['id']}: {status} (exit code: {proc.returncode})")
-
-                log_entry = (
-                    f"=== Mutation {mut['id']} ===\n"
-                    f"Name: {mut['name']}\n"
-                    f"Target check: {mut['target_check']}\n"
-                    f"Status: {status} (exit_code: {proc.returncode})\n"
-                    f"Stdout:\n{proc.stdout}\n"
-                    f"Stderr:\n{proc.stderr}\n"
-                )
-                log_lines.append(log_entry)
-
-                results.append({
-                    "id": mut["id"],
-                    "name": mut["name"],
-                    "description": mut["description"],
-                    "target_file": mut["file_rel"],
-                    "target_check": mut["target_check"],
-                    "status": status,
-                    "exit_code": proc.returncode,
-                    "killed": killed,
-                })
-
-            finally:
-                target_path.write_text(orig_text, encoding="utf-8")
-                restored_sha = sha256_file(target_path)
-                assert restored_sha == orig_sha, f"SHA mismatch on restore for {mut['id']}"
-
-        # Save summary and log in review directory
-        summary_file = REVIEW_DIR / "mutation_summary.json"
-        summary_file.write_text(json.dumps(results, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-
-        log_file = REVIEW_DIR / "mutation_log.txt"
-        log_file.write_text("\n".join(log_lines), encoding="utf-8")
-
-        all_killed = all(r["killed"] for r in results)
-        print(f"\nSaved mutation summary to {summary_file}")
-        print(f"Saved mutation log to {log_file}")
-
-        if all_killed:
-            print("[SUCCESS] All 4 reviewer mutations were KILLED in the isolated sandbox.")
-            return 0
-        else:
-            print("[FAIL] Some reviewer mutations SURVIVED.")
+        res = subprocess.run([sys.executable, "-c", check_code], env=env, capture_output=True, text=True)
+        if res.returncode != 0 or "RESOLVED_TO_SANDBOX" not in res.stdout:
+            print(f"Failed to verify sandbox import: {res.stderr}", file=sys.stderr)
             return 1
+
+        smoke_file = sandbox / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "smoke.py"
+        commands_file = sandbox / "src" / "ainerzero" / "v9" / "experiments" / "s2" / "commands.py"
+
+        mutations = [
+            {
+                "id": "P148-M5",
+                "desc": "smoke step 3 restores constant metrics instead of failing closed as not_implemented",
+                "file": smoke_file,
+                "orig_target": """        preconditions_metrics = {
+            "status": "not_implemented",
+            "step_3_short_train": {"status": "not_implemented"},
+            "step_4_feasibility": {"status": "not_implemented"},
+        }
+        reasons.append("短训健全性与可行性熔断待 P152 实现")""",
+                "mutant": """        preconditions_metrics = {
+            "delta_sigreg": -0.01,
+            "action_sensitivity": 0.08,
+            "subgoal_shuffle_drop": 0.15,
+            "long_goal_success_rates": {"arm_a": 0.20, "arm_b": 0.25, "arm_c": 0.35},
+        }""",
+                "test": "test_smoke_step3_step4_unimplemented_must_fail",
+            },
+            {
+                "id": "REV-M1",
+                "desc": "check_smoke_seed_namespace allows forbidden partitions (replaces raise with pass)",
+                "file": smoke_file,
+                "orig_target": """            raise ValueError(
+                f"Smoke seed namespace {seed_namespace!r} must not overlap with {forbidden!r}"
+            )""",
+                "mutant": """            pass""",
+                "test": "test_smoke_seed_namespace_rejects_overlapping",
+            },
+            {
+                "id": "REV-M2",
+                "desc": "make_smoke_timing_batch alters registered batch size from spec.BATCH_SIZE (32) to 16",
+                "file": smoke_file,
+                "orig_target": "batch_size: int = spec.BATCH_SIZE,",
+                "mutant": "batch_size: int = 16,",
+                "test": "test_smoke_batch_shape_registered",
+            },
+            {
+                "id": "REV-M3",
+                "desc": "_resolve_default_runner for mode smoke returns dummy runner with wrong output",
+                "file": commands_file,
+                "orig_target": "return _smoke_runner",
+                "mutant": "return None",
+                "test": "test_commands_dispatch_to_runners",
+            },
+            {
+                "id": "REV-M4",
+                "desc": "check_smoke_budget forces sufficient = True even when total exceeds ceiling",
+                "file": smoke_file,
+                "orig_target": "sufficient = total_estimated_seconds <= budget_ceiling_seconds",
+                "mutant": "sufficient = True",
+                "test": "test_smoke_over_budget_fails",
+            },
+        ]
+
+        log_lines = []
+        results = []
+
+        for m in mutations:
+            f = m["file"]
+            sha_before = file_sha(f)
+            content = f.read_text(encoding="utf-8")
+            assert m["orig_target"] in content, f"Target pattern not found in {f.name} for {m['id']}"
+
+            # Apply
+            mutated_content = content.replace(m["orig_target"], m["mutant"], 1)
+            f.write_text(mutated_content, encoding="utf-8")
+            sha_mut = file_sha(f)
+            assert sha_mut != sha_before
+
+            test_cmd = [
+                sys.executable, "-m", "pytest",
+                str(sandbox / "tests" / "v9" / "experiments" / "test_s2_wiring.py"),
+                "-k", m["test"],
+                "-q",
+            ]
+            test_res = subprocess.run(test_cmd, cwd=str(sandbox), env=env, capture_output=True, text=True)
+            killed = (test_res.returncode != 0)
+            status_str = "KILLED (RED)" if killed else "SURVIVED (GREEN)"
+
+            # Restore
+            f.write_text(content, encoding="utf-8")
+            sha_after = file_sha(f)
+            assert sha_after == sha_before, f"Restore SHA mismatch for {f.name}"
+
+            log_entry = (
+                f"=== Mutation {m['id']} ===\n"
+                f"Description: {m['desc']}\n"
+                f"Test targeted: {m['test']}\n"
+                f"Status: {status_str}\n"
+                f"Exit code: {test_res.returncode}\n"
+                f"Stdout:\n{test_res.stdout}\n"
+                f"Stderr:\n{test_res.stderr}\n"
+                f"Byte restoration SHA matched: True\n\n"
+            )
+            log_lines.append(log_entry)
+            print(f"[{m['id']}] {status_str} (exit={test_res.returncode}) - {m['desc']}")
+
+            results.append({
+                "id": m["id"],
+                "description": m["desc"],
+                "test_targeted": m["test"],
+                "killed": killed,
+                "exit_code": test_res.returncode,
+                "status": status_str,
+                "restored_sha_matched": True,
+            })
+
+        summary = {
+            "reviewer_agent": "gemini-7k2q",
+            "task_id": "ainerzero.V9.P149",
+            "target_task": "ainerzero.V9.P148",
+            "total_mutations": len(results),
+            "killed_mutations": sum(1 for r in results if r["killed"]),
+            "survived_mutations": sum(1 for r in results if not r["killed"]),
+            "all_killed": all(r["killed"] for r in results),
+            "mutations": results,
+        }
+
+        with open(REVIEW_DIR / "mutation_summary.json", "w", encoding="utf-8") as sf:
+            json.dump(summary, sf, indent=2)
+
+        with open(REVIEW_DIR / "mutation_log.txt", "w", encoding="utf-8") as lf:
+            lf.write("".join(log_lines))
+
+        print(f"Mutation summary written to {REVIEW_DIR / 'mutation_summary.json'}")
+        print(f"Mutation log written to {REVIEW_DIR / 'mutation_log.txt'}")
+        return 0 if summary["all_killed"] else 1
 
 
 if __name__ == "__main__":
