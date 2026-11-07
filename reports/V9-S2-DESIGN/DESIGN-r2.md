@@ -358,3 +358,21 @@
 6. **预算：** m = 1 使每回合的决策数约为原来的 4 倍。dev/final 是否装得进 10 h，以 smoke 第 2 步的实测推算（W4）为准；超了就回用户，不砍回合数。
 
 **落地：** W2（P164）按本附录实现，规划器的协议与批量化另开 W5；W3、W4 按本附录接线。冻结前，必须先在默认套件中证明：完美假臂按本协议在 2 个世界 × 6 个长目标上的成功率 ≥ 10/12。
+
+### D5.1 C 臂打乱子目标对照、动作敏感性状态与 §5 探针的实现口径（一级 claude，2026-11-07 09:4x）
+
+起因：W3 r1 的这三处只认测试钩子（`eval_c_negative_control`、`eval_episode`、`states_sample`、`dev_Z` 等），真实模型根本走不通。现定口径如下。
+
+- **C 臂打乱子目标对照：**
+  - 先在 50 条留出规格上按真实协议跑一遍，从每个决策的 PlanResult.info 中记下上层产出的子目标 z₂，得到每回合一条子目标序列。
+  - 再跑第二遍：回合 i 改用回合 perm[i] 的序列，第 t 个决策取 min(t, len−1) 处的子目标。注入的子目标替代上层 CEM 的输出，下层 CEM 照常朝它规划。perm 是登记种子下的错位置换（无不动点）。
+  - 实现方式：`hierarchical_cem_plan` 增加 `z2_subgoal_override`（给出时跳过上层，上层计数为 0）；`learned_planning.make_plan_fn` 增加只在门控中使用的 `subgoal_source` 参数，生产 dev/final 不得传。
+  - 判据：两遍成功率之差 < 0.10，即判为合谋。
+- **动作敏感性的 64 个状态：**
+  - 从留出世界的回合文件中按登记种子抽 64 步，观察按 `featurize_obs(obs, k=该步记录的 k)` 处理，再经 `model.encode` 得到潜状态。
+  - 判据为 4 个动作两两 L2 距离的均值 ÷ 潜状态范数均值，任一模型 < 0.05 即判为不可规划。
+- **§5 探针（每个 arm×seed 模型各一个）：**
+  - **拟合：** 从 train 非留出世界的回合中，按登记种子 `s2p1-train-v1|probe` 抽 2000 步。Z = model.encode(观察特征)，XY 取 truth_before 中的 (x, y)，岭回归 λ = `PROBE_RIDGE_LAMBDA`，闭式解。
+  - **评估：** 在 dev 或 final 分区的回合文件上，每回合取起点 t ∈ {0, 60, 120}，并要求 t+60 不超过回合长度。从 z = encode(obs_t) 出发，按记录的动作和 dt 用 `predict_l1` 推演 k 步（k ∈ `PROBE_EVAL_STEPS`），误差 e_k = ‖W·ẑ_{t+k} − XY_{t+k}‖₂（单位：格）。先在回合内求均值，再按世界分簇。
+  - **第 2 道门：** 只在 final、只看 k = 30。每回合的 e_arm 取该臂 3 个种子模型的均值，Δ = e_C − min(e_A, e_B)，分簇 bootstrap 次数取 `BOOTSTRAP_RESAMPLES`，要求 95% 上界 ≤ δ_pred = 1.0。dev 只报告，不判门。
+  - 推演按起点批量调用。不得读取模型上的 dev_Z、dev_XY 之类属性。
