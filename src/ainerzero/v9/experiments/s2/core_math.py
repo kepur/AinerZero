@@ -178,6 +178,15 @@ def sigreg(
     return float(np.mean(t_stat))
 
 
+def compute_sigreg_numpy(
+    Z: np.ndarray | Sequence[Any],
+    n_directions: int = 16,
+    rng: np.random.Generator | np.random.RandomState | int | None = 42,
+) -> float:
+    """Convenience alias for sigreg on NumPy arrays."""
+    return float(sigreg(Z, n_directions=n_directions, rng=rng))
+
+
 # ==============================================================================
 # 2. Inverse Dynamics Loss (L_IDM)
 # ==============================================================================

@@ -435,6 +435,32 @@ def sigreg_mlx(
     return mx.mean(t_stat)
 
 
+def compute_sigreg_mlx(
+    Z: mx.array,
+    n_directions: int = 16,
+    rng: Any = 42,
+) -> mx.array:
+    """Compute SIGReg on MLX array using matched random unit projections."""
+    D = Z.shape[-1]
+    if rng is None:
+        random_gen = np.random.default_rng()
+    elif isinstance(rng, (int, np.integer)):
+        random_gen = np.random.default_rng(int(rng))
+    elif isinstance(rng, np.random.Generator) or isinstance(rng, np.random.RandomState):
+        random_gen = rng
+    else:
+        random_gen = np.random.default_rng(42)
+
+    if isinstance(random_gen, np.random.Generator):
+        raw_dirs = random_gen.standard_normal((n_directions, D), dtype=np.float32)
+    else:
+        raw_dirs = random_gen.randn(n_directions, D).astype(np.float32)
+    norms = np.linalg.norm(raw_dirs, axis=1, keepdims=True)
+    norms = np.where(norms == 0.0, 1.0, norms)
+    dirs = mx.array(raw_dirs / norms)
+    return sigreg_mlx(Z, dirs)
+
+
 def continuous_gaussian_nll_mlx(
     pred: mx.array,
     target: mx.array,

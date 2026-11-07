@@ -460,15 +460,17 @@ def oracle_feasibility_with_s2_planner(
     rng: Any = None,
     threshold: float = 0.05,
 ) -> dict[str, Any]:
-    """Evaluate task feasibility using s2 flat_cem_plan under ForwardCounter budget (P154).
+    """Evaluate task feasibility using s2 flat_cem_plan under ForwardCounter budget (P154 / P167).
 
     Constructs oracle planning protocol using true world dynamics:
-    - State pose encoded into one-hot pose feature vector.
+    - CEM parameters derived from learned_planning.cem_config_for_budget (DESIGN-r2 D3.1).
+    - Trajectory cost using BFS distance to goal + heading alignment penalty (DESIGN-r2 Appendix E r2.6).
     - Transitions via world.step with true layout.
-    - Planning cost = BFS distance to goal + heading alignment penalty (0.5).
     - Optimizes actions via s2/planner.flat_cem_plan with budget n_fwd.
     - Serves as the circuit breaker fuse gate for S2 smoke.
     """
+    from ainerzero.v9.experiments.s2 import learned_planning, spec
+
     def _s2_oracle_planner_fn(
         layout: world.Layout,
         start: world.State,
@@ -481,33 +483,40 @@ def oracle_feasibility_with_s2_planner(
         bfs_map = world.compute_bfs_distances(layout, goal.x, goal.y)
 
         def encode(s: Any) -> np.ndarray:
-            return _encode_pose_one_hot(s)
+            st = s if isinstance(s, world.State) else _decode_pose_one_hot(s)
+            base = _encode_pose_one_hot(st)
+            d = float(bfs_map.get((st.x, st.y), 1000))
+            return np.concatenate([base, [d, d]])
 
         def predict_l1(z: np.ndarray, a: Any, dt: float = 1.0) -> np.ndarray:
-            st = _decode_pose_one_hot(z)
+            st = _decode_pose_one_hot(z[:2500])
             if isinstance(a, (int, np.integer)):
                 act = int(a)
             else:
                 arr = np.asarray(a).reshape(-1)
                 act = int(np.round(arr[0])) if arr.size == 1 else int(np.argmax(arr))
             nst = world.step(layout, st, act, k=max(1, int(round(dt))))
-            return _encode_pose_one_hot(nst)
+            base = _encode_pose_one_hot(nst)
+            d = float(bfs_map.get((nst.x, nst.y), 1000))
+            min_d = min(float(z[-2]), d)
+            acc_d = float(z[-1]) + d
+            return np.concatenate([base, [min_d, acc_d]])
 
         def cost_fn(z_T: np.ndarray, goal_obs: Any) -> float:
-            st = _decode_pose_one_hot(z_T)
-            dist = bfs_map.get((st.x, st.y), 1000)
+            min_d = float(z_T[-2])
+            acc_d = float(z_T[-1])
+            st = _decode_pose_one_hot(z_T[:2500])
             heading_penalty = 0.0 if st.heading == goal.heading else 0.5
-            return float(dist + heading_penalty)
+            return acc_d + 10.0 * min_d + heading_penalty
 
-        cfg = planner.FlatCEMConfig(
-            horizon=10,
-            n_iters=3,
-            pop_size=16,
-            elite_frac=0.25,
-            action_dim=1,
-            n_categories=3,
-            n_exec=2,
-        )
+        try:
+            cfg = learned_planning.cem_config_for_budget(
+                "flat",
+                spec.SMOKE_PLAN_CHOICE["flat"],
+                n_fwd,
+            )
+        except Exception as exc:
+            return False, 0, [f"CEM configuration failed for budget {n_fwd}: {exc}"]
 
         curr = start
         step = 0

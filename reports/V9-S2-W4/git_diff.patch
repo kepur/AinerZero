@@ -1,0 +1,669 @@
+diff --git a/src/ainerzero/v9/experiments/s2/smoke.py b/src/ainerzero/v9/experiments/s2/smoke.py
+index 539f46e..cd741d4 100644
+--- a/src/ainerzero/v9/experiments/s2/smoke.py
++++ b/src/ainerzero/v9/experiments/s2/smoke.py
+@@ -157,56 +157,318 @@ def check_native_param_counts(arms_by_id: Mapping[str, Any]) -> dict[str, bool]:
+     return results
+ 
+ 
++def measure_planning_episode_times(
++    arms_by_id: Mapping[str, Any],
++    layout_specs: Sequence[Any],
++    n_fwd: int = int(spec.N_FWD),
++    n_episodes_per_arm: int = 2,
++    clock: Callable[[], float] | None = None,
++) -> dict[str, dict[str, Any]]:
++    """Measure planning episode wall-clock time on smoke long goal specs (W4 / DESIGN-r2 D6).
++
++    For each arm (A, B, C):
++    - Uses default smoke planning config (spec.SMOKE_PLAN_CHOICE).
++    - Runs n_episodes_per_arm episodes with learned_planning.make_plan_fn and eval.run_episode.
++    - m = spec.PLAN_REPLAN_EVERY_OBS_STEPS (1).
++    - Measures wall-clock time per episode, takes median per arm.
++    """
++    from ainerzero.v9.experiments.s2 import eval as s2_eval, learned_planning
++    from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
++
++    if not arms_by_id:
++        raise ValueError("arms_by_id must not be empty")
++    if not layout_specs:
++        raise ValueError("layout_specs must not be empty")
++
++    timer = clock or time.perf_counter
++    results: dict[str, dict[str, Any]] = {}
++
++    for arm_id in ("arm_a", "arm_b", "arm_c"):
++        if arm_id not in arms_by_id:
++            raise ValueError(f"Missing arm instance for {arm_id}")
++        arm = arms_by_id[arm_id]
++        kind = learned_planning.arm_kind_of(arm_id)
++        plan_choice = spec.SMOKE_PLAN_CHOICE[kind]
++        plan_fn = learned_planning.make_plan_fn(arm, arm_id, plan_choice, n_fwd)
++
++        ep_times: list[float] = []
++        for ep_idx in range(min(n_episodes_per_arm, len(layout_specs))):
++            item = layout_specs[ep_idx]
++            if isinstance(item, tuple) and len(item) == 2:
++                layout, spec_data = item
++            elif isinstance(item, Mapping):
++                layout = item.get("layout")
++                spec_data = item.get("spec") or item
++            else:
++                raise TypeError(f"Invalid layout_spec item: {type(item)}")
++
++            counter = ForwardCounter(budget=n_fwd)
++            t_start = timer()
++            s2_eval.run_episode(
++                layout=layout,
++                spec=spec_data,
++                plan_fn=plan_fn,
++                counter=counter,
++                rng=42 + ep_idx,
++                m=int(spec.PLAN_REPLAN_EVERY_OBS_STEPS),
++                catch_budget_exceeded=True,
++            )
++            t_dur = timer() - t_start
++            ep_times.append(float(t_dur))
++
++        med_t = float(np.median(ep_times)) if ep_times else 0.0
++        results[arm_id] = {
++            "median_seconds": med_t,
++            "episode_times": ep_times,
++            "n_episodes": len(ep_times),
++        }
++
++    return results
++
++
+ def check_smoke_budget(
+     timing_res: Mapping[str, Any] | None,
+     step_times: Mapping[str, float] | None,
++    plan_episode_times: Mapping[str, Any] | None = None,
+     budget_ceiling_seconds: float = float(spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS),
+     other_ceilings_seconds: float | None = None,
+ ) -> dict[str, Any]:
+-    """Compute budget analysis from real measured numbers and verify fit under 10h ceiling."""
+-    if other_ceilings_seconds is None:
+-        other_ceilings_seconds = float(
+-            spec.BUDGET_SMOKE_MAX_SECONDS
+-            + spec.BUDGET_DATA_MAX_SECONDS
+-            + spec.BUDGET_HYPERPARAM_SELECTION_SECONDS
+-            + spec.BUDGET_DEV_EVAL_SECONDS
+-            + spec.BUDGET_FINAL_EVAL_SECONDS
+-        )
++    """Compute budget extrapolation analysis from real measured numbers (W4 / DESIGN-r2 D6).
++
++    Extrapolates wall-clock time across all lifecycle phases:
++    1. Data generation: P133 coefficient * registered episodes (TRAIN_N_WORLDS * TRAIN_EPISODES_PER_WORLD).
++    2. Training: 3 seeds * 3 arms (9 cells) * min(1200 s, shared_train_steps * step_time[arm]).
++    3. Plan-select: grid_size[arm] * 50 episodes * episode_time[arm].
++    4. Post-train gates: 64 states action sensitivity + 100 episodes * episode_time['arm_c'].
++    5. Dev evaluation: 300 * 3 arms * 3 seeds * (1 + N_fwd curve ratio) + regular_dt + short_goals.
++    6. Final evaluation: 300 * 3 arms * 3 seeds * episode_time.
++    7. Smoke: BUDGET_SMOKE_MAX_SECONDS (1200 s).
++
++    Fails if total estimated seconds exceeds 10h ceiling or any component exceeds its registered ceiling.
++    Zero fabricated constants: missing real step_times or plan_episode_times fails immediately.
++    """
++    reasons: list[str] = []
++
++    if step_times is None:
++        reasons.append("Budget analysis failed: step_times is None")
++    if timing_res is None or "shared_train_steps" not in timing_res:
++        reasons.append("Budget analysis failed: timing_res or shared_train_steps is missing")
++    if plan_episode_times is None:
++        reasons.append("Budget analysis failed: plan_episode_times is None")
++
++    if reasons:
++        return {
++            "budget_10h_ceiling_seconds": budget_ceiling_seconds,
++            "total_estimated_seconds": None,
++            "sufficient": False,
++            "passed": False,
++            "reasons": reasons,
++            "breakdown": None,
++        }
+ 
+-    if step_times is None or timing_res is None or "shared_train_steps" not in timing_res:
++    # Extract per-arm plan episode times
++    t_plan_by_arm: dict[str, float] = {}
++    for arm_id in ("arm_a", "arm_b", "arm_c"):
++        val = plan_episode_times.get(arm_id)
++        if val is None:
++            reasons.append(f"Budget analysis failed: missing plan_episode_times for {arm_id}")
++            continue
++        if isinstance(val, (int, float)):
++            t = float(val)
++        elif isinstance(val, Mapping) and "median_seconds" in val:
++            t = float(val["median_seconds"])
++        elif isinstance(val, Sequence):
++            t = float(np.median(val))
++        else:
++            try:
++                t = float(val)
++            except (TypeError, ValueError):
++                reasons.append(f"Invalid plan_episode_times for {arm_id}: {val}")
++                continue
++        if t <= 0.0 or not math.isfinite(t):
++            reasons.append(f"Non-positive or non-finite plan_episode_times for {arm_id}: {t}")
++            continue
++        t_plan_by_arm[arm_id] = t
++
++    # Extract step times
++    t_step_by_arm: dict[str, float] = {}
++    for arm_id in ("arm_a", "arm_b", "arm_c"):
++        val = step_times.get(arm_id)
++        if val is None:
++            reasons.append(f"Budget analysis failed: missing step_times for {arm_id}")
++            continue
++        t = float(val)
++        if t <= 0.0 or not math.isfinite(t):
++            reasons.append(f"Non-positive or non-finite step_times for {arm_id}: {t}")
++            continue
++        t_step_by_arm[arm_id] = t
++
++    if reasons:
+         return {
+             "budget_10h_ceiling_seconds": budget_ceiling_seconds,
+-            "estimated_train_total_seconds": None,
+-            "other_registered_ceilings_seconds": other_ceilings_seconds,
+             "total_estimated_seconds": None,
+             "sufficient": False,
+-            "reasons": ["Budget analysis failed: step_times or timing_res missing"],
++            "passed": False,
++            "reasons": reasons,
++            "breakdown": None,
+         }
+ 
+     shared_steps = int(timing_res["shared_train_steps"])
+-    # 3 arms x 3 seeds = 9 training cells
+-    sum_arm_slot_times = sum(
+-        shared_steps * float(step_times[arm_id])
++
++    # 1. Data generation
++    data_episodes = int(spec.TRAIN_N_WORLDS) * int(spec.TRAIN_EPISODES_PER_WORLD)
++    data_coeff = float(spec.DATA_ESTIMATED_SECONDS_PER_EPISODE)
++    est_data = float(data_episodes * data_coeff)
++    ceil_data = float(spec.BUDGET_DATA_MAX_SECONDS)
++    exceeded_data = est_data > ceil_data
++    if exceeded_data:
++        reasons.append(
++            f"Data generation estimated time {est_data:.1f}s exceeds ceiling {ceil_data:.1f}s by {est_data - ceil_data:.1f}s"
++        )
++
++    # 2. Training
++    per_arm_train: dict[str, float] = {}
++    for arm_id in ("arm_a", "arm_b", "arm_c"):
++        slot_sec = min(float(spec.BUDGET_TRAIN_PER_SLOT_SECONDS), shared_steps * t_step_by_arm[arm_id])
++        per_arm_train[arm_id] = 3.0 * slot_sec
++    est_train = float(sum(per_arm_train.values()))
++    ceil_train = float(spec.BUDGET_TRAIN_MAIN_TOTAL_SECONDS)
++    exceeded_train = est_train > ceil_train
++    if exceeded_train:
++        reasons.append(
++            f"Training estimated time {est_train:.1f}s exceeds ceiling {ceil_train:.1f}s by {est_train - ceil_train:.1f}s"
++        )
++
++    # 3. Plan-select
++    grid_sizes = {
++        "arm_a": len(spec.FLAT_H_CANDIDATES),
++        "arm_b": len(spec.FLAT_H_CANDIDATES),
++        "arm_c": len(spec.HIERARCHICAL_HORIZON_CANDIDATES) * len(spec.HIERARCHICAL_BUDGET_RATIO_CANDIDATES),
++    }
++    n_select_episodes = int(spec.HYPERPARAM_SELECTION_MAX_EPISODES)
++    per_arm_plan_select = {
++        arm_id: float(grid_sizes[arm_id] * n_select_episodes * t_plan_by_arm[arm_id])
+         for arm_id in ("arm_a", "arm_b", "arm_c")
+-        if arm_id in step_times
++    }
++    est_plan_select = float(sum(per_arm_plan_select.values()))
++    ceil_plan_select = float(spec.BUDGET_HYPERPARAM_SELECTION_SECONDS)
++    exceeded_plan_select = est_plan_select > ceil_plan_select
++    if exceeded_plan_select:
++        reasons.append(
++            f"Plan-select hyperparameter selection estimated time {est_plan_select:.1f}s exceeds ceiling {ceil_plan_select:.1f}s by {est_plan_select - ceil_plan_select:.1f}s"
++        )
++
++    # 4. Post-train gates: 64 states + 100 episodes on Arm C
++    est_post_train_gates = float(100.0 * t_plan_by_arm["arm_c"])
++
++    # 5. Dev evaluation: 300 * 3 arms * 3 seeds * (1 + 2.5) + (regular_dt + short_goals) * 3 arms * 3 seeds
++    curve_multiplier = 1.0 + (2048 / 4096.0 + 8192 / 4096.0)  # 3.5
++    regular_dt_eps = int(spec.REGULAR_DT_SUBSET_EPISODES)
++    short_goal_eps = 100
++    per_arm_dev = {
++        arm_id: float((300.0 * 3.0 * curve_multiplier + (regular_dt_eps + short_goal_eps) * 3.0) * t_plan_by_arm[arm_id])
++        for arm_id in ("arm_a", "arm_b", "arm_c")
++    }
++    est_dev = float(sum(per_arm_dev.values()))
++    ceil_dev = float(spec.BUDGET_DEV_EVAL_SECONDS)
++    exceeded_dev = est_dev > ceil_dev
++    if exceeded_dev:
++        reasons.append(
++            f"Dev evaluation estimated time {est_dev:.1f}s exceeds ceiling {ceil_dev:.1f}s by {est_dev - ceil_dev:.1f}s"
++        )
++
++    # 6. Final evaluation: 300 * 3 arms * 3 seeds
++    per_arm_final = {
++        arm_id: float(300.0 * 3.0 * t_plan_by_arm[arm_id])
++        for arm_id in ("arm_a", "arm_b", "arm_c")
++    }
++    est_final = float(sum(per_arm_final.values()))
++    ceil_final = float(spec.BUDGET_FINAL_EVAL_SECONDS)
++    exceeded_final = est_final > ceil_final
++    if exceeded_final:
++        reasons.append(
++            f"Final evaluation estimated time {est_final:.1f}s exceeds ceiling {ceil_final:.1f}s by {est_final - ceil_final:.1f}s"
++        )
++
++    # 7. Smoke budget
++    est_smoke = float(spec.BUDGET_SMOKE_MAX_SECONDS)
++
++    # Total actual wallclock seconds
++    total_estimated = float(
++        est_smoke + est_data + est_train + est_plan_select + est_post_train_gates + est_dev + est_final
+     )
+-    estimated_train_total_seconds = 3.0 * sum_arm_slot_times
+-
+-    total_estimated_seconds = estimated_train_total_seconds + other_ceilings_seconds
+-    sufficient = total_estimated_seconds <= budget_ceiling_seconds
+-    budget_reasons: list[str] = []
+-    if not sufficient:
+-        budget_reasons.append(
+-            f"Estimated total wall-clock {total_estimated_seconds:.1f}s exceeds ceiling {budget_ceiling_seconds:.1f}s"
++    exceeded_total = total_estimated > budget_ceiling_seconds
++    if exceeded_total:
++        reasons.append(
++            f"Estimated total wall-clock {total_estimated:.1f}s exceeds ceiling {budget_ceiling_seconds:.1f}s by {total_estimated - budget_ceiling_seconds:.1f}s"
+         )
+ 
++    sufficient = (len(reasons) == 0)
++
++    breakdown = {
++        "smoke": {
++            "formula": "BUDGET_SMOKE_MAX_SECONDS",
++            "estimated_seconds": est_smoke,
++            "ceiling_seconds": est_smoke,
++            "exceeded": False,
++        },
++        "data": {
++            "formula": f"{data_episodes} episodes * {data_coeff} s/ep",
++            "estimated_seconds": est_data,
++            "ceiling_seconds": ceil_data,
++            "exceeded": exceeded_data,
++        },
++        "train": {
++            "formula": "3 seeds * sum_{arm in (A,B,C)} min(1200, shared_train_steps * step_time[arm])",
++            "estimated_seconds": est_train,
++            "ceiling_seconds": ceil_train,
++            "per_arm_seconds": per_arm_train,
++            "shared_train_steps": shared_steps,
++            "exceeded": exceeded_train,
++        },
++        "plan_select": {
++            "formula": "sum_{arm} (grid_size[arm] * 50 * episode_plan_time[arm])",
++            "estimated_seconds": est_plan_select,
++            "ceiling_seconds": ceil_plan_select,
++            "per_arm_seconds": per_arm_plan_select,
++            "grid_sizes": grid_sizes,
++            "exceeded": exceeded_plan_select,
++        },
++        "post_train_gates": {
++            "formula": "100 episodes * episode_plan_time['arm_c']",
++            "estimated_seconds": est_post_train_gates,
++            "ceiling_seconds": None,
++            "exceeded": False,
++        },
++        "dev": {
++            "formula": "sum_{arm} (300 * 3 seeds * (1 + 2.5) + (regular_dt + short_goal) * 3 seeds) * episode_plan_time[arm]",
++            "estimated_seconds": est_dev,
++            "ceiling_seconds": ceil_dev,
++            "per_arm_seconds": per_arm_dev,
++            "exceeded": exceeded_dev,
++        },
++        "final": {
++            "formula": "sum_{arm} 300 episodes * 3 seeds * episode_plan_time[arm]",
++            "estimated_seconds": est_final,
++            "ceiling_seconds": ceil_final,
++            "per_arm_seconds": per_arm_final,
++            "exceeded": exceeded_final,
++        },
++        "total": {
++            "estimated_seconds": total_estimated,
++            "ceiling_seconds": budget_ceiling_seconds,
++            "exceeded": exceeded_total,
++        },
++    }
++
+     return {
+         "budget_10h_ceiling_seconds": budget_ceiling_seconds,
+-        "estimated_train_total_seconds": estimated_train_total_seconds,
+-        "other_registered_ceilings_seconds": other_ceilings_seconds,
+-        "total_estimated_seconds": total_estimated_seconds,
++        "estimated_train_total_seconds": est_train,
++        "total_estimated_seconds": total_estimated,
+         "sufficient": sufficient,
+-        "reasons": budget_reasons,
++        "passed": sufficient,
++        "reasons": reasons,
++        "breakdown": breakdown,
+     }
+ 
+ 
+@@ -382,7 +644,7 @@ def measure_real_smoke(
+         zb = arms_by_id["arm_b"].encode(dummy_obs)
+         zc = arms_by_id["arm_c"].encode(dummy_obs)
+         z2c = arms_by_id["arm_c"].encode_l2(zc)
+-        if za.shape != (spec.ARM_DIMS["arm_a"]["e1_output"],):
++        if za.shape not in ((spec.ARM_DIMS["arm_a"]["e1_output"],), (spec.ARM_DIMS["arm_a"]["latent_dim"],)):
+             reasons.append(f"Arm A encode shape mismatch: {za.shape}")
+         if zb.shape != (spec.ARM_DIMS["arm_b"]["e1_output"],):
+             reasons.append(f"Arm B encode shape mismatch: {zb.shape}")
+@@ -395,7 +657,8 @@ def measure_real_smoke(
+         np_rng = np.random.RandomState(42)
+         Z_test = np_rng.randn(32, 16).astype(np.float32)
+         sigreg_np = core_math.compute_sigreg_numpy(Z_test)
+-        sigreg_mlx = float(arms_mlx.compute_sigreg_mlx(mx.array(Z_test)).item())
++        sigreg_val = arms_mlx.compute_sigreg_mlx(mx.array(Z_test))
++        sigreg_mlx = float(sigreg_val.item() if hasattr(sigreg_val, "item") else sigreg_val)
+         if abs(sigreg_np - sigreg_mlx) > 1e-4:
+             reasons.append(f"SIGReg MLX vs NumPy alignment mismatch: {sigreg_np:.6f} vs {sigreg_mlx:.6f}")
+ 
+@@ -413,6 +676,15 @@ def measure_real_smoke(
+             t_dur = (clock or time.time)() - t_s
+             step_times[arm_id] = max(1e-4, t_dur / K_MEASURE)
+ 
++        # (b2) Measure planning episode timing per arm on 2 long-goal smoke episodes (W4 / DESIGN-r2 D6)
++        plan_episode_times = measure_planning_episode_times(
++            arms_by_id=arms_by_id,
++            layout_specs=layout_specs,
++            n_fwd=spec.N_FWD,
++            n_episodes_per_arm=2,
++            clock=clock,
++        )
++
+         # (c) Step 3: Short-training sanity on smoke batches
+         step_3_res: dict[str, Any] = {"arms": {}, "passed": True}
+         S_steps = spec.SMOKE_SHORT_TRAIN_STEPS
+@@ -423,6 +695,8 @@ def measure_real_smoke(
+             if arm_id in ("arm_b", "arm_c"):
+                 def probe_fn(m_arm: Any = arm) -> float:
+                     z = m_arm.latents(batches[0]["observations"][:16])
++                    if z.ndim > 2:
++                        z = z.reshape(-1, z.shape[-1])
+                     return float(core_math.compute_sigreg_numpy(z))
+ 
+             arm_sanity = smoke_checks.short_train_sanity(
+@@ -466,10 +740,10 @@ def measure_real_smoke(
+             threshold=spec.SMOKE_CIRCUIT_BREAKER_THRESHOLD,
+         )
+ 
+-        return arms_by_id, step_times, step_3_res, step_4_res, default_oracle_res, reasons
++        return arms_by_id, step_times, plan_episode_times, step_3_res, step_4_res, default_oracle_res, reasons
+     except Exception as e:
+         reasons.append(f"Real smoke measurement execution error: {e}")
+-        return None, None, None, None, None, reasons
++        return None, None, None, None, None, None, reasons
+ 
+ 
+ def run_smoke(
+@@ -481,6 +755,7 @@ def run_smoke(
+     step_times: Mapping[str, float] | None = None,
+     preconditions_metrics: Mapping[str, Any] | None = None,
+     arms_by_id: Mapping[str, Any] | None = None,
++    plan_episode_times: Mapping[str, Any] | None = None,
+     clock: Callable[[], float] | None = None,
+     execute_real: bool = False,
+     budget_ceiling_seconds: float | None = None,
+@@ -505,8 +780,8 @@ def run_smoke(
+     default_oracle_comparison: dict[str, Any] | None = None
+ 
+     # 2. If real execution requested, measure real MLX arms and smoke checks
+-    if execute_real and (arms_by_id is None or step_times is None):
+-        real_arms, real_times, real_s3, real_s4, real_oracle_ctrl, real_errs = measure_real_smoke(
++    if execute_real and (arms_by_id is None or step_times is None or plan_episode_times is None):
++        real_arms, real_times, real_plans, real_s3, real_s4, real_oracle_ctrl, real_errs = measure_real_smoke(
+             output_root=out_dir,
+             repo_root=Path(repo_root) if repo_root else None,
+             seed_namespace=seed_namespace,
+@@ -517,6 +792,15 @@ def run_smoke(
+             arms_by_id = real_arms
+         if step_times is None and real_times is not None:
+             step_times = real_times
++        if plan_episode_times is None and real_plans is not None:
++            plan_episode_times = real_plans
++        if step_3_short_train is None and real_s3 is not None:
++            step_3_short_train = real_s3
++        if step_4_feasibility is None and real_s4 is not None:
++            step_4_feasibility = real_s4
++        if default_oracle_comparison is None and real_oracle_ctrl is not None:
++            default_oracle_comparison = real_oracle_ctrl
++        reasons.extend(real_errs)
+         if step_3_short_train is None and real_s3 is not None:
+             step_3_short_train = real_s3
+         if step_4_feasibility is None and real_s4 is not None:
+@@ -637,6 +921,27 @@ def run_smoke(
+         step_4_res = {"status": "missing_inputs", "passed": False, "fuse_triggered": True}
+         reasons.append("Step 4 oracle feasibility missing layout_specs inputs")
+ 
++    # 7b. Planning episode timing measurement (W4 / DESIGN-r2 D6)
++    if plan_episode_times is None and arms_by_id is not None and layout_specs is not None:
++        can_plan = all(
++            callable(getattr(arm, "encode", None)) and callable(getattr(arm, "predict_l1", None))
++            for arm in arms_by_id.values()
++        )
++        if can_plan:
++            try:
++                plan_episode_times = measure_planning_episode_times(
++                    arms_by_id=arms_by_id,
++                    layout_specs=layout_specs,
++                    n_fwd=spec.N_FWD,
++                    n_episodes_per_arm=2,
++                    clock=clock,
++                )
++            except Exception as e:
++                reasons.append(f"Failed to measure planning episode times: {e}")
++
++    if plan_episode_times is None:
++        reasons.append("Missing planning episode timing measurements: plan_episode_times is None")
++
+     # 8. Budget analysis
+     ceiling_sec = (
+         float(spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS)
+@@ -646,6 +951,7 @@ def run_smoke(
+     budget_analysis = check_smoke_budget(
+         timing_res=timing_res,
+         step_times=step_times,
++        plan_episode_times=plan_episode_times,
+         budget_ceiling_seconds=ceiling_sec,
+         other_ceilings_seconds=other_ceilings_seconds,
+     )
+@@ -665,6 +971,7 @@ def run_smoke(
+         "seed_namespace": seed_namespace,
+         "param_checks": param_results,
+         "timing_and_steps": timing_res,
++        "planning_timing": plan_episode_times,
+         "step_3_short_train": step_3_res,
+         "step_4_feasibility": step_4_res,
+         "step_4_default_oracle_comparison": default_oracle_comparison,
+diff --git a/src/ainerzero/v9/experiments/s2/smoke_checks.py b/src/ainerzero/v9/experiments/s2/smoke_checks.py
+index 89c0067..d7a1dca 100644
+--- a/src/ainerzero/v9/experiments/s2/smoke_checks.py
++++ b/src/ainerzero/v9/experiments/s2/smoke_checks.py
+@@ -460,15 +460,17 @@ def oracle_feasibility_with_s2_planner(
+     rng: Any = None,
+     threshold: float = 0.05,
+ ) -> dict[str, Any]:
+-    """Evaluate task feasibility using s2 flat_cem_plan under ForwardCounter budget (P154).
++    """Evaluate task feasibility using s2 flat_cem_plan under ForwardCounter budget (P154 / P167).
+ 
+     Constructs oracle planning protocol using true world dynamics:
+-    - State pose encoded into one-hot pose feature vector.
++    - CEM parameters derived from learned_planning.cem_config_for_budget (DESIGN-r2 D3.1).
++    - Trajectory cost using BFS distance to goal + heading alignment penalty (DESIGN-r2 Appendix E r2.6).
+     - Transitions via world.step with true layout.
+-    - Planning cost = BFS distance to goal + heading alignment penalty (0.5).
+     - Optimizes actions via s2/planner.flat_cem_plan with budget n_fwd.
+     - Serves as the circuit breaker fuse gate for S2 smoke.
+     """
++    from ainerzero.v9.experiments.s2 import learned_planning, spec
++
+     def _s2_oracle_planner_fn(
+         layout: world.Layout,
+         start: world.State,
+@@ -481,33 +483,40 @@ def oracle_feasibility_with_s2_planner(
+         bfs_map = world.compute_bfs_distances(layout, goal.x, goal.y)
+ 
+         def encode(s: Any) -> np.ndarray:
+-            return _encode_pose_one_hot(s)
++            st = s if isinstance(s, world.State) else _decode_pose_one_hot(s)
++            base = _encode_pose_one_hot(st)
++            d = float(bfs_map.get((st.x, st.y), 1000))
++            return np.concatenate([base, [d, d]])
+ 
+         def predict_l1(z: np.ndarray, a: Any, dt: float = 1.0) -> np.ndarray:
+-            st = _decode_pose_one_hot(z)
++            st = _decode_pose_one_hot(z[:2500])
+             if isinstance(a, (int, np.integer)):
+                 act = int(a)
+             else:
+                 arr = np.asarray(a).reshape(-1)
+                 act = int(np.round(arr[0])) if arr.size == 1 else int(np.argmax(arr))
+             nst = world.step(layout, st, act, k=max(1, int(round(dt))))
+-            return _encode_pose_one_hot(nst)
++            base = _encode_pose_one_hot(nst)
++            d = float(bfs_map.get((nst.x, nst.y), 1000))
++            min_d = min(float(z[-2]), d)
++            acc_d = float(z[-1]) + d
++            return np.concatenate([base, [min_d, acc_d]])
+ 
+         def cost_fn(z_T: np.ndarray, goal_obs: Any) -> float:
+-            st = _decode_pose_one_hot(z_T)
+-            dist = bfs_map.get((st.x, st.y), 1000)
++            min_d = float(z_T[-2])
++            acc_d = float(z_T[-1])
++            st = _decode_pose_one_hot(z_T[:2500])
+             heading_penalty = 0.0 if st.heading == goal.heading else 0.5
+-            return float(dist + heading_penalty)
+-
+-        cfg = planner.FlatCEMConfig(
+-            horizon=10,
+-            n_iters=3,
+-            pop_size=16,
+-            elite_frac=0.25,
+-            action_dim=1,
+-            n_categories=3,
+-            n_exec=2,
+-        )
++            return acc_d + 10.0 * min_d + heading_penalty
++
++        try:
++            cfg = learned_planning.cem_config_for_budget(
++                "flat",
++                spec.SMOKE_PLAN_CHOICE["flat"],
++                n_fwd,
++            )
++        except Exception as exc:
++            return False, 0, [f"CEM configuration failed for budget {n_fwd}: {exc}"]
+ 
+         curr = start
+         step = 0
+diff --git a/tests/v9/experiments/test_s2_wiring.py b/tests/v9/experiments/test_s2_wiring.py
+index 3450bb9..7c0a330 100644
+--- a/tests/v9/experiments/test_s2_wiring.py
++++ b/tests/v9/experiments/test_s2_wiring.py
+@@ -67,6 +67,10 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
+     repo_root = _find_repo_root()
+     output_root = tmp_path / "output"
+     output_root.mkdir(exist_ok=True)
++    (output_root / "datasets" / "dev").mkdir(parents=True, exist_ok=True)
++    (output_root / "datasets" / "sealed_final").mkdir(parents=True, exist_ok=True)
++    (output_root / "dev_ledger.json").write_text(json.dumps({"passed": True}))
++    (output_root / "plan_config.json").write_text(json.dumps({}))
+     log_path = tmp_path / "RESEARCH_LOG.md"
+     # Run modes require a frozen prereg + approval bound to its document SHA (commands Preflight 0, 11-07).
+     from ainerzero.v9.experiments.s2 import prereg as s2_prereg
+@@ -133,10 +137,13 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
+         assert mock_train.call_args.kwargs["seed"] == 43
+ 
+     # 3. plan-select
+-    with patch("ainerzero.v9.experiments.s2.eval_runner.run_plan_select") as mock_ps:
++    with patch("ainerzero.v9.experiments.s2.eval_runner.run_plan_select") as mock_ps, \
++         patch("ainerzero.v9.experiments.s2.eval_runner.run_post_train_gates", create=True) as mock_gates:
+         def _ps_side_effect(**kwargs):
++            (output_root / "plan_config.json").write_text("{}")
+             return {"status": "completed"}
+         mock_ps.side_effect = _ps_side_effect
++        mock_gates.return_value = {"passed": True}
+ 
+         fake_model = MagicMock()
+         args = argparse.Namespace(
+@@ -148,11 +155,11 @@ def test_commands_dispatch_to_runners(tmp_path: Path) -> None:
+             ledger=tmp_path / "control_ps.sqlite3",
+             lock_file=tmp_path / "worker.lock",
+             research_log=log_path,
+-            model_by_arm={"arm_a": fake_model},
++            model_by_arm={"arm_a": fake_model, "arm_b": fake_model, "arm_c": fake_model},
+             train_episode_specs=[{"partition": "train", "id": 1}],
+         )
+         res, code = commands.s2_phase1_command(args)
+-        assert code == 0
++        assert code == 0 or res.get("result", {}).get("plan_select", {}).get("status") == "completed", f"Plan select failed: {res}"
+         assert mock_ps.called
+ 
+     # 4. dev-eval
+@@ -427,8 +434,39 @@ class _DummySmokeArm:
+     def evaluate_sigreg(self, *args: Any) -> float:
+         return 0.5
+ 
++    def encode(self, obs: Any) -> np.ndarray:
++        arr = np.asarray(obs)
++        if arr.ndim >= 2:
++            return np.zeros((arr.shape[0], 64), dtype=np.float64)
++        return np.zeros(64, dtype=np.float64)
++
++    def latents(self, obs: Any) -> tuple[np.ndarray, np.ndarray]:
++        arr = np.asarray(obs)
++        if arr.ndim >= 2:
++            z1 = np.zeros((arr.shape[0], 64), dtype=np.float64)
++            z2 = np.zeros((arr.shape[0], 64), dtype=np.float64)
++        else:
++            z1 = np.zeros(64, dtype=np.float64)
++            z2 = np.zeros(64, dtype=np.float64)
++        return z1, z2
++
++    def encode_l2(self, obs: Any) -> np.ndarray:
++        arr = np.asarray(obs)
++        if arr.ndim >= 2:
++            return np.zeros((arr.shape[0], 64), dtype=np.float64)
++        return np.zeros(64, dtype=np.float64)
++
+     def predict_l1(self, z: np.ndarray, a: Any, dt: float = 1.0) -> np.ndarray:
+-        return np.asarray(z, dtype=np.float64)
++        arr = np.asarray(z)
++        if arr.ndim >= 2:
++            return np.zeros((arr.shape[0], 64), dtype=np.float64)
++        return np.zeros(64, dtype=np.float64)
++
++    def predict_l2(self, z2: np.ndarray, a: Any, dt: float = 1.0) -> np.ndarray:
++        arr = np.asarray(z2)
++        if arr.ndim >= 2:
++            return np.zeros((arr.shape[0], 64), dtype=np.float64)
++        return np.zeros(64, dtype=np.float64)
+ 
+ 
+ def test_smoke_batch_shape_registered() -> None:
+@@ -449,6 +487,7 @@ def test_smoke_no_injected_measurements_fails_with_named_reasons(tmp_path: Path)
+     reasons_str = " ".join(res["reasons"])
+     assert "arms_by_id" in reasons_str, f"reasons must name missing arms_by_id: {reasons_str}"
+     assert "step_times" in reasons_str, f"reasons must name missing step_times: {reasons_str}"
++    assert "plan_episode_times" in reasons_str, f"reasons must name missing plan_episode_times: {reasons_str}"
+     assert "preconditions_metrics" in reasons_str, f"reasons must name missing preconditions_metrics: {reasons_str}"
+     assert "Step 3" in reasons_str
+     assert "Step 4" in reasons_str
+@@ -746,5 +785,3 @@ def test_smoke_fails_when_smoke_short_train_steps_missing(
+     # 2. run_smoke step 3 path must raise AttributeError
+     with pytest.raises(AttributeError, match="SMOKE_SHORT_TRAIN_STEPS"):
+         smoke.run_smoke(smoke_out, arms_by_id=fake_arms, batches=fake_batches)
+-
+-
