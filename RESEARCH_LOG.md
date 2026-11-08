@@ -2551,9 +2551,27 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
 - **相对 r1 的改动：** 臂、主门、回合数、N_fwd 档位、规划协议都没有变；预算按用户 11-08 的批准改为 15 h。
 - **final：** 本行不批准 final-eval，final 需要另起一条批准行，并须先问用户。
 
-APPROVED s2-phase1 prereg document_sha256=bdd9e5e95156b2a38b4ae55619ec44294a8c0e5274d53d8b966e0772ea0a2c21
+（r2 批准行已作废：`bdd9e5e9…`，见下方 r3 段。）
 
 - **更正（12:0x）：** 上文「账本 `control.sqlite3` 继续沿用」以及据此推出的 72 h 截止时间和 11-08 每日上限都已作废。r1 账本已归档，r2 改用新账本，详见 R20261108-S2-smoke-r2-refused。
+
+- **r2 作废（11-08 13:0x）：**
+  - r2 的数据生成（P188）因冻结的重抽上限 5 次不可行而失败（R20261108-S2-data-r2-failed）。
+  - 用户批准把上限改为 30 次（R20261108-S2-redraw-30），W11 落地（P189/P190 已验收）。
+  - `prereg.json` 改名为 `prereg.r2.json`。P188 留下的 `datasets/train`（0–10 号世界的部分文件）移到 `r2-data-failed/train_partial_P188/`。
+- **r3 冻结（一级 claude，2026-11-08 13:1x）：**
+  - 文件 `artifacts/v9/s2/phase1/prereg.json`，文件 sha 与 document_sha256 均为 `7fdfb204b2cd1a024a15695daeb4d26fe7187f708a8a636a9ad43ae6b3f786cb`。
+  - identity：26 个源文件核对通过，源码为提交 `2227d58`。
+  - **相对 r2 的差异只有两处：**
+    - 冻结参数：`world.max_redraw_retries` 由 5 改为 30；
+    - 源码：spec.py 与 world.py。
+  - 设计稿没有变（`e66d3956…`），预算仍为 54,000 s。
+  - **沿用的部分：**
+    - r2 的登记 smoke（P187，shared_train_steps 2757）继续沿用。smoke 的 4 个世界都在 5 次以内通过，所以无论上限是 5 还是 30，被接受的布局都一样。
+    - 账本继续沿用 r2 新建的那本（15 h 清单）。
+- **final：** 本行不批准 final-eval，final 需要另起一条批准行，并须先问用户。
+
+APPROVED s2-phase1 prereg document_sha256=7fdfb204b2cd1a024a15695daeb4d26fe7187f708a8a636a9ad43ae6b3f786cb
 
 ## R20261107-S2-r0-withdrawn：S2 预登记 r0 在任何运行前撤回（一级 claude，2026-11-07）
 
