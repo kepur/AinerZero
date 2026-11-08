@@ -328,3 +328,11 @@ BATCH_REQUIRED_KEYS: tuple[str, ...] = (
     BATCH_DTS_KEY,
 )
 
+
+# --- 用户 11-08 批准 S2 预算到 15 h（RESEARCH_LOG R20261108-S2-budget-15h）；覆盖上方原 10 h 分项 ---
+# 依据 smoke 预演实测的最坏情况推算：总 53,844 s（dev 34,826 s、final 8,358 s），dev 只用一次
+TOTAL_ACTUAL_WALLCLOCK_HOURS = 15.0
+TOTAL_ACTUAL_WALLCLOCK_SECONDS = 54_000
+BUDGET_HYPERPARAM_SELECTION_SECONDS = 2_400  # plan-select + 训练后门
+BUDGET_DEV_EVAL_SECONDS = 36_000  # 10 h，一次 dev
+BUDGET_FINAL_EVAL_SECONDS = 9_000  # 2.5 h

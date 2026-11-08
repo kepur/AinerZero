@@ -3,7 +3,7 @@
 Tests:
 - (a) No approval line: train refused with stage="approval" (exit 3); verify succeeds with zero writes.
 - (b) Qualified approval line + fake runner: admits train cell; second attempt returns duplicate_execution (exit 1).
-- (c) Total phase budget ceiling (10 h = 36,000 s): cell pushing total over 10 h refused with
+- (c) Total phase budget ceiling (registered total): cell pushing total over it refused with
       stage="phase_budget_exceeded" (exit 2); boundary condition exactly equal to 10 h admitted.
       Cross-lineage accumulation verified.
 - (d) Calendar window (72 h) vs actual compute separation: 30 h idle gap admitted; > 72 h calendar window refused.
@@ -192,15 +192,15 @@ def test_b_qualified_approval_admits_train_and_detects_duplicate(tmp_env):
     assert report_3["status"] == "completed"
 
 
-# --- Test (c): Total phase wall-clock ceiling (10 h = 36,000 s) & Boundary Condition ---
+# --- Test (c): Total phase wall-clock ceiling (registered total, appendix F) & Boundary Condition ---
 def test_c_phase_budget_ceiling_boundary_and_lineage_accumulation(tmp_env):
     """(c) 总上限：累计到超过 10 h 的那一格被拒；恰好等于 10 h 的边界单独测一条；跨谱系累计验证。"""
     _freeze_and_approve(tmp_env)
 
-    total_ceiling = float(spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS)  # 36,000 s (10 h)
+    total_ceiling = float(spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS)  # registered total (appendix F: 54,000 s)
 
     # Simulate past lineage run from an earlier revision "s2-phase1-20261106-r0" consuming 34,800 s
-    past_consumed = 34_800.0
+    past_consumed = total_ceiling - 1200.0  # one 1,200 s cell left before the ceiling
     clock = FakeClock()
     ledger = worker.S2Ledger(tmp_env["ledger"], clock=clock.time)
     past_run_id = ledger.open_run(
@@ -214,7 +214,7 @@ def test_c_phase_budget_ceiling_boundary_and_lineage_accumulation(tmp_env):
     ledger.complete_run(past_run_id, active_seconds=past_consumed)
     ledger.close()
 
-    # Case 1: Exact boundary condition -> new cell budget = 1,200 s. Total = 34,800 + 1,200 = 36,000 == 10 h.
+    # Case 1: Exact boundary condition -> new cell budget = 1,200 s; total reaches the ceiling exactly.
     # Must be admitted!
     args_boundary = _make_args(
         tmp_env,
@@ -230,7 +230,7 @@ def test_c_phase_budget_ceiling_boundary_and_lineage_accumulation(tmp_env):
     assert code_b == commands.EXIT_COMPLETED, f"Boundary cell failed: {report_b}"
     assert report_b["status"] == "completed"
 
-    # Case 2: Exceeded ceiling -> total is now 36,000 s. Any additional compute cell (> 0 s) must be refused!
+    # Case 2: Ceiling reached. Any additional compute cell (> 0 s) must be refused!
     args_overflow = _make_args(
         tmp_env,
         "train",
@@ -245,8 +245,8 @@ def test_c_phase_budget_ceiling_boundary_and_lineage_accumulation(tmp_env):
     assert code_over == commands.EXIT_REFUSED_RESOURCE
     assert report_over["status"] == "refused"
     assert report_over["stage"] == "phase_budget_exceeded"
-    assert report_over["consumed_seconds"] == 36000.0
-    assert report_over["ceiling_seconds"] == 36000.0
+    assert report_over["consumed_seconds"] == total_ceiling
+    assert report_over["ceiling_seconds"] == total_ceiling
 
 
 # --- Test (d): Calendar window (72 h) vs actual compute wall-time separation ---

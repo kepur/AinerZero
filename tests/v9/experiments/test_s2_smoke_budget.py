@@ -157,7 +157,7 @@ def test_dev_exceeds_budget_fails_and_names_dev() -> None:
     """
     step_times = {"arm_a": 0.01, "arm_b": 0.01, "arm_c": 0.01}
     # With t_plan = 1.2s per episode, dev = 3 * (300 * 3 * 3.5 + 200 * 3) * 1.2 = 3 * 3750 * 1.2 = 13500s > 9000s
-    plan_times = {"arm_a": 1.2, "arm_b": 1.2, "arm_c": 1.2}
+    plan_times = {"arm_a": 4.0, "arm_b": 4.0, "arm_c": 4.0}  # dev = 3*(300*3*3.5+200*3)*4.0 = 45,000 s > 36,000 s
     timing_res = {"shared_train_steps": 2000}
 
     res = smoke.check_smoke_budget(

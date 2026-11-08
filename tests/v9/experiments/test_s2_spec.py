@@ -48,7 +48,7 @@ def test_spec_matches_design_document_constants() -> None:
         ("1.0", "DELTA_PRED: 1.0 grid units", spec.DELTA_PRED == 1.0),
         ("10,000", "BOOTSTRAP: 10,000 resamples", spec.BOOTSTRAP_RESAMPLES == 10_000),
         ("72", "CALENDAR: 72 h window", spec.CALENDAR_WINDOW_HOURS == 72.0),
-        ("10 h", "WALLCLOCK: 10 h total actual time", spec.TOTAL_ACTUAL_WALLCLOCK_HOURS == 10.0),
+        ("15 h", "WALLCLOCK: 15 h total actual time (appendix F, user 11-08)", spec.TOTAL_ACTUAL_WALLCLOCK_HOURS == 15.0),
         ("300k", "PARAM_TARGET: 300k target", spec.TARGET_PARAMETER_COUNT == 300_000),
     ]
 
@@ -126,10 +126,12 @@ def test_budget_envelope_constants() -> None:
     assert spec.BUDGET_TRAIN_MAIN_TOTAL_SECONDS == 10_800
     assert spec.BUDGET_ARM_D_SECONDS == 3600
     assert spec.BUDGET_BASELINE_E_SECONDS == 300
-    assert spec.BUDGET_HYPERPARAM_SELECTION_SECONDS == 1800
-    assert spec.BUDGET_DEV_EVAL_SECONDS == 9000
-    assert spec.BUDGET_FINAL_EVAL_SECONDS == 5400
-    assert spec.TOTAL_ACTUAL_WALLCLOCK_HOURS == 10.0
+    # appendix F (user 11-08): total 15 h
+    assert spec.BUDGET_HYPERPARAM_SELECTION_SECONDS == 2400
+    assert spec.BUDGET_DEV_EVAL_SECONDS == 36_000
+    assert spec.BUDGET_FINAL_EVAL_SECONDS == 9_000
+    assert spec.TOTAL_ACTUAL_WALLCLOCK_HOURS == 15.0
+    assert spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS == 54_000
     assert spec.CALENDAR_WINDOW_HOURS == 72.0
     assert spec.CALENDAR_WINDOW_HOURS >= spec.TOTAL_ACTUAL_WALLCLOCK_HOURS
 
