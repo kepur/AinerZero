@@ -1,0 +1,985 @@
+diff --git a/src/ainerzero/v9/experiments/s2/adapters_mlx.py b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+index ca5629f..922d882 100644
+--- a/src/ainerzero/v9/experiments/s2/adapters_mlx.py
++++ b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+@@ -28,7 +28,7 @@ from typing import Any, Callable, Mapping, Sequence
+ 
+ import numpy as np
+ 
+-from ainerzero.v9.experiments.s2 import param_count, spec
++from ainerzero.v9.experiments.s2 import core_math, param_count, spec
+ from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
+ 
+ 
+@@ -134,10 +134,13 @@ class MLXArmAAdapter:
+     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
+         if self.optimizer is None:
+             self.init(seed=42)
++        for k in spec.BATCH_REQUIRED_KEYS:
++            if k not in batch:
++                raise ValueError(f"MLXArmAAdapter.train_step missing required batch key {k!r}")
+ 
+-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
+-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
+-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
++        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
++        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
+ 
+         if obs_seq.ndim == 3:
+             B = obs_seq.shape[0]
+@@ -162,9 +165,12 @@ class MLXArmAAdapter:
+         return {"loss": float(loss.item())}
+ 
+     def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
+-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
+-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
+-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        for k in spec.BATCH_REQUIRED_KEYS:
++            if k not in batch:
++                raise ValueError(f"MLXArmAAdapter.rollout_error missing required batch key {k!r}")
++        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
++        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
++        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
+         if obs_seq.ndim == 3:
+             B = obs_seq.shape[0]
+             losses = [
+@@ -254,18 +260,25 @@ class MLXArmBAdapter:
+     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
+         if self.optimizer is None:
+             self.init(seed=42)
++        for k in spec.BATCH_REQUIRED_KEYS:
++            if k not in batch:
++                raise ValueError(f"MLXArmBAdapter.train_step missing required batch key {k!r}")
+ 
+-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
+-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
+-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
++        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
++        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
++
++        dirs = mx.array(
++            core_math.generate_sigreg_directions(
++                spec.SIGREG_NUM_DIRECTIONS, self.model.dims["e1_output"]
++            )
++        )
+ 
+         if obs_seq.ndim == 3:
+             B = obs_seq.shape[0]
+ 
+             def loss_fn(model: arms_mlx.FlatJEPAArm) -> mx.array:
+                 losses = []
+-                dirs = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, model.dims["z_dim"]))
+-                dirs = dirs / mx.linalg.norm(dirs, axis=-1, keepdims=True)
+                 for b in range(B):
+                     zb = model.encode(obs_seq[b])
+                     targets_zb = zb[1:]
+@@ -289,8 +302,6 @@ class MLXArmBAdapter:
+                 l_pred = arms_mlx.multistep_latent_rollout_loss_mlx(
+                     model, z0, act_seq[:-1], dt_seq[:-1], targets_z
+                 )
+-                dirs = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z_seq.shape[-1]))
+-                dirs = dirs / mx.linalg.norm(dirs, axis=-1, keepdims=True)
+                 l_sigreg = arms_mlx.sigreg_mlx(z_seq, dirs)
+                 idm_logits = model.predict_idm(z_seq[:-1], z_seq[1:])
+                 l_idm = arms_mlx.idm_loss_mlx(idm_logits, act_seq[:-1])
+@@ -305,9 +316,12 @@ class MLXArmBAdapter:
+         return {"loss": float(loss.item())}
+ 
+     def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
+-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
+-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
+-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        for k in spec.BATCH_REQUIRED_KEYS:
++            if k not in batch:
++                raise ValueError(f"MLXArmBAdapter.rollout_error missing required batch key {k!r}")
++        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
++        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
++        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
+         if obs_seq.ndim == 3:
+             B = obs_seq.shape[0]
+             losses = []
+@@ -394,21 +408,52 @@ class MLXArmCAdapter:
+     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
+         if self.optimizer is None:
+             self.init(seed=42)
++        for k in spec.BATCH_REQUIRED_KEYS:
++            if k not in batch:
++                raise ValueError(f"MLXArmCAdapter.train_step missing required batch key {k!r}")
++
++        obs_np = np.asarray(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=np.float32)
++        act_np = np.asarray(batch[spec.BATCH_ACTIONS_KEY], dtype=np.float32)
++        dt_np = np.asarray(batch[spec.BATCH_DTS_KEY], dtype=np.float32)
++
++        s2 = int(spec.S2_MACRO_STEPS)
++        dirs1 = mx.array(
++            core_math.generate_sigreg_directions(
++                spec.SIGREG_NUM_DIRECTIONS, self.model.dims["e1_output"]
++            )
++        )
++        dirs2 = mx.array(
++            core_math.generate_sigreg_directions(
++                spec.SIGREG_NUM_DIRECTIONS, self.model.dims["z2_dim"]
++            )
++        )
+ 
+-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
+-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
+-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        if obs_np.ndim == 3:
++            B, L, _ = obs_np.shape
++            # Precompute macro actions and macro dts using core_math.aggregate_macro
++            # L = 17 -> 16 transitions. 16 // 8 = 2 macro windows.
++            macro_actions_list = []
++            macro_dts_list = []
++            for b in range(B):
++                dx, dy, dpsi, hist, dt_sum = core_math.aggregate_macro(
++                    act_np[b, :-1], dt_np[b, :-1], s2=s2
++                )
++                m_a = np.concatenate([dx[:, None], dy[:, None], dpsi[:, None], hist], axis=-1).astype(np.float32)
++                m_dt = dt_sum[:, None].astype(np.float32)
++                macro_actions_list.append(m_a)
++                macro_dts_list.append(m_dt)
+ 
+-        if obs_seq.ndim == 3:
+-            B = obs_seq.shape[0]
++            macro_a_all = mx.array(np.stack(macro_actions_list, axis=0))
++            macro_dt_all = mx.array(np.stack(macro_dts_list, axis=0))
++            obs_seq = mx.array(obs_np)
++            act_seq = mx.array(act_np)
++            dt_seq = mx.array(dt_np)
+ 
+             def loss_fn(model: arms_mlx.HierarchicalHJEPAArm) -> mx.array:
+                 losses = []
+-                dirs1 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, model.dims["z1_dim"]))
+-                dirs1 = dirs1 / mx.linalg.norm(dirs1, axis=-1, keepdims=True)
+-                dirs2 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, model.dims["z2_dim"]))
+-                dirs2 = dirs2 / mx.linalg.norm(dirs2, axis=-1, keepdims=True)
++                K = macro_a_all.shape[1]
+                 for b in range(B):
++                    # Layer 1
+                     z1_seq = model.encode(obs_seq[b])
+                     targets_z1 = z1_seq[1:]
+                     z0 = z1_seq[0]
+@@ -418,15 +463,38 @@ class MLXArmCAdapter:
+                     l_sigreg1 = arms_mlx.sigreg_mlx(z1_seq, dirs1)
+                     idm1_logits = model.predict_idm1(z1_seq[:-1], z1_seq[1:])
+                     l_idm1 = arms_mlx.idm_loss_mlx(idm1_logits, act_seq[b, :-1])
++                    loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
+ 
++                    # Layer 2
+                     z2_seq = model.encode_l2(z1_seq)
+                     l_sigreg2 = arms_mlx.sigreg_mlx(z2_seq, dirs2)
+-
+-                    loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
+-                    loss2 = float(spec.SIGREG_LAMBDA) * l_sigreg2
++                    z2_curr = z2_seq[0]
++                    l2_preds = []
++                    l2_idms = []
++                    for k in range(K):
++                        m_a_k = macro_a_all[b, k]
++                        m_dt_k = macro_dt_all[b, k]
++                        tgt_z2 = z2_seq[(k + 1) * s2]
++                        z2_next = model.predict_l2_step(z2_curr, m_a_k, m_dt_k)
++                        l2_preds.append(mx.mean((z2_next - tgt_z2) ** 2))
++                        z2_curr = z2_next
++                        idm2_pred = model.predict_idm2(z2_seq[k * s2], z2_seq[(k + 1) * s2])
++                        l2_idms.append(arms_mlx.idm2_loss_mlx(idm2_pred, m_a_k))
++
++                    l_pred2 = mx.mean(mx.stack(l2_preds)) if l2_preds else mx.array(0.0)
++                    l_idm2 = mx.mean(mx.stack(l2_idms)) if l2_idms else mx.array(0.0)
++                    loss2 = l_pred2 + float(spec.SIGREG_LAMBDA) * l_sigreg2 + float(spec.IDM_MU) * l_idm2
+                     losses.append(loss1 + loss2)
+                 return mx.mean(mx.stack(losses))
+         else:
++            dx, dy, dpsi, hist, dt_sum = core_math.aggregate_macro(
++                act_np[:-1], dt_np[:-1], s2=s2
++            )
++            m_a = mx.array(np.concatenate([dx[:, None], dy[:, None], dpsi[:, None], hist], axis=-1).astype(np.float32))
++            m_dt = mx.array(dt_sum[:, None].astype(np.float32))
++            obs_seq = mx.array(obs_np)
++            act_seq = mx.array(act_np)
++            dt_seq = mx.array(dt_np)
+ 
+             def loss_fn(model: arms_mlx.HierarchicalHJEPAArm) -> mx.array:
+                 z1_seq = model.encode(obs_seq)
+@@ -435,19 +503,30 @@ class MLXArmCAdapter:
+                 l_pred1 = arms_mlx.multistep_latent_rollout_loss_mlx(
+                     model, z0, act_seq[:-1], dt_seq[:-1], targets_z1
+                 )
+-                dirs1 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z1_seq.shape[-1]))
+-                dirs1 = dirs1 / mx.linalg.norm(dirs1, axis=-1, keepdims=True)
+                 l_sigreg1 = arms_mlx.sigreg_mlx(z1_seq, dirs1)
+                 idm1_logits = model.predict_idm1(z1_seq[:-1], z1_seq[1:])
+                 l_idm1 = arms_mlx.idm_loss_mlx(idm1_logits, act_seq[:-1])
++                loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
+ 
+                 z2_seq = model.encode_l2(z1_seq)
+-                dirs2 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z2_seq.shape[-1]))
+-                dirs2 = dirs2 / mx.linalg.norm(dirs2, axis=-1, keepdims=True)
+                 l_sigreg2 = arms_mlx.sigreg_mlx(z2_seq, dirs2)
+-
+-                loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
+-                loss2 = float(spec.SIGREG_LAMBDA) * l_sigreg2
++                z2_curr = z2_seq[0]
++                l2_preds = []
++                l2_idms = []
++                K = m_a.shape[0]
++                for k in range(K):
++                    m_a_k = m_a[k]
++                    m_dt_k = m_dt[k]
++                    tgt_z2 = z2_seq[(k + 1) * s2]
++                    z2_next = model.predict_l2_step(z2_curr, m_a_k, m_dt_k)
++                    l2_preds.append(mx.mean((z2_next - tgt_z2) ** 2))
++                    z2_curr = z2_next
++                    idm2_pred = model.predict_idm2(z2_seq[k * s2], z2_seq[(k + 1) * s2])
++                    l2_idms.append(arms_mlx.idm2_loss_mlx(idm2_pred, m_a_k))
++
++                l_pred2 = mx.mean(mx.stack(l2_preds)) if l2_preds else mx.array(0.0)
++                l_idm2 = mx.mean(mx.stack(l2_idms)) if l2_idms else mx.array(0.0)
++                loss2 = l_pred2 + float(spec.SIGREG_LAMBDA) * l_sigreg2 + float(spec.IDM_MU) * l_idm2
+                 return loss1 + loss2
+ 
+         loss_and_grad_fn = nn.value_and_grad(self.model, loss_fn)
+@@ -459,9 +538,12 @@ class MLXArmCAdapter:
+         return {"loss": float(loss.item())}
+ 
+     def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
+-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
+-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
+-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
++        for k in spec.BATCH_REQUIRED_KEYS:
++            if k not in batch:
++                raise ValueError(f"MLXArmCAdapter.rollout_error missing required batch key {k!r}")
++        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
++        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
++        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
+         if obs_seq.ndim == 3:
+             B = obs_seq.shape[0]
+             losses = []
+diff --git a/src/ainerzero/v9/experiments/s2/arms_mlx.py b/src/ainerzero/v9/experiments/s2/arms_mlx.py
+index e039020..17ed228 100644
+--- a/src/ainerzero/v9/experiments/s2/arms_mlx.py
++++ b/src/ainerzero/v9/experiments/s2/arms_mlx.py
+@@ -441,24 +441,11 @@ def compute_sigreg_mlx(
+     rng: Any = 42,
+ ) -> mx.array:
+     """Compute SIGReg on MLX array using matched random unit projections."""
+-    D = Z.shape[-1]
+-    if rng is None:
+-        random_gen = np.random.default_rng()
+-    elif isinstance(rng, (int, np.integer)):
+-        random_gen = np.random.default_rng(int(rng))
+-    elif isinstance(rng, np.random.Generator) or isinstance(rng, np.random.RandomState):
+-        random_gen = rng
+-    else:
+-        random_gen = np.random.default_rng(42)
++    from ainerzero.v9.experiments.s2 import core_math
+ 
+-    if isinstance(random_gen, np.random.Generator):
+-        raw_dirs = random_gen.standard_normal((n_directions, D), dtype=np.float32)
+-    else:
+-        raw_dirs = random_gen.randn(n_directions, D).astype(np.float32)
+-    norms = np.linalg.norm(raw_dirs, axis=1, keepdims=True)
+-    norms = np.where(norms == 0.0, 1.0, norms)
+-    dirs = mx.array(raw_dirs / norms)
+-    return sigreg_mlx(Z, dirs)
++    D = Z.shape[-1]
++    dirs = core_math.generate_sigreg_directions(n_directions, D, rng=rng)
++    return sigreg_mlx(Z, mx.array(dirs))
+ 
+ 
+ def continuous_gaussian_nll_mlx(
+@@ -520,7 +507,7 @@ def multistep_latent_rollout_loss_mlx(
+ 
+     for t in range(H):
+         a_t = actions_onehot[t]
+-        dt_t = dts[t]
++        dt_t = dts[t : t + 1] if dts.ndim == 1 else dts[t]
+         target_t = targets_z[t]
+         z_next = arm_b_or_c_layer1.predict_l1_step(z_curr, a_t, dt_t)
+         err = mx.mean((z_next - target_t) ** 2)
+@@ -537,6 +524,8 @@ def arm_a_loss_mlx(
+     dts: mx.array,
+ ) -> mx.array:
+     """Compute Arm A total loss: observation reconstruction + KL (free bits 1.0) + latent overshooting."""
++    if dts.ndim != 1:
++        raise ValueError(f"arm_a_loss_mlx requires 1-D dts array of shape (L,), got {dts.shape}")
+     T = obs_seq.shape[0]
+     e1_feats = arm_a.encode(obs_seq)
+     h_curr = mx.zeros((arm_a.dims["gru_hidden"],), dtype=mx.float32)
+diff --git a/src/ainerzero/v9/experiments/s2/core_math.py b/src/ainerzero/v9/experiments/s2/core_math.py
+index 5f1289f..01cab83 100644
+--- a/src/ainerzero/v9/experiments/s2/core_math.py
++++ b/src/ainerzero/v9/experiments/s2/core_math.py
+@@ -76,6 +76,31 @@ def sigreg_theoretical_expectation(
+     return float(c_theory / n_samples)
+ 
+ 
++def generate_sigreg_directions(
++    n_directions: int,
++    dim: int,
++    rng: np.random.Generator | np.random.RandomState | int | None = 42,
++) -> np.ndarray:
++    """Generate unit projection directions uniformly sampled on S^{dim-1} (shared by NumPy and MLX)."""
++    if rng is None:
++        random_gen = np.random.default_rng()
++    elif isinstance(rng, (int, np.integer)):
++        random_gen = np.random.default_rng(int(rng))
++    elif isinstance(rng, (np.random.Generator, np.random.RandomState)):
++        random_gen = rng
++    else:
++        raise TypeError(f"Unsupported rng type: {type(rng)}")
++
++    if isinstance(random_gen, np.random.Generator):
++        raw_dirs = random_gen.standard_normal((n_directions, dim)).astype(np.float32)
++    else:
++        raw_dirs = random_gen.randn(n_directions, dim).astype(np.float32)
++
++    norms = np.linalg.norm(raw_dirs, axis=1, keepdims=True)
++    norms = np.where(norms == 0.0, 1.0, norms)
++    return (raw_dirs / norms).astype(np.float32)
++
++
+ def sigreg(
+     Z: np.ndarray | Sequence[Any],
+     n_directions: int,
+@@ -121,29 +146,8 @@ def sigreg(
+     if t_min >= t_max:
+         raise ValueError(f"t_min ({t_min}) must be < t_max ({t_max})")
+ 
+-    # Resolve RNG
+-    if rng is None:
+-        random_gen = np.random.default_rng()
+-    elif isinstance(rng, (int, np.integer)):
+-        random_gen = np.random.default_rng(int(rng))
+-    elif isinstance(rng, np.random.Generator):
+-        random_gen = rng
+-    elif isinstance(rng, np.random.RandomState):
+-        random_gen = rng
+-    else:
+-        raise TypeError(f"Unsupported rng type: {type(rng)}")
+-
+-    # Sample n_directions on S^{D-1}
+-    # Standard normal vector normalized to unit Euclidean length
+-    if isinstance(random_gen, np.random.Generator):
+-        raw_dirs = random_gen.standard_normal((n_directions, D), dtype=np.float64)
+-    else:
+-        raw_dirs = random_gen.randn(n_directions, D).astype(np.float64)
+-
+-    norms = np.linalg.norm(raw_dirs, axis=1, keepdims=True)
+-    # Guard against zero-norm (infinitesimal probability, but fail-safe)
+-    norms = np.where(norms == 0.0, 1.0, norms)
+-    dirs = raw_dirs / norms  # (M, D)
++    # Sample n_directions on S^{D-1} using shared direction generator
++    dirs = generate_sigreg_directions(n_directions, D, rng=rng)
+ 
+     # 1D projected embeddings: X shape (N, M)
+     X = Z_arr @ dirs.T  # (N, M)
+@@ -314,6 +318,37 @@ def normalize_angle(theta: float | np.ndarray) -> float | np.ndarray:
+     return res
+ 
+ 
++def actions_to_tuples(actions: np.ndarray | Sequence[Any]) -> list[tuple[float, float, float, int]]:
++    """Convert one-hot actions or action indices into (dx, dy, dpsi, cat) tuples."""
++    tuples = []
++    for a in actions:
++        if isinstance(a, (int, np.integer)):
++            cat = int(a)
++        elif isinstance(a, (list, tuple, np.ndarray)):
++            arr = np.asarray(a)
++            if arr.ndim == 1 and arr.shape[0] == 4 and np.all((arr == 0) | (arr == 1)) and np.isclose(np.sum(arr), 1.0):
++                cat = int(np.argmax(arr))
++            elif len(a) >= 4:
++                tuples.append((float(a[0]), float(a[1]), float(a[2]), int(a[3])))
++                continue
++            else:
++                cat = int(arr.item())
++        else:
++            raise TypeError(f"Unsupported action type: {type(a)}")
++
++        if cat == 0:
++            tuples.append((1.0, 0.0, 0.0, 0))
++        elif cat == 1:
++            tuples.append((0.0, 0.0, math.pi / 2, 1))
++        elif cat == 2:
++            tuples.append((0.0, 0.0, -math.pi / 2, 2))
++        elif cat == 3:
++            tuples.append((0.0, 0.0, 0.0, 3))
++        else:
++            raise ValueError(f"Action category {cat} out of range [0, 3]")
++    return tuples
++
++
+ def aggregate_macro_window(
+     actions: Sequence[Any] | np.ndarray,
+     dts: Sequence[float | int] | np.ndarray,
+@@ -356,13 +391,39 @@ def aggregate_macro_window(
+     cat_list: list[int] = []
+ 
+     for a in actions:
+-        if isinstance(a, (list, tuple, np.ndarray)):
+-            if len(a) < 4:
+-                raise ValueError(f"Action tuple must have >= 4 elements (dx, dy, dpsi, cat), got {a}")
+-            dx_list.append(float(a[0]))
+-            dy_list.append(float(a[1]))
+-            dpsi_list.append(float(a[2]))
+-            cat_list.append(int(a[3]))
++        if isinstance(a, (int, np.integer)):
++            cat = int(a)
++            if cat == 0:
++                dx_list.append(1.0); dy_list.append(0.0); dpsi_list.append(0.0); cat_list.append(0)
++            elif cat == 1:
++                dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(math.pi / 2); cat_list.append(1)
++            elif cat == 2:
++                dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(-math.pi / 2); cat_list.append(2)
++            elif cat == 3:
++                dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(0.0); cat_list.append(3)
++            else:
++                raise ValueError(f"Action category {cat} out of range [0, 3]")
++        elif isinstance(a, (list, tuple, np.ndarray)):
++            arr = np.asarray(a)
++            if arr.ndim == 1 and arr.shape[0] == 4 and np.all((arr == 0) | (arr == 1)) and np.isclose(np.sum(arr), 1.0):
++                cat = int(np.argmax(arr))
++                if cat == 0:
++                    dx_list.append(1.0); dy_list.append(0.0); dpsi_list.append(0.0); cat_list.append(0)
++                elif cat == 1:
++                    dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(math.pi / 2); cat_list.append(1)
++                elif cat == 2:
++                    dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(-math.pi / 2); cat_list.append(2)
++                elif cat == 3:
++                    dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(0.0); cat_list.append(3)
++                else:
++                    raise ValueError(f"Action category {cat} out of range [0, 3]")
++            else:
++                if len(a) < 4:
++                    raise ValueError(f"Action tuple must have >= 4 elements (dx, dy, dpsi, cat), got {a}")
++                dx_list.append(float(a[0]))
++                dy_list.append(float(a[1]))
++                dpsi_list.append(float(a[2]))
++                cat_list.append(int(a[3]))
+         elif isinstance(a, dict):
+             dx_list.append(float(a.get("dx", a.get("d_x", 0.0))))
+             dy_list.append(float(a.get("dy", a.get("d_y", 0.0))))
+diff --git a/src/ainerzero/v9/experiments/s2/smoke.py b/src/ainerzero/v9/experiments/s2/smoke.py
+index 0dee226..9b4dc9e 100644
+--- a/src/ainerzero/v9/experiments/s2/smoke.py
++++ b/src/ainerzero/v9/experiments/s2/smoke.py
+@@ -478,12 +478,7 @@ def make_smoke_timing_batch(
+     seed: int = 42,
+ ) -> dict[str, Any]:
+     """Generate registered batch shape (32, H_train+1, ...) for smoke step timing measurement."""
+-    rng = np.random.RandomState(seed)
+-    return {
+-        "observations": rng.randn(batch_size, seq_len, spec.OBS_DIM).astype(np.float32),
+-        "actions": rng.randn(batch_size, seq_len, spec.ACTION_DIM).astype(np.float32),
+-        "dts": np.ones((batch_size, seq_len, 1), dtype=np.float32),
+-    }
++    return train_runner.make_dummy_batch(batch_size=batch_size, seq_len=seq_len, seed=seed)
+ 
+ 
+ def generate_smoke_partition(
+@@ -553,26 +548,12 @@ def generate_smoke_partition(
+         encoding="utf-8",
+     )
+ 
+-    # 3. Extract length-17 observation windows from smoke episodes
++    # 3. Extract length-17 observation windows from smoke episodes using train_runner
+     windows: list[dict[str, np.ndarray]] = []
+     for ep_file in sorted(smoke_dir.rglob("episode_*.json")):
+-        ep_data = json.loads(ep_file.read_text(encoding="utf-8"))
+-        steps = ep_data.get("steps", [])
+-        L = spec.H_TRAIN + 1
+-        if len(steps) < L:
+-            continue
+-        obs_seq = np.stack([train_runner.flatten_student_obs(s["student_obs"]) for s in steps], axis=0)
+-        act_seq = np.zeros((len(steps), spec.ACTION_DIM), dtype=np.float32)
+-        for i, s in enumerate(steps):
+-            act_seq[i, int(s["action"]) % spec.ACTION_DIM] = 1.0
+-        dt_seq = np.asarray([[float(s["dt"])] for s in steps], dtype=np.float32)
+-
+-        for start in range(len(steps) - L + 1):
+-            windows.append({
+-                "observations": obs_seq[start : start + L].astype(np.float32),
+-                "actions": act_seq[start : start + L],
+-                "dts": dt_seq[start : start + L],
+-            })
++        wins = train_runner._load_episode_sequences(ep_file)
++        if wins:
++            windows.extend(wins)
+ 
+     # Assemble batches of size BATCH_SIZE (32) for total_short_steps (200)
+     batches: list[dict[str, np.ndarray]] = []
+@@ -583,14 +564,10 @@ def generate_smoke_partition(
+ 
+     for step_i in range(total_short_steps):
+         idxs = [(step_i * B + b) % n_w for b in range(B)]
+-        batch_obs = np.stack([windows[i]["observations"] for i in idxs], axis=0)
+-        batch_act = np.stack([windows[i]["actions"] for i in idxs], axis=0)
+-        batch_dt = np.stack([windows[i]["dts"] for i in idxs], axis=0)
+-        batches.append({
+-            "observations": batch_obs,
+-            "actions": batch_act,
+-            "dts": batch_dt,
+-        })
++        batch_obs = np.stack([windows[i][spec.BATCH_OBSERVATIONS_KEY] for i in idxs], axis=0)
++        batch_act = np.stack([windows[i][spec.BATCH_ACTIONS_KEY] for i in idxs], axis=0)
++        batch_dt = np.stack([windows[i][spec.BATCH_DTS_KEY] for i in idxs], axis=0)
++        batches.append(train_runner.make_batch(batch_obs, batch_act, batch_dt))
+ 
+     return smoke_dir, batches, layout_specs
+ 
+diff --git a/src/ainerzero/v9/experiments/s2/spec.py b/src/ainerzero/v9/experiments/s2/spec.py
+index f2949a9..bb4c36d 100644
+--- a/src/ainerzero/v9/experiments/s2/spec.py
++++ b/src/ainerzero/v9/experiments/s2/spec.py
+@@ -310,3 +310,21 @@ PROBE_GATE_STEP: int = 30
+ ACTION_SENSITIVITY_FLOOR: float = 0.05
+ SUBGOAL_DROP_FLOOR: float = 0.10
+ MAX_DEV_EVALS: int = 2
++
++# --- 统一训练批次格式规范（W8，2026-11-07）---
++# 训练批次统一字典接口：
++# - observations: (B, L, OBS_DIM) float32
++# - actions: (B, L, ACTION_DIM) one-hot float32，表示第 t 步采取的动作
++# - dts: (B, L) float32，表示第 t 步的 k
++# - L = H_TRAIN + 1 = 17
++# 语义：obs_t 经动作 a_t 和步长 dt_t，到达 obs_{t+1}
++# 观察特征一律用 train_runner.flatten_student_obs，dt 槽位取该步的 k，与 learned_planning.featurize_obs 口径一致
++BATCH_OBSERVATIONS_KEY: str = "observations"
++BATCH_ACTIONS_KEY: str = "actions"
++BATCH_DTS_KEY: str = "dts"
++BATCH_REQUIRED_KEYS: tuple[str, ...] = (
++    BATCH_OBSERVATIONS_KEY,
++    BATCH_ACTIONS_KEY,
++    BATCH_DTS_KEY,
++)
++
+diff --git a/src/ainerzero/v9/experiments/s2/train_runner.py b/src/ainerzero/v9/experiments/s2/train_runner.py
+index 9067981..f13531f 100644
+--- a/src/ainerzero/v9/experiments/s2/train_runner.py
++++ b/src/ainerzero/v9/experiments/s2/train_runner.py
+@@ -31,6 +31,7 @@ SEQUENCE_LENGTH = int(spec.SEQUENCE_LENGTH)  # 17
+ OBS_DIM = int(spec.OBS_DIM)  # 205
+ NUM_TERRAIN_CLASSES = int(spec.NUM_TERRAIN_CLASSES)  # 4
+ FOV_SIZE = int(spec.FOV_SIZE)  # 7
++ACTION_DIM = int(spec.ACTION_DIM)  # 4
+ 
+ FORBIDDEN_PATH_PARTS = frozenset({"dev", "sealed_final"})
+ 
+@@ -119,21 +120,53 @@ def flatten_student_obs(obs: Mapping[str, Any]) -> np.ndarray:
+     return vec
+ 
+ 
+-def _load_episode_sequences(episode_path: Path) -> list[np.ndarray]:
+-    """Load contiguous length-SEQUENCE_LENGTH observation windows from one episode."""
++def _load_episode_sequences(episode_path: Path) -> list[dict[str, np.ndarray]]:
++    """Load contiguous length-SEQUENCE_LENGTH observation/action/dt windows from one episode."""
+     _reject_forbidden_parts(episode_path)
+     payload = json.loads(episode_path.read_text(encoding="utf-8"))
+     steps = payload.get("steps") or []
+     if len(steps) < SEQUENCE_LENGTH:
+         return []
+-    obs = np.stack([flatten_student_obs(s["student_obs"]) for s in steps], axis=0)
+-    windows: list[np.ndarray] = []
+-    for start in range(0, len(obs) - SEQUENCE_LENGTH + 1):
+-        windows.append(obs[start : start + SEQUENCE_LENGTH])
++
++    obs_list: list[np.ndarray] = []
++    act_list: list[np.ndarray] = []
++    dt_list: list[float] = []
++
++    for s in steps:
++        dt_val = float(s.get("dt", s.get("k", 1.0)))
++        # Keep dt slot in student_obs aligned with step dt / k (口径一致 with learned_planning.featurize_obs)
++        student_obs = dict(s["student_obs"])
++        student_obs["dt"] = dt_val
++        obs_vec = flatten_student_obs(student_obs).astype(np.float32)
++        obs_list.append(obs_vec)
++
++        act_idx = int(s["action"])
++        if not (0 <= act_idx < ACTION_DIM):
++            raise ValueError(f"action index {act_idx} out of range [0, {ACTION_DIM - 1}]")
++        act_vec = np.zeros(ACTION_DIM, dtype=np.float32)
++        act_vec[act_idx] = 1.0
++        act_list.append(act_vec)
++
++        dt_list.append(dt_val)
++
++    obs_all = np.stack(obs_list, axis=0)
++    act_all = np.stack(act_list, axis=0)
++    dt_all = np.asarray(dt_list, dtype=np.float32)
++
++    windows: list[dict[str, np.ndarray]] = []
++    for start in range(0, len(steps) - SEQUENCE_LENGTH + 1):
++        end = start + SEQUENCE_LENGTH
++        windows.append(
++            {
++                spec.BATCH_OBSERVATIONS_KEY: obs_all[start:end],
++                spec.BATCH_ACTIONS_KEY: act_all[start:end],
++                spec.BATCH_DTS_KEY: dt_all[start:end],
++            }
++        )
+     return windows
+ 
+ 
+-def load_train_sequences(train_root: Path) -> tuple[list[np.ndarray], list[str]]:
++def load_train_sequences(train_root: Path) -> tuple[list[dict[str, np.ndarray]], list[str]]:
+     """Load all train sequences; return (sequences, relative file paths for manifest)."""
+     train_root = train_root.resolve()
+     _reject_forbidden_parts(train_root)
+@@ -141,7 +174,7 @@ def load_train_sequences(train_root: Path) -> tuple[list[np.ndarray], list[str]]
+     if not episode_files:
+         raise FileNotFoundError(f"no episode_*.json under train partition {train_root}")
+ 
+-    sequences: list[np.ndarray] = []
++    sequences: list[dict[str, np.ndarray]] = []
+     rel_files: list[str] = []
+     for ep in episode_files:
+         _reject_forbidden_parts(ep)
+@@ -214,7 +247,7 @@ def get_holdout_world_indices(
+ def load_train_and_holdout_sequences(
+     train_root: Path,
+     holdout_fraction: float | None = None,
+-) -> tuple[list[np.ndarray], list[np.ndarray], list[str]]:
++) -> tuple[list[dict[str, np.ndarray]], list[dict[str, np.ndarray]], list[str]]:
+     """Load train-partition sequences separated by world into train vs holdout.
+ 
+     Per DESIGN-r2 Appendix D2:
+@@ -229,8 +262,8 @@ def load_train_and_holdout_sequences(
+     if not episode_files:
+         raise FileNotFoundError(f"no episode_*.json under train partition {train_root}")
+ 
+-    train_seqs: list[np.ndarray] = []
+-    hold_seqs: list[np.ndarray] = []
++    train_seqs: list[dict[str, np.ndarray]] = []
++    hold_seqs: list[dict[str, np.ndarray]] = []
+     rel_files: list[str] = []
+ 
+     for ep in episode_files:
+@@ -265,10 +298,10 @@ def load_train_and_holdout_sequences(
+ 
+ 
+ def split_holdout(
+-    sequences: Sequence[np.ndarray],
++    sequences: Sequence[dict[str, np.ndarray]],
+     seed: int,
+     holdout_fraction: float = spec.TRAIN_HOLDOUT_WORLD_FRACTION,
+-) -> tuple[list[np.ndarray], list[np.ndarray]]:
++) -> tuple[list[dict[str, np.ndarray]], list[dict[str, np.ndarray]]]:
+     """Deterministic train/holdout split from the training partition only."""
+     n = len(sequences)
+     if n < 2:
+@@ -286,8 +319,60 @@ def split_holdout(
+     return train_seqs, hold_seqs
+ 
+ 
++def make_batch(
++    observations: np.ndarray,
++    actions: np.ndarray,
++    dts: np.ndarray,
++) -> dict[str, np.ndarray]:
++    """Assemble and validate a training batch matching the S2 unified spec.
++
++    Shapes:
++    - observations: (B, L, OBS_DIM) float32
++    - actions: (B, L, ACTION_DIM) float32 (one-hot)
++    - dts: (B, L) float32
++    """
++    obs = np.asarray(observations, dtype=np.float32)
++    act = np.asarray(actions, dtype=np.float32)
++    dt = np.asarray(dts, dtype=np.float32)
++
++    if obs.ndim != 3 or obs.shape[-1] != OBS_DIM:
++        raise ValueError(f"observations must have shape (B, L, {OBS_DIM}), got {obs.shape}")
++    if act.ndim != 3 or act.shape[-1] != ACTION_DIM:
++        raise ValueError(f"actions must have shape (B, L, {ACTION_DIM}), got {act.shape}")
++    if dt.ndim != 2:
++        raise ValueError(f"dts must have shape (B, L), got {dt.shape}")
++    if obs.shape[0] != act.shape[0] or obs.shape[0] != dt.shape[0]:
++        raise ValueError(f"batch size mismatch: obs={obs.shape[0]}, act={act.shape[0]}, dt={dt.shape[0]}")
++    if obs.shape[1] != act.shape[1] or obs.shape[1] != dt.shape[1]:
++        raise ValueError(f"sequence length mismatch: obs={obs.shape[1]}, act={act.shape[1]}, dt={dt.shape[1]}")
++
++    return {
++        spec.BATCH_OBSERVATIONS_KEY: obs,
++        spec.BATCH_ACTIONS_KEY: act,
++        spec.BATCH_DTS_KEY: dt,
++    }
++
++
++def make_dummy_batch(
++    batch_size: int = BATCH_SIZE,
++    seq_len: int = SEQUENCE_LENGTH,
++    seed: int = 42,
++) -> dict[str, np.ndarray]:
++    """Generate a valid dummy batch matching the registered spec for timing/sanity."""
++    rng = np.random.RandomState(seed)
++    obs = rng.randn(batch_size, seq_len, OBS_DIM).astype(np.float32)
++    act_idx = rng.randint(0, ACTION_DIM, size=(batch_size, seq_len))
++    act = np.zeros((batch_size, seq_len, ACTION_DIM), dtype=np.float32)
++    for b in range(batch_size):
++        for t in range(seq_len):
++            act[b, t, act_idx[b, t]] = 1.0
++    k_vals = np.array([1.0, 2.0, 3.0], dtype=np.float32)
++    dt = rng.choice(k_vals, size=(batch_size, seq_len)).astype(np.float32)
++    return make_batch(obs, act, dt)
++
++
+ def sample_batch(
+-    sequences: Sequence[np.ndarray],
++    sequences: Sequence[dict[str, np.ndarray]],
+     rng: np.random.RandomState,
+     batch_size: int = BATCH_SIZE,
+ ) -> dict[str, np.ndarray]:
+@@ -295,13 +380,16 @@ def sample_batch(
+     if not sequences:
+         raise ValueError("cannot sample from empty sequence list")
+     idx = rng.randint(0, len(sequences), size=batch_size)
+-    batch = np.stack([sequences[int(i)] for i in idx], axis=0)
+-    return {"obs": batch.astype(np.float64, copy=False)}
++    sampled = [sequences[int(i)] for i in idx]
++    batch_obs = np.stack([s[spec.BATCH_OBSERVATIONS_KEY] for s in sampled], axis=0)
++    batch_act = np.stack([s[spec.BATCH_ACTIONS_KEY] for s in sampled], axis=0)
++    batch_dt = np.stack([s[spec.BATCH_DTS_KEY] for s in sampled], axis=0)
++    return make_batch(batch_obs, batch_act, batch_dt)
+ 
+ 
+ def _mean_holdout_error(
+     arm: ArmProtocol,
+-    holdout: Sequence[np.ndarray],
++    holdout: Sequence[dict[str, np.ndarray]],
+     rng: np.random.RandomState,
+     H: int,
+     batches: int = 4,
+@@ -581,7 +669,10 @@ class FakeLinearArm:
+ 
+     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
+         assert self.W is not None and self.b is not None
+-        obs = np.asarray(batch["obs"], dtype=np.float64)
++        for k in spec.BATCH_REQUIRED_KEYS:
++            if k not in batch:
++                raise ValueError(f"FakeLinearArm.train_step missing required batch key {k!r}")
++        obs = np.asarray(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=np.float64)
+         feat = self._feat(obs)
+         x = feat[:, :-1, :].reshape(-1, self.dim)
+         y = feat[:, 1:, :].reshape(-1, self.dim)
+@@ -599,7 +690,10 @@ class FakeLinearArm:
+ 
+     def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
+         assert self.W is not None and self.b is not None
+-        obs = np.asarray(batch["obs"], dtype=np.float64)
++        for k in spec.BATCH_REQUIRED_KEYS:
++            if k not in batch:
++                raise ValueError(f"FakeLinearArm.rollout_error missing required batch key {k!r}")
++        obs = np.asarray(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=np.float64)
+         feat = self._feat(obs)
+         _B, T, _D = feat.shape
+         h = min(int(H), T - 1)
+diff --git a/tests/conftest.py b/tests/conftest.py
+index b47e27a..22e78de 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -238,6 +238,7 @@ NATIVE_MODULES = {
+     "test_s2_adapters_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 MLX arm adapters)",
+     "test_s2_learned_planning_native.py": "runs real MLX arms through learned planning (S2 W2)",
+     "test_s2_production_e2e_native.py": "minimal MLX pipeline end-to-end (S2 W3)",
++    "test_s2_train_native.py": "MLX arm training and smoke self-check native test (S2 W8)",
+ }
+ 
+ # Individual tests in otherwise pure-CPU modules (prefix match on node id).
+diff --git a/tests/v9/experiments/test_s2_production_e2e_native.py b/tests/v9/experiments/test_s2_production_e2e_native.py
+index 97ef1a5..f922a87 100644
+--- a/tests/v9/experiments/test_s2_production_e2e_native.py
++++ b/tests/v9/experiments/test_s2_production_e2e_native.py
+@@ -61,9 +61,8 @@ def test_native_e2e_train_and_checkpoint_load(tmp_env: dict[str, Any], monkeypat
+     # Patch train_runner to run 2 mock MLX iterations
+     arm = adapters_mlx.make_mlx_arm("arm_a")
+     arm.init(42)
+-    ckpt_dir = output_root / "checkpoints" / "arm_a" / "seed_42"
+-    ckpt_dir.mkdir(parents=True, exist_ok=True)
+-    ckpt_file = ckpt_dir / "model_best.npz"
++    ckpt_file = adapters_mlx.checkpoint_path(output_root, "arm_a", 42)
++    ckpt_file.parent.mkdir(parents=True, exist_ok=True)
+     arm.save(ckpt_file)
+ 
+     # Record completed run in ledger
+diff --git a/tests/v9/experiments/test_s2_train_runner.py b/tests/v9/experiments/test_s2_train_runner.py
+index 2bece48..62a1869 100644
+--- a/tests/v9/experiments/test_s2_train_runner.py
++++ b/tests/v9/experiments/test_s2_train_runner.py
+@@ -24,10 +24,14 @@ import pytest
+ from ainerzero.v9.experiments.s2 import commands, spec, worker
+ from ainerzero.v9.experiments.s2.data_runner import assert_output_root_is_permitted
+ from ainerzero.v9.experiments.s2.train_runner import (
++    ACTION_DIM,
+     OBS_DIM,
+     SEQUENCE_LENGTH,
+     FakeLinearArm,
+     flatten_student_obs,
++    load_train_sequences,
++    make_batch,
++    make_dummy_batch,
+     make_worker_train_runner,
+     resolve_train_partition,
+     run_train_cell,
+@@ -435,11 +439,143 @@ def test_no_mlx_imported_under_isolated_python(tmp_path: Path) -> None:
+ 
+ def test_sample_batch_uses_explicit_rng_not_global() -> None:
+     """Explicit RandomState sampling is deterministic under global RNG pollution."""
+-    seqs = [np.zeros((SEQUENCE_LENGTH, OBS_DIM)), np.ones((SEQUENCE_LENGTH, OBS_DIM))]
++    seqs = [
++        {
++            spec.BATCH_OBSERVATIONS_KEY: np.zeros((SEQUENCE_LENGTH, OBS_DIM), dtype=np.float32),
++            spec.BATCH_ACTIONS_KEY: np.zeros((SEQUENCE_LENGTH, ACTION_DIM), dtype=np.float32),
++            spec.BATCH_DTS_KEY: np.ones((SEQUENCE_LENGTH,), dtype=np.float32),
++        },
++        {
++            spec.BATCH_OBSERVATIONS_KEY: np.ones((SEQUENCE_LENGTH, OBS_DIM), dtype=np.float32),
++            spec.BATCH_ACTIONS_KEY: np.ones((SEQUENCE_LENGTH, ACTION_DIM), dtype=np.float32),
++            spec.BATCH_DTS_KEY: np.full((SEQUENCE_LENGTH,), 2.0, dtype=np.float32),
++        },
++    ]
+     rng = np.random.RandomState(0)
+     np.random.seed(123)
+     b1 = sample_batch(seqs, rng, batch_size=4)
+     rng2 = np.random.RandomState(0)
+     np.random.seed(999)
+     b2 = sample_batch(seqs, rng2, batch_size=4)
+-    assert np.array_equal(b1["obs"], b2["obs"])
++    assert np.array_equal(b1[spec.BATCH_OBSERVATIONS_KEY], b2[spec.BATCH_OBSERVATIONS_KEY])
++    assert np.array_equal(b1[spec.BATCH_ACTIONS_KEY], b2[spec.BATCH_ACTIONS_KEY])
++    assert np.array_equal(b1[spec.BATCH_DTS_KEY], b2[spec.BATCH_DTS_KEY])
++
++
++def test_batch_format_and_shapes_with_real_episodes(tmp_path: Path) -> None:
++    """Batch format and shapes verified with real generated episode files."""
++    from ainerzero.v9.experiments.s2 import data
++
++    out_dir = tmp_path / "data_test"
++    # Generate 1 world with 2 episodes
++    data.generate_partition(
++        partition="train",
++        n_worlds=1,
++        episodes_per_world=2,
++        output_root=out_dir,
++        seed_namespace="test_batch_format_ns",
++    )
++    train_root = out_dir / "train"
++    seqs, files = load_train_sequences(train_root)
++    assert len(seqs) > 0
++    assert len(files) == 2
++
++    rng = np.random.RandomState(42)
++    B = 8
++    batch = sample_batch(seqs, rng, batch_size=B)
++
++    # 1. Keys match spec
++    assert set(batch.keys()) == set(spec.BATCH_REQUIRED_KEYS)
++
++    # 2. Shapes match spec
++    obs = batch[spec.BATCH_OBSERVATIONS_KEY]
++    act = batch[spec.BATCH_ACTIONS_KEY]
++    dt = batch[spec.BATCH_DTS_KEY]
++
++    assert obs.shape == (B, SEQUENCE_LENGTH, OBS_DIM)
++    assert act.shape == (B, SEQUENCE_LENGTH, ACTION_DIM)
++    assert dt.shape == (B, SEQUENCE_LENGTH)
++
++    assert obs.dtype == np.float32
++    assert act.dtype == np.float32
++    assert dt.dtype == np.float32
++
++
++def test_action_one_hot_matches_episode_record(tmp_path: Path) -> None:
++    """Action one-hot vector strictly matches the recorded discrete action in episode steps."""
++    from ainerzero.v9.experiments.s2 import data
++    from ainerzero.v9.experiments.s2.train_runner import _load_episode_sequences
++
++    out_dir = tmp_path / "action_test"
++    data.generate_partition(
++        partition="train",
++        n_worlds=1,
++        episodes_per_world=1,
++        output_root=out_dir,
++        seed_namespace="test_action_ns",
++    )
++    ep_file = next((out_dir / "train").rglob("episode_*.json"))
++    raw_ep = json.loads(ep_file.read_text(encoding="utf-8"))
++    raw_steps = raw_ep["steps"]
++
++    windows = _load_episode_sequences(ep_file)
++    assert len(windows) > 0
++
++    # For each window, verify each step's action one-hot corresponds to raw_steps
++    for start, win in enumerate(windows):
++        act_mat = win[spec.BATCH_ACTIONS_KEY]
++        for t in range(SEQUENCE_LENGTH):
++            raw_act = raw_steps[start + t]["action"]
++            assert np.argmax(act_mat[t]) == raw_act
++            assert act_mat[t, raw_act] == 1.0
++            assert np.sum(act_mat[t]) == 1.0
++
++
++def test_dts_matches_recorded_k(tmp_path: Path) -> None:
++    """Dts vector strictly matches the recorded step duration k in episode steps."""
++    from ainerzero.v9.experiments.s2 import data
++    from ainerzero.v9.experiments.s2.train_runner import _load_episode_sequences
++
++    out_dir = tmp_path / "dt_test"
++    data.generate_partition(
++        partition="train",
++        n_worlds=1,
++        episodes_per_world=1,
++        output_root=out_dir,
++        seed_namespace="test_dt_ns",
++    )
++    ep_file = next((out_dir / "train").rglob("episode_*.json"))
++    raw_ep = json.loads(ep_file.read_text(encoding="utf-8"))
++    raw_steps = raw_ep["steps"]
++
++    windows = _load_episode_sequences(ep_file)
++    assert len(windows) > 0
++
++    for start, win in enumerate(windows):
++        dt_vec = win[spec.BATCH_DTS_KEY]
++        obs_mat = win[spec.BATCH_OBSERVATIONS_KEY]
++        for t in range(SEQUENCE_LENGTH):
++            raw_dt = float(raw_steps[start + t]["dt"])
++            assert dt_vec[t] == raw_dt
++            # dt slot in flattened student_obs is at index 204
++            assert obs_mat[t, 204] == raw_dt
++
++
++def test_bad_control_missing_actions_turns_red() -> None:
++    """Bad control: missing actions key turns red (raises ValueError)."""
++    arm = FakeLinearArm()
++    arm.init(seed=42)
++
++    dummy_batch = make_dummy_batch(batch_size=4, seq_len=SEQUENCE_LENGTH)
++    # Remove actions key
++    bad_batch = {
++        spec.BATCH_OBSERVATIONS_KEY: dummy_batch[spec.BATCH_OBSERVATIONS_KEY],
++        spec.BATCH_DTS_KEY: dummy_batch[spec.BATCH_DTS_KEY],
++    }
++
++    with pytest.raises(ValueError, match="actions"):
++        arm.train_step(bad_batch)
++
++    with pytest.raises(ValueError, match="actions"):
++        arm.rollout_error(bad_batch, H=4)
++
+diff --git a/tests/v9/experiments/test_s2_wiring.py b/tests/v9/experiments/test_s2_wiring.py
+index 7c0a330..5a24b31 100644
+--- a/tests/v9/experiments/test_s2_wiring.py
++++ b/tests/v9/experiments/test_s2_wiring.py
+@@ -474,7 +474,7 @@ def test_smoke_batch_shape_registered() -> None:
+     batch = smoke.make_smoke_timing_batch()
+     assert batch["observations"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1, spec.OBS_DIM)
+     assert batch["actions"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1, spec.ACTION_DIM)
+-    assert batch["dts"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1, 1)
++    assert batch["dts"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1)
+ 
+ 
+ def test_smoke_no_injected_measurements_fails_with_named_reasons(tmp_path: Path) -> None:

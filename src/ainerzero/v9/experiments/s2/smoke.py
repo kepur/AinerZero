@@ -478,12 +478,7 @@ def make_smoke_timing_batch(
     seed: int = 42,
 ) -> dict[str, Any]:
     """Generate registered batch shape (32, H_train+1, ...) for smoke step timing measurement."""
-    rng = np.random.RandomState(seed)
-    return {
-        "observations": rng.randn(batch_size, seq_len, spec.OBS_DIM).astype(np.float32),
-        "actions": rng.randn(batch_size, seq_len, spec.ACTION_DIM).astype(np.float32),
-        "dts": np.ones((batch_size, seq_len, 1), dtype=np.float32),
-    }
+    return train_runner.make_dummy_batch(batch_size=batch_size, seq_len=seq_len, seed=seed)
 
 
 def generate_smoke_partition(
@@ -553,26 +548,12 @@ def generate_smoke_partition(
         encoding="utf-8",
     )
 
-    # 3. Extract length-17 observation windows from smoke episodes
+    # 3. Extract length-17 observation windows from smoke episodes using train_runner
     windows: list[dict[str, np.ndarray]] = []
     for ep_file in sorted(smoke_dir.rglob("episode_*.json")):
-        ep_data = json.loads(ep_file.read_text(encoding="utf-8"))
-        steps = ep_data.get("steps", [])
-        L = spec.H_TRAIN + 1
-        if len(steps) < L:
-            continue
-        obs_seq = np.stack([train_runner.flatten_student_obs(s["student_obs"]) for s in steps], axis=0)
-        act_seq = np.zeros((len(steps), spec.ACTION_DIM), dtype=np.float32)
-        for i, s in enumerate(steps):
-            act_seq[i, int(s["action"]) % spec.ACTION_DIM] = 1.0
-        dt_seq = np.asarray([[float(s["dt"])] for s in steps], dtype=np.float32)
-
-        for start in range(len(steps) - L + 1):
-            windows.append({
-                "observations": obs_seq[start : start + L].astype(np.float32),
-                "actions": act_seq[start : start + L],
-                "dts": dt_seq[start : start + L],
-            })
+        wins = train_runner._load_episode_sequences(ep_file)
+        if wins:
+            windows.extend(wins)
 
     # Assemble batches of size BATCH_SIZE (32) for total_short_steps (200)
     batches: list[dict[str, np.ndarray]] = []
@@ -583,14 +564,10 @@ def generate_smoke_partition(
 
     for step_i in range(total_short_steps):
         idxs = [(step_i * B + b) % n_w for b in range(B)]
-        batch_obs = np.stack([windows[i]["observations"] for i in idxs], axis=0)
-        batch_act = np.stack([windows[i]["actions"] for i in idxs], axis=0)
-        batch_dt = np.stack([windows[i]["dts"] for i in idxs], axis=0)
-        batches.append({
-            "observations": batch_obs,
-            "actions": batch_act,
-            "dts": batch_dt,
-        })
+        batch_obs = np.stack([windows[i][spec.BATCH_OBSERVATIONS_KEY] for i in idxs], axis=0)
+        batch_act = np.stack([windows[i][spec.BATCH_ACTIONS_KEY] for i in idxs], axis=0)
+        batch_dt = np.stack([windows[i][spec.BATCH_DTS_KEY] for i in idxs], axis=0)
+        batches.append(train_runner.make_batch(batch_obs, batch_act, batch_dt))
 
     return smoke_dir, batches, layout_specs
 

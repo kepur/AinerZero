@@ -61,9 +61,8 @@ def test_native_e2e_train_and_checkpoint_load(tmp_env: dict[str, Any], monkeypat
     # Patch train_runner to run 2 mock MLX iterations
     arm = adapters_mlx.make_mlx_arm("arm_a")
     arm.init(42)
-    ckpt_dir = output_root / "checkpoints" / "arm_a" / "seed_42"
-    ckpt_dir.mkdir(parents=True, exist_ok=True)
-    ckpt_file = ckpt_dir / "model_best.npz"
+    ckpt_file = adapters_mlx.checkpoint_path(output_root, "arm_a", 42)
+    ckpt_file.parent.mkdir(parents=True, exist_ok=True)
     arm.save(ckpt_file)
 
     # Record completed run in ledger

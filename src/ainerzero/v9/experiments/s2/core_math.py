@@ -76,6 +76,31 @@ def sigreg_theoretical_expectation(
     return float(c_theory / n_samples)
 
 
+def generate_sigreg_directions(
+    n_directions: int,
+    dim: int,
+    rng: np.random.Generator | np.random.RandomState | int | None = 42,
+) -> np.ndarray:
+    """Generate unit projection directions uniformly sampled on S^{dim-1} (shared by NumPy and MLX)."""
+    if rng is None:
+        random_gen = np.random.default_rng()
+    elif isinstance(rng, (int, np.integer)):
+        random_gen = np.random.default_rng(int(rng))
+    elif isinstance(rng, (np.random.Generator, np.random.RandomState)):
+        random_gen = rng
+    else:
+        raise TypeError(f"Unsupported rng type: {type(rng)}")
+
+    if isinstance(random_gen, np.random.Generator):
+        raw_dirs = random_gen.standard_normal((n_directions, dim)).astype(np.float32)
+    else:
+        raw_dirs = random_gen.randn(n_directions, dim).astype(np.float32)
+
+    norms = np.linalg.norm(raw_dirs, axis=1, keepdims=True)
+    norms = np.where(norms == 0.0, 1.0, norms)
+    return (raw_dirs / norms).astype(np.float32)
+
+
 def sigreg(
     Z: np.ndarray | Sequence[Any],
     n_directions: int,
@@ -121,29 +146,8 @@ def sigreg(
     if t_min >= t_max:
         raise ValueError(f"t_min ({t_min}) must be < t_max ({t_max})")
 
-    # Resolve RNG
-    if rng is None:
-        random_gen = np.random.default_rng()
-    elif isinstance(rng, (int, np.integer)):
-        random_gen = np.random.default_rng(int(rng))
-    elif isinstance(rng, np.random.Generator):
-        random_gen = rng
-    elif isinstance(rng, np.random.RandomState):
-        random_gen = rng
-    else:
-        raise TypeError(f"Unsupported rng type: {type(rng)}")
-
-    # Sample n_directions on S^{D-1}
-    # Standard normal vector normalized to unit Euclidean length
-    if isinstance(random_gen, np.random.Generator):
-        raw_dirs = random_gen.standard_normal((n_directions, D), dtype=np.float64)
-    else:
-        raw_dirs = random_gen.randn(n_directions, D).astype(np.float64)
-
-    norms = np.linalg.norm(raw_dirs, axis=1, keepdims=True)
-    # Guard against zero-norm (infinitesimal probability, but fail-safe)
-    norms = np.where(norms == 0.0, 1.0, norms)
-    dirs = raw_dirs / norms  # (M, D)
+    # Sample n_directions on S^{D-1} using shared direction generator
+    dirs = generate_sigreg_directions(n_directions, D, rng=rng)
 
     # 1D projected embeddings: X shape (N, M)
     X = Z_arr @ dirs.T  # (N, M)
@@ -314,6 +318,37 @@ def normalize_angle(theta: float | np.ndarray) -> float | np.ndarray:
     return res
 
 
+def actions_to_tuples(actions: np.ndarray | Sequence[Any]) -> list[tuple[float, float, float, int]]:
+    """Convert one-hot actions or action indices into (dx, dy, dpsi, cat) tuples."""
+    tuples = []
+    for a in actions:
+        if isinstance(a, (int, np.integer)):
+            cat = int(a)
+        elif isinstance(a, (list, tuple, np.ndarray)):
+            arr = np.asarray(a)
+            if arr.ndim == 1 and arr.shape[0] == 4 and np.all((arr == 0) | (arr == 1)) and np.isclose(np.sum(arr), 1.0):
+                cat = int(np.argmax(arr))
+            elif len(a) >= 4:
+                tuples.append((float(a[0]), float(a[1]), float(a[2]), int(a[3])))
+                continue
+            else:
+                cat = int(arr.item())
+        else:
+            raise TypeError(f"Unsupported action type: {type(a)}")
+
+        if cat == 0:
+            tuples.append((1.0, 0.0, 0.0, 0))
+        elif cat == 1:
+            tuples.append((0.0, 0.0, math.pi / 2, 1))
+        elif cat == 2:
+            tuples.append((0.0, 0.0, -math.pi / 2, 2))
+        elif cat == 3:
+            tuples.append((0.0, 0.0, 0.0, 3))
+        else:
+            raise ValueError(f"Action category {cat} out of range [0, 3]")
+    return tuples
+
+
 def aggregate_macro_window(
     actions: Sequence[Any] | np.ndarray,
     dts: Sequence[float | int] | np.ndarray,
@@ -356,13 +391,39 @@ def aggregate_macro_window(
     cat_list: list[int] = []
 
     for a in actions:
-        if isinstance(a, (list, tuple, np.ndarray)):
-            if len(a) < 4:
-                raise ValueError(f"Action tuple must have >= 4 elements (dx, dy, dpsi, cat), got {a}")
-            dx_list.append(float(a[0]))
-            dy_list.append(float(a[1]))
-            dpsi_list.append(float(a[2]))
-            cat_list.append(int(a[3]))
+        if isinstance(a, (int, np.integer)):
+            cat = int(a)
+            if cat == 0:
+                dx_list.append(1.0); dy_list.append(0.0); dpsi_list.append(0.0); cat_list.append(0)
+            elif cat == 1:
+                dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(math.pi / 2); cat_list.append(1)
+            elif cat == 2:
+                dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(-math.pi / 2); cat_list.append(2)
+            elif cat == 3:
+                dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(0.0); cat_list.append(3)
+            else:
+                raise ValueError(f"Action category {cat} out of range [0, 3]")
+        elif isinstance(a, (list, tuple, np.ndarray)):
+            arr = np.asarray(a)
+            if arr.ndim == 1 and arr.shape[0] == 4 and np.all((arr == 0) | (arr == 1)) and np.isclose(np.sum(arr), 1.0):
+                cat = int(np.argmax(arr))
+                if cat == 0:
+                    dx_list.append(1.0); dy_list.append(0.0); dpsi_list.append(0.0); cat_list.append(0)
+                elif cat == 1:
+                    dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(math.pi / 2); cat_list.append(1)
+                elif cat == 2:
+                    dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(-math.pi / 2); cat_list.append(2)
+                elif cat == 3:
+                    dx_list.append(0.0); dy_list.append(0.0); dpsi_list.append(0.0); cat_list.append(3)
+                else:
+                    raise ValueError(f"Action category {cat} out of range [0, 3]")
+            else:
+                if len(a) < 4:
+                    raise ValueError(f"Action tuple must have >= 4 elements (dx, dy, dpsi, cat), got {a}")
+                dx_list.append(float(a[0]))
+                dy_list.append(float(a[1]))
+                dpsi_list.append(float(a[2]))
+                cat_list.append(int(a[3]))
         elif isinstance(a, dict):
             dx_list.append(float(a.get("dx", a.get("d_x", 0.0))))
             dy_list.append(float(a.get("dy", a.get("d_y", 0.0))))

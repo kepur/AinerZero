@@ -310,3 +310,21 @@ PROBE_GATE_STEP: int = 30
 ACTION_SENSITIVITY_FLOOR: float = 0.05
 SUBGOAL_DROP_FLOOR: float = 0.10
 MAX_DEV_EVALS: int = 2
+
+# --- 统一训练批次格式规范（W8，2026-11-07）---
+# 训练批次统一字典接口：
+# - observations: (B, L, OBS_DIM) float32
+# - actions: (B, L, ACTION_DIM) one-hot float32，表示第 t 步采取的动作
+# - dts: (B, L) float32，表示第 t 步的 k
+# - L = H_TRAIN + 1 = 17
+# 语义：obs_t 经动作 a_t 和步长 dt_t，到达 obs_{t+1}
+# 观察特征一律用 train_runner.flatten_student_obs，dt 槽位取该步的 k，与 learned_planning.featurize_obs 口径一致
+BATCH_OBSERVATIONS_KEY: str = "observations"
+BATCH_ACTIONS_KEY: str = "actions"
+BATCH_DTS_KEY: str = "dts"
+BATCH_REQUIRED_KEYS: tuple[str, ...] = (
+    BATCH_OBSERVATIONS_KEY,
+    BATCH_ACTIONS_KEY,
+    BATCH_DTS_KEY,
+)
+

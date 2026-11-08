@@ -1,0 +1,64 @@
+[
+  {
+    "name": "Bad Control 1: Missing actions key in batch",
+    "description": "Verifies that missing actions key is blocked with ValueError. When check is disabled, test turns red.",
+    "bad_control_output": "BLOCKED: FakeLinearArm.train_step missing required batch key 'actions'",
+    "mutation_test_returncode": 1,
+    "turned_red": true,
+    "file": "src/ainerzero/v9/experiments/s2/train_runner.py",
+    "sha_before": "131e1eaea329b791a6ec64abeae624072583119756efd8ca723b6143cf1c69a5",
+    "sha_after": "131e1eaea329b791a6ec64abeae624072583119756efd8ca723b6143cf1c69a5",
+    "sha_matched": true
+  },
+  {
+    "name": "Bad Control 2: 3D dts array (B, L, 1)",
+    "description": "Verifies that 3D dts array is blocked by arm_a_loss_mlx. When check is removed, test turns red.",
+    "bad_control_output": "BLOCKED: arm_a_loss_mlx requires 1-D dts array of shape (L,), got (17, 1)",
+    "mutation_test_returncode": 1,
+    "turned_red": true,
+    "file": "src/ainerzero/v9/experiments/s2/arms_mlx.py",
+    "sha_before": "6fca96e0e352db5003d761b52c36c41a46ba971075f13014be7a9cb332c7d771",
+    "sha_after": "6fca96e0e352db5003d761b52c36c41a46ba971075f13014be7a9cb332c7d771",
+    "sha_matched": true
+  },
+  {
+    "name": "Self-Chosen Mutation 3: Missing dts key in MLXArmAAdapter",
+    "description": "Verifies that MLXArmAAdapter checks spec.BATCH_REQUIRED_KEYS and raises descriptive ValueError. Without guard, it degrades to unhandled KeyError.",
+    "bad_control_output": "BLOCKED: MLXArmAAdapter.train_step missing required batch key 'dts'",
+    "mutated_behavior": "UNGUARDED_KEY_ERROR",
+    "turned_red": true,
+    "file": "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "sha_before": "d0c14440667899f0e46128d8e3a4d1957266c66df291020074f54ebc810ad3d7",
+    "sha_after": "d0c14440667899f0e46128d8e3a4d1957266c66df291020074f54ebc810ad3d7",
+    "sha_matched": true
+  },
+  {
+    "name": "Self-Chosen Mutation 4: SIGReg float64 direction mismatch",
+    "description": "Verifies generate_sigreg_directions float32 vs float64 behavior and test sensitivity.",
+    "returncode": 0,
+    "file": "src/ainerzero/v9/experiments/s2/core_math.py",
+    "sha_before": "a6d22a5b9a9b95e873bf16cc6aa12eb3beb5610a77fde28454add6fbd74ffbf4",
+    "sha_after": "a6d22a5b9a9b95e873bf16cc6aa12eb3beb5610a77fde28454add6fbd74ffbf4",
+    "sha_matched": true
+  },
+  {
+    "name": "Self-Chosen Mutation 4b: Unnormalized SIGReg directions",
+    "description": "Mutate generate_sigreg_directions to return unnormalized vectors (scaled by 2.0). Verifies SIGReg alignment test turns red.",
+    "turned_red": false,
+    "mutation_test_returncode": 0,
+    "file": "src/ainerzero/v9/experiments/s2/core_math.py",
+    "sha_before": "a6d22a5b9a9b95e873bf16cc6aa12eb3beb5610a77fde28454add6fbd74ffbf4",
+    "sha_after": "a6d22a5b9a9b95e873bf16cc6aa12eb3beb5610a77fde28454add6fbd74ffbf4",
+    "sha_matched": true
+  },
+  {
+    "name": "Self-Chosen Mutation 5: Unaligned SIGReg directions in arms_mlx",
+    "description": "Mutates compute_sigreg_mlx in arms_mlx.py to use rng=9999 instead of shared rng. Verifies test_native_smoke_self_check_path turns RED.",
+    "turned_red": true,
+    "mutation_test_returncode": 1,
+    "file": "src/ainerzero/v9/experiments/s2/arms_mlx.py",
+    "sha_before": "6fca96e0e352db5003d761b52c36c41a46ba971075f13014be7a9cb332c7d771",
+    "sha_after": "6fca96e0e352db5003d761b52c36c41a46ba971075f13014be7a9cb332c7d771",
+    "sha_matched": true
+  }
+]

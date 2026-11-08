@@ -28,7 +28,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 import numpy as np
 
-from ainerzero.v9.experiments.s2 import param_count, spec
+from ainerzero.v9.experiments.s2 import core_math, param_count, spec
 from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
 
 
@@ -134,10 +134,13 @@ class MLXArmAAdapter:
     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
         if self.optimizer is None:
             self.init(seed=42)
+        for k in spec.BATCH_REQUIRED_KEYS:
+            if k not in batch:
+                raise ValueError(f"MLXArmAAdapter.train_step missing required batch key {k!r}")
 
-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
+        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
+        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
+        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
 
         if obs_seq.ndim == 3:
             B = obs_seq.shape[0]
@@ -162,9 +165,12 @@ class MLXArmAAdapter:
         return {"loss": float(loss.item())}
 
     def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
+        for k in spec.BATCH_REQUIRED_KEYS:
+            if k not in batch:
+                raise ValueError(f"MLXArmAAdapter.rollout_error missing required batch key {k!r}")
+        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
+        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
+        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
         if obs_seq.ndim == 3:
             B = obs_seq.shape[0]
             losses = [
@@ -254,18 +260,25 @@ class MLXArmBAdapter:
     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
         if self.optimizer is None:
             self.init(seed=42)
+        for k in spec.BATCH_REQUIRED_KEYS:
+            if k not in batch:
+                raise ValueError(f"MLXArmBAdapter.train_step missing required batch key {k!r}")
 
-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
+        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
+        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
+        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
+
+        dirs = mx.array(
+            core_math.generate_sigreg_directions(
+                spec.SIGREG_NUM_DIRECTIONS, self.model.dims["e1_output"]
+            )
+        )
 
         if obs_seq.ndim == 3:
             B = obs_seq.shape[0]
 
             def loss_fn(model: arms_mlx.FlatJEPAArm) -> mx.array:
                 losses = []
-                dirs = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, model.dims["z_dim"]))
-                dirs = dirs / mx.linalg.norm(dirs, axis=-1, keepdims=True)
                 for b in range(B):
                     zb = model.encode(obs_seq[b])
                     targets_zb = zb[1:]
@@ -289,8 +302,6 @@ class MLXArmBAdapter:
                 l_pred = arms_mlx.multistep_latent_rollout_loss_mlx(
                     model, z0, act_seq[:-1], dt_seq[:-1], targets_z
                 )
-                dirs = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z_seq.shape[-1]))
-                dirs = dirs / mx.linalg.norm(dirs, axis=-1, keepdims=True)
                 l_sigreg = arms_mlx.sigreg_mlx(z_seq, dirs)
                 idm_logits = model.predict_idm(z_seq[:-1], z_seq[1:])
                 l_idm = arms_mlx.idm_loss_mlx(idm_logits, act_seq[:-1])
@@ -305,9 +316,12 @@ class MLXArmBAdapter:
         return {"loss": float(loss.item())}
 
     def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
+        for k in spec.BATCH_REQUIRED_KEYS:
+            if k not in batch:
+                raise ValueError(f"MLXArmBAdapter.rollout_error missing required batch key {k!r}")
+        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
+        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
+        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
         if obs_seq.ndim == 3:
             B = obs_seq.shape[0]
             losses = []
@@ -394,21 +408,52 @@ class MLXArmCAdapter:
     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
         if self.optimizer is None:
             self.init(seed=42)
+        for k in spec.BATCH_REQUIRED_KEYS:
+            if k not in batch:
+                raise ValueError(f"MLXArmCAdapter.train_step missing required batch key {k!r}")
 
-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
+        obs_np = np.asarray(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=np.float32)
+        act_np = np.asarray(batch[spec.BATCH_ACTIONS_KEY], dtype=np.float32)
+        dt_np = np.asarray(batch[spec.BATCH_DTS_KEY], dtype=np.float32)
 
-        if obs_seq.ndim == 3:
-            B = obs_seq.shape[0]
+        s2 = int(spec.S2_MACRO_STEPS)
+        dirs1 = mx.array(
+            core_math.generate_sigreg_directions(
+                spec.SIGREG_NUM_DIRECTIONS, self.model.dims["e1_output"]
+            )
+        )
+        dirs2 = mx.array(
+            core_math.generate_sigreg_directions(
+                spec.SIGREG_NUM_DIRECTIONS, self.model.dims["z2_dim"]
+            )
+        )
+
+        if obs_np.ndim == 3:
+            B, L, _ = obs_np.shape
+            # Precompute macro actions and macro dts using core_math.aggregate_macro
+            # L = 17 -> 16 transitions. 16 // 8 = 2 macro windows.
+            macro_actions_list = []
+            macro_dts_list = []
+            for b in range(B):
+                dx, dy, dpsi, hist, dt_sum = core_math.aggregate_macro(
+                    act_np[b, :-1], dt_np[b, :-1], s2=s2
+                )
+                m_a = np.concatenate([dx[:, None], dy[:, None], dpsi[:, None], hist], axis=-1).astype(np.float32)
+                m_dt = dt_sum[:, None].astype(np.float32)
+                macro_actions_list.append(m_a)
+                macro_dts_list.append(m_dt)
+
+            macro_a_all = mx.array(np.stack(macro_actions_list, axis=0))
+            macro_dt_all = mx.array(np.stack(macro_dts_list, axis=0))
+            obs_seq = mx.array(obs_np)
+            act_seq = mx.array(act_np)
+            dt_seq = mx.array(dt_np)
 
             def loss_fn(model: arms_mlx.HierarchicalHJEPAArm) -> mx.array:
                 losses = []
-                dirs1 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, model.dims["z1_dim"]))
-                dirs1 = dirs1 / mx.linalg.norm(dirs1, axis=-1, keepdims=True)
-                dirs2 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, model.dims["z2_dim"]))
-                dirs2 = dirs2 / mx.linalg.norm(dirs2, axis=-1, keepdims=True)
+                K = macro_a_all.shape[1]
                 for b in range(B):
+                    # Layer 1
                     z1_seq = model.encode(obs_seq[b])
                     targets_z1 = z1_seq[1:]
                     z0 = z1_seq[0]
@@ -418,15 +463,38 @@ class MLXArmCAdapter:
                     l_sigreg1 = arms_mlx.sigreg_mlx(z1_seq, dirs1)
                     idm1_logits = model.predict_idm1(z1_seq[:-1], z1_seq[1:])
                     l_idm1 = arms_mlx.idm_loss_mlx(idm1_logits, act_seq[b, :-1])
+                    loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
 
+                    # Layer 2
                     z2_seq = model.encode_l2(z1_seq)
                     l_sigreg2 = arms_mlx.sigreg_mlx(z2_seq, dirs2)
+                    z2_curr = z2_seq[0]
+                    l2_preds = []
+                    l2_idms = []
+                    for k in range(K):
+                        m_a_k = macro_a_all[b, k]
+                        m_dt_k = macro_dt_all[b, k]
+                        tgt_z2 = z2_seq[(k + 1) * s2]
+                        z2_next = model.predict_l2_step(z2_curr, m_a_k, m_dt_k)
+                        l2_preds.append(mx.mean((z2_next - tgt_z2) ** 2))
+                        z2_curr = z2_next
+                        idm2_pred = model.predict_idm2(z2_seq[k * s2], z2_seq[(k + 1) * s2])
+                        l2_idms.append(arms_mlx.idm2_loss_mlx(idm2_pred, m_a_k))
 
-                    loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
-                    loss2 = float(spec.SIGREG_LAMBDA) * l_sigreg2
+                    l_pred2 = mx.mean(mx.stack(l2_preds)) if l2_preds else mx.array(0.0)
+                    l_idm2 = mx.mean(mx.stack(l2_idms)) if l2_idms else mx.array(0.0)
+                    loss2 = l_pred2 + float(spec.SIGREG_LAMBDA) * l_sigreg2 + float(spec.IDM_MU) * l_idm2
                     losses.append(loss1 + loss2)
                 return mx.mean(mx.stack(losses))
         else:
+            dx, dy, dpsi, hist, dt_sum = core_math.aggregate_macro(
+                act_np[:-1], dt_np[:-1], s2=s2
+            )
+            m_a = mx.array(np.concatenate([dx[:, None], dy[:, None], dpsi[:, None], hist], axis=-1).astype(np.float32))
+            m_dt = mx.array(dt_sum[:, None].astype(np.float32))
+            obs_seq = mx.array(obs_np)
+            act_seq = mx.array(act_np)
+            dt_seq = mx.array(dt_np)
 
             def loss_fn(model: arms_mlx.HierarchicalHJEPAArm) -> mx.array:
                 z1_seq = model.encode(obs_seq)
@@ -435,19 +503,30 @@ class MLXArmCAdapter:
                 l_pred1 = arms_mlx.multistep_latent_rollout_loss_mlx(
                     model, z0, act_seq[:-1], dt_seq[:-1], targets_z1
                 )
-                dirs1 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z1_seq.shape[-1]))
-                dirs1 = dirs1 / mx.linalg.norm(dirs1, axis=-1, keepdims=True)
                 l_sigreg1 = arms_mlx.sigreg_mlx(z1_seq, dirs1)
                 idm1_logits = model.predict_idm1(z1_seq[:-1], z1_seq[1:])
                 l_idm1 = arms_mlx.idm_loss_mlx(idm1_logits, act_seq[:-1])
+                loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
 
                 z2_seq = model.encode_l2(z1_seq)
-                dirs2 = mx.random.normal((spec.SIGREG_NUM_DIRECTIONS, z2_seq.shape[-1]))
-                dirs2 = dirs2 / mx.linalg.norm(dirs2, axis=-1, keepdims=True)
                 l_sigreg2 = arms_mlx.sigreg_mlx(z2_seq, dirs2)
+                z2_curr = z2_seq[0]
+                l2_preds = []
+                l2_idms = []
+                K = m_a.shape[0]
+                for k in range(K):
+                    m_a_k = m_a[k]
+                    m_dt_k = m_dt[k]
+                    tgt_z2 = z2_seq[(k + 1) * s2]
+                    z2_next = model.predict_l2_step(z2_curr, m_a_k, m_dt_k)
+                    l2_preds.append(mx.mean((z2_next - tgt_z2) ** 2))
+                    z2_curr = z2_next
+                    idm2_pred = model.predict_idm2(z2_seq[k * s2], z2_seq[(k + 1) * s2])
+                    l2_idms.append(arms_mlx.idm2_loss_mlx(idm2_pred, m_a_k))
 
-                loss1 = l_pred1 + float(spec.SIGREG_LAMBDA) * l_sigreg1 + float(spec.IDM_MU) * l_idm1
-                loss2 = float(spec.SIGREG_LAMBDA) * l_sigreg2
+                l_pred2 = mx.mean(mx.stack(l2_preds)) if l2_preds else mx.array(0.0)
+                l_idm2 = mx.mean(mx.stack(l2_idms)) if l2_idms else mx.array(0.0)
+                loss2 = l_pred2 + float(spec.SIGREG_LAMBDA) * l_sigreg2 + float(spec.IDM_MU) * l_idm2
                 return loss1 + loss2
 
         loss_and_grad_fn = nn.value_and_grad(self.model, loss_fn)
@@ -459,9 +538,12 @@ class MLXArmCAdapter:
         return {"loss": float(loss.item())}
 
     def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
-        obs_seq = mx.array(batch["observations"], dtype=mx.float32)
-        act_seq = mx.array(batch["actions"], dtype=mx.float32)
-        dt_seq = mx.array(batch["dts"], dtype=mx.float32)
+        for k in spec.BATCH_REQUIRED_KEYS:
+            if k not in batch:
+                raise ValueError(f"MLXArmCAdapter.rollout_error missing required batch key {k!r}")
+        obs_seq = mx.array(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=mx.float32)
+        act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
+        dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
         if obs_seq.ndim == 3:
             B = obs_seq.shape[0]
             losses = []

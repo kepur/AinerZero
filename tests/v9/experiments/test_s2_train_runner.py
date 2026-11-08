@@ -24,10 +24,14 @@ import pytest
 from ainerzero.v9.experiments.s2 import commands, spec, worker
 from ainerzero.v9.experiments.s2.data_runner import assert_output_root_is_permitted
 from ainerzero.v9.experiments.s2.train_runner import (
+    ACTION_DIM,
     OBS_DIM,
     SEQUENCE_LENGTH,
     FakeLinearArm,
     flatten_student_obs,
+    load_train_sequences,
+    make_batch,
+    make_dummy_batch,
     make_worker_train_runner,
     resolve_train_partition,
     run_train_cell,
@@ -435,11 +439,143 @@ def test_no_mlx_imported_under_isolated_python(tmp_path: Path) -> None:
 
 def test_sample_batch_uses_explicit_rng_not_global() -> None:
     """Explicit RandomState sampling is deterministic under global RNG pollution."""
-    seqs = [np.zeros((SEQUENCE_LENGTH, OBS_DIM)), np.ones((SEQUENCE_LENGTH, OBS_DIM))]
+    seqs = [
+        {
+            spec.BATCH_OBSERVATIONS_KEY: np.zeros((SEQUENCE_LENGTH, OBS_DIM), dtype=np.float32),
+            spec.BATCH_ACTIONS_KEY: np.zeros((SEQUENCE_LENGTH, ACTION_DIM), dtype=np.float32),
+            spec.BATCH_DTS_KEY: np.ones((SEQUENCE_LENGTH,), dtype=np.float32),
+        },
+        {
+            spec.BATCH_OBSERVATIONS_KEY: np.ones((SEQUENCE_LENGTH, OBS_DIM), dtype=np.float32),
+            spec.BATCH_ACTIONS_KEY: np.ones((SEQUENCE_LENGTH, ACTION_DIM), dtype=np.float32),
+            spec.BATCH_DTS_KEY: np.full((SEQUENCE_LENGTH,), 2.0, dtype=np.float32),
+        },
+    ]
     rng = np.random.RandomState(0)
     np.random.seed(123)
     b1 = sample_batch(seqs, rng, batch_size=4)
     rng2 = np.random.RandomState(0)
     np.random.seed(999)
     b2 = sample_batch(seqs, rng2, batch_size=4)
-    assert np.array_equal(b1["obs"], b2["obs"])
+    assert np.array_equal(b1[spec.BATCH_OBSERVATIONS_KEY], b2[spec.BATCH_OBSERVATIONS_KEY])
+    assert np.array_equal(b1[spec.BATCH_ACTIONS_KEY], b2[spec.BATCH_ACTIONS_KEY])
+    assert np.array_equal(b1[spec.BATCH_DTS_KEY], b2[spec.BATCH_DTS_KEY])
+
+
+def test_batch_format_and_shapes_with_real_episodes(tmp_path: Path) -> None:
+    """Batch format and shapes verified with real generated episode files."""
+    from ainerzero.v9.experiments.s2 import data
+
+    out_dir = tmp_path / "data_test"
+    # Generate 1 world with 2 episodes
+    data.generate_partition(
+        partition="train",
+        n_worlds=1,
+        episodes_per_world=2,
+        output_root=out_dir,
+        seed_namespace="test_batch_format_ns",
+    )
+    train_root = out_dir / "train"
+    seqs, files = load_train_sequences(train_root)
+    assert len(seqs) > 0
+    assert len(files) == 2
+
+    rng = np.random.RandomState(42)
+    B = 8
+    batch = sample_batch(seqs, rng, batch_size=B)
+
+    # 1. Keys match spec
+    assert set(batch.keys()) == set(spec.BATCH_REQUIRED_KEYS)
+
+    # 2. Shapes match spec
+    obs = batch[spec.BATCH_OBSERVATIONS_KEY]
+    act = batch[spec.BATCH_ACTIONS_KEY]
+    dt = batch[spec.BATCH_DTS_KEY]
+
+    assert obs.shape == (B, SEQUENCE_LENGTH, OBS_DIM)
+    assert act.shape == (B, SEQUENCE_LENGTH, ACTION_DIM)
+    assert dt.shape == (B, SEQUENCE_LENGTH)
+
+    assert obs.dtype == np.float32
+    assert act.dtype == np.float32
+    assert dt.dtype == np.float32
+
+
+def test_action_one_hot_matches_episode_record(tmp_path: Path) -> None:
+    """Action one-hot vector strictly matches the recorded discrete action in episode steps."""
+    from ainerzero.v9.experiments.s2 import data
+    from ainerzero.v9.experiments.s2.train_runner import _load_episode_sequences
+
+    out_dir = tmp_path / "action_test"
+    data.generate_partition(
+        partition="train",
+        n_worlds=1,
+        episodes_per_world=1,
+        output_root=out_dir,
+        seed_namespace="test_action_ns",
+    )
+    ep_file = next((out_dir / "train").rglob("episode_*.json"))
+    raw_ep = json.loads(ep_file.read_text(encoding="utf-8"))
+    raw_steps = raw_ep["steps"]
+
+    windows = _load_episode_sequences(ep_file)
+    assert len(windows) > 0
+
+    # For each window, verify each step's action one-hot corresponds to raw_steps
+    for start, win in enumerate(windows):
+        act_mat = win[spec.BATCH_ACTIONS_KEY]
+        for t in range(SEQUENCE_LENGTH):
+            raw_act = raw_steps[start + t]["action"]
+            assert np.argmax(act_mat[t]) == raw_act
+            assert act_mat[t, raw_act] == 1.0
+            assert np.sum(act_mat[t]) == 1.0
+
+
+def test_dts_matches_recorded_k(tmp_path: Path) -> None:
+    """Dts vector strictly matches the recorded step duration k in episode steps."""
+    from ainerzero.v9.experiments.s2 import data
+    from ainerzero.v9.experiments.s2.train_runner import _load_episode_sequences
+
+    out_dir = tmp_path / "dt_test"
+    data.generate_partition(
+        partition="train",
+        n_worlds=1,
+        episodes_per_world=1,
+        output_root=out_dir,
+        seed_namespace="test_dt_ns",
+    )
+    ep_file = next((out_dir / "train").rglob("episode_*.json"))
+    raw_ep = json.loads(ep_file.read_text(encoding="utf-8"))
+    raw_steps = raw_ep["steps"]
+
+    windows = _load_episode_sequences(ep_file)
+    assert len(windows) > 0
+
+    for start, win in enumerate(windows):
+        dt_vec = win[spec.BATCH_DTS_KEY]
+        obs_mat = win[spec.BATCH_OBSERVATIONS_KEY]
+        for t in range(SEQUENCE_LENGTH):
+            raw_dt = float(raw_steps[start + t]["dt"])
+            assert dt_vec[t] == raw_dt
+            # dt slot in flattened student_obs is at index 204
+            assert obs_mat[t, 204] == raw_dt
+
+
+def test_bad_control_missing_actions_turns_red() -> None:
+    """Bad control: missing actions key turns red (raises ValueError)."""
+    arm = FakeLinearArm()
+    arm.init(seed=42)
+
+    dummy_batch = make_dummy_batch(batch_size=4, seq_len=SEQUENCE_LENGTH)
+    # Remove actions key
+    bad_batch = {
+        spec.BATCH_OBSERVATIONS_KEY: dummy_batch[spec.BATCH_OBSERVATIONS_KEY],
+        spec.BATCH_DTS_KEY: dummy_batch[spec.BATCH_DTS_KEY],
+    }
+
+    with pytest.raises(ValueError, match="actions"):
+        arm.train_step(bad_batch)
+
+    with pytest.raises(ValueError, match="actions"):
+        arm.rollout_error(bad_batch, H=4)
+

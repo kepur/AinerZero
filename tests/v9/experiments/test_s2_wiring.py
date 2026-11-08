@@ -474,7 +474,7 @@ def test_smoke_batch_shape_registered() -> None:
     batch = smoke.make_smoke_timing_batch()
     assert batch["observations"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1, spec.OBS_DIM)
     assert batch["actions"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1, spec.ACTION_DIM)
-    assert batch["dts"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1, 1)
+    assert batch["dts"].shape == (spec.BATCH_SIZE, spec.H_TRAIN + 1)
 
 
 def test_smoke_no_injected_measurements_fails_with_named_reasons(tmp_path: Path) -> None:

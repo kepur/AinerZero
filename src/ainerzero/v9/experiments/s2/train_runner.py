@@ -31,6 +31,7 @@ SEQUENCE_LENGTH = int(spec.SEQUENCE_LENGTH)  # 17
 OBS_DIM = int(spec.OBS_DIM)  # 205
 NUM_TERRAIN_CLASSES = int(spec.NUM_TERRAIN_CLASSES)  # 4
 FOV_SIZE = int(spec.FOV_SIZE)  # 7
+ACTION_DIM = int(spec.ACTION_DIM)  # 4
 
 FORBIDDEN_PATH_PARTS = frozenset({"dev", "sealed_final"})
 
@@ -119,21 +120,53 @@ def flatten_student_obs(obs: Mapping[str, Any]) -> np.ndarray:
     return vec
 
 
-def _load_episode_sequences(episode_path: Path) -> list[np.ndarray]:
-    """Load contiguous length-SEQUENCE_LENGTH observation windows from one episode."""
+def _load_episode_sequences(episode_path: Path) -> list[dict[str, np.ndarray]]:
+    """Load contiguous length-SEQUENCE_LENGTH observation/action/dt windows from one episode."""
     _reject_forbidden_parts(episode_path)
     payload = json.loads(episode_path.read_text(encoding="utf-8"))
     steps = payload.get("steps") or []
     if len(steps) < SEQUENCE_LENGTH:
         return []
-    obs = np.stack([flatten_student_obs(s["student_obs"]) for s in steps], axis=0)
-    windows: list[np.ndarray] = []
-    for start in range(0, len(obs) - SEQUENCE_LENGTH + 1):
-        windows.append(obs[start : start + SEQUENCE_LENGTH])
+
+    obs_list: list[np.ndarray] = []
+    act_list: list[np.ndarray] = []
+    dt_list: list[float] = []
+
+    for s in steps:
+        dt_val = float(s.get("dt", s.get("k", 1.0)))
+        # Keep dt slot in student_obs aligned with step dt / k (口径一致 with learned_planning.featurize_obs)
+        student_obs = dict(s["student_obs"])
+        student_obs["dt"] = dt_val
+        obs_vec = flatten_student_obs(student_obs).astype(np.float32)
+        obs_list.append(obs_vec)
+
+        act_idx = int(s["action"])
+        if not (0 <= act_idx < ACTION_DIM):
+            raise ValueError(f"action index {act_idx} out of range [0, {ACTION_DIM - 1}]")
+        act_vec = np.zeros(ACTION_DIM, dtype=np.float32)
+        act_vec[act_idx] = 1.0
+        act_list.append(act_vec)
+
+        dt_list.append(dt_val)
+
+    obs_all = np.stack(obs_list, axis=0)
+    act_all = np.stack(act_list, axis=0)
+    dt_all = np.asarray(dt_list, dtype=np.float32)
+
+    windows: list[dict[str, np.ndarray]] = []
+    for start in range(0, len(steps) - SEQUENCE_LENGTH + 1):
+        end = start + SEQUENCE_LENGTH
+        windows.append(
+            {
+                spec.BATCH_OBSERVATIONS_KEY: obs_all[start:end],
+                spec.BATCH_ACTIONS_KEY: act_all[start:end],
+                spec.BATCH_DTS_KEY: dt_all[start:end],
+            }
+        )
     return windows
 
 
-def load_train_sequences(train_root: Path) -> tuple[list[np.ndarray], list[str]]:
+def load_train_sequences(train_root: Path) -> tuple[list[dict[str, np.ndarray]], list[str]]:
     """Load all train sequences; return (sequences, relative file paths for manifest)."""
     train_root = train_root.resolve()
     _reject_forbidden_parts(train_root)
@@ -141,7 +174,7 @@ def load_train_sequences(train_root: Path) -> tuple[list[np.ndarray], list[str]]
     if not episode_files:
         raise FileNotFoundError(f"no episode_*.json under train partition {train_root}")
 
-    sequences: list[np.ndarray] = []
+    sequences: list[dict[str, np.ndarray]] = []
     rel_files: list[str] = []
     for ep in episode_files:
         _reject_forbidden_parts(ep)
@@ -214,7 +247,7 @@ def get_holdout_world_indices(
 def load_train_and_holdout_sequences(
     train_root: Path,
     holdout_fraction: float | None = None,
-) -> tuple[list[np.ndarray], list[np.ndarray], list[str]]:
+) -> tuple[list[dict[str, np.ndarray]], list[dict[str, np.ndarray]], list[str]]:
     """Load train-partition sequences separated by world into train vs holdout.
 
     Per DESIGN-r2 Appendix D2:
@@ -229,8 +262,8 @@ def load_train_and_holdout_sequences(
     if not episode_files:
         raise FileNotFoundError(f"no episode_*.json under train partition {train_root}")
 
-    train_seqs: list[np.ndarray] = []
-    hold_seqs: list[np.ndarray] = []
+    train_seqs: list[dict[str, np.ndarray]] = []
+    hold_seqs: list[dict[str, np.ndarray]] = []
     rel_files: list[str] = []
 
     for ep in episode_files:
@@ -265,10 +298,10 @@ def load_train_and_holdout_sequences(
 
 
 def split_holdout(
-    sequences: Sequence[np.ndarray],
+    sequences: Sequence[dict[str, np.ndarray]],
     seed: int,
     holdout_fraction: float = spec.TRAIN_HOLDOUT_WORLD_FRACTION,
-) -> tuple[list[np.ndarray], list[np.ndarray]]:
+) -> tuple[list[dict[str, np.ndarray]], list[dict[str, np.ndarray]]]:
     """Deterministic train/holdout split from the training partition only."""
     n = len(sequences)
     if n < 2:
@@ -286,8 +319,60 @@ def split_holdout(
     return train_seqs, hold_seqs
 
 
+def make_batch(
+    observations: np.ndarray,
+    actions: np.ndarray,
+    dts: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """Assemble and validate a training batch matching the S2 unified spec.
+
+    Shapes:
+    - observations: (B, L, OBS_DIM) float32
+    - actions: (B, L, ACTION_DIM) float32 (one-hot)
+    - dts: (B, L) float32
+    """
+    obs = np.asarray(observations, dtype=np.float32)
+    act = np.asarray(actions, dtype=np.float32)
+    dt = np.asarray(dts, dtype=np.float32)
+
+    if obs.ndim != 3 or obs.shape[-1] != OBS_DIM:
+        raise ValueError(f"observations must have shape (B, L, {OBS_DIM}), got {obs.shape}")
+    if act.ndim != 3 or act.shape[-1] != ACTION_DIM:
+        raise ValueError(f"actions must have shape (B, L, {ACTION_DIM}), got {act.shape}")
+    if dt.ndim != 2:
+        raise ValueError(f"dts must have shape (B, L), got {dt.shape}")
+    if obs.shape[0] != act.shape[0] or obs.shape[0] != dt.shape[0]:
+        raise ValueError(f"batch size mismatch: obs={obs.shape[0]}, act={act.shape[0]}, dt={dt.shape[0]}")
+    if obs.shape[1] != act.shape[1] or obs.shape[1] != dt.shape[1]:
+        raise ValueError(f"sequence length mismatch: obs={obs.shape[1]}, act={act.shape[1]}, dt={dt.shape[1]}")
+
+    return {
+        spec.BATCH_OBSERVATIONS_KEY: obs,
+        spec.BATCH_ACTIONS_KEY: act,
+        spec.BATCH_DTS_KEY: dt,
+    }
+
+
+def make_dummy_batch(
+    batch_size: int = BATCH_SIZE,
+    seq_len: int = SEQUENCE_LENGTH,
+    seed: int = 42,
+) -> dict[str, np.ndarray]:
+    """Generate a valid dummy batch matching the registered spec for timing/sanity."""
+    rng = np.random.RandomState(seed)
+    obs = rng.randn(batch_size, seq_len, OBS_DIM).astype(np.float32)
+    act_idx = rng.randint(0, ACTION_DIM, size=(batch_size, seq_len))
+    act = np.zeros((batch_size, seq_len, ACTION_DIM), dtype=np.float32)
+    for b in range(batch_size):
+        for t in range(seq_len):
+            act[b, t, act_idx[b, t]] = 1.0
+    k_vals = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+    dt = rng.choice(k_vals, size=(batch_size, seq_len)).astype(np.float32)
+    return make_batch(obs, act, dt)
+
+
 def sample_batch(
-    sequences: Sequence[np.ndarray],
+    sequences: Sequence[dict[str, np.ndarray]],
     rng: np.random.RandomState,
     batch_size: int = BATCH_SIZE,
 ) -> dict[str, np.ndarray]:
@@ -295,13 +380,16 @@ def sample_batch(
     if not sequences:
         raise ValueError("cannot sample from empty sequence list")
     idx = rng.randint(0, len(sequences), size=batch_size)
-    batch = np.stack([sequences[int(i)] for i in idx], axis=0)
-    return {"obs": batch.astype(np.float64, copy=False)}
+    sampled = [sequences[int(i)] for i in idx]
+    batch_obs = np.stack([s[spec.BATCH_OBSERVATIONS_KEY] for s in sampled], axis=0)
+    batch_act = np.stack([s[spec.BATCH_ACTIONS_KEY] for s in sampled], axis=0)
+    batch_dt = np.stack([s[spec.BATCH_DTS_KEY] for s in sampled], axis=0)
+    return make_batch(batch_obs, batch_act, batch_dt)
 
 
 def _mean_holdout_error(
     arm: ArmProtocol,
-    holdout: Sequence[np.ndarray],
+    holdout: Sequence[dict[str, np.ndarray]],
     rng: np.random.RandomState,
     H: int,
     batches: int = 4,
@@ -581,7 +669,10 @@ class FakeLinearArm:
 
     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
         assert self.W is not None and self.b is not None
-        obs = np.asarray(batch["obs"], dtype=np.float64)
+        for k in spec.BATCH_REQUIRED_KEYS:
+            if k not in batch:
+                raise ValueError(f"FakeLinearArm.train_step missing required batch key {k!r}")
+        obs = np.asarray(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=np.float64)
         feat = self._feat(obs)
         x = feat[:, :-1, :].reshape(-1, self.dim)
         y = feat[:, 1:, :].reshape(-1, self.dim)
@@ -599,7 +690,10 @@ class FakeLinearArm:
 
     def rollout_error(self, batch: Mapping[str, Any], H: int) -> float:
         assert self.W is not None and self.b is not None
-        obs = np.asarray(batch["obs"], dtype=np.float64)
+        for k in spec.BATCH_REQUIRED_KEYS:
+            if k not in batch:
+                raise ValueError(f"FakeLinearArm.rollout_error missing required batch key {k!r}")
+        obs = np.asarray(batch[spec.BATCH_OBSERVATIONS_KEY], dtype=np.float64)
         feat = self._feat(obs)
         _B, T, _D = feat.shape
         h = min(int(H), T - 1)

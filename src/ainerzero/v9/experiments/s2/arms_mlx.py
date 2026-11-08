@@ -441,24 +441,11 @@ def compute_sigreg_mlx(
     rng: Any = 42,
 ) -> mx.array:
     """Compute SIGReg on MLX array using matched random unit projections."""
-    D = Z.shape[-1]
-    if rng is None:
-        random_gen = np.random.default_rng()
-    elif isinstance(rng, (int, np.integer)):
-        random_gen = np.random.default_rng(int(rng))
-    elif isinstance(rng, np.random.Generator) or isinstance(rng, np.random.RandomState):
-        random_gen = rng
-    else:
-        random_gen = np.random.default_rng(42)
+    from ainerzero.v9.experiments.s2 import core_math
 
-    if isinstance(random_gen, np.random.Generator):
-        raw_dirs = random_gen.standard_normal((n_directions, D), dtype=np.float32)
-    else:
-        raw_dirs = random_gen.randn(n_directions, D).astype(np.float32)
-    norms = np.linalg.norm(raw_dirs, axis=1, keepdims=True)
-    norms = np.where(norms == 0.0, 1.0, norms)
-    dirs = mx.array(raw_dirs / norms)
-    return sigreg_mlx(Z, dirs)
+    D = Z.shape[-1]
+    dirs = core_math.generate_sigreg_directions(n_directions, D, rng=rng)
+    return sigreg_mlx(Z, mx.array(dirs))
 
 
 def continuous_gaussian_nll_mlx(
@@ -520,7 +507,7 @@ def multistep_latent_rollout_loss_mlx(
 
     for t in range(H):
         a_t = actions_onehot[t]
-        dt_t = dts[t]
+        dt_t = dts[t : t + 1] if dts.ndim == 1 else dts[t]
         target_t = targets_z[t]
         z_next = arm_b_or_c_layer1.predict_l1_step(z_curr, a_t, dt_t)
         err = mx.mean((z_next - target_t) ** 2)
@@ -537,6 +524,8 @@ def arm_a_loss_mlx(
     dts: mx.array,
 ) -> mx.array:
     """Compute Arm A total loss: observation reconstruction + KL (free bits 1.0) + latent overshooting."""
+    if dts.ndim != 1:
+        raise ValueError(f"arm_a_loss_mlx requires 1-D dts array of shape (L,), got {dts.shape}")
     T = obs_seq.shape[0]
     e1_feats = arm_a.encode(obs_seq)
     h_curr = mx.zeros((arm_a.dims["gru_hidden"],), dtype=mx.float32)
