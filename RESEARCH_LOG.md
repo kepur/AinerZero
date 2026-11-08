@@ -2531,7 +2531,27 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
 - **相对 r2.2 的改动：** 臂、主门、回合数、预算口径都没有变。规划协议改为 r2.6，原因是原协议连 oracle 都无法到达长目标；新增 dev 前的三道门（附录 B、D4）；训练后门的阈值收进 spec 和预登记。用户 11-07 已授权一级全权推进。
 - **final：** 本行不批准 final-eval，final 需要另起一条批准行，并须先问用户。
 
-APPROVED s2-phase1 prereg document_sha256=726eb56b6ca3a1822e4cc05533d671977b2772778ef7a6e0004ee989e9b30382
+（r1 批准行已作废：`726eb56b…`，见下方 r2 段。）
+
+- **r1 作废（11-08 11:57）：**
+  - r1 的 smoke 在原生自检阶段失败（R20261107-S2-smoke-r1-failed）。之后 W8、W9、W10 修了代码，用户又把预算批到 15 h（R20261108-S2-budget-15h），代码身份和预算都变了，r1 因此作废。
+  - `prereg.json`（及 `.sha256`）改名为 `prereg.r1.json`。
+  - r1 smoke 的产物（`datasets/smoke`、`smoke_report.json`）移到 `artifacts/v9/s2/phase1/r1-smoke/`，原样副本在 `reports/V9-S2-SMOKE-r1/`。
+  - 账本 `control.sqlite3` 继续沿用。里面那条失败的 smoke 不算已完成，r2 可以重跑 smoke。
+  - 实验行建于 11-07 23:08:52 UTC，72 h 日历窗口从那一刻算起，到 **11-10 23:08 UTC（11-11 07:08 北京时间）** 截止，final 须在此前跑完。
+  - 11-08 当天的每日上限仍为 r1 写入的 36,000 s；从 11-09 起按 15 h 的上限计。
+  - 一级 11:55 曾不带只读参数用 sqlite3 查看过账本表结构，因此生成了空的 `-shm`/`-wal`；主库 mtime 仍为 11-07 23:08:53，没有写入。
+- **r2 冻结（一级 claude，2026-11-08 11:58）：**
+  - 文件：`artifacts/v9/s2/phase1/prereg.json`；文件 sha 与 document_sha256 均为 `bdd9e5e95156b2a38b4ae55619ec44294a8c0e5274d53d8b966e0772ea0a2c21`。
+  - identity：26 个源文件核对通过，含 adapters_mlx、arms_mlx、spec；源码为提交 `9670431`。
+  - 设计：DESIGN-r2.md，加入附录 F（15 h）和附录 G（W10），sha `e66d3956…`。
+  - 预算：总计 54,000 s，dev 36,000 s，final 9000 s，plan-select 2400 s；smoke、数据、训练的上限不变。
+  - 冻结后的全部验收：W8（P180/P181）、W9（P182/P183）、W10（P184/P185）。
+  - 实测：临时目录 smoke 预演三次，reasons 都为空，预算推算 33,485–35,553 s；S2 的 37 条 native 用例全部通过；默认全量 3725 passed。
+- **相对 r1 的改动：** 臂、主门、回合数、N_fwd 档位、规划协议都没有变；预算按用户 11-08 的批准改为 15 h。
+- **final：** 本行不批准 final-eval，final 需要另起一条批准行，并须先问用户。
+
+APPROVED s2-phase1 prereg document_sha256=bdd9e5e95156b2a38b4ae55619ec44294a8c0e5274d53d8b966e0772ea0a2c21
 
 ## R20261107-S2-r0-withdrawn：S2 预登记 r0 在任何运行前撤回（一级 claude，2026-11-07）
 
