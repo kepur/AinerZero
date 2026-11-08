@@ -340,3 +340,7 @@ BUDGET_FINAL_EVAL_SECONDS = 9_000  # 2.5 h
 # --- W10（11-08）：规划期推理设备。GPU 上每个 predict 调用只算 15–63 行就要同步一次，以延迟为主；
 # 改走 MLX CPU 流后三臂规划回合耗时约减半（实测见 reports/V9-S2-W10）。训练仍走默认 GPU。---
 PLAN_INFERENCE_DEVICE: str = "cpu"
+
+# --- 用户 11-08 批准（RESEARCH_LOG R20261108-S2-redraw-30）：世界重抽上限 5→30；拒绝门槛 MAX_REJECTION_RATE 0.30 不变。
+# 登记种子下 train/dev/final 最多需要 20/17/10 次（R20261108-S2-data-r2-failed 全量模拟）。---
+MAX_REDRAW_RETRIES = 30

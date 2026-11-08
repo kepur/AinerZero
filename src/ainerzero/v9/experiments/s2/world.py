@@ -13,6 +13,8 @@ import json
 import random
 from typing import Any, Sequence
 
+from ainerzero.v9.experiments.s2 import spec
+
 SIZE = 25
 VIEW_SIZE = 7
 VIEW_RADIUS = 3
@@ -49,8 +51,10 @@ PATH_ACTIONS = (ACTION_FORWARD, ACTION_TURN_LEFT, ACTION_TURN_RIGHT)
 
 LONG_GOAL_MIN_DIST = 40
 SHORT_GOAL_MAX_DIST = 10
-WORLD_REJECTION_RATE_THRESHOLD = 0.30
-WORLD_REDRAW_MAX = 5
+# W11 (11-08): single source of truth -- the frozen prereg records spec.MAX_REJECTION_RATE and
+# spec.MAX_REDRAW_RETRIES; the generator resolves them from spec at call time (aliases kept for readers).
+WORLD_REJECTION_RATE_THRESHOLD = spec.MAX_REJECTION_RATE
+WORLD_REDRAW_MAX = spec.MAX_REDRAW_RETRIES
 LONG_PAIRS_PER_WORLD = 6
 
 # Mutation sentinel (P115-M6): must stay False in production — no silent distance fallback.
@@ -439,13 +443,17 @@ def is_goal_ambiguous(
 def world_rejection_requires_redraw(
     rejection_rate: float,
     *,
-    threshold: float = WORLD_REJECTION_RATE_THRESHOLD,
+    threshold: float | None = None,
     enforce: bool = True,
 ) -> bool:
-    """r2: redraw the whole world when per-world ambiguity rejection rate exceeds threshold."""
+    """r2: redraw the whole world when per-world ambiguity rejection rate exceeds threshold.
+
+    ``threshold`` defaults to ``spec.MAX_REJECTION_RATE`` read at call time (W11).
+    """
     if not enforce:
         return False
-    return rejection_rate > threshold
+    limit = float(spec.MAX_REJECTION_RATE) if threshold is None else float(threshold)
+    return rejection_rate > limit
 
 
 def is_success(
@@ -628,15 +636,23 @@ def prepare_world_with_long_pairs(
     rng: random.Random,
     *,
     n_long_pairs: int = LONG_PAIRS_PER_WORLD,
-    max_world_redraws: int = WORLD_REDRAW_MAX,
-    rejection_threshold: float = WORLD_REJECTION_RATE_THRESHOLD,
+    max_world_redraws: int | None = None,
+    rejection_threshold: float | None = None,
     enforce_rejection_redraw: bool = True,
 ) -> tuple[Layout, list[dict[str, Any]], dict[str, Any]]:
     """Build a layout that admits ``n_long_pairs`` unambiguous long pairs.
 
     Shares the redraw budget between (a) failure to collect enough pairs and
-    (b) per-world ambiguity rejection_rate > threshold (r2).
+    (b) per-world ambiguity rejection_rate > threshold (r2). Both limits default to the
+    frozen spec values (``spec.MAX_REDRAW_RETRIES``, ``spec.MAX_REJECTION_RATE``), read at
+    call time (W11).
     """
+    if max_world_redraws is None:
+        max_world_redraws = int(spec.MAX_REDRAW_RETRIES)
+    if rejection_threshold is None:
+        rejection_threshold = float(spec.MAX_REJECTION_RATE)
+    if int(max_world_redraws) < 1:
+        raise ValueError(f"max_world_redraws must be >= 1, got {max_world_redraws!r}")
     world_redraws = 0
     last_error = "no attempt"
 
