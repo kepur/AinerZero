@@ -115,5 +115,5 @@ def test_native_bad_control_dts_3d_fails_arm_a() -> None:
         "dts": batch["dts"][:, :, None],
     }
 
-    with pytest.raises(ValueError, match="1-D dts array of shape"):
+    with pytest.raises(ValueError, match=r"1-D dts array of shape|dts \(B,T\)"):
         arm_a.train_step(bad_batch)

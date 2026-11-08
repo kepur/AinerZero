@@ -1,0 +1,334 @@
+diff --git a/src/ainerzero/v9/experiments/s2/adapters_mlx.py b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+index 922d882..3770bb7 100644
+--- a/src/ainerzero/v9/experiments/s2/adapters_mlx.py
++++ b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+@@ -32,6 +32,12 @@ from ainerzero.v9.experiments.s2 import core_math, param_count, spec
+ from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
+ 
+ 
++def _as_action(a: Any) -> np.ndarray:
++    """Single-sample action -> numpy array: int / numpy scalar -> shape (1,); index or one-hot kept (W9)."""
++    arr = np.asarray(a, dtype=np.float32)
++    return arr.reshape(1) if arr.ndim == 0 else arr
++
++
+ def _to_np(arr: Any) -> np.ndarray:
+     """Convert an array-like (including mlx.core.array) to a float64 numpy array."""
+     return np.asarray(arr, dtype=np.float64)
+@@ -143,14 +149,10 @@ class MLXArmAAdapter:
+         dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
+ 
+         if obs_seq.ndim == 3:
+-            B = obs_seq.shape[0]
+ 
+             def loss_fn(model: arms_mlx.FlatRSSMArm) -> mx.array:
+-                losses = [
+-                    arms_mlx.arm_a_loss_mlx(model, obs_seq[b], act_seq[b], dt_seq[b])
+-                    for b in range(B)
+-                ]
+-                return mx.mean(mx.stack(losses))
++                # W9: batch-parallel loss (same per-sequence semantics as the per-b reference)
++                return arms_mlx.arm_a_loss_mlx_batched(model, obs_seq, act_seq, dt_seq)
+         else:
+ 
+             def loss_fn(model: arms_mlx.FlatRSSMArm) -> mx.array:
+@@ -172,12 +174,7 @@ class MLXArmAAdapter:
+         act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
+         dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
+         if obs_seq.ndim == 3:
+-            B = obs_seq.shape[0]
+-            losses = [
+-                arms_mlx.arm_a_loss_mlx(self.model, obs_seq[b], act_seq[b], dt_seq[b])
+-                for b in range(B)
+-            ]
+-            return float(mx.mean(mx.stack(losses)).item())
++            return float(arms_mlx.arm_a_loss_mlx_batched(self.model, obs_seq, act_seq, dt_seq).item())
+         else:
+             loss = arms_mlx.arm_a_loss_mlx(self.model, obs_seq, act_seq, dt_seq)
+             return float(loss.item())
+@@ -211,7 +208,7 @@ class MLXArmAAdapter:
+         if z_arr.ndim == 1:
+             if self.counter is not None:
+                 self.counter.charge("predict_l1", 1)
+-            return _to_np(self.model.predict_l1(z, a, dt))
++            return _to_np(self.model.predict_l1(z, _as_action(a), dt))
+         B = z_arr.shape[0]
+         if self.counter is not None:
+             self.counter.charge("predict_l1", B)
+@@ -237,9 +234,14 @@ class MLXArmAAdapter:
+         return float(self.model.planning_cost(z_T, goal_obs))
+ 
+     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
++        """Arm A planning latents z (posterior mean at the zero GRU state), same space as ``encode`` (W9)."""
+         arr = mx.array(obs_seq, dtype=mx.float32)
+-        z = self.model.encode(arr)
+-        return _to_np(z)
++        e1 = self.model.encode(arr)
++        lead = tuple(e1.shape[:-1])
++        flat = e1.reshape(-1, e1.shape[-1])
++        h0 = mx.zeros((flat.shape[0], self.model.dims["gru_hidden"]), dtype=mx.float32)
++        mean, _ = self.model.posterior(h0, flat)
++        return _to_np(mean.reshape(*lead, mean.shape[-1]))
+ 
+ 
+ class MLXArmBAdapter:
+@@ -365,7 +367,7 @@ class MLXArmBAdapter:
+         if z_arr.ndim == 1:
+             if self.counter is not None:
+                 self.counter.charge("predict_l1", 1)
+-            return _to_np(self.model.predict_l1(z, a, dt))
++            return _to_np(self.model.predict_l1(z, _as_action(a), dt))
+         B = z_arr.shape[0]
+         if self.counter is not None:
+             self.counter.charge("predict_l1", B)
+@@ -587,7 +589,7 @@ class MLXArmCAdapter:
+         if z_arr.ndim == 1:
+             if self.counter is not None:
+                 self.counter.charge("predict_l1", 1)
+-            return _to_np(self.model.predict_l1(z, a, dt))
++            return _to_np(self.model.predict_l1(z, _as_action(a), dt))
+         B = z_arr.shape[0]
+         if self.counter is not None:
+             self.counter.charge("predict_l1", B)
+diff --git a/src/ainerzero/v9/experiments/s2/arms_mlx.py b/src/ainerzero/v9/experiments/s2/arms_mlx.py
+index 17ed228..4e9a481 100644
+--- a/src/ainerzero/v9/experiments/s2/arms_mlx.py
++++ b/src/ainerzero/v9/experiments/s2/arms_mlx.py
+@@ -606,6 +606,77 @@ def arm_a_loss_mlx(
+     return mean_recon + kl_penalized + mean_overshoot
+ 
+ 
++
++def _soft_ce_per_seq_mlx(logits: mx.array, target_hist: mx.array) -> mx.array:
++    """Per-sequence soft cross-entropy for (B, TERRAIN_ONE_HOT_DIM) inputs -> (B,)."""
++    B = logits.shape[0]
++    lg = logits.reshape(B, -1, spec.NUM_TERRAIN_CLASSES)
++    tg = mx.stop_gradient(target_hist.reshape(B, -1, spec.NUM_TERRAIN_CLASSES))
++    log_p = nn.log_softmax(lg, axis=-1)
++    return mx.mean(-mx.sum(tg * log_p, axis=-1), axis=1)
++
++
++def _recon_per_seq_mlx(obs_rec: mx.array, target: mx.array) -> mx.array:
++    k = spec.TERRAIN_ONE_HOT_DIM
++    l_terrain = _soft_ce_per_seq_mlx(obs_rec[:, :k], target[:, :k])
++    l_coord = mx.mean((obs_rec[:, k:] - target[:, k:]) ** 2, axis=-1)
++    return l_terrain + l_coord
++
++
++def arm_a_loss_mlx_batched(
++    arm_a: FlatRSSMArm,
++    obs_seq: mx.array,
++    actions_onehot: mx.array,
++    dts: mx.array,
++) -> mx.array:
++    """Arm A loss over a batch in parallel; identical per-sequence semantics to ``arm_a_loss_mlx``.
++
++    Shapes: obs (B, T, OBS_DIM), actions (B, T, ACTION_DIM), dts (B, T). Every per-step term is
++    kept per sequence (B,), free bits are applied per sequence, and the result is the batch mean,
++    which equals ``mean_b arm_a_loss_mlx(obs[b], actions[b], dts[b])`` (W9, 2026-11-08).
++    """
++    if obs_seq.ndim != 3 or actions_onehot.ndim != 3 or dts.ndim != 2:
++        raise ValueError(
++            f"batched Arm A loss needs obs (B,T,D), actions (B,T,A), dts (B,T); got "
++            f"{obs_seq.shape}, {actions_onehot.shape}, {dts.shape}"
++        )
++    B, T = obs_seq.shape[0], obs_seq.shape[1]
++    e1_feats = arm_a.encode(obs_seq)
++    h_curr = mx.zeros((B, arm_a.dims["gru_hidden"]), dtype=mx.float32)
++    dts_col = dts[..., None]
++    recon_steps, kl_steps, over_steps = [], [], []
++    h_train_bound = int(spec.H_TRAIN)
++    for t in range(T - 1):
++        z_post_mean, z_post_logstd = arm_a.posterior(h_curr, e1_feats[:, t])
++        eps = mx.random.normal(z_post_mean.shape)
++        z_sample = z_post_mean + mx.exp(z_post_logstd) * eps
++        gru_in = mx.concatenate([z_sample, actions_onehot[:, t], dts_col[:, t]], axis=-1)
++        h_next = arm_a.gru(gru_in, h_curr)
++        z_prior_mean, z_prior_logstd = arm_a.prior(h_next)
++        z_next_post_mean, z_next_post_logstd = arm_a.posterior(h_next, e1_feats[:, t + 1])
++        var_q = mx.exp(2.0 * z_next_post_logstd)
++        var_p = mx.exp(2.0 * z_prior_logstd)
++        kl_dim = (
++            (z_prior_logstd - z_next_post_logstd)
++            + (var_q + (z_next_post_mean - z_prior_mean) ** 2) / (2.0 * var_p)
++            - 0.5
++        )
++        kl_steps.append(mx.sum(kl_dim, axis=-1))
++        recon_steps.append(_recon_per_seq_mlx(arm_a.decode(h_next, z_next_post_mean), obs_seq[:, t + 1]))
++        h_roll, z_roll = h_curr, z_sample
++        for tau in range(1, min(h_train_bound, T - 1 - t) + 1):
++            act_idx = t + tau - 1
++            gru_in_roll = mx.concatenate([z_roll, actions_onehot[:, act_idx], dts_col[:, act_idx]], axis=-1)
++            h_roll = arm_a.gru(gru_in_roll, h_roll)
++            z_prior_roll, _ = arm_a.prior(h_roll)
++            over_steps.append(_recon_per_seq_mlx(arm_a.decode(h_roll, z_prior_roll), obs_seq[:, t + tau]))
++            z_roll = z_prior_roll
++        h_curr = h_next
++    mean_recon = mx.mean(mx.stack(recon_steps, axis=0), axis=0)
++    kl_pen = mx.maximum(mx.mean(mx.stack(kl_steps, axis=0), axis=0), float(spec.ARM_A_FREE_BITS))
++    mean_over = mx.mean(mx.stack(over_steps, axis=0), axis=0) if over_steps else mx.zeros((B,))
++    return mx.mean(mean_recon + kl_pen + mean_over)
++
+ def make_arm_a_cost_fn(
+     arm: FlatRSSMArm,
+     counter: Any = None,
+diff --git a/src/ainerzero/v9/experiments/s2/smoke.py b/src/ainerzero/v9/experiments/s2/smoke.py
+index 9b4dc9e..424f501 100644
+--- a/src/ainerzero/v9/experiments/s2/smoke.py
++++ b/src/ainerzero/v9/experiments/s2/smoke.py
+@@ -362,11 +362,17 @@ def check_smoke_budget(
+     est_post_train_gates = float(100.0 * t_plan_by_arm["arm_c"])
+ 
+     # 5. Dev evaluation: 300 * 3 arms * 3 seeds * (1 + 2.5) + (regular_dt + short_goals) * 3 arms * 3 seeds
+-    curve_multiplier = 1.0 + (2048 / 4096.0 + 8192 / 4096.0)  # 3.5
++    # Curve tiers from spec, relative to the primary N_fwd (the primary tier is counted once) — W9.
++    n_primary = float(spec.N_FWD)
++    curve_multiplier = 1.0 + sum(float(lv) / n_primary for lv in spec.N_FWD_DEV_LEVELS if int(lv) != int(spec.N_FWD))
++    n_seeds = float(len(spec.TRAINING_SEEDS))
+     regular_dt_eps = int(spec.REGULAR_DT_SUBSET_EPISODES)
+-    short_goal_eps = 100
++    short_goal_eps = 100  # no registered spec constant for the dev short-goal subset size (W9 report notes it)
+     per_arm_dev = {
+-        arm_id: float((300.0 * 3.0 * curve_multiplier + (regular_dt_eps + short_goal_eps) * 3.0) * t_plan_by_arm[arm_id])
++        arm_id: float(
++            (float(spec.DEV_LONG_GOAL_EPISODES) * n_seeds * curve_multiplier + (regular_dt_eps + short_goal_eps) * n_seeds)
++            * t_plan_by_arm[arm_id]
++        )
+         for arm_id in ("arm_a", "arm_b", "arm_c")
+     }
+     est_dev = float(sum(per_arm_dev.values()))
+@@ -379,7 +385,7 @@ def check_smoke_budget(
+ 
+     # 6. Final evaluation: 300 * 3 arms * 3 seeds
+     per_arm_final = {
+-        arm_id: float(300.0 * 3.0 * t_plan_by_arm[arm_id])
++        arm_id: float(float(spec.FINAL_LONG_GOAL_EPISODES) * float(len(spec.TRAINING_SEEDS)) * t_plan_by_arm[arm_id])
+         for arm_id in ("arm_a", "arm_b", "arm_c")
+     }
+     est_final = float(sum(per_arm_final.values()))
+@@ -441,7 +447,7 @@ def check_smoke_budget(
+             "exceeded": False,
+         },
+         "dev": {
+-            "formula": "sum_{arm} (300 * 3 seeds * (1 + 2.5) + (regular_dt + short_goal) * 3 seeds) * episode_plan_time[arm]",
++            "formula": "sum_{arm} (DEV_LONG_GOAL_EPISODES * n_seeds * (1 + sum_{tier != N_FWD} tier/N_FWD) + (regular_dt + short_goal) * n_seeds) * episode_plan_time[arm]",
+             "estimated_seconds": est_dev,
+             "ceiling_seconds": ceil_dev,
+             "per_arm_seconds": per_arm_dev,
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 22e78de..dd88e07 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -236,6 +236,7 @@ NATIVE_MODULES = {
+     # S2 (tests/v9/experiments): S2 arms MLX implementation.
+     "test_s2_arms_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 arms)",
+     "test_s2_adapters_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 MLX arm adapters)",
++    "test_s2_arm_a_batched_native.py": "real MLX Arm A batched loss parity and speed (S2 W9)",
+     "test_s2_learned_planning_native.py": "runs real MLX arms through learned planning (S2 W2)",
+     "test_s2_production_e2e_native.py": "minimal MLX pipeline end-to-end (S2 W3)",
+     "test_s2_train_native.py": "MLX arm training and smoke self-check native test (S2 W8)",
+diff --git a/tests/v9/experiments/test_s2_train_native.py b/tests/v9/experiments/test_s2_train_native.py
+index 53d7a03..f294782 100644
+--- a/tests/v9/experiments/test_s2_train_native.py
++++ b/tests/v9/experiments/test_s2_train_native.py
+@@ -115,5 +115,5 @@ def test_native_bad_control_dts_3d_fails_arm_a() -> None:
+         "dts": batch["dts"][:, :, None],
+     }
+ 
+-    with pytest.raises(ValueError, match="1-D dts array of shape"):
++    with pytest.raises(ValueError, match=r"1-D dts array of shape|dts \(B,T\)"):
+         arm_a.train_step(bad_batch)
+diff --git a/tests/v9/experiments/test_s2_arm_a_batched_native.py b/tests/v9/experiments/test_s2_arm_a_batched_native.py
+new file mode 100644
+index 0000000..cd1b7eb
+--- /dev/null
++++ b/tests/v9/experiments/test_s2_arm_a_batched_native.py
+@@ -0,0 +1,88 @@
++"""W9 native checks: batched Arm A loss parity/speed and integer actions on all arms (--native-mlx)."""
++
++from __future__ import annotations
++
++import time
++
++import mlx.core as mx  # noqa: F401  (native module: module-level MLX import)
++import mlx.nn as nn
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s2 import adapters_mlx, arms_mlx, spec
++
++pytestmark = pytest.mark.native_mlx
++
++
++def _batch(B: int, seed: int = 0) -> dict:
++    rng = np.random.default_rng(seed)
++    L = int(spec.H_TRAIN) + 1
++    return {
++        spec.BATCH_OBSERVATIONS_KEY: rng.normal(size=(B, L, spec.OBS_DIM)).astype(np.float32),
++        spec.BATCH_ACTIONS_KEY: np.eye(spec.ACTION_DIM, dtype=np.float32)[rng.integers(0, spec.ACTION_DIM, size=(B, L))],
++        spec.BATCH_DTS_KEY: rng.integers(1, 4, size=(B, L)).astype(np.float32),
++    }
++
++
++def test_batched_arm_a_loss_and_grad_match_per_sequence_reference(monkeypatch):
++    # Deterministic reparameterisation for both paths (shapes differ, so RNG draws cannot match).
++    monkeypatch.setattr(mx.random, "normal", lambda shape, *a, **k: mx.zeros(shape))
++    ad = adapters_mlx.make_mlx_arm("arm_a")
++    ad.init(42)
++    b = _batch(3)
++    obs = mx.array(b[spec.BATCH_OBSERVATIONS_KEY])
++    act = mx.array(b[spec.BATCH_ACTIONS_KEY])
++    dts = mx.array(b[spec.BATCH_DTS_KEY])
++
++    def ref(m):
++        return mx.mean(mx.stack([arms_mlx.arm_a_loss_mlx(m, obs[i], act[i], dts[i]) for i in range(3)]))
++
++    def bat(m):
++        return arms_mlx.arm_a_loss_mlx_batched(m, obs, act, dts)
++
++    l_ref, g_ref = nn.value_and_grad(ad.model, ref)(ad.model)
++    l_bat, g_bat = nn.value_and_grad(ad.model, bat)(ad.model)
++    assert abs(float(l_ref.item()) - float(l_bat.item())) <= 1e-4
++    from mlx.utils import tree_flatten
++
++    fr = dict(tree_flatten(g_ref))
++    fb = dict(tree_flatten(g_bat))
++    nr = float(np.sqrt(sum(float(mx.sum(v * v).item()) for v in fr.values())))
++    nb = float(np.sqrt(sum(float(mx.sum(v * v).item()) for v in fb.values())))
++    assert abs(nr - nb) <= 1e-3 * max(1.0, nr)
++
++
++def test_arm_a_train_step_speed_close_to_other_arms():
++    batch = _batch(int(spec.BATCH_SIZE))
++    times = {}
++    for arm_id in ("arm_a", "arm_b", "arm_c"):
++        ad = adapters_mlx.make_mlx_arm(arm_id)
++        ad.init(42)
++        ad.train_step(batch)  # warm-up
++        t0 = time.time()
++        for _ in range(3):
++            ad.train_step(batch)
++        times[arm_id] = (time.time() - t0) / 3
++    print("[W9 TRAIN STEP SECONDS]", {k: round(v, 3) for k, v in times.items()})
++    assert times["arm_a"] <= 3.0 * max(times["arm_b"], times["arm_c"])
++
++
++@pytest.mark.parametrize("arm_id", ["arm_a", "arm_b", "arm_c"])
++def test_predict_l1_accepts_integer_actions(arm_id):
++    ad = adapters_mlx.make_mlx_arm(arm_id)
++    ad.init(42)
++    z = ad.encode(np.zeros(spec.OBS_DIM, dtype=np.float32))
++    outs = [ad.predict_l1(z, a) for a in (2, np.int64(2), np.array([2]), np.eye(spec.ACTION_DIM)[2])]
++    for o in outs[1:]:
++        np.testing.assert_allclose(o, outs[0], atol=1e-6)
++
++
++def test_arm_a_latents_match_encode_planning_space():
++    ad = adapters_mlx.make_mlx_arm("arm_a")
++    ad.init(42)
++    obs = np.random.default_rng(1).normal(size=(5, spec.OBS_DIM)).astype(np.float32)
++    lat = ad.latents(obs)
++    assert lat.shape == (5, int(spec.ARM_DIMS["arm_a"]["latent_dim"]))
++    np.testing.assert_allclose(lat[2], ad.encode(obs[2]), atol=1e-5)
++    # usable as a planning state
++    assert ad.predict_l1(lat[0], 1).shape == lat[0].shape

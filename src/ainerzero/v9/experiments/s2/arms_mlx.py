@@ -606,6 +606,77 @@ def arm_a_loss_mlx(
     return mean_recon + kl_penalized + mean_overshoot
 
 
+
+def _soft_ce_per_seq_mlx(logits: mx.array, target_hist: mx.array) -> mx.array:
+    """Per-sequence soft cross-entropy for (B, TERRAIN_ONE_HOT_DIM) inputs -> (B,)."""
+    B = logits.shape[0]
+    lg = logits.reshape(B, -1, spec.NUM_TERRAIN_CLASSES)
+    tg = mx.stop_gradient(target_hist.reshape(B, -1, spec.NUM_TERRAIN_CLASSES))
+    log_p = nn.log_softmax(lg, axis=-1)
+    return mx.mean(-mx.sum(tg * log_p, axis=-1), axis=1)
+
+
+def _recon_per_seq_mlx(obs_rec: mx.array, target: mx.array) -> mx.array:
+    k = spec.TERRAIN_ONE_HOT_DIM
+    l_terrain = _soft_ce_per_seq_mlx(obs_rec[:, :k], target[:, :k])
+    l_coord = mx.mean((obs_rec[:, k:] - target[:, k:]) ** 2, axis=-1)
+    return l_terrain + l_coord
+
+
+def arm_a_loss_mlx_batched(
+    arm_a: FlatRSSMArm,
+    obs_seq: mx.array,
+    actions_onehot: mx.array,
+    dts: mx.array,
+) -> mx.array:
+    """Arm A loss over a batch in parallel; identical per-sequence semantics to ``arm_a_loss_mlx``.
+
+    Shapes: obs (B, T, OBS_DIM), actions (B, T, ACTION_DIM), dts (B, T). Every per-step term is
+    kept per sequence (B,), free bits are applied per sequence, and the result is the batch mean,
+    which equals ``mean_b arm_a_loss_mlx(obs[b], actions[b], dts[b])`` (W9, 2026-11-08).
+    """
+    if obs_seq.ndim != 3 or actions_onehot.ndim != 3 or dts.ndim != 2:
+        raise ValueError(
+            f"batched Arm A loss needs obs (B,T,D), actions (B,T,A), dts (B,T); got "
+            f"{obs_seq.shape}, {actions_onehot.shape}, {dts.shape}"
+        )
+    B, T = obs_seq.shape[0], obs_seq.shape[1]
+    e1_feats = arm_a.encode(obs_seq)
+    h_curr = mx.zeros((B, arm_a.dims["gru_hidden"]), dtype=mx.float32)
+    dts_col = dts[..., None]
+    recon_steps, kl_steps, over_steps = [], [], []
+    h_train_bound = int(spec.H_TRAIN)
+    for t in range(T - 1):
+        z_post_mean, z_post_logstd = arm_a.posterior(h_curr, e1_feats[:, t])
+        eps = mx.random.normal(z_post_mean.shape)
+        z_sample = z_post_mean + mx.exp(z_post_logstd) * eps
+        gru_in = mx.concatenate([z_sample, actions_onehot[:, t], dts_col[:, t]], axis=-1)
+        h_next = arm_a.gru(gru_in, h_curr)
+        z_prior_mean, z_prior_logstd = arm_a.prior(h_next)
+        z_next_post_mean, z_next_post_logstd = arm_a.posterior(h_next, e1_feats[:, t + 1])
+        var_q = mx.exp(2.0 * z_next_post_logstd)
+        var_p = mx.exp(2.0 * z_prior_logstd)
+        kl_dim = (
+            (z_prior_logstd - z_next_post_logstd)
+            + (var_q + (z_next_post_mean - z_prior_mean) ** 2) / (2.0 * var_p)
+            - 0.5
+        )
+        kl_steps.append(mx.sum(kl_dim, axis=-1))
+        recon_steps.append(_recon_per_seq_mlx(arm_a.decode(h_next, z_next_post_mean), obs_seq[:, t + 1]))
+        h_roll, z_roll = h_curr, z_sample
+        for tau in range(1, min(h_train_bound, T - 1 - t) + 1):
+            act_idx = t + tau - 1
+            gru_in_roll = mx.concatenate([z_roll, actions_onehot[:, act_idx], dts_col[:, act_idx]], axis=-1)
+            h_roll = arm_a.gru(gru_in_roll, h_roll)
+            z_prior_roll, _ = arm_a.prior(h_roll)
+            over_steps.append(_recon_per_seq_mlx(arm_a.decode(h_roll, z_prior_roll), obs_seq[:, t + tau]))
+            z_roll = z_prior_roll
+        h_curr = h_next
+    mean_recon = mx.mean(mx.stack(recon_steps, axis=0), axis=0)
+    kl_pen = mx.maximum(mx.mean(mx.stack(kl_steps, axis=0), axis=0), float(spec.ARM_A_FREE_BITS))
+    mean_over = mx.mean(mx.stack(over_steps, axis=0), axis=0) if over_steps else mx.zeros((B,))
+    return mx.mean(mean_recon + kl_pen + mean_over)
+
 def make_arm_a_cost_fn(
     arm: FlatRSSMArm,
     counter: Any = None,

@@ -236,6 +236,7 @@ NATIVE_MODULES = {
     # S2 (tests/v9/experiments): S2 arms MLX implementation.
     "test_s2_arms_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 arms)",
     "test_s2_adapters_mlx_native.py": "module-level import mlx.core/mlx.nn (S2 MLX arm adapters)",
+    "test_s2_arm_a_batched_native.py": "real MLX Arm A batched loss parity and speed (S2 W9)",
     "test_s2_learned_planning_native.py": "runs real MLX arms through learned planning (S2 W2)",
     "test_s2_production_e2e_native.py": "minimal MLX pipeline end-to-end (S2 W3)",
     "test_s2_train_native.py": "MLX arm training and smoke self-check native test (S2 W8)",

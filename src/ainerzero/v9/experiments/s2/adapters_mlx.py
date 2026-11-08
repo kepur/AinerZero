@@ -32,6 +32,12 @@ from ainerzero.v9.experiments.s2 import core_math, param_count, spec
 from ainerzero.v9.experiments.s2.fwd_counter import ForwardCounter
 
 
+def _as_action(a: Any) -> np.ndarray:
+    """Single-sample action -> numpy array: int / numpy scalar -> shape (1,); index or one-hot kept (W9)."""
+    arr = np.asarray(a, dtype=np.float32)
+    return arr.reshape(1) if arr.ndim == 0 else arr
+
+
 def _to_np(arr: Any) -> np.ndarray:
     """Convert an array-like (including mlx.core.array) to a float64 numpy array."""
     return np.asarray(arr, dtype=np.float64)
@@ -143,14 +149,10 @@ class MLXArmAAdapter:
         dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
 
         if obs_seq.ndim == 3:
-            B = obs_seq.shape[0]
 
             def loss_fn(model: arms_mlx.FlatRSSMArm) -> mx.array:
-                losses = [
-                    arms_mlx.arm_a_loss_mlx(model, obs_seq[b], act_seq[b], dt_seq[b])
-                    for b in range(B)
-                ]
-                return mx.mean(mx.stack(losses))
+                # W9: batch-parallel loss (same per-sequence semantics as the per-b reference)
+                return arms_mlx.arm_a_loss_mlx_batched(model, obs_seq, act_seq, dt_seq)
         else:
 
             def loss_fn(model: arms_mlx.FlatRSSMArm) -> mx.array:
@@ -172,12 +174,7 @@ class MLXArmAAdapter:
         act_seq = mx.array(batch[spec.BATCH_ACTIONS_KEY], dtype=mx.float32)
         dt_seq = mx.array(batch[spec.BATCH_DTS_KEY], dtype=mx.float32)
         if obs_seq.ndim == 3:
-            B = obs_seq.shape[0]
-            losses = [
-                arms_mlx.arm_a_loss_mlx(self.model, obs_seq[b], act_seq[b], dt_seq[b])
-                for b in range(B)
-            ]
-            return float(mx.mean(mx.stack(losses)).item())
+            return float(arms_mlx.arm_a_loss_mlx_batched(self.model, obs_seq, act_seq, dt_seq).item())
         else:
             loss = arms_mlx.arm_a_loss_mlx(self.model, obs_seq, act_seq, dt_seq)
             return float(loss.item())
@@ -211,7 +208,7 @@ class MLXArmAAdapter:
         if z_arr.ndim == 1:
             if self.counter is not None:
                 self.counter.charge("predict_l1", 1)
-            return _to_np(self.model.predict_l1(z, a, dt))
+            return _to_np(self.model.predict_l1(z, _as_action(a), dt))
         B = z_arr.shape[0]
         if self.counter is not None:
             self.counter.charge("predict_l1", B)
@@ -237,9 +234,14 @@ class MLXArmAAdapter:
         return float(self.model.planning_cost(z_T, goal_obs))
 
     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
+        """Arm A planning latents z (posterior mean at the zero GRU state), same space as ``encode`` (W9)."""
         arr = mx.array(obs_seq, dtype=mx.float32)
-        z = self.model.encode(arr)
-        return _to_np(z)
+        e1 = self.model.encode(arr)
+        lead = tuple(e1.shape[:-1])
+        flat = e1.reshape(-1, e1.shape[-1])
+        h0 = mx.zeros((flat.shape[0], self.model.dims["gru_hidden"]), dtype=mx.float32)
+        mean, _ = self.model.posterior(h0, flat)
+        return _to_np(mean.reshape(*lead, mean.shape[-1]))
 
 
 class MLXArmBAdapter:
@@ -365,7 +367,7 @@ class MLXArmBAdapter:
         if z_arr.ndim == 1:
             if self.counter is not None:
                 self.counter.charge("predict_l1", 1)
-            return _to_np(self.model.predict_l1(z, a, dt))
+            return _to_np(self.model.predict_l1(z, _as_action(a), dt))
         B = z_arr.shape[0]
         if self.counter is not None:
             self.counter.charge("predict_l1", B)
@@ -587,7 +589,7 @@ class MLXArmCAdapter:
         if z_arr.ndim == 1:
             if self.counter is not None:
                 self.counter.charge("predict_l1", 1)
-            return _to_np(self.model.predict_l1(z, a, dt))
+            return _to_np(self.model.predict_l1(z, _as_action(a), dt))
         B = z_arr.shape[0]
         if self.counter is not None:
             self.counter.charge("predict_l1", B)

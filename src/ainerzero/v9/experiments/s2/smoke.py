@@ -362,11 +362,17 @@ def check_smoke_budget(
     est_post_train_gates = float(100.0 * t_plan_by_arm["arm_c"])
 
     # 5. Dev evaluation: 300 * 3 arms * 3 seeds * (1 + 2.5) + (regular_dt + short_goals) * 3 arms * 3 seeds
-    curve_multiplier = 1.0 + (2048 / 4096.0 + 8192 / 4096.0)  # 3.5
+    # Curve tiers from spec, relative to the primary N_fwd (the primary tier is counted once) — W9.
+    n_primary = float(spec.N_FWD)
+    curve_multiplier = 1.0 + sum(float(lv) / n_primary for lv in spec.N_FWD_DEV_LEVELS if int(lv) != int(spec.N_FWD))
+    n_seeds = float(len(spec.TRAINING_SEEDS))
     regular_dt_eps = int(spec.REGULAR_DT_SUBSET_EPISODES)
-    short_goal_eps = 100
+    short_goal_eps = 100  # no registered spec constant for the dev short-goal subset size (W9 report notes it)
     per_arm_dev = {
-        arm_id: float((300.0 * 3.0 * curve_multiplier + (regular_dt_eps + short_goal_eps) * 3.0) * t_plan_by_arm[arm_id])
+        arm_id: float(
+            (float(spec.DEV_LONG_GOAL_EPISODES) * n_seeds * curve_multiplier + (regular_dt_eps + short_goal_eps) * n_seeds)
+            * t_plan_by_arm[arm_id]
+        )
         for arm_id in ("arm_a", "arm_b", "arm_c")
     }
     est_dev = float(sum(per_arm_dev.values()))
@@ -379,7 +385,7 @@ def check_smoke_budget(
 
     # 6. Final evaluation: 300 * 3 arms * 3 seeds
     per_arm_final = {
-        arm_id: float(300.0 * 3.0 * t_plan_by_arm[arm_id])
+        arm_id: float(float(spec.FINAL_LONG_GOAL_EPISODES) * float(len(spec.TRAINING_SEEDS)) * t_plan_by_arm[arm_id])
         for arm_id in ("arm_a", "arm_b", "arm_c")
     }
     est_final = float(sum(per_arm_final.values()))
@@ -441,7 +447,7 @@ def check_smoke_budget(
             "exceeded": False,
         },
         "dev": {
-            "formula": "sum_{arm} (300 * 3 seeds * (1 + 2.5) + (regular_dt + short_goal) * 3 seeds) * episode_plan_time[arm]",
+            "formula": "sum_{arm} (DEV_LONG_GOAL_EPISODES * n_seeds * (1 + sum_{tier != N_FWD} tier/N_FWD) + (regular_dt + short_goal) * n_seeds) * episode_plan_time[arm]",
             "estimated_seconds": est_dev,
             "ceiling_seconds": ceil_dev,
             "per_arm_seconds": per_arm_dev,
