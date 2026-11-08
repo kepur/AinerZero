@@ -2566,3 +2566,19 @@ APPROVED s2-phase1 prereg document_sha256=726eb56b6ca3a1822e4cc05533d671977b2772
 - **教训：**
   - 默认套件不能导入 MLX，所以「真实 MLX 能训练一步」只能靠 native 用例证明；
   - 冻结前必须实际跑一遍 native 全流程用例（`test_s2_production_e2e_native.py`、`test_s2_learned_planning_native.py`、W8 新增的训练 native 用例）。
+
+## R20261108-S2-smoke-rehearsal：冻结 r2 前在临时目录用 MLX 预演 smoke，发现臂 A 训练太慢（一级 claude，2026-11-08 00:5x）
+
+- **预演：** W8（P180）交回后，一级在临时目录（scratchpad，不写生产、不进账本）里用真实 MLX 跑 `measure_real_smoke`。
+  - 墙钟 1180 s，属于诊断用机时，记入 S2 的 10 h 总额作透明记录；
+  - 原样输出见 `reports/V9-S2-SMOKE-rehearsal-20261108/`。
+- **发现：**
+  1. **臂 A 训练太慢：** 单步训练实测 5.76 s，而 B 为 0.26 s、C 为 0.35 s；臂 A 的 rollout_error 为 1.66 s。
+     - 原因：`arm_a_loss_mlx` 在批次里逐条序列、逐个时间步用 Python 循环。
+     - 训练步数按三臂中的最小值确定，因此 A 会把每格训练压到 166 步，三个臂一起被拖住，A/B/C 的比较失去意义。
+     - 按这个速度，smoke 中 A 的短训 S=200 需要约 1150 s，smoke 必然超出 1200 s。
+  2. **动作参数类型不兼容：** `smoke_checks.action_sensitivity` 以 Python 整数传动作给 `predict_l1`，`arms_mlx.predict_l1` 只接受数组，报 `'int' object has no attribute 'ndim'`。
+- **处理：** 开修复卡 W9（排在 W8 复核 P181 之后），要求：
+  - 臂 A 的损失与滚动误差在批次维度上并行计算，数值与逐条版本一致，误差 ≤ 1e-4；
+  - `predict_l1` 等接口接受整数动作；
+  - 修完后再做一次预演：smoke 全程须 ≤ 1200 s，且 reasons 为空。之后才冻结 r2。
