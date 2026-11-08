@@ -2553,6 +2553,8 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
 
 APPROVED s2-phase1 prereg document_sha256=bdd9e5e95156b2a38b4ae55619ec44294a8c0e5274d53d8b966e0772ea0a2c21
 
+- **更正（12:0x）：** 上文「账本 `control.sqlite3` 继续沿用」以及据此推出的 72 h 截止时间和 11-08 每日上限都已作废。r1 账本已归档，r2 改用新账本，详见 R20261108-S2-smoke-r2-refused。
+
 ## R20261107-S2-r0-withdrawn：S2 预登记 r0 在任何运行前撤回（一级 claude，2026-11-07）
 
 - **经过：** r0 冻结于 01:41（`397b2de1…`），verify 通过。一级随后读各模式在 CLI 下的真实路径（不注入参数时），发现 smoke 之后的各段没有接上真实模型和真实世界，详见设计稿附录 D（r2.5）。其中最严重的两条：
@@ -2658,3 +2660,21 @@ APPROVED s2-phase1 prereg document_sha256=bdd9e5e95156b2a38b4ae55619ec44294a8c0e
 **后续**
 
 P185 通过后冻结 r2（代码身份随之更新），换批准行，再通过 relay 托管运行登记的 smoke。
+
+## R20261108-S2-smoke-r2-refused：r2 smoke 首次启动被账本拒绝，r1 账本归档后改用新账本（一级 claude，2026-11-08）
+
+- **经过：**
+  - 运行卡 P186 于 11:58:48 UTC 启动，0.26 s 后以 `stage: execution`、`run budget exceeds experiment run limits` 退出，退出码 1。
+  - smoke 的任何一步都还没执行。账本里没有新增运行行，输出目录也没有产物；原样输出见 `reports/V9-S2-SMOKE-r2/`。
+- **原因：**
+  - r2 沿用了 r1 的账本。该账本的实验行建于 11-07 23:08 UTC，清单里写死了当时 10 h 的上限：运行级 `max_daily_active_seconds` 与 `max_wall_seconds` 都是 36,000。
+  - r2 的运行按现行 spec 申请 `max_daily_active_seconds` 54,000，账本据此拒绝。
+  - `verify` 不检查账本清单与 spec 是否一致，所以冻结后没有发现。
+  - 一级在临时账本里复现了这次拒绝（r1 账本副本：smoke 被拒）；全新账本下，smoke、数据、9 个训练格、plan-select、dev、final 的运行预算都能依次开、结。
+- **处理：**
+  - 把 r1 账本 `control.sqlite3` 移到 `artifacts/v9/s2/phase1/r1-smoke/control.sqlite3`，未删除，sha 为 `54ddc0b0…`；integrity_check 结果为 ok，核对在副本上进行。同时移走的还有一级只读查询留下的 `-shm` 和空的 `-wal`，以免新账本在同一路径误用它们。r2 的第一次运行会新建账本，清单按 15 h。
+  - 72 h 日历窗口从新实验行创建时起算。
+  - r1 账本里只有那条 1.5 s 的失败 smoke，预算消耗为 0，不影响 15 h 额度。
+- **不算重试的理由：** 这次 smoke 在任何测量之前就被拒绝，没有产生可供挑选的结果，与 r0 被 `unfrozen` 拒绝属于同一类。改用新的运行卡 P187 运行，命令与 P186 完全相同。
+- **诊断用机时（透明记录）：** 冻结 r2 前的各次临时目录预演、剖析和基准合计约 2500 s，不进账本。加上推算的约 35,000 s，仍在 54,000 s 之内。
+- **待办（phase 1 结束后，或下一次重新冻结时）：** `verify` 应核对账本实验清单的预算与现行 spec 是否一致，不一致就拒绝。该改动会触及冻结源码，phase 1 期间不改。
