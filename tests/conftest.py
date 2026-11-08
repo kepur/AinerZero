@@ -240,6 +240,7 @@ NATIVE_MODULES = {
     "test_s2_learned_planning_native.py": "runs real MLX arms through learned planning (S2 W2)",
     "test_s2_production_e2e_native.py": "minimal MLX pipeline end-to-end (S2 W3)",
     "test_s2_train_native.py": "MLX arm training and smoke self-check native test (S2 W8)",
+    "test_s2_plan_device_native.py": "planning inference device (CPU stream) vs training device, real MLX (S2 W10)",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).

@@ -336,3 +336,7 @@ TOTAL_ACTUAL_WALLCLOCK_SECONDS = 54_000
 BUDGET_HYPERPARAM_SELECTION_SECONDS = 2_400  # plan-select + 训练后门
 BUDGET_DEV_EVAL_SECONDS = 36_000  # 10 h，一次 dev
 BUDGET_FINAL_EVAL_SECONDS = 9_000  # 2.5 h
+
+# --- W10（11-08）：规划期推理设备。GPU 上每个 predict 调用只算 15–63 行就要同步一次，以延迟为主；
+# 改走 MLX CPU 流后三臂规划回合耗时约减半（实测见 reports/V9-S2-W10）。训练仍走默认 GPU。---
+PLAN_INFERENCE_DEVICE: str = "cpu"

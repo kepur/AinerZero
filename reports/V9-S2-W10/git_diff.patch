@@ -1,0 +1,433 @@
+diff --git a/src/ainerzero/v9/experiments/s2/adapters_mlx.py b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+index 3770bb7..7c232c1 100644
+--- a/src/ainerzero/v9/experiments/s2/adapters_mlx.py
++++ b/src/ainerzero/v9/experiments/s2/adapters_mlx.py
+@@ -21,6 +21,7 @@ Implements backend adapters wrapping MLX models from arms_mlx.py to satisfy:
+ 
+ from __future__ import annotations
+ 
++import functools
+ import hashlib
+ import json
+ from pathlib import Path
+@@ -43,6 +44,31 @@ def _to_np(arr: Any) -> np.ndarray:
+     return np.asarray(arr, dtype=np.float64)
+ 
+ 
++def _planning_device(fn: Callable[..., Any]) -> Callable[..., Any]:
++    """Run a planning-time inference method on the MLX device named by spec.PLAN_INFERENCE_DEVICE (W10).
++
++    Planning calls predict_l1 once per horizon step with 15-63 rows and converts the result
++    to numpy each time; on the GPU every such call is a latency-bound synchronisation, so the
++    registered device is the CPU stream. Training methods are not wrapped and keep the default
++    (GPU) device. Results are converted to numpy inside the context, so evaluation happens there.
++    """
++
++    @functools.wraps(fn)
++    def wrapper(*args: Any, **kwargs: Any) -> Any:
++        device = spec.PLAN_INFERENCE_DEVICE
++        if device == "cpu":
++            target = mx.cpu
++        elif device == "gpu":
++            target = mx.gpu
++        else:
++            raise ValueError(f"spec.PLAN_INFERENCE_DEVICE must be 'cpu' or 'gpu', got {device!r}")
++        with mx.stream(target):
++            return fn(*args, **kwargs)
++
++    wrapper.__planning_device__ = True  # type: ignore[attr-defined]
++    return wrapper
++
++
+ class _MLXProxy:
+     def __getattr__(self, name: str) -> Any:
+         import mlx.core as _real_mx
+@@ -133,13 +159,19 @@ class MLXArmAAdapter:
+         self._seed: int | None = None
+ 
+     def init(self, seed: int) -> None:
+-        self._seed = seed
+-        mx.random.seed(seed)
++        """Seed MLX, then rebuild the model so weight initialisation is a function of ``seed`` (W10).
++
++        The constructor's weights come from MLX's per-process (time-seeded) global key, so
++        without the rebuild the registered seed would not determine the initial weights.
++        """
++        self._seed = int(seed)
++        mx.random.seed(int(seed))
++        self.model = arms_mlx.FlatRSSMArm()
+         self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
+ 
+     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
+         if self.optimizer is None:
+-            self.init(seed=42)
++            raise RuntimeError("train_step called before init(seed): the registered seed must be set explicitly (W10)")
+         for k in spec.BATCH_REQUIRED_KEYS:
+             if k not in batch:
+                 raise ValueError(f"MLXArmAAdapter.train_step missing required batch key {k!r}")
+@@ -190,6 +222,7 @@ class MLXArmAAdapter:
+ 
+     # --- Planning protocol ---
+ 
++    @_planning_device
+     def encode(self, obs: np.ndarray) -> np.ndarray:
+         """Planning latent of Arm A: posterior mean z (latent_dim) at the zero GRU state.
+ 
+@@ -203,6 +236,7 @@ class MLXArmAAdapter:
+         mean, _ = self.model.posterior(h0, e1)
+         return _to_np(mean)
+ 
++    @_planning_device
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+         z_arr = np.asarray(z, dtype=np.float64)
+         if z_arr.ndim == 1:
+@@ -228,11 +262,13 @@ class MLXArmAAdapter:
+         mean, _ = self.model.prior(h_next)
+         return _to_np(mean)
+ 
++    @_planning_device
+     def cost_fn(self, z_T: np.ndarray, goal_obs: np.ndarray) -> float:
+         if self.counter is not None:
+             self.counter.charge("decode", 1)
+         return float(self.model.planning_cost(z_T, goal_obs))
+ 
++    @_planning_device
+     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
+         """Arm A planning latents z (posterior mean at the zero GRU state), same space as ``encode`` (W9)."""
+         arr = mx.array(obs_seq, dtype=mx.float32)
+@@ -255,13 +291,19 @@ class MLXArmBAdapter:
+         self._seed: int | None = None
+ 
+     def init(self, seed: int) -> None:
+-        self._seed = seed
+-        mx.random.seed(seed)
++        """Seed MLX, then rebuild the model so weight initialisation is a function of ``seed`` (W10).
++
++        The constructor's weights come from MLX's per-process (time-seeded) global key, so
++        without the rebuild the registered seed would not determine the initial weights.
++        """
++        self._seed = int(seed)
++        mx.random.seed(int(seed))
++        self.model = arms_mlx.FlatJEPAArm()
+         self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
+ 
+     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
+         if self.optimizer is None:
+-            self.init(seed=42)
++            raise RuntimeError("train_step called before init(seed): the registered seed must be set explicitly (W10)")
+         for k in spec.BATCH_REQUIRED_KEYS:
+             if k not in batch:
+                 raise ValueError(f"MLXArmBAdapter.train_step missing required batch key {k!r}")
+@@ -356,12 +398,14 @@ class MLXArmBAdapter:
+ 
+     # --- Planning protocol ---
+ 
++    @_planning_device
+     def encode(self, obs: np.ndarray) -> np.ndarray:
+         if self.counter is not None:
+             self.counter.charge("encode", 1)
+         z = self.model.encode(obs)
+         return _to_np(z)
+ 
++    @_planning_device
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+         z_arr = np.asarray(z, dtype=np.float64)
+         if z_arr.ndim == 1:
+@@ -386,6 +430,7 @@ class MLXArmBAdapter:
+ 
+     cost_fn = None  # Uses default squared_distance in planner
+ 
++    @_planning_device
+     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
+         arr = mx.array(obs_seq, dtype=mx.float32)
+         z = self.model.encode(arr)
+@@ -403,13 +448,19 @@ class MLXArmCAdapter:
+         self._seed: int | None = None
+ 
+     def init(self, seed: int) -> None:
+-        self._seed = seed
+-        mx.random.seed(seed)
++        """Seed MLX, then rebuild the model so weight initialisation is a function of ``seed`` (W10).
++
++        The constructor's weights come from MLX's per-process (time-seeded) global key, so
++        without the rebuild the registered seed would not determine the initial weights.
++        """
++        self._seed = int(seed)
++        mx.random.seed(int(seed))
++        self.model = arms_mlx.HierarchicalHJEPAArm()
+         self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
+ 
+     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
+         if self.optimizer is None:
+-            self.init(seed=42)
++            raise RuntimeError("train_step called before init(seed): the registered seed must be set explicitly (W10)")
+         for k in spec.BATCH_REQUIRED_KEYS:
+             if k not in batch:
+                 raise ValueError(f"MLXArmCAdapter.train_step missing required batch key {k!r}")
+@@ -578,12 +629,14 @@ class MLXArmCAdapter:
+ 
+     # --- Planning protocol ---
+ 
++    @_planning_device
+     def encode(self, obs: np.ndarray) -> np.ndarray:
+         if self.counter is not None:
+             self.counter.charge("encode", 1)
+         z1 = self.model.encode(obs)
+         return _to_np(z1)
+ 
++    @_planning_device
+     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
+         z_arr = np.asarray(z, dtype=np.float64)
+         if z_arr.ndim == 1:
+@@ -606,6 +659,7 @@ class MLXArmCAdapter:
+         z_next = self.model.predict_l1_step(z_mlx, a_mlx, dt_mlx)
+         return _to_np(z_next)
+ 
++    @_planning_device
+     def encode_l2(self, z1: np.ndarray) -> np.ndarray:
+         z1_arr = np.asarray(z1, dtype=np.float64)
+         if z1_arr.ndim == 1:
+@@ -619,6 +673,7 @@ class MLXArmCAdapter:
+         z2 = self.model.encode_l2(z1_mlx)
+         return _to_np(z2)
+ 
++    @_planning_device
+     def predict_l2(self, z2: np.ndarray, macro_a: np.ndarray, macro_dt: float = 1.0) -> np.ndarray:
+         z2_arr = np.asarray(z2, dtype=np.float64)
+         if z2_arr.ndim == 1:
+@@ -636,6 +691,7 @@ class MLXArmCAdapter:
+ 
+     cost_fn = None  # Uses default squared_distance in planner
+ 
++    @_planning_device
+     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
+         arr = mx.array(obs_seq, dtype=mx.float32)
+         z1 = self.model.encode(arr)
+diff --git a/src/ainerzero/v9/experiments/s2/spec.py b/src/ainerzero/v9/experiments/s2/spec.py
+index e1e08e6..d64845d 100644
+--- a/src/ainerzero/v9/experiments/s2/spec.py
++++ b/src/ainerzero/v9/experiments/s2/spec.py
+@@ -336,3 +336,7 @@ TOTAL_ACTUAL_WALLCLOCK_SECONDS = 54_000
+ BUDGET_HYPERPARAM_SELECTION_SECONDS = 2_400  # plan-select + 训练后门
+ BUDGET_DEV_EVAL_SECONDS = 36_000  # 10 h，一次 dev
+ BUDGET_FINAL_EVAL_SECONDS = 9_000  # 2.5 h
++
++# --- W10（11-08）：规划期推理设备。GPU 上每个 predict 调用只算 15–63 行就要同步一次，以延迟为主；
++# 改走 MLX CPU 流后三臂规划回合耗时约减半（实测见 reports/V9-S2-W10）。训练仍走默认 GPU。---
++PLAN_INFERENCE_DEVICE: str = "cpu"
+diff --git a/tests/conftest.py b/tests/conftest.py
+index dd88e07..0b58a54 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -240,6 +240,7 @@ NATIVE_MODULES = {
+     "test_s2_learned_planning_native.py": "runs real MLX arms through learned planning (S2 W2)",
+     "test_s2_production_e2e_native.py": "minimal MLX pipeline end-to-end (S2 W3)",
+     "test_s2_train_native.py": "MLX arm training and smoke self-check native test (S2 W8)",
++    "test_s2_plan_device_native.py": "planning inference device (CPU stream) vs training device, real MLX (S2 W10)",
+ }
+ 
+ # Individual tests in otherwise pure-CPU modules (prefix match on node id).
+diff --git a/tests/v9/experiments/test_s2_adapters_mlx_native.py b/tests/v9/experiments/test_s2_adapters_mlx_native.py
+index 8cfcf43..dbf3d95 100644
+--- a/tests/v9/experiments/test_s2_adapters_mlx_native.py
++++ b/tests/v9/experiments/test_s2_adapters_mlx_native.py
+@@ -35,7 +35,7 @@ def test_native_adapter_train_protocol() -> None:
+         dummy_batch = {
+             "observations": np.zeros((B, T, spec.OBS_DIM), dtype=np.float32),
+             "actions": np.zeros((B, T, spec.ACTION_DIM), dtype=np.float32),
+-            "dts": np.ones((B, T, 1), dtype=np.float32),
++            "dts": np.ones((B, T), dtype=np.float32),  # W8/W9 batch contract: dts (B, T)
+         }
+ 
+         for arm_id in ("arm_a", "arm_b", "arm_c"):
+@@ -69,7 +69,8 @@ def test_native_adapter_planning_protocol_and_counter() -> None:
+     assert arm_a.arm_kind == "flat"
+     obs = np.zeros(spec.OBS_DIM, dtype=np.float64)
+     z0 = arm_a.encode(obs)
+-    assert z0.shape == (spec.ARM_DIMS["arm_a"]["e1_output"],)
++    # W5/W9: Arm A plans in its latent space (posterior mean z), not the 128-d E1 features.
++    assert z0.shape == (spec.ARM_DIMS["arm_a"]["latent_dim"],)
+     assert counter.by_name.get("encode", 0) == 1
+ 
+     z_next = arm_a.predict_l1(z0, np.array([0]))
+diff --git a/tests/v9/experiments/test_s2_plan_device_native.py b/tests/v9/experiments/test_s2_plan_device_native.py
+new file mode 100644
+index 0000000..2fdc476
+--- /dev/null
++++ b/tests/v9/experiments/test_s2_plan_device_native.py
+@@ -0,0 +1,175 @@
++"""W10 native checks: planning-time inference runs on the MLX device named by
++spec.PLAN_INFERENCE_DEVICE (CPU stream), training keeps the default GPU device,
++and CPU/GPU inference agree numerically (--native-mlx)."""
++
++from __future__ import annotations
++
++import mlx.core as mx
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s2 import adapters_mlx, spec
++
++pytestmark = pytest.mark.native_mlx
++
++ARMS = ("arm_a", "arm_b", "arm_c")
++INFERENCE = {
++    "arm_a": ("encode", "predict_l1", "latents"),
++    "arm_b": ("encode", "predict_l1", "latents"),
++    "arm_c": ("encode", "predict_l1", "latents", "encode_l2", "predict_l2"),
++}
++
++
++def _batch(B: int = 4, seed: int = 0) -> dict:
++    rng = np.random.default_rng(seed)
++    L = int(spec.H_TRAIN) + 1
++    return {
++        spec.BATCH_OBSERVATIONS_KEY: rng.normal(size=(B, L, spec.OBS_DIM)).astype(np.float32),
++        spec.BATCH_ACTIONS_KEY: np.eye(spec.ACTION_DIM, dtype=np.float32)[rng.integers(0, spec.ACTION_DIM, size=(B, L))],
++        spec.BATCH_DTS_KEY: rng.integers(1, 4, size=(B, L)).astype(np.float32),
++    }
++
++
++def _calls(ad, arm_id: str) -> dict:
++    """Invoke every planning inference method once (single-sample and batched paths)."""
++    rng = np.random.default_rng(1)
++    obs = rng.normal(size=(spec.OBS_DIM,)).astype(np.float32)
++    obs_seq = rng.normal(size=(5, spec.OBS_DIM)).astype(np.float32)
++    out = {"encode": ad.encode(obs), "latents": ad.latents(obs_seq)}
++    z = out["encode"]
++    zb = np.repeat(z[None], 7, axis=0)
++    out["predict_l1_single"] = ad.predict_l1(z, 2, 1.0)
++    out["predict_l1_batch"] = ad.predict_l1(zb, np.arange(7) % spec.ACTION_DIM, 1.0)
++    if arm_id == "arm_c":
++        z2 = ad.encode_l2(z)
++        out["encode_l2"] = z2
++        dims = spec.ARM_DIMS["arm_c"]
++        macro_dim = int(dims["p2_input"]) - int(dims["z2_dim"]) - 1  # [z2, macro_a, dt2]
++        macro = np.eye(macro_dim, dtype=np.float32)[np.arange(7) % macro_dim]
++        out["predict_l2_batch"] = ad.predict_l2(np.repeat(z2[None], 7, axis=0), macro, float(spec.PLAN_FUTURE_DT_L2))
++    return out
++
++
++def test_registered_planning_device_is_cpu():
++    assert spec.PLAN_INFERENCE_DEVICE == "cpu"
++
++
++@pytest.mark.parametrize("arm_id", ARMS)
++def test_inference_methods_are_wrapped(arm_id):
++    ad = adapters_mlx.make_mlx_arm(arm_id)
++    for name in INFERENCE[arm_id]:
++        assert getattr(getattr(type(ad), name), "__planning_device__", False), (arm_id, name)
++    for name in ("train_step", "rollout_error", "init", "save", "load"):
++        assert not getattr(getattr(type(ad), name), "__planning_device__", False), (arm_id, name)
++
++
++@pytest.mark.parametrize("arm_id", ARMS)
++def test_inference_runs_on_cpu_and_training_on_gpu(arm_id, monkeypatch):
++    assert mx.default_device() == mx.gpu, "test assumes the process default device is the GPU"
++    ad = adapters_mlx.make_mlx_arm(arm_id)
++    ad.init(seed=3)
++
++    seen: list = []
++    real_to_np = adapters_mlx._to_np
++
++    def spy_to_np(arr):
++        seen.append(mx.default_device())
++        return real_to_np(arr)
++
++    monkeypatch.setattr(adapters_mlx, "_to_np", spy_to_np)
++    _calls(ad, arm_id)
++    assert seen and all(d == mx.cpu for d in seen), seen
++
++    train_seen: list = []
++    real_eval = mx.eval
++
++    def spy_eval(*a, **k):
++        train_seen.append(mx.default_device())
++        return real_eval(*a, **k)
++
++    monkeypatch.setattr(mx, "eval", spy_eval)
++    ad.train_step(_batch())
++    assert train_seen and all(d == mx.gpu for d in train_seen), train_seen
++    assert mx.default_device() == mx.gpu
++
++
++@pytest.mark.parametrize("arm_id", ARMS)
++def test_cpu_and_gpu_inference_agree(arm_id, monkeypatch):
++    ad = adapters_mlx.make_mlx_arm(arm_id)
++    ad.init(seed=5)
++    monkeypatch.setattr(spec, "PLAN_INFERENCE_DEVICE", "cpu")
++    cpu = _calls(ad, arm_id)
++    monkeypatch.setattr(spec, "PLAN_INFERENCE_DEVICE", "gpu")
++    gpu = _calls(ad, arm_id)
++    assert cpu.keys() == gpu.keys()
++    for k in cpu:
++        assert cpu[k].shape == gpu[k].shape, k
++        np.testing.assert_allclose(cpu[k], gpu[k], atol=1e-4, rtol=1e-4, err_msg=f"{arm_id}.{k}")
++
++
++def test_unknown_device_is_refused(monkeypatch):
++    ad = adapters_mlx.make_mlx_arm("arm_b")
++    ad.init(seed=0)
++    monkeypatch.setattr(spec, "PLAN_INFERENCE_DEVICE", "tpu")
++    with pytest.raises(ValueError, match="PLAN_INFERENCE_DEVICE"):
++        ad.encode(np.zeros(spec.OBS_DIM, dtype=np.float32))
++
++
++# --- W10: the registered seed determines the initial weights ---------------------------------
++
++def _param_digest(ad) -> str:
++    import hashlib
++
++    from mlx.utils import tree_flatten
++
++    h = hashlib.sha256()
++    for k, v in sorted(tree_flatten(ad.model.parameters()), key=lambda kv: kv[0]):
++        h.update(k.encode())
++        h.update(np.asarray(v, dtype=np.float32).tobytes())
++    return h.hexdigest()
++
++
++@pytest.mark.parametrize("arm_id", ARMS)
++def test_init_seed_determines_weights_in_process(arm_id):
++    a = adapters_mlx.make_mlx_arm(arm_id)
++    mx.random.normal((1234,))  # perturb the global key between constructions
++    b = adapters_mlx.make_mlx_arm(arm_id)
++    a.init(seed=7)
++    mx.random.uniform(shape=(77,))
++    b.init(seed=7)
++    assert _param_digest(a) == _param_digest(b)
++    c = adapters_mlx.make_mlx_arm(arm_id)
++    c.init(seed=8)
++    assert _param_digest(c) != _param_digest(a)
++
++
++def test_init_seed_determines_weights_across_processes():
++    import subprocess
++    import sys
++
++    code = (
++        "import hashlib, os, numpy as np, mlx.core as mx\n"
++        "from mlx.utils import tree_flatten\n"
++        "from ainerzero.v9.experiments.s2 import adapters_mlx\n"
++        "out = []\n"
++        "for arm in ('arm_a', 'arm_b', 'arm_c'):\n"
++        "    mx.random.seed(int.from_bytes(os.urandom(4), 'little'))  # fresh global key per arm\n"
++        "    ad = adapters_mlx.make_mlx_arm(arm); ad.init(seed=11)\n"
++        "    h = hashlib.sha256()\n"
++        "    for k, v in sorted(tree_flatten(ad.model.parameters()), key=lambda kv: kv[0]):\n"
++        "        h.update(k.encode()); h.update(np.asarray(v, dtype=np.float32).tobytes())\n"
++        "    out.append(h.hexdigest())\n"
++        "print(','.join(out))\n"
++    )
++    runs = [subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=120) for _ in range(2)]
++    for r in runs:
++        assert r.returncode == 0, r.stderr[-2000:]
++    first, second = (r.stdout.strip() for r in runs)
++    assert first and first == second
++
++
++@pytest.mark.parametrize("arm_id", ARMS)
++def test_train_step_before_init_is_refused(arm_id):
++    ad = adapters_mlx.make_mlx_arm(arm_id)
++    with pytest.raises(RuntimeError, match="before init"):
++        ad.train_step(_batch())

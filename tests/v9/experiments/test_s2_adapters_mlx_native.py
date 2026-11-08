@@ -35,7 +35,7 @@ def test_native_adapter_train_protocol() -> None:
         dummy_batch = {
             "observations": np.zeros((B, T, spec.OBS_DIM), dtype=np.float32),
             "actions": np.zeros((B, T, spec.ACTION_DIM), dtype=np.float32),
-            "dts": np.ones((B, T, 1), dtype=np.float32),
+            "dts": np.ones((B, T), dtype=np.float32),  # W8/W9 batch contract: dts (B, T)
         }
 
         for arm_id in ("arm_a", "arm_b", "arm_c"):
@@ -69,7 +69,8 @@ def test_native_adapter_planning_protocol_and_counter() -> None:
     assert arm_a.arm_kind == "flat"
     obs = np.zeros(spec.OBS_DIM, dtype=np.float64)
     z0 = arm_a.encode(obs)
-    assert z0.shape == (spec.ARM_DIMS["arm_a"]["e1_output"],)
+    # W5/W9: Arm A plans in its latent space (posterior mean z), not the 128-d E1 features.
+    assert z0.shape == (spec.ARM_DIMS["arm_a"]["latent_dim"],)
     assert counter.by_name.get("encode", 0) == 1
 
     z_next = arm_a.predict_l1(z0, np.array([0]))

@@ -21,6 +21,7 @@ Implements backend adapters wrapping MLX models from arms_mlx.py to satisfy:
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 from pathlib import Path
@@ -41,6 +42,31 @@ def _as_action(a: Any) -> np.ndarray:
 def _to_np(arr: Any) -> np.ndarray:
     """Convert an array-like (including mlx.core.array) to a float64 numpy array."""
     return np.asarray(arr, dtype=np.float64)
+
+
+def _planning_device(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Run a planning-time inference method on the MLX device named by spec.PLAN_INFERENCE_DEVICE (W10).
+
+    Planning calls predict_l1 once per horizon step with 15-63 rows and converts the result
+    to numpy each time; on the GPU every such call is a latency-bound synchronisation, so the
+    registered device is the CPU stream. Training methods are not wrapped and keep the default
+    (GPU) device. Results are converted to numpy inside the context, so evaluation happens there.
+    """
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        device = spec.PLAN_INFERENCE_DEVICE
+        if device == "cpu":
+            target = mx.cpu
+        elif device == "gpu":
+            target = mx.gpu
+        else:
+            raise ValueError(f"spec.PLAN_INFERENCE_DEVICE must be 'cpu' or 'gpu', got {device!r}")
+        with mx.stream(target):
+            return fn(*args, **kwargs)
+
+    wrapper.__planning_device__ = True  # type: ignore[attr-defined]
+    return wrapper
 
 
 class _MLXProxy:
@@ -133,13 +159,19 @@ class MLXArmAAdapter:
         self._seed: int | None = None
 
     def init(self, seed: int) -> None:
-        self._seed = seed
-        mx.random.seed(seed)
+        """Seed MLX, then rebuild the model so weight initialisation is a function of ``seed`` (W10).
+
+        The constructor's weights come from MLX's per-process (time-seeded) global key, so
+        without the rebuild the registered seed would not determine the initial weights.
+        """
+        self._seed = int(seed)
+        mx.random.seed(int(seed))
+        self.model = arms_mlx.FlatRSSMArm()
         self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
 
     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
         if self.optimizer is None:
-            self.init(seed=42)
+            raise RuntimeError("train_step called before init(seed): the registered seed must be set explicitly (W10)")
         for k in spec.BATCH_REQUIRED_KEYS:
             if k not in batch:
                 raise ValueError(f"MLXArmAAdapter.train_step missing required batch key {k!r}")
@@ -190,6 +222,7 @@ class MLXArmAAdapter:
 
     # --- Planning protocol ---
 
+    @_planning_device
     def encode(self, obs: np.ndarray) -> np.ndarray:
         """Planning latent of Arm A: posterior mean z (latent_dim) at the zero GRU state.
 
@@ -203,6 +236,7 @@ class MLXArmAAdapter:
         mean, _ = self.model.posterior(h0, e1)
         return _to_np(mean)
 
+    @_planning_device
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
         z_arr = np.asarray(z, dtype=np.float64)
         if z_arr.ndim == 1:
@@ -228,11 +262,13 @@ class MLXArmAAdapter:
         mean, _ = self.model.prior(h_next)
         return _to_np(mean)
 
+    @_planning_device
     def cost_fn(self, z_T: np.ndarray, goal_obs: np.ndarray) -> float:
         if self.counter is not None:
             self.counter.charge("decode", 1)
         return float(self.model.planning_cost(z_T, goal_obs))
 
+    @_planning_device
     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
         """Arm A planning latents z (posterior mean at the zero GRU state), same space as ``encode`` (W9)."""
         arr = mx.array(obs_seq, dtype=mx.float32)
@@ -255,13 +291,19 @@ class MLXArmBAdapter:
         self._seed: int | None = None
 
     def init(self, seed: int) -> None:
-        self._seed = seed
-        mx.random.seed(seed)
+        """Seed MLX, then rebuild the model so weight initialisation is a function of ``seed`` (W10).
+
+        The constructor's weights come from MLX's per-process (time-seeded) global key, so
+        without the rebuild the registered seed would not determine the initial weights.
+        """
+        self._seed = int(seed)
+        mx.random.seed(int(seed))
+        self.model = arms_mlx.FlatJEPAArm()
         self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
 
     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
         if self.optimizer is None:
-            self.init(seed=42)
+            raise RuntimeError("train_step called before init(seed): the registered seed must be set explicitly (W10)")
         for k in spec.BATCH_REQUIRED_KEYS:
             if k not in batch:
                 raise ValueError(f"MLXArmBAdapter.train_step missing required batch key {k!r}")
@@ -356,12 +398,14 @@ class MLXArmBAdapter:
 
     # --- Planning protocol ---
 
+    @_planning_device
     def encode(self, obs: np.ndarray) -> np.ndarray:
         if self.counter is not None:
             self.counter.charge("encode", 1)
         z = self.model.encode(obs)
         return _to_np(z)
 
+    @_planning_device
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
         z_arr = np.asarray(z, dtype=np.float64)
         if z_arr.ndim == 1:
@@ -386,6 +430,7 @@ class MLXArmBAdapter:
 
     cost_fn = None  # Uses default squared_distance in planner
 
+    @_planning_device
     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
         arr = mx.array(obs_seq, dtype=mx.float32)
         z = self.model.encode(arr)
@@ -403,13 +448,19 @@ class MLXArmCAdapter:
         self._seed: int | None = None
 
     def init(self, seed: int) -> None:
-        self._seed = seed
-        mx.random.seed(seed)
+        """Seed MLX, then rebuild the model so weight initialisation is a function of ``seed`` (W10).
+
+        The constructor's weights come from MLX's per-process (time-seeded) global key, so
+        without the rebuild the registered seed would not determine the initial weights.
+        """
+        self._seed = int(seed)
+        mx.random.seed(int(seed))
+        self.model = arms_mlx.HierarchicalHJEPAArm()
         self.optimizer = optim.Adam(learning_rate=float(spec.LEARNING_RATE))
 
     def train_step(self, batch: Mapping[str, Any]) -> dict[str, float]:
         if self.optimizer is None:
-            self.init(seed=42)
+            raise RuntimeError("train_step called before init(seed): the registered seed must be set explicitly (W10)")
         for k in spec.BATCH_REQUIRED_KEYS:
             if k not in batch:
                 raise ValueError(f"MLXArmCAdapter.train_step missing required batch key {k!r}")
@@ -578,12 +629,14 @@ class MLXArmCAdapter:
 
     # --- Planning protocol ---
 
+    @_planning_device
     def encode(self, obs: np.ndarray) -> np.ndarray:
         if self.counter is not None:
             self.counter.charge("encode", 1)
         z1 = self.model.encode(obs)
         return _to_np(z1)
 
+    @_planning_device
     def predict_l1(self, z: np.ndarray, a: np.ndarray, dt: float = 1.0) -> np.ndarray:
         z_arr = np.asarray(z, dtype=np.float64)
         if z_arr.ndim == 1:
@@ -606,6 +659,7 @@ class MLXArmCAdapter:
         z_next = self.model.predict_l1_step(z_mlx, a_mlx, dt_mlx)
         return _to_np(z_next)
 
+    @_planning_device
     def encode_l2(self, z1: np.ndarray) -> np.ndarray:
         z1_arr = np.asarray(z1, dtype=np.float64)
         if z1_arr.ndim == 1:
@@ -619,6 +673,7 @@ class MLXArmCAdapter:
         z2 = self.model.encode_l2(z1_mlx)
         return _to_np(z2)
 
+    @_planning_device
     def predict_l2(self, z2: np.ndarray, macro_a: np.ndarray, macro_dt: float = 1.0) -> np.ndarray:
         z2_arr = np.asarray(z2, dtype=np.float64)
         if z2_arr.ndim == 1:
@@ -636,6 +691,7 @@ class MLXArmCAdapter:
 
     cost_fn = None  # Uses default squared_distance in planner
 
+    @_planning_device
     def latents(self, obs_seq: np.ndarray | Sequence[Any]) -> np.ndarray:
         arr = mx.array(obs_seq, dtype=mx.float32)
         z1 = self.model.encode(arr)
