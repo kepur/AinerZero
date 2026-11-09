@@ -2902,3 +2902,55 @@ P185 通过后冻结 r2（代码身份随之更新），换批准行，再通过
 - **产物：** `artifacts/v9/s2/phase1/` 全部保留，不删除。
 - **重启条件：** 须重新设计、重新登记，并由用户另批预算。冻结前须用训练过的模型实测代价与真实距离的秩相关、一步误差比和短目标成功率（见结案报告第 8 节）。
 - **relay：** S2 总体草稿 P3、P4 与过期的复核卡 P135 取消，备注指向本条。
+
+## R20261109-takeover：用户指令全权接管，四项待决的处置（一级 claude，统筹卡 relay.P2.E46，2026-11-09）
+
+- **用户原话：**「继续之前的会话 全权接管」，针对上一轮列出的四项待决。
+- **口径：** 全权接管不取消 CLAUDE.md 的逐项批准清单（付费、云 GPU、CC-BY 进训练和成片、超出登记预算、改冻结参数或门槛）。
+- **① relay 开机自启：等用户确认，launchd 未动。** 实际情况比 11-06 的交接多几处：
+  - `launchctl print-disabled gui/501` 里 `local.ainerrelay.server`、`.runner` 都是 disabled，`local.ainervault.mtplx-qwen38`、`.mtplx-health`、`com.ainerops.host-runner` 也是。谁禁用的查不到，RunAtLoad 因此不起作用。
+  - 8790 现在是 `bin/relay-server start` 拉起的进程（pid 1803，11-07 17:49 起），环境里没有 `RELAY_ARBITER`，`relay/gpu.py` 走旧闸门；plist 里是 `RELAY_ARBITER=1`。
+  - runner 没在跑，`data/runs/runner.json` 最后扫描是 10-30 15:30，`relay submit-run` 的作业现在没人执行。
+  - runner plist 的 WorkingDirectory 钉在 `deploy/snapshots/20261020-cross-project-v1-r1`，当前部署是 `20261106-s24-session-fingerprint-r2`，直接启用会跑旧代码。
+- **② DA3 重跑：不重跑。** 全线额度 249 视 / 1440 s 已用完，T54 的结果保留为诊断候选、未登记。主线上没有在途消费者：T6 阻塞，T15（E4）还是等下载批准的草稿。再跑须用户给新额度，属逐项批准清单。
+- **③ forge L.C9 下载预算：已登记，暂不放卡。**
+  - 预算（`forge.L.C9` params v1）：每批 ≤ 30 个文件、≤ 3 GiB，单流 2 MiB/s，超出需用户批准。依据是用户全权接管与卡面约束 4。
+  - 不放卡的原因：`ingest.py` 的 `WHITELIST_PROVIDERS` 只有 polyhaven、ambientcg、kenney，首批 42 项里角色只有 Kenney 1 项，卡面硬门（完整人形骨架等）在这份白名单上几乎无货可筛。11-06 的建议「非白名单一律待审入库」又与卡面约束 1「只收白名单」冲突，不能让执行者自己选。
+  - 处理：按首批的做法先调研再冻结。新开 `forge.L.C12`（只取元数据、不下载模型）与 `forge.L.C13`（非作者重抓许可页逐字比对）。通过后一级冻结 `docs/sources/character_batch_frozen.json`，新来源按 §6 登记，才放 C9。
+- **④ AWZ B5–B8：**
+  - `awz.V9.B7`、`B8` 作废。Genesis 1.4.5 已由 B22、B24 装好，基准由 B26–B31 完成，裁定见 AWZ `R20261029-genesis-bench`。B7 卡面第 4 项（自动微分探针）没做，需要时另开新卡。
+  - `awz.V9.B5`、`B6` 保持草稿，不放。渲染预算按 10-20 的决定可由一级登记，但 E1、S2 都已收口，眼下没有下游消费者，范围又与 E0（B11/B20/B25/B28）重叠。主线定了再决定改写或作废。
+- **未做：** launchd 未动；未提交、未推送本条及相关文档改动；`ainerops` MCP 本会话连接失败，relay 操作走 CLI。
+- （同条续，11-09 12:1x，一级 claude）**① relay 开机自启已完成**，用户选「修好并启用」：
+  - **范围：** 只动两个 relay 服务。原 plist 备份在 `AinerRelay/reports/launchd-reenable-20261109/`。另外三个 disabled 的服务（`local.ainervault.mtplx-*`、`com.ainerops.host-runner`）没动。
+  - **plist 改动：**
+    - server 启动时自写 `data/relay.pid`。不写的话，`relay-deploy` 的 stop/start 找不到它，会起第二个 uvicorn 抢端口并触发自动回滚；
+    - runner 的 WorkingDirectory 改成 `deploy/current`，补上 11-06 起启动脚本才带的 `RELAY_SESSION_ID`，并写 `data/runs/runner.pid`。
+  - **启动前核对：** spool 31 个作业、jobs-v1 60 个作业全是终态，没有旧作业被拉起。
+  - **实测：**
+    - server pid 92946 与 pidfile 一致，由 launchd 托管，环境有 `RELAY_ARBITER=1`，health 部署编号 `20261106-s24-session-fingerprint-r2`；
+    - runner pid 93148，工作目录是当前部署，`running_jobs` 为空；
+    - `relay submit-run` 跑 `/bin/echo` 全链路 2.3 s，返回码 0（`run-20261109-121102-f12596`，挂在 E46 上）；
+    - 切换时 server 停了约 6 s，进行中的 `forge.L.C13` 没受影响。
+  - **未验证：** 没有真的重启机器，开机自启要下次开机才算实证。
+  - **遗留：** `relay-deploy` 的重启走 nohup，下一次部署会丢 `RELAY_ARBITER`，launchd 作业留空。`relay.P2.S30`（gemini）改 start 感知 launchd，`S31` 非作者复核。S30 验收前跑 `relay-deploy` 会临时退回旧闸门。
+- （同条续，11-09 12:2x，一级 claude）**③ forge L.C9 最终裁定：不放卡，预算未动用。**
+  - **`forge.L.C12`、`C13` 限定范围通过**，只作为这次判断的输入，不作为扩白名单依据。卡面备注列了全部抽查结果。
+    - 属实：12 个 raw 的 sha256、C13 确为独立重抓、Kenney 站点级 CC0、KayKit 的「勿转售」原句（被 HTML 标签切断，两次抓取都有）。
+    - 不实：C12 称 Kenney「直接解决 L.C9 人形短缺」、「约 76 个带骨骼角色」、Polygonal Mind 文件内嵌禁止再分发。C13 判通过时都没发现。
+  - **裁定依据：** 硬门 `has_humanoid_map` 只从 VRM 扩展读取（`forge/library/blender/asset_inspector.py:301-312`），Kenney 的 FBX/GLB/OBJ 过不了，风格也不是动漫。VRM 来源（ToxSam 注册表、VRoid 样例、100 Avatars）都是待审或排除。
+  - **更正（一级笔误）：** 上文③和 C12 卡面写的「首批 42 项里角色只有 Kenney 1 项」不对。首批含 4 个 Kenney 角色包：1 个归 `character/body`，3 个归 `motion/clip`。这 4 个同样不是 VRM，结论不变。
+  - **重开条件：** 用户接受待审入库的 VRM 来源，或为 FBX/GLB 增加骨骼名到人形映射并经复核。动漫角色的现实路线仍是用户用 VRoid Studio 自制 VRM 后上传。
+  - **新发现，待用户决定，条目未改：** 11-05 入库的 Rose（`polygonalmind_100avatars-r1_rose`）`declared_by` 是 `whitelist:toxsam-open-source-avatars`，`uses` 的 train、eval、commercial_output、redistribute 全开。该来源不在 `WHITELIST_PROVIDERS`，按现行 `ingest.py` 必须降为 `license_pending`。来源仓库 README 还要求不要不经大改就直接售卖。Rose 状态仍是 `usable`，目前只见于 AWZ CF.H5–H9 的渲染测试报告，AinerZero 的报告和配置里没有引用。
+- （同条续，11-09 12:3x，一级 claude）**Rose 已降为许可待审**，用户选「降为待审」：
+  - **做法：** 用原文件重新走 `forge.library add`，生成 rev2，由现行 `ingest.py` 规则自动降级，没有手改数据库。rev1 保留作历史。数据库备份和前后记录在 `AinerForge/reports/rose-downgrade-20261109/`。
+  - **实测：** rev2 状态 `license_pending`，`uses` 只留 reference，`declared_by` 改为 `fetcher:toxsam-open-source-avatars`，文件字节未变。原有 51 行 assets 逐行不变，`verify` 52 verified、0 broken，blob 仍是 6201 个。
+  - **残留：** `export` 显式写 `@1` 仍会取到 rev1（`usable`），默认取最新版不受影响。exports 目录目前是空的，没人这样用。要堵需改 export 代码或数据库，未做。
+  - **影响：** 已交付的 AWZ CF.H5–H9 证据不动。之后 Rose 要进训练、评测或成片，须用户放开。
+- （同条续，11-09 12:4x，一级 claude）**`relay.P2.S30`、`S31` 已验收，①的遗留关闭，本条四项全部收口。**
+  - **改动：** `bin/relay-server` 的 start 分支。生产实例由 launchd 托管时走 `launchctl kickstart`，失败不回退 nohup，其他情况行为不变。今天改动的文件只有该脚本和 `tests/test_launchd_start.py`。
+  - **证据：** S30 全量 968 passed；非作者复核 S31 建议通过。
+  - **一级自查**（`AinerRelay/reports/S-launchd-start-tier1/`）：
+    - 12 个自做变异 11 个变红。漏网的是 `kickstart -k`：测试没断言确切参数，实际代码未用 `-k`，属测试缺口，不打回。
+    - 用 `relay-deploy` 相同的环境真实跑 stop → start：launchd runs 1→2，pid 14030 与 pidfile 一致，`RELAY_ARBITER=1`，只有一个 uvicorn，部署编号不变，runner 未受影响，停机约 6 s。
+  - **没跑：** 完整的 `relay-deploy`。开机自启同样要下次开机才算实证。
