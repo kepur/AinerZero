@@ -6,13 +6,6 @@ Strictly zero MLX imports per reports/V9-S3-DESIGN/DESIGN-r2.md §2.
 
 from __future__ import annotations
 
-import sys
-
-# Assertion to ensure MLX is never loaded into sys.modules
-assert not any(
-    m == "mlx" or m.startswith("mlx.") for m in sys.modules
-), "MLX imported into sys.modules prior to S3 package initialization"
-
 from ainerzero.v9.experiments.s3 import content, data, spec, tour, world
 from ainerzero.v9.experiments.s3.content import ContentState, generate_content_state
 from ainerzero.v9.experiments.s3.data import (

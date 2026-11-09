@@ -1,0 +1,90 @@
+{
+ "schema": "s3.phase1.prereg.v1",
+ "design": "reports/V9-S3-DESIGN/DESIGN-r2.md",
+ "design_sha256": "7952e82845a1a230baf341de472ca8296a40961a1180033907058388985b8c80",
+ "authority": "用户 11-09「全权接手自动授权」；一级 claude 冻结，统筹卡 relay.P2.E46。",
+ "review_status": "代码由一级编写，已用隔离副本变异验证测试有效，尚未经非作者复核（gemini 离线）；复核卡已挂。",
+ "code_sha256": {
+  "src/ainerzero/v9/experiments/s3/__init__.py": "fb0d44222c3188df461c943bd7b2ecea1b6ee9df1278e73da3a43941755e18b0",
+  "src/ainerzero/v9/experiments/s3/spec.py": "9250427f2cf23154f5ab0d6a282a3dfd9dbaa40917bd11828f1790927b1d09d2",
+  "src/ainerzero/v9/experiments/s3/world.py": "fc70d464c125500012a700b731d28c13ee1d7f2d03ab4d91d9a2c68cbcbb7843",
+  "src/ainerzero/v9/experiments/s3/content.py": "66370cd4c502dc99b10651b472762102b6d3759801d3871480cb8b5a883ef6fe",
+  "src/ainerzero/v9/experiments/s3/tour.py": "949a5ec27b653f1f984f95904a7eaf2f3796d266aa90326dfd51855e83f45d7c",
+  "src/ainerzero/v9/experiments/s3/data.py": "f8936e0fa4a4b6e540160609b625da6a124fa7b7aaecb02571803325987a2e34",
+  "src/ainerzero/v9/experiments/s3/store.py": "8cc9429cb43a1f6edab001204fb7b6931c82012276222594fe4005df2f8a5b4c",
+  "src/ainerzero/v9/experiments/s3/cues.py": "de21ff49341ab1d0cb9bc3f77cbf79d8fe2b267fb842fd8892226397ef65ccfa",
+  "src/ainerzero/v9/experiments/s3/batching.py": "b40540c7dd89d00424e1297d7d4705833a0fc6cb1f0d5db72b2ea42e1a33fb9d",
+  "src/ainerzero/v9/experiments/s3/arms_mlx.py": "3e3fcf85ee7a4930b16f806889ae649cb82e737ae72b8af07ca1053da00c85a2",
+  "src/ainerzero/v9/experiments/s3/analysis.py": "85e01b4328622a11f6252d75b7f638d28f890f7449644d67d5130bdc0049efbd",
+  "reports/V9-S3-PHASE1/run_phase1.py": "30744ac38de1b302b62f5a48ddb34ce81f6546ee967c162d8c71929e56fe48b6"
+ },
+ "arms": {
+  "main": [
+   "A0",
+   "A1",
+   "A2",
+   "A3"
+  ],
+  "aux": [
+   "O",
+   "N"
+  ]
+ },
+ "seeds": [
+  1,
+  2,
+  3
+ ],
+ "steps": {
+  "F1": 2000,
+  "F2": 1000,
+  "aux": 1500
+ },
+ "batch": 16,
+ "lr": 0.001,
+ "lambda": 1.0,
+ "lambda_source": "S3-C2 在 s3p1-train 上拟合",
+ "data": {
+  "train": {
+   "worlds": 400,
+   "episodes": 4
+  },
+  "dev": {
+   "worlds": 50,
+   "episodes": 2
+  },
+  "final": {
+   "worlds": 100,
+   "episodes": 2
+  },
+  "namespaces": [
+   "s3p1-train",
+   "s3p1-dev",
+   "s3p1-final"
+  ],
+  "f2": "同一命名空间内加 f2- 前缀，token 用 F2 集"
+ },
+ "primary_metric": "长间隔（lag>=80）且 token 已换过的事件的读回准确率",
+ "gates": {
+  "chance": 0.14285714285714285,
+  "floor": 0.17285714285714285,
+  "H1": "A2-A1>=0.10 且配对 95% 下界>0",
+  "H2": "A3-A2>=0.05 且配对 95% 下界>0",
+  "H3": "换世界族后旧族主指标下降<=0.05",
+  "upper_O": 0.9,
+  "unswapped_min": 0.8,
+  "bootstrap": {
+   "unit": "episode",
+   "resamples": 10000,
+   "seed": 20261109
+  }
+ },
+ "dev_max_uses": 2,
+ "budget": {
+  "wall_hard_limit_hours": 3,
+  "device": "MLX CPU",
+  "cloud": false,
+  "paid": false
+ },
+ "final_approval_line": "S3-P1-FINAL-READ-APPROVED-TIER1-20261109"
+}
