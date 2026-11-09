@@ -2571,7 +2571,24 @@ APPROVED e1-phase2 prereg document_sha256=98c9257a9ea2d7e6692679fe5630db469dba72
     - 账本继续沿用 r2 新建的那本（15 h 清单）。
 - **final：** 本行不批准 final-eval，final 需要另起一条批准行，并须先问用户。
 
-APPROVED s2-phase1 prereg document_sha256=7fdfb204b2cd1a024a15695daeb4d26fe7187f708a8a636a9ad43ae6b3f786cb
+（r3 批准行已作废：`7fdfb204…`，见下方 r4 段。）
+
+
+- **r3 作废（11-09 08:1x）：**
+  - r3 下的训练（P193）因 S2 worker 在完成时一次性扣减用时、同一段时间被算两次而被拒（R20261109-S2-train-r3-refused）。
+  - W12 修复了这一点（P194/P195 已验收）；`prereg.json` 改名为 `prereg.r3.json`。
+- **r4 冻结（一级 claude，2026-11-09 08:1x）：**
+  - 文件 `artifacts/v9/s2/phase1/prereg.json`，文件 sha 与 document_sha256 均为 `398c87aecbddc918a3853b624b3cbe6fd42b5a1a16bcc5b3a12a31848d2c9f19`。
+  - identity：26 个源文件核对通过，源码为提交 `df2ac1c`。
+  - **相对 r3 的差异：** 只有 worker.py 的源码摘要变了，冻结参数完全不变。
+  - **沿用的部分：**
+    - r2 的 smoke（P187）；
+    - r3 的数据（P192，train/dev）；
+    - r3 下已完成的训练格「臂 A 种子 42」（P193）。训练代码与数据都没有改，W12 只改了记账。
+  - 账本继续沿用。
+- **final：** 本行不批准 final-eval，final 需要另起一条批准行，并须先问用户。
+
+APPROVED s2-phase1 prereg document_sha256=398c87aecbddc918a3853b624b3cbe6fd42b5a1a16bcc5b3a12a31848d2c9f19
 
 ## R20261107-S2-r0-withdrawn：S2 预登记 r0 在任何运行前撤回（一级 claude，2026-11-07）
 
