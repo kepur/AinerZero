@@ -241,6 +241,9 @@ NATIVE_MODULES = {
     "test_s2_production_e2e_native.py": "minimal MLX pipeline end-to-end (S2 W3)",
     "test_s2_train_native.py": "MLX arm training and smoke self-check native test (S2 W8)",
     "test_s2_plan_device_native.py": "planning inference device (CPU stream) vs training device, real MLX (S2 W10)",
+    # S3 (tests/v9/experiments): MLX arms, gradients and truth-isolation contracts.
+    "test_s3_arms_mlx.py": "module-level importorskip mlx.core/mlx.nn (S3 arms)",
+    "test_s3_isolation_contract.py": "module-level importorskip mlx.core (S3 arms, P208 second-review checks)",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).

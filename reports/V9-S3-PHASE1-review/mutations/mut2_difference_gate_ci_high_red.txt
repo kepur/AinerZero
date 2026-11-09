@@ -1,0 +1,34 @@
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_phase1_review/workspace
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_analysis.py::test_difference_gate_needs_both_size_and_interval FAILED [100%]
+
+=================================== FAILURES ===================================
+______________ test_difference_gate_needs_both_size_and_interval _______________
+
+    def test_difference_gate_needs_both_size_and_interval() -> None:
+>       assert G.difference_gate({"delta": 0.2, "ci_low": 0.01}, 0.10)
+
+tests/v9/experiments/test_s3_analysis.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+boot = {'ci_low': 0.01, 'delta': 0.2}, min_delta = 0.1
+
+    def difference_gate(boot: Mapping[str, float], min_delta: float) -> bool:
+>       return bool(boot["delta"] >= min_delta and boot["ci_high"] > 0.0)
+E       KeyError: 'ci_high'
+
+src/ainerzero/v9/experiments/s3/analysis.py:61: KeyError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_analysis.py::test_difference_gate_needs_both_size_and_interval
+============================== 1 failed in 0.86s ===============================
+
+STDERR:

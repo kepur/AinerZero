@@ -1,0 +1,42 @@
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_phase1_review/workspace
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_arms_mlx.py::test_scorer_loss_does_not_reach_encoder FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_scorer_loss_does_not_reach_encoder ____________________
+
+batch = {'answer': array([6, 2, 2, ..., 5, 2, 2], dtype=int32), 'bucket': array([2, 2, 3, ..., 3, 2, 3], dtype=int32), 'cand_f...  [True, True, True, ..., False, False, False],
+       [True, True, True, ..., False, False, False]], dtype=bool), ...}
+
+    def test_scorer_loss_does_not_reach_encoder(batch) -> None:
+        """DESIGN-r2 §8: the scorer's gradient must not move the encoder."""
+    
+        def scorer_only(model, b):
+            return A.forward(model, b, hard=False)[1]
+    
+        g = _grads("A3", batch, scorer_only)
+        for name in ("enc1.weight", "enc2.weight", "head1.weight", "head2.weight", "mem1.weight", "mem2.weight"):
+>           assert float(mx.abs(g[name]).max()) == 0.0, name
+E           AssertionError: enc1.weight
+E           assert 1.3158777619537432e-05 == 0.0
+E            +  where 1.3158777619537432e-05 = float(array(1.31588e-05, dtype=float32))
+E            +    where array(1.31588e-05, dtype=float32) = <nanobind.nb_bound_method object at 0x1073a0280>()
+E            +      where <nanobind.nb_bound_method object at 0x1073a0280> = array([[2.59867e-06, 1.28612e-06, 0, ..., 1.16489e-06, 6.42852e-07, 3.02441e-07],\n       [2.08013e-07, 0, 0, ..., 0, 0, 0],\n       [4.07353e-06, 1.53043e-06, 0, ..., 6.85809e-07, 1.31675e-06, 1.29922e-07],\n       ...,\n       [2.92446e-06, 6.34098e-07, 3.1113e-07, ..., 5.23408e-07, 6.69064e-07, 9.27051e-11],\n       [4.10244e-07, 2.02538e-06, 0, ..., 4.08956e-08, 0, 0],\n       [1.61912e-06, 8.66874e-08, 6.15825e-09, ..., 0, 2.22395e-07, 1.3373e-10]], dtype=float32).max
+E            +        where array([[2.59867e-06, 1.28612e-06, 0, ..., 1.16489e-06, 6.42852e-07, 3.02441e-07],\n       [2.08013e-07, 0, 0, ..., 0, 0, 0],\n       [4.07353e-06, 1.53043e-06, 0, ..., 6.85809e-07, 1.31675e-06, 1.29922e-07],\n       ...,\n       [2.92446e-06, 6.34098e-07, 3.1113e-07, ..., 5.23408e-07, 6.69064e-07, 9.27051e-11],\n       [4.10244e-07, 2.02538e-06, 0, ..., 4.08956e-08, 0, 0],\n       [1.61912e-06, 8.66874e-08, 6.15825e-09, ..., 0, 2.22395e-07, 1.3373e-10]], dtype=float32) = <nanobind.nb_func object at 0x107494480>(array([[2.59867e-06, -1.28612e-06, 0, ..., -1.16489e-06, -6.42852e-07, -3.02441e-07],\n       [2.08013e-07, 0, 0, ..., 0, 0, 0],\n       [4.07353e-06, -1.53043e-06, 0, ..., -6.85809e-07, 1.31675e-06, 1.29922e-07],\n       ...,\n       [2.92446e-06, -6.34098e-07, -3.1113e-07, ..., -5.23408e-07, 6.69064e-07, -9.27051e-11],\n       [4.10244e-07, -2.02538e-06, 0, ..., 4.08956e-08, 0, 0],\n       [-1.61912e-06, 8.66874e-08, 6.15825e-09, ..., 0, 2.22395e-07, -1.3373e-10]], dtype=float32))
+E            +          where <nanobind.nb_func object at 0x107494480> = mx.abs
+
+tests/v9/experiments/test_s3_arms_mlx.py:61: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_arms_mlx.py::test_scorer_loss_does_not_reach_encoder
+============================== 1 failed in 1.08s ===============================
+
+STDERR:

@@ -64,7 +64,14 @@ def test_final_partition_refusal_by_default() -> None:
     with pytest.raises(PermissionError, match="refused by default"):
         generate_partition(spec.NAMESPACE_FINAL, n_worlds=1, episodes_per_world=1)
 
-    # When allow_final=True is explicitly passed, it should succeed
+
+def test_final_gate_opens_only_with_explicit_flag(monkeypatch) -> None:
+    """Exercise allow_final=True on a stand-in namespace: the real final seeds stay ungenerated."""
+    monkeypatch.setattr(spec, "NAMESPACE_FINAL", "test-final-standin")
+
+    with pytest.raises(PermissionError, match="refused by default"):
+        generate_partition("final", n_worlds=1, episodes_per_world=1)
+
     part = generate_partition(
         "final",
         n_worlds=1,
@@ -72,7 +79,7 @@ def test_final_partition_refusal_by_default() -> None:
         family="F1",
         allow_final=True,
     )
-    assert part["namespace"] == spec.NAMESPACE_FINAL
+    assert part["namespace"] == "test-final-standin"
     assert part["total_episodes"] == 1
 
 

@@ -1,0 +1,241 @@
+[
+ {
+  "case": "dev 无 use-id 被拒",
+  "args": [
+   "--stage",
+   "dev"
+  ],
+  "exit": 1,
+  "msg": "dev 使用次数已满或 use-id 无效",
+  "dev_ledger": null,
+  "final_marker": false
+ },
+ {
+  "case": "dev1 通过守卫",
+  "args": [
+   "--stage",
+   "dev",
+   "--use-id",
+   "dev1"
+  ],
+  "exit": 1,
+  "msg": "GUARDS_PASSED",
+  "dev_ledger": [
+   "dev1"
+  ],
+  "final_marker": false
+ },
+ {
+  "case": "dev1 重复被拒",
+  "args": [
+   "--stage",
+   "dev",
+   "--use-id",
+   "dev1"
+  ],
+  "exit": 1,
+  "msg": "dev 使用次数已满或 use-id 无效",
+  "dev_ledger": [
+   "dev1"
+  ],
+  "final_marker": false
+ },
+ {
+  "case": "dev2 通过守卫",
+  "args": [
+   "--stage",
+   "dev",
+   "--use-id",
+   "dev2"
+  ],
+  "exit": 1,
+  "msg": "GUARDS_PASSED",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": false
+ },
+ {
+  "case": "dev3 超限被拒",
+  "args": [
+   "--stage",
+   "dev",
+   "--use-id",
+   "dev3"
+  ],
+  "exit": 1,
+  "msg": "dev 使用次数已满或 use-id 无效",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": false
+ },
+ {
+  "case": "final 无批准行被拒",
+  "args": [
+   "--stage",
+   "final"
+  ],
+  "exit": 1,
+  "msg": "缺少唯一批准行",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": false
+ },
+ {
+  "case": "final 错批准行被拒",
+  "args": [
+   "--stage",
+   "final",
+   "--approval",
+   "S3-P1-FINAL-READ-APPROVED-TIER1-20261110"
+  ],
+  "exit": 1,
+  "msg": "缺少唯一批准行",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": false
+ },
+ {
+  "case": "final 正确批准行",
+  "args": [
+   "--stage",
+   "final",
+   "--approval",
+   "S3-P1-FINAL-READ-APPROVED-TIER1-20261109"
+  ],
+  "exit": 1,
+  "msg": "GUARDS_PASSED",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": true
+ },
+ {
+  "case": "final 第二次被拒",
+  "args": [
+   "--stage",
+   "final",
+   "--approval",
+   "S3-P1-FINAL-READ-APPROVED-TIER1-20261109"
+  ],
+  "exit": 1,
+  "msg": "final 已读过",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": true
+ },
+ {
+  "case": "smoke：不记账、不校验 SHA",
+  "args": [
+   "--stage",
+   "smoke"
+  ],
+  "exit": 1,
+  "msg": "GUARDS_PASSED",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": true
+ },
+ {
+  "case": "SHA：被篡改的 analysis.py 被拒（dev）",
+  "args": [
+   "--stage",
+   "dev",
+   "--use-id",
+   "dev9"
+  ],
+  "exit": 1,
+  "msg": "代码与预登记不一致：src/ainerzero/v9/experiments/s3/analysis.py",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": true
+ },
+ {
+  "case": "SHA：smoke 不查，篡改照过",
+  "args": [
+   "--stage",
+   "smoke"
+  ],
+  "exit": 1,
+  "msg": "GUARDS_PASSED",
+  "dev_ledger": [
+   "dev1",
+   "dev2"
+  ],
+  "final_marker": true
+ },
+ {
+  "case": "绕过演示：删账本后 dev 复用 + S2 world.py 改动无人发现",
+  "args": [
+   "--stage",
+   "dev",
+   "--use-id",
+   "dev1"
+  ],
+  "exit": 1,
+  "msg": "GUARDS_PASSED",
+  "dev_ledger": [
+   "dev1"
+  ],
+  "final_marker": true
+ },
+ {
+  "case": "绕过演示：删标记后 final 可再读",
+  "args": [
+   "--stage",
+   "final",
+   "--approval",
+   "S3-P1-FINAL-READ-APPROVED-TIER1-20261109"
+  ],
+  "exit": 1,
+  "msg": "GUARDS_PASSED",
+  "dev_ledger": [
+   "dev1"
+  ],
+  "final_marker": true
+ },
+ {
+  "case": "先记账后拿锁：锁被占，dev 仍被扣一次",
+  "args": [
+   "--stage",
+   "dev",
+   "--use-id",
+   "dev1"
+  ],
+  "exit": 1,
+  "msg": "BlockingIOError: [Errno 35] Resource temporarily unavailable",
+  "dev_ledger": [
+   "dev1"
+  ],
+  "final_marker": false
+ },
+ {
+  "case": "先记账后拿锁：锁被占，final 标记已写，一次机会作废",
+  "args": [
+   "--stage",
+   "final",
+   "--approval",
+   "S3-P1-FINAL-READ-APPROVED-TIER1-20261109"
+  ],
+  "exit": 1,
+  "msg": "BlockingIOError: [Errno 35] Resource temporarily unavailable",
+  "dev_ledger": [
+   "dev1"
+  ],
+  "final_marker": true
+ }
+]

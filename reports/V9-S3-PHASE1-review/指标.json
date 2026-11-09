@@ -1,0 +1,99 @@
+{
+  "status": "PASS",
+  "review_conclusion": "RECOMMEND_ACCEPT",
+  "audited_author": "claude (Tier 1)",
+  "reviewer": "gemini-b8k2 (Tier 2)",
+  "truth_isolation": {
+    "status": "PASS",
+    "tested_arms": ["A0", "A1", "A2", "A3", "N"],
+    "max_output_diff_on_truth_corruption": 0.0,
+    "max_aux_diff_on_truth_corruption": 0.0,
+    "oracle_isolation": "Arm O is the sole consumer of prev_visit_t (diagnostic only)"
+  },
+  "leakage_audit": {
+    "status": "PASS",
+    "a0_causality": "purely feedforward on obs[t], zero past/future access",
+    "a1_gru_causality_past_diff": 0.0,
+    "candidate_pool_min_lag": 5,
+    "candidate_future_info": false,
+    "metadata_leakage": "swapped and bucket are never accessed in forward or loss"
+  },
+  "statistics_audit": {
+    "status": "PASS",
+    "resampling_unit": "episode",
+    "multi_seed_aggregation": "episodes paired across seeds in single cluster",
+    "fail_closed_on_empty": true,
+    "difference_gate_dual_condition": "delta >= min_delta and ci_low > 0.0"
+  },
+  "prereg_consistency": {
+    "status": "PASS",
+    "code_files_checked": 12,
+    "code_files_matched": 12,
+    "design_sha256_matched": true,
+    "steps": {"F1": 2000, "F2": 1000, "aux": 1500},
+    "seeds": [1, 2, 3],
+    "data_scale": {"train_w": 400, "train_e": 4, "dev_w": 50, "dev_e": 2, "final_w": 100, "final_e": 2},
+    "batch_size": 16,
+    "learning_rate": 0.001,
+    "lambda": 1.0,
+    "dev_max_uses": 2,
+    "final_read_once": true,
+    "final_approval_line": "S3-P1-FINAL-READ-APPROVED-TIER1-20261109"
+  },
+  "mutations": {
+    "status": "PASS",
+    "total_mutations": 5,
+    "turned_red_count": 5,
+    "reverted_sha_matched_count": 5,
+    "reverted_exit_code_zero_count": 5
+  },
+  "probes_status": {
+    "status": "PASS",
+    "P-d_upper_bound": 1.0,
+    "P-e_floor_zero_memory": 0.0,
+    "P-f_negative_control": 0.0554,
+    "param_count_max_diff_ratio": 0.0185
+  },
+  "dev1_audit": {
+    "status": "COMPLETED_AND_VERIFIED",
+    "elapsed_seconds": 2033.4,
+    "total_events": 963,
+    "primary_accuracies": {
+      "A0": 0.0,
+      "A1": 0.109034,
+      "A2": 0.885774,
+      "A3": 0.833853,
+      "O": 1.0,
+      "N": 0.001038
+    },
+    "unswapped_accuracies": {
+      "A0": 1.0,
+      "A1": 0.941026,
+      "A2": 0.900000,
+      "A3": 0.970513,
+      "O": 1.0,
+      "N": 0.992308
+    },
+    "h1": {
+      "delta": 0.776739,
+      "ci_low": 0.733333,
+      "ci_high": 0.817692,
+      "pass": true
+    },
+    "h2": {
+      "delta": -0.051921,
+      "ci_low": -0.088392,
+      "ci_high": -0.015822,
+      "pass": false
+    },
+    "h3_drops": {
+      "A0": 0.0,
+      "A1": 0.109034,
+      "A2": 0.765317,
+      "A3": 0.696781
+    },
+    "legality_all_pass": true,
+    "arithmetic_recomputed_match": true
+  },
+  "mandatory_fixes": []
+}

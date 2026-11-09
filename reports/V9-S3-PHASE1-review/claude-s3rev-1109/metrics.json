@@ -1,0 +1,57 @@
+{
+ "schema": "s3.p208.second_review.v1",
+ "task": "ainerzero.V9.P208",
+ "reviewer": "claude-s3rev-1109",
+ "verdict": "REJECT",
+ "verdict_scope": "运行器与证据链；不推翻 dev1 的 H1/H2/H3 判定，不要求重跑 dev1",
+ "must_fix": [
+  "smoke 读 s3p1-dev 且不记账不校验 SHA",
+  "逐事件结果未落盘且主臂权重为 F2 之后，CI 无法复算",
+  "账本与 final 标记写在拿锁之前",
+  "冻结清单缺 s2/world.py、s2/spec.py，design_sha256 运行时未校验",
+  "项目测试漏掉 12 个变异中的 8 个（真值/泄漏/对照类 7 漏 6）"
+ ],
+ "truth_leak_found": false,
+ "bootstrap_unit_ok": true,
+ "gates_fail_closed": true,
+ "prereg_code_sha_match": "12/12 + design + prereg file",
+ "mutations": {
+  "total": 12,
+  "project_tests_killed": 4,
+  "project_tests_survived": [
+   "m01_a0_reads_oracle",
+   "m02_a3_eval_uses_answer_target",
+   "m03_a1_sees_future",
+   "m04_a2_top1_is_oracle",
+   "m05_n_control_equals_a2",
+   "m06_cand_feat_leaks_swapped",
+   "m09_ci_sign_flip",
+   "m10_h2_threshold_drift"
+  ],
+  "harness_killed": 12,
+  "unmutated_control_green": true
+ },
+ "dev1_recompute": {
+  "aggregates_match_cells": true,
+  "numerators_integer": true,
+  "n_primary_f1": 321,
+  "n_unswapped_f1": 260,
+  "episodes_with_primary": 98,
+  "n_primary_f2": 355,
+  "n_unswapped_f2": 253
+ },
+ "unverified": [
+  "H1/H2 CI 数值（无逐事件数据）",
+  "主臂 F2 之前的逐事件结果",
+  "16:03:31 的运行内容",
+  "探针 P-d 至 P-g 数值（未重跑）"
+ ],
+ "relay": {
+  "claim": "409 状态是 待验收",
+  "report_executed": false,
+  "note": "需一级决定如何入卡"
+ },
+ "dev_partition_model_evaluated": false,
+ "final_partition_generated": false,
+ "artifacts_written": false
+}

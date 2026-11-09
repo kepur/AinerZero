@@ -1,0 +1,28 @@
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_phase1_review/workspace
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_analysis.py::test_empty_data_raises_instead_of_passing FAILED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_empty_data_raises_instead_of_passing ___________________
+
+    def test_empty_data_raises_instead_of_passing() -> None:
+        with pytest.raises(ValueError):
+            G.paired_bootstrap_delta(np.array([], dtype=int), np.array([], dtype=bool), np.array([], dtype=bool))
+>       with pytest.raises(ValueError):
+E       Failed: DID NOT RAISE <class 'ValueError'>
+
+tests/v9/experiments/test_s3_analysis.py:59: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_analysis.py::test_empty_data_raises_instead_of_passing
+============================== 1 failed in 0.91s ===============================
+
+STDERR:
