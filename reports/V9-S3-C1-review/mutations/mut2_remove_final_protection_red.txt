@@ -1,0 +1,27 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_p204_mutations
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 4 items
+
+tests/v9/experiments/test_s3_partition_determinism.py::test_episode_generation_determinism PASSED [ 25%]
+tests/v9/experiments/test_s3_partition_determinism.py::test_seed_namespaces_disjointness PASSED [ 50%]
+tests/v9/experiments/test_s3_partition_determinism.py::test_final_partition_refusal_by_default FAILED [ 75%]
+tests/v9/experiments/test_s3_partition_determinism.py::test_artifacts_path_write_refusal PASSED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_final_partition_refusal_by_default ____________________
+
+    def test_final_partition_refusal_by_default() -> None:
+        """Assert generate_partition('final') raises PermissionError without allow_final=True."""
+>       with pytest.raises(PermissionError, match="refused by default"):
+E       Failed: DID NOT RAISE <class 'PermissionError'>
+
+tests/v9/experiments/test_s3_partition_determinism.py:61: Failed
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_partition_determinism.py::test_final_partition_refusal_by_default
+========================= 1 failed, 3 passed in 0.91s ==========================

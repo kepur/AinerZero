@@ -1,0 +1,48 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_p204_mutations
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 2 items
+
+tests/v9/experiments/test_s3_content_independence.py::test_content_invariants_and_token_families FAILED [ 50%]
+tests/v9/experiments/test_s3_content_independence.py::test_content_layer_independence_across_episodes PASSED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_content_invariants_and_token_families __________________
+
+    def test_content_invariants_and_token_families() -> None:
+        """Verify new_token != initial_token and strict family bounds."""
+        layout = make_layout(5001)
+    
+        for family, valid_tokens in [("F1", spec.F1_TOKENS), ("F2", spec.F2_TOKENS)]:
+            rng = random.Random(12345)
+            cs = generate_content_state(layout, family, rng, m=spec.M)
+    
+            assert len(cs.content_cells) == spec.M
+            assert len(set(cs.content_cells)) == spec.M
+    
+            for cell in cs.content_cells:
+                # Must be placed on FREE cell
+                assert layout.terrain[cell[1]][cell[0]] == FREE
+    
+                t_init = cs.initial_tokens[cell]
+                t_new = cs.new_tokens[cell]
+                t_swap = cs.swap_times[cell]
+    
+                # Tokens must be in registered family
+                assert t_init in valid_tokens
+                assert t_new in valid_tokens
+    
+                # New token must differ from initial token
+>               assert t_new != t_init, f"new_token {t_new} equals initial_token {t_init} at {cell}"
+E               AssertionError: new_token 8 equals initial_token 8 at (2, 18)
+E               assert 8 != 8
+
+tests/v9/experiments/test_s3_content_independence.py:45: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_content_independence.py::test_content_invariants_and_token_families
+========================= 1 failed, 1 passed in 0.79s ==========================

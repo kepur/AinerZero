@@ -1,0 +1,43 @@
+{
+  "task": "ainerzero.V9.P200",
+  "review_target": "reports/V9-S2-CLOSE/addendum-data-defect/ERRATUM.md",
+  "reviewer": "gemini-k8d4",
+  "verdict": "CONFIRMED",
+  "independent_benchmark_200_pairs": {
+    "existing_forward_bfs": {
+      "reached": 0,
+      "stuck_wait": 200,
+      "timeout": 0,
+      "arrival_rate": 0.0,
+      "avg_steps": 3.175
+    },
+    "corrected_backward_bfs": {
+      "reached": 200,
+      "stuck_wait": 0,
+      "timeout": 0,
+      "arrival_rate": 1.0,
+      "avg_steps": 40.435
+    }
+  },
+  "dataset_audit_8000_episodes": {
+    "total_episodes": 8000,
+    "actions": {
+      "forward_pct": 21.85,
+      "left_pct": 18.70,
+      "right_pct": 18.71,
+      "wait_pct": 40.74
+    },
+    "bfs_wait_pct": 60.65,
+    "non_bfs_wait_pct": 26.94,
+    "unique_cells_median": 14.0,
+    "max_cell_fraction_median_pct": 33.57
+  },
+  "section3_and_4_verifications": {
+    "existing_tests_lacked_arrival_assertions": true,
+    "find_path_step_isolated_to_s2_data": true,
+    "long_goal_pair_forward_distance_valid": true,
+    "s1_and_e1_bypass_find_path_step": true
+  },
+  "counter_example_analysis": "Inflation of WAIT to 60.6% in BFS segments cannot be explained by design; optimal shortest path requires moving/turning, not waiting. Premature stagnation is mathematically proven consequence of reversed distance gradient.",
+  "unverified_items": []
+}

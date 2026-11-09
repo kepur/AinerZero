@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_mutations/m4_leak_coordinates
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_obs_spec.py::test_student_observation_dimension_and_no_leakage FAILED [100%]
+
+=================================== FAILURES ===================================
+______________ test_student_observation_dimension_and_no_leakage _______________
+
+    def test_student_observation_dimension_and_no_leakage() -> None:
+        """Verify observation vector length 198 and absence of coordinates in student obs."""
+        episode = generate_episode(world_seed=7001, episode_seed=7002, family="F1")
+    
+        assert "steps" in episode
+        assert len(episode["steps"]) == spec.T
+    
+        for step_data in episode["steps"]:
+            # 1. Dimension and type checks
+            obs = step_data["obs"]
+            assert isinstance(obs, np.ndarray), f"Obs must be numpy array, got {type(obs)}"
+            assert obs.shape == (spec.OBS_DIM,), f"Obs dimension must be {spec.OBS_DIM}, got {obs.shape}"
+            assert obs.dtype == np.float32, f"Obs dtype must be float32, got {obs.dtype}"
+    
+            # 2. Key leakage checks on student-visible fields
+            # Allowed top-level step keys: 't', 'obs', 'action', 'est_pose', 'truth'
+            allowed_keys = {"t", "obs", "action", "est_pose", "truth"}
+>           assert set(step_data.keys()).issubset(allowed_keys)
+E           AssertionError: assert False
+E            +  where False = <built-in method issubset of set object at 0x107946880>({'action', 'est_pose', 'obs', 't', 'truth'})
+E            +    where <built-in method issubset of set object at 0x107946880> = {'action', 'est_pose', 'obs', 't', 'truth', 'x', ...}.issubset
+E            +      where {'action', 'est_pose', 'obs', 't', 'truth', 'x', ...} = set(dict_keys(['t', 'x', 'y', 'obs', 'action', 'est_pose', 'truth']))
+E            +        where dict_keys(['t', 'x', 'y', 'obs', 'action', 'est_pose', 'truth']) = <built-in method keys of dict object at 0x107948f40>()
+E            +          where <built-in method keys of dict object at 0x107948f40> = {'action': 0, 'est_pose': [19.0, 23.0, 3], 'obs': array([0., 1., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,\n       0., 0., 0., 0., 1., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.,\n       0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 1., 0., 0., 0., 0.,\n       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 1.,\n       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.,\n       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.,\n       0., 0., 0., 1., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0.,\n       0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 1., 0., 0., 0., 0., 0.,\n       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 1., 0.,\n       0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0.,\n       0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,\n       0., 0., 0., 0., 0., 1., 0., 0., 0., 1., 0.], dtype=float32), 't': 0, ...}.keys
+
+tests/v9/experiments/test_s3_obs_spec.py:36: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_obs_spec.py::test_student_observation_dimension_and_no_leakage
+============================== 1 failed in 0.82s ===============================

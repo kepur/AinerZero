@@ -1,0 +1,53 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_p204_mutations
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_events_bruteforce.py::test_events_match_brute_force_identical FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_events_match_brute_force_identical ____________________
+
+    def test_events_match_brute_force_identical() -> None:
+        """Assert all tour events match independent brute-force scan exactly."""
+        n_episodes = 15
+    
+        for ep_idx in range(n_episodes):
+            layout = make_layout(6000 + ep_idx)
+            rng = random.Random(ep_idx * 101 + 42)
+            cs = generate_content_state(layout, "F1", rng, m=spec.M)
+            tour_res = run_tour(layout, cs, rng, t_max=spec.T)
+    
+            actual_events = tour_res["events"]
+            expected_events = _brute_force_recompute_events(
+                tour_res["trajectory_positions"],
+                cs,
+            )
+    
+            assert len(actual_events) == len(expected_events), (
+                f"Event count mismatch in episode {ep_idx}: "
+                f"actual {len(actual_events)} != expected {len(expected_events)}"
+            )
+    
+            for i, (act, exp) in enumerate(zip(actual_events, expected_events)):
+                assert act["t"] == exp["t"], f"Event {i} step t mismatch"
+                assert act["cell"] == exp["cell"], f"Event {i} cell mismatch"
+                assert act["prev_visit_t"] == exp["prev_visit_t"], (
+                    f"Event {i} prev_visit_t mismatch: act {act['prev_visit_t']} != exp {exp['prev_visit_t']}"
+                )
+                assert act["lag"] == exp["lag"], f"Event {i} lag mismatch"
+                assert act["bucket"] == exp["bucket"], f"Event {i} bucket mismatch"
+                assert act["swapped"] == exp["swapped"], f"Event {i} swapped mismatch"
+>               assert act["answer"] == exp["answer"], f"Event {i} answer mismatch"
+E               AssertionError: Event 1 answer mismatch
+E               assert 3 == 8
+
+tests/v9/experiments/test_s3_events_bruteforce.py:97: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_events_bruteforce.py::test_events_match_brute_force_identical
+============================== 1 failed in 0.81s ===============================

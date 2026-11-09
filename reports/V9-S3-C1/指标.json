@@ -1,0 +1,83 @@
+{
+  "task_id": "ainerzero.V9.P203",
+  "status": "passed",
+  "review_iteration": "r2_recheck",
+  "probe_p_a_100_worlds": {
+    "n_worlds": 100,
+    "unique_cells_median": 112.0,
+    "unique_cells_median_min_threshold": 60,
+    "unique_cells_passed": true,
+    "top_cell_fraction_max": 0.05277777777777778,
+    "top_cell_fraction_max_threshold": 0.15,
+    "top_cell_fraction_passed": true,
+    "long_swapped_episodes_fraction": 0.98,
+    "long_swapped_fraction_threshold": 0.9,
+    "long_swapped_passed": true,
+    "total_events": 930,
+    "swapped_events": 399,
+    "swapped_ratio": 0.4290322580645161,
+    "swapped_ratio_bounds": [
+      0.4,
+      0.6
+    ],
+    "swapped_ratio_passed": true,
+    "overall_p_a_passed": true
+  },
+  "probe_p_b_reachability": {
+    "n_worlds": 35,
+    "goals_per_world": 5,
+    "total_goals": 175,
+    "reached_goals": 175,
+    "reachability": 1.0,
+    "reachability_threshold": 1.0,
+    "overall_p_b_passed": true
+  },
+  "scale_swap_test_500_worlds": {
+    "n_worlds": 500,
+    "total_return_events": 4803,
+    "swapped_events": 2027,
+    "unswapped_events": 2776,
+    "swapped_ratio_mean": 0.4220278992296481,
+    "swapped_ratio_95_ci": [
+      0.408127993018064,
+      0.43605243514499425
+    ],
+    "swapped_ratio_bounds": [
+      0.4,
+      0.6
+    ],
+    "swapped_ratio_in_bounds": true,
+    "lag_less_than_8_events_count": 78,
+    "lag_less_than_8_bucket": null,
+    "lag_less_than_8_explanation": "Events with lag < 8 have bucket=None and do not enter short/mid/long buckets or main benchmark statistics",
+    "bucket_breakdown": {
+      "counts": {
+        "short": 331,
+        "mid": 1587,
+        "long": 2807,
+        "none_lag_lt_8": 78
+      },
+      "swapped_counts": {
+        "short": 18,
+        "mid": 325,
+        "long": 1682,
+        "none_lag_lt_8": 2
+      }
+    }
+  },
+  "event_bounds_invariants": {
+    "verified_worlds_count": 500,
+    "total_events_checked": 4803,
+    "all_events_satisfy_t_lt_len_steps": true,
+    "all_events_satisfy_0_le_prev_visit_t_lt_t": true,
+    "max_t_observed": 359,
+    "steps_len_per_episode": 360
+  },
+  "negative_controls": {
+    "m1_forward_bfs": "RED (0/175 reachability, 0.00% vs 100.00%)",
+    "m2_fixed_content": "RED (Positions lack diversity: 1/25 < 20)",
+    "m3_skip_pass_through": "RED (Event count mismatch: actual 3 != expected 9)",
+    "m4_leak_coordinates": "RED (Disallowed key x leaked into student step data)",
+    "m5_out_of_bounds": "RED (Event count mismatch on t=360 out-of-bounds: actual 14 != expected 13)"
+  }
+}

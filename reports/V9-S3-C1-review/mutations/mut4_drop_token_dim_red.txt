@@ -1,0 +1,116 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_p204_mutations
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_obs_spec.py::test_student_observation_dimension_and_no_leakage FAILED [100%]
+
+=================================== FAILURES ===================================
+______________ test_student_observation_dimension_and_no_leakage _______________
+
+    def test_student_observation_dimension_and_no_leakage() -> None:
+        """Verify observation vector length 198 and absence of coordinates in student obs."""
+>       episode = generate_episode(world_seed=7001, episode_seed=7002, family="F1")
+
+tests/v9/experiments/test_s3_obs_spec.py:21: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/experiments/s3/data.py:52: in generate_episode
+    raw_episode = run_tour(
+src/ainerzero/v9/experiments/s3/tour.py:140: in run_tour
+    obs = compute_student_obs(layout, s, last_action, bumped, content_map)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+layout = Layout(seed=7001, terrain=[[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0..., 18), (13, 22), (13, 23), (23, 20)], layout_sha256='af77b11b896552c71bb1a33dfde6d7a98525b550c35c676fa75fb8c3b1bd5d64')
+state = State(x=19, y=23, heading=3, wall_bumps=0), last_action = 3
+bumped = False
+content_at_step = {(3, 15): 6, (4, 4): 3, (6, 11): 2, (13, 17): 6, ...}
+
+    def compute_student_obs(
+        layout: Layout,
+        state: State,
+        last_action: int,
+        bumped: bool,
+        content_at_step: dict[tuple[int, int], int],
+    ) -> np.ndarray:
+        """Compute 198-dimensional student observation vector per DESIGN-r2 §2.
+    
+        Components:
+        - 3x3 ego view cropped from 7x7 center (rows 2..4, cols 2..4):
+          Each cell has:
+            - 4-dim one-hot terrain (FREE, WALL, PILLAR, UNSEEN)
+            - 17-dim one-hot token (0=NONE, 1..16)
+          Total: 9 * 21 = 189 dims.
+        - Heading one-hot: 4 dims.
+        - Last action one-hot: 4 dims.
+        - Wall bump: 1 dim (1.0 if bumped in last step, else 0.0).
+        Total: 189 + 4 + 4 + 1 = 198 dims.
+    
+        Strictly no absolute coordinates (x, y), ground truth pose, or token swap flags.
+        """
+        full_ego = compute_ego_view(layout, state.x, state.y, state.heading)
+    
+        # Center 3x3 crop from 7x7 (center is r=3, c=3)
+        # Rows 2, 3, 4; Columns 2, 3, 4
+        view_feats: list[float] = []
+    
+        for r in (2, 3, 4):
+            for c in (2, 3, 4):
+                t_val = full_ego[r][c]
+    
+                # 4 terrain one-hot: FREE=0, WALL=1, PILLAR=2, UNSEEN=-1
+                # Map UNSEEN (-1) to index 3
+                terrain_one_hot = [0.0, 0.0, 0.0, 0.0]
+                if t_val == FREE:
+                    terrain_one_hot[0] = 1.0
+                elif t_val == WALL:
+                    terrain_one_hot[1] = 1.0
+                elif t_val == PILLAR:
+                    terrain_one_hot[2] = 1.0
+                else:
+                    terrain_one_hot[3] = 1.0  # UNSEEN or out-of-bounds
+    
+                # 17 token one-hot (0=NONE, 1..16)
+                token_one_hot = [0.0] * (spec.NUM_TOKEN_CLASSES - 1)  # MUT4: dropped token dim
+                if t_val == UNSEEN:
+                    # Occluded cell cannot be inspected for token
+                    token_one_hot[spec.NONE_TOKEN] = 1.0
+                else:
+                    wx, wy = _ego_to_world_coords(state.x, state.y, state.heading, r, c)
+                    tok = content_at_step.get((wx, wy), spec.NONE_TOKEN)
+                    if 0 <= tok < spec.NUM_TOKEN_CLASSES:
+                        token_one_hot[tok] = 1.0
+                    else:
+                        token_one_hot[spec.NONE_TOKEN] = 1.0
+    
+                view_feats.extend(terrain_one_hot)
+                view_feats.extend(token_one_hot)
+    
+        # Heading one-hot (4 dims)
+        heading_one_hot = [0.0] * spec.NUM_HEADINGS
+        if 0 <= state.heading < spec.NUM_HEADINGS:
+            heading_one_hot[state.heading] = 1.0
+    
+        # Last action one-hot (4 dims)
+        action_one_hot = [0.0] * spec.NUM_ACTIONS
+        if 0 <= last_action < spec.NUM_ACTIONS:
+            action_one_hot[last_action] = 1.0
+    
+        # Bump proprioception (1 dim)
+        bump_feat = [1.0 if bumped else 0.0]
+    
+        obs = np.array(
+            view_feats + heading_one_hot + action_one_hot + bump_feat,
+            dtype=np.float32,
+        )
+>       assert obs.shape == (spec.OBS_DIM,), f"Observation dim mismatch: expected {spec.OBS_DIM}, got {obs.shape}"
+E       AssertionError: Observation dim mismatch: expected 198, got (189,)
+
+src/ainerzero/v9/experiments/s3/world.py:301: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_obs_spec.py::test_student_observation_dimension_and_no_leakage
+============================== 1 failed in 0.79s ===============================

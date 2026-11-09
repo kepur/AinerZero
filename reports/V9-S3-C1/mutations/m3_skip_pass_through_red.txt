@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_mutations/m3_skip_pass_through
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_events_bruteforce.py::test_events_match_brute_force_identical FAILED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_events_match_brute_force_identical ____________________
+
+    def test_events_match_brute_force_identical() -> None:
+        """Assert all tour events match independent brute-force scan exactly."""
+        n_episodes = 15
+    
+        for ep_idx in range(n_episodes):
+            layout = make_layout(6000 + ep_idx)
+            rng = random.Random(ep_idx * 101 + 42)
+            cs = generate_content_state(layout, "F1", rng, m=spec.M)
+            tour_res = run_tour(layout, cs, rng, t_max=spec.T)
+    
+            actual_events = tour_res["events"]
+            expected_events = _brute_force_recompute_events(
+                tour_res["trajectory_positions"],
+                cs,
+            )
+    
+>           assert len(actual_events) == len(expected_events), (
+                f"Event count mismatch in episode {ep_idx}: "
+                f"actual {len(actual_events)} != expected {len(expected_events)}"
+            )
+E           AssertionError: Event count mismatch in episode 0: actual 3 != expected 9
+E           assert 3 == 9
+E            +  where 3 = len([{'answer': 8, 'bucket': 'long', 'cell': [18, 9], 'lag': 91, ...}, {'answer': 8, 'bucket': 'long', 'cell': [14, 12], 'lag': 234, ...}, {'answer': 2, 'bucket': 'long', 'cell': [9, 19], 'lag': 119, ...}])
+E            +  and   9 = len([{'answer': 6, 'bucket': 'long', 'cell': [3, 1], 'lag': 117, ...}, {'answer': 8, 'bucket': 'long', 'cell': [18, 9], 'lag': 91, ...}, {'answer': 4, 'bucket': 'long', 'cell': [9, 19], 'lag': 97, ...}, {'answer': 6, 'bucket': 'long', 'cell': [3, 1], 'lag': 92, ...}, {'answer': 2, 'bucket': 'long', 'cell': [10, 6], 'lag': 197, ...}, {'answer': 3, 'bucket': 'long', 'cell': [18, 9], 'lag': 93, ...}, ...])
+
+tests/v9/experiments/test_s3_events_bruteforce.py:83: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_events_bruteforce.py::test_events_match_brute_force_identical
+============================== 1 failed in 0.82s ===============================

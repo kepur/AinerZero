@@ -1,0 +1,64 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_mutations/m1_forward_bfs
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_pathfinding.py::test_reverse_bfs_reachability_100_percent FAILED [100%]
+
+=================================== FAILURES ===================================
+__________________ test_reverse_bfs_reachability_100_percent ___________________
+
+    def test_reverse_bfs_reachability_100_percent() -> None:
+        """Assert reverse BFS achieves 100% reachability across >= 30 worlds x 5 long goals."""
+        n_worlds = 35
+        goals_per_world = 5
+        max_steps = 300
+    
+        total_attempts = 0
+        successful_arrivals = 0
+    
+        for w_idx in range(n_worlds):
+            seed = 4000 + w_idx
+            layout = make_layout(seed)
+            connected = get_connected_free_cells(layout)
+            rng = random.Random(seed * 31 + 7)
+    
+            for _ in range(goals_per_world):
+                start = rng.choice(connected)
+                # Filter for long goals (Manhattan distance >= 15)
+                long_goals = [
+                    c for c in connected
+                    if (abs(c[0] - start[0]) + abs(c[1] - start[1])) >= 15
+                ]
+                assert long_goals, f"No long goals found for start {start} in world {seed}"
+                goal = rng.choice(long_goals)
+    
+                s = State(x=start[0], y=start[1], heading=rng.choice([0, 1, 2, 3]))
+                dist_field = compute_reverse_bfs_distances(layout, goal)
+    
+                step_count = 0
+                while (s.x, s.y) != goal and step_count < max_steps:
+                    action = step_to_goal(layout, s, dist_field)
+                    s = step(layout, s, action, k=1)
+                    step_count += 1
+    
+                total_attempts += 1
+                if (s.x, s.y) == goal:
+                    successful_arrivals += 1
+    
+        reachability = successful_arrivals / total_attempts
+>       assert reachability == 1.0, (
+            f"Pathfinding reachability failed: {successful_arrivals}/{total_attempts} "
+            f"({reachability * 100:.2f}%), required 100%"
+        )
+E       AssertionError: Pathfinding reachability failed: 0/175 (0.00%), required 100%
+E       assert 0.0 == 1.0
+
+tests/v9/experiments/test_s3_pathfinding.py:65: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_pathfinding.py::test_reverse_bfs_reachability_100_percent
+============================== 1 failed in 1.10s ===============================

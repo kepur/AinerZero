@@ -1,0 +1,41 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_p205_mutations
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 4 items
+
+tests/v9/experiments/test_s3_partition_determinism.py::test_episode_generation_determinism PASSED [ 25%]
+tests/v9/experiments/test_s3_partition_determinism.py::test_seed_namespaces_disjointness FAILED [ 50%]
+tests/v9/experiments/test_s3_partition_determinism.py::test_final_partition_refusal_by_default PASSED [ 75%]
+tests/v9/experiments/test_s3_partition_determinism.py::test_artifacts_path_write_refusal PASSED [100%]
+
+=================================== FAILURES ===================================
+______________________ test_seed_namespaces_disjointness _______________________
+
+    def test_seed_namespaces_disjointness() -> None:
+        """Assert seeds generated across registered namespaces do not collide."""
+        namespaces = spec.REGISTERED_NAMESPACES
+        n_keys = 200
+    
+        seeds_by_ns: dict[str, set[int]] = {}
+        for ns in namespaces:
+            seeds = {derive_seed(ns, "key", i) for i in range(n_keys)}
+            assert len(seeds) == n_keys, f"Internal collisions within namespace {ns}"
+            seeds_by_ns[ns] = seeds
+    
+        for i, ns1 in enumerate(namespaces):
+            for j, ns2 in enumerate(namespaces):
+                if i < j:
+                    intersection = seeds_by_ns[ns1] & seeds_by_ns[ns2]
+>                   assert not intersection, f"Cross-namespace seed collision between {ns1} and {ns2}: {intersection}"
+E                   AssertionError: Cross-namespace seed collision between s3p1-train and s3p1-dev: {980010496, 1079275010, 1850380806, 696953863, 1852183047, 1288588808, 1912479750, 787185167, 1899885586, 520244755, 547753491, 1375689235, 664561686, 145888793, 760572441, 1088669210, 1495985696, 1668061730, 509034532, 250485800, 1915917354, 1831992363, 869790765, 312711726, 234716724, 1464855094, 690041403, 274746429, 1462064192, 1448244802, 464816713, 19389001, 1248639053, 1938480206, 281405006, 420871251, 1250548822, 1219070551, 335184992, 403563619, 863867492, 678538340, 1361849446, 1002339941, 1024060525, 1925651054, 468201591, 703046269, 914602112, 326086786, 775270020, 1038558865, 1355650710, 922583191, 946278038, 876532890, 370460321, 357543074, 152592549, 723685542, 851886249, 1717352106, 1278018733, 41347254, 201133753, 1195867321, 1691619514, 1067140796, 946977469, 1175068866, 1594863299, 665018054, 2003531980, 1907222733, 1528973008, 145125075, 440112341, 2143394008, 807351516, 1605641438, 1598287584, 25099494, 22083818, 1426894577, 1988776700, 2015732477, 1234081023, 1886064900, 2040719621, 1273017099, 737169675, 2121122576, 802694417, 779166996, 1622555929, 576241434, 220372250, 1436384028, 1839321372, 1305638174, 1993406240, 477048096, 649094948, 2066927910, 1494747946, 1097105197, 111180080, 1798559541, 1396583223, 1112955193, 1489732410, 1381534011, 1502457662, 117876545, 313431362, 1233823555, 1452413251, 512813894, 1705593160, 1611465557, 258209626, 83434845, 165981023, 1295178592, 1583501154, 367296354, 140157794, 990711141, 313861481, 1958754154, 1015673195, 1681382252, 685012339, 1869258100, 1397371763, 1072043891, 618566008, 64450426, 1682285951, 668259712, 170472442, 532611972, 641568644, 1306734471, 472204167, 1513935241, 1455627146, 1231314317, 390202765, 1072606607, 1653329297, 1245144979, 1726558100, 465788822, 1290720668, 1644369824, 310885794, 1727637922, 2072492962, 745014187, 348233645, 736031151, 1613071282, 981307318, 1237649339, 1025835964, 390787005, 1757075390, 1100452804, 1819485125, 822666692, 1221971398, 373407689, 1164070349, 2065088980, 795107797, 1164503511, 1652711897, 636159450, 1147710427, 183476700, 115389406, 900304864, 758167522, 1721649123, 1957137378, 2088149989, 157209062, 638785002, 932609520, 1033018352, 883698674, 687663602, 1229057523, 1471250422, 1839658490, 134138363, 1019889660, 382489085, 1361720831}
+E                   assert not {19389001, 22083818, 25099494, 41347254, 64450426, 83434845, ...}
+
+tests/v9/experiments/test_s3_partition_determinism.py:56: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_partition_determinism.py::test_seed_namespaces_disjointness
+========================= 1 failed, 3 passed in 0.91s ==========================

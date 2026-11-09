@@ -1,0 +1,64 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3_mutations/m5_out_of_bounds
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3_events_bruteforce.py::test_events_match_brute_force_and_hard_bounds_100_worlds FAILED [100%]
+
+=================================== FAILURES ===================================
+___________ test_events_match_brute_force_and_hard_bounds_100_worlds ___________
+
+    def test_events_match_brute_force_and_hard_bounds_100_worlds() -> None:
+        """Assert all tour events match independent brute-force scan and satisfy strict bounds across 100 worlds."""
+        n_worlds = 100
+        total_events_verified = 0
+    
+        for w_idx in range(n_worlds):
+            w_seed = derive_seed(spec.NAMESPACE_PROBE, "world", w_idx)
+            ep_seed = derive_seed(spec.NAMESPACE_PROBE, "ep", w_idx, 0)
+            episode = generate_episode(world_seed=w_seed, episode_seed=ep_seed, family="F1")
+    
+            steps = episode["steps"]
+            n_steps = len(steps)
+            assert n_steps == spec.T, f"Expected {spec.T} steps, got {n_steps}"
+    
+            # Reconstruct ContentState for independent verification
+            cstate_dict = episode["content_state"]
+            content_state = ContentState(
+                content_cells=tuple(tuple(c) for c in cstate_dict["content_cells"]),
+                initial_tokens={
+                    tuple(map(int, k.split(","))): v
+                    for k, v in cstate_dict["initial_tokens"].items()
+                },
+                swap_times={
+                    tuple(map(int, k.split(","))): v
+                    for k, v in cstate_dict["swap_times"].items()
+                },
+                new_tokens={
+                    tuple(map(int, k.split(","))): v
+                    for k, v in cstate_dict["new_tokens"].items()
+                },
+                family=cstate_dict["family"],
+            )
+    
+            actual_events = episode["events"]
+            expected_events = _brute_force_recompute_events(steps, content_state)
+    
+            # 1. Exact match between actual and independent brute-force calculation
+>           assert len(actual_events) == len(expected_events), (
+                f"Event count mismatch in world {w_idx}: "
+                f"actual {len(actual_events)} != expected {len(expected_events)}"
+            )
+E           AssertionError: Event count mismatch in world 11: actual 14 != expected 13
+E           assert 14 == 13
+E            +  where 14 = len([{'answer': 8, 'bucket': 'short', 'cell': [12, 13], 'lag': 24, ...}, {'answer': 8, 'bucket': 'mid', 'cell': [5, 9], 'lag': 71, ...}, {'answer': 8, 'bucket': 'long', 'cell': [12, 13], 'lag': 129, ...}, {'answer': 6, 'bucket': 'long', 'cell': [15, 8], 'lag': 156, ...}, {'answer': 2, 'bucket': 'long', 'cell': [16, 1], 'lag': 133, ...}, {'answer': 8, 'bucket': 'long', 'cell': [23, 15], 'lag': 92, ...}, ...])
+E            +  and   13 = len([{'answer': 8, 'bucket': 'short', 'cell': [12, 13], 'lag': 24, ...}, {'answer': 8, 'bucket': 'mid', 'cell': [5, 9], 'lag': 71, ...}, {'answer': 8, 'bucket': 'long', 'cell': [12, 13], 'lag': 129, ...}, {'answer': 6, 'bucket': 'long', 'cell': [15, 8], 'lag': 156, ...}, {'answer': 2, 'bucket': 'long', 'cell': [16, 1], 'lag': 133, ...}, {'answer': 8, 'bucket': 'long', 'cell': [23, 15], 'lag': 92, ...}, ...])
+
+tests/v9/experiments/test_s3_events_bruteforce.py:108: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_events_bruteforce.py::test_events_match_brute_force_and_hard_bounds_100_worlds
+============================== 1 failed in 1.17s ===============================
