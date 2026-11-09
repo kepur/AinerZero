@@ -1,0 +1,22 @@
+....................F.F..                                                [100%]
+=================================== FAILURES ===================================
+______________ test_view_similarity_is_fraction_of_matching_cells ______________
+tests/v9/experiments/test_s3c2_scoring_contract.py:45: in test_view_similarity_is_fraction_of_matching_cells
+    assert abs(compute_view_similarity(q, _rec(2, 0.0, 0.0, one_off)) - 8.0 / 9.0) < 1e-9
+E   assert 0.11111111111111116 < 1e-09
+E    +  where 0.11111111111111116 = abs((1.0 - (8.0 / 9.0)))
+E    +    where 1.0 = compute_view_similarity(EpisodicRecord(t=0, est_pose=(0.0, 0.0, 0), world_terrain=array([[0, 1, 0],\n       [1, 0, 1],\n       [0, 2, 0]], dtype=int8), observed_token=0), EpisodicRecord(t=2, est_pose=(0.0, 0.0, 0), world_terrain=array([[3, 1, 0],\n       [1, 0, 1],\n       [0, 2, 0]], dtype=int8), observed_token=0))
+E    +      where EpisodicRecord(t=2, est_pose=(0.0, 0.0, 0), world_terrain=array([[3, 1, 0],\n       [1, 0, 1],\n       [0, 2, 0]], dtype=int8), observed_token=0) = _rec(2, 0.0, 0.0, [[3, 1, 0], [1, 0, 1], [0, 2, 0]])
+________________ test_candidate_pool_is_union_of_all_three_cues ________________
+tests/v9/experiments/test_s3c2_scoring_contract.py:87: in test_candidate_pool_is_union_of_all_three_cues
+    assert got == list(range(0, 12)), f"pool must be pose(0-3) + combined(4-7) + view(8-11), got {got}"
+E   AssertionError: pool must be pose(0-3) + combined(4-7) + view(8-11), got [0, 1, 2, 3, 32, 33, 34, 35]
+E   assert [0, 1, 2, 3, 32, 33, ...] == [0, 1, 2, 3, 4, 5, ...]
+E     
+E     At index 4 diff: 32 != 4
+E     Right contains 4 more items, first extra item: 8
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3c2_scoring_contract.py::test_view_similarity_is_fraction_of_matching_cells
+FAILED tests/v9/experiments/test_s3c2_scoring_contract.py::test_candidate_pool_is_union_of_all_three_cues
+2 failed, 23 passed in 13.14s

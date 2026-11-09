@@ -1,0 +1,19 @@
+.....................FF..                                                [100%]
+=================================== FAILURES ===================================
+________ test_combined_score_rewards_similarity_and_penalises_distance _________
+tests/v9/experiments/test_s3c2_scoring_contract.py:50: in test_combined_score_rewards_similarity_and_penalises_distance
+    assert compute_combined_score(pose_dist=2.0, view_sim=1.0, lam=0.5, scale=49.0) == 22.5
+E   assert 26.5 == 22.5
+E    +  where 26.5 = compute_combined_score(pose_dist=2.0, view_sim=1.0, lam=0.5, scale=49.0)
+________________ test_candidate_pool_is_union_of_all_three_cues ________________
+tests/v9/experiments/test_s3c2_scoring_contract.py:87: in test_candidate_pool_is_union_of_all_three_cues
+    assert got == list(range(0, 12)), f"pool must be pose(0-3) + combined(4-7) + view(8-11), got {got}"
+E   AssertionError: pool must be pose(0-3) + combined(4-7) + view(8-11), got [0, 1, 2, 3, 8, 9, 10, 11, 32, 33, 34, 35]
+E   assert [0, 1, 2, 3, 8, 9, ...] == [0, 1, 2, 3, 4, 5, ...]
+E     
+E     At index 4 diff: 8 != 4
+E     Use -v to get more diff
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3c2_scoring_contract.py::test_combined_score_rewards_similarity_and_penalises_distance
+FAILED tests/v9/experiments/test_s3c2_scoring_contract.py::test_candidate_pool_is_union_of_all_three_cues
+2 failed, 23 passed in 13.19s

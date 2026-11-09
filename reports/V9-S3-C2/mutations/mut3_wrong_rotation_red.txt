@@ -1,0 +1,75 @@
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3c2_mutations/workspace
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3c2_rotation.py::test_ego_terrain_rotation_invariance_across_headings FAILED [100%]
+
+=================================== FAILURES ===================================
+_____________ test_ego_terrain_rotation_invariance_across_headings _____________
+
+    def test_ego_terrain_rotation_invariance_across_headings() -> None:
+        """Extract ego terrain at (x, y) for all 4 headings and verify world alignment."""
+        layout = world.make_layout(seed=42)
+        walkable = world.get_connected_free_cells(layout)
+    
+        # Test at least 50 walkable cells
+        test_cells = walkable[:60]
+        assert len(test_cells) >= 50
+    
+        for x, y in test_cells:
+            aligned_views = []
+            for heading in (0, 1, 2, 3):
+                state = world.State(x=x, y=y, heading=heading)
+                obs = world.compute_student_obs(
+                    layout,
+                    state,
+                    last_action=0,
+                    bumped=False,
+                    content_at_step={},
+                )
+                rec = parse_student_step({
+                    "t": 0,
+                    "est_pose": (float(x), float(y), heading),
+                    "obs": obs,
+                })
+                aligned_views.append(rec.world_terrain)
+    
+            # All 4 headings must rotate to the EXACT same world-aligned view
+            for h in range(1, 4):
+>               np.testing.assert_array_equal(
+                    aligned_views[h],
+                    aligned_views[0],
+                    err_msg=f"Cell ({x}, {y}) heading {h} did not align to heading 0",
+                )
+E               AssertionError: 
+E               Arrays are not equal
+E               Cell (1, 1) heading 1 did not align to heading 0
+E               Mismatched elements: 6 / 9 (66.7%)
+E               First 5 mismatches are at indices:
+E                [0, 0]: 0 (ACTUAL), 1 (DESIRED)
+E                [0, 1]: 0 (ACTUAL), 1 (DESIRED)
+E                [1, 0]: 0 (ACTUAL), 1 (DESIRED)
+E                [1, 2]: 1 (ACTUAL), 0 (DESIRED)
+E                [2, 1]: 1 (ACTUAL), 0 (DESIRED)
+E               Max absolute difference among violations: 1
+E               Max relative difference among violations: 1.
+E                ACTUAL: array([[0, 0, 1],
+E                      [0, 0, 1],
+E                      [1, 1, 1]], dtype=int8)
+E                DESIRED: array([[1, 1, 1],
+E                      [1, 0, 0],
+E                      [1, 0, 0]], dtype=int8)
+
+tests/v9/experiments/test_s3c2_rotation.py:46: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3c2_rotation.py::test_ego_terrain_rotation_invariance_across_headings
+============================== 1 failed in 0.78s ===============================
+
+STDERR:

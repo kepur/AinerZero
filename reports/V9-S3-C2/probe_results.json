@@ -1,0 +1,142 @@
+{
+  "status": "completed",
+  "duration_sec": 10.39,
+  "protocol": {
+    "train_partition": "s3p1-train",
+    "train_n_worlds": 50,
+    "probe_partition": "s3p1-probe",
+    "probe_n_worlds": 100,
+    "candidate_lambdas": [
+      0.1,
+      0.25,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "best_lambda": 1.0,
+    "scale_constant": 49.0,
+    "gap": 5,
+    "top_k_per_cue": 4,
+    "max_candidate_pool_size": 12
+  },
+  "train_grid_search": {
+    "precisions": {
+      "0.1": 0.45075757575757575,
+      "0.25": 0.5492424242424242,
+      "0.5": 0.571969696969697,
+      "1.0": 0.5909090909090909,
+      "2.0": 0.5909090909090909
+    },
+    "details": {
+      "0.1": {
+        "strict_hits": 119,
+        "loose_hits": 135,
+        "total_events": 264,
+        "strict_precision": 0.45075757575757575,
+        "loose_precision": 0.5113636363636364
+      },
+      "0.25": {
+        "strict_hits": 145,
+        "loose_hits": 162,
+        "total_events": 264,
+        "strict_precision": 0.5492424242424242,
+        "loose_precision": 0.6136363636363636
+      },
+      "0.5": {
+        "strict_hits": 151,
+        "loose_hits": 171,
+        "total_events": 264,
+        "strict_precision": 0.571969696969697,
+        "loose_precision": 0.6477272727272727
+      },
+      "1.0": {
+        "strict_hits": 156,
+        "loose_hits": 176,
+        "total_events": 264,
+        "strict_precision": 0.5909090909090909,
+        "loose_precision": 0.6666666666666666
+      },
+      "2.0": {
+        "strict_hits": 156,
+        "loose_hits": 176,
+        "total_events": 264,
+        "strict_precision": 0.5909090909090909,
+        "loose_precision": 0.6666666666666666
+      }
+    }
+  },
+  "probe_evaluation": {
+    "best_lambda_results": {
+      "n_episodes": 100,
+      "total_long_events": 548,
+      "lambda_used": 1.0,
+      "scale_used": 49.0,
+      "avg_pool_size": 8.352189781021897,
+      "max_pool_size": 12,
+      "p_c_both_precision_strict": 0.6733576642335767,
+      "p_c_both_precision_loose": 0.7244525547445255,
+      "p_c2_pool_recall_strict": 0.8613138686131386,
+      "p_c2_pool_recall_loose": 0.8813868613138686,
+      "pose_precision_strict": 0.2664233576642336,
+      "pose_precision_loose": 0.28832116788321166,
+      "view_precision_strict": 0.34854014598540145,
+      "view_precision_loose": 0.34854014598540145
+    },
+    "lambda_05_results": {
+      "n_episodes": 100,
+      "total_long_events": 548,
+      "lambda_used": 0.5,
+      "scale_used": 49.0,
+      "avg_pool_size": 8.319343065693431,
+      "max_pool_size": 12,
+      "p_c_both_precision_strict": 0.656934306569343,
+      "p_c_both_precision_loose": 0.708029197080292,
+      "p_c2_pool_recall_strict": 0.8613138686131386,
+      "p_c2_pool_recall_loose": 0.8795620437956204,
+      "pose_precision_strict": 0.2664233576642336,
+      "pose_precision_loose": 0.28832116788321166,
+      "view_precision_strict": 0.34854014598540145,
+      "view_precision_loose": 0.34854014598540145
+    }
+  },
+  "negative_control": {
+    "description": "Token permutation across episode records while keeping poses and terrain intact",
+    "total_long_events": 548,
+    "token_match_hits": 12,
+    "token_accuracy": 0.021897810218978103
+  },
+  "gates": {
+    "p_c_strict_precision": {
+      "metric": 0.6733576642335767,
+      "target_range": [
+        0.5,
+        0.75
+      ],
+      "pass": true
+    },
+    "p_c_loose_precision": {
+      "metric": 0.7244525547445255,
+      "target_range": [
+        0.5,
+        0.75
+      ],
+      "pass": true
+    },
+    "p_c2_strict_recall": {
+      "metric": 0.8613138686131386,
+      "target_min": 0.8,
+      "pass": true
+    },
+    "p_c2_loose_recall": {
+      "metric": 0.8813868613138686,
+      "target_min": 0.8,
+      "pass": true
+    },
+    "candidate_pool_size": {
+      "avg_size": 8.352189781021897,
+      "max_size": 12,
+      "target_max": 12,
+      "pass": true
+    }
+  }
+}

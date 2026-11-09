@@ -1,0 +1,24 @@
+...............F..F......                                                [100%]
+=================================== FAILURES ===================================
+___________________________ test_truth_key_optional ____________________________
+tests/v9/experiments/test_s3c2_no_truth_leak.py:73: in test_truth_key_optional
+    rec = store.add_step(step_no_truth)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/ainerzero/v9/experiments/s3/store.py:109: in add_step
+    rec = parse_student_step(step_data)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/ainerzero/v9/experiments/s3/store.py:86: in parse_student_step
+    observed_token = int(step_data["truth"]["cell_token"])
+                         ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'truth'
+_____________ test_ego_terrain_rotation_invariance_across_headings _____________
+tests/v9/experiments/test_s3c2_rotation.py:37: in test_ego_terrain_rotation_invariance_across_headings
+    rec = parse_student_step({
+src/ainerzero/v9/experiments/s3/store.py:86: in parse_student_step
+    observed_token = int(step_data["truth"]["cell_token"])
+                         ^^^^^^^^^^^^^^^^^^
+E   KeyError: 'truth'
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3c2_no_truth_leak.py::test_truth_key_optional
+FAILED tests/v9/experiments/test_s3c2_rotation.py::test_ego_terrain_rotation_invariance_across_headings
+2 failed, 23 passed in 13.18s

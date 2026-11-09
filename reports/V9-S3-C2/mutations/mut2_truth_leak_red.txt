@@ -1,0 +1,91 @@
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3c2_mutations/workspace
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 2 items
+
+tests/v9/experiments/test_s3c2_no_truth_leak.py::test_no_truth_leak_in_store_and_cues FAILED [ 50%]
+tests/v9/experiments/test_s3c2_no_truth_leak.py::test_truth_key_optional FAILED [100%]
+
+=================================== FAILURES ===================================
+_____________________ test_no_truth_leak_in_store_and_cues _____________________
+
+    def test_no_truth_leak_in_store_and_cues() -> None:
+        # Generate 1 realistic episode
+        ep = generate_episode(world_seed=42, episode_seed=101, family="F1")
+        original_steps = ep["steps"]
+    
+        # Make corrupted copy of steps with truth obliterated or deleted
+        corrupted_steps = copy.deepcopy(original_steps)
+        for s in corrupted_steps:
+            # Obliterate truth values
+            s["truth"]["x"] = -999.0
+            s["truth"]["y"] = 999.0
+            s["truth"]["heading"] = 99
+            s["truth"]["corrupted"] = True
+    
+        store_clean = EpisodicStore()
+        store_corrupted = EpisodicStore()
+    
+        for s_clean, s_corrupt in zip(original_steps, corrupted_steps):
+            rec_clean = store_clean.add_step(s_clean)
+            rec_corrupt = store_corrupted.add_step(s_corrupt)
+    
+            # Records must be identical
+            assert rec_clean.t == rec_corrupt.t
+>           assert rec_clean.est_pose == rec_corrupt.est_pose
+E           assert (12.0, 17.0, 1) == (-999.0, 999.0, 99)
+E             At index 0 diff: 12.0 != -999.0
+E             Full diff:
+E             - (-999.0, 999.0, 99)
+E             + (12.0, 17.0, 1)
+
+tests/v9/experiments/test_s3c2_no_truth_leak.py:44: AssertionError
+___________________________ test_truth_key_optional ____________________________
+
+    def test_truth_key_optional() -> None:
+        """Deleting the 'truth' key altogether must not cause KeyError."""
+        ep = generate_episode(world_seed=42, episode_seed=101, family="F1")
+        step_no_truth = copy.deepcopy(ep["steps"][0])
+        del step_no_truth["truth"]
+    
+        store = EpisodicStore()
+>       rec = store.add_step(step_no_truth)
+
+tests/v9/experiments/test_s3c2_no_truth_leak.py:73: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/experiments/s3/store.py:109: in add_step
+    rec = parse_student_step(step_data)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+step_data = {'action': 0, 'est_pose': [12.0, 17.0, 1], 'obs': array([0., 1., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0...0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+       0., 0., 0., 1., 0., 0., 0., 0., 0., 1., 0.], dtype=float32), 't': 0}
+
+    def parse_student_step(
+        step_data: dict[str, Any],
+    ) -> EpisodicRecord:
+        """Parse student-visible step dictionary into an EpisodicRecord.
+    
+        Strictly reads ONLY student-visible fields: 't', 'obs', 'est_pose'.
+        Never touches, reads, or caches any 'truth' key.
+        """
+        t = int(step_data["t"])
+        est_pose = (
+>           float(step_data["truth"]["x"]),
+            float(step_data["truth"]["y"]),
+            int(step_data["truth"]["heading"]),
+        )
+E       KeyError: 'truth'
+
+src/ainerzero/v9/experiments/s3/store.py:66: KeyError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3c2_no_truth_leak.py::test_no_truth_leak_in_store_and_cues
+FAILED tests/v9/experiments/test_s3c2_no_truth_leak.py::test_truth_key_optional
+============================== 2 failed in 0.86s ===============================
+
+STDERR:

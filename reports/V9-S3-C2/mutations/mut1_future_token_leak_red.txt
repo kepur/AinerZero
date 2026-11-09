@@ -1,0 +1,97 @@
+STDOUT:
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.12/bin/python3.12
+cachedir: .pytest_cache
+default pure-CPU entry: native_mlx tests not collected/covered (see tests/conftest.py)
+rootdir: /private/tmp/s3c2_mutations/workspace
+configfile: pyproject.toml
+plugins: asyncio-0.23.5, anyio-4.15.1
+asyncio: mode=Mode.STRICT
+collecting ... collected 1 item
+
+tests/v9/experiments/test_s3c2_obs_alignment.py::test_obs_token_alignment_and_no_future_leak FAILED [100%]
+
+=================================== FAILURES ===================================
+_________________ test_obs_token_alignment_and_no_future_leak __________________
+
+    def test_obs_token_alignment_and_no_future_leak() -> None:
+        """Step-by-step assert observation token channel equals content_state.get_token(cell, t)."""
+        n_episodes = 100
+        swap_boundary_observations = 0
+        total_visible_token_checks = 0
+    
+        for ep_idx in range(n_episodes):
+            w_seed = derive_seed("obs-align", "world", ep_idx)
+            ep_seed = derive_seed("obs-align", "ep", ep_idx)
+            family = "F1" if ep_idx % 2 == 0 else "F2"
+    
+            ep = generate_episode(world_seed=w_seed, episode_seed=ep_seed, family=family)
+            cstate_dict = ep["content_state"]
+            content_state = ContentState(
+                content_cells=tuple(tuple(c) for c in cstate_dict["content_cells"]),
+                initial_tokens={
+                    tuple(map(int, k.split(","))): v
+                    for k, v in cstate_dict["initial_tokens"].items()
+                },
+                swap_times={
+                    tuple(map(int, k.split(","))): v
+                    for k, v in cstate_dict["swap_times"].items()
+                },
+                new_tokens={
+                    tuple(map(int, k.split(","))): v
+                    for k, v in cstate_dict["new_tokens"].items()
+                },
+                family=cstate_dict["family"],
+            )
+    
+            steps = ep["steps"]
+            swap_times_set = set(content_state.swap_times.values())
+    
+            for step_data in steps:
+                t = step_data["t"]
+                obs = step_data["obs"]
+                true_x = step_data["truth"]["x"]
+                true_y = step_data["truth"]["y"]
+                true_h = step_data["truth"]["heading"]
+    
+                # Parse 3x3 ego view features
+                view_feats = obs[:spec.VIEW_FEAT_DIM].reshape(spec.VIEW_GRID_SIZE, spec.VIEW_GRID_SIZE, spec.CELL_FEAT_DIM)
+    
+                for i in range(spec.VIEW_GRID_SIZE):
+                    for j in range(spec.VIEW_GRID_SIZE):
+                        # In 7x7 ego view, the center is (3, 3). The 3x3 crop uses rows 2..4, cols 2..4.
+                        r = 2 + i
+                        c = 2 + j
+    
+                        # Terrain one-hot: FREE=0, WALL=1, PILLAR=2, UNSEEN=3
+                        terrain_one_hot = view_feats[i, j, :spec.NUM_TERRAIN_CLASSES]
+                        terrain_type = int(np.argmax(terrain_one_hot))
+    
+                        # If cell is UNSEEN (occluded or outside bounds), it cannot observe token
+                        if terrain_type == 3:
+                            continue
+    
+                        # Map ego cell (r, c) to world coordinates (wx, wy)
+                        wx, wy = _ego_to_world_coords(true_x, true_y, true_h, r, c)
+    
+                        # Extract observed token from student observation
+                        token_one_hot = view_feats[i, j, spec.NUM_TERRAIN_CLASSES:spec.CELL_FEAT_DIM]
+                        obs_token = int(np.argmax(token_one_hot))
+    
+                        # Expected ground-truth token at step t
+                        expected_token = content_state.get_token((wx, wy), t)
+    
+>                       assert obs_token == expected_token, (
+                            f"Episode {ep_idx} step {t}: Token alignment mismatch at world cell ({wx}, {wy}) "
+                            f"(ego [{i}, {j}], heading {true_h}): observed {obs_token} != expected {expected_token}. "
+                            f"Potential future or stale token leak!"
+                        )
+E                       AssertionError: Episode 3 step 206: Token alignment mismatch at world cell (7, 13) (ego [0, 1], heading 1): observed 11 != expected 13. Potential future or stale token leak!
+E                       assert 11 == 13
+
+tests/v9/experiments/test_s3c2_obs_alignment.py:89: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3c2_obs_alignment.py::test_obs_token_alignment_and_no_future_leak
+============================== 1 failed in 0.92s ===============================
+
+STDERR:
