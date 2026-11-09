@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import threading
 import time
 from typing import Any, Callable, Generator, Mapping, Sequence
 from uuid import uuid4
@@ -35,6 +36,8 @@ LEDGER_EXPERIMENT_IDS: tuple[str, ...] = (
 TIMEZONE = "Asia/Shanghai"
 CALENDAR_WINDOW_SECONDS = float(spec.CALENDAR_WINDOW_SECONDS)
 PHASE_TOTAL_WALL_CEILING_SECONDS = float(spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS)
+# W12 (11-09): cadence of in-flight active-time catch-up while a cell executes (see _ActiveTimeTicker).
+RESERVATION_CHUNK_SECONDS: float = 15.0
 
 
 def get_experiment_manifest() -> dict[str, Any]:
@@ -162,6 +165,10 @@ class S2Ledger:
         self.clock = clock or time.time
         now_fn = lambda: datetime.fromtimestamp(self.clock(), timezone.utc)
         self.store = RunStore(self.db_path, now=now_fn)
+        # W12: serialises "read consumed, then consume" between the ticker thread and completion.
+        self._accounting_lock = threading.Lock()
+        # W12: run_id -> reason, set when an in-flight catch-up is refused (wall budget overrun).
+        self._overruns: dict[str, str] = {}
 
     def close(self) -> None:
         self.store.close()
@@ -229,12 +236,20 @@ class S2Ledger:
         optimizer_steps: int = 0,
         metrics: Mapping[str, Any] | None = None,
     ) -> None:
-        if active_seconds > 0 or optimizer_steps > 0:
-            self.store.consume(
-                run_id,
-                active_seconds=float(active_seconds),
-                optimizer_steps=int(optimizer_steps),
-            )
+        overrun = self._overruns.get(run_id)
+        if overrun is not None:
+            # W12: an in-flight catch-up was refused -- the cell exceeded its wall budget.
+            raise BudgetExceeded(overrun, {})
+        with self._accounting_lock:
+            # W12: seconds already recorded in flight are not consumed a second time.
+            already = float(self.store.get_run(run_id).reserved_active_seconds)
+            remainder = max(0.0, float(active_seconds) - already)
+            if remainder > 0 or optimizer_steps > 0:
+                self.store.consume(
+                    run_id,
+                    active_seconds=remainder,
+                    optimizer_steps=int(optimizer_steps),
+                )
         reason_str = "execution completed"
         if metrics is not None:
             self.record_metrics(run_id, metrics)
@@ -302,6 +317,69 @@ def default_stub_runner(
     )
 
 
+class _ActiveTimeTicker:
+    """W12: record a running cell's active seconds in arrears, every ``chunk_seconds``.
+
+    RunStore admits a consume only when ``amount <= wall_budget - max(wall_elapsed, consumed)``
+    ("reserve before dispatch"). Consuming the whole elapsed time once at completion is therefore
+    refused for any cell that ran longer than half its wall budget (P193: arm_b seed 42 ran 677 s
+    of 1200 s and was refused). Catching up in small steps keeps ``consumed`` close to the active
+    time, so a cell can use (almost) its whole budget. A refused catch-up means the cell really
+    exceeded its wall budget (wall time, including any system sleep); it is recorded in
+    ``ledger._overruns`` and ``S2Ledger.complete_run`` then fails the cell.
+    """
+
+    def __init__(
+        self,
+        ledger: "S2Ledger",
+        run_id: str,
+        chunk_seconds: float,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
+        if not chunk_seconds > 0:
+            raise ValueError(f"chunk_seconds must be positive, got {chunk_seconds!r}")
+        self._ledger = ledger
+        self._run_id = run_id
+        self._chunk = float(chunk_seconds)
+        self._monotonic = monotonic
+        self._last = monotonic()
+        self._stop = threading.Event()
+        self._thread = threading.Thread(
+            target=self._loop, name=f"s2-active-ticker-{run_id[:8]}", daemon=True
+        )
+
+    def start(self) -> "_ActiveTimeTicker":
+        self._thread.start()
+        return self
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self._chunk):
+            self.catch_up()
+
+    def catch_up(self) -> None:
+        with self._ledger._accounting_lock:
+            now = self._monotonic()
+            amount = now - self._last
+            if amount <= 0:
+                return
+            try:
+                self._ledger.store.consume(self._run_id, active_seconds=amount)
+                self._last = now
+            except BudgetExceeded as exc:
+                self._ledger._overruns[self._run_id] = (
+                    f"wall_time_budget (in-flight catch-up refused: {exc.reason})"
+                )
+                self._stop.set()
+            except LifecycleError:
+                # The run already left the work states (completed / failed by the runner).
+                self._stop.set()
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread.is_alive():
+            self._thread.join()
+
+
 def execute_work_cell(
     ledger: S2Ledger,
     mode: str,
@@ -313,8 +391,13 @@ def execute_work_cell(
     clock: Callable[[], float] | None = None,
     runner: Callable[..., Any] | None = None,
     output_root: Path | str | None = None,
+    reservation_chunk_seconds: float = RESERVATION_CHUNK_SECONDS,
 ) -> dict[str, Any]:
-    """Execute one work cell inside the ledger lifecycle."""
+    """Execute one work cell inside the ledger lifecycle.
+
+    W12: while the runner executes, ``_ActiveTimeTicker`` records the elapsed active time in
+    arrears so that completion only consumes the small remainder.
+    """
     run_id = ledger.open_run(
         mode=mode,
         arm=arm,
@@ -326,8 +409,10 @@ def execute_work_cell(
 
     actual_runner = runner or default_stub_runner
     active_state = "collecting" if mode == "generate-data" else ("validating" if "eval" in mode or mode == "plan-select" else "training")
+    ticker: _ActiveTimeTicker | None = None
     try:
         ledger.begin_run(run_id, state=active_state)
+        ticker = _ActiveTimeTicker(ledger, run_id, reservation_chunk_seconds).start()
         result = actual_runner(
             ledger=ledger,
             run_id=run_id,
@@ -358,6 +443,8 @@ def execute_work_cell(
                 )
         return result
     except Exception as exc:
+        if ticker is not None:
+            ticker.stop()
         try:
             run_record = ledger.store.get_run(run_id)
             if run_record.state not in TERMINAL_STATES:
@@ -365,3 +452,6 @@ def execute_work_cell(
         except Exception:
             pass
         raise
+    finally:
+        if ticker is not None:
+            ticker.stop()
