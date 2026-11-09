@@ -1,0 +1,12 @@
+# 运行时间：2026-11-09 10:1x UTC。只用 train 留出世界与种子 42 的检查点；在账本副本上读取，不写账本或 artifacts。
+## short_goals.py：20 条短目标（BFS 3–10），使用 plan_config 中选出的配置
+arm_a plan_choice {'H': 16} short-goal success 0.0
+arm_b plan_choice {'H': 16} short-goal success 0.0
+arm_c plan_choice {'budget_ratio': 0.25, 'macro_horizon': 4} short-goal success 0.05
+## landscape.py：300 条留出转移的一步预测误差（与「下一步不变」比较），以及 200 对（状态, 目标）的隐空间距离与 BFS 距离的 Spearman 相关
+arm_a one-step: model err 11.728 identity err 4.2118 ratio 2.785
+arm_b one-step: model err 0.1271 identity err 3.5406 ratio 0.036
+arm_c one-step: model err 0.4797 identity err 1.6046 ratio 0.299
+arm_a latent-vs-BFS spearman 0.286 n 200 BFS range 1 51
+arm_b latent-vs-BFS spearman -0.087 n 200 BFS range 1 51
+arm_c latent-vs-BFS spearman 0.127 n 200 BFS range 1 49

@@ -1,0 +1,291 @@
+{
+  "status": "completed",
+  "mode": "plan-select",
+  "arm": null,
+  "seed": null,
+  "result": {
+    "status": "completed",
+    "plan_select": {
+      "schema": "s2.plan_select.v1",
+      "n_episodes_used": 50,
+      "n_fwd": 4096,
+      "arms": {
+        "arm_a": {
+          "arm_kind": "flat",
+          "plan_choice": {
+            "H": 16
+          },
+          "config": {
+            "H": 16
+          },
+          "cem_config": {
+            "horizon": 16,
+            "n_iters": 4,
+            "pop_size": 63,
+            "elite_frac": 0.1,
+            "action_dim": 1,
+            "action_low": -1.0,
+            "action_high": 1.0,
+            "n_exec": 1,
+            "init_std": 1.0,
+            "n_categories": 4,
+            "cost_mode": "trajectory_sum"
+          },
+          "success_rate": 0.0,
+          "compute_cost": 16.0,
+          "trials": [
+            {
+              "config": {
+                "H": 16
+              },
+              "success_rate": 0.0,
+              "compute_cost": 16.0
+            },
+            {
+              "config": {
+                "H": 32
+              },
+              "success_rate": 0.0,
+              "compute_cost": 32.0
+            },
+            {
+              "config": {
+                "H": 48
+              },
+              "success_rate": 0.0,
+              "compute_cost": 48.0
+            }
+          ]
+        },
+        "arm_b": {
+          "arm_kind": "flat",
+          "plan_choice": {
+            "H": 16
+          },
+          "config": {
+            "H": 16
+          },
+          "cem_config": {
+            "horizon": 16,
+            "n_iters": 4,
+            "pop_size": 63,
+            "elite_frac": 0.1,
+            "action_dim": 1,
+            "action_low": -1.0,
+            "action_high": 1.0,
+            "n_exec": 1,
+            "init_std": 1.0,
+            "n_categories": 4,
+            "cost_mode": "trajectory_sum"
+          },
+          "success_rate": 0.0,
+          "compute_cost": 16.0,
+          "trials": [
+            {
+              "config": {
+                "H": 16
+              },
+              "success_rate": 0.0,
+              "compute_cost": 16.0
+            },
+            {
+              "config": {
+                "H": 32
+              },
+              "success_rate": 0.0,
+              "compute_cost": 32.0
+            },
+            {
+              "config": {
+                "H": 48
+              },
+              "success_rate": 0.0,
+              "compute_cost": 48.0
+            }
+          ]
+        },
+        "arm_c": {
+          "arm_kind": "hierarchical",
+          "plan_choice": {
+            "macro_horizon": 4,
+            "budget_ratio": 0.25
+          },
+          "config": {
+            "macro_horizon": 4,
+            "budget_ratio": 0.25
+          },
+          "cem_config": {
+            "macro_horizon": 4,
+            "upper_iters": 4,
+            "upper_pop": 63,
+            "upper_elite_frac": 0.1,
+            "macro_dim": 7,
+            "s2": 8,
+            "lower_iters": 4,
+            "lower_pop": 85,
+            "lower_elite_frac": 0.1,
+            "action_dim": 1,
+            "macro_low": -1.0,
+            "macro_high": 1.0,
+            "upper_init_std": 1.0,
+            "action_low": -1.0,
+            "action_high": 1.0,
+            "lower_init_std": 1.0,
+            "upper_budget": 1022,
+            "lower_budget": 3066,
+            "n_exec": 1,
+            "n_categories": 4,
+            "n_macro_categories": null,
+            "cost_mode": "trajectory_sum"
+          },
+          "success_rate": 0.0,
+          "compute_cost": 5.0,
+          "trials": [
+            {
+              "config": {
+                "macro_horizon": 4,
+                "budget_ratio": 0.25
+              },
+              "success_rate": 0.0,
+              "compute_cost": 5.0
+            },
+            {
+              "config": {
+                "macro_horizon": 4,
+                "budget_ratio": 0.5
+              },
+              "success_rate": 0.0,
+              "compute_cost": 6.0
+            },
+            {
+              "config": {
+                "macro_horizon": 6,
+                "budget_ratio": 0.25
+              },
+              "success_rate": 0.0,
+              "compute_cost": 7.5
+            },
+            {
+              "config": {
+                "macro_horizon": 6,
+                "budget_ratio": 0.5
+              },
+              "success_rate": 0.0,
+              "compute_cost": 9.0
+            },
+            {
+              "config": {
+                "macro_horizon": 8,
+                "budget_ratio": 0.25
+              },
+              "success_rate": 0.0,
+              "compute_cost": 10.0
+            },
+            {
+              "config": {
+                "macro_horizon": 8,
+                "budget_ratio": 0.5
+              },
+              "success_rate": 0.0,
+              "compute_cost": 12.0
+            }
+          ]
+        }
+      }
+    },
+    "plan_config_sha256": "e10d4d2095a5b45429885c50a3ee9e5383e26a7f725209a784959993c07fb402",
+    "post_train_gates": {
+      "schema": "s2.post_train_gates.v1",
+      "passed": false,
+      "reasons": [
+        "C arm arm_c/42 collusion detected: subgoal drop 0.0000 < 0.1000 (E₂ 合谋/下层没用子目标)",
+        "Baseline rationality failed: max(A, B) success rate 0.0000 not in [0.10, 0.80] (§5 基线不合理)"
+      ],
+      "sensitivity_by_arm": {
+        "arm_a/42": 0.14186479471692098,
+        "arm_a/43": 0.1638790994921737,
+        "arm_a/44": 0.18282225959459725,
+        "arm_b/42": 1.7993748153628906,
+        "arm_b/43": 1.819258040261628,
+        "arm_b/44": 1.8070733950325353,
+        "arm_c/42": 1.5387149597003096,
+        "arm_c/43": 1.5763633024090362,
+        "arm_c/44": 1.4895330413922327
+      },
+      "unplannable_arms": [],
+      "c_negative_control": {
+        "arm": "arm_c/42",
+        "n_episodes": 50,
+        "success_rate_true": 0.0,
+        "success_rate_shuffled": 0.0,
+        "drop": 0.0,
+        "threshold": 0.1,
+        "collusion": true,
+        "shuffle_seed": 20261106,
+        "permutation": [
+          19,
+          28,
+          29,
+          32,
+          16,
+          48,
+          6,
+          1,
+          5,
+          2,
+          26,
+          10,
+          24,
+          4,
+          44,
+          35,
+          9,
+          42,
+          21,
+          23,
+          15,
+          40,
+          11,
+          33,
+          18,
+          34,
+          27,
+          14,
+          46,
+          45,
+          13,
+          7,
+          20,
+          41,
+          8,
+          49,
+          47,
+          31,
+          39,
+          30,
+          43,
+          12,
+          22,
+          3,
+          36,
+          38,
+          37,
+          0,
+          17,
+          25
+        ]
+      },
+      "baseline_rationality": {
+        "max_ab_success": 0.0,
+        "range": [
+          0.1,
+          0.8
+        ],
+        "passed": false
+      },
+      "n_sensitivity_states": 64,
+      "sensitivity_threshold": 0.05,
+      "subgoal_drop_threshold": 0.1
+    }
+  }
+}
