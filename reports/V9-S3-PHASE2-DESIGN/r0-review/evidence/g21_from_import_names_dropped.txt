@@ -1,0 +1,37 @@
+### g21_from_import_names_dropped
+--- OLD
+            names.update(f"{base}.{alias.name}" for alias in node.names if alias.name != "*")
+
+--- NEW
+
+
+FFFF..................                                                   [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert {'ainerzero/_...ero/sub/a.py'} == {'ainerzero/_...ero/sub/d.py'}
+      
+      Extra items in the right set:
+      'ainerzero/sub/c.py'
+      'ainerzero/sub/d.py'
+      'ainerzero/sub/b.py'
+      Use -v to get more diff
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/gm/g21_from_import_names_dropped/tests/v9/experiments/test_s3_run_guard.py:47: AssertionError: assert {'ainerzero/_...ero/sub/a.py'} == {'ainerzero/_...ero/sub/d.py'}
+E   AssertionError: assert 'ainerzero/v9/experiments/s2/spec.py' in {'ainerzero/__init__.py', 'ainerzero/v9/__init__.py', 'ainerzero/v9/experiments/__init__.py', 'ainerzero/v9/experiments/s2/__init__.py', 'ainerzero/v9/experiments/s2/core_math.py', 'ainerzero/v9/experiments/s2/world.py', ...}
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/gm/g21_from_import_names_dropped/tests/v9/experiments/test_s3_run_guard.py:62: AssertionError: assert 'ainerzero/v9/experiments/s2/spec.py' in {'ainerzero/__init__.py', 'ainerzero/v9/__init__.py', 'ainerzero/v9/experiments/__init__.py', 'ainerzero/v9/experiments/s2/__init__.py', 'ainerzero/v9/experiments/s2/core_math.py', 'ainerzero/v9/experiments/s2/world.py', ...}
+E   AssertionError: assert [] == ['changed: sr...ero/sub/d.py']
+      
+      Right contains one more item: 'changed: src/ainerzero/sub/d.py'
+      Use -v to get more diff
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/gm/g21_from_import_names_dropped/tests/v9/experiments/test_s3_run_guard.py:70: AssertionError: assert [] == ['changed: sr...ero/sub/d.py']
+E   AssertionError: assert [] == ['missing: sr...ero/sub/d.py']
+      
+      Right contains one more item: 'missing: src/ainerzero/sub/d.py'
+      Use -v to get more diff
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/gm/g21_from_import_names_dropped/tests/v9/experiments/test_s3_run_guard.py:77: AssertionError: assert [] == ['missing: sr...ero/sub/d.py']
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_run_guard.py::test_closure_follows_absolute_relative_and_function_level_imports
+FAILED tests/v9/experiments/test_s3_run_guard.py::test_closure_of_the_real_s3_entries_reaches_the_s2_world
+FAILED tests/v9/experiments/test_s3_run_guard.py::test_manifest_detects_change_in_a_transitive_dependency
+FAILED tests/v9/experiments/test_s3_run_guard.py::test_manifest_detects_a_missing_file_and_refuses_an_empty_one
+4 failed, 18 passed in 0.25s
+
+

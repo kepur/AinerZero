@@ -244,6 +244,8 @@ NATIVE_MODULES = {
     # S3 (tests/v9/experiments): MLX arms, gradients and truth-isolation contracts.
     "test_s3_arms_mlx.py": "module-level importorskip mlx.core/mlx.nn (S3 arms)",
     "test_s3_isolation_contract.py": "module-level importorskip mlx.core (S3 arms, P208 second-review checks)",
+    "test_s3p2_arms_mlx.py": "module-level importorskip mlx.core/mlx.nn (S3 phase 2 training path)",
+    "test_s3p2_runner_guards_native.py": "imports real MLX; runs the phase 2 runner start-up in a throwaway copy",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).

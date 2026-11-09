@@ -1,0 +1,2539 @@
+{
+  "schema": "s4-inventory-metrics-v1",
+  "environment": {
+    "python": "3.12.2",
+    "machine": "arm64",
+    "ainerzero_head": "0bfd749234135366a4a8989e80a103e88409ff6b",
+    "awz_head": "2b0d4f2834298c18b237f7611451d1ec7625bf36",
+    "quick": false,
+    "time_limit_s": 90.0
+  },
+  "sources_sha256": {
+    "src/ainerzero/environments/gridlab_v1.py": "2851c4054acf743338bda4765e785e4b0204e0c2c639ad92bca6b6a2570e0f36",
+    "src/ainerzero/environments/gridlab2d.py": "baea7cb605ca26a9e6c4bd5004dd36f3bbcef0888bc80a8c6a65f582359bc395",
+    "src/ainerzero/learning/gridlab_tracking.py": "78ba39fb99cd86b9f07928b8a82f2b477ff69978dff8a72adec28a7686788e67",
+    "src/ainerzero/learning/gridlab_tracking_eval.py": "4ced5a33c8258e9ee077c73ca6d0be379d30bc778b97557ec8660c12c055d485",
+    "src/ainerzero/v9/experiments/s3/tour.py": "949a5ec27b653f1f984f95904a7eaf2f3796d266aa90326dfd51855e83f45d7c",
+    "src/ainerzero/v9/experiments/s3/world.py": "fc70d464c125500012a700b731d28c13ee1d7f2d03ab4d91d9a2c68cbcbb7843",
+    "src/ainerzero/v9/interfaces/scheduler.py": "2470293cc4701a44894c0594cd246962d89ffbdd8e46725063dfeccfdcdbd8be",
+    "src/ainerzero/v9/fakes/scheduler.py": "f7b4ced3895a024ec39ac4f1320d50b141e7fddc7ceec8dd81cd5b53329e7bb0"
+  },
+  "awz_sources_sha256": {
+    "python/animeworld/exams/scenarios.py": "38672da0d03fea3d60d49144cdc08182177f902f5e9cd74b4e6cba509c698198",
+    "python/animeworld/exams/packets.py": "af6e5ae31079e9a929202556059b3e71de52a59032ed120f634c9da9d80493fa",
+    "python/animeworld/sensing/handles.py": "e9c4748f84fde4d0b73c2fd90eb9e3598d1bb6e5cb2bd0aaf86826fdde8ff8f8",
+    "python/animeworld/e0/scenarios.py": "9093b4c2ec2d3dd367fb0d05242123dec88181eee55ccb1da6871dcabec6e19a",
+    "python/animeworld/sparse_update/world.py": "5ac23678dcebce5547e16d52c769566a1b55e375cbc4ab3c3d1a6aa12e884465"
+  },
+  "reappearance_definition": "对象 k 在第 a 步可见，在 a+1 .. b-1 步全部不可见（gap = b-a-1 >= 1），在第 b 步再次可见。\n    - 首次出现不算；一直可见的对象没有事件；消失后回合结束没回来的只记 censored，不算事件。\n    - cause：隐藏区间全是遮挡 = occluded，全是视野外 = out_of_view，否则 mixed。\n    - moved：对象在 a 与 b 的真值位置不同。\n    - agent_moved：智能体在 a 与 b 的位置不同（排除原地转头）。\n    - ambiguous_appearance：第 b 步有另一个在此之前见过的对象，外观相同。\n    - nn_confusable：第 b 步未被观察到的同外观对象里，有一个的最后观测位置\n      不比 k 自己的最后观测位置更远（按最后位置最近邻会错或打平）。\n    - hard = moved 且 ambiguous_appearance。这是真正需要「持久身份」的子集：\n      对象不在原地，外观又认不出来。",
+  "gridlab_v1": {
+    "open_16": {
+      "episodes": 120,
+      "steps_per_episode": [
+        [
+          17,
+          120
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          3,
+          120
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.2062,
+      "objects": {
+        "always_visible": 7,
+        "never_visible": 141,
+        "intermittent": 212,
+        "censored_at_end": 145
+      },
+      "reappearance_events": 139,
+      "events_per_episode": {
+        "mean": 1.158,
+        "median": 1.0,
+        "p90": 3.0,
+        "max": 6,
+        "fraction_of_episodes_with_event": 0.6167
+      },
+      "by_cause": {
+        "out_of_view": 130,
+        "mixed": 6,
+        "occluded": 3
+      },
+      "gap": {
+        "median": 3.0,
+        "p10": 1.0,
+        "p90": 9.0,
+        "max": 15,
+        "histogram": {
+          "1-2": 62,
+          "3-7": 57,
+          "8-29": 20,
+          "30-79": 0,
+          "80-inf": 0
+        }
+      },
+      "strata": {
+        "moved": 81,
+        "agent_did_not_move": 35,
+        "ambiguous_appearance": 75,
+        "nn_confusable": 16,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 61,
+        "hard_gap_ge_3": 40,
+        "hard_gap_ge_8": 13
+      },
+      "generator_events": {
+        "same_appearance_confusion": 17,
+        "occlusion": 3,
+        "identity_swap": 1
+      },
+      "generator_occlusion_k": {
+        "max": 1,
+        "median": 1.0
+      },
+      "tracker_baselines": {
+        "current_only": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 0.1735340729001585,
+          "reappearance_correct": [
+            0,
+            139
+          ],
+          "reappearance_correct_rate": 0.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 1043,
+          "hidden_prediction_l1_mean": null,
+          "hidden_prediction_coverage": 0.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            141,
+            360
+          ]
+        },
+        "last_seen_nn": {
+          "visible_position_l1_mean": 0.04869565217391304,
+          "visible_match_rate": 0.9112519809825673,
+          "reappearance_correct": [
+            93,
+            139
+          ],
+          "reappearance_correct_rate": 0.6690647482014388,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 70,
+          "hidden_prediction_l1_mean": 3.2373983739837398,
+          "hidden_prediction_coverage": 0.8541666666666666,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            141,
+            360
+          ]
+        },
+        "constant_velocity_nn": {
+          "visible_position_l1_mean": 0.03260869565217391,
+          "visible_match_rate": 0.8019017432646592,
+          "reappearance_correct": [
+            54,
+            139
+          ],
+          "reappearance_correct_rate": 0.38848920863309355,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 112,
+          "hidden_prediction_l1_mean": 4.304770207996015,
+          "hidden_prediction_coverage": 0.7965277777777777,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            141,
+            360
+          ]
+        },
+        "last_seen_nn_no_gate_no_retention_limit": {
+          "visible_position_l1_mean": 0.06265256305939788,
+          "visible_match_rate": 0.973851030110935,
+          "reappearance_correct": [
+            119,
+            139
+          ],
+          "reappearance_correct_rate": 0.8561151079136691,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 45,
+          "hidden_prediction_l1_mean": 3.5569444444444445,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            141,
+            360
+          ]
+        }
+      }
+    },
+    "door_room_16": {
+      "episodes": 120,
+      "steps_per_episode": [
+        [
+          17,
+          120
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          3,
+          120
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.1405,
+      "objects": {
+        "always_visible": 11,
+        "never_visible": 268,
+        "intermittent": 81,
+        "censored_at_end": 47
+      },
+      "reappearance_events": 88,
+      "events_per_episode": {
+        "mean": 0.733,
+        "median": 0.0,
+        "p90": 3.0,
+        "max": 4,
+        "fraction_of_episodes_with_event": 0.3833
+      },
+      "by_cause": {
+        "out_of_view": 80,
+        "mixed": 7,
+        "occluded": 1
+      },
+      "gap": {
+        "median": 2.0,
+        "p10": 1.0,
+        "p90": 7.0,
+        "max": 11,
+        "histogram": {
+          "1-2": 53,
+          "3-7": 30,
+          "8-29": 5,
+          "30-79": 0,
+          "80-inf": 0
+        }
+      },
+      "strata": {
+        "moved": 43,
+        "agent_did_not_move": 31,
+        "ambiguous_appearance": 18,
+        "nn_confusable": 3,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 10,
+        "hard_gap_ge_3": 6,
+        "hard_gap_ge_8": 1
+      },
+      "generator_events": {
+        "door_toggle": 60,
+        "same_appearance_confusion": 13,
+        "occlusion": 1
+      },
+      "generator_occlusion_k": {
+        "max": 1,
+        "median": 1.0
+      },
+      "tracker_baselines": {
+        "current_only": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 0.10697674418604651,
+          "reappearance_correct": [
+            0,
+            88
+          ],
+          "reappearance_correct_rate": 0.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 768,
+          "hidden_prediction_l1_mean": null,
+          "hidden_prediction_coverage": 0.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            268,
+            360
+          ]
+        },
+        "last_seen_nn": {
+          "visible_position_l1_mean": 0.03523693803159174,
+          "visible_match_rate": 0.9569767441860465,
+          "reappearance_correct": [
+            71,
+            88
+          ],
+          "reappearance_correct_rate": 0.8068181818181818,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 31,
+          "hidden_prediction_l1_mean": 2.638580931263858,
+          "hidden_prediction_coverage": 0.9318181818181818,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            268,
+            360
+          ]
+        },
+        "constant_velocity_nn": {
+          "visible_position_l1_mean": 0.008695652173913044,
+          "visible_match_rate": 0.8023255813953488,
+          "reappearance_correct": [
+            34,
+            88
+          ],
+          "reappearance_correct_rate": 0.38636363636363635,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 71,
+          "hidden_prediction_l1_mean": 4.675257731958763,
+          "hidden_prediction_coverage": 0.8016528925619835,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            268,
+            360
+          ]
+        },
+        "last_seen_nn_no_gate_no_retention_limit": {
+          "visible_position_l1_mean": 0.06096131301289566,
+          "visible_match_rate": 0.9918604651162791,
+          "reappearance_correct": [
+            80,
+            88
+          ],
+          "reappearance_correct_rate": 0.9090909090909091,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 21,
+          "hidden_prediction_l1_mean": 2.6818181818181817,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            268,
+            360
+          ]
+        }
+      }
+    },
+    "swap_lane_16": {
+      "episodes": 120,
+      "steps_per_episode": [
+        [
+          17,
+          120
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          2,
+          120
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.5294,
+      "objects": {
+        "always_visible": 0,
+        "never_visible": 0,
+        "intermittent": 240,
+        "censored_at_end": 0
+      },
+      "reappearance_events": 960,
+      "events_per_episode": {
+        "mean": 8.0,
+        "median": 8.0,
+        "p90": 8.0,
+        "max": 8,
+        "fraction_of_episodes_with_event": 1.0
+      },
+      "by_cause": {
+        "occluded": 480,
+        "out_of_view": 480
+      },
+      "gap": {
+        "median": 2.0,
+        "p10": 1.0,
+        "p90": 3.0,
+        "max": 3,
+        "histogram": {
+          "1-2": 480,
+          "3-7": 480,
+          "8-29": 0,
+          "30-79": 0,
+          "80-inf": 0
+        }
+      },
+      "strata": {
+        "moved": 480,
+        "agent_did_not_move": 960,
+        "ambiguous_appearance": 960,
+        "nn_confusable": 0,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 480,
+        "hard_gap_ge_3": 0,
+        "hard_gap_ge_8": 0
+      },
+      "generator_events": {
+        "occlusion": 480,
+        "identity_swap": 240
+      },
+      "generator_occlusion_k": {
+        "max": 1,
+        "median": 1.0
+      },
+      "tracker_baselines": {
+        "current_only": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 0.1111111111111111,
+          "reappearance_correct": [
+            0,
+            960
+          ],
+          "reappearance_correct_rate": 0.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 1920,
+          "hidden_prediction_l1_mean": null,
+          "hidden_prediction_coverage": 0.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            0,
+            240
+          ]
+        },
+        "last_seen_nn": {
+          "visible_position_l1_mean": 1.3333333333333333,
+          "visible_match_rate": 1.0,
+          "reappearance_correct": [
+            480,
+            960
+          ],
+          "reappearance_correct_rate": 0.5,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 480,
+          "hidden_prediction_l1_mean": 2.75,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            0,
+            240
+          ]
+        },
+        "constant_velocity_nn": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 0.4444444444444444,
+          "reappearance_correct": [
+            240,
+            960
+          ],
+          "reappearance_correct_rate": 0.25,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 480,
+          "hidden_prediction_l1_mean": 2.0,
+          "hidden_prediction_coverage": 0.625,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            0,
+            240
+          ]
+        },
+        "last_seen_nn_no_gate_no_retention_limit": {
+          "visible_position_l1_mean": 1.3333333333333333,
+          "visible_match_rate": 1.0,
+          "reappearance_correct": [
+            480,
+            960
+          ],
+          "reappearance_correct_rate": 0.5,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 480,
+          "hidden_prediction_l1_mean": 2.75,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            0,
+            240
+          ]
+        }
+      }
+    },
+    "occlusion_walk_16": {
+      "episodes": 120,
+      "steps_per_episode": [
+        [
+          17,
+          120
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          1,
+          120
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.7059,
+      "objects": {
+        "always_visible": 0,
+        "never_visible": 0,
+        "intermittent": 120,
+        "censored_at_end": 120
+      },
+      "reappearance_events": 240,
+      "events_per_episode": {
+        "mean": 2.0,
+        "median": 2.0,
+        "p90": 2.0,
+        "max": 2,
+        "fraction_of_episodes_with_event": 1.0
+      },
+      "by_cause": {
+        "occluded": 240
+      },
+      "gap": {
+        "median": 2.0,
+        "p10": 1.0,
+        "p90": 3.0,
+        "max": 3,
+        "histogram": {
+          "1-2": 120,
+          "3-7": 120,
+          "8-29": 0,
+          "30-79": 0,
+          "80-inf": 0
+        }
+      },
+      "strata": {
+        "moved": 0,
+        "agent_did_not_move": 120,
+        "ambiguous_appearance": 0,
+        "nn_confusable": 0,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 0,
+        "hard_gap_ge_3": 0,
+        "hard_gap_ge_8": 0
+      },
+      "generator_events": {
+        "occlusion": 240
+      },
+      "generator_occlusion_k": {
+        "max": 3,
+        "median": 2.0
+      },
+      "tracker_baselines": {
+        "current_only": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 0.08333333333333333,
+          "reappearance_correct": [
+            0,
+            240
+          ],
+          "reappearance_correct_rate": 0.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 1320,
+          "hidden_prediction_l1_mean": null,
+          "hidden_prediction_coverage": 0.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            0,
+            120
+          ]
+        },
+        "last_seen_nn": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 1.0,
+          "reappearance_correct": [
+            240,
+            240
+          ],
+          "reappearance_correct_rate": 1.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 0,
+          "hidden_prediction_l1_mean": 0.0,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            0,
+            120
+          ]
+        },
+        "constant_velocity_nn": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 1.0,
+          "reappearance_correct": [
+            240,
+            240
+          ],
+          "reappearance_correct_rate": 1.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 0,
+          "hidden_prediction_l1_mean": 0.0,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            0,
+            120
+          ]
+        },
+        "last_seen_nn_no_gate_no_retention_limit": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 1.0,
+          "reappearance_correct": [
+            240,
+            240
+          ],
+          "reappearance_correct_rate": 1.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 0,
+          "hidden_prediction_l1_mean": 0.0,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            0,
+            120
+          ]
+        }
+      }
+    },
+    "open_128": {
+      "episodes": 120,
+      "steps_per_episode": [
+        [
+          129,
+          120
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          3,
+          120
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.1833,
+      "objects": {
+        "always_visible": 0,
+        "never_visible": 54,
+        "intermittent": 306,
+        "censored_at_end": 254
+      },
+      "reappearance_events": 1795,
+      "events_per_episode": {
+        "mean": 14.958,
+        "median": 15.5,
+        "p90": 23.1,
+        "max": 29,
+        "fraction_of_episodes_with_event": 0.975
+      },
+      "by_cause": {
+        "out_of_view": 1618,
+        "mixed": 123,
+        "occluded": 54
+      },
+      "gap": {
+        "median": 7.0,
+        "p10": 1.0,
+        "p90": 18.6,
+        "max": 107,
+        "histogram": {
+          "1-2": 450,
+          "3-7": 494,
+          "8-29": 768,
+          "30-79": 73,
+          "80-inf": 10
+        }
+      },
+      "strata": {
+        "moved": 1090,
+        "agent_did_not_move": 479,
+        "ambiguous_appearance": 1323,
+        "nn_confusable": 296,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 965,
+        "hard_gap_ge_3": 767,
+        "hard_gap_ge_8": 527
+      },
+      "generator_events": {
+        "occlusion": 54,
+        "same_appearance_confusion": 117,
+        "identity_swap": 29
+      },
+      "generator_occlusion_k": {
+        "max": 11,
+        "median": 1.0
+      },
+      "tracker_baselines": {
+        "current_only": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 0.03594924812030075,
+          "reappearance_correct": [
+            0,
+            1795
+          ],
+          "reappearance_correct_rate": 0.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 8206,
+          "hidden_prediction_l1_mean": null,
+          "hidden_prediction_coverage": 0.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            54,
+            360
+          ]
+        },
+        "last_seen_nn": {
+          "visible_position_l1_mean": 0.04134443783462225,
+          "visible_match_rate": 0.39497180451127817,
+          "reappearance_correct": [
+            361,
+            1795
+          ],
+          "reappearance_correct_rate": 0.20111420612813372,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 1217,
+          "hidden_prediction_l1_mean": 2.7078994157988316,
+          "hidden_prediction_coverage": 0.1523017408123791,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            54,
+            360
+          ]
+        },
+        "constant_velocity_nn": {
+          "visible_position_l1_mean": 0.014481409001956947,
+          "visible_match_rate": 0.3001644736842105,
+          "reappearance_correct": [
+            159,
+            1795
+          ],
+          "reappearance_correct_rate": 0.08857938718662953,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 1638,
+          "hidden_prediction_l1_mean": 3.510785358919688,
+          "hidden_prediction_coverage": 0.10367504835589941,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            54,
+            360
+          ]
+        },
+        "last_seen_nn_no_gate_no_retention_limit": {
+          "visible_position_l1_mean": 0.18176972281449894,
+          "visible_match_rate": 0.881578947368421,
+          "reappearance_correct": [
+            1366,
+            1795
+          ],
+          "reappearance_correct_rate": 0.7610027855153203,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 580,
+          "hidden_prediction_l1_mean": 3.5273500967117988,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            54,
+            360
+          ]
+        }
+      }
+    },
+    "door_room_128": {
+      "episodes": 120,
+      "steps_per_episode": [
+        [
+          129,
+          120
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          3,
+          120
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.133,
+      "objects": {
+        "always_visible": 1,
+        "never_visible": 223,
+        "intermittent": 136,
+        "censored_at_end": 92
+      },
+      "reappearance_events": 1104,
+      "events_per_episode": {
+        "mean": 9.2,
+        "median": 6.5,
+        "p90": 22.1,
+        "max": 40,
+        "fraction_of_episodes_with_event": 0.6167
+      },
+      "by_cause": {
+        "out_of_view": 986,
+        "mixed": 92,
+        "occluded": 26
+      },
+      "gap": {
+        "median": 3.0,
+        "p10": 1.0,
+        "p90": 11.0,
+        "max": 103,
+        "histogram": {
+          "1-2": 503,
+          "3-7": 356,
+          "8-29": 221,
+          "30-79": 23,
+          "80-inf": 1
+        }
+      },
+      "strata": {
+        "moved": 485,
+        "agent_did_not_move": 457,
+        "ambiguous_appearance": 381,
+        "nn_confusable": 53,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 216,
+        "hard_gap_ge_3": 129,
+        "hard_gap_ge_8": 55
+      },
+      "generator_events": {
+        "door_toggle": 1143,
+        "same_appearance_confusion": 99,
+        "occlusion": 26,
+        "identity_swap": 3
+      },
+      "generator_occlusion_k": {
+        "max": 5,
+        "median": 1.0
+      },
+      "tracker_baselines": {
+        "current_only": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 0.02218264248704663,
+          "reappearance_correct": [
+            0,
+            1104
+          ],
+          "reappearance_correct_rate": 0.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 6039,
+          "hidden_prediction_l1_mean": null,
+          "hidden_prediction_coverage": 0.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            223,
+            360
+          ]
+        },
+        "last_seen_nn": {
+          "visible_position_l1_mean": 0.0910144927536232,
+          "visible_match_rate": 0.5586139896373057,
+          "reappearance_correct": [
+            396,
+            1104
+          ],
+          "reappearance_correct_rate": 0.358695652173913,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 480,
+          "hidden_prediction_l1_mean": 2.1448395490026018,
+          "hidden_prediction_coverage": 0.27387173396674586,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            223,
+            360
+          ]
+        },
+        "constant_velocity_nn": {
+          "visible_position_l1_mean": 0.008849557522123894,
+          "visible_match_rate": 0.3476360103626943,
+          "reappearance_correct": [
+            135,
+            1104
+          ],
+          "reappearance_correct_rate": 0.12228260869565218,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 915,
+          "hidden_prediction_l1_mean": 2.5037531276063385,
+          "hidden_prediction_coverage": 0.14239904988123517,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            223,
+            360
+          ]
+        },
+        "last_seen_nn_no_gate_no_retention_limit": {
+          "visible_position_l1_mean": 0.12574747992482488,
+          "visible_match_rate": 0.9477007772020726,
+          "reappearance_correct": [
+            957,
+            1104
+          ],
+          "reappearance_correct_rate": 0.8668478260869565,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 218,
+          "hidden_prediction_l1_mean": 2.153562945368171,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            223,
+            360
+          ]
+        }
+      }
+    },
+    "open_128_6balls_nonregistered": {
+      "episodes": 120,
+      "steps_per_episode": [
+        [
+          129,
+          120
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          6,
+          120
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.1893,
+      "objects": {
+        "always_visible": 0,
+        "never_visible": 67,
+        "intermittent": 653,
+        "censored_at_end": 525
+      },
+      "reappearance_events": 4407,
+      "events_per_episode": {
+        "mean": 36.725,
+        "median": 35.5,
+        "p90": 53.1,
+        "max": 66,
+        "fraction_of_episodes_with_event": 1.0
+      },
+      "by_cause": {
+        "out_of_view": 3938,
+        "mixed": 350,
+        "occluded": 119
+      },
+      "gap": {
+        "median": 7.0,
+        "p10": 1.0,
+        "p90": 20.0,
+        "max": 119,
+        "histogram": {
+          "1-2": 1073,
+          "3-7": 1207,
+          "8-29": 1893,
+          "30-79": 218,
+          "80-inf": 16
+        }
+      },
+      "strata": {
+        "moved": 3104,
+        "agent_did_not_move": 971,
+        "ambiguous_appearance": 4398,
+        "nn_confusable": 2172,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 3098,
+        "hard_gap_ge_3": 2486,
+        "hard_gap_ge_8": 1706
+      },
+      "generator_events": {
+        "identity_swap": 322,
+        "same_appearance_confusion": 2530,
+        "occlusion": 119
+      },
+      "generator_occlusion_k": {
+        "max": 5,
+        "median": 1.0
+      },
+      "tracker_baselines": {
+        "current_only": {
+          "visible_position_l1_mean": 0.0,
+          "visible_match_rate": 0.03713180939383601,
+          "reappearance_correct": [
+            0,
+            4407
+          ],
+          "reappearance_correct_rate": 0.0,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 16933,
+          "hidden_prediction_l1_mean": null,
+          "hidden_prediction_coverage": 0.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            67,
+            720
+          ]
+        },
+        "last_seen_nn": {
+          "visible_position_l1_mean": 0.6727645751410497,
+          "visible_match_rate": 0.3325941089503014,
+          "reappearance_correct": [
+            658,
+            4407
+          ],
+          "reappearance_correct_rate": 0.14930791921942366,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 5940,
+          "hidden_prediction_l1_mean": 4.7381560283687945,
+          "hidden_prediction_coverage": 0.24647764220536308,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            67,
+            720
+          ]
+        },
+        "constant_velocity_nn": {
+          "visible_position_l1_mean": 0.2737642585551331,
+          "visible_match_rate": 0.1495507790287729,
+          "reappearance_correct": [
+            139,
+            4407
+          ],
+          "reappearance_correct_rate": 0.0315407306557749,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 6082,
+          "hidden_prediction_l1_mean": 6.412723751521078,
+          "hidden_prediction_coverage": 0.09280495052966473,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            67,
+            720
+          ]
+        },
+        "last_seen_nn_no_gate_no_retention_limit": {
+          "visible_position_l1_mean": 1.1773778920308484,
+          "visible_match_rate": 0.6857159103832594,
+          "reappearance_correct": [
+            1610,
+            4407
+          ],
+          "reappearance_correct_rate": 0.36532788745178124,
+          "reappearance_unidentifiable": 0,
+          "id_switches": 5753,
+          "hidden_prediction_l1_mean": 5.37158689647939,
+          "hidden_prediction_coverage": 1.0,
+          "ambiguous_steps": 0,
+          "unmapped_objects": [
+            67,
+            720
+          ]
+        }
+      }
+    },
+    "_public_observation_keys": [
+      "agent_xy",
+      "kind",
+      "last_action",
+      "observation_id",
+      "observation_sha256",
+      "revision",
+      "rgb_b64",
+      "rgb_sha256",
+      "rgb_shape",
+      "step",
+      "view",
+      "visible_objects"
+    ],
+    "_public_identity_keys": [],
+    "_generation_seconds_per_step": 0.000234
+  },
+  "gridlab_s3": {
+    "episodes": 100,
+    "steps_per_episode": [
+      [
+        360,
+        100
+      ]
+    ],
+    "objects_per_episode": [
+      [
+        8,
+        100
+      ]
+    ],
+    "visible_fraction_of_object_steps": 0.0369,
+    "objects": {
+      "always_visible": 0,
+      "never_visible": 80,
+      "intermittent": 720,
+      "censored_at_end": 693
+    },
+    "reappearance_events": 1262,
+    "events_per_episode": {
+      "mean": 12.62,
+      "median": 12.0,
+      "p90": 19.0,
+      "max": 21,
+      "fraction_of_episodes_with_event": 1.0
+    },
+    "by_cause": {
+      "out_of_view": 1262
+    },
+    "gap": {
+      "median": 78.0,
+      "p10": 22.0,
+      "p90": 159.0,
+      "max": 350,
+      "histogram": {
+        "1-2": 0,
+        "3-7": 15,
+        "8-29": 178,
+        "30-79": 455,
+        "80-inf": 614
+      }
+    },
+    "strata": {
+      "moved": 0,
+      "agent_did_not_move": 582,
+      "ambiguous_appearance": 590,
+      "nn_confusable": 0,
+      "appearance_changed_during_gap": 438,
+      "hard_moved_and_ambiguous": 0,
+      "hard_gap_ge_3": 0,
+      "hard_gap_ge_8": 0
+    },
+    "generator_readout_events_total": 927,
+    "generator_seconds_per_step": 0.000105,
+    "note": "对象 = 8 个内容格，位置固定，只换 token；可见 = token 出现在学生 3x3 视野（从观察向量解码）"
+  },
+  "s1_disk": {
+    "by_family": {
+      "e3_identity": {
+        "episodes": 500,
+        "steps_per_episode": [
+          [
+            5,
+            500
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            2,
+            500
+          ]
+        ],
+        "visible_fraction_of_object_steps": 0.3,
+        "objects": {
+          "always_visible": 0,
+          "never_visible": 500,
+          "intermittent": 500,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 500,
+        "events_per_episode": {
+          "mean": 1.0,
+          "median": 1.0,
+          "p90": 1.0,
+          "max": 1,
+          "fraction_of_episodes_with_event": 1.0
+        },
+        "by_cause": {
+          "out_of_view": 500
+        },
+        "gap": {
+          "median": 2.0,
+          "p10": 2.0,
+          "p90": 2.0,
+          "max": 2,
+          "histogram": {
+            "1-2": 500,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 500,
+          "agent_did_not_move": 500,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "navigation": {
+        "episodes": 500,
+        "steps_per_episode": [
+          [
+            7,
+            500
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            1,
+            500
+          ]
+        ],
+        "visible_fraction_of_object_steps": 0.0,
+        "objects": {
+          "always_visible": 0,
+          "never_visible": 500,
+          "intermittent": 0,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "relation": {
+        "episodes": 500,
+        "steps_per_episode": [
+          [
+            3,
+            500
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            4,
+            500
+          ]
+        ],
+        "visible_fraction_of_object_steps": 0.75,
+        "objects": {
+          "always_visible": 1000,
+          "never_visible": 0,
+          "intermittent": 1000,
+          "censored_at_end": 500
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "time": {
+        "episodes": 500,
+        "steps_per_episode": [
+          [
+            4,
+            500
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            1,
+            500
+          ]
+        ],
+        "visible_fraction_of_object_steps": 1.0,
+        "objects": {
+          "always_visible": 500,
+          "never_visible": 0,
+          "intermittent": 0,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      }
+    },
+    "handle_reissued_on_reappearance": 500,
+    "handle_kept_on_reappearance": 0,
+    "packets_vs_truth_handle_mismatch_steps": 0,
+    "detections_per_packet": {
+      "e3_identity": {
+        "mean": 0.6,
+        "max": 1
+      },
+      "navigation": {
+        "mean": 0.0,
+        "max": 0
+      },
+      "relation": {
+        "mean": 3.0,
+        "max": 3
+      },
+      "time": {
+        "mean": 1.0,
+        "max": 1
+      }
+    },
+    "packet_keys_sample_800": [
+      "channels",
+      "delta",
+      "description",
+      "detections",
+      "dt_s",
+      "dt_ticks",
+      "dx_m",
+      "dy_m",
+      "dyaw_deg",
+      "dz_m",
+      "ego_motion",
+      "episode_id",
+      "episode_start",
+      "fov_deg",
+      "goal",
+      "kind",
+      "last_action_result",
+      "model",
+      "observation",
+      "occlusion",
+      "params",
+      "partition",
+      "payload",
+      "pose_sensor_if_allowed",
+      "range_m",
+      "relative_objects",
+      "sensor_noise",
+      "seq",
+      "sigma_deg",
+      "sigma_m",
+      "sim_hz",
+      "t_ticks",
+      "task_instruction",
+      "text",
+      "time",
+      "visibility"
+    ],
+    "packet_identity_keys": [],
+    "source": "truth/train.jsonl + packets/train.jsonl（只读）"
+  },
+  "awz_exam_resample": {
+    "e3_identity": {
+      "episodes": 100,
+      "steps_per_episode": [
+        [
+          5,
+          100
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          2,
+          100
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.3,
+      "objects": {
+        "always_visible": 0,
+        "never_visible": 100,
+        "intermittent": 100,
+        "censored_at_end": 0
+      },
+      "reappearance_events": 100,
+      "events_per_episode": {
+        "mean": 1.0,
+        "median": 1.0,
+        "p90": 1.0,
+        "max": 1,
+        "fraction_of_episodes_with_event": 1.0
+      },
+      "by_cause": {
+        "out_of_view": 100
+      },
+      "gap": {
+        "median": 2.0,
+        "p10": 2.0,
+        "p90": 2.0,
+        "max": 2,
+        "histogram": {
+          "1-2": 100,
+          "3-7": 0,
+          "8-29": 0,
+          "30-79": 0,
+          "80-inf": 0
+        }
+      },
+      "strata": {
+        "moved": 100,
+        "agent_did_not_move": 100,
+        "ambiguous_appearance": 0,
+        "nn_confusable": 0,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 0,
+        "hard_gap_ge_3": 0,
+        "hard_gap_ge_8": 0
+      },
+      "handles_reissued": 100,
+      "handles_kept": 0,
+      "a3_validated_streams": 3
+    },
+    "relation": {
+      "episodes": 100,
+      "steps_per_episode": [
+        [
+          3,
+          100
+        ]
+      ],
+      "objects_per_episode": [
+        [
+          4,
+          100
+        ]
+      ],
+      "visible_fraction_of_object_steps": 0.75,
+      "objects": {
+        "always_visible": 200,
+        "never_visible": 0,
+        "intermittent": 200,
+        "censored_at_end": 100
+      },
+      "reappearance_events": 0,
+      "events_per_episode": {
+        "mean": 0.0,
+        "median": 0.0,
+        "p90": 0.0,
+        "max": 0,
+        "fraction_of_episodes_with_event": 0.0
+      },
+      "by_cause": {},
+      "gap": {
+        "median": null,
+        "p10": null,
+        "p90": null,
+        "max": null,
+        "histogram": {
+          "1-2": 0,
+          "3-7": 0,
+          "8-29": 0,
+          "30-79": 0,
+          "80-inf": 0
+        }
+      },
+      "strata": {
+        "moved": 0,
+        "agent_did_not_move": 0,
+        "ambiguous_appearance": 0,
+        "nn_confusable": 0,
+        "appearance_changed_during_gap": 0,
+        "hard_moved_and_ambiguous": 0,
+        "hard_gap_ge_3": 0,
+        "hard_gap_ge_8": 0
+      },
+      "handles_reissued": 0,
+      "handles_kept": 0,
+      "a3_validated_streams": 3
+    }
+  },
+  "e1_raw_train": {
+    "occlusion_pass": {
+      "sequences": 200,
+      "active_bodies_per_scene": [
+        [
+          1,
+          200
+        ]
+      ],
+      "static_bodies_non_ground": [
+        [
+          1,
+          200
+        ]
+      ],
+      "scenario_config_mismatch_with_raw": 0,
+      "frames_times_bodies": 9000,
+      "state_counts_definition_A": {
+        "out_of_view": 927,
+        "visible": 8073
+      },
+      "sequence_flags": {
+        "sequences_with_out_of_view_frame": 200
+      },
+      "occlusion_pass_final_actor_x": {
+        "min": -1.598,
+        "median": -0.993,
+        "max": -0.138
+      },
+      "fully_hidden_fraction_of_body_frames": 0.103,
+      "center_hidden_fraction_of_body_frames": 0.2492,
+      "min_visible_fraction_distribution": {
+        "p0": 0.0,
+        "p10": 0.0,
+        "p50": 1.0
+      },
+      "definition_A_any_sample_visible": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            45,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            1,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 0.897,
+        "objects": {
+          "always_visible": 0,
+          "never_visible": 0,
+          "intermittent": 200,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "definition_B_center_visible_only": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            45,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            1,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 0.7508,
+        "objects": {
+          "always_visible": 0,
+          "never_visible": 0,
+          "intermittent": 200,
+          "censored_at_end": 1
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "note": "球面 9 个采样点（中心加轮廓 8 点）；遮挡体含静态非地面与其他运动体；相机外参来自 raw metadata"
+    },
+    "ramp_roll": {
+      "sequences": 200,
+      "active_bodies_per_scene": [
+        [
+          1,
+          200
+        ]
+      ],
+      "static_bodies_non_ground": [
+        [
+          1,
+          200
+        ]
+      ],
+      "scenario_config_mismatch_with_raw": 0,
+      "frames_times_bodies": 9000,
+      "state_counts_definition_A": {
+        "visible": 9000
+      },
+      "sequence_flags": {},
+      "occlusion_pass_final_actor_x": null,
+      "fully_hidden_fraction_of_body_frames": 0.0,
+      "center_hidden_fraction_of_body_frames": 0.0,
+      "min_visible_fraction_distribution": {
+        "p0": 1.0,
+        "p10": 1.0,
+        "p50": 1.0
+      },
+      "definition_A_any_sample_visible": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            45,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            1,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 1.0,
+        "objects": {
+          "always_visible": 200,
+          "never_visible": 0,
+          "intermittent": 0,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "definition_B_center_visible_only": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            45,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            1,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 1.0,
+        "objects": {
+          "always_visible": 200,
+          "never_visible": 0,
+          "intermittent": 0,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "note": "球面 9 个采样点（中心加轮廓 8 点）；遮挡体含静态非地面与其他运动体；相机外参来自 raw metadata"
+    },
+    "box_stack": {
+      "sequences": 200,
+      "active_bodies_per_scene": [
+        [
+          3,
+          200
+        ]
+      ],
+      "static_bodies_non_ground": [
+        [
+          0,
+          200
+        ]
+      ],
+      "scenario_config_mismatch_with_raw": 0,
+      "frames_times_bodies": 27000,
+      "state_counts_definition_A": {
+        "visible": 25857,
+        "occluded": 1143
+      },
+      "sequence_flags": {
+        "sequences_with_fully_occluded_frame": 69,
+        "bodies_still_hidden_at_last_frame_after_occlusion": 28
+      },
+      "occlusion_pass_final_actor_x": null,
+      "fully_hidden_fraction_of_body_frames": 0.0423,
+      "center_hidden_fraction_of_body_frames": 0.1044,
+      "min_visible_fraction_distribution": {
+        "p0": 0.0,
+        "p10": 0.444,
+        "p50": 1.0
+      },
+      "definition_A_any_sample_visible": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            45,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            3,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 0.9577,
+        "objects": {
+          "always_visible": 531,
+          "never_visible": 0,
+          "intermittent": 69,
+          "censored_at_end": 28
+        },
+        "reappearance_events": 45,
+        "events_per_episode": {
+          "mean": 0.225,
+          "median": 0.0,
+          "p90": 1.0,
+          "max": 1,
+          "fraction_of_episodes_with_event": 0.225
+        },
+        "by_cause": {
+          "occluded": 45
+        },
+        "gap": {
+          "median": 12.0,
+          "p10": 9.0,
+          "p90": 19.0,
+          "max": 25,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 3,
+            "8-29": 42,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 45,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "definition_B_center_visible_only": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            45,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            3,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 0.8956,
+        "objects": {
+          "always_visible": 484,
+          "never_visible": 0,
+          "intermittent": 116,
+          "censored_at_end": 75
+        },
+        "reappearance_events": 43,
+        "events_per_episode": {
+          "mean": 0.215,
+          "median": 0.0,
+          "p90": 1.0,
+          "max": 2,
+          "fraction_of_episodes_with_event": 0.21
+        },
+        "by_cause": {
+          "occluded": 43
+        },
+        "gap": {
+          "median": 21.0,
+          "p10": 2.0,
+          "p90": 29.0,
+          "max": 33,
+          "histogram": {
+            "1-2": 7,
+            "3-7": 2,
+            "8-29": 30,
+            "30-79": 4,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 42,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 5,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 4,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "note": "球面 9 个采样点（中心加轮廓 8 点）；遮挡体含静态非地面与其他运动体；相机外参来自 raw metadata"
+    },
+    "table_slide": {
+      "sequences": 200,
+      "active_bodies_per_scene": [
+        [
+          1,
+          200
+        ]
+      ],
+      "static_bodies_non_ground": [
+        [
+          1,
+          200
+        ]
+      ],
+      "scenario_config_mismatch_with_raw": 0,
+      "frames_times_bodies": 10000,
+      "state_counts_definition_A": {
+        "visible": 10000
+      },
+      "sequence_flags": {},
+      "occlusion_pass_final_actor_x": null,
+      "fully_hidden_fraction_of_body_frames": 0.0,
+      "center_hidden_fraction_of_body_frames": 0.0,
+      "min_visible_fraction_distribution": {
+        "p0": 1.0,
+        "p10": 1.0,
+        "p50": 1.0
+      },
+      "definition_A_any_sample_visible": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            50,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            1,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 1.0,
+        "objects": {
+          "always_visible": 200,
+          "never_visible": 0,
+          "intermittent": 0,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "definition_B_center_visible_only": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            50,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            1,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 1.0,
+        "objects": {
+          "always_visible": 200,
+          "never_visible": 0,
+          "intermittent": 0,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "note": "球面 9 个采样点（中心加轮廓 8 点）；遮挡体含静态非地面与其他运动体；相机外参来自 raw metadata"
+    },
+    "bounce_collision": {
+      "sequences": 200,
+      "active_bodies_per_scene": [
+        [
+          2,
+          200
+        ]
+      ],
+      "static_bodies_non_ground": [
+        [
+          0,
+          200
+        ]
+      ],
+      "scenario_config_mismatch_with_raw": 0,
+      "frames_times_bodies": 16000,
+      "state_counts_definition_A": {
+        "visible": 16000
+      },
+      "sequence_flags": {},
+      "occlusion_pass_final_actor_x": null,
+      "fully_hidden_fraction_of_body_frames": 0.0,
+      "center_hidden_fraction_of_body_frames": 0.0,
+      "min_visible_fraction_distribution": {
+        "p0": 0.667,
+        "p10": 0.889,
+        "p50": 1.0
+      },
+      "definition_A_any_sample_visible": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            40,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            2,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 1.0,
+        "objects": {
+          "always_visible": 400,
+          "never_visible": 0,
+          "intermittent": 0,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "definition_B_center_visible_only": {
+        "episodes": 200,
+        "steps_per_episode": [
+          [
+            40,
+            200
+          ]
+        ],
+        "objects_per_episode": [
+          [
+            2,
+            200
+          ]
+        ],
+        "visible_fraction_of_object_steps": 1.0,
+        "objects": {
+          "always_visible": 400,
+          "never_visible": 0,
+          "intermittent": 0,
+          "censored_at_end": 0
+        },
+        "reappearance_events": 0,
+        "events_per_episode": {
+          "mean": 0.0,
+          "median": 0.0,
+          "p90": 0.0,
+          "max": 0,
+          "fraction_of_episodes_with_event": 0.0
+        },
+        "by_cause": {},
+        "gap": {
+          "median": null,
+          "p10": null,
+          "p90": null,
+          "max": null,
+          "histogram": {
+            "1-2": 0,
+            "3-7": 0,
+            "8-29": 0,
+            "30-79": 0,
+            "80-inf": 0
+          }
+        },
+        "strata": {
+          "moved": 0,
+          "agent_did_not_move": 0,
+          "ambiguous_appearance": 0,
+          "nn_confusable": 0,
+          "appearance_changed_during_gap": 0,
+          "hard_moved_and_ambiguous": 0,
+          "hard_gap_ge_3": 0,
+          "hard_gap_ge_8": 0
+        }
+      },
+      "note": "球面 9 个采样点（中心加轮廓 8 点）；遮挡体含静态非地面与其他运动体；相机外参来自 raw metadata"
+    }
+  },
+  "scale": {
+    "gridlab2d": {
+      "100": {
+        "grid": 30,
+        "objects": 100,
+        "steps_timed": 5,
+        "seconds_per_step": 0.0009,
+        "visible_objects_per_step": [
+          3,
+          2,
+          2,
+          1,
+          1
+        ]
+      },
+      "1000": {
+        "grid": 80,
+        "objects": 1000,
+        "steps_timed": 5,
+        "seconds_per_step": 0.063,
+        "visible_objects_per_step": [
+          5,
+          5,
+          6,
+          7,
+          11
+        ]
+      }
+    },
+    "gridlab_v1": {
+      "70": {
+        "objects": 70,
+        "max_grid": 11
+      },
+      "100": {
+        "error": "too many entities for the grid",
+        "max_grid": 11
+      }
+    },
+    "gridlab_s3": {
+      "100": {
+        "content_cells": 100
+      },
+      "1000": {
+        "error": "Layout has only 443 connected free cells; need at least 1000"
+      }
+    },
+    "awz_e2a_world": {
+      "100": {
+        "objects": 100,
+        "events_at_5pct": 5,
+        "event_types": {
+          "physics.teleport": 5
+        },
+        "seconds_first_tick": 0.003,
+        "has_observation_exit": false,
+        "note": "世界侧确定性参考世界；没有传感出口，学生看不到"
+      },
+      "1000": {
+        "objects": 1000,
+        "events_at_5pct": 50,
+        "event_types": {
+          "physics.teleport": 30,
+          "physics.impulse": 4,
+          "timer.start": 4,
+          "occlusion.change": 4,
+          "visibility.toggle": 4,
+          "observe.marker": 4
+        },
+        "seconds_first_tick": 0.0305,
+        "has_observation_exit": false,
+        "note": "世界侧确定性参考世界；没有传感出口，学生看不到"
+      }
+    },
+    "gridlab2d_change_and_coverage": {
+      "n100_dyn5pct": {
+        "objects": 100,
+        "grid": 30,
+        "steps": 128,
+        "balls": 5,
+        "mean_changed_fraction_per_step": 0.0509,
+        "mean_visible_per_step": 4.477,
+        "max_visible_per_step": 8,
+        "objects_ever_seen": 25,
+        "objects_ever_seen_fraction": 0.25
+      },
+      "n100_dyn20pct": {
+        "objects": 100,
+        "grid": 30,
+        "steps": 128,
+        "balls": 20,
+        "mean_changed_fraction_per_step": 0.1998,
+        "mean_visible_per_step": 4.211,
+        "max_visible_per_step": 9,
+        "objects_ever_seen": 28,
+        "objects_ever_seen_fraction": 0.28
+      },
+      "n1000_dyn5pct": {
+        "objects": 1000,
+        "grid": 80,
+        "steps": 48,
+        "balls": 50,
+        "mean_changed_fraction_per_step": 0.0478,
+        "mean_visible_per_step": 3.562,
+        "max_visible_per_step": 7,
+        "objects_ever_seen": 17,
+        "objects_ever_seen_fraction": 0.017
+      },
+      "n1000_dyn20pct": {
+        "objects": 1000,
+        "grid": 80,
+        "steps": 48,
+        "balls": 200,
+        "mean_changed_fraction_per_step": 0.1939,
+        "mean_visible_per_step": 5.479,
+        "max_visible_per_step": 9,
+        "objects_ever_seen": 28,
+        "objects_ever_seen_fraction": 0.028
+      }
+    },
+    "tracker_assign_exhaustive": {
+      "3": {
+        "seconds": 8e-05,
+        "combinations": 64
+      },
+      "4": {
+        "seconds": 0.00042,
+        "combinations": 625
+      },
+      "5": {
+        "seconds": 0.0043,
+        "combinations": 7776
+      },
+      "6": {
+        "seconds": 0.05222,
+        "combinations": 117649
+      }
+    }
+  },
+  "e1_student_view": {
+    "top_keys": [
+      "BouncingBox",
+      "BouncingSphere",
+      "BoxBottom",
+      "BoxTop",
+      "ImpactSphere",
+      "OccludedActor",
+      "RollingActor",
+      "TableSlider",
+      "active_bodies",
+      "angular_velocity",
+      "bounding_sphere_radius",
+      "boxes",
+      "dimensions",
+      "frame",
+      "ground",
+      "linear_velocity",
+      "max_point",
+      "min_point",
+      "name",
+      "normal",
+      "objects",
+      "orientation",
+      "point",
+      "position",
+      "ramps",
+      "scenario_type",
+      "sequence_id",
+      "shape",
+      "static_environment",
+      "tables",
+      "thickness",
+      "tick",
+      "time_seconds",
+      "x_bounds",
+      "y_bounds",
+      "z_plane",
+      "z_top"
+    ],
+    "body_names_seen_in_student_file": [
+      "BouncingBox",
+      "BouncingSphere",
+      "BoxBottom",
+      "BoxTop",
+      "ImpactSphere",
+      "OccludedActor",
+      "RollingActor",
+      "TableSlider"
+    ]
+  },
+  "ledger_costs": {
+    "S1 phase1": {
+      "auxiliary/completed/preregistration_prep": {
+        "runs": 3,
+        "active_seconds": 720.3,
+        "wall_seconds": 59.5,
+        "optimizer_steps": 0
+      },
+      "auxiliary/completed/s1_phase1_d_candidate_eval": {
+        "runs": 3,
+        "active_seconds": 8.0,
+        "wall_seconds": 0.4,
+        "optimizer_steps": 0
+      },
+      "auxiliary/completed/s1_phase1_eval": {
+        "runs": 9,
+        "active_seconds": 1080.0,
+        "wall_seconds": 46.1,
+        "optimizer_steps": 0
+      },
+      "auxiliary/completed/s1_phase1_final_eval": {
+        "runs": 1,
+        "active_seconds": 600.0,
+        "wall_seconds": 49.9,
+        "optimizer_steps": 0
+      },
+      "auxiliary/failed/s1_phase1_eval": {
+        "runs": 7,
+        "active_seconds": 840.0,
+        "wall_seconds": 18.0,
+        "optimizer_steps": 0
+      },
+      "model/completed/s1_phase1_training_run": {
+        "runs": 13,
+        "active_seconds": 2936.1,
+        "wall_seconds": 9543.0,
+        "optimizer_steps": 45630
+      },
+      "model/failed/s1_phase1_training_run": {
+        "runs": 9,
+        "active_seconds": 1239.3,
+        "wall_seconds": 4060.6,
+        "optimizer_steps": 20222
+      },
+      "model/stopped/s1_phase1_training_run": {
+        "runs": 4,
+        "active_seconds": 617.2,
+        "wall_seconds": 4509.4,
+        "optimizer_steps": 8979
+      },
+      "_copy_sha256": "9daeacd35064d7f699b4e50f778219192d133da32493886395bea11102833426"
+    },
+    "S2 phase1": {
+      "model/completed/generate-data": {
+        "runs": 2,
+        "active_seconds": 882.5,
+        "wall_seconds": 882.5,
+        "optimizer_steps": 0
+      },
+      "model/completed/plan-select": {
+        "runs": 1,
+        "active_seconds": 1110.4,
+        "wall_seconds": 1122.5,
+        "optimizer_steps": 0
+      },
+      "model/completed/smoke": {
+        "runs": 1,
+        "active_seconds": 211.9,
+        "wall_seconds": 211.9,
+        "optimizer_steps": 0
+      },
+      "model/completed/train": {
+        "runs": 9,
+        "active_seconds": 5853.8,
+        "wall_seconds": 5958.6,
+        "optimizer_steps": 24813
+      },
+      "model/failed/generate-data": {
+        "runs": 2,
+        "active_seconds": 0.0,
+        "wall_seconds": 63318.9,
+        "optimizer_steps": 0
+      },
+      "model/failed/train": {
+        "runs": 1,
+        "active_seconds": 0.0,
+        "wall_seconds": 677.4,
+        "optimizer_steps": 0
+      },
+      "_copy_sha256": "315fc4d270395d6e7ba912057e00a77e25ad935619ab8dfda3aab4c562c1faa7"
+    },
+    "E1 phase2": {
+      "model/completed/eval": {
+        "runs": 26,
+        "active_seconds": 1740.0,
+        "wall_seconds": 716.4,
+        "optimizer_steps": 0
+      },
+      "model/completed/generate-data": {
+        "runs": 1,
+        "active_seconds": 3600.0,
+        "wall_seconds": 3364.3,
+        "optimizer_steps": 0
+      },
+      "model/completed/train": {
+        "runs": 18,
+        "active_seconds": 12300.0,
+        "wall_seconds": 7602.4,
+        "optimizer_steps": 0
+      },
+      "_copy_sha256": "5990ed6cc0b1a58089934653413e495a1f0c9f703ff2461c41a314d939bc77b5"
+    },
+    "E1 phase2 r2": {
+      "model/completed/eval": {
+        "runs": 26,
+        "active_seconds": 1500.0,
+        "wall_seconds": 847.7,
+        "optimizer_steps": 0
+      },
+      "model/completed/train": {
+        "runs": 12,
+        "active_seconds": 9900.0,
+        "wall_seconds": 6373.3,
+        "optimizer_steps": 0
+      },
+      "_copy_sha256": "d1b1697e2f692c477fea4f6496a3442f825ce31ea229c2a6ec4a049db5efd075"
+    }
+  },
+  "t10_assets": {
+    "sam2.1-hiera-tiny (weights)": {
+      "bytes": 155908064,
+      "sha256": "48c14467e5cf9e51870511feb72c89688e82dd74523142c0538b663e193ac2a7",
+      "sha256_matches_provenance": true
+    },
+    "bootstapir_checkpoint_v2.pt (weights)": {
+      "bytes": 218886140,
+      "sha256": "8493c7a69e02c85b9382fbb3c7b8b539b36bc08ede744b9e99feb739a0129f4b",
+      "sha256_matches_provenance": true
+    }
+  },
+  "timing_seconds": {
+    "gridlab_v1": 15.572,
+    "gridlab_s3": 3.933,
+    "s1_disk": 0.261,
+    "awz_exam_resample": 0.146,
+    "e1_raw_train": 7.692,
+    "scale": 1.317
+  },
+  "total_seconds": 29.384,
+  "imports_blocked": {
+    "mlx_imported": false,
+    "torch_imported": false
+  }
+}

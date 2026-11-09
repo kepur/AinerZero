@@ -1,0 +1,36 @@
+### m02_a3_eval_uses_answer_target file=src/ainerzero/v9/experiments/s3/arms_mlx.py
+--- OLD
+top = mx.argmax(mx.where(mask, s, mx.array(-1e9)), axis=-1)
+--- NEW
+top = mx.argmax(mx.where(mask, target, mx.array(-1e9)), axis=-1)
+
+### project exit=1
+.............................F.......................................... [ 69%]
+................................                                         [100%]
+=================================== FAILURES ===================================
+E   AssertionError: assert False
+     +  where False = <function array_equal at 0x103f163b0>(array([[-0.08277929, -0.00641488, -0.06824866, ...,  0.06323998,\n        -0.02656714,  0.08311792],\n       [-0.0919902...9267218,  0.01761696, -0.09184378, ...,  0.05646137,\n        -0.00577764,  0.05594376]], shape=(59, 17), dtype=float32), array([[-0.08450714, -0.00568708, -0.06975366, ...,  0.06413434,\n        -0.02597423,  0.08508069],\n       [-0.0916682...9267218,  0.01761696, -0.09184378, ...,  0.05646137,\n        -0.00577764,  0.05594376]], shape=(59, 17), dtype=float32))
+     +    where <function array_equal at 0x103f163b0> = np.array_equal
+     +    and   array([[-0.08277929, -0.00641488, -0.06824866, ...,  0.06323998,\n        -0.02656714,  0.08311792],\n       [-0.0919902...9267218,  0.01761696, -0.09184378, ...,  0.05646137,\n        -0.00577764,  0.05594376]], shape=(59, 17), dtype=float32) = logits(ReadoutArm(\n  (enc1): Linear(input_dims=198, output_dims=128, bias=True)\n  (enc2): Linear(input_dims=128, output_dims=...(score1): Linear(input_dims=4, output_dims=32, bias=True)\n  (score2): Linear(input_dims=32, output_dims=1, bias=True)\n), {'obs': array([[[1, 0, 0, ..., 0, 1, 0],\n        [1, 0, 0, ..., 0, 0, 0],\n        [0, 1, 0, ..., 0, 0, 0],\n        ......y([142, 187, 239, ..., 248, 255, 278], dtype=int32), 'top1': array([50, 111, 68, ..., 172, 50, 233], dtype=int32), ...}, True)
+     +    and   array([[-0.08450714, -0.00568708, -0.06975366, ...,  0.06413434,\n        -0.02597423,  0.08508069],\n       [-0.0916682...9267218,  0.01761696, -0.09184378, ...,  0.05646137,\n        -0.00577764,  0.05594376]], shape=(59, 17), dtype=float32) = logits(ReadoutArm(\n  (enc1): Linear(input_dims=198, output_dims=128, bias=True)\n  (enc2): Linear(input_dims=128, output_dims=...(score1): Linear(input_dims=4, output_dims=32, bias=True)\n  (score2): Linear(input_dims=32, output_dims=1, bias=True)\n), {'obs': array([[[1, 0, 0, ..., 0, 1, 0],\n        [1, 0, 0, ..., 0, 0, 0],\n        [0, 1, 0, ..., 0, 0, 0],\n        ......y([142, 187, 239, ..., 248, 255, 278], dtype=int32), 'top1': array([50, 111, 68, ..., 172, 50, 233], dtype=int32), ...}, True)
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/mutants/m02_a3_eval_uses_answer_target/tests/v9/experiments/test_s3_isolation_contract.py:167: AssertionError: assert False
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_isolation_contract.py::test_non_oracle_arms_ignore_oracle_and_labels[True-A3]
+1 failed, 103 passed in 15.37s
+
+
+### harness exit=1
+PASS T1_truth_keys_never_read :: {"step_keys": ["est_pose", "obs", "t"], "event_keys": ["answer", "bucket", "prev_visit_t", "swapped", "t"], "episode_keys": ["events", "steps"], "diffs": []}
+PASS T2_event_labels_reach_only_their_slot :: {"leaks": {}, "n_events_checked": 268}
+FAIL T3_logits_ignore_oracle_and_labels :: {"leaks": {"A3/hard=True": "logits 依赖 oracle/answer/swapped/bucket"}, "control_O_depends_on_oracle": true}
+PASS T3b_arms_read_only_their_own_retrieval_field :: {"bad": {}, "power": {"A2_reads_top1": true, "N_reads_shuffled": true, "A3_reads_candidates": true}}
+PASS T4_no_future_input_A0_A1_A2_A3 :: {"bad": {}, "events_checked": 6, "A1_depends_on_past": true, "A0_only_current_obs": true, "N_records_from_future": "25/67"}
+PASS T5_retrieval_ignores_future_steps :: {"events_checked": 67, "bad": [], "gap_ge_5": true}
+PASS T6_est_pose_origin_not_used :: {"diffs": []}
+PASS T7_bootstrap_cluster_unit_and_seed_pooling :: {"exact_match_bruteforce": "True", "point_ok": "True", "width_ep": 0.134375, "width_seed_as_cluster": 0.09895833333333333, "width_event": 0.07502604166666667, "n_episodes": 40}
+PASS T8_empty_data_cannot_pass :: {"legality": {"floor_A0": false, "upper_O": false, "negative_N": false, "unswapped_A2": false, "unswapped_A3": false}, "bootstrap_raises": true, "h3_nan_passes": false, "difference_gate_nan_passes": false, "note_single_episode_gate": true}
+PASS T9_A3_gradient_isolation :: {"encoder_gets_scorer_grad": [], "scorer_live": true, "scorer_gets_readout_grad": [], "encoder_live": true, "note_ce0_term_cancels_in_softmax": true}
+PASS T10_gate_constants_match_prereg :: {"chance": true, "floor": true, "upper_O": true, "unswapped_min": true, "resamples": true, "boot_seed": true, "H1": true, "H2": true, "H3": true}
+PASS T11_N_record_differs_from_top1 :: {"fraction_differs": 1.0}
+SUMMARY pass=11 fail=1
+

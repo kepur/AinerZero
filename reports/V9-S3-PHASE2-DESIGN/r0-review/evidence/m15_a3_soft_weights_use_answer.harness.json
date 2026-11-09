@@ -1,0 +1,132 @@
+{
+ "T1_truth_keys_never_read": {
+  "pass": true,
+  "detail": {
+   "step_keys": [
+    "est_pose",
+    "obs",
+    "t"
+   ],
+   "event_keys": [
+    "answer",
+    "bucket",
+    "prev_visit_t",
+    "swapped",
+    "t"
+   ],
+   "episode_keys": [
+    "events",
+    "steps"
+   ],
+   "diffs": []
+  }
+ },
+ "T2_event_labels_reach_only_their_slot": {
+  "pass": true,
+  "detail": {
+   "leaks": {},
+   "n_events_checked": 268
+  }
+ },
+ "T3_logits_ignore_oracle_and_labels": {
+  "pass": false,
+  "detail": {
+   "leaks": {
+    "A3/hard=False": "logits 依赖 oracle/answer/swapped/bucket"
+   },
+   "control_O_depends_on_oracle": true
+  }
+ },
+ "T3b_arms_read_only_their_own_retrieval_field": {
+  "pass": true,
+  "detail": {
+   "bad": {},
+   "power": {
+    "A2_reads_top1": true,
+    "N_reads_shuffled": true,
+    "A3_reads_candidates": true
+   }
+  }
+ },
+ "T4_no_future_input_A0_A1_A2_A3": {
+  "pass": true,
+  "detail": {
+   "bad": {},
+   "events_checked": 6,
+   "A1_depends_on_past": true,
+   "A0_only_current_obs": true,
+   "N_records_from_future": "25/67"
+  }
+ },
+ "T5_retrieval_ignores_future_steps": {
+  "pass": true,
+  "detail": {
+   "events_checked": 67,
+   "bad": [],
+   "gap_ge_5": true
+  }
+ },
+ "T6_est_pose_origin_not_used": {
+  "pass": true,
+  "detail": {
+   "diffs": []
+  }
+ },
+ "T7_bootstrap_cluster_unit_and_seed_pooling": {
+  "pass": true,
+  "detail": {
+   "exact_match_bruteforce": "True",
+   "point_ok": "True",
+   "width_ep": 0.134375,
+   "width_seed_as_cluster": 0.09895833333333333,
+   "width_event": 0.07502604166666667,
+   "n_episodes": 40
+  }
+ },
+ "T8_empty_data_cannot_pass": {
+  "pass": true,
+  "detail": {
+   "legality": {
+    "floor_A0": false,
+    "upper_O": false,
+    "negative_N": false,
+    "unswapped_A2": false,
+    "unswapped_A3": false
+   },
+   "bootstrap_raises": true,
+   "h3_nan_passes": false,
+   "difference_gate_nan_passes": false,
+   "note_single_episode_gate": true
+  }
+ },
+ "T9_A3_gradient_isolation": {
+  "pass": true,
+  "detail": {
+   "encoder_gets_scorer_grad": [],
+   "scorer_live": true,
+   "scorer_gets_readout_grad": [],
+   "encoder_live": true,
+   "note_ce0_term_cancels_in_softmax": true
+  }
+ },
+ "T10_gate_constants_match_prereg": {
+  "pass": true,
+  "detail": {
+   "chance": true,
+   "floor": true,
+   "upper_O": true,
+   "unswapped_min": true,
+   "resamples": true,
+   "boot_seed": true,
+   "H1": true,
+   "H2": true,
+   "H3": true
+  }
+ },
+ "T11_N_record_differs_from_top1": {
+  "pass": true,
+  "detail": {
+   "fraction_differs": 1.0
+  }
+ }
+}

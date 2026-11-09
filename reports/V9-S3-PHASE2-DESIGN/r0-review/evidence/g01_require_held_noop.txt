@@ -1,0 +1,19 @@
+### g01_require_held_noop
+--- OLD
+    if not isinstance(lock, RunLock) or not lock.held:
+        raise GuardError("the shared lock must be held before any ledger or marker is written")
+--- NEW
+    return
+
+......FF..............                                                   [100%]
+=================================== FAILURES ===================================
+E   Failed: DID NOT RAISE GuardError
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/gm/g01_require_held_noop/tests/v9/experiments/test_s3_run_guard.py:115: Failed: DID NOT RAISE GuardError
+E   Failed: DID NOT RAISE GuardError
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/gm/g01_require_held_noop/tests/v9/experiments/test_s3_run_guard.py:115: Failed: DID NOT RAISE GuardError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_run_guard.py::test_consuming_without_the_lock_is_refused[dev]
+FAILED tests/v9/experiments/test_s3_run_guard.py::test_consuming_without_the_lock_is_refused[final]
+2 failed, 20 passed in 0.31s
+
+

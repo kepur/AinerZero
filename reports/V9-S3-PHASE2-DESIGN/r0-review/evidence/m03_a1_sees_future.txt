@@ -1,0 +1,40 @@
+### m03_a1_sees_future file=src/ainerzero/v9/experiments/s3/arms_mlx.py
+--- OLD
+h = model.gru(model.encode(b["obs"]))
+--- NEW
+h = model.gru(model.encode(b["obs"])[:, ::-1, :])[:, ::-1, :]
+
+### project exit=1
+..............................................F..F...................... [ 69%]
+................................                                         [100%]
+=================================== FAILURES ===================================
+E   AssertionError: (0, 304)
+    assert False
+     +  where False = <function array_equal at 0x1067964b0>(array([-0.08372714,  0.05509142, -0.05581341,  0.01565449, -0.03503316,\n       -0.11967899, -0.18217422,  0.08115967, ...      -0.02566964, -0.07832731,  0.07609934, -0.02903478,  0.01952108,\n        0.00322874,  0.02237843], dtype=float32), array([-0.07881333,  0.04593012, -0.05844302,  0.01862539, -0.03779729,\n       -0.12158118, -0.17544305,  0.08743326, ...      -0.01108039, -0.07628091,  0.08165424, -0.04171716,  0.01915804,\n       -0.00453838,  0.02731919], dtype=float32))
+     +    where <function array_equal at 0x1067964b0> = np.array_equal
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/mutants/m03_a1_sees_future/tests/v9/experiments/test_s3_isolation_contract.py:211: AssertionError: (0, 304)
+E   assert not True
+     +  where True = <function array_equal at 0x1067964b0>(array([-0.08372714,  0.05509142, -0.05581341,  0.01565449, -0.03503316,\n       -0.11967899, -0.18217422,  0.08115967, ...      -0.02566964, -0.07832731,  0.07609934, -0.02903478,  0.01952108,\n        0.00322874,  0.02237843], dtype=float32), array([-0.08372714,  0.05509142, -0.05581341,  0.01565449, -0.03503316,\n       -0.11967899, -0.18217422,  0.08115967, ...      -0.02566964, -0.07832731,  0.07609934, -0.02903478,  0.01952108,\n        0.00322874,  0.02237843], dtype=float32))
+     +    where <function array_equal at 0x1067964b0> = np.array_equal
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review2/mutants/m03_a1_sees_future/tests/v9/experiments/test_s3_isolation_contract.py:224: assert not True
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3_isolation_contract.py::test_future_observations_do_not_change_an_event[A1]
+FAILED tests/v9/experiments/test_s3_isolation_contract.py::test_gru_depends_on_the_past_and_a0_only_on_the_present
+2 failed, 102 passed in 15.20s
+
+
+### harness exit=1
+PASS T1_truth_keys_never_read :: {"step_keys": ["est_pose", "obs", "t"], "event_keys": ["answer", "bucket", "prev_visit_t", "swapped", "t"], "episode_keys": ["events", "steps"], "diffs": []}
+PASS T2_event_labels_reach_only_their_slot :: {"leaks": {}, "n_events_checked": 268}
+PASS T3_logits_ignore_oracle_and_labels :: {"leaks": {}, "control_O_depends_on_oracle": true}
+PASS T3b_arms_read_only_their_own_retrieval_field :: {"bad": {}, "power": {"A2_reads_top1": true, "N_reads_shuffled": true, "A3_reads_candidates": true}}
+FAIL T4_no_future_input_A0_A1_A2_A3 :: {"bad": {"A1": [[0, 305], [1, 260], [2, 111], [3, 321], [4, 232], [5, 178]]}, "events_checked": 6, "A1_depends_on_past": false, "A0_only_current_obs": true, "N_records_from_future": "25/67"}
+PASS T5_retrieval_ignores_future_steps :: {"events_checked": 67, "bad": [], "gap_ge_5": true}
+PASS T6_est_pose_origin_not_used :: {"diffs": []}
+PASS T7_bootstrap_cluster_unit_and_seed_pooling :: {"exact_match_bruteforce": "True", "point_ok": "True", "width_ep": 0.134375, "width_seed_as_cluster": 0.09895833333333333, "width_event": 0.07502604166666667, "n_episodes": 40}
+PASS T8_empty_data_cannot_pass :: {"legality": {"floor_A0": false, "upper_O": false, "negative_N": false, "unswapped_A2": false, "unswapped_A3": false}, "bootstrap_raises": true, "h3_nan_passes": false, "difference_gate_nan_passes": false, "note_single_episode_gate": true}
+PASS T9_A3_gradient_isolation :: {"encoder_gets_scorer_grad": [], "scorer_live": true, "scorer_gets_readout_grad": [], "encoder_live": true, "note_ce0_term_cancels_in_softmax": true}
+PASS T10_gate_constants_match_prereg :: {"chance": true, "floor": true, "upper_O": true, "unswapped_min": true, "resamples": true, "boot_seed": true, "H1": true, "H2": true, "H3": true}
+PASS T11_N_record_differs_from_top1 :: {"fraction_differs": 1.0}
+SUMMARY pass=11 fail=1
+
