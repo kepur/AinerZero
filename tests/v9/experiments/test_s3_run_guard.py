@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import fcntl
 import json
+import os
 import subprocess
 import sys
 import textwrap
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -155,9 +157,21 @@ def test_third_party_versions_are_reported() -> None:
 def test_pycache_prefix_is_required(monkeypatch) -> None:
     monkeypatch.setattr(sys, "pycache_prefix", None)
     with pytest.raises(G.GuardError, match="pycache_prefix"):
-        G.require_pycache_prefix()
-    monkeypatch.setattr(sys, "pycache_prefix", "/tmp/x")
-    G.require_pycache_prefix()
+        G.require_fresh_pycache(time.time())
+
+
+def test_fresh_pycache_passes_and_old_bytecode_is_refused(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(sys, "pycache_prefix", str(tmp_path))
+    f = tmp_path / "a" / "m.cpython-312.pyc"
+    f.parent.mkdir()
+    f.write_bytes(b"0")
+    now = time.time()
+    G.require_fresh_pycache(now)
+    os.utime(f, (now - 11, now - 11))
+    with pytest.raises(G.GuardError, match="stale"):
+        G.require_fresh_pycache(now)
+    os.utime(f, (now - 9, now - 9))
+    G.require_fresh_pycache(now)
 
 
 def _git(repo, *args):
@@ -287,7 +301,7 @@ def test_a_writer_waits_for_the_ledger_mutex(tmp_path, lock_path) -> None:
 def test_dev_ledger_enforces_ids_purpose_and_the_limit(tmp_path, lock_path) -> None:
     ledger = tmp_path / "uses.json"
     with G.RunLock(lock_path) as lock:
-        for use_id, purpose in ((None, "x"), ("dev1", None), ("dev1", "   ")):
+        for use_id, purpose in ((None, "x"), ("", "x"), (" dev1", "x"), ("dev1 ", "x"), ("dev1", None), ("dev1", "   ")):
             with pytest.raises(G.GuardError, match="purpose"):
                 _dev(lock, ledger, use_id, purpose)
         assert not ledger.exists()
@@ -418,3 +432,7 @@ def test_guard_module_imports_no_mlx() -> None:
     code = "import sys; from ainerzero.v9.experiments.s3 import run_guard; sys.exit(1 if 'mlx' in sys.modules or 'mlx.core' in sys.modules else 0)"
     r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env={"PYTHONPATH": str(SRC), "PYTHONDONTWRITEBYTECODE": "1"})
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_deadline_defaults_to_the_wall_clock() -> None:
+    assert G.Deadline.__init__.__kwdefaults__["clock"] is time.time

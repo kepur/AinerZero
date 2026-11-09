@@ -213,3 +213,40 @@ def test_arm_n_output_ignores_records_after_the_event(batch) -> None:
     other = dict(batch)
     other["obs"] = mx.array(obs)
     assert np.array_equal(base[i], np.asarray(A.forward(m, other, hard=True)[0])[i])
+
+
+def _candidates(m, b):
+    ep, t = b["ep"], b["query_t"]
+    z_q = m.encode(b["obs"][ep, t])
+    cand, mask = b["candidates"], b["cand_mask"]
+    safe = mx.where(cand < 0, mx.zeros_like(cand), cand)
+    n, k = cand.shape
+    z_c = m.encode(b["obs"][mx.broadcast_to(ep[:, None], (n, k)), safe])
+    z_q_k = mx.broadcast_to(z_q[:, None, :], (n, k, z_q.shape[-1]))
+    return z_q, z_c, z_q_k, mask, n, k
+
+
+def test_scorer_target_rewards_low_readout_loss_at_the_registered_temperature(batch) -> None:
+    """Recompute the scorer loss by hand; a flipped sign or other temperature must differ."""
+    m = model_of()
+    m.head2.weight = m.head2.weight * 200.0
+    m.score2.weight = m.score2.weight * 50.0
+    z_q, z_c, z_q_k, mask, n, k = _candidates(m, batch)
+    y = mx.broadcast_to(batch["answer"][:, None], (n, k))
+    ce = nn.losses.cross_entropy(m.readout(z_q_k, m.project(z_c)), y, reduction="none")
+    assert A.UTILITY_TEMPERATURE == 0.5
+    target = mx.exp(A._masked_log_softmax(-ce / 0.5, mask))
+    s = m.score(batch["cand_feats"], z_q, z_c)
+    expected = float(-(target * A._masked_log_softmax(s, mask)).sum(-1).mean())
+    assert sampled(m, batch)[1] == pytest.approx(expected, rel=1e-5)
+
+
+def test_full_loss_is_readout_loss_plus_scorer_loss(batch) -> None:
+    m = model_of()
+    m.head2.weight = m.head2.weight * 200.0
+    m.score2.weight = m.score2.weight * 50.0
+    key = mx.random.key(3)
+    lg, aux = P.a3_sampled_forward(m, batch, key)
+    ce = nn.losses.cross_entropy(lg, batch["answer"], reduction="mean")
+    assert float(ce) > 1e-3 and float(aux) > 1e-3
+    assert float(P.a3_sampled_loss(m, batch, key)) == pytest.approx(float(ce) + float(aux), rel=1e-5)

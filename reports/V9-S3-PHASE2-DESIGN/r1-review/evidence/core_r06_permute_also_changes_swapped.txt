@@ -1,0 +1,22 @@
+### r06_permute_also_changes_swapped
+[
+[
+"dataclasses.replace(p, answer=permuted[start : start + n])",
+"dataclasses.replace(p, answer=permuted[start : start + n], swapped=~p.swapped)"
+]
+]
+
+....F................................                                    [100%]
+=================================== FAILURES ===================================
+E   AssertionError: swapped
+    assert False
+     +  where False = <function array_equal at 0x1064c5a70>(array([ True,  True,  True,  True,  True]), array([False, False, False, False, False]))
+     +    where <function array_equal at 0x1064c5a70> = np.array_equal
+     +    and   array([ True,  True,  True,  True,  True]) = getattr(PreparedEpisode(obs=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., .....3, 4, 5], dtype=int32), swapped=array([ True,  True,  True,  True,  True]), bucket=array([3, 3, 3, 3, 3], dtype=int32)), 'swapped')
+     +      where 'swapped' = Field(name='swapped',type='np.ndarray',default=<dataclasses._MISSING_TYPE object at 0x102aaf680>,default_factory=<data... at 0x102aaf680>,init=True,repr=True,hash=None,compare=True,metadata=mappingproxy({}),kw_only=False,_field_type=_FIELD).name
+     +    and   array([False, False, False, False, False]) = getattr(PreparedEpisode(obs=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., .....3, 7, 1], dtype=int32), swapped=array([False, False, False, False, False]), bucket=array([3, 3, 3, 3, 3], dtype=int32)), 'swapped')
+     +      where 'swapped' = Field(name='swapped',type='np.ndarray',default=<dataclasses._MISSING_TYPE object at 0x102aaf680>,default_factory=<data... at 0x102aaf680>,init=True,repr=True,hash=None,compare=True,metadata=mappingproxy({}),kw_only=False,_field_type=_FIELD).name
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review3/mut_core/r06_permute_also_changes_swapped/tests/v9/experiments/test_s3p2_replay_analysis.py:64: AssertionError: swapped
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3p2_replay_analysis.py::test_permuted_answers_keep_the_multiset_and_every_other_field
+1 failed, 36 passed in 2.05s

@@ -1,8 +1,9 @@
-"""Registered statistics and gates for S3 phase 2 (DESIGN-r1 §4). Pure NumPy.
+"""Registered statistics and gates for S3 phase 2 (DESIGN-r2 §4). Pure NumPy.
 
 ``per`` maps ``(condition, seed, phase)`` to per-event arrays. Phases are ``F1`` (end of the
 F1 stage), ``F1_after`` (F1 events after the F2 stage) and ``F2`` (F2 events after the F2
-stage). Required arrays: ``correct``, ``correct_8``, ``pred``, ``swapped``, ``bucket``, ``ep``.
+stage). Required arrays: ``correct``, ``correct_8``, ``pred``, ``swapped``, ``bucket``, ``ep``,
+``query_t``, ``answer``.
 Missing or empty data raises instead of passing.
 """
 
@@ -49,7 +50,7 @@ def unswapped_mask(r: Mapping[str, np.ndarray]) -> np.ndarray:
 
 def _stack(per: Mapping, cond: str, phase: str, seeds: Sequence[int]) -> dict[str, np.ndarray]:
     rows = [per[cond, s, phase] for s in seeds]
-    return {k: np.concatenate([r[k] for r in rows]) for k in ("correct", "correct_8", "swapped", "bucket", "ep")}
+    return {k: np.concatenate([r[k] for r in rows]) for k in ("correct", "correct_8", "swapped", "bucket", "ep", "query_t", "answer")}
 
 
 def _acc(per: Mapping, cond: str, phase: str, seeds: Sequence[int], mask_fn=primary_mask, key: str = "correct") -> float:
@@ -67,7 +68,7 @@ def paired(
 ) -> dict[str, float]:
     """Paired bootstrap of accuracy(a) - accuracy(b) on primary events; events must align."""
     sa, sb = _stack(per, *a, seeds), _stack(per, *b, seeds)
-    for k in ("ep", "bucket", "swapped"):
+    for k in ("ep", "query_t", "answer", "bucket", "swapped"):
         if not np.array_equal(sa[k], sb[k]):
             raise ValueError(f"events do not align on {k}: {a} vs {b}")
     m = primary_mask(sa)
@@ -132,12 +133,14 @@ def h3_prime(per: Mapping, seeds: Sequence[int], capacity: int) -> dict[str, Any
     content = paired(per, ("A2-CN", "F1"), ("A2-CN", "F1_after"), seeds, key="correct_8")
     retention = paired(per, (cond, "F1"), (cond, "F1_after"), seeds)
     plasticity = paired(per, ("A2-C0", "F2"), (cond, "F2"), seeds)
+    replay_vs_cn = paired(per, (cond, "F1_after"), ("A2-CN", "F1_after"), seeds, key="correct_8")
     valid = bool(interference["delta"] >= INTERFERENCE_MIN) and bool(content["delta"] >= CONTENT_MIN)
     gates = {"retention": non_inferior(retention, H3_MARGIN), "plasticity": non_inferior(plasticity, H3_MARGIN)}
     return {
         "capacity": capacity,
         "interference_8class": interference,
         "content_8class": content,
+        "replay_minus_cn_8class": replay_vs_cn,
         "valid": valid,
         "retention": retention,
         "plasticity": plasticity,
@@ -186,7 +189,16 @@ def evaluate(per: Mapping, seeds: Sequence[int], *, capacity: int, has_a1: bool 
     }
     if has_a1:
         out["h1"] = _with_gate(paired(per, ("A2-C0", "F1"), ("A1", "F1"), seeds), H1_MIN_DELTA)
+    claims = {k: out["valid"] and out[k]["pass"] for k in ("h2", "h2b", "h3_prime")}
+    if has_a1:
+        claims["h1"] = out["valid"] and out["h1"]["pass"]
+    out["claims"] = claims
     return out
+
+
+def invalidated(result: dict[str, Any], reason: str) -> dict[str, Any]:
+    """Mark a finished evaluation invalid, e.g. when frozen files changed during the run."""
+    return {**result, "valid": False, "invalid_reason": reason, "claims": {k: False for k in result["claims"]}}
 
 
 def balanced_accuracy(correct: np.ndarray, answer: np.ndarray) -> float:

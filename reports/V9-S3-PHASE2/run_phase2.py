@@ -1,14 +1,18 @@
-"""S3 第二阶段运行器（DESIGN-r1；预登记 reports/V9-S3-PHASE2/PREREG-r1.json）。
+"""S3 第二阶段运行器（DESIGN-r2；预登记 reports/V9-S3-PHASE2/PREREG-r1.json）。
 
 用法（dev、final 必须带新建的字节码目录）：
   python -I -X pycache_prefix=<新目录> run_phase2.py --stage dev --use-id dev1 --purpose <用途> --report <json>
   python -I -X pycache_prefix=<新目录> run_phase2.py --stage final --approval <批准行> --report <json>
   python -I run_phase2.py --stage probe|smoke --use-id <名字> --report <json>
 
-启动顺序：拿锁 → 校验清单、已加载模块、git → 校验分区 → 占报告 → 记账。任何一步失败都不扣次数。
+启动顺序：拿锁 → 校验清单、已加载模块、git → 校验分区 → 校验请求 → 占报告和运行目录 → 记账。
+任何一步失败都不扣次数。
 smoke、probe 只读 s3p2-probe，不记账；预登记冻结前也能跑。
 """
-import argparse, hashlib, json, resource, sys, time
+import time
+
+STARTED = time.time()
+import argparse, hashlib, json, resource, sys
 from pathlib import Path
 
 import numpy as np
@@ -187,7 +191,9 @@ def startup_checks(stage):
     versions = GD.third_party_versions(REPO, THIRD_PARTY)
     if stage not in ("dev", "final"):
         return None, None, None, versions
-    GD.require_pycache_prefix()
+    if not sys.flags.isolated:
+        raise GD.GuardError("dev and final must run with python -I")
+    GD.require_fresh_pycache(STARTED)
     pre = json.loads(PREREG.read_text(encoding="utf-8"))
     bad = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])
     if bad:
@@ -198,6 +204,27 @@ def startup_checks(stage):
     if dirty:
         raise GD.GuardError("frozen files are not committed: " + "; ".join(dirty[:6]))
     return pre, sha(PREREG), head, versions
+
+
+def check_request(a, pre):
+    """Refuse a malformed request before anything is claimed or spent."""
+    if a.stage == "dev" and (not GD.valid_use_id(a.use_id) or not (a.purpose or "").strip()):
+        raise GD.GuardError("a dev use needs both a use id and a purpose")
+    if a.stage == "final" and (a.approval or "").strip() != pre["final_approval_line"]:
+        raise GD.GuardError("missing the unique approval line")
+
+
+def f2_sampler(how, tr1, tr2, seed, *, clamp):
+    """Batch source for the F2 stage and the number of replayed episodes."""
+    if how == "none":
+        return pick(tr2, BATCH), 0
+    cap = 64 if how == "CN" else int(how[1:])
+    if clamp:
+        cap = min(cap, len(tr1))
+    buf = [tr1[j] for j in RP.buffer_indices(len(tr1), cap, BUFFER_SEED + seed)]
+    if how == "CN":
+        buf = RP.permute_answers(buf, CN_SEED + seed)
+    return mixed(tr2, buf, MIX, MIX), len(buf)
 
 
 def main():
@@ -216,17 +243,19 @@ def main():
         pre, pre_sha, head, versions = startup_checks(a.stage)
         ns_eval = G.NAMESPACES[cfg["ns"]]
         GD.check_stage_namespace(a.stage, ns_eval, **G.NAMESPACES)
+        check_request(a, pre)
         report = Path(a.report)
+        run_id = f"{a.stage}-{a.use_id or 'final'}"
+        out = ROOT / run_id
+        if out.exists():
+            raise GD.GuardError(f"run directory already exists: {out}")
         GD.claim_report(report)
-        ROOT.mkdir(parents=True, exist_ok=True)
+        out.mkdir(parents=True)
         if a.stage == "dev":
             GD.consume_dev_use(lock, ROOT / "dev_uses.json", a.use_id, a.purpose, max_uses=pre["dev_max_uses"], expected_lock=LOCK)
         elif a.stage == "final":
             GD.consume_final_read(lock, ROOT / "FINAL_READ_ONCE.json", a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
 
-        run_id = f"{a.stage}-{a.use_id or 'final'}"
-        out = ROOT / run_id
-        out.mkdir(parents=True, exist_ok=False)
         mx.set_default_device(mx.cpu)
         capacity = pre["h3_capacity"] if pre else 64
         with_a1 = a.stage != "probe"
@@ -277,7 +306,7 @@ def main():
                     record(cond, seed, "F1", r, cell)
                     if how == "none" and arm != "A1":
                         cell["zero_state"] = zero_state_penalty(m, ev1, r)
-                    weights = out / f"{cond}-s{seed}-F1.npz.weights.npz"
+                    weights = out / f"{cond}-s{seed}-F1.weights.npz"
                     m.save_weights(str(weights))
                     cell["weights_F1_sha256"] = sha(weights)
                     if how == "f1":
@@ -285,20 +314,13 @@ def main():
                         save()
                         say(cond, seed, cell["F1"]["primary"])
                         continue
-                    order_cap = len(tr1) if a.stage == "smoke" else None
-                    if how == "none":
-                        sampler = pick(tr2, BATCH)
-                    else:
-                        cap = 64 if how == "CN" else int(how[1:])
-                        cap = min(cap, order_cap) if order_cap else cap
-                        buf = [tr1[j] for j in RP.buffer_indices(len(tr1), cap, BUFFER_SEED + seed)]
-                        if how == "CN":
-                            buf = RP.permute_answers(buf, CN_SEED + seed)
-                        cell["buffer_episodes"] = len(buf)
-                        sampler = mixed(tr2, buf, MIX, MIX)
+                    sampler, cell["buffer_episodes"] = f2_sampler(how, tr1, tr2, seed, clamp=a.stage == "smoke")
                     cell["train_seconds_f2"] = train(m, opt, sampler, f2s, seed + 1000, loss, deadline)
                 record(cond, seed, "F1_after", per_event(m, ev1, spec.F1_TOKENS), cell)
                 record(cond, seed, "F2", per_event(m, ev2, spec.F2_TOKENS), cell)
+                weights = out / f"{cond}-s{seed}-end.weights.npz"
+                m.save_weights(str(weights))
+                cell["weights_end_sha256"] = sha(weights)
                 R["cells"][f"{cond}/{seed}"] = cell
                 save()
                 say(cond, seed, {k: cell[k]["primary"] for k in ("F1", "F1_after", "F2") if k in cell})
@@ -307,10 +329,10 @@ def main():
         if a.stage == "probe":
             R["selected_capacity"] = G.select_capacity(R["result"]["capacity_A2"], "A2")
         if pre:
-            late = GD.check_loaded_modules(REPO, pre["manifest"])
-            R["late_import_violations"] = late
+            late = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])
+            R["late_violations"] = late
             if late:
-                R["result"]["valid"] = False
+                R["result"] = G.invalidated(R["result"], "frozen files or modules changed during the run")
         save()
         say("valid", R["result"]["valid"], "selected", R.get("selected_capacity"))
 

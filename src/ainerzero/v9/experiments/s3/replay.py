@@ -1,6 +1,6 @@
 """Bounded episode replay and the data-level controls for S3 phase 2. Pure NumPy.
 
-Per reports/V9-S3-PHASE2-DESIGN/DESIGN-r1.md §3.
+Per reports/V9-S3-PHASE2-DESIGN/DESIGN-r2.md §3.
 """
 
 from __future__ import annotations

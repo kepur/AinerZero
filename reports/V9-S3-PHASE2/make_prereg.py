@@ -10,7 +10,7 @@ sys.path.insert(0, str(REPO / "src"))
 from ainerzero.v9.experiments.s3 import analysis_p2 as G, run_guard as GD
 
 RUNNER = REPO / "reports/V9-S3-PHASE2/run_phase2.py"
-DESIGN = REPO / "reports/V9-S3-PHASE2-DESIGN/DESIGN-r1.md"
+DESIGN = REPO / "reports/V9-S3-PHASE2-DESIGN/DESIGN-r2.md"
 APPROVAL = "S3-P2-FINAL-READ-APPROVED-TIER1-20261109"
 
 
@@ -24,6 +24,9 @@ def main():
     if out.exists():
         raise SystemExit(f"预登记已存在，不覆盖：{out}")
     probe = Path(a.probe)
+    selected = json.loads(probe.read_text(encoding="utf-8")).get("selected_capacity")
+    if selected != a.capacity:
+        raise SystemExit(f"容量 {a.capacity} 与探针按规则选出的 {selected} 不一致")
     doc = {
         "schema": "s3.phase2.prereg.v1",
         "design": str(DESIGN.relative_to(REPO)),
@@ -37,6 +40,13 @@ def main():
         "batch": 16,
         "replay_mix": [8, 8],
         "lr": 1e-3,
+        "optimizer": "Adam；梯度全局范数裁剪 1.0；F1 到 F2 优化器状态延续",
+        "batch_seeds": {"F1": "seed", "F2": "seed + 1000", "J": "seed"},
+        "sampling_key": "mx.random.key(批次种子)，每步 split",
+        "perm_seed": "base + w * 100 + e；base 为 train F1 0、train F2 10000000、eval F1 20000000、eval F2 30000000",
+        "seed_offsets": {"buffer": "7000000 + seed", "CN": "7100000 + seed", "N": "7200000 + perm_seed"},
+        "utility_temperature": 0.5,
+        "cue_lambda": 1.0,
         "h3_capacity": a.capacity,
         "gates": {
             "chance": G.CHANCE,

@@ -1,4 +1,4 @@
-"""Phase 2 training path on the frozen S3 arms (DESIGN-r1 §3). Import only from entry points.
+"""Phase 2 training path on the frozen S3 arms (DESIGN-r2 §3). Import only from entry points.
 
 ``arms_mlx.ReadoutArm`` and ``arms_mlx.forward`` are reused unchanged; evaluation always goes
 through ``arms_mlx.forward(hard=True)``.

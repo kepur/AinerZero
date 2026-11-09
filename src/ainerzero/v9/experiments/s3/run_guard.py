@@ -175,10 +175,17 @@ def third_party_versions(repo: Path, names: Iterable[str]) -> dict[str, str]:
     return out
 
 
-def require_pycache_prefix() -> None:
-    """Refuse to run on bytecode from the shared cache: stale ``.pyc`` can differ from source."""
+def require_fresh_pycache(started: float, *, tolerance: float = 10.0) -> None:
+    """Refuse bytecode written before this process began: stale ``.pyc`` can differ from source.
+
+    ``started`` is taken before the project is imported; ``tolerance`` covers interpreter
+    start-up, which can write to the cache just before the script runs.
+    """
     if sys.pycache_prefix is None:
         raise GuardError("start the run with -X pycache_prefix or PYTHONPYCACHEPREFIX set to a fresh directory")
+    for path in Path(sys.pycache_prefix).rglob("*.pyc"):
+        if path.stat().st_mtime < started - tolerance:
+            raise GuardError(f"stale bytecode in the pycache prefix: {path}")
 
 
 def check_git_clean(repo: Path, paths: Iterable[str]) -> tuple[str, list[str]]:
@@ -252,6 +259,11 @@ def _atomic_write(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+def valid_use_id(use_id: str | None) -> bool:
+    """A use id is non-empty and has no surrounding whitespace, so ids cannot differ invisibly."""
+    return bool(use_id) and use_id == use_id.strip()
+
+
 def consume_dev_use(
     lock: RunLock,
     ledger: Path,
@@ -263,7 +275,7 @@ def consume_dev_use(
 ) -> list[dict]:
     """Record one dev use. Needs the registered lock, a fresh id and a stated purpose."""
     _require_held(lock, expected_lock)
-    if not use_id or not (purpose or "").strip():
+    if not valid_use_id(use_id) or not (purpose or "").strip():
         raise GuardError("a dev use needs both a use id and a purpose")
     with _ledger_mutex(ledger):
         try:

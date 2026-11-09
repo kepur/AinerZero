@@ -1,51 +1,71 @@
-"""Start-up order of the real S3 phase 2 runner, exercised in a throwaway copy of the repository.
+"""The real S3 phase 2 runner: start-up order, the path after the ledger, and its wiring.
 
-Every case must refuse before a dev use or the final read is spent. The runner derives its
-root from its own path, so nothing here can touch the live artifacts or the live lock.
+Runner runs happen in a throwaway copy of the repository with tiny data, so nothing here can
+touch the live artifacts or the live lock. The runner derives its root from its own path.
 """
 
 from __future__ import annotations
 
 import fcntl
+import hashlib
+import importlib.util
 import json
 import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
+import numpy as np
 import pytest
 
-pytest.importorskip("mlx.core")
+mx = pytest.importorskip("mlx.core")
 
+from ainerzero.v9.experiments.s3 import arms_mlx as A  # noqa: E402
+from ainerzero.v9.experiments.s3 import batching as B  # noqa: E402
+from ainerzero.v9.experiments.s3 import replay as RP  # noqa: E402
 from ainerzero.v9.experiments.s3 import run_guard as GD  # noqa: E402
+from ainerzero.v9.experiments.s3 import spec  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[3]
 RUNNER = "reports/V9-S3-PHASE2/run_phase2.py"
 APPROVAL = "TEST-APPROVAL-LINE"
+CAPACITY = 16
 
 
 def _git(root, *args):
     subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=root, check=True, capture_output=True)
 
 
-@pytest.fixture
-def root(tmp_path):
+def _tiny(text, extra=()):
+    subs = [
+        ('"dev": {"ns": "dev", "train": (400, 4), "eval": (50, 2), "steps": (F1_STEPS, F2_STEPS), "limit": 5400}', '"dev": {"ns": "dev", "train": (6, 2), "eval": (6, 2), "steps": (4, 2), "limit": 600}'),
+        ('"final": {"ns": "final", "train": (400, 4), "eval": (100, 2), "steps": (F1_STEPS, F2_STEPS), "limit": 5400}', '"final": {"ns": "final", "train": (6, 2), "eval": (6, 2), "steps": (4, 2), "limit": 600}'),
+        ('clamp=a.stage == "smoke"', "clamp=True"),
+        *extra,
+    ]
+    for old, new in subs:
+        assert text.count(old) == 1, old
+        text = text.replace(old, new)
+    return text
+
+
+def _make_root(tmp_path, extra=()):
     r = tmp_path / "fake"
     (r / "src").mkdir(parents=True)
     shutil.copytree(REPO / "src/ainerzero", r / "src/ainerzero", ignore=shutil.ignore_patterns("__pycache__"))
     (r / "reports/V9-S3-PHASE2").mkdir(parents=True)
-    shutil.copy2(REPO / RUNNER, r / RUNNER)
+    (r / RUNNER).write_text(_tiny((REPO / RUNNER).read_text(encoding="utf-8"), extra), encoding="utf-8")
     design = r / "reports/DESIGN.md"
     design.write_text("design", encoding="utf-8")
     (r / "artifacts/locks").mkdir(parents=True)
-    manifest = GD.build_manifest(r, [r / RUNNER], src_root=r / "src", extra=[design])
     prereg = {
-        "manifest": manifest,
+        "manifest": GD.build_manifest(r, [r / RUNNER], src_root=r / "src", extra=[design]),
         "third_party": GD.third_party_versions(REPO, ("numpy", "mlx.core")),
         "dev_max_uses": 2,
         "final_approval_line": APPROVAL,
-        "h3_capacity": 64,
+        "h3_capacity": CAPACITY,
     }
     (r / "reports/V9-S3-PHASE2/PREREG-r1.json").write_text(json.dumps(prereg), encoding="utf-8")
     (r / ".gitignore").write_text("artifacts/\n__pycache__/\n", encoding="utf-8")
@@ -55,13 +75,22 @@ def root(tmp_path):
     return r
 
 
-def _run(root, *args, pycache=True):
-    cmd = [sys.executable, "-I"]
+@pytest.fixture
+def root(tmp_path):
+    return _make_root(tmp_path)
+
+
+def _run(root, *args, pycache=True, isolated=True, report="reports/out.json"):
+    cmd = [sys.executable]
+    if isolated:
+        cmd += ["-I"]
     if pycache:
-        cmd += ["-X", f"pycache_prefix={root.parent / 'pyc'}"]
-    cmd += [str(root / RUNNER), "--report", str(root / "reports/out.json"), *args]
+        fresh = root.parent / f"pyc-{time.monotonic_ns()}"
+        fresh.mkdir()
+        cmd += ["-X", f"pycache_prefix={fresh}"]
+    cmd += [str(root / RUNNER), "--report", str(root / report), *args]
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
-    return subprocess.run(cmd, cwd=root, env=env, capture_output=True, text=True, timeout=120)
+    return subprocess.run(cmd, cwd=root, env=env, capture_output=True, text=True, timeout=200)
 
 
 def _spent(root):
@@ -74,8 +103,12 @@ FINAL = ("--stage", "final", "--approval", APPROVAL)
 
 
 def _refused(r, needle):
-    assert r.returncode != 0, r.stdout + r.stderr
+    assert r.returncode != 0, r.stdout[-800:] + r.stderr[-800:]
     assert needle in r.stderr, r.stderr[-1500:]
+
+
+def _out(root):
+    return root / "reports/out.json"
 
 
 @pytest.mark.parametrize("args", [DEV, FINAL])
@@ -86,7 +119,7 @@ def test_busy_lock_spends_nothing(root, args) -> None:
         _refused(_run(root, *args), "lock is busy")
     finally:
         fh.close()
-    assert not _spent(root) and not (root / "reports/out.json").exists()
+    assert not _spent(root) and not _out(root).exists()
 
 
 @pytest.mark.parametrize("args", [DEV, FINAL])
@@ -97,7 +130,7 @@ def test_changed_transitive_dependency_spends_nothing(root, args) -> None:
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "edit")
     _refused(_run(root, *args), "frozen manifest does not hold")
-    assert not _spent(root) and not (root / "reports/out.json").exists()
+    assert not _spent(root) and not _out(root).exists()
 
 
 def test_changed_design_spends_nothing(root) -> None:
@@ -120,18 +153,224 @@ def test_shared_bytecode_cache_is_refused(root) -> None:
     assert not _spent(root)
 
 
+def test_stale_bytecode_is_refused(root) -> None:
+    prefix = root.parent / "stale"
+    (prefix / "x").mkdir(parents=True)
+    old = prefix / "x" / "old.cpython-312.pyc"
+    old.write_bytes(b"0")
+    os.utime(old, (1_000_000, 1_000_000))
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+    cmd = [sys.executable, "-I", "-X", f"pycache_prefix={prefix}", str(root / RUNNER), "--report", str(_out(root)), *DEV]
+    _refused(subprocess.run(cmd, cwd=root, env=env, capture_output=True, text=True, timeout=120), "stale bytecode")
+    assert not _spent(root)
+
+
+def test_non_isolated_interpreter_is_refused(root) -> None:
+    _refused(_run(root, *DEV, isolated=False), "python -I")
+    assert not _spent(root)
+
+
+@pytest.mark.parametrize("args,run_dir", [(DEV, "dev-dev1"), (FINAL, "final-final")])
+def test_existing_run_directory_spends_nothing(root, args, run_dir) -> None:
+    """Review r1 must-fix 1: this used to fail after the use was already spent."""
+    (root / "artifacts/v9/s3/phase2" / run_dir).mkdir(parents=True)
+    _refused(_run(root, *args), "run directory already exists")
+    assert not _spent(root) and not _out(root).exists()
+
+
 def test_existing_report_is_kept_and_spends_nothing(root) -> None:
-    (root / "reports/out.json").write_text("earlier evidence", encoding="utf-8")
+    _out(root).write_text("earlier evidence", encoding="utf-8")
     _refused(_run(root, *DEV), "report already exists")
     assert not _spent(root)
-    assert (root / "reports/out.json").read_text(encoding="utf-8") == "earlier evidence"
+    assert _out(root).read_text(encoding="utf-8") == "earlier evidence"
 
 
-def test_dev_without_a_purpose_records_nothing(root) -> None:
-    _refused(_run(root, "--stage", "dev", "--use-id", "dev1"), "purpose")
-    assert not _spent(root)
+@pytest.mark.parametrize("args", [("--stage", "dev", "--use-id", "dev1"), ("--stage", "dev", "--purpose", "x"), ("--stage", "dev", "--use-id", " dev1", "--purpose", "x")])
+def test_bad_dev_request_claims_and_spends_nothing(root, args) -> None:
+    _refused(_run(root, *args), "purpose")
+    assert not _spent(root) and not _out(root).exists()
 
 
-def test_wrong_approval_writes_no_marker(root) -> None:
+def test_wrong_approval_claims_and_spends_nothing(root) -> None:
     _refused(_run(root, "--stage", "final", "--approval", "NOPE"), "approval")
-    assert not _spent(root)
+    assert not _spent(root) and not _out(root).exists()
+
+
+def _sha(p):
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def test_dev_runs_through_the_path_after_the_ledger(root) -> None:
+    r = _run(root, *DEV)
+    assert r.returncode == 0, r.stderr[-2000:]
+    a = root / "artifacts/v9/s3/phase2"
+    assert [(u["id"], u["purpose"]) for u in json.loads((a / "dev_uses.json").read_text(encoding="utf-8"))] == [("dev1", "x")]
+    R = json.loads(_out(root).read_text(encoding="utf-8"))
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
+    assert R["git_head"] == head and R["prereg_sha256"] == _sha(root / "reports/V9-S3-PHASE2/PREREG-r1.json")
+    assert R["h3_capacity"] == CAPACITY and R["result"]["h3_prime"]["capacity"] == CAPACITY
+    assert R["late_violations"] == []
+    assert "h1" in R["result"] and "h1" in R["result"]["claims"]
+    assert R["result"]["valid"] is False and not any(R["result"]["claims"].values())  # too few events
+    assert R["cells"]["A2-R64/1"]["buffer_episodes"] == 12  # clamped by the tiny copy
+    run = a / "dev-dev1"
+    cell = R["cells"]["A2-C0/1"]
+    for phase in ("F1", "F1_after", "F2"):
+        assert cell["events_sha256"][phase] == _sha(run / f"A2-C0-s1-{phase}.npz")
+    assert cell["weights_F1_sha256"] == _sha(run / "A2-C0-s1-F1.weights.npz")
+    assert cell["weights_end_sha256"] == _sha(run / "A2-C0-s1-end.weights.npz")
+    f1, f2 = np.load(run / "A2-C0-s1-F1.npz"), np.load(run / "A2-C0-s1-F2.npz")
+    assert set(f1["pred_8"].tolist()) <= set(spec.F1_TOKENS)
+    assert set(f2["pred_8"].tolist()) <= set(spec.F2_TOKENS)
+    assert np.array_equal(f1["correct"], f1["pred"] == f1["answer"])
+
+
+def test_final_runs_once(root) -> None:
+    r = _run(root, *FINAL)
+    assert r.returncode == 0, r.stderr[-2000:]
+    a = root / "artifacts/v9/s3/phase2"
+    assert (a / "FINAL_READ_ONCE.json").exists() and (a / "final-final").is_dir()
+    assert json.loads(_out(root).read_text(encoding="utf-8"))["late_violations"] == []
+    shutil.rmtree(a / "final-final")
+    _refused(_run(root, *FINAL, report="reports/out2.json"), "final has already been read")
+
+
+def test_a_frozen_file_changed_during_the_run_invalidates_it(tmp_path) -> None:
+    hook = (
+        '            late = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])',
+        '            (REPO / "reports/DESIGN.md").write_text("tampered", encoding="utf-8")\n'
+        '            late = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])',
+    )
+    root = _make_root(tmp_path, extra=[hook])
+    r = _run(root, *DEV)
+    assert r.returncode == 0, r.stderr[-2000:]
+    R = json.loads(_out(root).read_text(encoding="utf-8"))
+    assert R["late_violations"] == ["changed: reports/DESIGN.md"]
+    assert R["result"]["valid"] is False and "invalid_reason" in R["result"]
+    assert not any(R["result"]["claims"].values())
+
+
+@pytest.fixture(scope="module")
+def run_module():
+    spec_ = importlib.util.spec_from_file_location("s3p2_runner_under_test", REPO / RUNNER)
+    mod = importlib.util.module_from_spec(spec_)
+    spec_.loader.exec_module(mod)
+    mx.set_default_device(mx.cpu)
+    return mod
+
+
+def test_conditions_wiring(run_module) -> None:
+    c = run_module.conditions(True)
+    assert c["A3S"] == ("A3", "plain", "f1")
+    assert c["A3H-C0"] == ("A3", "sampled", "none")
+    assert c["A2-C0"] == ("A2", "plain", "none")
+    assert c["A2-CN"] == ("A2", "plain", "CN")
+    assert c["A1"] == ("A1", "plain", "f1")
+    for mem, loss in (("A2", "plain"), ("A3H", "sampled")):
+        for cap in (16, 64, 256):
+            assert c[f"{mem}-R{cap}"][1:] == (loss, f"R{cap}")
+        assert c[f"{mem}-J"][2] == "joint"
+    assert "A1" not in run_module.conditions(False)
+
+
+def _tagged(n, tag):
+    """Episodes whose identity can be read back from the answer field."""
+    return [
+        B.PreparedEpisode(
+            obs=np.zeros((10, spec.OBS_DIM), dtype=np.float32),
+            query_t=np.array([6, 7], dtype=np.int32),
+            top1=np.array([1, 2], dtype=np.int32),
+            oracle=np.array([1, 2], dtype=np.int32),
+            shuffled=np.array([0, 1], dtype=np.int32),
+            candidates=np.zeros((2, 12), dtype=np.int32),
+            cand_feats=np.zeros((2, 12, 3), dtype=np.float32),
+            cand_mask=np.ones((2, 12), dtype=bool),
+            answer=np.array([tag * 1000 + i, tag * 1000 + i + 500], dtype=np.int32),
+            swapped=np.ones(2, dtype=bool),
+            bucket=np.full(2, 3, dtype=np.int32),
+        )
+        for i in range(n)
+    ]
+
+
+def _sources(batch):
+    return [int(e.answer[0]) // 1000 for e in batch]
+
+
+def test_no_replay_samples_only_the_new_family(run_module) -> None:
+    tr1, tr2 = _tagged(300, 1), _tagged(300, 2)
+    sampler, n = run_module.f2_sampler("none", tr1, tr2, 1, clamp=False)
+    batch = sampler(np.random.default_rng(0))
+    assert n == 0 and len(batch) == run_module.BATCH and set(_sources(batch)) == {2}
+
+
+@pytest.mark.parametrize("how,cap", [("R16", 16), ("R64", 64), ("R256", 256)])
+def test_replay_mixes_eight_new_with_eight_from_the_old_buffer(run_module, how, cap) -> None:
+    tr1, tr2 = _tagged(300, 1), _tagged(300, 2)
+    sampler, n = run_module.f2_sampler(how, tr1, tr2, 2, clamp=False)
+    assert n == cap
+    allowed = {int(tr1[j].answer[0]) for j in RP.buffer_indices(len(tr1), cap, run_module.BUFFER_SEED + 2)}
+    for s in range(30):
+        batch = sampler(np.random.default_rng(s))
+        assert _sources(batch) == [2] * 8 + [1] * 8
+        assert {int(e.answer[0]) for e in batch[8:]} <= allowed
+
+
+def test_content_control_replays_the_r64_episodes_with_permuted_answers(run_module) -> None:
+    tr1, tr2 = _tagged(300, 1), _tagged(300, 2)
+    sampler, n = run_module.f2_sampler("CN", tr1, tr2, 3, clamp=False)
+    idx = RP.buffer_indices(len(tr1), 64, run_module.BUFFER_SEED + 3)
+    original = {int(a) for j in idx for a in tr1[j].answer}
+    seen, moved = set(), 0
+    index_of_obs = {id(tr1[j].obs): j for j in idx}
+    for s in range(60):
+        for e in sampler(np.random.default_rng(s))[8:]:
+            assert id(e.obs) in index_of_obs
+            seen |= {int(a) for a in e.answer}
+            moved += not np.array_equal(e.answer, tr1[index_of_obs[id(e.obs)]].answer)
+    assert n == 64 and seen <= original and moved > 0
+
+
+def test_clamp_only_when_asked(run_module) -> None:
+    tr1, tr2 = _tagged(20, 1), _tagged(20, 2)
+    assert run_module.f2_sampler("R64", tr1, tr2, 1, clamp=True)[1] == 20
+    with pytest.raises(ValueError):
+        run_module.f2_sampler("R64", tr1, tr2, 1, clamp=False)
+
+
+def test_build_gives_arm_n_only_past_records(run_module) -> None:
+    eps, _ = run_module.build("test-s3p2-runner", "", 4, 1, "F1", 0)
+    assert eps
+    for p in eps:
+        assert (p.shuffled <= p.query_t - RP.MIN_GAP).all()
+
+
+@pytest.mark.parametrize("family,tokens", [("F1", spec.F1_TOKENS), ("F2", spec.F2_TOKENS)])
+def test_restricted_readout_stays_in_the_family(run_module, family, tokens) -> None:
+    eps, _ = run_module.build("test-s3p2-runner", "", 3, 1, family, 0)
+    mx.random.seed(1)
+    m = A.ReadoutArm("A2")
+    mx.eval(m.parameters())
+    r = run_module.per_event(m, eps, tokens)
+    assert set(r["pred_8"].tolist()) <= set(tokens)
+    assert np.array_equal(r["correct_8"], r["pred_8"] == r["answer"])
+    assert np.array_equal(r["correct"], r["pred"] == r["answer"])
+
+
+@pytest.mark.parametrize("kind,attr", [("sampled", "a3_sampled_loss"), ("plain", "loss_fn")])
+def test_training_dispatches_the_registered_loss(run_module, monkeypatch, kind, attr) -> None:
+    eps, _ = run_module.build("test-s3p2-runner", "", 3, 1, "F1", 0)
+    mx.random.seed(1)
+    m = A.ReadoutArm("A3")
+    mx.eval(m.parameters())
+    calls = []
+    owner = run_module.P if attr == "a3_sampled_loss" else run_module.A
+    real = getattr(owner, attr)
+
+    def spy(*args):
+        calls.append(len(args))
+        return real(*args)
+
+    monkeypatch.setattr(owner, attr, spy)
+    run_module.train(m, run_module.optim.Adam(learning_rate=1e-3), run_module.pick(eps, 3), 2, 5, kind, GD.Deadline(60))
+    assert len(calls) == 2 and calls[0] == (3 if kind == "sampled" else 2)

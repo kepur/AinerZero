@@ -128,7 +128,7 @@ def _events(acc, acc8=None, swapped_acc=None):
     correct = np.where(swapped, correct, other)
     c8 = make(acc if acc8 is None else acc8)
     c8 = np.where(swapped, c8, other)
-    return {"correct": correct, "correct_8": c8, "pred": correct.astype(int), "swapped": swapped, "bucket": bucket, "ep": ep}
+    return {"correct": correct, "correct_8": c8, "pred": correct.astype(int), "swapped": swapped, "bucket": bucket, "ep": ep, "query_t": np.arange(n) % EV + 100, "answer": np.arange(n) % 8 + 1}
 
 
 def _world(over=None):
@@ -333,3 +333,127 @@ def test_bucket_table_splits_by_gap_and_swap() -> None:
     assert t["short/swapped"] == {"n": 2, "acc": 0.5, "acc_8": 1.0}
     assert t["short/unswapped"]["n"] == 1 and t["long/swapped"]["n"] == 1
     assert "mid/swapped" not in t
+
+
+def test_permuted_answers_cross_episodes_and_depend_on_the_seed() -> None:
+    a, b = _prepared(40), _prepared(40)
+    b = dataclasses.replace(b, answer=b.answer + 100)
+    out = RP.permute_answers([a, b], 3)
+    assert (out[0].answer > 100).any() and (out[1].answer < 100).any()
+    other = RP.permute_answers([a, b], 4)
+    assert not np.array_equal(out[0].answer, other[0].answer)
+
+
+def test_past_only_shuffle_depends_on_the_seed() -> None:
+    p = _prepared(30, t0=100)
+    assert not np.array_equal(RP.past_only_shuffle(p, 1).shuffled, RP.past_only_shuffle(p, 2).shuffled)
+
+
+def test_primary_events_are_long_gap_only() -> None:
+    r = {"bucket": np.array([1, 2, 3, 3]), "swapped": np.array([True, True, True, False])}
+    assert G.primary_mask(r).tolist() == [False, False, True, False]
+    assert G.unswapped_mask(r).tolist() == [False, False, False, True]
+
+
+def test_retention_is_judged_on_the_16_class_readout() -> None:
+    """A loss visible only with all 16 classes open must still fail retention."""
+    h = _eval(_world({("A2-R64", "F1_after"): _events(0.1, acc8=0.85, swapped_acc=0.9)}))["h3_prime"]
+    assert not h["gates"]["retention"]
+
+
+def test_h3_uses_the_requested_capacity() -> None:
+    per = _world({("A2-R64", "F1_after"): _events(0.6)})
+    assert G.evaluate(per, SEEDS, capacity=16)["h3_prime"]["pass"]
+    r = G.evaluate(per, SEEDS, capacity=64)["h3_prime"]
+    assert r["capacity"] == 64 and not r["pass"]
+
+
+def _bump(r, n):
+    """Turn one wrong primary event correct in each of ``n`` different episodes."""
+    out = dict(r)
+    out["correct"] = r["correct"].copy()
+    wrong = np.where(G.primary_mask(r) & ~r["correct"])[0]
+    _, first = np.unique(r["ep"][wrong], return_index=True)
+    assert len(first) >= n
+    out["correct"][wrong[first[:n]]] = True
+    return out
+
+
+def test_h2_needs_the_size_not_only_a_positive_interval() -> None:
+    a2 = _events(0.85, swapped_acc=0.9)
+    h = _eval(_world({("A2-C0", "F1"): a2, ("A3H-C0", "F1"): _bump(a2, 5)}))["h2"]
+    assert 0 < h["ci_low"] and h["delta"] < G.H2_MIN_DELTA and not h["pass"]
+
+
+def test_h2b_needs_the_size_not_only_a_positive_interval() -> None:
+    soft = _events(0.90, swapped_acc=0.95)
+    h = _eval(_world({("A3S", "F1"): soft, ("A3H-C0", "F1"): _bump(soft, 5)}))["h2b"]
+    assert 0 < h["ci_low"] and h["delta"] < G.H2B_MIN_DELTA and not h["pass"]
+
+
+def test_h1_needs_the_size_not_only_a_positive_interval() -> None:
+    per = _world({("A1", "F1"): _events(0.80, swapped_acc=0.9)})
+    h = _eval(per)["h1"]
+    assert 0 < h["ci_low"] and h["delta"] < G.H1_MIN_DELTA and not h["pass"]
+
+
+def _thin(r, keep):
+    return {k: v[keep] for k, v in r.items()}
+
+
+def _sized(n_ep, per_ep):
+    n = n_ep * per_ep
+    return {"correct": np.ones(n, bool), "swapped": np.ones(n, bool), "bucket": np.full(n, G.LONG), "ep": np.repeat(np.arange(n_ep), per_ep)}
+
+
+@pytest.mark.parametrize("n_ep,per_ep,ok", [(50, 4, True), (49, 8, False), (60, 3, False)])
+def test_minimum_sample_counts_events_and_episodes_separately(n_ep, per_ep, ok) -> None:
+    r = _sized(n_ep, per_ep)
+    assert G.enough_samples({("c", s, "F1"): r for s in SEEDS}, "c", "F1", SEEDS) is ok
+
+
+def test_minimum_sample_gate_covers_the_f2_events() -> None:
+    per = _world()
+    r = per["A2-C0", 1, "F2"]
+    per["A2-C0", 1, "F2"] = _thin(r, r["ep"] < 10)
+    legal = G.legality(per, SEEDS)
+    assert legal["min_sample_F1"] and not legal["min_sample_F2"]
+
+
+def test_unswapped_gate_covers_the_learned_arm() -> None:
+    bad = _events(0.85, swapped_acc=0.5)
+    per = _world({(c, "F1"): bad for c in G.DETERMINISM_GROUPS[1]})
+    legal = G.legality(per, SEEDS)
+    assert legal["unswapped_A2"] and not legal["unswapped_A3H"]
+
+
+@pytest.mark.parametrize("field", ["query_t", "answer", "bucket", "swapped"])
+def test_paired_events_must_agree_on_every_identity_field(field) -> None:
+    per = _world()
+    r = dict(per["A1", 1, "F1"])
+    r[field] = r[field].copy()
+    r[field][0] = {"query_t": r[field][0] + 1, "answer": r[field][0] + 1, "bucket": 1, "swapped": not r[field][0]}[field]
+    per["A1", 1, "F1"] = r
+    with pytest.raises(ValueError, match="align"):
+        G.paired(per, ("A2-C0", "F1"), ("A1", "F1"), SEEDS)
+
+
+def test_claims_require_a_valid_run() -> None:
+    assert all(_eval()["claims"].values())
+    r = _eval(_world({("O", "F1"): _events(0.5)}))
+    assert not r["valid"] and r["h1"]["pass"] and not any(r["claims"].values())
+
+
+def test_claim_h3_requires_its_own_validity() -> None:
+    r = _eval(_world({("A2-CN", "F1_after"): _events(0.85, swapped_acc=0.9)}))
+    assert r["valid"] and not r["claims"]["h3_prime"] and r["claims"]["h2"]
+
+
+def test_invalidated_clears_every_claim_and_records_why() -> None:
+    r = G.invalidated(_eval(), "changed")
+    assert r["valid"] is False and r["invalid_reason"] == "changed" and not any(r["claims"].values())
+
+
+def test_replay_is_compared_with_the_content_control() -> None:
+    d = _eval()["h3_prime"]["replay_minus_cn_8class"]
+    assert d["delta"] > 0.5
