@@ -1,0 +1,16 @@
+### a05_zq_grad_leak
+[["s = model.score(b[\"cand_feats\"], mx.stop_gradient(z_q), mx.stop_gradient(z_c))", "s = model.score(b[\"cand_feats\"], z_q, mx.stop_gradient(z_c))"]]
+
+.......F...............                                                  [100%]
+=================================== FAILURES ===================================
+E   AssertionError: enc1.weight
+    assert 1.6215524738072418e-05 == 0.0
+     +  where 1.6215524738072418e-05 = float(array(1.62155e-05, dtype=float32))
+     +    where array(1.62155e-05, dtype=float32) = <nanobind.nb_bound_method object at 0x107b64040>()
+     +      where <nanobind.nb_bound_method object at 0x107b64040> = array([[1.79601e-06, 6.41997e-07, 0, ..., 0, 0, 0],\n       [5.46542e-06, 3.72334e-06, 0, ..., 0, 0, 0],\n       [3.5964...       [5.14461e-07, 4.04448e-08, 0, ..., 0, 0, 0],\n       [4.51146e-07, 4.86777e-07, 0, ..., 0, 0, 0]], dtype=float32).max
+     +        where array([[1.79601e-06, 6.41997e-07, 0, ..., 0, 0, 0],\n       [5.46542e-06, 3.72334e-06, 0, ..., 0, 0, 0],\n       [3.5964...       [5.14461e-07, 4.04448e-08, 0, ..., 0, 0, 0],\n       [4.51146e-07, 4.86777e-07, 0, ..., 0, 0, 0]], dtype=float32) = <nanobind.nb_func object at 0x107f9b520>(array([[-1.79601e-06, 6.41997e-07, 0, ..., 0, 0, 0],\n       [-5.46542e-06, -3.72334e-06, 0, ..., 0, 0, 0],\n       [-3....    [-5.14461e-07, -4.04448e-08, 0, ..., 0, 0, 0],\n       [4.51146e-07, -4.86777e-07, 0, ..., 0, 0, 0]], dtype=float32))
+     +          where <nanobind.nb_func object at 0x107f9b520> = mx.abs
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review4/mut_core/a05_zq_grad_leak/tests/v9/experiments/test_s3p2_arms_mlx.py:143: AssertionError: enc1.weight
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3p2_arms_mlx.py::test_scorer_loss_does_not_reach_the_encoder
+1 failed, 22 passed in 1.43s

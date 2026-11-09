@@ -1,0 +1,28 @@
+C0_control_dev_reaches_stub_spends_once {"exit": 1, "last_err": "REVIEW_STOP_AFTER_CONSUME", "ledger": ["dev1"], "final_marker": false, "report_exists": true, "run_dirs": ["dev-dev1"]}
+C0_control_final_reaches_stub_marks {"exit": 1, "last_err": "REVIEW_STOP_AFTER_CONSUME", "ledger": [], "final_marker": true, "report_exists": true, "run_dirs": ["final-final"]}
+C1_dev_run_dir_exists {"exit": 1, "last_err": "ainerzero.v9.experiments.s3.run_guard.GuardError: run directory already exists: /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20", "ledger": [], "final_marker": false, "report_exists": false, "run_dirs": ["dev-dev1"]}
+C2_final_run_dir_exists {"exit": 1, "last_err": "ainerzero.v9.experiments.s3.run_guard.GuardError: run directory already exists: /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20", "ledger": [], "final_marker": false, "report_exists": false, "run_dirs": ["final-final"]}
+C3_no_purpose_no_stub {"exit": 1, "last_err": "ainerzero.v9.experiments.s3.run_guard.GuardError: a dev use needs both a use id and a purpose", "ledger": [], "final_marker": false, "report_exists": false, "run_dirs": []}
+C4_existing_report {"exit": 1, "last_err": "ainerzero.v9.experiments.s3.run_guard.GuardError: report already exists: /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86", "ledger": [], "final_marker": false, "report_exists": true, "run_dirs": []}
+C5_report_path_is_directory {"exit": 1, "last_err": "ainerzero.v9.experiments.s3.run_guard.GuardError: report already exists: /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86", "ledger": [], "final_marker": false, "report_exists": false, "run_dirs": []}
+C6_report_unwritable {"exit": 1, "last_err": "PermissionError: [Errno 13] Permission denied: '/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratc", "ledger": [], "final_marker": false, "report_exists": false, "run_dirs": []}
+C7_dev_exhausted_leaves_stubs_no_extra_use {"exit": 1, "last_err": "ainerzero.v9.experiments.s3.run_guard.GuardError: dev uses exhausted (2/2)", "ledger": ["a", "b"], "final_marker": false, "report_exists": true, "run_dirs": ["dev-dev3"]}
+C8_dup_id_dir_removed {"exit": 1, "last_err": "ainerzero.v9.experiments.s3.run_guard.GuardError: dev use id already recorded: dev1", "ledger": ["dev1"], "final_marker": false, "report_exists": true, "run_dirs": ["dev-dev1"]}
+C9_malformed_ledger {"exit": 1, "last_err": "ainerzero.v9.experiments.s3.run_guard.GuardError: malformed dev ledger: /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-", "ledger": "unparsable", "final_marker": false, "report_exists": true, "run_dirs": ["dev-dev1"]}
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review4/runner_order2.py", line 46, in <module>
+    r = fake("c10"); shutil.rmtree(r / "artifacts/v9/s3/phase2"); (r / "artifacts/v9/s3/phase2").write_text("file"); rec("C10_root_is_a_file", run(r, *DEV), r)
+                                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review4/runner_order2.py", line 33, in rec
+    OUT[k] = {"exit": p.returncode, "last_err": (p.stderr.strip().splitlines() or [""])[-1][:150], **state(r)}; print(k, json.dumps(OUT[k], ensure_ascii=False), flush=True)
+                                                                                                     ^^^^^^^^
+  File "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review4/runner_order2.py", line 30, in state
+    return {"ledger": led or [], "final_marker": M.exists(), "report_exists": (r / "reports/out.json").exists(), "run_dirs": sorted(p.name for p in a.iterdir() if p.is_dir())}
+                                                                                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review4/runner_order2.py", line 30, in <genexpr>
+    return {"ledger": led or [], "final_marker": M.exists(), "report_exists": (r / "reports/out.json").exists(), "run_dirs": sorted(p.name for p in a.iterdir() if p.is_dir())}
+                                                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/pathlib.py", line 1056, in iterdir
+    for name in os.listdir(self):
+                ^^^^^^^^^^^^^^^^
+NotADirectoryError: [Errno 20] Not a directory: '/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review4/fake/c10/artifacts/v9/s3/phase2'

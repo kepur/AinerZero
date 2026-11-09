@@ -24,6 +24,7 @@ import hashlib
 import importlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -260,8 +261,8 @@ def _atomic_write(path: Path, text: str) -> None:
 
 
 def valid_use_id(use_id: str | None) -> bool:
-    """A use id is non-empty and has no surrounding whitespace, so ids cannot differ invisibly."""
-    return bool(use_id) and use_id == use_id.strip()
+    """A use id names a directory: letters, digits, ``_`` and ``-`` only, so it cannot escape."""
+    return bool(re.fullmatch(r"[A-Za-z0-9_-]+", use_id or ""))
 
 
 def consume_dev_use(

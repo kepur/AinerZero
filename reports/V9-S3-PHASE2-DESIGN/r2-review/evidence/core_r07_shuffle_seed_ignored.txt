@@ -1,0 +1,22 @@
+### r07_shuffle_seed_ignored
+[["    rng = np.random.default_rng(seed)\n    drawn", "    rng = np.random.default_rng(0)\n    drawn"]]
+
+.......F..............................F...................               [100%]
+=================================== FAILURES ===================================
+E   assert (251 < 30)
+     +  where 251 = min({251})
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review4/mut_core/r07_shuffle_seed_ignored/tests/v9/experiments/test_s3p2_replay_analysis.py:88: assert (251 < 30)
+E   assert not True
+     +  where True = <function array_equal at 0x10753d5b0>(array([ 81,  65,  56,  31,  38,   5,  10,   2,  26, 129, 107, 157,  90,\n       113, 188, 146, 131, 116, 124, 214,  65, 198, 167,   0, 104, 232,\n       154,   9, 223, 218], dtype=int32), array([ 81,  65,  56,  31,  38,   5,  10,   2,  26, 129, 107, 157,  90,\n       113, 188, 146, 131, 116, 124, 214,  65, 198, 167,   0, 104, 232,\n       154,   9, 223, 218], dtype=int32))
+     +    where <function array_equal at 0x10753d5b0> = np.array_equal
+     +    and   array([ 81,  65,  56,  31,  38,   5,  10,   2,  26, 129, 107, 157,  90,\n       113, 188, 146, 131, 116, 124, 214,  65, 198, 167,   0, 104, 232,\n       154,   9, 223, 218], dtype=int32) = PreparedEpisode(obs=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., .....=array([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,\n       3, 3, 3, 3, 3, 3, 3, 3], dtype=int32)).shuffled
+     +      where PreparedEpisode(obs=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., .....=array([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,\n       3, 3, 3, 3, 3, 3, 3, 3], dtype=int32)) = <function past_only_shuffle at 0x10769dd00>(PreparedEpisode(obs=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., .....=array([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,\n       3, 3, 3, 3, 3, 3, 3, 3], dtype=int32)), 1)
+     +        where <function past_only_shuffle at 0x10769dd00> = RP.past_only_shuffle
+     +    and   array([ 81,  65,  56,  31,  38,   5,  10,   2,  26, 129, 107, 157,  90,\n       113, 188, 146, 131, 116, 124, 214,  65, 198, 167,   0, 104, 232,\n       154,   9, 223, 218], dtype=int32) = PreparedEpisode(obs=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., .....=array([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,\n       3, 3, 3, 3, 3, 3, 3, 3], dtype=int32)).shuffled
+     +      where PreparedEpisode(obs=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., .....=array([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,\n       3, 3, 3, 3, 3, 3, 3, 3], dtype=int32)) = <function past_only_shuffle at 0x10769dd00>(PreparedEpisode(obs=array([[0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., ..., 0., 0., 0.],\n       [0., 0., 0., .....=array([3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,\n       3, 3, 3, 3, 3, 3, 3, 3], dtype=int32)), 2)
+     +        where <function past_only_shuffle at 0x10769dd00> = RP.past_only_shuffle
+/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/review4/mut_core/r07_shuffle_seed_ignored/tests/v9/experiments/test_s3p2_replay_analysis.py:349: assert not True
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s3p2_replay_analysis.py::test_past_only_shuffle_uses_the_whole_past
+FAILED tests/v9/experiments/test_s3p2_replay_analysis.py::test_past_only_shuffle_depends_on_the_seed
+2 failed, 56 passed in 4.61s

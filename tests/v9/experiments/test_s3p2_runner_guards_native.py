@@ -22,6 +22,7 @@ import pytest
 
 mx = pytest.importorskip("mlx.core")
 
+from ainerzero.v9.experiments.s3 import analysis_p2 as AP  # noqa: E402
 from ainerzero.v9.experiments.s3 import arms_mlx as A  # noqa: E402
 from ainerzero.v9.experiments.s3 import batching as B  # noqa: E402
 from ainerzero.v9.experiments.s3 import replay as RP  # noqa: E402
@@ -32,6 +33,14 @@ REPO = Path(__file__).resolve().parents[3]
 RUNNER = "reports/V9-S3-PHASE2/run_phase2.py"
 APPROVAL = "TEST-APPROVAL-LINE"
 CAPACITY = 16
+REAL_NAMESPACES = AP.NAMESPACES
+BUILD_HOOK = (
+    "def build(ns, tag, n_w, n_e, family, base, want_rows=False):\n    out, rows = [], []\n",
+    "def build(ns, tag, n_w, n_e, family, base, want_rows=False):\n"
+    '    with (REPO / "build_calls.jsonl").open("a") as fh:\n'
+    "        fh.write(json.dumps([ns, tag, family, base]) + chr(10))\n"
+    "    out, rows = [], []\n",
+)
 
 
 def _git(root, *args):
@@ -51,10 +60,23 @@ def _tiny(text, extra=()):
     return text
 
 
-def _make_root(tmp_path, extra=()):
+STAND_IN = {"train": "standin-train", "dev": "standin-dev", "final": "standin-final", "probe": "standin-probe"}
+
+
+def _stand_in_partitions(root):
+    """A runner test must never generate a registered partition, final above all."""
+    p = root / "src/ainerzero/v9/experiments/s3/analysis_p2.py"
+    text = p.read_text(encoding="utf-8")
+    line = "NAMESPACES = " + json.dumps(REAL_NAMESPACES)
+    assert text.count(line) == 1, line
+    p.write_text(text.replace(line, "NAMESPACES = " + json.dumps(STAND_IN)), encoding="utf-8")
+
+
+def _make_root(tmp_path, extra=(), mutate_prereg=None):
     r = tmp_path / "fake"
     (r / "src").mkdir(parents=True)
     shutil.copytree(REPO / "src/ainerzero", r / "src/ainerzero", ignore=shutil.ignore_patterns("__pycache__"))
+    _stand_in_partitions(r)
     (r / "reports/V9-S3-PHASE2").mkdir(parents=True)
     (r / RUNNER).write_text(_tiny((REPO / RUNNER).read_text(encoding="utf-8"), extra), encoding="utf-8")
     design = r / "reports/DESIGN.md"
@@ -67,6 +89,8 @@ def _make_root(tmp_path, extra=()):
         "final_approval_line": APPROVAL,
         "h3_capacity": CAPACITY,
     }
+    if mutate_prereg:
+        mutate_prereg(prereg)
     (r / "reports/V9-S3-PHASE2/PREREG-r1.json").write_text(json.dumps(prereg), encoding="utf-8")
     (r / ".gitignore").write_text("artifacts/\n__pycache__/\n", encoding="utf-8")
     _git(r, "init", "-q")
@@ -77,7 +101,7 @@ def _make_root(tmp_path, extra=()):
 
 @pytest.fixture
 def root(tmp_path):
-    return _make_root(tmp_path)
+    return _make_root(tmp_path, extra=[BUILD_HOOK])
 
 
 def _run(root, *args, pycache=True, isolated=True, report="reports/out.json"):
@@ -185,10 +209,71 @@ def test_existing_report_is_kept_and_spends_nothing(root) -> None:
     assert _out(root).read_text(encoding="utf-8") == "earlier evidence"
 
 
-@pytest.mark.parametrize("args", [("--stage", "dev", "--use-id", "dev1"), ("--stage", "dev", "--purpose", "x"), ("--stage", "dev", "--use-id", " dev1", "--purpose", "x")])
+@pytest.mark.parametrize("args", [("--stage", "dev", "--use-id", "dev1"), ("--stage", "dev", "--purpose", "x")])
 def test_bad_dev_request_claims_and_spends_nothing(root, args) -> None:
     _refused(_run(root, *args), "purpose")
     assert not _spent(root) and not _out(root).exists()
+
+
+@pytest.mark.parametrize("use_id", [" dev1", "a/b", "../../../escaped", "dev.1"])
+def test_use_id_cannot_leave_the_run_directory(root, use_id) -> None:
+    _refused(_run(root, "--stage", "dev", "--use-id", use_id, "--purpose", "x"), "invalid use id")
+    assert not _spent(root) and not _out(root).exists()
+    assert not (root / "artifacts/escaped").exists() and not (root / "artifacts/v9/s3/phase2/a").exists()
+
+
+def test_library_version_mismatch_spends_nothing(tmp_path) -> None:
+    root = _make_root(tmp_path, mutate_prereg=lambda p: p["third_party"].update({"numpy": "0.0.0"}))
+    _refused(_run(root, *DEV), "library versions")
+    assert not _spent(root)
+
+
+def test_a_loaded_module_outside_the_manifest_spends_nothing(tmp_path) -> None:
+    gone = "src/ainerzero/v9/experiments/s3/replay.py"
+    root = _make_root(tmp_path, mutate_prereg=lambda p: p["manifest"].pop(gone))
+    _refused(_run(root, *DEV), "not frozen")
+    assert not _spent(root)
+
+
+def test_a_stage_reading_the_wrong_partition_spends_nothing(tmp_path) -> None:
+    root = _make_root(tmp_path, extra=[('"dev": {"ns": "dev",', '"dev": {"ns": "probe",')])
+    _refused(_run(root, *DEV), "must read")
+    assert not _spent(root)
+
+
+def _exhausted(root):
+    a = root / "artifacts/v9/s3/phase2"
+    a.mkdir(parents=True)
+    ledger = a / "dev_uses.json"
+    ledger.write_text(json.dumps([{"id": "a"}, {"id": "b"}]), encoding="utf-8")
+    return ledger
+
+
+def test_refused_ledger_leaves_no_shell_behind(root) -> None:
+    ledger = _exhausted(root)
+    before = ledger.read_text(encoding="utf-8")
+    _refused(_run(root, *DEV), "exhausted")
+    assert ledger.read_text(encoding="utf-8") == before
+    assert not _out(root).exists() and not (root / "artifacts/v9/s3/phase2/dev-dev1").exists()
+
+
+def test_dev_limit_comes_from_the_preregistration(tmp_path) -> None:
+    root = _make_root(tmp_path, mutate_prereg=lambda p: p.update(dev_max_uses=3))
+    _exhausted(root)
+    r = _run(root, *DEV)
+    assert r.returncode == 0, r.stderr[-1500:]
+
+
+def test_wall_clock_limit_stops_the_run(tmp_path) -> None:
+    root = _make_root(tmp_path, extra=[('"limit": 900}', '"limit": 0}')])
+    _refused(_run(root, "--stage", "smoke", "--use-id", "t"), "wall-clock limit")
+
+
+def test_runner_test_copies_never_use_registered_partitions(root) -> None:
+    text = (root / "src/ainerzero/v9/experiments/s3/analysis_p2.py").read_text(encoding="utf-8")
+    for name in REAL_NAMESPACES.values():
+        assert f'"{name}"' not in text
+    assert all(f'"{name}"' in text for name in STAND_IN.values())
 
 
 def test_wrong_approval_claims_and_spends_nothing(root) -> None:
@@ -206,6 +291,14 @@ def test_dev_runs_through_the_path_after_the_ledger(root) -> None:
     a = root / "artifacts/v9/s3/phase2"
     assert [(u["id"], u["purpose"]) for u in json.loads((a / "dev_uses.json").read_text(encoding="utf-8"))] == [("dev1", "x")]
     R = json.loads(_out(root).read_text(encoding="utf-8"))
+    calls = [json.loads(line) for line in (root / "build_calls.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert calls == [
+        ["standin-train", "", "F1", 0],
+        ["standin-train", "f2-", "F2", 10_000_000],
+        ["standin-dev", "", "F1", 20_000_000],
+        ["standin-dev", "f2-", "F2", 30_000_000],
+    ]
+    assert {"min_sample_F1", "min_sample_F2"} <= set(R["result"]["legality"])
     head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
     assert R["git_head"] == head and R["prereg_sha256"] == _sha(root / "reports/V9-S3-PHASE2/PREREG-r1.json")
     assert R["h3_capacity"] == CAPACITY and R["result"]["h3_prime"]["capacity"] == CAPACITY
@@ -257,6 +350,33 @@ def run_module():
     spec_.loader.exec_module(mod)
     mx.set_default_device(mx.cpu)
     return mod
+
+
+def test_registered_constants_of_the_runner(run_module) -> None:
+    m = run_module
+    assert (m.SEEDS, m.F1_STEPS, m.F2_STEPS, m.BATCH, m.MIX, m.LR, m.LAM) == ((1, 2, 3), 2000, 1000, 16, 8, 1e-3, 1.0)
+    assert (m.BUFFER_SEED, m.CN_SEED, m.N_SEED) == (7_000_000, 7_100_000, 7_200_000)
+    full = (m.F1_STEPS, m.F2_STEPS)
+    assert m.STAGES["dev"] == {"ns": "dev", "train": (400, 4), "eval": (50, 2), "steps": full, "limit": 5400}
+    assert m.STAGES["final"] == {"ns": "final", "train": (400, 4), "eval": (100, 2), "steps": full, "limit": 5400}
+    assert m.STAGES["probe"]["ns"] == m.STAGES["smoke"]["ns"] == "probe"
+
+
+def test_evaluation_uses_the_hard_top_candidate(run_module, monkeypatch) -> None:
+    eps, _ = run_module.build("test-s3p2-runner", "", 3, 1, "F1", 0)
+    mx.random.seed(1)
+    m = A.ReadoutArm("A3")
+    mx.eval(m.parameters())
+    seen = []
+    real = run_module.A.forward
+
+    def spy(model, b, *, hard):
+        seen.append(hard)
+        return real(model, b, hard=hard)
+
+    monkeypatch.setattr(run_module.A, "forward", spy)
+    run_module.per_event(m, eps, spec.F1_TOKENS)
+    assert seen and all(seen)
 
 
 def test_conditions_wiring(run_module) -> None:

@@ -208,7 +208,9 @@ def startup_checks(stage):
 
 def check_request(a, pre):
     """Refuse a malformed request before anything is claimed or spent."""
-    if a.stage == "dev" and (not GD.valid_use_id(a.use_id) or not (a.purpose or "").strip()):
+    if a.use_id is not None and not GD.valid_use_id(a.use_id):
+        raise GD.GuardError(f"invalid use id: {a.use_id!r}")
+    if a.stage == "dev" and (not a.use_id or not (a.purpose or "").strip()):
         raise GD.GuardError("a dev use needs both a use id and a purpose")
     if a.stage == "final" and (a.approval or "").strip() != pre["final_approval_line"]:
         raise GD.GuardError("missing the unique approval line")
@@ -251,10 +253,15 @@ def main():
             raise GD.GuardError(f"run directory already exists: {out}")
         GD.claim_report(report)
         out.mkdir(parents=True)
-        if a.stage == "dev":
-            GD.consume_dev_use(lock, ROOT / "dev_uses.json", a.use_id, a.purpose, max_uses=pre["dev_max_uses"], expected_lock=LOCK)
-        elif a.stage == "final":
-            GD.consume_final_read(lock, ROOT / "FINAL_READ_ONCE.json", a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
+        try:
+            if a.stage == "dev":
+                GD.consume_dev_use(lock, ROOT / "dev_uses.json", a.use_id, a.purpose, max_uses=pre["dev_max_uses"], expected_lock=LOCK)
+            elif a.stage == "final":
+                GD.consume_final_read(lock, ROOT / "FINAL_READ_ONCE.json", a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
+        except GD.GuardError:
+            out.rmdir()
+            report.unlink()
+            raise
 
         mx.set_default_device(mx.cpu)
         capacity = pre["h3_capacity"] if pre else 64

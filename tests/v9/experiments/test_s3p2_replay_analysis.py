@@ -457,3 +457,19 @@ def test_invalidated_clears_every_claim_and_records_why() -> None:
 def test_replay_is_compared_with_the_content_control() -> None:
     d = _eval()["h3_prime"]["replay_minus_cn_8class"]
     assert d["delta"] > 0.5
+
+
+def test_capacity_curve_reports_the_16_class_drop_separately() -> None:
+    per = _world({("A2-R64", "F1_after"): _events(0.1, acc8=0.85, swapped_acc=0.9)})
+    row = G.capacity_curve(per, SEEDS, "A2")["A2-R64"]
+    assert row["drop"]["delta"] > 0.5 and abs(row["drop_8class"]["delta"]) < 0.05
+
+
+def test_replay_minus_control_is_read_on_the_8_class_readout() -> None:
+    per = _world({("A2-R64", "F1_after"): _events(0.1, acc8=0.85, swapped_acc=0.9)})
+    assert _eval(per)["h3_prime"]["replay_minus_cn_8class"]["delta"] > 0.5
+
+
+def test_dev_and_final_seeds_were_never_used_before_the_freeze() -> None:
+    assert G.NAMESPACES["dev"] == "s3p2b-dev" and G.NAMESPACES["final"] == "s3p2b-final"
+    assert G.NAMESPACES["train"] == "s3p2-train" and G.NAMESPACES["probe"] == "s3p2-probe"

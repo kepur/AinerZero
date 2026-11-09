@@ -301,7 +301,7 @@ def test_a_writer_waits_for_the_ledger_mutex(tmp_path, lock_path) -> None:
 def test_dev_ledger_enforces_ids_purpose_and_the_limit(tmp_path, lock_path) -> None:
     ledger = tmp_path / "uses.json"
     with G.RunLock(lock_path) as lock:
-        for use_id, purpose in ((None, "x"), ("", "x"), (" dev1", "x"), ("dev1 ", "x"), ("dev1", None), ("dev1", "   ")):
+        for use_id, purpose in ((None, "x"), ("", "x"), (" dev1", "x"), ("dev1 ", "x"), ("a/b", "x"), ("../up", "x"), ("dev1", None), ("dev1", "   ")):
             with pytest.raises(G.GuardError, match="purpose"):
                 _dev(lock, ledger, use_id, purpose)
         assert not ledger.exists()
