@@ -2783,3 +2783,19 @@ P185 通过后冻结 r2（代码身份随之更新），换批准行，再通过
 - **教训：**
   - 账本把休眠时间也算作运行墙钟。用电池时合盖必然休眠，`caffeinate -i` 拦不住。
   - 长时间的登记运行（训练约 2 h、dev 约 6 h；dev 只能用一次）开跑前，须确认接着电源、开着盖，并请用户在运行期间不要合盖。
+
+## R20261109-S2-data-r3-done：r3 数据生成完成，train 与 dev 两个分区（一级 claude，2026-11-09）
+
+- **运行：**
+  - 运行卡 P192，06:43:17–06:58:01 UTC，退出码 0。
+  - 接电、开盖、`caffeinate -i`。
+  - 原样输出见 `reports/V9-S2-DATA-r3/P192/`。
+- **结果：**
+  - **train：** 1000 个世界、8000 个回合，非 BFS 比例 0.591。
+  - **dev：** 50 个世界、300 个回合，非 BFS 比例 0.591。
+  - 两份 SHA256SUMS 与 manifest 的 sha 见 `dataset_sha256.txt`。
+- **确定性：** train 的 SHA256SUMS 与 manifest，同被合盖打断的 P191 那份（`r3-data-interrupted/train_P191/`）逐字节相同。
+- **重抽次数：**
+  - manifest 中逐个世界记录的重抽次数，与 R20261108-S2-data-r2-failed 的全量扫描一致：train 共 1832 次，最多 19 次（world 173）；dev 共 127 次，最多 16 次（world 14）。
+  - **已知缺陷：** 运行结果里的汇总字段 `world_redraw_count` 显示为 0。原因是 `data_runner` 读的是 `prep_summary.redraw_retries`，而 manifest 中实际的键是顶层的 `world_redraws`，缺数据时回退为 0。这只影响汇总显示，不影响数据。修复要动冻结源码，留到 phase 1 结束后。
+- **之后：** 训练 9 格（arm_a/b/c × 种子 42/43/44，每格 2757 步）。须接电、开盖。
