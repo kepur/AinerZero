@@ -470,6 +470,6 @@ def test_replay_minus_control_is_read_on_the_8_class_readout() -> None:
     assert _eval(per)["h3_prime"]["replay_minus_cn_8class"]["delta"] > 0.5
 
 
-def test_dev_and_final_seeds_were_never_used_before_the_freeze() -> None:
+def test_dev_and_final_use_the_namespaces_registered_after_the_retired_ones() -> None:
     assert G.NAMESPACES["dev"] == "s3p2b-dev" and G.NAMESPACES["final"] == "s3p2b-final"
     assert G.NAMESPACES["train"] == "s3p2-train" and G.NAMESPACES["probe"] == "s3p2-probe"
