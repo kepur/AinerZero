@@ -347,6 +347,25 @@ def test_no_rollback_truth_keyed_and_fast_routing_arms(world) -> None:
     assert checked["query"] > 0 and checked["fast"] > 0
 
 
+def test_lt_falls_back_to_the_shown_token_not_to_l() -> None:
+    """When the true cell was never observed before, LT copies the current view even if L matched elsewhere.
+
+    Such queries are rare (1 in 30 worlds of 12 episodes); world 9 of this stand-in namespace has one."""
+    seq = PS.generate_sequence(NS + "-lt", 9)
+    R = PS.records_of(seq)
+    ev = A.to_arrays(A.analyse_world(seq, full=False)[0])
+    obs = _dwell_obs(R, len(seq.episodes))
+    discriminating = 0
+    for i in np.flatnonzero(ev["kind"] == A.KIND_QUERY):
+        e = int(ev["episode"][i])
+        qi = R.start[e] + int(ev["t"][i])
+        past = np.concatenate([np.zeros(0, dtype=np.int64)] + obs[:e])
+        if not any((R.truth_cell[j] == R.truth_cell[qi]).all() for j in past):
+            assert ev["pred_LT"][i] == ev["shown"][i]
+            discriminating += int(ev["pred_L"][i] != ev["shown"][i])
+    assert discriminating == 1
+
+
 def test_item_counts_and_rates_match_independent_counts(world) -> None:
     from ainerzero.v9.experiments.s3 import promotion as PR
 
@@ -536,10 +555,16 @@ def test_synthetic_events_satisfy_the_contract() -> None:
     assert r["valid"] and set(r["legality"]) == ALL_GATES
 
 
-@pytest.mark.parametrize("external", [None, {"passed": False}, {"n_problems": 0}, {"passed": "yes"}])
-def test_k2_needs_a_passing_independent_report(external) -> None:
-    r = _eval(external=external)
+@pytest.mark.parametrize("passed", [False, "yes", None, 1])
+def test_k2_needs_a_passing_independent_report(passed) -> None:
+    k2, _ = _ok(_synthetic())  # counts right, only the verdict differs
+    if passed is None:
+        del k2["passed"]
+    else:
+        k2["passed"] = passed
+    r = _eval(external=k2)
     assert not r["legality"]["K2_independent"]["passed"] and not r["valid"]
+    assert not _eval(external=None)["legality"]["K2_independent"]["passed"]
 
 
 @pytest.mark.parametrize("field,value", [("worlds", 20), ("queries", 1159), ("worlds", None)])
