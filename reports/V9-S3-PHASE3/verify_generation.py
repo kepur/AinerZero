@@ -8,8 +8,9 @@
   - 世界种子与布局哈希。
 与 worlds.jsonl 逐条比对。K2 证明「给定这份日志，机制按规格运行」，K2b 把日志钉回生成器。
 
-登记分区（s3p3-dev、s3p3-final）只在本阶段那次登记运行内部放行：日志必须是运行目录里的
-worlds.jsonl，而且 dev 账本或 final 只读一次标记已经写下；否则在生成任何世界之前拒绝。
+登记分区只在本阶段那次登记运行内部放行：s3p3-final 要求日志就是 final-final/worlds.jsonl
+（解析符号链接后），并且 final 只读一次标记已经写下；本阶段 dev 上限登记为 0，s3p3-dev 一律拒绝。
+拒绝都发生在生成任何世界之前。
 
 用法：python -I verify_generation.py <worlds.jsonl> <命名空间> <每个世界的回合数>
 """
@@ -73,9 +74,7 @@ def authorize(path, ns, *, root, final_names, dev_names, registered):
             return False, f"{ns}: only inside the final run, after its read-once marker"
         return True, None
     if ns in dev_names:
-        if p.parent.parent != root or not p.parent.name.startswith("dev-") or not (root / "dev_uses.json").is_file():
-            return False, f"{ns}: only inside a dev run, after its ledger entry"
-        return True, None
+        return False, f"{ns}: dev is not used in this phase (its limit is 0)"
     return False, f"{ns}: registered partition with no registered run"
 
 

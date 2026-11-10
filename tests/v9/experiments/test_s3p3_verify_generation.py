@@ -145,9 +145,8 @@ def test_authorize_registered_partitions(tmp_path) -> None:
     assert not auth(root / "final-final" / "other.jsonl", "standin-reg-final")
     assert not auth(tmp_path / "worlds.jsonl", "standin-reg-final")
     assert not auth(root / "dev-dev1" / "worlds.jsonl", "standin-reg-final")
-    assert not auth(root / "dev-dev1" / "worlds.jsonl", "standin-reg-dev")  # no ledger yet
-    (root / "dev_uses.json").write_text("[]", encoding="utf-8")
-    assert auth(root / "dev-dev1" / "worlds.jsonl", "standin-reg-dev")
+    (root / "dev_uses.json").write_text(json.dumps([{"id": "dev1"}]), encoding="utf-8")
+    assert not auth(root / "dev-dev1" / "worlds.jsonl", "standin-reg-dev")  # dev is never used in this phase
     assert not auth(root / "final-final" / "worlds.jsonl", "standin-reg-dev")
     assert not G.authorize(final_log, "standin-other", root=root, final_names=FIN, dev_names=DEV, registered=reg | {"standin-other"})[0]
 
@@ -188,3 +187,16 @@ def test_a_generator_that_loads_forbidden_code_fails(logs, tmp_path) -> None:
     shutil.copy2(VERIFY_GEN, fake / "reports/V9-S3-PHASE3/verify_generation.py")
     out = _run(fake / "reports/V9-S3-PHASE3/verify_generation.py", _write(tmp_path, "ok.jsonl", logs), NS, EPISODES)
     assert out["passed"] is False and out["forbidden_loaded"] == ["ainerzero.v9.experiments.s3.cues"]
+
+
+def test_a_run_file_that_links_outside_is_refused(tmp_path) -> None:
+    G = _load_vgen()
+    root = tmp_path / "phase3"
+    (root / "final-final").mkdir(parents=True)
+    (root / "FINAL_READ_ONCE.json").write_text("{}", encoding="utf-8")
+    outside = tmp_path / "elsewhere" / "worlds.jsonl"
+    outside.parent.mkdir()
+    outside.write_text("", encoding="utf-8")
+    (root / "final-final" / "worlds.jsonl").symlink_to(outside)
+    ok, why = G.authorize(root / "final-final" / "worlds.jsonl", "standin-reg-final", root=root, final_names=FIN, dev_names=DEV, registered=FIN | DEV)
+    assert not ok and "only inside the final run" in why
