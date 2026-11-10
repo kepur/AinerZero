@@ -1,0 +1,10 @@
+S3 第三阶段 final 运行合法性（复核者核对，2026-11-10，只读）
+
+预登记 PREREG-r1.json SHA df5256c11ae52a3bad8195d46a582521460b7f24eaf82ee38af38b1daf4a1e68，与文件、FINAL_READ_ONCE.json、final.json 三处一致。
+时序：探针 probe-p1 08:08:18；预登记提交 e611ed4 08:54:03；只读一次标记 08:54:18（at = 1794300858.27）；final-final 全部文件 08:57:35；报告提交 daf469b 09:00:11。
+git_head e611ed4；code_manifest_sha256 75eb9b09… 与预登记 contract、探针报告三处一致；code_dirty 为空；late_violations 为空。
+清单 36 个文件：现在逐个 SHA 与预登记一致；e611ed4 到 daf469b 之间没有改动（daf469b 只加了 RESEARCH_LOG、FINAL-REPORT、final.json、final.log）。
+6 个文件（events.npz、events_k1/2/3/5.npz、worlds.jsonl）的 SHA 与 final.json 的 files_sha256 一致。
+探针报告 SHA 与预登记一致，探针有效、工作区干净。dev 上限 0；批准行存在。
+final.log 9 行，无 Traceback、Error、GuardError；最后一行 valid True，K1–K7 全过。用时 289.6 秒，峰值内存 236,273,664 字节。
+s3p3-final 此前未被生成：只能查现存痕迹。名字最早出现在 f00836c（r0 设计稿）；仓库报告和 artifacts 的 json/jsonl/log 里只有 PREREG-r1.json 和 final.json 提到它；pytest 临时目录里只有源码副本提到它，没有生成记录；artifacts/v9/s3/phase3 下只有 smoke-t1、probe-p1、final-final 和标记。240b1ac 到 941d9bc 之间 verify_generation.py 对登记分区自动放行，这段时间有没有被单独调用，无从查证。
