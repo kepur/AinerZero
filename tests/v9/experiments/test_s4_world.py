@@ -228,7 +228,8 @@ def test_batched_contact_log_reports_copy_zero_only() -> None:
 
 
 def test_overlapping_disks_that_separate_are_pushed_apart_but_not_logged() -> None:
-    p, v = _two((4.75, 5.0), (-1.0, 0.0), (5.25, 5.0), (1.0, 0.0))  # overlapping, moving apart
+    # overlapping by 0.1 and separating slowly: in one step they move apart only 0.02, so they must be pushed
+    p, v = _two((4.75, 5.0), (-0.1, 0.0), (5.25, 5.0), (0.1, 0.0))
     p2, v2, c = W.physics(p, v, (), log=True)
     assert not [x for x in c if x[0] == "disk"]
     assert np.array_equal(v2, v)  # no impulse
