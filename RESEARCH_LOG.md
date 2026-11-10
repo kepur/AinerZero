@@ -3384,3 +3384,16 @@ P185 通过后冻结 r2（代码身份随之更新），换批准行，再通过
   - 测试：CPU 76、MLX 40、运行器 29 项全过。
   - 我在作者变异自测里的漏洞：第一遍运行器变异 11 个杀掉 7 个。补测试后复跑，`ru_late_check_off` 仍然存活：替身里两个世界本来就过不了样本门，「无效且门全不过」在变异下照样成立。改为检查作废原因后杀掉。复核者列出的运行器存活变异另做了 5 个镜像，连同它一起 6 个全部杀掉（`results-r2-runner-c.json`）。
   - 对应第二轮复核的变异 15 个（`results-r3.json`、`results-r3-runner.json`）：第一遍杀掉 14 个，`fi_gate_strict` 由新的门限边界测试杀掉。存活的 `lm_mean_arm_unchecked` 是因为测试拿 L-int-c 当均值，载入权重时就因形状不合报错，碰不到检查本身。改用形状相容的 L-int-σ 当均值并匹配报错文字后杀掉（`results-r3-b.json`）。
+- （同条续）**第二轮修订确认：通过，可以进入探针**（`reports/V9-S4-PHASE1/impl-review-r2-recheck/REPORT.md`，复核者 `claude-s4impl-rev2-1110`，被审 `4c88f62`，结尾「复核完成」）。
+  - 应修 1 已修好：复核者的只读长度桩在新代码上判不过。应修 2、4 和采纳的建议通过；合法性门只会更严，没有新的放行路径。
+  - 变异：learned_mlx 10 个全部杀掉；CPU 27 个杀掉 26 个；运行器与重放 22 个杀掉 16 个，点名的 10 个全部杀掉。测试数 76/40/29 与作者报的一致。
+  - 冻结前要做：给 `make_prereg.py` 的评测预留和超时预估补数值测试（`mp_reserve_eval_only`、`mp_budget_ignores_reserve` 存活）；把设计稿「实现补记」改成新规则。
+  - 复核者的锁已释放，进程（PID 31509）已退出（一级 23:10 UTC 核实）。
+- **一级对存活变异的判定**（一级 claude，11-10）：
+  - `vr_partial_check_passes`（建议 B）**判为等价**：`verify_replay.py` 每个（世界，格）都无条件计一次 `checked`，`expected` 也取自 `replay.json` 本身，不改源码造不出 `checked < expected`。格数由运行器测试的 `checked == 2 × (18 + 6)` 卡住，final 的独立复算核对 5 × 24 = 120。不为此改源码，改了探针要重跑。
+  - 建议 D 等价，不做。建议 A、C 和两条 `make_prereg` 测试只改测试文件，交给二级。
+- **并行分工**（用户 11-10：「我给gemini分配一个挂起的 你们两个并行一起完成 你全权跟进」）：
+  - `ainerzero.V9.P209`（gemini，只改测试）：`make_prereg` 预留与超时的数值测试，建议 A、C，要杀掉上面四个变异。带 `--native-mlx` 的测试经 `hold_lock.py` 在共享锁下跑。冻结清单只含运行器、它引用的 `src` 和两个校验脚本，测试文件不在里面，所以不影响探针。
+  - 一级：跑探针；改设计稿「实现补记」。
+- **设计稿「实现补记」已按新代码改写**（`DESIGN-r3.md`，**未经非作者复核**）：两段计时、预留 = ⌈探针 `post_marker_seconds` × 4 × 1.5⌉、超时预估 = 1.2 × `pre_eval_seconds` + 预留；新增「记录完整」合法性项；地板门无定义判不过；重放范围（每世界 24 格，含 E-B、E-P，事件对错重算）；学生视图的对齐前缀比较。设计稿在冻结清单里、不在代码 SHA 里，探针之后、冻结之前改不影响探针。
+- **探针启动**（一级 claude）：`run_s4p1.py --stage probe --use-id r1 --steps 20000 --batch 256`，提交 `4c88f62`，`.venv/bin/python -I`，`caffeinate -i`，11-10 23:11 UTC 启动；接交流电、开盖、低功耗模式关。硬上限 4 小时（设计稿 §7），只读 `s4p1-train` 与 `s4p1-probe`，本机 MLX，不付费、不上云。报告 `reports/V9-S4-PHASE1/probe-r1/probe.json`，日志 `run.log`，运行目录 `artifacts/v9/s4/phase1/probe-r1/`。
