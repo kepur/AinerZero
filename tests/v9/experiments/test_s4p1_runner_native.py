@@ -83,8 +83,8 @@ def _make_root(tmp_path, extra=()):
     return r
 
 
-def _run(root, *args, report="reports/out.json", pycache=True, timeout=600):
-    cmd = [sys.executable, "-I"]
+def _run(root, *args, report="reports/out.json", pycache=True, timeout=600, isolated=True):
+    cmd = [sys.executable] + (["-I"] if isolated else [])
     if pycache:
         fresh = root.parent / f"pyc-{time.monotonic_ns()}"
         fresh.mkdir()
@@ -266,16 +266,21 @@ def test_final_path_after_a_frozen_probe(tmp_path) -> None:
     _refused(_run(root, *FINAL, report="reports/final2.json"), "run directory already exists")
     shutil.rmtree(root / ARTS / "final-final")
     _refused(_run(root, *FINAL, report="reports/final3.json"), "already been read")
+    # refused up front: no run directory, no claimed report, nothing trained
+    assert not (root / ARTS / "final-final").exists() and not (root / "reports/final3.json").exists()
 
 
-def _frozen_root(tmp_path, extra=(), reserve=0, plant=None):
+def _frozen_root(tmp_path, extra=(), reserve=0, plant=None, before_freeze=None, third_party=None):
     """A committed copy with a hand-made preregistration, ready for a final; ``plant`` replaces
-    files (relative path -> text) before the freeze."""
+    files (relative path -> text) and ``before_freeze(root)`` edits the copy before the freeze."""
     root = _make_root(tmp_path, extra=extra)
     for rel, text in (plant or {}).items():
         (root / rel).write_text(text)
+    if before_freeze is not None:
+        before_freeze(root)
     m = GD.build_manifest(root, [root / RUNNER], src_root=root / "src", extra=[root / "reports/DESIGN.md", *(root / v for v in VERIFY)])
-    (root / PREREG).write_text(json.dumps({"manifest": m, "third_party": GD.third_party_versions(REPO, ("numpy", "mlx")),
+    tp = GD.third_party_versions(REPO, ("numpy", "mlx")) if third_party is None else third_party
+    (root / PREREG).write_text(json.dumps({"manifest": m, "third_party": tp,
                                            "final_approval_line": APPROVAL, "training": {"steps": 3, "batch": 4},
                                            "budget": {"eval_reserve_s": reserve}}))
     _git(root, "add", ".")
@@ -325,9 +330,12 @@ def test_changed_frozen_module_is_refused_before_the_marker(tmp_path) -> None:
     assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()
 
 
-def test_final_with_too_little_time_left_does_not_spend_the_read(tmp_path) -> None:
-    """The evaluation reserve registered from the probe must remain when training ends."""
-    root = _frozen_root(tmp_path, reserve=10 ** 9)
+@pytest.mark.parametrize("reserve", [10 ** 9, 1000])
+def test_final_with_too_little_time_left_does_not_spend_the_read(tmp_path, reserve) -> None:
+    """The evaluation reserve registered from the probe must remain when training ends. The final's
+    limit here is 900 s and training takes seconds, so 1000 s is just over what is left: a check
+    loosened to a fraction of the reserve would let it through."""
+    root = _frozen_root(tmp_path, reserve=reserve)
     _refused(_run(root, *FINAL), "the final read is not spent")
     out = root / ARTS / "final-final"
     assert not (root / ARTS / "FINAL_READ_ONCE.json").exists() and not (out / "worlds.partial.jsonl").exists()
@@ -377,7 +385,10 @@ def test_a_frozen_file_changed_during_the_final_invalidates_it(tmp_path) -> None
     assert r.returncode == 0, r.stderr[-2000:]
     R = json.loads((root / "reports/out.json").read_text())
     assert any("DESIGN.md" in v for v in R["late_violations"])
-    assert not R["result"]["valid"] and not any(g["passed"] for g in R["result"]["gates"].values())
+    # two worlds fail the sample gate anyway, so the run is invalid either way: check that the late
+    # check is what voided every gate
+    assert not R["result"]["valid"]
+    assert all(g["void"] == "frozen files or modules changed during the run" and not g["passed"] for g in R["result"]["gates"].values())
 
 
 def test_replay_verifier_catches_a_changed_assignment(smoke, tmp_path) -> None:
@@ -402,3 +413,38 @@ def test_replay_verifier_catches_a_changed_assignment(smoke, tmp_path) -> None:
     honest, tampered = verify(out / "worlds.jsonl"), verify(bad)
     assert honest["passed"] and honest["checked"] == 2 * 18
     assert not tampered["passed"] and tampered["mismatches"] == [f"{w['kind']} {w['world']} {key}"]
+
+
+def test_a_module_loaded_outside_the_manifest_during_the_final_invalidates_it(tmp_path) -> None:
+    """The second check also covers loaded modules: analysis loads, after the start-up checks and
+    through a dynamic import the manifest builder cannot see, a module that is not frozen."""
+    def plant(root):
+        s4 = root / "src/ainerzero/v9/experiments/s4"
+        (s4 / "unfrozen_extra.py").write_text("VALUE = 1\n")
+        _sub(s4 / "analysis.py", [("def summarize_descriptive(main: Sequence[dict], extrap: Sequence[dict], learned_arms: Sequence[str]) -> dict[str, Any]:\n",
+                                   "def summarize_descriptive(main: Sequence[dict], extrap: Sequence[dict], learned_arms: Sequence[str]) -> dict[str, Any]:\n"
+                                   "    import importlib\n    importlib.import_module('ainerzero.v9.experiments.s4.' + 'unfrozen_extra')\n")])
+    root = _frozen_root(tmp_path, before_freeze=plant)
+    pre = json.loads((root / PREREG).read_text())
+    assert "src/ainerzero/v9/experiments/s4/unfrozen_extra.py" not in pre["manifest"]
+    r = _run(root, *FINAL)
+    assert r.returncode == 0, r.stderr[-2000:]
+    R = json.loads((root / "reports/out.json").read_text())
+    assert any("unfrozen_extra" in v for v in R["late_violations"])
+    # two worlds fail the sample gate anyway, so the run is invalid either way: check that the late
+    # check is what voided every gate
+    assert not R["result"]["valid"]
+    assert all(g["void"] == "frozen files or modules changed during the run" and not g["passed"] for g in R["result"]["gates"].values())
+
+
+def test_final_needs_an_isolated_interpreter(tmp_path) -> None:
+    root = _frozen_root(tmp_path)
+    _refused(_run(root, *FINAL, isolated=False), "python -I")
+    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists() and not (root / "reports/out.json").exists()
+
+
+def test_final_with_other_library_versions_is_refused(tmp_path) -> None:
+    real = GD.third_party_versions(REPO, ("numpy", "mlx"))
+    root = _frozen_root(tmp_path, third_party=dict(real, mlx="0.0.1"))
+    _refused(_run(root, *FINAL), "library versions differ")
+    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists() and not (root / "reports/out.json").exists()

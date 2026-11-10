@@ -133,6 +133,12 @@ M = [
     ("ru_labels_ignored", RU, "labels_ok=bool(lab.get(\"passed\"))", "labels_ok=True"),
     ("ru_replay_ignored", RU, "replay_ok=bool(rep.get(\"passed\"))", "replay_ok=True"),
     ("ru_late_check_off", RU, "            if late:\n", "            if False:\n"),
+    # the reviewer's survivors (impl-review-r2), mirrored here
+    ("ru_reserve_tenth", RU, "            if deadline.left() < reserve:", "            if deadline.left() < reserve / 10:"),
+    ("ru_marker_exists_unchecked", RU, '        if a.stage == "final" and FINAL_MARKER.exists():', "        if False:"),
+    ("ru_isolated_unchecked", RU, "    if not sys.flags.isolated:", "    if False:"),
+    ("ru_versions_unchecked", RU, '    if versions != pre["third_party"]:', "    if False:"),
+    ("ru_late_modules_skipped", RU, '            late = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])', '            late = GD.check_manifest(REPO, pre["manifest"])'),
     ("vl_collision_any_step", VL, "int(any(k in touched[s] for s in range(last, t)))", "int(any(k in touched[s] for s in range(last, t + 1)))"),
     ("vr_skip_mismatch", VR, "            if A.ids_digest(ids) != rec[\"ids_sha256\"][cell.key]:", "            if False:"),
 ]
