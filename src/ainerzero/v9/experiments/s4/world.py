@@ -4,8 +4,11 @@ Per reports/V9-S4-DESIGN/DESIGN-r1.md §2. Pure CPU, NumPy / standard library on
 
 - Arena 10 x 10 with elastic walls; circular pillars block motion and sight.
 - Disks of equal radius and mass, one appearance; elastic disk-disk, disk-wall and disk-pillar
-  collisions. The physics is batched over independent copies [B, N, 2], so the world and any
-  filter that uses "true physics" run the same function.
+  collisions. Pair impulses within a substep are applied simultaneously, so a substep with
+  several contacts on one disk is not strictly energy-conserving (on the exploration namespace
+  2 of 12000 steps with 10 disks changed kinetic energy, the worst by 13%; none with 6). Two-disk
+  collisions conserve momentum and energy exactly. The physics is batched over independent copies
+  [B, N, 2], so the world and any filter that uses "true physics" run the same function.
 - The agent knows its own pose (a declared truth input), tours random waypoints, sees disks
   within 180 degrees and radius 7 unless a pillar blocks the line of sight. Disks do not
   occlude each other.

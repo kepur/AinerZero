@@ -206,3 +206,37 @@ def test_package_imports_no_mlx() -> None:
 
     src = open(mod.__file__, encoding="utf-8").read()
     assert "import mlx" not in src and "from mlx" not in src
+
+
+def test_batched_contact_log_reports_copy_zero_only() -> None:
+    """Copy 0 collides, copy 1 does not: the log is copy 0's; swapping the copies empties it."""
+    hit = np.array([[4.6, 5.0], [5.4, 5.0]]), np.array([[1.0, 0.0], [-1.0, 0.0]])
+    miss = np.array([[2.0, 2.0], [8.0, 8.0]]), np.array([[1.0, 0.0], [-1.0, 0.0]])
+    P = np.stack([hit[0], miss[0]]); V = np.stack([hit[1], miss[1]])
+    logged = []
+    p, v = P, V
+    for _ in range(3):
+        p, v, c = W.physics(p, v, (), log=True)
+        logged += c
+    assert ("disk", 0, 1) in logged
+    p, v = P[::-1].copy(), V[::-1].copy()
+    logged = []
+    for _ in range(3):
+        p, v, c = W.physics(p, v, (), log=True)
+        logged += [x for x in c if x[0] == "disk"]
+    assert logged == []
+
+
+def test_overlapping_disks_that_separate_are_pushed_apart_but_not_logged() -> None:
+    p, v = _two((4.75, 5.0), (-1.0, 0.0), (5.25, 5.0), (1.0, 0.0))  # overlapping, moving apart
+    p2, v2, c = W.physics(p, v, (), log=True)
+    assert not [x for x in c if x[0] == "disk"]
+    assert np.array_equal(v2, v)  # no impulse
+    assert np.linalg.norm(p2[0, 1] - p2[0, 0]) >= 2 * W.RADIUS - 1e-9
+
+
+def test_a_disk_leaving_a_pillar_is_not_reflected() -> None:
+    pil = ((5.0, 5.0, 0.5),)
+    p, v = np.array([[[4.25, 5.0]]]), np.array([[[-1.0, 0.0]]])  # touching, moving away
+    p2, v2, c = W.physics(p, v, pil, log=True)
+    assert v2[0, 0, 0] == -1.0 and not [x for x in c if x[0] == "pillar"]
