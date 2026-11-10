@@ -400,6 +400,8 @@ def test_registered_constants() -> None:
     assert (L.P_HIDDEN, L.VISIBLE_SIGMA, L.HIDDEN_SIGMA, L.P_DROP, L.GHOSTS, L.GHOST_SIGMA, L.EXACT_FRAC) == (0.7, (0.05, 0.2), (0.7, 0.6), 0.1, 0.3, 0.3, 0.2)
     assert (L.ARENA, L.RADIUS, L.DT, L.N_PILLARS) == (W.ARENA, W.RADIUS, W.DT, W.N_PILLARS)
     assert L.ARMS == ("L-ind", "L-int", "L-int-c", "L-int-s")
+    # the training recipe fixed after exploration rounds 5-10 (DESIGN-r3, implementation notes)
+    assert (L.COLL_SHARE, L.NEAR_SHARE, L.CLIP, L.LR_END, L.ROLLOUT_WEIGHTS, L.EPS_DIR) == (0.5, 0.0, 10.0, None, (10.0, 1.0, 1.0), 0.01)
 
 
 def test_collision_oversampling(pool) -> None:
@@ -533,9 +535,10 @@ def test_a_cell_over_its_time_limit_stops(pool) -> None:
 
 
 def test_rollout_weights_scale_their_own_terms(pool, monkeypatch) -> None:
-    assert L.ROLLOUT_WEIGHTS == (1.0, 1.0, 1.0)
+    assert L.ROLLOUT_WEIGHTS == (10.0, 1.0, 1.0)
     b = {k: mx.array(v[:6]) for k, v in pool.by_n[6].items()}
     m = _model("L-ind", 2)                                          # no contact term
+    monkeypatch.setattr(L, "ROLLOUT_WEIGHTS", (1.0, 1.0, 1.0))
     base = float(L.rollout_loss(m, b))
     terms = []
     for i in range(3):

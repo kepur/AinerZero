@@ -121,6 +121,7 @@ M = [
     ("an_student_view_unchecked", AN, "    if any(set(v) != W.STUDENT_KEYS for v in views):", "    if False:"),
     ("lm_no_time_limit", LM, "        if time_limit is not None and time.monotonic() - started > time_limit:", "        if False:"),
     ("lm_rollout_weights_ignored", LM, "            w = ROLLOUT_WEIGHTS[ROLLOUT.index(k)]", "            w = 1.0"),
+    ("lm_rollout_weights_default", LM, "ROLLOUT_WEIGHTS = (10.0, 1.0, 1.0)", "ROLLOUT_WEIGHTS = (1.0, 1.0, 1.0)"),
     ("lm_rollout_weight_first", LM, "            w = ROLLOUT_WEIGHTS[ROLLOUT.index(k)]", "            w = ROLLOUT_WEIGHTS[0]"),
     # runner (run only with --runner: each costs one pass of the runner tests, about two minutes)
     ("ru_no_reserve", RU, "            if deadline.left() < reserve:", "            if False:"),
