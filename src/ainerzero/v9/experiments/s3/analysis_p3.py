@@ -335,8 +335,20 @@ def log_linkage(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]]) -> di
             "queries_match": bool(ok_q), "fast_events_match": bool(ok_f), "n_queries": len(event_q), "n_fast": len(event_f)}
 
 
+IDENTITY = ("kind", "world", "episode", "t", "answer", "shown", "decoy", "relocated", "tok_before", "tok_after", "first_ok")
+
+
+def offsets_same_events(ev: dict[str, np.ndarray], offsets: dict[int, dict[str, np.ndarray]] | None) -> dict[str, Any]:
+    """K7: every offset file holds the same events as the main run (only the predictions may differ)."""
+    if not offsets:
+        return {"passed": False, "differing": "no offset files"}
+    bad = {str(k): [c for c in IDENTITY if c not in evk or not np.array_equal(evk[c], ev[c])] for k, evk in offsets.items()}
+    return {"passed": bool(sorted(offsets) == sorted(OFFSETS) and not any(bad.values())), "differing": {k: v for k, v in bad.items() if v}}
+
+
 def legality(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]], *, stage: str | None, n_worlds: int,
-             external: dict[str, Any] | None, external_gen: dict[str, Any] | None) -> dict[str, Any]:
+             external: dict[str, Any] | None, external_gen: dict[str, Any] | None,
+             offsets: dict[int, dict[str, np.ndarray]] | None = None) -> dict[str, Any]:
     """Contract gates K1–K6 of DESIGN-r2 §4."""
     s = event_sets(ev)
     q = s["query"]
@@ -367,6 +379,8 @@ def legality(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]], *, stage
         band = {k: [EXPECTED_PER_100[k] * n_worlds / 100 * (1 - SAMPLE_BAND[k]), EXPECTED_PER_100[k] * n_worlds / 100 * (1 + SAMPLE_BAND[k])] for k in EXPECTED_PER_100}
         out["K5_samples"] = {"passed": all(band[k][0] <= have[k] <= band[k][1] for k in have), "have": have, "band": band}
     out["K6_events_match_log"] = log_linkage(ev, logs)
+    if offsets is not None or stage is not None:  # a registered stage must carry its offset files
+        out["K7_offsets_same_events"] = offsets_same_events(ev, offsets)
     out["valid"] = all(v["passed"] for v in out.values() if isinstance(v, dict))
     return out
 
@@ -391,7 +405,7 @@ def evaluate(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]], *, stage
              external: dict[str, Any] | None, external_gen: dict[str, Any] | None,
              offsets: dict[int, dict[str, np.ndarray]] | None = None) -> dict[str, Any]:
     s = event_sets(ev)
-    legal = legality(ev, logs, stage=stage, n_worlds=n_worlds, external=external, external_gen=external_gen)
+    legal = legality(ev, logs, stage=stage, n_worlds=n_worlds, external=external, external_gen=external_gen, offsets=offsets)
     desc = {name: paired(ev, s[sel], a, b) for name, sel, a, b in COMPARISONS}
     acc = {name: {p: float(correct(ev, p)[m].mean()) for p in POLICIES if (ev[f"pred_{p}"][m] >= 0).all()} | {"n": int(m.sum())} for name, m in s.items() if m.any()}
     items = {k: int(sum(lg["items"][k] for lg in logs)) for k in logs[0]["items"]} if logs else {}

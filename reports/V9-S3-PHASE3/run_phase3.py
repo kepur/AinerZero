@@ -184,7 +184,8 @@ def main():
         R["files_sha256"] = {name: sha(out / name) for name in list(files) + [worlds.name]}
         k2 = independent_check(VERIFY, worlds, deadline=deadline)
         k2b = independent_check(VERIFY_GEN, worlds, ns, cfg["episodes"], deadline=deadline)
-        R["result"] = A.evaluate(ev, logs, stage=a.stage if a.stage != "smoke" else None, n_worlds=cfg["worlds"],
+        on_disk = [json.loads(line) for line in worlds.read_text(encoding="utf-8").splitlines()]  # K6 compares with the file K2, K2b read
+        R["result"] = A.evaluate(ev, on_disk, stage=a.stage if a.stage != "smoke" else None, n_worlds=cfg["worlds"],
                                  external=k2, external_gen=k2b, offsets=off)
         if pre:
             late = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])

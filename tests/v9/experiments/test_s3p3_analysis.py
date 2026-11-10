@@ -760,3 +760,44 @@ def test_no_test_generates_a_registered_partition() -> None:
     pat = re.compile(r"allow_registered\s*=\s*True")
     for p in (REPO / "tests").rglob("*.py"):
         assert not pat.search(p.read_text(encoding="utf-8")), p
+
+
+# --- r2 recheck: K6 verdict, world set, K7, tie-rate denominator --------------------------
+def test_k6_verdict_fails_when_only_fast_events_differ() -> None:
+    ev = _synthetic()
+    logs = _logs(ev)
+    logs[3]["fast_events"][0][2] += 1
+    r = A.log_linkage(ev, logs)
+    assert r["queries_match"] and not r["fast_events_match"] and not r["passed"]
+
+
+def test_k6_catches_an_extra_world_without_events() -> None:
+    ev = _synthetic()
+    logs = _logs(ev) + [{"world": 40, "queries": [], "fast_events": [], "checks": _logs(ev)[0]["checks"], "items": _logs(ev)[0]["items"]}]
+    r = A.log_linkage(ev, logs)
+    assert r["queries_match"] and r["fast_events_match"] and not r["passed"]
+
+
+def test_k7_offset_files_must_hold_the_same_events() -> None:
+    ev = _synthetic()
+    same = {k: {c: v.copy() for c, v in ev.items()} for k in A.OFFSETS}
+    for k in A.OFFSETS:
+        same[k]["pred_G"] = same[k]["pred_G"] + k  # predictions may differ
+    assert _eval(ev=ev, offsets=same)["legality"]["K7_offsets_same_events"]["passed"]
+    bad = {k: {c: v.copy() for c, v in d.items()} for k, d in same.items()}
+    bad[3]["answer"][5] += 1
+    r = _eval(ev=ev, offsets=bad)["legality"]["K7_offsets_same_events"]
+    assert not r["passed"] and r["differing"] == {"3": ["answer"]}
+    missing = {k: v for k, v in same.items() if k != 5}
+    assert not _eval(ev=ev, offsets=missing)["legality"]["K7_offsets_same_events"]["passed"]
+    assert not _eval(ev=ev, stage="final", offsets=None)["legality"]["K7_offsets_same_events"]["passed"]
+    assert "K7_offsets_same_events" not in _eval(ev=ev)["legality"]
+
+
+def test_query_tie_rate_is_over_queries_answered_from_slow() -> None:
+    ev = _synthetic()
+    q = np.flatnonzero(ev["kind"] == A.KIND_QUERY)
+    ev["g_slow"][q[:400]] = 1
+    ev["query_tie"][q[:40]] = 1
+    d = _eval(ev=ev)["diagnostics"]
+    assert d["D8_query_tie_rate"] == pytest.approx(40 / 400) and d["D8_slow_hit_rate"] == pytest.approx(400 / len(q))

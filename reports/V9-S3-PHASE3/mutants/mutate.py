@@ -172,6 +172,21 @@ M = [
     ("mp_no_code_check", MP, "    if pr.get(\"code_manifest_sha256\") != code_sha or pr.get(\"code_dirty\") != []:", "    if pr.get(\"code_dirty\") != []:"),
     ("mp_dirty_ok", MP, "    if pr.get(\"code_manifest_sha256\") != code_sha or pr.get(\"code_dirty\") != []:", "    if pr.get(\"code_manifest_sha256\") != code_sha:"),
     ("mp_dev_uses", MP, "\"dev_max_uses\": 0,", "\"dev_max_uses\": 2,"),
+    # r2 recheck: authorisation of registered partitions, K7, readback, timeout
+    ("vg_auth_off", VG, "    if ns not in registered:\n        return True, None\n", "    return True, None\n"),
+    ("vg_auth_no_marker", VG, " or not (root / \"FINAL_READ_ONCE.json\").is_file()", ""),
+    ("vg_auth_wrong_dir", VG, "if p.parent != root / \"final-final\" or", "if False or"),
+    ("vg_auth_any_name", VG, "    if p.name != \"worlds.jsonl\":\n", "    if False:\n"),
+    ("vg_auth_dev_no_ledger", VG, " or not (root / \"dev_uses.json\").is_file()", ""),
+    ("vg_auth_unknown_allowed", VG, "return False, f\"{ns}: registered partition with no registered run\"", "return True, None"),
+    ("vg_main_no_auth", VG, "    if not ok:\n        print(", "    if False:\n        print("),
+    ("vg_names_check_off", VG, "    if FINAL_NAMES | DEV_NAMES != PS.REGISTERED:", "    if False:"),
+    ("an_k7_off", ANF, "return {\"passed\": bool(sorted(offsets) == sorted(OFFSETS) and not any(bad.values())),", "return {\"passed\": True,"),
+    ("an_k7_no_keyset", ANF, "bool(sorted(offsets) == sorted(OFFSETS) and not any(bad.values()))", "bool(not any(bad.values()))"),
+    ("an_k7_optional", ANF, "    if offsets is not None or stage is not None:", "    if offsets is not None:"),
+    ("an_k7_identity_short", ANF, "IDENTITY = (\"kind\", \"world\", \"episode\", \"t\", \"answer\",", "IDENTITY = (\"kind\", \"world\", \"episode\", \"t\","),
+    ("run_k6_in_memory_EQUIV", RUN, "        R[\"result\"] = A.evaluate(ev, on_disk,", "        R[\"result\"] = A.evaluate(ev, logs,"),
+    ("run_timeout_fixed", RUN, "capture_output=True, text=True, timeout=left)", "capture_output=True, text=True, timeout=1200)"),
     ("vf_L_includes_current", VF, "            if e < q[\"episode\"]:", "            if e <= q[\"episode\"]:"),
 ]
 

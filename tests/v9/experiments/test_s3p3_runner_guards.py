@@ -369,7 +369,8 @@ def test_dev_runs_through_the_path_after_the_ledger(root) -> None:
     again = AP.evaluate(ev, logs, stage="dev", n_worlds=3, external=lg["K2_independent"]["report"], external_gen=lg["K2b_generator"]["report"], offsets=off)
     assert json.dumps(again, sort_keys=True) == json.dumps(R["result"], sort_keys=True)
     assert set(R["result"]["descriptive"]) == {c[0] for c in AP.COMPARISONS} and set(R["result"]["offsets"]) == {str(k) for k in AP.OFFSETS}
-    assert {"K1_versions", "K2_independent", "K2b_generator", "K3_restore_replay", "K4_labels", "K5_samples", "K6_events_match_log"} <= set(lg)
+    assert {"K1_versions", "K2_independent", "K2b_generator", "K3_restore_replay", "K4_labels", "K5_samples", "K6_events_match_log", "K7_offsets_same_events"} <= set(lg)
+    assert lg["K7_offsets_same_events"]["passed"] is True
     # the offset files are the offset analyses of the same worlds, and they differ from each other
     sys.path.insert(0, str(root / "src"))
     try:
@@ -459,3 +460,37 @@ def test_registered_stage_sizes_of_the_runner() -> None:
     assert all(v["limit"] <= 1800 for v in mod.STAGES.values())
     assert mod.SMOKE_NAMESPACE == "s3p3x-smoke" and mod.SMOKE_NAMESPACE not in AP.NAMESPACES.values()
     assert mod.THIRD_PARTY == ("numpy",) and "mlx" not in (REPO / RUNNER).read_text(encoding="utf-8").split('"""')[2]
+
+
+def _runner_module():
+    import importlib.util
+
+    spec_ = importlib.util.spec_from_file_location("s3p3_runner_timeout_test", REPO / RUNNER)
+    mod = importlib.util.module_from_spec(spec_)
+    spec_.loader.exec_module(mod)
+    return mod
+
+
+def test_verifier_timeout_is_the_time_left_in_the_run(monkeypatch) -> None:
+    mod = _runner_module()
+    seen = {}
+
+    class Done:
+        returncode, stdout, stderr = 0, json.dumps({"passed": True}), ""
+
+    def fake_run(cmd, **kw):
+        seen.update(kw, cmd=cmd)
+        return Done()
+
+    monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    assert mod.independent_check(mod.VERIFY, "w.jsonl", deadline=GD.Deadline(37)) == {"passed": True}
+    assert 30 < seen["timeout"] <= 37 and seen["cmd"][1] == "-I"
+    with pytest.raises(GD.GuardError, match="wall-clock"):
+        mod.independent_check(mod.VERIFY, "w.jsonl", deadline=GD.Deadline(-1))
+
+    def slow(cmd, **kw):
+        raise subprocess.TimeoutExpired(cmd, kw["timeout"])
+
+    monkeypatch.setattr(mod.subprocess, "run", slow)
+    with pytest.raises(GD.GuardError, match="wall-clock"):
+        mod.independent_check(mod.VERIFY, "w.jsonl", deadline=GD.Deadline(5))

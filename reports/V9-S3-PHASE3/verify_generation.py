@@ -8,6 +8,9 @@
   - 世界种子与布局哈希。
 与 worlds.jsonl 逐条比对。K2 证明「给定这份日志，机制按规格运行」，K2b 把日志钉回生成器。
 
+登记分区（s3p3-dev、s3p3-final）只在本阶段那次登记运行内部放行：日志必须是运行目录里的
+worlds.jsonl，而且 dev 账本或 final 只读一次标记已经写下；否则在生成任何世界之前拒绝。
+
 用法：python -I verify_generation.py <worlds.jsonl> <命名空间> <每个世界的回合数>
 """
 import json, sys
@@ -18,6 +21,9 @@ sys.path.insert(0, str(REPO / "src"))
 from ainerzero.v9.experiments.s3 import persist as PS, spec  # noqa: E402
 from ainerzero.v9.experiments.s3.store import parse_student_step  # noqa: E402
 
+ROOT = REPO / "artifacts/v9/s3/phase3"
+FINAL_NAMES = frozenset({"s3p3-final"})
+DEV_NAMES = frozenset({"s3p3-dev"})
 FORBIDDEN = ("ainerzero.v9.experiments.s3.promotion", "ainerzero.v9.experiments.s3.analysis_p3", "ainerzero.v9.experiments.s3.cues")
 
 
@@ -55,6 +61,24 @@ def expected(seq):
 KEYS = ("episode", "t", "xy", "terrain", "shown", "answer", "decoy", "relocated")
 
 
+def authorize(path, ns, *, root, final_names, dev_names, registered):
+    """(allowed, reason). A registered partition is regenerated only inside its own registered run."""
+    if ns not in registered:
+        return True, None
+    p, root = Path(path).resolve(), Path(root).resolve()
+    if p.name != "worlds.jsonl":
+        return False, f"{ns}: the log must be a run's worlds.jsonl"
+    if ns in final_names:
+        if p.parent != root / "final-final" or not (root / "FINAL_READ_ONCE.json").is_file():
+            return False, f"{ns}: only inside the final run, after its read-once marker"
+        return True, None
+    if ns in dev_names:
+        if p.parent.parent != root or not p.parent.name.startswith("dev-") or not (root / "dev_uses.json").is_file():
+            return False, f"{ns}: only inside a dev run, after its ledger entry"
+        return True, None
+    return False, f"{ns}: registered partition with no registered run"
+
+
 def check_world(lg, ns, n_episodes):
     w = lg["world"]
     seq = PS.generate_sequence(ns, w, n_episodes=n_episodes, allow_registered=ns in PS.REGISTERED)
@@ -73,6 +97,13 @@ def check_world(lg, ns, n_episodes):
 
 
 def main(path, ns, n_episodes):
+    if FINAL_NAMES | DEV_NAMES != PS.REGISTERED:
+        raise SystemExit(f"registered names out of step with the generator: {sorted(PS.REGISTERED)}")
+    ok, why = authorize(path, ns, root=ROOT, final_names=FINAL_NAMES, dev_names=DEV_NAMES, registered=PS.REGISTERED)
+    if not ok:
+        print(json.dumps({"worlds": 0, "queries": 0, "fast_events": 0, "observations": 0, "namespace": ns,
+                          "n_problems": 1, "problems": [why], "forbidden_loaded": [], "passed": False}, ensure_ascii=False))
+        return
     problems, worlds, n_q, n_f, n_o = [], [], 0, 0, 0
     with open(path, encoding="utf-8") as fh:
         for line in fh:
