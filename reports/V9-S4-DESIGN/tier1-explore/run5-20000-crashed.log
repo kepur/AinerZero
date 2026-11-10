@@ -1,0 +1,31 @@
+pool {'size': 120000, 'buckets': {2: 1177, 3: 7320, 4: 27210, 5: 21097, 6: 24839, 7: 21208, 8: 14417, 9: 2400, 10: 293, 11: 37, 12: 1, 13: 1}, 'seconds': 84.3}
+L-ind {'train_seconds': 161.0, 'six': {'D': 0.0013, 'D_low': -0.0046, 'HF': 0.0579, 'HF_high': 0.0692}, 'ten': {'D': 0.0007, 'D_low': -0.0082, 'HF': 0.0605, 'HF_high': 0.07}, 'dyn_eval_seconds': 1.6} last loss (20000, 7.8640546798706055)
+L-int {'train_seconds': 342.8, 'six': {'D': 0.4439, 'D_low': 0.3971, 'HF': 0.0266, 'HF_high': 0.0339}, 'ten': {'D': 0.4091, 'D_low': 0.3639, 'HF': 0.0265, 'HF_high': 0.0306}, 'dyn_eval_seconds': 2.4} last loss (20000, 4.155549049377441)
+Traceback (most recent call last):
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-DESIGN/tier1-explore/explore5.py", line 94, in <module>
+    main()
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-DESIGN/tier1-explore/explore5.py", line 73, in main
+    "six": summary(dyn(ev6, pm), base6), "ten": summary(dyn(ev10, pm), base10)}
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-DESIGN/tier1-explore/explore5.py", line 43, in summary
+    D = Me.bootstrap(Me.stat_D, {"x_coll": np.array(x["coll"]), "b_coll": np.array(b["coll"])}, n_boot=2000)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/metrics.py", line 89, in bootstrap
+    lo, hi = np.quantile(boot, [tail, 1 - tail])
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py", line 4508, in quantile
+    return _quantile_unchecked(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py", line 4522, in _quantile_unchecked
+    return _ureduce(a,
+           ^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py", line 3892, in _ureduce
+    r = func(a, **kwargs)
+        ^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py", line 4681, in _quantile_ureduce_func
+    result = _quantile(arr,
+             ^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/lib/_function_base_impl.py", line 4805, in _quantile
+    slices_having_nans = np.isnan(arr[-1, ...])
+                                  ~~~^^^^^^^^^
+IndexError: index -1 is out of bounds for axis 0 with size 0

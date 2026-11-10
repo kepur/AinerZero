@@ -78,13 +78,20 @@ def bootstrap(stat: Callable[..., float], sums: dict[str, np.ndarray], *, n_boot
     n_w = arr.shape[1]
     if n_w == 0:
         return {"value": None, "ci_low": None, "ci_high": None, "bonf_low": None, "bonf_high": None, "n_worlds": 0}
-    point = stat(**dict(zip(names, arr.sum(1))))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        point = float(stat(**dict(zip(names, arr.sum(1)))))
     rng = np.random.default_rng(seed)
     draws = rng.integers(0, n_w, size=(n_boot, n_w))
     tot = arr[:, draws].sum(-1)                                              # [K, n_boot]
     with np.errstate(divide="ignore", invalid="ignore"):
         boot = np.array(stat(**dict(zip(names, tot))), dtype=np.float64)
     boot = boot[np.isfinite(boot)]
+    if not np.isfinite(point) or len(boot) < n_boot:
+        # An undefined ratio (e.g. E-P no better than E-B) in the point value or in any resample:
+        # dropping those resamples would narrow the interval, so no interval is given and every
+        # gate that needs one fails. The point value is kept when it is defined.
+        return {"value": float(point) if np.isfinite(point) else None, "ci_low": None, "ci_high": None,
+                "bonf_low": None, "bonf_high": None, "n_worlds": int(n_w), "n_boot_finite": int(len(boot))}
     tail = (1 - LEVEL) / 2
     lo, hi = np.quantile(boot, [tail, 1 - tail])
     blo, bhi = np.quantile(boot, [tail / m, 1 - tail / m])

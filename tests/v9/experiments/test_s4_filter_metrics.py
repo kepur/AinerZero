@@ -172,7 +172,49 @@ def test_bootstrap_ratios() -> None:
     assert hf["value"] == pytest.approx(0.1)
     assert Me.bootstrap(Me.stat_diff, {"x": np.ones(5), "y": np.zeros(5), "n": np.full(5, 2.0)})["value"] == pytest.approx(0.5)
     assert Me.bootstrap(Me.stat_D, {"x_coll": np.zeros(0), "b_coll": np.zeros(0)})["value"] is None
+    undefined = Me.bootstrap(Me.stat_C, {"x": np.ones(5), "b": np.ones(5), "p": np.ones(5)})
+    assert undefined["value"] is None and undefined["ci_low"] is None and undefined["n_worlds"] == 5
+    # one world carries the whole denominator: about a third of the resamples are 0/0. Dropping them
+    # would give the interval [0.5, 0.5]; the point value stays, the interval is withheld.
+    one = np.array([1.0, 0, 0, 0, 0])
+    partial = Me.bootstrap(Me.stat_C, {"x": one, "b": np.zeros(5), "p": 2 * one}, n_boot=2000)
+    assert partial["value"] == pytest.approx(0.5) and 0 < partial["n_boot_finite"] < 2000
+    assert partial["ci_low"] is partial["ci_high"] is partial["bonf_low"] is partial["bonf_high"] is None
+    assert r["n_boot_finite"] == Me.BOOT_N
 
 
 def test_metrics_constants() -> None:
     assert (Me.GRAZE_MARGIN, Me.BOOT_N, Me.BOOT_SEED, Me.LEVEL) == (0.3, 10_000, 20261110, 0.95)
+
+
+def test_collision_and_graze_sets_recomputed_independently(ep) -> None:
+    """A model that stops every disk: the error of a disk is its true next speed, so the lists
+    name exactly the collision disks and the grazing disks (end-of-step distance)."""
+    stop = lambda P, V, pil: (P, np.zeros_like(V))
+    got = Me.dynamics_errors(ep, stop)
+    coll, graze = [], []
+    for s, nxt in zip(ep.steps[:-1], ep.steps[1:]):
+        c = set()
+        for kind, i, j in s.contacts:
+            if kind == "disk":
+                c |= {i, j}
+        g = set()
+        for i in range(ep.n_disks):
+            for j in range(ep.n_disks):
+                if i != j and np.hypot(*(nxt.positions[i] - nxt.positions[j])) < 2 * W.RADIUS + 0.3:
+                    g.add(i)
+        g -= c
+        coll += [float(np.hypot(*nxt.velocities[i])) for i in sorted(c)]
+        graze += [float(np.hypot(*nxt.velocities[i])) for i in sorted(g)]
+    assert got["coll"] == pytest.approx(coll) and got["graze"] == pytest.approx(graze)
+    assert len(graze) > 10
+
+
+def test_bootstrap_interval_recomputed() -> None:
+    rng = np.random.default_rng(1)
+    x = rng.random(30); b = rng.random(30) + 1
+    r = Me.bootstrap(Me.stat_D, {"x_coll": x, "b_coll": b}, n_boot=500, seed=11, m=4)
+    draws = np.random.default_rng(11).integers(0, 30, size=(500, 30))
+    boot = 1 - x[draws].sum(1) / b[draws].sum(1)
+    assert r["ci_low"] == pytest.approx(np.quantile(boot, 0.025)) and r["ci_high"] == pytest.approx(np.quantile(boot, 0.975))
+    assert r["bonf_low"] == pytest.approx(np.quantile(boot, 0.025 / 4)) and r["bonf_high"] == pytest.approx(np.quantile(boot, 1 - 0.025 / 4))

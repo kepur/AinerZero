@@ -90,8 +90,12 @@ def _new_track(P, V, q, cfg, rng):
 
 
 def track(detections: Sequence[np.ndarray], pillars: Sequence[W.Pillar], model: ProcessModel,
-          rng: np.random.Generator, cfg: FilterConfig = FilterConfig()) -> tuple[list[np.ndarray], int]:
-    """Track one episode from its detection lists. Returns (track id per detection per step, number of tracks)."""
+          rng: np.random.Generator, cfg: FilterConfig = FilterConfig(), *,
+          on_predict: Callable | None = None) -> tuple[list[np.ndarray], int]:
+    """Track one episode from its detection lists. Returns (track id per detection per step, number of tracks).
+
+    ``on_predict(t, P, V, assign, last)``, if given, sees the predicted ensembles after association
+    and before any update (copies; for diagnostics only, it cannot change the tracking)."""
     M = cfg.members
     P = np.zeros((M, 0, 2))
     V = np.zeros((M, 0, 2))
@@ -102,6 +106,8 @@ def track(detections: Sequence[np.ndarray], pillars: Sequence[W.Pillar], model: 
         if P.shape[1]:
             P, V = _predict(P, V, model, pillars, cfg, rng)
         assign = _associate(P, z, last, t, cfg)
+        if on_predict is not None:
+            on_predict(t, P.copy(), V.copy(), dict(assign), list(last))
         ids = np.empty(len(z), dtype=np.int64)
         for r in range(len(z)):
             if r in assign:

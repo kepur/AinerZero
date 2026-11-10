@@ -246,6 +246,9 @@ NATIVE_MODULES = {
     "test_s3_isolation_contract.py": "module-level importorskip mlx.core (S3 arms, P208 second-review checks)",
     "test_s3p2_arms_mlx.py": "module-level importorskip mlx.core/mlx.nn (S3 phase 2 training path)",
     "test_s3p2_runner_guards_native.py": "imports real MLX; runs the phase 2 runner start-up in a throwaway copy",
+    # S4 phase 1: learned dynamics in MLX.
+    "test_s4_learned_mlx.py": "module-level importorskip mlx.core (S4 learned dynamics, pools, training)",
+    "test_s4p1_runner_native.py": "runs the real S4 phase 1 runner (MLX) in throwaway copies",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).
