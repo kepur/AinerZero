@@ -174,22 +174,24 @@ def test_reappearances_follow_the_truth(ep) -> None:
         assert ep.steps[a].visible[k] and ep.steps[b].visible[k] and b - a >= 2
         assert not any(ep.steps[t].visible[k] for t in range(a + 1, b))
         assert k in ep.steps[a].truth_ids and k in ep.steps[b].truth_ids
-        coll = any(kind == "disk" and k in (i, j) for t in range(a + 1, b) for kind, i, j in ep.steps[t].contacts)
+        coll = any(kind == "disk" and k in (i, j) for t in range(a, b) for kind, i, j in ep.steps[t].contacts)
         assert e["collision"] == coll and e["gap"] == b - a - 1
 
 
-def test_collision_window_excludes_the_step_after_a() -> None:
-    """A contact between a and a+1 does not count; one between a+1 and a+2 does."""
+def test_collision_window_is_between_the_two_observations() -> None:
+    """Contacts of steps a .. b-1 count (they happen after seeing k at a, before seeing it at b); step b does not."""
     def step(t, vis, cont):
         z = np.zeros((2, 2))
         return W.Step(t, (0.0, 0.0, 0.0), z[:0], np.array([0] if vis else [], dtype=np.int64), z, z, np.array([vis, True]), tuple(cont))
 
-    seq = [step(0, True, [("disk", 0, 1)]), step(1, False, []), step(2, False, []), step(3, True, [])]
-    ep = W.Episode("x", 0, 2, (), tuple(seq))
-    assert W.reappearances(ep) == [{"k": 0, "a": 0, "b": 3, "gap": 2, "collision": False}]
-    seq[1] = step(1, False, [("disk", 0, 1)])
-    ep = W.Episode("x", 0, 2, (), tuple(seq))
-    assert W.reappearances(ep)[0]["collision"] is True
+    def ev(contact_at):
+        seq = [step(t, t in (0, 3), [("disk", 0, 1)] if t == contact_at else []) for t in range(5)]
+        return W.reappearances(W.Episode("x", 0, 2, (), tuple(seq)))
+
+    assert ev(None) == [{"k": 0, "a": 0, "b": 3, "gap": 2, "collision": False}]
+    assert ev(0)[0]["collision"] is True   # between a and a+1
+    assert ev(2)[0]["collision"] is True   # between b-1 and b
+    assert ev(3)[0]["collision"] is False  # after b
 
 
 def test_seed_recipe_matches_earlier_phases() -> None:

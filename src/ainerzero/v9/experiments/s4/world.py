@@ -218,8 +218,9 @@ STUDENT_KEYS = frozenset({"t", "agent", "detections"})
 def reappearances(ep: Episode) -> list[dict[str, Any]]:
     """Object k detected at a, not visible a+1..b-1, detected at b (b - a >= 2).
 
-    ``collision`` is whether the contact log has a disk contact of k in a step s with a < s < b
-    (the contacts of step s happen between s and s+1). Defined from the truth.
+    ``collision`` is whether the contact log has a disk contact of k in a step s with a <= s < b:
+    the contacts of step s happen between s and s+1, so these are all the contacts after the
+    observation at a and before the one at b. Defined from the truth.
     """
     T = len(ep.steps)
     vis = np.array([s.visible for s in ep.steps])
@@ -231,7 +232,7 @@ def reappearances(ep: Episode) -> list[dict[str, Any]]:
         for t in range(T):
             if vis[t, k]:
                 if last is not None and t - last > 1 and k in detected[last] and k in detected[t]:
-                    coll = any(k in disk_contacts[s] for s in range(last + 1, t))
+                    coll = any(k in disk_contacts[s] for s in range(last, t))
                     out.append({"k": k, "a": last, "b": t, "gap": t - last - 1, "collision": bool(coll)})
                 last = t
     return out
