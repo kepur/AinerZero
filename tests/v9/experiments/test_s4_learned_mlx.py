@@ -178,6 +178,22 @@ def test_perturbation_rules() -> None:
     assert abs(np.mean(dp > 0.3) - big) < 0.01
     small = dp < 0.15
     assert 0.19 < np.std(dv[small]) < 0.26
+    # a ghost copies a disk already in the sample: the same velocity, a position a few GHOST_SIGMA away
+    vel2 = np.arange(12, dtype=np.float64).reshape(6, 2) + 1.0
+    old = (L.P_DROP, L.GHOSTS, L.VISIBLE_SIGMA, L.HIDDEN_SIGMA)
+    try:
+        L.P_DROP, L.GHOSTS, L.VISIBLE_SIGMA, L.HIDDEN_SIGMA = 0.0, 3.0, (0.0, 0.0), (0.0, 0.0)
+        ghosts = 0
+        for _ in range(200):
+            p, v = L.perturb(pos, vel2, rng, exact=False)
+            assert np.array_equal(p[:6], pos) and np.array_equal(v[:6], vel2)
+            for g in range(6, len(p)):
+                src = [k for k in range(g) if np.array_equal(v[g], v[k])]
+                assert src and 0 < min(np.linalg.norm(p[g] - p[k]) for k in src) < 6 * L.GHOST_SIGMA
+                ghosts += 1
+        assert ghosts > 300
+    finally:
+        L.P_DROP, L.GHOSTS, L.VISIBLE_SIGMA, L.HIDDEN_SIGMA = old
 
 
 def test_pool_has_the_exact_share(eps) -> None:
@@ -189,6 +205,37 @@ def test_pool_has_the_exact_share(eps) -> None:
     assert abs(hits / pool.size() - L.EXACT_FRAC) < 0.04
     ex = L.make_pool(eps, 50, np.random.default_rng(4), W.physics, exact_frac=1.0)
     assert set(ex.by_n) <= {4, 6, 8}
+
+
+def test_pool_keeps_each_sample_with_the_pillars_of_its_own_world(eps) -> None:
+    """An exact sample is a truth state, so the episode it came from is known without the pool's help."""
+    where = {s.positions.astype(np.float32).tobytes(): w for w, e in enumerate(eps) for s in e.steps}
+    pool = L.make_pool(eps, 600, np.random.default_rng(3), W.physics)
+    found = set()
+    for e in pool.by_n.values():
+        for i in range(len(e["p"])):
+            w = where.get(e["p"][i].tobytes())
+            if w is not None:
+                assert np.array_equal(e["pil"][i], np.array(eps[w].pillars, dtype=np.float32))
+                found.add(w)
+    assert found == {0, 1, 2}
+    assert len({np.array(e.pillars).tobytes() for e in eps}) == 3
+
+
+def test_zero_output_is_constant_velocity() -> None:
+    """The network adds a correction to constant velocity: with a zero output layer the step is
+    p + v DT with v unchanged, and a position output of 1 moves the disk by P_SCALE."""
+    p, v, pil = _state()
+    for arm in ("L-ind", "L-int", "L-int-c"):
+        m = _model(arm, 1)
+        m.out.weight = mx.zeros_like(m.out.weight)
+        m.out.bias = mx.zeros_like(m.out.bias)
+        pn, vn, _, _ = m(mx.array(p), mx.array(v), mx.array(pil))
+        assert np.allclose(np.array(pn), p + v * W.DT, atol=1e-6) and np.array_equal(np.array(vn), v)
+        m.out.bias = mx.array([1.0, -2.0, 0.5, 0.25])
+        pn, vn, _, _ = m(mx.array(p), mx.array(v), mx.array(pil))
+        assert np.allclose(np.array(pn) - (p + v * W.DT), np.array([1.0, -2.0]) * L.P_SCALE, atol=1e-5)
+        assert np.allclose(np.array(vn) - v, [0.5, 0.25], atol=1e-6)
 
 
 def test_pool_labels_match_the_simulator_sample_by_sample(eps, pool) -> None:
@@ -274,6 +321,16 @@ def test_sigma_arm_keeps_the_frozen_mean(eps, pool) -> None:
     b = s(mx.array(p), mx.array(v), mx.array(pil))
     assert np.array_equal(np.array(a[0]), np.array(b[0])) and np.array_equal(np.array(a[1]), np.array(b[1]))
     assert log[-1][1] < log[0][1]
+    # two separate protections of the mean: only the variance head is trainable, and the loss has
+    # no gradient into the mean even on a model that is not frozen
+    assert {k.split(".")[0] for k, _ in tree_flatten(s.trainable_parameters())} == {"var1", "var2"}
+    import mlx.nn as nn
+
+    free = _model("L-int-s", 5)
+    batch = {k: mx.array(x[:8]) for k, x in sp.by_n[6].items()}
+    _, g = nn.value_and_grad(free, L.nll_loss)(free, batch)
+    g = {k: np.array(x) for k, x in tree_flatten(g)}
+    assert all(not x.any() for k, x in g.items() if not k.startswith("var")) and any(x.any() for k, x in g.items() if k.startswith("var"))
     with pytest.raises(ValueError):
         L.train("L-int-s", sp, steps=1, batch=4, seed=1)
     with pytest.raises(ValueError):
@@ -403,7 +460,7 @@ def test_near_miss_sampling(pool) -> None:
         else:
             want.append((ns[j], rng.integers(0, int(sizes[j]), 16).tolist()))
     assert [(n, i.tolist()) for n, i in L.batches(pool, 40, 16, np.random.default_rng(5), coll_share=0.5)] == want
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="exceed the batch"):
         next(L.batches(pool, 1, 16, np.random.default_rng(0), coll_share=0.75, near_share=0.5))
     sp_like = L.Pool({4: {"p": np.zeros((5, 4, 2), np.float32)}})
     assert all(len(i) == 3 for _, i in L.batches(sp_like, 5, 3, np.random.default_rng(0), coll_share=0.3, near_share=0.3))

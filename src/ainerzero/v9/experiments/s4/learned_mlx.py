@@ -45,6 +45,7 @@ COLL_SHARE = 0.5                # share of each mean-arm batch drawn from sample
 NEAR_SHARE = 0.0                # share drawn from near misses: no disk contact at step 1, a pair ending it within NEAR_GAP
 NEAR_GAP = 2 * RADIUS + 0.3     # centre distance after step 1 that counts as a near miss
 CLIP = 10.0                     # global gradient-norm clip
+LR_END = None                   # None: constant learning rate; a number: cosine decay to it over the training steps
 EPS_DIR = 0.01                  # softening of the pair direction in L-int-c: bounded at coincident disks
 
 # perturbation rules (DESIGN-r3 §3)
@@ -306,8 +307,9 @@ def train(arm: str, pool: Pool, *, steps: int, batch: int, seed: int, lr: float 
           mean_model: Dynamics | None = None, log_every: int = 100) -> tuple[Dynamics, list[tuple[int, float]]]:
     """Adam on ``rollout_loss`` (mean arms; COLL_SHARE of each batch from contact samples and
     NEAR_SHARE from near misses) or, for L-int-s, on ``nll_loss`` with the mean taken from
-    ``mean_model`` (a trained L-int) and frozen. Gradients are clipped to a global norm of CLIP;
-    a non-finite loss or gradient stops training.
+    ``mean_model`` (a trained L-int) and frozen. The learning rate is ``lr``, constant or with a
+    cosine decay to LR_END. Gradients are clipped to a global norm of CLIP; a non-finite loss or
+    gradient stops training.
     Returns the model and (step, loss) every ``log_every``."""
     from mlx.utils import tree_flatten
 
@@ -327,7 +329,7 @@ def train(arm: str, pool: Pool, *, steps: int, batch: int, seed: int, lr: float 
         fn = rollout_loss
     share, near = (COLL_SHARE, NEAR_SHARE) if arm != "L-int-s" else (0.0, 0.0)
     mx.eval(model.parameters())
-    opt = optim.Adam(learning_rate=lr)
+    opt = optim.Adam(learning_rate=lr if LR_END is None else optim.cosine_decay(lr, steps, LR_END))
     vg = nn.value_and_grad(model, fn)
     rng = np.random.default_rng(seed)
     log: list[tuple[int, float]] = []
