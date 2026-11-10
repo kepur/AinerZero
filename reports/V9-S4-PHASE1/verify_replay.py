@@ -1,7 +1,8 @@
 """S4 第一阶段合法性门「确定性」：在另一个进程里从落盘的权重重跑一部分世界（DESIGN-r3 §5）。
 
-用 python -I 运行，MLX 只用 CPU。读 replay.json（世界的检测序列、柱子、权重相对路径），对每个学习臂的
-登记跟踪格（三个种子、登记滤波器）重新跟踪，轨迹分配的摘要须与 worlds.jsonl 里落盘的逐位相同。
+用 python -I 运行，MLX 只用 CPU。读 replay.json（世界的检测序列、真值编号、柱子、权重相对路径），对每个学习臂
+和 E-B、E-P 的登记跟踪格（三个种子、登记滤波器）重新跟踪：轨迹分配的摘要须与 worlds.jsonl 里落盘的逐位相同，
+由重放的分配与真值编号重算的每个事件的对错须与落盘的相同。一个格都没核对时判不过。
 用法：python -I verify_replay.py <replay.json> <worlds.jsonl> <运行目录>，结果以 JSON 打印到标准输出。
 """
 import json
@@ -16,6 +17,9 @@ import numpy as np  # noqa: E402
 from ainerzero.v9.experiments.s4 import analysis as A  # noqa: E402
 from ainerzero.v9.experiments.s4 import filter as F  # noqa: E402
 from ainerzero.v9.experiments.s4 import learned_mlx as L  # noqa: E402
+from ainerzero.v9.experiments.s4 import models as Mo  # noqa: E402
+
+HAND = ("E-B", "E-P")
 
 
 def base_arm(name):
@@ -32,6 +36,9 @@ def main():
     for name, rel in rep["weights"].items():
         net = L.load(base_arm(name), str(run / rel))
         models[name] = L.as_process_model(net, with_variance=base_arm(name) == "L-int-s")
+    for arm in HAND:                       # E-B and E-P are the denominator of C: replay them too
+        for s in A.SEEDS:
+            models[f"{arm}#{s}"] = Mo.HAND_MODELS[arm]
     checked, bad = 0, []
     for w in rep["worlds"]:
         rec = records[(w["kind"], w["world"])]
@@ -45,7 +52,13 @@ def main():
             checked += 1
             if A.ids_digest(ids) != rec["ids_sha256"][cell.key]:
                 bad.append(f"{w['kind']} {w['world']} {cell.key}")
-    print(json.dumps({"passed": checked > 0 and not bad, "checked": checked, "mismatches": bad[:20]}))
+            # the correctness of every event, recomputed from the replayed ids and the truth identities
+            at = [dict(zip(t, np.asarray(i).tolist())) for t, i in zip(w["truth_ids"], ids)]
+            correct = [int(at[a][k] == at[b][k]) for k, a, b, _ in rec["events"]]
+            if correct != rec["reid"][cell.key]:
+                bad.append(f"{w['kind']} {w['world']} {cell.key} reid")
+    expected = len(rep["worlds"]) * len(models)
+    print(json.dumps({"passed": expected > 0 and checked == expected and not bad, "checked": checked, "mismatches": bad[:20]}))
 
 
 if __name__ == "__main__":

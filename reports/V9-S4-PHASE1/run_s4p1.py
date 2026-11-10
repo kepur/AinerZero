@@ -197,14 +197,11 @@ def student_check(eps, nets):
     rows = []
     for ep in eps[:STUDENT_WORLDS]:
         dets = A.student_detections(ep)
-        mut = [d if t <= STUDENT_CUT else d[:-1] + 0.5 for t, d in enumerate(dets)]
+        mut = A.future_mutation(dets, STUDENT_CUT)
         for name, m in models.items():
             a, _ = F.track(dets, ep.pillars, m, np.random.default_rng(7))
             b, _ = F.track(mut, ep.pillars, m, np.random.default_rng(7))
-            rows.append({"world": ep.world_index, "model": name,
-                         "prefix_equal": all(np.array_equal(x, y) for x, y in zip(a[: STUDENT_CUT + 1], b[: STUDENT_CUT + 1])),
-                         "consumed": all(len(y) == len(d) for y, d in zip(b, mut)),
-                         "suffix_changed": any(not np.array_equal(x, y) for x, y in zip(a[STUDENT_CUT + 1:], b[STUDENT_CUT + 1:]))})
+            rows.append({"world": ep.world_index, "model": name, **A.mutation_row(a, b, mut, STUDENT_CUT)})
     ok = keys_ok and rows and all(r["prefix_equal"] and r["consumed"] and r["suffix_changed"] for r in rows)
     return {"passed": bool(ok), "keys_ok": keys_ok, "rows": rows}
 
@@ -298,6 +295,7 @@ def main():
         refs = fit_refs(train_eps, ns["train"], nets)
         R["calibration_references"] = refs
         deadline.check()
+        R["pre_eval_seconds"] = round(time.monotonic() - t0, 1)       # start-up, train worlds, pools, training, references
 
         registered = a.stage == "final"
         if registered:
@@ -309,6 +307,7 @@ def main():
             GD.consume_final_read(lock, FINAL_MARKER, a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
             R["final_read_marker_sha256"] = sha(FINAL_MARKER)
             save()
+        t_post = time.monotonic()                                          # everything from here on is what the reserve must cover
         eval_eps = [(kind, W.generate_episode(ns["eval"], w, n, allow_registered=registered)) for kind, w, n in A.eval_world_ids(cfg["sizes"])]
         say("evaluation worlds", len(eval_eps))
         main_cells = [(c.arm, c.seed, c.variant) for c in A.plan_cells(LEARNED)]
@@ -332,7 +331,8 @@ def main():
             picks += [(kd, ep) for kd, ep in eval_eps if kd == kind][:k]
         replay.write_text(json.dumps({"ns": ns["eval"], "weights": {n: str(Path(p).relative_to(out)) for n, p in weights.items()},
                                       "worlds": [{"kind": kd, "world": ep.world_index, "pillars": [list(p) for p in ep.pillars],
-                                                  "detections": [d.tolist() for d in A.student_detections(ep)]} for kd, ep in picks]}), encoding="utf-8")
+                                                  "detections": [d.tolist() for d in A.student_detections(ep)],
+                                                  "truth_ids": [s.truth_ids.tolist() for s in ep.steps]} for kd, ep in picks]}), encoding="utf-8")
         R["files_sha256"] = {f.name: sha(f) for f in (worlds, out / "worlds.partial.jsonl", labels, replay)} | {f"weights/{Path(p).name}": sha(p) for p in weights.values()}
         save()
 
@@ -345,7 +345,7 @@ def main():
         main_r = [r for r in on_disk if r["kind"] == "main"]
         ext_r = [r for r in on_disk if r["kind"] == "extrap"]
         R["checks"] = {"student_view": st, "labels": lab, "replay": rep}
-        R["result"] = A.evaluate(main_r, ext_r, n_main=cfg["sizes"][0], labels_ok=bool(lab.get("passed")),
+        R["result"] = A.evaluate(main_r, ext_r, n_main=cfg["sizes"][0], n_extrap=cfg["sizes"][1], labels_ok=bool(lab.get("passed")),
                                  student_ok=st["passed"], replay_ok=bool(rep.get("passed")))
         R["descriptive"] = A.summarize_descriptive(main_r, ext_r, LEARNED)
         if pre:
@@ -355,6 +355,7 @@ def main():
                 R["result"]["valid"] = False
                 for g in R["result"]["gates"].values():
                     g["passed"], g["void"] = False, "frozen files or modules changed during the run"
+        R["post_marker_seconds"] = round(time.monotonic() - t_post, 1)    # evaluation worlds, evaluation, files, checks, gates
         save()
         say("valid", R["result"]["valid"], {k: v["passed"] for k, v in R["result"]["gates"].items()})
 

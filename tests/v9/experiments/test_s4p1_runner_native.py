@@ -149,7 +149,9 @@ def test_smoke_runs_end_to_end_and_records_its_files(smoke) -> None:
     assert {c.key for c in A.plan_cells(R["learned_arms"])} == main_keys
     assert {k for k in recs[2]["reid"]} == {c.key for c in A.plan_cells(R["learned_arms"]) if c.variant == "base"}
     assert R["checks"]["labels"]["passed"] and R["checks"]["replay"]["passed"] and R["checks"]["student_view"]["passed"]
-    assert R["checks"]["replay"]["checked"] == 2 * 18
+    assert R["checks"]["replay"]["checked"] == 2 * (18 + 6)                  # learned cells plus E-B and E-P
+    assert "worlds.partial.jsonl" in R["files_sha256"] and R["result"]["legality"]["complete"]["passed"]
+    assert R["pre_eval_seconds"] > 0 and R["post_marker_seconds"] > 0
     assert set(R["result"]["gates"]) == {"HD", "HF", "HD-x", "H1", "H2", "H3"}
     assert not R["result"]["legality"]["samples"]["passed"]       # two worlds are far below the registered sample counts
     assert R["prereg_sha256"] is None and R["code_dirty"] == []
@@ -411,8 +413,27 @@ def test_replay_verifier_catches_a_changed_assignment(smoke, tmp_path) -> None:
         return json.loads(r.stdout)
 
     honest, tampered = verify(out / "worlds.jsonl"), verify(bad)
-    assert honest["passed"] and honest["checked"] == 2 * 18
+    assert honest["passed"] and honest["checked"] == 2 * (18 + 6)
     assert not tampered["passed"] and tampered["mismatches"] == [f"{w['kind']} {w['world']} {key}"]
+    # a hand-made cell (the denominator of C) and a flipped correctness flag are caught too
+    recs2 = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]
+    replayed = {(x["kind"], x["world"]) for x in rep["worlds"]}
+    t2 = next(r for r in recs2 if (r["kind"], r["world"]) in replayed and r["events"])
+    where = f"{t2['kind']} {t2['world']}"
+    t2["ids_sha256"][A.Cell("E-B", 1).key] = "0" * 64
+    flip_key = A.Cell("L-int", 3).key
+    t2["reid"][flip_key][0] = 1 - t2["reid"][flip_key][0]
+    bad2 = tmp_path / "worlds-bad2.jsonl"
+    bad2.write_text("".join(json.dumps(r) + "\n" for r in recs2))
+    out2 = verify(bad2)
+    assert not out2["passed"]
+    assert f"{where} {A.Cell('E-B', 1).key}" in out2["mismatches"] and f"{where} {flip_key} reid" in out2["mismatches"]
+    # nothing to check is not a pass
+    empty = tmp_path / "replay-empty.json"
+    empty.write_text(json.dumps(dict(rep, worlds=[])))
+    r = subprocess.run([sys.executable, "-I", str(root / VERIFY[1]), str(empty), str(out / "worlds.jsonl"), str(out)],
+                       cwd=root, env=env, capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0 and not json.loads(r.stdout)["passed"]
 
 
 def test_a_module_loaded_outside_the_manifest_during_the_final_invalidates_it(tmp_path) -> None:

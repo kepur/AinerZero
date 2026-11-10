@@ -1,0 +1,8 @@
+#!/bin/bash
+# 驱动跑完、锁空后，持锁跑第 2 项补充（只作用于交互臂的违例）与评测中途被杀、重放篡改的触发用例
+until grep -q "^done" /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/out/mut_mlx.log; do sleep 5; done
+for i in $(seq 1 120); do
+  cd /Users/mac/AinerWorkFlow/AinerZero && PYTHONDONTWRITEBYTECODE=1 env -u PYTHONPATH .venv/bin/python -I /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/harness/hold_lock.py /Users/mac/AinerWorkFlow/AinerZero/artifacts/locks/m0-worker.lock /bin/bash -c "PYTHONDONTWRITEBYTECODE=1 /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python -I /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/harness/mut_mlx2.py /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/copy /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/out/mlx ccg; cd /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/out && PYTHONDONTWRITEBYTECODE=1 /Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python -I /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/harness/kill_eval.py /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/copy /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/45c044e7-20e4-4c86-9b81-cbfd4edbca39/scratchpad/s4impl/out/mlx/kill_eval.json"
+  rc=$?; [ $rc -ne 75 ] && break; sleep 30
+done
+echo "followup finished rc=$rc"

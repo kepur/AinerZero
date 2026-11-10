@@ -48,7 +48,7 @@ def test_verifier_is_independent() -> None:
     assert "ainerzero" not in src.split('"""', 2)[2] and "import numpy" not in src
 
 
-@pytest.mark.parametrize("tamper", ["flip_collision", "drop_event", "shift_b", "n_coll", "short_reid", "swap_worlds", "contact_moved"])
+@pytest.mark.parametrize("tamper", ["flip_collision", "drop_event", "shift_b", "n_coll", "short_reid", "swap_worlds", "contact_moved", "missing_world"])
 def test_tampering_is_caught(tmp_path, data, tamper) -> None:
     labels, recs = copy.deepcopy(data)
     r = recs[0]
@@ -65,6 +65,8 @@ def test_tampering_is_caught(tmp_path, data, tamper) -> None:
         r["reid"][key] = r["reid"][key][:-1]
     elif tamper == "swap_worlds":
         recs[0], recs[1] = recs[1], recs[0]
+    elif tamper == "missing_world":
+        recs.pop()                                  # zip would silently compare one world fewer
     elif tamper == "contact_moved":
         # a disk contact the record counted is moved to a step after every event window of that disk
         g = labels[0]

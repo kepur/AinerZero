@@ -39,10 +39,11 @@ def main():
     code_sha = hashlib.sha256(json.dumps(code, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     if pr.get("code_manifest_sha256") != code_sha or pr.get("code_dirty") != []:
         raise SystemExit("探针不是用要冻结的、已提交的代码跑出来的")
-    # Wall clock: the final evaluates 4x the probe's worlds; 1.5x margin on the probe's evaluation and checks.
+    # Wall clock: the final evaluates 4x the probe's worlds; 1.5x margin on everything the probe did after
+    # the point where a final writes its marker (evaluation worlds, evaluation, files, checks, gates).
     scale = sum(A.SIZES["final"]) / sum(A.SIZES["probe"])
-    eval_reserve = math.ceil(1.5 * scale * (pr["eval_seconds"] + pr["check_seconds"]))
-    train_s = pr["training"]["pool_seconds"] + sum(c["seconds"] for c in pr["training"]["cells"].values())
+    eval_reserve = math.ceil(1.5 * scale * pr["post_marker_seconds"])
+    train_s = pr["pre_eval_seconds"]                     # start-up, train worlds, pools, training, references
     if 1.2 * train_s + eval_reserve > HARD_LIMIT_S:
         raise SystemExit(f"预计超出硬上限：训练约 {train_s:.0f} 秒，评测预留 {eval_reserve} 秒")
     cfg = F.FilterConfig()

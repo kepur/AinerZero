@@ -548,3 +548,84 @@ def test_rollout_weights_scale_their_own_terms(pool, monkeypatch) -> None:
         terms.append(float(L.rollout_loss(m, b)) - base)
     assert all(t > 0 for t in terms) and sum(terms) == pytest.approx(base, rel=1e-4)
     assert terms[0] < terms[1] < terms[2]                           # error grows along the rollout
+
+
+@pytest.mark.parametrize("arm", L.ARMS)
+def test_with_a_zero_output_layer_every_arm_is_constant_velocity(arm) -> None:
+    """Behavioural check of the code constraint: with the output layer (and L-int-c's vector
+    messages) at zero, nothing may change the motion, so any analytic collision, wall or pillar
+    rule added outside the network makes this fail, whatever operators it is written with."""
+    m = _model(arm, 4)
+    zero = {"out": m.out}
+    if arm == "L-int-c":
+        zero["msg_vec"] = m.msg_vec
+    for layer in zero.values():
+        layer.weight = mx.zeros_like(layer.weight)
+        layer.bias = mx.zeros_like(layer.bias)
+    p = np.array([[[3.0, 3.0], [3.5, 3.0],            # overlapping and approaching
+                   [L.RADIUS + 0.01, 5.0],             # at the wall, moving into it
+                   [2.0 + 0.5 + L.RADIUS - 0.02, 2.0],  # touching the first pillar
+                   [8.0, 8.0], [8.2, 8.1]]], dtype=np.float32)
+    v = np.array([[[1.0, 0.0], [-1.0, 0.0], [-1.0, 0.2], [-0.8, 0.0], [0.5, 0.5], [-0.5, -0.5]]], dtype=np.float32)
+    pil = _state()[2]
+    pn, vn, _, _ = m(mx.array(p), mx.array(v), mx.array(pil))
+    assert np.array_equal(np.array(vn), v)
+    assert np.array_equal(np.array(pn), np.array(mx.array(p) + mx.array(v) * L.DT))
+
+
+def test_the_update_uses_the_clipped_gradient(pool, monkeypatch) -> None:
+    """With a vanishing clip Adam's first step is tiny; with the unclipped gradient it is about lr."""
+    def step_size(clip):
+        monkeypatch.setattr(L, "CLIP", clip)
+        mx.random.seed(5)
+        init = _params(L.Dynamics("L-int"))
+        m, _ = L.train("L-int", pool, steps=1, batch=8, seed=5)
+        after = _params(m)
+        return max(float(np.abs(after[k] - init[k]).max()) for k in init)
+    big, tiny = step_size(1e9), step_size(1e-12)
+    assert big > 5e-4 and tiny < 1e-3 * big
+
+
+def test_seeds_change_both_the_initial_weights_and_the_batches(pool, monkeypatch) -> None:
+    a0, _ = L.train("L-int", pool, steps=0, batch=8, seed=1)
+    b0, _ = L.train("L-int", pool, steps=0, batch=8, seed=2)
+    pa, pb = _params(a0), _params(b0)
+    assert not all(np.array_equal(pa[k], pb[k]) for k in pa)
+    seen = {}
+    real = L.batches
+    for seed in (1, 2):
+        def spy(*a, _seed=seed, **k):
+            for n, idx in real(*a, **k):
+                seen.setdefault(_seed, []).append((n, idx.tolist()))
+                yield n, idx
+        monkeypatch.setattr(L, "batches", spy)
+        L.train("L-int", pool, steps=3, batch=8, seed=seed)
+    assert seen[1] != seen[2]
+
+
+def test_the_variance_arm_needs_a_plain_interaction_mean(pool) -> None:
+    c, _ = L.train("L-int-c", pool, steps=1, batch=4, seed=1)
+    sp = L.make_sigma_pool([W.generate_episode(NS, 0, 4, steps=20)], 20, np.random.default_rng(0))
+    with pytest.raises(ValueError, match="needs a trained L-int mean"):
+        L.train("L-int-s", sp, steps=1, batch=4, seed=1, mean_model=c)
+    # an arm whose weights would load without complaint must be refused by the check itself
+    with pytest.raises(ValueError, match="needs a trained L-int mean"):
+        L.train("L-int-s", sp, steps=1, batch=4, seed=1, mean_model=_model("L-int-s", 2))
+
+
+def test_perturbation_keeps_at_least_two_disks(monkeypatch) -> None:
+    monkeypatch.setattr(L, "P_DROP", 1.0)
+    monkeypatch.setattr(L, "GHOSTS", 0.0)
+    pos = np.array([[2.0 + i, 5.0] for i in range(6)])
+    rng = np.random.default_rng(3)
+    assert all(len(L.perturb(pos, np.zeros((6, 2)), rng, exact=False)[0]) == 2 for _ in range(50))
+
+
+def test_time_limit_boundary(pool, monkeypatch) -> None:
+    """On a clock that advances one second per reading, a 2.5 s limit stops a 4-step run at step 3."""
+    import time
+
+    ticks = iter(range(10_000))
+    monkeypatch.setattr(time, "monotonic", lambda: float(next(ticks)))
+    with pytest.raises(TimeoutError, match="at step 3 of 4"):
+        L.train("L-int", pool, steps=4, batch=4, seed=1, time_limit=2.5)

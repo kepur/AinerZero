@@ -137,7 +137,7 @@ GOOD_DYN = {"E-B": (1.0, 0.0), "E-P": (0.0, 0.0), "L-int": (0.1, 0.03), "L-ind":
 
 
 def _evaluate(main, extrap, **kw):
-    args = dict(n_main=len(main), labels_ok=True, student_ok=True, replay_ok=True) | kw
+    args = dict(n_main=len(main), n_extrap=len(extrap), labels_ok=True, student_ok=True, replay_ok=True) | kw
     return A.evaluate(main, extrap, **args)
 
 
@@ -387,3 +387,40 @@ def test_trackers_read_the_student_view_only(ep, monkeypatch) -> None:
         A.student_detections(ep)
     with pytest.raises(RuntimeError):
         A.track_cell(ep, A.Cell("E-B", 1), Mo.bounce, NS)
+
+
+def test_missing_worlds_and_undefined_accuracies_void_the_run() -> None:
+    main = _synthetic(40, GOOD_ACC, GOOD_DYN, events_per_world=13)
+    extrap = _synthetic(20, GOOD_ACC, GOOD_DYN, seed=1)
+    assert _evaluate(main, extrap)["legality"]["complete"]["passed"]
+    r = _evaluate(main[:-1], extrap, n_main=40)
+    assert not r["legality"]["complete"]["passed"] and not r["valid"]
+    r = _evaluate(main, extrap[:-1], n_extrap=20)
+    assert not r["legality"]["complete"]["passed"] and not any(g["passed"] for g in r["gates"].values())
+    empty = [dict(x, events=[], reid={k: [] for k in x["reid"]}) for x in main]
+    r = _evaluate(empty, extrap)
+    assert not r["legality"]["floor"]["passed"] and set(r["legality"]["floor"]["undefined"]) == {"E-CV", "E-B", "E-P"}
+
+
+def test_future_mutation_comparison() -> None:
+    """The comparison used by the student-view legality check (aligned prefix after the cut)."""
+    rng = np.random.default_rng(0)
+    dets = [rng.random((4, 2)) for _ in range(6)]
+    mut = A.future_mutation(dets, 2)
+    assert [len(d) for d in mut] == [4, 4, 4, 3, 3, 3] and np.allclose(mut[4], dets[4][:3] + 0.5)
+    a = [np.arange(4) + 4 * t for t in range(6)]
+    # a tracker that reads only the lengths of the mutated lists: the same ids, truncated
+    length_only = [x if t <= 2 else x[:3] for t, x in enumerate(a)]
+    row = A.mutation_row(a, length_only, mut, 2)
+    assert row["prefix_equal"] and row["consumed"] and not row["suffix_changed"]
+    # a tracker that never associates: ids are new-track counters, shifted by the dropped detections
+    counter, c = [], 0
+    for d in mut:
+        counter.append(np.arange(c, c + len(d)))
+        c += len(d)
+    assert A.mutation_row(a, counter, mut, 2) == {"prefix_equal": True, "consumed": True, "suffix_changed": True}
+    honest = [x if t <= 2 else np.array([x[1], x[0], x[2]]) for t, x in enumerate(a)]
+    assert A.mutation_row(a, honest, mut, 2)["suffix_changed"]
+    peek = [x if t != 2 else x[::-1] for t, x in enumerate(length_only)]      # an id before the cut changed
+    assert not A.mutation_row(a, peek, mut, 2)["prefix_equal"]
+    assert not A.mutation_row(a, a, mut, 2)["consumed"]                       # did not consume the mutated lists

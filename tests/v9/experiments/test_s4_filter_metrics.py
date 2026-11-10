@@ -232,3 +232,13 @@ def test_a_resample_with_a_non_positive_denominator_gives_no_interval() -> None:
     assert np.isnan(Me.stat_C(x=1.0, b=2.0, p=2.0)) and np.isnan(Me.stat_C(x=1.0, b=2.0, p=1.5))
     assert np.isnan(Me.stat_D(x_coll=1.0, b_coll=0.0)) and np.isnan(Me.stat_HF(x_graze=1.0, n_graze=0.0, b_coll=1.0, n_coll=1.0))
     assert float(Me.stat_C(x=3.0, b=2.0, p=4.0)) == pytest.approx(0.5)
+
+
+def test_a_detection_exactly_at_the_gate_is_associated() -> None:
+    cfg = F.FilterConfig()
+    gate = cfg.gate_base + cfg.gate_grow * W.DT * 3
+    z = np.array([[gate, 0.0]])
+    assert float(np.linalg.norm(z[0])) == gate                               # the distance equals the gate exactly
+    P = np.zeros((32, 1, 2))
+    assert F._associate(P, z, [7], 10, cfg) == {0: 0}
+    assert F._associate(P, np.nextafter(z, 10.0), [7], 10, cfg) == {}

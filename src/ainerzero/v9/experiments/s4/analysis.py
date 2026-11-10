@@ -126,6 +126,24 @@ def student_detections(ep: W.Episode) -> list[np.ndarray]:
     return [v["detections"] for v in views]
 
 
+def future_mutation(dets: Sequence[np.ndarray], cut: int) -> list[np.ndarray]:
+    """The legality check's future-frame mutation: after the cut every step loses its last
+    detection and the rest move by 0.5."""
+    return [d if t <= cut else d[:-1] + 0.5 for t, d in enumerate(dets)]
+
+
+def mutation_row(a: Sequence[np.ndarray], b: Sequence[np.ndarray], mut: Sequence[np.ndarray], cut: int) -> dict[str, bool]:
+    """Compare the ids of the unmutated run ``a`` with those of the mutated run ``b``.
+
+    prefix_equal: no id up to the cut changes; consumed: the tracker returned one id per mutated
+    detection; suffix_changed: after the cut some id differs on the detections both runs share
+    (an aligned prefix, so a tracker that reads only the lengths of the new lists cannot pass by
+    the length difference alone)."""
+    return {"prefix_equal": all(np.array_equal(x, y) for x, y in zip(a[: cut + 1], b[: cut + 1])),
+            "consumed": len(b) == len(mut) and all(len(y) == len(d) for y, d in zip(b, mut)),
+            "suffix_changed": any(not np.array_equal(np.asarray(x)[: len(y)], y) for x, y in zip(a[cut + 1:], b[cut + 1:]))}
+
+
 def track_cell(ep: W.Episode, cell: Cell, model: Callable | None, ns: str) -> tuple[list[np.ndarray], int]:
     rng = np.random.default_rng(filter_seed(ns, ep.world_index, cell.seed, cell.variant))
     cfg = variant_config(cell.variant)
@@ -216,9 +234,11 @@ def diff_of(records, a, b, variant="base", *, m=N_COMPARISONS):
 
 
 # --- gates -----------------------------------------------------------------------------------------
-def legality(main: Sequence[dict], *, n_main: int, labels_ok: bool, student_ok: bool, replay_ok: bool) -> dict[str, Any]:
+def legality(main: Sequence[dict], extrap: Sequence[dict], *, n_main: int, n_extrap: int, labels_ok: bool, student_ok: bool,
+             replay_ok: bool) -> dict[str, Any]:
     acc = {a: acc_of(main, a)["value"] for a in ("E-CV", "E-B", "E-P")}
-    floor = acc["E-CV"] is not None and acc["E-CV"] < acc["E-B"] < acc["E-P"]
+    missing = [a for a, v in acc.items() if v is None]
+    floor = not missing and acc["E-CV"] < acc["E-B"] < acc["E-P"]
     n_coll_events = int(n_events(main).sum())
     expected = EXPECTED_COLL_EVENTS_PER_40 * n_main / 40
     n_coll_steps = int(dyn_world(main, "E-B", "n_coll").sum())
@@ -226,7 +246,9 @@ def legality(main: Sequence[dict], *, n_main: int, labels_ok: bool, student_ok: 
     out = {
         "labels": {"passed": bool(labels_ok)},
         "student_view": {"passed": bool(student_ok)},
-        "floor": {"passed": bool(floor), "acc": acc},
+        "floor": {"passed": bool(floor), "acc": acc, **({"undefined": missing} if missing else {})},
+        "complete": {"passed": len(main) == n_main and len(extrap) == n_extrap, "main": len(main), "extrap": len(extrap),
+                     "registered": [n_main, n_extrap]},
         "samples": {"passed": bool(abs(n_coll_events - expected) <= SAMPLE_BAND * expected and n_coll_steps >= DYN_FLOOR * dyn_expected),
                     "collision_events": n_coll_events, "expected": expected, "collision_disk_steps": n_coll_steps, "dyn_expected": dyn_expected},
         "determinism": {"passed": bool(replay_ok)},
@@ -234,9 +256,10 @@ def legality(main: Sequence[dict], *, n_main: int, labels_ok: bool, student_ok: 
     return out
 
 
-def evaluate(main: Sequence[dict], extrap: Sequence[dict], *, n_main: int, labels_ok: bool, student_ok: bool, replay_ok: bool) -> dict[str, Any]:
+def evaluate(main: Sequence[dict], extrap: Sequence[dict], *, n_main: int, n_extrap: int, labels_ok: bool, student_ok: bool,
+             replay_ok: bool) -> dict[str, Any]:
     T = THRESHOLDS
-    lg = legality(main, n_main=n_main, labels_ok=labels_ok, student_ok=student_ok, replay_ok=replay_ok)
+    lg = legality(main, extrap, n_main=n_main, n_extrap=n_extrap, labels_ok=labels_ok, student_ok=student_ok, replay_ok=replay_ok)
     valid = all(v["passed"] for v in lg.values())
     d, hf = D_of(main, "L-int"), HF_of(main, "L-int")
     dx, hfx = D_of(extrap, "L-int"), HF_of(extrap, "L-int")
