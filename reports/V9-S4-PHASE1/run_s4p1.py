@@ -155,15 +155,19 @@ def train_all(train_eps, ns, cfg, steps, batch, out, deadline, say):
             deadline.check()
             name = f"{arm}#{s}"
             t = time.monotonic()
-            if arm == "L-int-s":
-                net, log = L.train("L-int-s", sigma, steps=steps, batch=batch, seed=s, mean_model=nets[f"L-int#{s}"])
-            else:
-                net, log = L.train(WK.base_arm(name), eighth if arm.endswith("-e8") else pool, steps=steps, batch=batch, seed=s)
+            try:
+                if arm == "L-int-s":
+                    net, log = L.train("L-int-s", sigma, steps=steps, batch=batch, seed=s, mean_model=nets[f"L-int#{s}"], time_limit=CELL_LIMIT_S)
+                else:
+                    net, log = L.train(WK.base_arm(name), eighth if arm.endswith("-e8") else pool, steps=steps, batch=batch, seed=s,
+                                       time_limit=CELL_LIMIT_S)
+            except TimeoutError as exc:
+                raise GD.GuardError(f"training cell over its limit: {exc}") from exc
             secs = time.monotonic() - t
             path = wdir / f"{name}.safetensors"
             L.save(net, str(path))
             nets[name], weights[name] = net, str(path)
-            info["cells"][name] = {"seconds": round(secs, 1), "over_cell_limit": secs > CELL_LIMIT_S, "loss": log,
+            info["cells"][name] = {"seconds": round(secs, 1), "loss": log,
                                    "params": L.param_count(net), "weights_sha256": sha(path)}
             say("trained", name, round(secs, 1), "s, last loss", log[-1][1])
     mx.set_default_device(mx.cpu)
@@ -184,20 +188,25 @@ def fit_refs(train_eps, ns, nets):
 
 # --- legality helpers --------------------------------------------------------------------------------
 def student_check(eps, nets):
-    """Field whitelist and future-frame mutation: ids up to the cut do not change."""
-    keys_ok = W.STUDENT_KEYS == {"t", "agent", "detections"} and all(set(W.student_view(s)) == W.STUDENT_KEYS for s in eps[0].steps[:5])
+    """Field whitelist (the trackers read A.student_detections, which refuses other fields) and
+    future-frame mutation: after the cut every step loses its last detection and the rest move by
+    0.5. Ids up to the cut must not change; after it the tracker must have consumed the mutated
+    lists (one id per mutated detection) and its ids must differ from the unmutated run."""
+    keys_ok = W.STUDENT_KEYS == {"t", "agent", "detections"} and all(set(W.student_view(s)) == W.STUDENT_KEYS for ep in eps for s in ep.steps)
     models = {"E-P": Mo.true_physics, "L-int#1": L.as_process_model(nets["L-int#1"])}
     rows = []
     for ep in eps[:STUDENT_WORLDS]:
-        dets = [s.detections for s in ep.steps]
-        mut = [d if t <= STUDENT_CUT else d + 0.5 for t, d in enumerate(dets)]
+        dets = A.student_detections(ep)
+        mut = [d if t <= STUDENT_CUT else d[:-1] + 0.5 for t, d in enumerate(dets)]
         for name, m in models.items():
             a, _ = F.track(dets, ep.pillars, m, np.random.default_rng(7))
             b, _ = F.track(mut, ep.pillars, m, np.random.default_rng(7))
             rows.append({"world": ep.world_index, "model": name,
                          "prefix_equal": all(np.array_equal(x, y) for x, y in zip(a[: STUDENT_CUT + 1], b[: STUDENT_CUT + 1])),
+                         "consumed": all(len(y) == len(d) for y, d in zip(b, mut)),
                          "suffix_changed": any(not np.array_equal(x, y) for x, y in zip(a[STUDENT_CUT + 1:], b[STUDENT_CUT + 1:]))})
-    return {"passed": bool(keys_ok and all(r["prefix_equal"] for r in rows)), "keys_ok": keys_ok, "rows": rows}
+    ok = keys_ok and rows and all(r["prefix_equal"] and r["consumed"] and r["suffix_changed"] for r in rows)
+    return {"passed": bool(ok), "keys_ok": keys_ok, "rows": rows}
 
 
 def independent_check(script, *args, deadline):
@@ -213,9 +222,12 @@ def independent_check(script, *args, deadline):
     return json.loads(r.stdout)
 
 
-def evaluate_parallel(tasks, weights, refs, deadline, say):
+def evaluate_parallel(tasks, weights, refs, deadline, say, partial):
+    """Worlds in parallel workers; each record is appended to ``partial`` as soon as it arrives, so a
+    run stopped by the wall clock keeps what it computed."""
     ctx = mp.get_context("spawn")
     results = [None] * len(tasks)
+    fh = partial.open("x", encoding="utf-8")
     with ProcessPoolExecutor(WORKERS, mp_context=ctx, initializer=WK.init, initargs=(weights, {int(k): v for k, v in refs.items()})) as ex:
         pending = {ex.submit(WK.evaluate_world, t): i for i, t in enumerate(tasks)}
         done_n = 0
@@ -227,10 +239,14 @@ def evaluate_parallel(tasks, weights, refs, deadline, say):
                 raise GD.GuardError("wall-clock limit reached")
             done, _ = wait(list(pending), timeout=min(left, 60), return_when=FIRST_COMPLETED)
             for f in done:
-                results[pending.pop(f)] = f.result()
+                i = pending.pop(f)
+                results[i] = f.result()
+                fh.write(json.dumps({"index": i, "record": results[i]}, ensure_ascii=False, sort_keys=True) + "\n")
+                fh.flush()
                 done_n += 1
                 if done_n % 25 == 0:
                     say("worlds evaluated", done_n, "of", len(tasks))
+    fh.close()
     return results
 
 
@@ -285,6 +301,10 @@ def main():
 
         registered = a.stage == "final"
         if registered:
+            # Enough wall clock for the evaluation measured in the probe must remain, or the one read is not spent.
+            reserve = float(pre["budget"]["eval_reserve_s"])
+            if deadline.left() < reserve:
+                raise GD.GuardError(f"only {deadline.left():.0f} s left, the evaluation needs {reserve:.0f} s: the final read is not spent")
             # The one read of the registered partition starts here; nothing above generates it.
             GD.consume_final_read(lock, FINAL_MARKER, a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
             R["final_read_marker_sha256"] = sha(FINAL_MARKER)
@@ -294,7 +314,9 @@ def main():
         main_cells = [(c.arm, c.seed, c.variant) for c in A.plan_cells(LEARNED)]
         base_cells = [c for c in main_cells if c[2] == "base"]
         tasks = [{"kind": kind, "ns": ns["eval"], "episode": ep, "cells": main_cells if kind == "main" else base_cells} for kind, ep in eval_eps]
-        records = evaluate_parallel(tasks, weights, refs, deadline, say)
+        t_eval = time.monotonic()
+        records = evaluate_parallel(tasks, weights, refs, deadline, say, out / "worlds.partial.jsonl")
+        R["eval_seconds"] = round(time.monotonic() - t_eval, 1)
 
         worlds = out / "worlds.jsonl"
         with worlds.open("x", encoding="utf-8") as fh:
@@ -310,13 +332,15 @@ def main():
             picks += [(kd, ep) for kd, ep in eval_eps if kd == kind][:k]
         replay.write_text(json.dumps({"ns": ns["eval"], "weights": {n: str(Path(p).relative_to(out)) for n, p in weights.items()},
                                       "worlds": [{"kind": kd, "world": ep.world_index, "pillars": [list(p) for p in ep.pillars],
-                                                  "detections": [s.detections.tolist() for s in ep.steps]} for kd, ep in picks]}), encoding="utf-8")
-        R["files_sha256"] = {f.name: sha(f) for f in (worlds, labels, replay)} | {f"weights/{Path(p).name}": sha(p) for p in weights.values()}
+                                                  "detections": [d.tolist() for d in A.student_detections(ep)]} for kd, ep in picks]}), encoding="utf-8")
+        R["files_sha256"] = {f.name: sha(f) for f in (worlds, out / "worlds.partial.jsonl", labels, replay)} | {f"weights/{Path(p).name}": sha(p) for p in weights.values()}
         save()
 
+        t_chk = time.monotonic()
         st = student_check([ep for kind, ep in eval_eps if kind == "main"], nets)
         lab = independent_check(VERIFY_LABELS, labels, worlds, deadline=deadline)
         rep = independent_check(VERIFY_REPLAY, replay, worlds, out, deadline=deadline)
+        R["check_seconds"] = round(time.monotonic() - t_chk, 1)
         on_disk = [json.loads(line) for line in worlds.read_text(encoding="utf-8").splitlines()]
         main_r = [r for r in on_disk if r["kind"] == "main"]
         ext_r = [r for r in on_disk if r["kind"] == "extrap"]

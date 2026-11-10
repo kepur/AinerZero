@@ -4,7 +4,7 @@
 探针报告必须是正式运行器在 s4p1-probe 上、用要冻结的已提交代码跑出的有效结果；final 的训练步数与批大小
 取自这份探针报告。
 """
-import argparse, hashlib, json, sys  # noqa: E401
+import argparse, hashlib, json, math, sys  # noqa: E401
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -20,6 +20,7 @@ HERE = REPO / "reports/V9-S4-PHASE1"
 RUNNER = HERE / "run_s4p1.py"
 VERIFY = [HERE / "verify_labels.py", HERE / "verify_replay.py"]
 APPROVAL = "S4-P1-FINAL-READ-APPROVED-TIER1-20261110"
+HARD_LIMIT_S = 4 * 3600
 
 
 def main():
@@ -38,6 +39,12 @@ def main():
     code_sha = hashlib.sha256(json.dumps(code, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     if pr.get("code_manifest_sha256") != code_sha or pr.get("code_dirty") != []:
         raise SystemExit("探针不是用要冻结的、已提交的代码跑出来的")
+    # Wall clock: the final evaluates 4x the probe's worlds; 1.5x margin on the probe's evaluation and checks.
+    scale = sum(A.SIZES["final"]) / sum(A.SIZES["probe"])
+    eval_reserve = math.ceil(1.5 * scale * (pr["eval_seconds"] + pr["check_seconds"]))
+    train_s = pr["training"]["pool_seconds"] + sum(c["seconds"] for c in pr["training"]["cells"].values())
+    if 1.2 * train_s + eval_reserve > HARD_LIMIT_S:
+        raise SystemExit(f"预计超出硬上限：训练约 {train_s:.0f} 秒，评测预留 {eval_reserve} 秒")
     cfg = F.FilterConfig()
     doc = {
         "schema": "s4.phase1.prereg.v1",
@@ -57,7 +64,8 @@ def main():
                      "perturbation": {"p_hidden": L.P_HIDDEN, "visible_sigma": list(L.VISIBLE_SIGMA), "hidden_sigma": list(L.HIDDEN_SIGMA),
                                       "p_drop": L.P_DROP, "ghosts": L.GHOSTS, "ghost_sigma": L.GHOST_SIGMA, "exact_frac": L.EXACT_FRAC},
                      "rollout": list(L.ROLLOUT), "contact_weight": L.CONTACT_WEIGHT, "msg_radius": L.MSG_RADIUS, "hidden": L.HID, "message": L.MSG,
-                     "collision_share_per_batch": L.COLL_SHARE, "grad_clip_norm": L.CLIP, "direction_softening": L.EPS_DIR,
+                     "collision_share_per_batch": L.COLL_SHARE, "near_miss_share_per_batch": L.NEAR_SHARE, "near_miss_gap": L.NEAR_GAP,
+                     "grad_clip_norm": L.CLIP, "direction_softening": L.EPS_DIR, "lr_end": L.LR_END, "rollout_weights": list(L.ROLLOUT_WEIGHTS),
                      "position_loss_scale": L.P_SCALE, "logvar_range": list(L.LOGVAR_RANGE),
                      "device": "MLX GPU (local)", "cell_limit_s": 600},
         "gates": A.THRESHOLDS,
@@ -67,7 +75,8 @@ def main():
                        "seed_average": "per event over seeds 1-3", "graze_margin": Me.GRAZE_MARGIN},
         "code_manifest_sha256": code_sha,
         "final_approval_line": APPROVAL,
-        "budget": {"hard_limit_minutes": 240, "device": "local MLX GPU for training, CPU for evaluation", "cloud": False, "paid": False},
+        "budget": {"hard_limit_minutes": HARD_LIMIT_S // 60, "eval_reserve_s": eval_reserve, "probe_train_seconds": round(train_s, 1),
+                   "device": "local MLX GPU for training, CPU for evaluation", "cloud": False, "paid": False},
     }
     with out.open("x", encoding="utf-8") as fh:
         json.dump(doc, fh, ensure_ascii=False, indent=1)

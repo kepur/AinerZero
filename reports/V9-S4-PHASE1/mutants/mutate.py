@@ -2,8 +2,9 @@
 
 每个变异：从开始时取的快照复制 src/ainerzero、tests/conftest.py、S4 测试、pyproject.toml 到新的临时目录，
 改一处文本（要求恰好出现一次、改完能过语法检查），PYTHONPATH 指向副本，在副本里跑 S4 测试（含 MLX 原生测试）。
-结果写 results-<tag>.json。用法：mutate.py <tag> [--cpu] [变异名 ...]
+结果写 results-<tag>.json。用法：mutate.py <tag> [--cpu | --runner] [变异名 ...]
 --cpu：只跑纯 CPU 的测试文件，跳过 learned_mlx.py 的变异（MLX 训练在跑时用，不与它并行使用 MLX）。
+--runner：只跑运行器与两个校验脚本的变异，测试用标签校验测试与运行器原生测试（每个约两分钟）。
 """
 import ast, json, os, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
@@ -13,6 +14,10 @@ OUT = Path(__file__).resolve().parent
 S4 = "src/ainerzero/v9/experiments/s4/"
 FI, ME, MO, LM, AS = S4 + "filter.py", S4 + "metrics.py", S4 + "models.py", S4 + "learned_mlx.py", S4 + "assign.py"
 AN = S4 + "analysis.py"
+RU, VL, VR = "reports/V9-S4-PHASE1/run_s4p1.py", "reports/V9-S4-PHASE1/verify_labels.py", "reports/V9-S4-PHASE1/verify_replay.py"
+RUNNER_FILES = [RU, VL, VR, "reports/V9-S4-PHASE1/make_prereg.py"]
+RUNNER_TESTS = ["tests/v9/experiments/test_s4_verify_labels.py", "tests/v9/experiments/test_s4p1_runner_native.py"]
+RUNNER_MODE = "--runner" in sys.argv
 TESTS = ["tests/v9/experiments/test_s4_world.py", "tests/v9/experiments/test_s4_filter_metrics.py", "tests/v9/experiments/test_s4_analysis.py",
          "tests/v9/experiments/test_s4_learned_mlx.py"]
 EXTRA_FILES: list[str] = ["tests/v9/experiments/data/s4_coincident_case.npz"]
@@ -105,7 +110,30 @@ M = [
     ("an_HDx_graze_ignored", AN, 'hfx["value"] is not None and hfx["value"] <= T["HD-x"]["ratio"]', 'hfx["value"] is not None'),
     ("an_dyn_seed_first", AN, 'return np.array([np.mean([r["dyn"][f"{arm}#{s}"][field] for s in seeds]) for r in records], dtype=np.float64)', 'return np.array([r["dyn"][f"{arm}#{seeds[0]}"][field] for r in records], dtype=np.float64)'),
     ("an_events_window", AN, '"events": [[e["k"], e["a"], e["b"], int(e["collision"])] for e in events]', '"events": [[e["k"], e["a"], e["b"], 1] for e in events]'),
+    ("lm_lr_never_decays", LM, "learning_rate=lr if LR_END is None else optim.cosine_decay(lr, steps, LR_END))", "learning_rate=lr)"),
+    ("lm_lr_decay_too_slow", LM, "optim.cosine_decay(lr, steps, LR_END)", "optim.cosine_decay(lr, 10 * steps, LR_END)"),
+    ("lm_lr_end_ignored", LM, "optim.cosine_decay(lr, steps, LR_END)", "optim.cosine_decay(lr, steps, 0.0)"),
     ("lm_oversample_from_all", LM, "            parts.append(h[rng.integers(0, len(h), k)])\n", "            parts.append(rng.integers(0, int(sizes[j]), k))\n"),
+    # 2026-11-10 second pass (after the partial implementation review)
+    ("me_ratio_negative_ok", ME, "        return np.where(den > 0, num / np.where(den > 0, den, 1.0), np.nan)", "        return np.where(den != 0, num / np.where(den != 0, den, 1.0), np.nan)"),
+    ("me_ratio_zero_ok", ME, "        return np.where(den > 0, num / np.where(den > 0, den, 1.0), np.nan)", "        return num / den"),
+    ("an_student_view_bypass", AN, "    return F.track(student_detections(ep), ep.pillars, model, rng, cfg)", "    return F.track([s.detections for s in ep.steps], ep.pillars, model, rng, cfg)"),
+    ("an_student_view_unchecked", AN, "    if any(set(v) != W.STUDENT_KEYS for v in views):", "    if False:"),
+    ("lm_no_time_limit", LM, "        if time_limit is not None and time.monotonic() - started > time_limit:", "        if False:"),
+    ("lm_rollout_weights_ignored", LM, "            w = ROLLOUT_WEIGHTS[ROLLOUT.index(k)]", "            w = 1.0"),
+    ("lm_rollout_weight_first", LM, "            w = ROLLOUT_WEIGHTS[ROLLOUT.index(k)]", "            w = ROLLOUT_WEIGHTS[0]"),
+    # runner (run only with --runner: each costs one pass of the runner tests, about two minutes)
+    ("ru_no_reserve", RU, "            if deadline.left() < reserve:", "            if False:"),
+    ("ru_no_cell_limit", RU, "            except TimeoutError as exc:\n                raise GD.GuardError(f\"training cell over its limit: {exc}\") from exc\n", "            except TimeoutError:\n                pass\n"),
+    ("ru_cell_limit_not_passed", RU, "seed=s, mean_model=nets[f\"L-int#{s}\"], time_limit=CELL_LIMIT_S)", "seed=s, mean_model=nets[f\"L-int#{s}\"])"),
+    ("ru_student_suffix_ignored", RU, "    ok = keys_ok and rows and all(r[\"prefix_equal\"] and r[\"consumed\"] and r[\"suffix_changed\"] for r in rows)", "    ok = keys_ok and rows and all(r[\"prefix_equal\"] for r in rows)"),
+    ("ru_no_partial", RU, "                fh.write(json.dumps({\"index\": i, \"record\": results[i]}, ensure_ascii=False, sort_keys=True) + \"\\n\")\n", ""),
+    ("ru_marker_before_training", RU, "        save()\n        train_eps = [", "        if a.stage == \"final\":\n            GD.consume_final_read(lock, FINAL_MARKER, a.approval, pre[\"final_approval_line\"], prereg_sha256=pre_sha, expected_lock=LOCK)\n        save()\n        train_eps = ["),
+    ("ru_labels_ignored", RU, "labels_ok=bool(lab.get(\"passed\"))", "labels_ok=True"),
+    ("ru_replay_ignored", RU, "replay_ok=bool(rep.get(\"passed\"))", "replay_ok=True"),
+    ("ru_late_check_off", RU, "            if late:\n", "            if False:\n"),
+    ("vl_collision_any_step", VL, "int(any(k in touched[s] for s in range(last, t)))", "int(any(k in touched[s] for s in range(last, t + 1)))"),
+    ("vr_skip_mismatch", VR, "            if A.ids_digest(ids) != rec[\"ids_sha256\"][cell.key]:", "            if False:"),
 ]
 
 
@@ -113,7 +141,7 @@ def copy_tree(dst, src=REPO):
     shutil.copytree(src / "src/ainerzero", dst / "src/ainerzero", ignore=shutil.ignore_patterns("__pycache__"))
     (dst / "tests/v9/experiments").mkdir(parents=True)
     shutil.copy2(src / "tests/conftest.py", dst / "tests/conftest.py")
-    for t in TESTS + EXTRA_FILES:
+    for t in TESTS + EXTRA_FILES + RUNNER_TESTS + RUNNER_FILES:
         (dst / t).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src / t, dst / t)
     shutil.copy2(src / "pyproject.toml", dst / "pyproject.toml")
@@ -130,8 +158,10 @@ def pytest(dst, files):
 
 def main():
     tag = sys.argv[1]
-    only = set(a for a in sys.argv[2:] if a != "--cpu")
+    only = set(a for a in sys.argv[2:] if a not in ("--cpu", "--runner"))
     tests = [t for t in TESTS if not (CPU_ONLY and t.endswith("test_s4_learned_mlx.py"))]
+    if RUNNER_MODE:
+        tests = RUNNER_TESTS
     results = []
     with tempfile.TemporaryDirectory(prefix="s4p1-mut-") as tmp:
         base = Path(tmp) / "base"
@@ -146,7 +176,7 @@ def main():
         if rc != 0:
             raise SystemExit("unmutated copy fails:\n" + tail)
         for name, path, old, new in M:
-            if (only and name not in only) or (CPU_ONLY and path == LM):
+            if (only and name not in only) or (CPU_ONLY and path == LM) or (RUNNER_MODE != (path in RUNNER_FILES)):
                 continue
             d = Path(tmp) / name
             copy_tree(d, base)

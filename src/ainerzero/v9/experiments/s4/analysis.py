@@ -118,12 +118,20 @@ def ids_digest(ids: Sequence[np.ndarray]) -> str:
     return hashlib.sha256(json.dumps([np.asarray(i).tolist() for i in ids]).encode()).hexdigest()
 
 
+def student_detections(ep: W.Episode) -> list[np.ndarray]:
+    """What every student tracker reads: the detections of the student view, step by step."""
+    views = [W.student_view(s) for s in ep.steps]
+    if any(set(v) != W.STUDENT_KEYS for v in views):
+        raise RuntimeError("the student view has fields outside the whitelist")
+    return [v["detections"] for v in views]
+
+
 def track_cell(ep: W.Episode, cell: Cell, model: Callable | None, ns: str) -> tuple[list[np.ndarray], int]:
     rng = np.random.default_rng(filter_seed(ns, ep.world_index, cell.seed, cell.variant))
     cfg = variant_config(cell.variant)
     if cell.arm == "S-P":
         return F.track_truth_diagnostic(ep, Mo.true_physics, rng, cfg)
-    return F.track([s.detections for s in ep.steps], ep.pillars, model, rng, cfg)
+    return F.track(student_detections(ep), ep.pillars, model, rng, cfg)
 
 
 # --- one world ----------------------------------------------------------------------------------

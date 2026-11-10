@@ -504,3 +504,44 @@ def test_training_uses_the_oversampling_and_the_clip(pool, monkeypatch) -> None:
     shares.clear()
     L.train("L-int-s", L.make_sigma_pool([W.generate_episode(NS, 0, 4, steps=20)], 20, np.random.default_rng(0)), steps=2, batch=4, seed=1, mean_model=m)
     assert shares == [(0.0, 0.0)]
+
+
+def test_learning_rate_is_constant_or_a_cosine_decay_over_the_run(pool, monkeypatch) -> None:
+    import mlx.optimizers as optim
+
+    rates, calls = [], []
+    real_adam, real_cos = optim.Adam, optim.cosine_decay
+    monkeypatch.setattr(optim, "Adam", lambda learning_rate: (rates.append(learning_rate), real_adam(learning_rate=learning_rate))[1])
+    monkeypatch.setattr(optim, "cosine_decay", lambda init, steps, end: (calls.append((init, steps, end)), real_cos(init, steps, end))[1])
+    monkeypatch.setattr(L, "LR_END", None)
+    L.train("L-int", pool, steps=3, batch=4, seed=1)
+    assert rates == [1e-3] and calls == []
+    monkeypatch.setattr(L, "LR_END", 1e-5)
+    m, _ = L.train("L-int", pool, steps=7, batch=4, seed=1)
+    assert calls == [(1e-3, 7, 1e-5)] and callable(rates[1])
+    assert float(rates[1](0)) == pytest.approx(1e-3) and float(rates[1](7)) == pytest.approx(1e-5, rel=1e-3)
+    assert float(rates[1](3)) < 1e-3
+    L.train("L-int-s", L.make_sigma_pool([W.generate_episode(NS, 0, 4, steps=20)], 20, np.random.default_rng(0)), steps=5, batch=4, seed=1, mean_model=m)
+    assert calls[-1] == (1e-3, 5, 1e-5)
+
+
+def test_a_cell_over_its_time_limit_stops(pool) -> None:
+    with pytest.raises(TimeoutError):
+        L.train("L-int", pool, steps=50, batch=4, seed=1, time_limit=0.0)
+    m, log = L.train("L-int", pool, steps=3, batch=4, seed=1, time_limit=600.0)
+    assert log[-1][0] == 3
+
+
+def test_rollout_weights_scale_their_own_terms(pool, monkeypatch) -> None:
+    assert L.ROLLOUT_WEIGHTS == (1.0, 1.0, 1.0)
+    b = {k: mx.array(v[:6]) for k, v in pool.by_n[6].items()}
+    m = _model("L-ind", 2)                                          # no contact term
+    base = float(L.rollout_loss(m, b))
+    terms = []
+    for i in range(3):
+        w = [1.0, 1.0, 1.0]
+        w[i] = 2.0
+        monkeypatch.setattr(L, "ROLLOUT_WEIGHTS", tuple(w))
+        terms.append(float(L.rollout_loss(m, b)) - base)
+    assert all(t > 0 for t in terms) and sum(terms) == pytest.approx(base, rel=1e-4)
+    assert terms[0] < terms[1] < terms[2]                           # error grows along the rollout

@@ -66,7 +66,7 @@ def evaluate_world(task: Mapping[str, Any]) -> dict[str, Any]:
         hook = A.FilterCalibration(ep)
         model = _MODELS.get(f"{c.arm}#{c.seed}", _MODELS.get(c.arm))
         rng = np.random.default_rng(A.filter_seed(ns, ep.world_index, c.seed, c.variant))
-        ids, _ = F.track([s.detections for s in ep.steps], ep.pillars, model, rng, A.variant_config(c.variant), on_predict=hook)
+        ids, _ = F.track(A.student_detections(ep), ep.pillars, model, rng, A.variant_config(c.variant), on_predict=hook)
         if A.ids_digest(ids) != rec["ids_sha256"][c.key]:
             raise RuntimeError(f"the calibration hook changed the tracking of {c.key}")
         fc[c.key] = hook.sums()

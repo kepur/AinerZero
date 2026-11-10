@@ -218,3 +218,17 @@ def test_bootstrap_interval_recomputed() -> None:
     boot = 1 - x[draws].sum(1) / b[draws].sum(1)
     assert r["ci_low"] == pytest.approx(np.quantile(boot, 0.025)) and r["ci_high"] == pytest.approx(np.quantile(boot, 0.975))
     assert r["bonf_low"] == pytest.approx(np.quantile(boot, 0.025 / 4)) and r["bonf_high"] == pytest.approx(np.quantile(boot, 1 - 0.025 / 4))
+
+
+def test_a_resample_with_a_non_positive_denominator_gives_no_interval() -> None:
+    """C's denominator acc(E-P) - acc(E-B) can change sign in a resample while the ratio stays finite."""
+    rng = np.random.default_rng(3)
+    b = rng.random(30) * 5
+    p = b + np.where(np.arange(30) < 3, 2.0, -0.05)        # E-P ahead only in three worlds
+    x = b + 0.5
+    assert p.sum() > b.sum()                                  # the point value is defined
+    r = Me.bootstrap(Me.stat_C, {"x": x, "b": b, "p": p})
+    assert r["value"] is not None and r["ci_low"] is None and r["n_boot_finite"] < Me.BOOT_N
+    assert np.isnan(Me.stat_C(x=1.0, b=2.0, p=2.0)) and np.isnan(Me.stat_C(x=1.0, b=2.0, p=1.5))
+    assert np.isnan(Me.stat_D(x_coll=1.0, b_coll=0.0)) and np.isnan(Me.stat_HF(x_graze=1.0, n_graze=0.0, b_coll=1.0, n_coll=1.0))
+    assert float(Me.stat_C(x=3.0, b=2.0, p=4.0)) == pytest.approx(0.5)

@@ -246,12 +246,13 @@ def test_final_path_after_a_frozen_probe(tmp_path) -> None:
     _refused(_run(root, *FINAL, report="reports/final3.json"), "already been read")
 
 
-def _frozen_root(tmp_path, extra=()):
+def _frozen_root(tmp_path, extra=(), reserve=0):
     """A committed copy with a hand-made preregistration, ready for a final."""
     root = _make_root(tmp_path, extra=extra)
     m = GD.build_manifest(root, [root / RUNNER], src_root=root / "src", extra=[root / "reports/DESIGN.md", *(root / v for v in VERIFY)])
     (root / PREREG).write_text(json.dumps({"manifest": m, "third_party": GD.third_party_versions(REPO, ("numpy", "mlx")),
-                                           "final_approval_line": APPROVAL, "training": {"steps": 3, "batch": 4}}))
+                                           "final_approval_line": APPROVAL, "training": {"steps": 3, "batch": 4},
+                                           "budget": {"eval_reserve_s": reserve}}))
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "freeze")
     return root
@@ -297,3 +298,37 @@ def test_changed_frozen_module_is_refused_before_the_marker(tmp_path) -> None:
     _git(root, "commit", "-qm", "edit")
     _refused(_run(root, *FINAL), "frozen manifest does not hold")
     assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()
+
+
+def test_final_with_too_little_time_left_does_not_spend_the_read(tmp_path) -> None:
+    """The evaluation reserve registered from the probe must remain when training ends."""
+    root = _frozen_root(tmp_path, reserve=10 ** 9)
+    _refused(_run(root, *FINAL), "the final read is not spent")
+    out = root / ARTS / "final-final"
+    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists() and not (out / "worlds.partial.jsonl").exists()
+
+
+def test_a_training_cell_over_its_limit_stops_the_run(tmp_path) -> None:
+    root = _make_root(tmp_path, extra=[("CELL_LIMIT_S = 600", "CELL_LIMIT_S = 0")])
+    _refused(_run(root, *SMOKE), "training cell over its limit")
+    assert not (root / ARTS / "smoke-s1" / "worlds.partial.jsonl").exists()
+
+
+def test_student_check_needs_the_mutation_to_change_something(tmp_path) -> None:
+    root = _make_root(tmp_path, extra=[("STUDENT_WORLDS, STUDENT_CUT = 1, 30", "STUDENT_WORLDS, STUDENT_CUT = 1, 100000")])
+    r = _run(root, *SMOKE)
+    assert r.returncode == 0, r.stderr[-2000:]
+    R = json.loads((root / "reports/out.json").read_text())
+    st = R["checks"]["student_view"]
+    assert all(row["prefix_equal"] and not row["suffix_changed"] for row in st["rows"]) and not st["passed"]
+    assert not R["result"]["valid"] and not R["result"]["legality"]["student_view"]["passed"]
+
+
+def test_records_are_on_disk_world_by_world(smoke) -> None:
+    root, R = smoke
+    out = root / ARTS / "smoke-s1"
+    part = [json.loads(x) for x in (out / "worlds.partial.jsonl").read_text().splitlines()]
+    full = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]
+    assert sorted(p["index"] for p in part) == list(range(len(full)))
+    assert all(full[p["index"]] == p["record"] for p in part)
+    assert R["eval_seconds"] > 0 and R["check_seconds"] > 0

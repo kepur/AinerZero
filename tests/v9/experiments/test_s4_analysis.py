@@ -376,3 +376,14 @@ def test_filter_hook_reads_and_does_not_change_tracking(ep) -> None:
         last[:] = [0] * len(last)
     c, _ = F.track(dets, ep.pillars, Mo.true_physics, np.random.default_rng(4), on_predict=vandal)
     assert A.ids_digest(c) == A.ids_digest(a)
+
+
+def test_trackers_read_the_student_view_only(ep, monkeypatch) -> None:
+    dets = A.student_detections(ep)
+    assert all(np.array_equal(d, s.detections) for d, s in zip(dets, ep.steps))
+    real = W.student_view
+    monkeypatch.setattr(W, "student_view", lambda s: dict(real(s), positions=s.positions))
+    with pytest.raises(RuntimeError):
+        A.student_detections(ep)
+    with pytest.raises(RuntimeError):
+        A.track_cell(ep, A.Cell("E-B", 1), Mo.bounce, NS)

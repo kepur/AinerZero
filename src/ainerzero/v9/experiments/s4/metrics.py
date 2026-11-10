@@ -99,23 +99,31 @@ def bootstrap(stat: Callable[..., float], sums: dict[str, np.ndarray], *, n_boot
             "n_worlds": int(n_w), "n_boot_finite": int(len(boot))}
 
 
+def _ratio(num, den):
+    """num / den, undefined (NaN) wherever den is not positive: a resample in which a denominator
+    vanishes or changes sign gives no ratio, so the bootstrap gives no interval."""
+    num, den = np.asarray(num, dtype=np.float64), np.asarray(den, dtype=np.float64)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(den > 0, num / np.where(den > 0, den, 1.0), np.nan)
+
+
 def stat_D(x_coll, b_coll, **_):
     """D(X) = 1 - err(X) / err(E-B) on collision disk-steps (same disk-steps for both)."""
-    return 1 - x_coll / b_coll
+    return 1 - _ratio(x_coll, b_coll)
 
 
 def stat_HF(x_graze, n_graze, b_coll, n_coll, **_):
     """Mean grazing error of X over E-B's mean collision error."""
-    return (x_graze / n_graze) / (b_coll / n_coll)
+    return _ratio(_ratio(x_graze, n_graze), _ratio(b_coll, n_coll))
 
 
 def stat_C(x, b, p, **_):
     """C(X) = (acc X - acc E-B) / (acc E-P - acc E-B) on one event set (sums of correctness)."""
-    return (x - b) / (p - b)
+    return _ratio(np.asarray(x, dtype=np.float64) - b, np.asarray(p, dtype=np.float64) - b)
 
 
 def stat_diff(x, y, n, **_):
-    return (x - y) / n
+    return _ratio(np.asarray(x, dtype=np.float64) - y, n)
 
 
 def per_world(values_by_world: Sequence[Sequence[float]]) -> np.ndarray:

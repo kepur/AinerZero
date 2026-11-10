@@ -40,6 +40,7 @@ MEAN_ARMS = ("L-ind", "L-int", "L-int-c")
 P_SCALE = 0.1                   # position error scale in the loss
 LOGVAR_RANGE = (-15.0, 5.0)
 ROLLOUT = (1, 5, 10)
+ROLLOUT_WEIGHTS = (1.0, 1.0, 1.0)  # weights of the 1-, 5- and 10-step terms of the rollout loss
 CONTACT_WEIGHT = 0.1
 COLL_SHARE = 0.5                # share of each mean-arm batch drawn from samples with a disk contact at step 1
 NEAR_SHARE = 0.0                # share drawn from near misses: no disk contact at step 1, a pair ending it within NEAR_GAP
@@ -253,7 +254,8 @@ def rollout_loss(model: Dynamics, batch: dict[str, mx.array]) -> mx.array:
             bce = nn.losses.binary_cross_entropy(logits, batch["contact"], with_logits=True, reduction="none")
             loss = loss + CONTACT_WEIGHT * (bce * off).sum() / mx.maximum(off.sum() * p.shape[0], 1)
         if k in ROLLOUT:
-            loss = loss + (((p - batch[f"p{k}"]) / P_SCALE) ** 2).mean() + ((v - batch[f"v{k}"]) ** 2).mean()
+            w = ROLLOUT_WEIGHTS[ROLLOUT.index(k)]
+            loss = loss + w * ((((p - batch[f"p{k}"]) / P_SCALE) ** 2).mean() + ((v - batch[f"v{k}"]) ** 2).mean())
     return loss
 
 
@@ -304,14 +306,19 @@ def batches(pool: Pool, steps: int, batch: int, rng: np.random.Generator, *, col
 
 
 def train(arm: str, pool: Pool, *, steps: int, batch: int, seed: int, lr: float = 1e-3,
-          mean_model: Dynamics | None = None, log_every: int = 100) -> tuple[Dynamics, list[tuple[int, float]]]:
+          mean_model: Dynamics | None = None, log_every: int = 100,
+          time_limit: float | None = None) -> tuple[Dynamics, list[tuple[int, float]]]:
     """Adam on ``rollout_loss`` (mean arms; COLL_SHARE of each batch from contact samples and
     NEAR_SHARE from near misses) or, for L-int-s, on ``nll_loss`` with the mean taken from
     ``mean_model`` (a trained L-int) and frozen. The learning rate is ``lr``, constant or with a
     cosine decay to LR_END. Gradients are clipped to a global norm of CLIP; a non-finite loss or
-    gradient stops training.
+    gradient stops training, and so does running longer than ``time_limit`` seconds (TimeoutError).
     Returns the model and (step, loss) every ``log_every``."""
+    import time
+
     from mlx.utils import tree_flatten
+
+    started = time.monotonic()
 
     mx.random.seed(seed)
     model = Dynamics(arm)
@@ -342,6 +349,8 @@ def train(arm: str, pool: Pool, *, steps: int, batch: int, seed: int, lr: float 
             raise FloatingPointError(f"{arm} seed {seed}: non-finite loss or gradient at step {t}")
         opt.update(model, grads)
         mx.eval(model.parameters(), opt.state)
+        if time_limit is not None and time.monotonic() - started > time_limit:
+            raise TimeoutError(f"{arm} seed {seed}: over the {time_limit:g} s cell limit at step {t} of {steps}")
         if t % log_every == 0 or t == steps:
             log.append((t, float(loss)))
     return model, log
