@@ -200,3 +200,13 @@ def test_a_run_file_that_links_outside_is_refused(tmp_path) -> None:
     (root / "final-final" / "worlds.jsonl").symlink_to(outside)
     ok, why = G.authorize(root / "final-final" / "worlds.jsonl", "standin-reg-final", root=root, final_names=FIN, dev_names=DEV, registered=FIN | DEV)
     assert not ok and "only inside the final run" in why
+
+
+def test_names_out_of_step_with_the_generator_stop_the_check(tmp_path, monkeypatch) -> None:
+    G = _load_vgen()
+    monkeypatch.setattr(G.PS, "REGISTERED", G.PS.REGISTERED | {"standin-new-final"})
+    monkeypatch.setattr(G.PS, "generate_sequence", lambda *a, **k: (_ for _ in ()).throw(AssertionError("generated")))
+    p = tmp_path / "worlds.jsonl"
+    p.write_text("", encoding="utf-8")
+    with pytest.raises(SystemExit, match="out of step"):
+        G.main(str(p), NS, 4)
