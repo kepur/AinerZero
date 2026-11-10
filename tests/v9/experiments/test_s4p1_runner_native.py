@@ -246,6 +246,46 @@ def test_final_path_after_a_frozen_probe(tmp_path) -> None:
     _refused(_run(root, *FINAL, report="reports/final3.json"), "already been read")
 
 
+def _frozen_root(tmp_path, extra=()):
+    """A committed copy with a hand-made preregistration, ready for a final."""
+    root = _make_root(tmp_path, extra=extra)
+    m = GD.build_manifest(root, [root / RUNNER], src_root=root / "src", extra=[root / "reports/DESIGN.md", *(root / v for v in VERIFY)])
+    (root / PREREG).write_text(json.dumps({"manifest": m, "third_party": GD.third_party_versions(REPO, ("numpy", "mlx")),
+                                           "final_approval_line": APPROVAL, "training": {"steps": 3, "batch": 4}}))
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "freeze")
+    return root
+
+
+def test_final_that_fails_in_training_does_not_spend_the_read(tmp_path) -> None:
+    """The marker is written after training and before the first registered world: a final stopped
+    during training (here by the wall-clock limit) leaves no marker and has generated nothing of
+    the registered partition; its run directory blocks a silent rerun."""
+    root = _frozen_root(tmp_path, extra=[('"final": {"n_train": 8, "sizes": (2, 1), "limit": 900,', '"final": {"n_train": 8, "sizes": (2, 1), "limit": 1,')])
+    _refused(_run(root, *FINAL), "wall-clock limit")
+    out = root / ARTS / "final-final"
+    assert out.is_dir() and not (root / ARTS / "FINAL_READ_ONCE.json").exists()
+    assert not (out / "worlds.jsonl").exists() and not (out / "labels.jsonl").exists() and not (out / "replay.json").exists()
+    R = json.loads((root / "reports/out.json").read_text())
+    assert "result" not in R and "final_read_marker_sha256" not in R
+    _refused(_run(root, *FINAL, report="reports/again.json"), "run directory already exists")
+    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()
+
+
+def test_registered_worlds_are_generated_only_after_the_marker(tmp_path) -> None:
+    """In the runner source the marker is consumed before the only call that may generate the
+    registered partition, and that call is the only one with allow_registered."""
+    text = (REPO / RUNNER).read_text(encoding="utf-8")
+    assert text.count("allow_registered") == 1 and text.count("GD.consume_final_read(") == 1
+    assert text.index("GD.consume_final_read(") < text.index("allow_registered")
+    assert text.index("train_all(train_eps") < text.index("GD.consume_final_read(")
+    root = _frozen_root(tmp_path)
+    r = _run(root, *FINAL)
+    assert r.returncode == 0, r.stderr[-3000:]
+    R = json.loads((root / "reports/out.json").read_text())
+    assert R["final_read_marker_sha256"] == _sha(root / ARTS / "FINAL_READ_ONCE.json") and R["result"]["gates"]
+
+
 def test_changed_frozen_module_is_refused_before_the_marker(tmp_path) -> None:
     root = _make_root(tmp_path)
     m = GD.build_manifest(root, [root / RUNNER], src_root=root / "src", extra=[root / "reports/DESIGN.md", *(root / v for v in VERIFY)])

@@ -10,7 +10,9 @@
   训练步数与批大小取自预登记，命令行不得再给。
 
 启动顺序：拿锁 → python -I、新字节码目录、冻结清单、已加载模块、第三方版本、git（final）→ 分区 → 请求
-→ 运行目录、占报告 → final 只读一次标记。任何一步失败都不写标记。
+→ final 只读一次标记是否已存在 → 运行目录、占报告。任何一步失败都不写标记。
+训练只读 train 分区。final 的只读一次标记在训练全部完成之后、生成登记分区的第一个世界之前写下：训练中途失败
+（超时、损失非有限、断电）不花掉这一次读取；留下的运行目录会挡住重跑，须由一级存档后再启动。
 训练在本机 MLX 的 GPU 上依次进行；评测在 spawn 出的 CPU 工作进程里，世界只由主进程生成后传入。
 合法性门：标签与确定性由 verify_labels.py、verify_replay.py 在另一个 python -I 进程里复核；
 学生视图在主进程里做字段白名单与未来帧变异。全部中间产物（权重、训练日志、逐世界记录）落盘并记 SHA。
@@ -42,6 +44,7 @@ PREREG = HERE / "PREREG-r1.json"
 VERIFY_LABELS = HERE / "verify_labels.py"
 VERIFY_REPLAY = HERE / "verify_replay.py"
 LOCK = REPO / "artifacts/locks/m0-worker.lock"
+FINAL_MARKER = ROOT / "FINAL_READ_ONCE.json"
 THIRD_PARTY = ("numpy", "mlx")
 SMOKE = {"train": "s4p1x-smoke-train", "eval": "s4p1x-smoke-eval"}
 LEARNED = ("L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8", "L-int-s")
@@ -253,15 +256,10 @@ def main():
         out = ROOT / run_id
         if out.exists():
             raise GD.GuardError(f"run directory already exists: {out}")
+        if a.stage == "final" and FINAL_MARKER.exists():
+            raise GD.GuardError("final has already been read")
         GD.claim_report(report)
         out.mkdir(parents=True)
-        if a.stage == "final":
-            try:
-                GD.consume_final_read(lock, ROOT / "FINAL_READ_ONCE.json", a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
-            except GD.GuardError:
-                out.rmdir()
-                report.unlink()
-                raise
 
         code = code_manifest()
         code_head, code_dirty = GD.check_git_clean(REPO, list(code))
@@ -286,6 +284,11 @@ def main():
         deadline.check()
 
         registered = a.stage == "final"
+        if registered:
+            # The one read of the registered partition starts here; nothing above generates it.
+            GD.consume_final_read(lock, FINAL_MARKER, a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
+            R["final_read_marker_sha256"] = sha(FINAL_MARKER)
+            save()
         eval_eps = [(kind, W.generate_episode(ns["eval"], w, n, allow_registered=registered)) for kind, w, n in A.eval_world_ids(cfg["sizes"])]
         say("evaluation worlds", len(eval_eps))
         main_cells = [(c.arm, c.seed, c.variant) for c in A.plan_cells(LEARNED)]
