@@ -1,13 +1,15 @@
-"""S3 第三阶段运行器（DESIGN-r1；预登记 reports/V9-S3-PHASE3/PREREG-r1.json）。纯 CPU，不导入 MLX。
+"""S3 第三阶段运行器（DESIGN-r2；预登记 reports/V9-S3-PHASE3/PREREG-r1.json）。纯 CPU，不导入 MLX。
 
 用法（dev、final 必须带新建的字节码目录）：
   python -I -X pycache_prefix=<新目录> run_phase3.py --stage dev --use-id dev1 --purpose <用途> --report <json>
   python -I -X pycache_prefix=<新目录> run_phase3.py --stage final --approval <批准行> --report <json>
   python -I run_phase3.py --stage probe|smoke --use-id <名字> --report <json>
 
+smoke 读替身命名空间 s3p3x-smoke，不碰登记分区；probe 读 s3p3-probe，两者都必须带 --use-id。
+
 启动顺序：拿锁 → 校验清单、已加载模块、git → 校验分区 → 校验请求 → 检查运行目录、占报告 → 记账。
-任何一步失败都不扣次数。smoke、probe 只读 s3p3-probe，不记账，预登记冻结前也能跑。
-不用 MLX 也持 m0-worker.lock，与 MLX 运行串行。契约门 K2 由 verify_worlds.py 在子进程里独立复核。
+任何一步失败都不扣次数。smoke、probe 不记账，预登记冻结前也能跑；报告记录代码清单哈希与工作区是否干净。
+不用 MLX 也持 m0-worker.lock，与 MLX 运行串行。契约门 K2、K2b 由 verify_worlds.py、verify_generation.py 在子进程里独立复核。
 """
 import time
 
@@ -24,10 +26,12 @@ from ainerzero.v9.experiments.s3 import analysis_p3 as A, persist as PS, run_gua
 ROOT = REPO / "artifacts/v9/s3/phase3"
 PREREG = REPO / "reports/V9-S3-PHASE3/PREREG-r1.json"
 VERIFY = REPO / "reports/V9-S3-PHASE3/verify_worlds.py"
+VERIFY_GEN = REPO / "reports/V9-S3-PHASE3/verify_generation.py"
+SMOKE_NAMESPACE = "s3p3x-smoke"
 LOCK = REPO / "artifacts/locks/m0-worker.lock"
 THIRD_PARTY = ("numpy",)
 STAGES = {
-    "smoke": {"ns": "probe", "worlds": 4, "episodes": 8, "limit": 600},
+    "smoke": {"ns": None, "worlds": 4, "episodes": 8, "limit": 600},
     "probe": {"ns": "probe", "worlds": 100, "episodes": PS.N_EPISODES, "limit": 1800},
     "dev": {"ns": "dev", "worlds": 100, "episodes": PS.N_EPISODES, "limit": 1800},
     "final": {"ns": "final", "worlds": 200, "episodes": PS.N_EPISODES, "limit": 1800},
@@ -36,6 +40,15 @@ STAGES = {
 
 def sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+
+
+def code_manifest():
+    """Code that produces the numbers (closure of the runner plus both verifiers); no design text."""
+    return GD.build_manifest(REPO, [Path(__file__).resolve()], src_root=REPO / "src", extra=[VERIFY, VERIFY_GEN])
+
+
+def manifest_sha(m):
+    return hashlib.sha256(json.dumps(m, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def startup_checks(stage):
@@ -62,6 +75,8 @@ def check_request(a, pre):
     """Refuse a malformed request before anything is claimed or spent."""
     if a.use_id is not None and not GD.valid_use_id(a.use_id):
         raise GD.GuardError(f"invalid use id: {a.use_id!r}")
+    if a.stage in ("smoke", "probe") and not a.use_id:
+        raise GD.GuardError(f"a {a.stage} run needs a use id")
     if a.stage == "dev" and (not a.use_id or not (a.purpose or "").strip()):
         raise GD.GuardError("a dev use needs both a use id and a purpose")
     if a.stage == "final" and (a.approval or "").strip() != pre["final_approval_line"]:
@@ -90,9 +105,15 @@ def analyse(ns, n_worlds, n_episodes, *, registered, deadline, say):
     return A.to_arrays(cols), logs, {k: A.to_arrays(v) for k, v in off.items()}
 
 
-def independent_check(worlds):
-    """Contract gate K2: the standard-library verifier in a separate isolated process."""
-    r = subprocess.run([sys.executable, "-I", str(VERIFY), str(worlds)], capture_output=True, text=True, timeout=1200)
+def independent_check(script, *args, deadline):
+    """Contract gates K2 and K2b: a verifier in a separate isolated process, within the run's time limit."""
+    left = deadline.left()
+    if left <= 0:
+        raise GD.GuardError("wall-clock limit reached")
+    try:
+        r = subprocess.run([sys.executable, "-I", str(script), *map(str, args)], capture_output=True, text=True, timeout=left)
+    except subprocess.TimeoutExpired as exc:
+        raise GD.GuardError("wall-clock limit reached") from exc
     if r.returncode != 0:
         return {"passed": False, "error": r.stderr[-2000:]}
     return json.loads(r.stdout)
@@ -112,8 +133,13 @@ def main():
 
     with GD.RunLock(LOCK) as lock:
         pre, pre_sha, head, versions = startup_checks(a.stage)
-        ns = A.NAMESPACES[cfg["ns"]]
-        GD.check_stage_namespace(a.stage, ns, **A.NAMESPACES)
+        if a.stage == "smoke":
+            ns = SMOKE_NAMESPACE
+            if ns in A.NAMESPACES.values() or ns in PS.REGISTERED:
+                raise GD.GuardError(f"smoke must not read a registered partition: {ns}")
+        else:
+            ns = A.NAMESPACES[cfg["ns"]]
+            GD.check_stage_namespace(a.stage, ns, **A.NAMESPACES)
         check_request(a, pre)
         report = Path(a.report)
         run_id = f"{a.stage}-{a.use_id or 'final'}"
@@ -132,8 +158,11 @@ def main():
             report.unlink()
             raise
 
-        R = {"schema": "s3.phase3.v1", "stage": a.stage, "use_id": a.use_id, "purpose": a.purpose, "namespace": ns,
-             "worlds": cfg["worlds"], "episodes": cfg["episodes"], "prereg_sha256": pre_sha, "git_head": head, "third_party": versions}
+        code = code_manifest()
+        code_head, code_dirty = GD.check_git_clean(REPO, list(code))
+        R = {"schema": "s3.phase3.v2", "stage": a.stage, "use_id": a.use_id, "purpose": a.purpose, "namespace": ns,
+             "worlds": cfg["worlds"], "episodes": cfg["episodes"], "prereg_sha256": pre_sha, "git_head": head or code_head,
+             "code_manifest_sha256": manifest_sha(code), "code_dirty": code_dirty, "third_party": versions}
 
         def save():
             R["elapsed_s"] = round(time.monotonic() - t0, 1)
@@ -153,9 +182,10 @@ def main():
             for lg in logs:
                 fh.write(json.dumps(lg, ensure_ascii=False, sort_keys=True) + "\n")
         R["files_sha256"] = {name: sha(out / name) for name in list(files) + [worlds.name]}
-        deadline.check()
-        external = independent_check(worlds)
-        R["result"] = A.evaluate(ev, logs, stage=a.stage if a.stage != "smoke" else None, n_worlds=cfg["worlds"], external=external, offsets=off)
+        k2 = independent_check(VERIFY, worlds, deadline=deadline)
+        k2b = independent_check(VERIFY_GEN, worlds, ns, cfg["episodes"], deadline=deadline)
+        R["result"] = A.evaluate(ev, logs, stage=a.stage if a.stage != "smoke" else None, n_worlds=cfg["worlds"],
+                                 external=k2, external_gen=k2b, offsets=off)
         if pre:
             late = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])
             R["late_violations"] = late

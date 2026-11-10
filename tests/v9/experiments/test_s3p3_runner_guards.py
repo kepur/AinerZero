@@ -27,6 +27,8 @@ REPO = Path(__file__).resolve().parents[3]
 RUNNER = "reports/V9-S3-PHASE3/run_phase3.py"
 PREREG = "reports/V9-S3-PHASE3/PREREG-r1.json"
 VERIFY = "reports/V9-S3-PHASE3/verify_worlds.py"
+VERIFY_GEN = "reports/V9-S3-PHASE3/verify_generation.py"
+MAKE_PREREG = "reports/V9-S3-PHASE3/make_prereg.py"
 ARTS = "artifacts/v9/s3/phase3"
 APPROVAL = "TEST-APPROVAL-LINE"
 REAL_NAMESPACES = AP.NAMESPACES
@@ -74,9 +76,11 @@ def _make_root(tmp_path, extra=(), mutate_prereg=None, verifier=None):
     design = r / "reports/DESIGN.md"
     design.write_text("design", encoding="utf-8")
     (r / VERIFY).write_text(verifier if verifier is not None else (REPO / VERIFY).read_text(encoding="utf-8"), encoding="utf-8")
+    for f in (VERIFY_GEN, MAKE_PREREG):
+        (r / f).write_text((REPO / f).read_text(encoding="utf-8"), encoding="utf-8")
     (r / "artifacts/locks").mkdir(parents=True)
     prereg = {
-        "manifest": GD.build_manifest(r, [r / RUNNER], src_root=r / "src", extra=[design, r / VERIFY]),
+        "manifest": GD.build_manifest(r, [r / RUNNER], src_root=r / "src", extra=[design, r / VERIFY, r / VERIFY_GEN]),
         "third_party": GD.third_party_versions(REPO, ("numpy",)),
         "dev_max_uses": 2,
         "final_approval_line": APPROVAL,
@@ -157,7 +161,7 @@ def test_manifest_covers_the_new_and_the_frozen_modules(root) -> None:
     s3 = "src/ainerzero/v9/experiments/s3/"
     for name in ("persist", "promotion", "analysis_p3", "run_guard", "tour", "world", "store", "cues", "content", "data", "spec"):
         assert f"{s3}{name}.py" in m, name
-    assert "src/ainerzero/v9/experiments/s2/world.py" in m and RUNNER in m and "reports/DESIGN.md" in m and VERIFY in m
+    assert "src/ainerzero/v9/experiments/s2/world.py" in m and RUNNER in m and "reports/DESIGN.md" in m and VERIFY in m and VERIFY_GEN in m
 
 
 def test_changed_design_spends_nothing(root) -> None:
@@ -288,7 +292,55 @@ def test_smoke_reads_probe_without_spending(root) -> None:
     assert r.returncode == 0, r.stderr[-1500:]
     assert not _spent(root)
     calls = [json.loads(x) for x in (root / "build_calls.jsonl").read_text(encoding="utf-8").splitlines()]
-    assert calls == [["standin-probe", 4, 8, False]]
+    assert calls == [["s3p3x-smoke", 4, 8, False]]
+    R = json.loads(_out(root).read_text(encoding="utf-8"))
+    assert R["namespace"] == "s3p3x-smoke" and R["code_dirty"] == [] and R["code_manifest_sha256"] == _code_sha(root)
+    assert R["result"]["legality"]["K2b_generator"]["passed"] and R["result"]["legality"]["K6_events_match_log"]["passed"]
+
+
+def _code_sha(root):
+    m = GD.build_manifest(root, [root / RUNNER], src_root=root / "src", extra=[root / VERIFY, root / VERIFY_GEN])
+    return hashlib.sha256(json.dumps(m, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+@pytest.mark.parametrize("stage", ["smoke", "probe"])
+def test_smoke_and_probe_need_a_use_id(root, stage) -> None:
+    _refused(_run(root, "--stage", stage), "needs a use id")
+    assert not _out(root).exists() and not (root / ARTS / f"{stage}-final").exists()
+
+
+def test_an_uncommitted_code_change_is_recorded(root) -> None:
+    f = root / "src/ainerzero/v9/experiments/s3/promotion.py"
+    f.write_text(f.read_text(encoding="utf-8") + "\n# local edit\n", encoding="utf-8")
+    r = _run(root, "--stage", "smoke", "--use-id", "t")
+    assert r.returncode == 0, r.stderr[-1500:]
+    R = json.loads(_out(root).read_text(encoding="utf-8"))
+    assert R["code_dirty"] == [" M src/ainerzero/v9/experiments/s3/promotion.py"]  # git porcelain and R["code_manifest_sha256"] == _code_sha(root)
+
+
+def _prereg(root, probe_doc, name="p.json"):
+    probe = root / "reports" / name
+    probe.write_text(json.dumps(probe_doc), encoding="utf-8")
+    out = root / "reports" / ("pre-" + name)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+    r = subprocess.run([sys.executable, "-I", str(root / MAKE_PREREG), "--design", str(root / "reports/DESIGN.md"), "--probe", str(probe), "--out", str(out)],
+                       cwd=root, env=env, capture_output=True, text=True, timeout=120)
+    return r, out
+
+
+def test_make_prereg_accepts_only_a_valid_clean_probe_of_the_frozen_code(root) -> None:
+    good = {"stage": "probe", "namespace": "standin-probe", "result": {"valid": True}, "code_manifest_sha256": _code_sha(root), "code_dirty": []}
+    for bad in (dict(good, stage="smoke"), dict(good, namespace="standin-dev"), dict(good, result={"valid": False}),
+                dict(good, code_manifest_sha256="0" * 64), dict(good, code_dirty=["x.py"]), {k: v for k, v in good.items() if k != "code_dirty"}):
+        r, out = _prereg(root, bad)
+        assert r.returncode != 0 and not out.exists(), bad
+    r, out = _prereg(root, good, name="good.json")
+    assert r.returncode == 0, r.stderr[-1500:]
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    assert doc["dev_max_uses"] == 0 and VERIFY in doc["manifest"] and VERIFY_GEN in doc["manifest"] and "reports/DESIGN.md" in doc["manifest"]
+    assert doc["contract"]["code_manifest_sha256"] == _code_sha(root) and doc["contract"]["sample_band"] == AP.SAMPLE_BAND
+    r2, _ = _prereg(root, good, name="good.json")
+    assert r2.returncode != 0  # never overwrites
 
 
 def test_dev_runs_through_the_path_after_the_ledger(root) -> None:
@@ -312,10 +364,30 @@ def test_dev_runs_through_the_path_after_the_ledger(root) -> None:
     assert [lg["world"] for lg in logs] == [0, 1, 2]
     lg = R["result"]["legality"]
     assert lg["K2_independent"]["passed"] is True and lg["K2_independent"]["report"]["worlds"] == 3
-    again = AP.evaluate(ev, logs, stage="dev", n_worlds=3, external=lg["K2_independent"]["report"], offsets=off)
+    assert lg["K2b_generator"]["passed"] is True and lg["K2b_generator"]["report"]["namespace"] == "standin-dev"
+    assert lg["K6_events_match_log"]["passed"] is True
+    again = AP.evaluate(ev, logs, stage="dev", n_worlds=3, external=lg["K2_independent"]["report"], external_gen=lg["K2b_generator"]["report"], offsets=off)
     assert json.dumps(again, sort_keys=True) == json.dumps(R["result"], sort_keys=True)
     assert set(R["result"]["descriptive"]) == {c[0] for c in AP.COMPARISONS} and set(R["result"]["offsets"]) == {str(k) for k in AP.OFFSETS}
-    assert {"K1_versions", "K2_independent", "K3_restore_replay", "K4_labels", "K5_samples"} <= set(lg)
+    assert {"K1_versions", "K2_independent", "K2b_generator", "K3_restore_replay", "K4_labels", "K5_samples", "K6_events_match_log"} <= set(lg)
+    # the offset files are the offset analyses of the same worlds, and they differ from each other
+    sys.path.insert(0, str(root / "src"))
+    try:
+        import importlib
+
+        PSf = importlib.import_module("ainerzero.v9.experiments.s3.persist")
+        for k in AP.OFFSETS:
+            want = {f: [] for f in AP.FIELDS}
+            for w in range(3):
+                cols, _ = AP.analyse_world(PSf.generate_sequence("standin-dev", w, n_episodes=8), offset=k, full=False)
+                for f in want:
+                    want[f] += cols[f]
+            for f in AP.FIELDS:
+                assert off[k][f].tolist() == want[f], (k, f)
+    finally:
+        sys.path.remove(str(root / "src"))
+    preds = [tuple(off[k]["pred_L"].tolist()) for k in AP.OFFSETS]
+    assert len(set(preds)) == len(preds)
     assert R["result"]["valid"] is False and lg["K5_samples"]["passed"] is False  # 3 worlds are outside the band
 
 
@@ -383,6 +455,7 @@ def test_registered_stage_sizes_of_the_runner() -> None:
     mod = importlib.util.module_from_spec(spec_)
     spec_.loader.exec_module(mod)
     assert {k: (v["ns"], v["worlds"], v["episodes"]) for k, v in mod.STAGES.items()} == {
-        "smoke": ("probe", 4, 8), "probe": ("probe", 100, 12), "dev": ("dev", 100, 12), "final": ("final", 200, 12)}
+        "smoke": (None, 4, 8), "probe": ("probe", 100, 12), "dev": ("dev", 100, 12), "final": ("final", 200, 12)}
     assert all(v["limit"] <= 1800 for v in mod.STAGES.values())
+    assert mod.SMOKE_NAMESPACE == "s3p3x-smoke" and mod.SMOKE_NAMESPACE not in AP.NAMESPACES.values()
     assert mod.THIRD_PARTY == ("numpy",) and "mlx" not in (REPO / RUNNER).read_text(encoding="utf-8").split('"""')[2]

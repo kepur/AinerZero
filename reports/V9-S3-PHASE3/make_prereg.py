@@ -12,6 +12,7 @@ from ainerzero.v9.experiments.s3 import analysis_p3 as A, persist as PS, promoti
 
 RUNNER = REPO / "reports/V9-S3-PHASE3/run_phase3.py"
 VERIFY = REPO / "reports/V9-S3-PHASE3/verify_worlds.py"
+VERIFY_GEN = REPO / "reports/V9-S3-PHASE3/verify_generation.py"
 APPROVAL = "S3-P3-FINAL-READ-APPROVED-TIER1-20261110"
 
 
@@ -27,10 +28,14 @@ def main():
     pr = json.loads(probe.read_text(encoding="utf-8"))
     if pr.get("stage") != "probe" or pr.get("namespace") != A.NAMESPACES["probe"] or not pr.get("result", {}).get("valid"):
         raise SystemExit("探针报告不是 s3p3-probe 上的有效正式运行")
+    code = GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[VERIFY, VERIFY_GEN])
+    code_sha = hashlib.sha256(json.dumps(code, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if pr.get("code_manifest_sha256") != code_sha or pr.get("code_dirty") != []:
+        raise SystemExit("探针不是用要冻结的、已提交的代码跑出来的")
     doc = {
         "schema": "s3.phase3.prereg.v1",
         "design": str(design.relative_to(REPO)),
-        "manifest": GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[design, VERIFY]),
+        "manifest": GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[design, VERIFY, VERIFY_GEN]),
         "third_party": GD.third_party_versions(REPO, ("numpy",)),
         "probe_report": str(probe.relative_to(REPO)),
         "probe_report_sha256": hashlib.sha256(probe.read_bytes()).hexdigest(),
@@ -42,7 +47,7 @@ def main():
             "seeds": "derive_seed(ns, 'world', w)、(ns, 'persist', w)、(ns, 'ep', w, e)",
         },
         "memory": {"d_max": PR.D_MAX, "sim_min": PR.SIM_MIN, "cue_lambda": PR.LAM, "min_votes": PR.MIN_VOTES, "rule": "R2", "fast_gap": A.GAP, "tie": A.TIE},
-        "contract": {"expected_per_100_worlds": A.EXPECTED_PER_100, "sample_band": list(A.SAMPLE_BAND)},
+        "contract": {"expected_per_100_worlds": A.EXPECTED_PER_100, "sample_band": A.SAMPLE_BAND, "code_manifest_sha256": code_sha},
         "descriptive": {"comparisons": [list(c) for c in A.COMPARISONS], "offset_comparisons": [list(c) for c in A.OFFSET_COMPARISONS],
                         "alphas": A.ALPHAS, "offsets": list(A.OFFSETS), "bootstrap": {"n": A.BOOT_N, "seed": A.BOOT_SEED, "unit": "world", "level": A.LEVEL},
                         "bonferroni_m": A.N_COMPARISONS, "perm_seed": "derive_seed(ns, 'perm', w)", "offset_seed": "derive_seed(ns, 'offset', w, e, k)"},

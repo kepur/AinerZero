@@ -12,7 +12,9 @@ OUT = Path(__file__).resolve().parent
 S3 = "src/ainerzero/v9/experiments/s3/"
 PSF, PRF, ANF, RUN = S3 + "persist.py", S3 + "promotion.py", S3 + "analysis_p3.py", "reports/V9-S3-PHASE3/run_phase3.py"
 VF = "reports/V9-S3-PHASE3/verify_worlds.py"
-FAST = ["tests/v9/experiments/test_s3p3_persist_promotion.py", "tests/v9/experiments/test_s3p3_analysis.py", "tests/v9/experiments/test_s3p3_verify_worlds.py"]
+VG = "reports/V9-S3-PHASE3/verify_generation.py"
+MP = "reports/V9-S3-PHASE3/make_prereg.py"
+FAST = ["tests/v9/experiments/test_s3p3_persist_promotion.py", "tests/v9/experiments/test_s3p3_analysis.py", "tests/v9/experiments/test_s3p3_verify_worlds.py", "tests/v9/experiments/test_s3p3_verify_generation.py"]
 SLOW = ["tests/v9/experiments/test_s3p3_runner_guards.py"]
 
 M = [
@@ -92,7 +94,7 @@ M = [
     ("an_k4_no_stable", ANF, "\"stable_answer_is_episode0_value\": bool((ev[\"answer\"][stable] == ev[\"tok_before\"][stable]).all()),", "\"stable_answer_is_episode0_value\": True,"),
     ("an_k4_reloc_no_differ", ANF, " and (ev[\"tok_after\"][reloc] != ev[\"tok_before\"][reloc]).all()),", "),"),
     ("an_k4_no_first", ANF, "\"query_is_first_arrival\": bool((ev[\"first_ok\"][q] == 1).all()),", "\"query_is_first_arrival\": True,"),
-    ("an_k5_band", ANF, "SAMPLE_BAND = (0.8, 1.2)", "SAMPLE_BAND = (0.7, 1.2)"),
+    ("an_k5_band", ANF, "\"relocated\": 0.21}", "\"relocated\": 0.30}"),
     ("an_k5_no_upper", ANF, "band[k][0] <= have[k] <= band[k][1]", "band[k][0] <= have[k]"),
     ("an_valid_always", ANF, "    out[\"valid\"] = all(v[\"passed\"] for v in out.values() if isinstance(v, dict))", "    out[\"valid\"] = True"),
     ("an_recovery_ge", ANF, "if first is None and row[\"G\"] > row[\"C\"]:", "if first is None and row[\"G\"] >= row[\"C\"]:"),
@@ -105,9 +107,9 @@ M = [
     ("run_no_pycache_check", RUN, "    GD.require_fresh_pycache(STARTED)\n", ""),
     ("run_ledger_before_report", RUN, "        GD.claim_report(report)\n        out.mkdir(parents=True)\n        try:\n", "        out.mkdir(parents=True)\n        try:\n"),
     ("run_no_git_check", RUN, "    if dirty:\n        raise", "    if False:\n        raise"),
-    ("run_skip_verifier", RUN, "        external = independent_check(worlds)\n", "        external = {\"passed\": True}\n"),
-    ("run_verifier_not_isolated", RUN, "[sys.executable, \"-I\", str(VERIFY), str(worlds)]", "[sys.executable, str(VERIFY), str(worlds)]"),
-    ("run_offsets_dropped", RUN, "external=external, offsets=off)", "external=external, offsets=None)"),
+    ("run_skip_verifier", RUN, "        k2 = independent_check(VERIFY, worlds, deadline=deadline)\n", "        k2 = {\"passed\": True, \"worlds\": cfg[\"worlds\"]}\n"),
+    ("run_verifier_not_isolated", RUN, "[sys.executable, \"-I\", str(script), *map(str, args)]", "[sys.executable, str(script), *map(str, args)]"),
+    ("run_offsets_dropped", RUN, "external=k2, external_gen=k2b, offsets=off)", "external=k2, external_gen=k2b, offsets=None)"),
     ("run_n_worlds_wrong", RUN, "n_worlds=cfg[\"worlds\"]", "n_worlds=100"),
     # verify_worlds.py
     ("vf_no_hash", VF, "        if vhash(v[\"parent\"], v[\"episode\"], v[\"items\"]) != v[\"hash\"]:", "        if False:"),
@@ -125,6 +127,51 @@ M = [
     ("vf_no_disappear", VF, "            if iid not in cur:", "            if False:"),
     ("vf_no_replace_check", VF, "if toks[last + 1:].count(tok) < MIN_VOTES:", "if False:"),
     ("vf_no_vote_order", VF, "if eps != sorted(set(eps)) or (eps and eps[-1] > v[\"episode\"]):", "if False:"),
+    # r1 review: the reviewer's survivors, against the current code
+    ("rv_pred_G_decoupled", ANF, '"C": shown, "L": latest, "G": g, "GNR":', '"C": shown, "L": latest, "G": (shown if e >= 9 else g), "GNR":'),
+    ("rv_gt_no_rollback", ANF, "truth_store = PR.TruthKeyedStore(rollback=True)", "truth_store = PR.TruthKeyedStore(rollback=False)"),
+    ("rv_lt_fallback_latest", ANF, "if len(at_cell) else shown", "if len(at_cell) else latest"),
+    ("rv_mixed_ge1", ANF, "for m in it.members}) > 1 for it in store.items)", "for m in it.members}) >= 1 for it in store.items)"),
+    ("rv_several_slow_ge1", ANF, "sum(on.count(c) > 1 for c in persistent)", "sum(on.count(c) >= 1 for c in persistent)"),
+    ("rv_k3_versions_only", ANF, "if json.loads(json.dumps(s.state())) != final_state:", 'if json.loads(json.dumps(s.state()))["versions"] != final_state["versions"]:'),
+    ("rv_u0past_all_fast", ANF, '"D2_U0_won_by_past": rate(ev, s["fast_e1"], "u0_past"),', '"D2_U0_won_by_past": rate(ev, s["fast"], "u0_past"),'),
+    ("rv_gnr_rollback", ANF, "GNR = PR.PromotionStore(rollback=False)", "GNR = PR.PromotionStore(rollback=True)"),
+    ("rv_query_tie_all", ANF, 'rate(ev, s["query"] & (ev["g_slow"] == 1), "query_tie")', 'rate(ev, s["query"], "query_tie")'),
+    ("rv_fast_sr_no_gate", ANF, "            f = top1(R, fast_pool(R, e, t), qi, eligible_only=True)\n            if f is not None:", "            f = top1(R, fast_pool(R, e, t), qi)\n            if f is not None:"),
+    ("rv_vf_no_query_count", VF, '"passed": bool(n_w > 0 and n_q > 0 and not problems)', '"passed": bool(n_w > 0 and not problems)'),
+    ("rv_run_offsets_k0", RUN, "ck, _ = A.analyse_world(seq, offset=k, full=False)", "ck, _ = A.analyse_world(seq, offset=0, full=False)"),
+    # r2: counts, K2b, K6 and the runner
+    ("an_k2_no_counts", ANF, "    counts_ok = external is not None and external.get(\"worlds\") == n_worlds and external.get(\"queries\") == n_q\n", "    counts_ok = True\n"),
+    ("an_k2b_passed_only", ANF, "gen_ok = (external_gen is not None and external_gen.get(\"passed\") is True and external_gen.get(\"worlds\") == n_worlds", "gen_ok = (external_gen is not None and external_gen.get(\"passed\") is True or external_gen.get(\"worlds\") == n_worlds"),
+    ("an_k2b_no_fast_count", ANF, " and external_gen.get(\"fast_events\") == int(s[\"fast\"].sum()))", ")"),
+    ("an_k6_always", ANF, "return {\"passed\": bool(ok_q and ok_f and worlds == sorted(set(ev[\"world\"].tolist())) and len(event_q) > 0),", "return {\"passed\": True,"),
+    ("an_k6_no_fast", ANF, "bool(ok_q and ok_f and worlds", "bool(ok_q and worlds"),
+    ("an_k6_no_world_set", ANF, " and worlds == sorted(set(ev[\"world\"].tolist()))", ""),
+    ("an_k6_no_pred_G", ANF, "x[\"relocated\"], x[\"pred_G\"], x[\"pred_L\"]) for lg in logs for x in lg[\"queries\"]]", "x[\"relocated\"], x[\"pred_L\"]) for lg in logs for x in lg[\"queries\"]]"),
+    ("an_k6_not_in_valid", ANF, "    out[\"K6_events_match_log\"] = log_linkage(ev, logs)\n", "    out[\"K6_events_match_log\"] = dict(log_linkage(ev, logs), passed=True)\n"),
+    ("an_k5_fast_wider", ANF, "SAMPLE_BAND = {\"fast\": 0.07,", "SAMPLE_BAND = {\"fast\": 0.10,"),
+    ("an_log_no_fast", ANF, "            fast_events.append([e, t, int(ev[\"answer\"])])\n", ""),
+    ("an_log_answer_shown", ANF, "\"shown\": shown, \"answer\": answer, \"decoy\": int(ep.decoy[c]),", "\"shown\": shown, \"answer\": shown, \"decoy\": int(ep.decoy[c]),"),
+    ("vg_no_obs", VG, "    if lg[\"observations\"] != obs:", "    if False:"),
+    ("vg_no_queries", VG, "    if logged != queries:", "    if False:"),
+    ("vg_no_fast", VG, "    if lg[\"fast_events\"] != fast:", "    if False:"),
+    ("vg_no_seed", VG, "    if lg.get(\"world_seed\") != seq.world_seed or lg.get(\"layout_sha256\") != seq.layout_sha256:", "    if False:"),
+    ("vg_no_order", VG, "    if worlds != list(range(len(worlds))):", "    if False:"),
+    ("vg_forbidden_off", VG, "    if loaded:\n        problems.append", "    if False:\n        problems.append"),
+    ("vg_passed_always", VG, "\"passed\": bool(worlds and n_q > 0 and not problems)", "\"passed\": True"),
+    ("vg_dwell_no_reset", VG, "            else:\n                prev = None\n        if e >= 1:", "            else:\n                pass\n        if e >= 1:"),
+    ("vg_query_last_visit", VG, "                        })\n                        break\n", "                        })\n"),
+    ("vg_fast_unswapped", VG, "if ev[\"bucket\"] == spec.BUCKET_LONG and ev[\"swapped\"]:", "if ev[\"bucket\"] == spec.BUCKET_LONG:"),
+    ("vg_keys_no_answer", VG, "KEYS = (\"episode\", \"t\", \"xy\", \"terrain\", \"shown\", \"answer\", \"decoy\", \"relocated\")", "KEYS = (\"episode\", \"t\", \"xy\", \"terrain\", \"shown\", \"decoy\", \"relocated\")"),
+    ("run_smoke_registered", RUN, "SMOKE_NAMESPACE = \"s3p3x-smoke\"", "SMOKE_NAMESPACE = \"s3p3x-explore\""),
+    ("run_useid_optional", RUN, "    if a.stage in (\"smoke\", \"probe\") and not a.use_id:\n        raise GD.GuardError(f\"a {a.stage} run needs a use id\")\n", ""),
+    ("run_no_code_dirty", RUN, "\"code_manifest_sha256\": manifest_sha(code), \"code_dirty\": code_dirty,", "\"code_manifest_sha256\": manifest_sha(code), \"code_dirty\": [],"),
+    ("run_code_without_gen", RUN, "extra=[VERIFY, VERIFY_GEN])\n\n\ndef manifest_sha", "extra=[VERIFY])\n\n\ndef manifest_sha"),
+    ("run_k2b_skipped", RUN, "        k2b = independent_check(VERIFY_GEN, worlds, ns, cfg[\"episodes\"], deadline=deadline)\n", "        k2b = {\"passed\": True, \"worlds\": cfg[\"worlds\"]}\n"),
+    ("run_k2b_wrong_ns", RUN, "independent_check(VERIFY_GEN, worlds, ns, cfg[\"episodes\"], deadline=deadline)", "independent_check(VERIFY_GEN, worlds, \"x\", cfg[\"episodes\"], deadline=deadline)"),
+    ("mp_no_code_check", MP, "    if pr.get(\"code_manifest_sha256\") != code_sha or pr.get(\"code_dirty\") != []:", "    if pr.get(\"code_dirty\") != []:"),
+    ("mp_dirty_ok", MP, "    if pr.get(\"code_manifest_sha256\") != code_sha or pr.get(\"code_dirty\") != []:", "    if pr.get(\"code_manifest_sha256\") != code_sha:"),
+    ("mp_dev_uses", MP, "\"dev_max_uses\": 0,", "\"dev_max_uses\": 2,"),
     ("vf_L_includes_current", VF, "            if e < q[\"episode\"]:", "            if e <= q[\"episode\"]:"),
 ]
 
@@ -138,7 +185,8 @@ def copy_tree(dst, src=REPO):
     shutil.copy2(src / "pyproject.toml", dst / "pyproject.toml")
     (dst / "reports/V9-S3-PHASE3").mkdir(parents=True)
     shutil.copy2(src / RUN, dst / RUN)
-    shutil.copy2(src / VF, dst / VF)
+    for f in (VF, VG, MP):
+        shutil.copy2(src / f, dst / f)
 
 
 def pytest(dst, files):

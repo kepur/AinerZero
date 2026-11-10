@@ -205,3 +205,12 @@ def test_an_empty_file_does_not_pass(V, tmp_path) -> None:
     p.write_text("", encoding="utf-8")
     out = json.loads(subprocess.run([sys.executable, "-I", str(VERIFY), str(p)], capture_output=True, text=True, check=True).stdout)
     assert out["passed"] is False
+
+
+def test_worlds_without_queries_do_not_pass(V, log, tmp_path) -> None:
+    lg = copy.deepcopy(log)
+    lg["queries"] = []
+    p = tmp_path / "noq.jsonl"
+    p.write_text(json.dumps(lg) + "\n", encoding="utf-8")
+    out = json.loads(subprocess.run([sys.executable, "-I", str(VERIFY), str(p)], capture_output=True, text=True, check=True).stdout)
+    assert out["n_problems"] == 0 and out["queries"] == 0 and out["passed"] is False

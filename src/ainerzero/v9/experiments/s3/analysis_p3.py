@@ -1,6 +1,6 @@
 """GridLab-S3 phase 3: events, policies, contract gates and registered descriptive quantities.
 
-Per reports/V9-S3-PHASE3-DESIGN/DESIGN-r1.md §2–§4. Pure CPU, NumPy / standard library only.
+Per reports/V9-S3-PHASE3-DESIGN/DESIGN-r2.md §2–§4. Pure CPU, NumPy / standard library only.
 Zero MLX imports.
 
 Policies answer from student-visible records only (estimated pose, terrain, tokens), with two
@@ -32,7 +32,8 @@ ALPHAS = {"U0": 0.0, "U05": 0.5, "U1": 1.0, "U2": 2.0}
 OFFSETS = (1, 2, 3, 5)
 BOOT_N, BOOT_SEED, LEVEL = 10_000, 20261110, 0.95
 EXPECTED_PER_100 = {"fast": 2030, "decoy_stable": 800, "relocated": 1070}
-SAMPLE_BAND = (0.8, 1.2)
+# 4 SD of (count - expectation), counting the expectation's own error (DESIGN-r2 §4 K5).
+SAMPLE_BAND = {"fast": 0.07, "decoy_stable": 0.13, "relocated": 0.21}
 POLICIES = ("C", "L", "G", "GNR", "MODE", "GP", "SR", "U0", "U05", "U1", "U2", "GT", "LT")
 KIND_FAST, KIND_QUERY = 0, 1
 FIELDS = (
@@ -61,6 +62,7 @@ COMPARISONS = (
     ("D7_GT_minus_G_stable", "decoy_stable", "GT", "G"),
     ("D7_LT_minus_L_stable", "decoy_stable", "LT", "L"),
     ("D7_GT_minus_G_relocated", "relocated", "GT", "G"),
+    ("D7_LT_minus_L_relocated", "relocated", "LT", "L"),
     ("D9_C_minus_G_clean", "clean", "C", "G"),
 )
 OFFSET_COMPARISONS = (
@@ -105,7 +107,7 @@ def latest_match(R: PS.Records, past: np.ndarray, qi: int) -> int | None:
 
 
 def shifted(R: PS.Records, seq: PS.WorldSequence, k: int) -> PS.Records:
-    """Start-pose translation error: one integer offset in [-k, k]^2 per episode (DESIGN-r1 §4 D6)."""
+    """Start-pose translation error: one integer offset in [-k, k]^2 per episode (DESIGN-r2 §4 D6)."""
     xy = R.xy.copy()
     for e in range(len(seq.episodes)):
         rng = random.Random(derive_seed(seq.namespace, "offset", seq.world_index, e, k))
@@ -124,7 +126,7 @@ def token_permutation(seq: PS.WorldSequence) -> dict[int, int]:
 def analyse_world(seq: PS.WorldSequence, *, offset: int = 0, full: bool = True) -> tuple[dict[str, list], dict[str, Any]]:
     """Answer every event of one world sequence; return (event columns, world log).
 
-    ``offset`` adds the start-pose translation error of DESIGN-r1 D6. ``full`` adds the
+    ``offset`` adds the start-pose translation error of DESIGN-r2 D6. ``full`` adds the
     in-process contract checks and the evidence log (versions, observations, queries).
     """
     R = PS.records_of(seq)
@@ -141,6 +143,7 @@ def analyse_world(seq: PS.WorldSequence, *, offset: int = 0, full: bool = True) 
     obs_by_ep: list[np.ndarray] = []
     checkpoints: list[dict[str, Any]] = []
     queries: list[dict[str, Any]] = []
+    fast_events: list[list[int]] = []
 
     def push(**kw):
         for k in FIELDS:
@@ -183,7 +186,9 @@ def analyse_world(seq: PS.WorldSequence, *, offset: int = 0, full: bool = True) 
                 )
                 if full:
                     queries.append({"episode": e, "t": t, "version": G.head, "xy": R.xy[qi].tolist(), "terrain": R.terrain[qi].tolist(),
-                                    "shown": shown, "pred_G": g, "pred_L": latest, "slow": g_slow})
+                                    "shown": shown, "answer": answer, "decoy": int(ep.decoy[c]),
+                                    "relocated": int(e >= PS.RELOCATION_EPISODE and c in seq.relocated),
+                                    "pred_G": g, "pred_L": latest, "slow": g_slow})
 
         # Within-episode readouts. C goes through the frozen phase 2 retrieval, G through the
         # tier-routed FAST pool, U(alpha) through the unified pool.
@@ -207,6 +212,7 @@ def analyse_world(seq: PS.WorldSequence, *, offset: int = 0, full: bool = True) 
                 _, slow = G.answer(R.xy[qi], R.terrain[qi])
                 lm = latest_match(R, op, qi)
                 sr = slow if slow is not None else (lm if lm is not None else int(R.token[qi]))
+            fast_events.append([e, t, int(ev["answer"])])
             push(
                 kind=KIND_FAST, world=seq.world_index, episode=e, t=t, answer=int(ev["answer"]), shown=int(R.token[qi]),
                 decoy=0, relocated=0, first_ok=1, g_slow=0, g_item_on_cell=0, query_tie=0, sr_fast=int(f is not None),
@@ -231,6 +237,7 @@ def analyse_world(seq: PS.WorldSequence, *, offset: int = 0, full: bool = True) 
             versions=G.versions,
             observations=observations,
             queries=queries,
+            fast_events=fast_events,
             checks=reproducibility_checks(G, checkpoints, obs_by_ep, R, queries),
         )
     return cols, log
@@ -314,14 +321,34 @@ def paired(ev: dict[str, np.ndarray], mask: np.ndarray, a: str, b: str, *, n_boo
             "n_events": int(len(d)), "n_worlds": int(len(worlds)), "acc_a": float(correct(ev, a)[mask].mean()), "acc_b": float(correct(ev, b)[mask].mean())}
 
 
-def legality(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]], *, stage: str | None, n_worlds: int, external: dict[str, Any] | None) -> dict[str, Any]:
-    """Contract gates K1–K5 of DESIGN-r1 §4."""
+def log_linkage(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """K6: the events the descriptive measures read are the events of the verified log, row by row."""
+    q = ev["kind"] == KIND_QUERY
+    f = ev["kind"] == KIND_FAST
+    logged_q = [(lg["world"], x["episode"], x["t"], x["answer"], x["shown"], x["decoy"], x["relocated"], x["pred_G"], x["pred_L"]) for lg in logs for x in lg["queries"]]
+    event_q = list(zip(*(ev[k][q].tolist() for k in ("world", "episode", "t", "answer", "shown", "decoy", "relocated", "pred_G", "pred_L"))))
+    logged_f = [(lg["world"], e, t, a) for lg in logs for e, t, a in lg["fast_events"]]
+    event_f = list(zip(*(ev[k][f].tolist() for k in ("world", "episode", "t", "answer"))))
+    worlds = [lg["world"] for lg in logs]
+    ok_q, ok_f = logged_q == event_q, logged_f == event_f
+    return {"passed": bool(ok_q and ok_f and worlds == sorted(set(ev["world"].tolist())) and len(event_q) > 0),
+            "queries_match": bool(ok_q), "fast_events_match": bool(ok_f), "n_queries": len(event_q), "n_fast": len(event_f)}
+
+
+def legality(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]], *, stage: str | None, n_worlds: int,
+             external: dict[str, Any] | None, external_gen: dict[str, Any] | None) -> dict[str, Any]:
+    """Contract gates K1–K6 of DESIGN-r2 §4."""
     s = event_sets(ev)
     q = s["query"]
     out: dict[str, Any] = {}
     chain = sum(len(lg["checks"]["chain"]) + len(lg["checks"]["snapshot_mismatch"]) for lg in logs)
     out["K1_versions"] = {"passed": bool(chain == 0 and sum(lg["checks"]["n_queries"] for lg in logs) > 0), "problems": int(chain)}
-    out["K2_independent"] = {"passed": bool(external is not None and external.get("passed") is True), "report": external}
+    n_q = int(q.sum())
+    counts_ok = external is not None and external.get("worlds") == n_worlds and external.get("queries") == n_q
+    out["K2_independent"] = {"passed": bool(external is not None and external.get("passed") is True and counts_ok), "report": external}
+    gen_ok = (external_gen is not None and external_gen.get("passed") is True and external_gen.get("worlds") == n_worlds
+              and external_gen.get("queries") == n_q and external_gen.get("fast_events") == int(s["fast"].sum()))
+    out["K2b_generator"] = {"passed": bool(gen_ok), "report": external_gen}
     replay = sum(len(lg["checks"]["replay_mismatch"]) for lg in logs)
     out["K3_restore_replay"] = {"passed": bool(replay == 0 and all(lg["checks"]["n_checkpoints"] > 1 for lg in logs)), "problems": int(replay),
                                 "checkpoints_replayed": int(sum(lg["checks"]["n_checkpoints"] - 1 for lg in logs))}
@@ -337,8 +364,9 @@ def legality(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]], *, stage
     out["K4_labels"] = {"passed": all(checks.values()), **checks}
     if stage is not None:
         have = {k: int(s[k].sum()) for k in EXPECTED_PER_100}
-        band = {k: [EXPECTED_PER_100[k] * n_worlds / 100 * SAMPLE_BAND[0], EXPECTED_PER_100[k] * n_worlds / 100 * SAMPLE_BAND[1]] for k in EXPECTED_PER_100}
+        band = {k: [EXPECTED_PER_100[k] * n_worlds / 100 * (1 - SAMPLE_BAND[k]), EXPECTED_PER_100[k] * n_worlds / 100 * (1 + SAMPLE_BAND[k])] for k in EXPECTED_PER_100}
         out["K5_samples"] = {"passed": all(band[k][0] <= have[k] <= band[k][1] for k in have), "have": have, "band": band}
+    out["K6_events_match_log"] = log_linkage(ev, logs)
     out["valid"] = all(v["passed"] for v in out.values() if isinstance(v, dict))
     return out
 
@@ -360,9 +388,10 @@ def recovery_curve(ev: dict[str, np.ndarray], mask: np.ndarray) -> dict[str, Any
 
 
 def evaluate(ev: dict[str, np.ndarray], logs: Sequence[dict[str, Any]], *, stage: str | None, n_worlds: int,
-             external: dict[str, Any] | None, offsets: dict[int, dict[str, np.ndarray]] | None = None) -> dict[str, Any]:
+             external: dict[str, Any] | None, external_gen: dict[str, Any] | None,
+             offsets: dict[int, dict[str, np.ndarray]] | None = None) -> dict[str, Any]:
     s = event_sets(ev)
-    legal = legality(ev, logs, stage=stage, n_worlds=n_worlds, external=external)
+    legal = legality(ev, logs, stage=stage, n_worlds=n_worlds, external=external, external_gen=external_gen)
     desc = {name: paired(ev, s[sel], a, b) for name, sel, a, b in COMPARISONS}
     acc = {name: {p: float(correct(ev, p)[m].mean()) for p in POLICIES if (ev[f"pred_{p}"][m] >= 0).all()} | {"n": int(m.sum())} for name, m in s.items() if m.any()}
     items = {k: int(sum(lg["items"][k] for lg in logs)) for k in logs[0]["items"]} if logs else {}
