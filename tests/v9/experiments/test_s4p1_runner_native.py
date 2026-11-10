@@ -103,9 +103,28 @@ def _sha(p):
     return hashlib.sha256(Path(p).read_bytes()).hexdigest()
 
 
+TRAIN_SPY = """
+
+# test spy: every call of train is logged with its arm and time limit
+_spied_train = train
+
+
+def train(arm, *args, **kwargs):
+    import json as _json, os as _os
+    with open(_os.environ["S4_TRAIN_LOG"], "a") as _fh:
+        _fh.write(_json.dumps({"arm": arm, "time_limit": kwargs.get("time_limit"), "steps": kwargs.get("steps")}) + chr(10))
+    return _spied_train(arm, *args, **kwargs)
+"""
+
+
 @pytest.fixture(scope="module")
 def smoke(tmp_path_factory):
     root = _make_root(tmp_path_factory.mktemp("smoke"))
+    lm = root / "src/ainerzero/v9/experiments/s4/learned_mlx.py"
+    lm.write_text(lm.read_text() + TRAIN_SPY)
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "spy")
+    os.environ["S4_TRAIN_LOG"] = str(root / "train_calls.jsonl")
     r = _run(root, *SMOKE)
     assert r.returncode == 0, r.stderr[-3000:]
     return root, json.loads((root / "reports/out.json").read_text())
@@ -197,15 +216,18 @@ def test_wall_clock_limit_stops_the_run(tmp_path) -> None:
     _refused(_run(root, *SMOKE), "wall-clock limit")
 
 
-def test_failing_independent_check_invalidates(tmp_path) -> None:
+@pytest.mark.parametrize("which,gate", [(0, "labels"), (1, "determinism")])
+def test_failing_independent_check_invalidates(tmp_path, which, gate) -> None:
     root = _make_root(tmp_path)
-    (root / VERIFY[0]).write_text('import json\nprint(json.dumps({"passed": False, "mismatches": ["planted"]}))\n')
+    (root / VERIFY[which]).write_text('import json\nprint(json.dumps({"passed": False, "mismatches": ["planted"]}))\n')
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "planted verifier")
     r = _run(root, *SMOKE)
     assert r.returncode == 0, r.stderr[-2000:]
     R = json.loads((root / "reports/out.json").read_text())
-    assert not R["result"]["valid"] and not R["result"]["legality"]["labels"]["passed"]
+    assert not R["result"]["valid"] and not R["result"]["legality"][gate]["passed"]
+    others = {"labels", "determinism"} - {gate}
+    assert all(R["result"]["legality"][k]["passed"] for k in others)
     assert not any(g["passed"] for g in R["result"]["gates"].values())
 
 
@@ -246,9 +268,12 @@ def test_final_path_after_a_frozen_probe(tmp_path) -> None:
     _refused(_run(root, *FINAL, report="reports/final3.json"), "already been read")
 
 
-def _frozen_root(tmp_path, extra=(), reserve=0):
-    """A committed copy with a hand-made preregistration, ready for a final."""
+def _frozen_root(tmp_path, extra=(), reserve=0, plant=None):
+    """A committed copy with a hand-made preregistration, ready for a final; ``plant`` replaces
+    files (relative path -> text) before the freeze."""
     root = _make_root(tmp_path, extra=extra)
+    for rel, text in (plant or {}).items():
+        (root / rel).write_text(text)
     m = GD.build_manifest(root, [root / RUNNER], src_root=root / "src", extra=[root / "reports/DESIGN.md", *(root / v for v in VERIFY)])
     (root / PREREG).write_text(json.dumps({"manifest": m, "third_party": GD.third_party_versions(REPO, ("numpy", "mlx")),
                                            "final_approval_line": APPROVAL, "training": {"steps": 3, "batch": 4},
@@ -332,3 +357,48 @@ def test_records_are_on_disk_world_by_world(smoke) -> None:
     assert sorted(p["index"] for p in part) == list(range(len(full)))
     assert all(full[p["index"]] == p["record"] for p in part)
     assert R["eval_seconds"] > 0 and R["check_seconds"] > 0
+
+
+def test_every_training_cell_gets_the_cell_limit(smoke) -> None:
+    root, R = smoke
+    calls = [json.loads(x) for x in (root / "train_calls.jsonl").read_text().splitlines()]
+    assert len(calls) == 18 and {c["arm"] for c in calls} == {"L-ind", "L-int", "L-int-c", "L-int-s"}
+    assert all(c["time_limit"] == 600 and c["steps"] == 3 for c in calls)
+
+
+def test_a_frozen_file_changed_during_the_final_invalidates_it(tmp_path) -> None:
+    """The second manifest check after the run: a planted verifier edits the frozen design text."""
+    planted = ("import json, pathlib\n"
+               "p = pathlib.Path(__file__).resolve().parents[2] / 'reports/DESIGN.md'\n"
+               "p.write_text(p.read_text() + ' changed during the run')\n"
+               "print(json.dumps({'passed': True}))\n")
+    root = _frozen_root(tmp_path, plant={VERIFY[0]: planted})
+    r = _run(root, *FINAL)
+    assert r.returncode == 0, r.stderr[-2000:]
+    R = json.loads((root / "reports/out.json").read_text())
+    assert any("DESIGN.md" in v for v in R["late_violations"])
+    assert not R["result"]["valid"] and not any(g["passed"] for g in R["result"]["gates"].values())
+
+
+def test_replay_verifier_catches_a_changed_assignment(smoke, tmp_path) -> None:
+    root, R = smoke
+    out = root / ARTS / "smoke-s1"
+    rep = json.loads((out / "replay.json").read_text())
+    recs = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]
+    w = rep["worlds"][0]
+    target = next(r for r in recs if (r["kind"], r["world"]) == (w["kind"], w["world"]))
+    key = A.Cell("L-int-c", 2).key
+    target["ids_sha256"][key] = "0" * 64
+    bad = tmp_path / "worlds-bad.jsonl"
+    bad.write_text("".join(json.dumps(r) + "\n" for r in recs))
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+
+    def verify(worlds):
+        r = subprocess.run([sys.executable, "-I", str(root / VERIFY[1]), str(out / "replay.json"), str(worlds), str(out)],
+                           cwd=root, env=env, capture_output=True, text=True, timeout=300)
+        assert r.returncode == 0, r.stderr[-2000:]
+        return json.loads(r.stdout)
+
+    honest, tampered = verify(out / "worlds.jsonl"), verify(bad)
+    assert honest["passed"] and honest["checked"] == 2 * 18
+    assert not tampered["passed"] and tampered["mismatches"] == [f"{w['kind']} {w['world']} {key}"]
