@@ -147,7 +147,7 @@ def test_a_gated_model_like_the_exploration_passes_every_gate(good) -> None:
 
 
 def test_bonferroni_is_eleven_comparisons(good) -> None:
-    c = good["gates"]["GC"]["C"]
+    c = good["gates"]["GC"]["GC"]
     assert c["bonf_low"] < c["ci_low"] < c["value"] < c["ci_high"] < c["bonf_high"]
     alt = P2.C_of(records(), "L-int-g", m=11)
     assert alt == c
@@ -157,7 +157,7 @@ def test_phase1_like_model_fails_the_non_collision_gate() -> None:
     r = _eval(records(spec={"L-int-g": BASE["L-int"]}))
     g = r["gates"]
     assert not g["GN"]["passed"] and not g["GA"]["passed"] and not g["GK1"]["passed"] and not g["GK2"]["passed"]
-    assert g["GN"]["diff"]["value"] < -0.03
+    assert g["GN"]["GN"]["value"] < -0.03
 
 
 def test_always_closed_gate_is_eb_and_fails() -> None:
@@ -228,3 +228,80 @@ def test_descriptive_summary_runs_on_both_partitions() -> None:
     assert d["main"]["L-int-g"]["gate_share"] == pytest.approx(0.02)
     assert set(d["main"]["L-int-g"]["reappear_by_gap"]) == {"0-10", "10-25", "25-50", "50-inf"}
     assert set(d["dynamics"]["main"]) == {"L-int", *P2.GATES}
+
+
+# --- the decision rule alone, at its boundaries -------------------------------------------------
+def _st(value, low, high, ci_low=None, ci_high=None):
+    return {"value": value, "bonf_low": low, "bonf_high": high, "ci_low": low if ci_low is None else ci_low,
+            "ci_high": high if ci_high is None else ci_high}
+
+
+def _passing():
+    return {"GN": _st(0.0, -0.02, 0.02), "GA": _st(0.06, 0.03, 0.09), "GC": _st(0.95, 0.8, 1.1),
+            "GK1_all": _st(0.90, 0.88, 0.92), "GK1_collision": _st(0.88, 0.84, 0.91),
+            "GK2_non_collision": _st(0.90, 0.87, 0.93), "GK2_collision": _st(0.82, 0.75, 0.88),
+            "GD_D": _st(0.85, 0.82, 0.88), "GD_ratio": _st(0.03, 0.02, 0.04),
+            "GX_diff": _st(0.08, 0.05, 0.11), "GX_C": _st(1.0, 0.85, 1.2),
+            "neg_C": _st(0.1, -0.2, 0.4), "neg_D": _st(0.0, -0.01, 0.01)}
+
+
+def test_decide_passes_the_reference_statistics() -> None:
+    passed, neg = P2.decide(_passing())
+    assert neg and all(passed.values()) and set(passed) == set(P2.GATE_STATS)
+
+
+@pytest.mark.parametrize("key,stat,gate", [
+    ("GN", _st(-0.005, -0.031, 0.02), "GN"),            # point fine, Bonferroni lower bound too low
+    ("GN", _st(-0.011, -0.02, 0.0), "GN"),              # point below -0.01
+    ("GN", _st(0.0, -0.03, 0.03), "GN"),                # lower bound must be strictly above -0.03
+    ("GA", _st(0.03, 0.0, 0.06), "GA"),                 # lower bound must be strictly above 0
+    ("GA", _st(0.029, 0.01, 0.05), "GA"),
+    ("GC", _st(0.74, 0.6, 0.9), "GC"),
+    ("GC", _st(0.9, 0.5, 1.2), "GC"),
+    ("GK1_all", _st(0.90, 0.849, 0.93), "GK1"),         # point inside, interval leaves [0.85, 0.95]
+    ("GK1_all", _st(0.90, 0.87, 0.951), "GK1"),
+    ("GK1_all", _st(0.931, 0.90, 0.95), "GK1"),         # point above 0.93
+    ("GK1_all", _st(0.869, 0.86, 0.88), "GK1"),
+    ("GK1_collision", _st(0.849, 0.82, 0.88), "GK1"),
+    ("GK1_collision", _st(0.86, 0.80, 0.90), "GK1"),
+    ("GK2_non_collision", _st(0.849, 0.82, 0.87), "GK2"),
+    ("GK2_non_collision", _st(0.86, 0.80, 0.90), "GK2"),
+    ("GK2_collision", _st(0.749, 0.70, 0.80), "GK2"),
+    ("GK2_collision", _st(0.80, 0.65, 0.90), "GK2"),
+    ("GD_D", _st(0.79, 0.75, 0.83), "GD"),
+    ("GD_D", _st(0.85, 0.70, 0.9), "GD"),
+    ("GD_ratio", _st(0.101, 0.08, 0.12), "GD"),
+    ("GD_ratio", _st(0.09, 0.05, 0.151), "GD"),
+    ("GX_diff", _st(0.05, 0.0, 0.1), "GX"),
+    ("GX_C", _st(0.59, 0.45, 0.8), "GX"),
+    ("GX_C", _st(0.9, 0.4, 1.2), "GX"),
+    ("GC", {"value": None, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}, "GC"),
+    ("GK1_all", {"value": 0.9, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}, "GK1"),
+])
+def test_decide_fails_each_gate_at_its_boundary(key, stat, gate) -> None:
+    st = _passing()
+    st[key] = stat
+    passed, neg = P2.decide(st)
+    assert not passed[gate] and neg
+    assert all(v for k, v in passed.items() if k != gate)
+
+
+@pytest.mark.parametrize("key,stat", [
+    ("neg_C", _st(0.2, 0.0, 0.5)),                       # upper bound must be strictly below 0.5
+    ("neg_C", _st(0.1, -0.2, 0.6)),                      # small point, but not confidently small
+    ("neg_D", _st(0.1, 0.0, 0.55)),
+    ("neg_C", {"value": None, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}),
+])
+def test_negative_control_needs_a_small_upper_bound(key, stat) -> None:
+    st = _passing()
+    st[key] = stat
+    passed, neg = P2.decide(st)
+    assert not neg and all(passed.values())
+
+
+def test_negative_control_reads_the_95_percent_upper_bound() -> None:
+    st = _passing()
+    st["neg_C"] = _st(0.2, -0.1, 0.7, ci_low=0.0, ci_high=0.45)       # Bonferroni wide, 95% below 0.5
+    assert P2.decide(st)[1]
+    st["neg_C"] = _st(0.2, -0.1, 0.45, ci_low=0.0, ci_high=0.55)
+    assert not P2.decide(st)[1]

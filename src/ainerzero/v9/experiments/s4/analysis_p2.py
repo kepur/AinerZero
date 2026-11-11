@@ -262,41 +262,56 @@ def _lt(stat, key, thr):
     return v is not None and v < thr
 
 
-def evaluate(main, extrap, *, n_main, n_extrap, labels_ok, student_ok, replay_ok, weights_ok) -> dict[str, Any]:
+def gate_stats(main, extrap) -> dict[str, dict]:
+    """Every statistic a gate or the negative control reads (Bonferroni m = N_COMPARISONS for the gates)."""
+    a = MAIN_ARM
+    return {"GN": acc_diff(main, a, "E-B", "non_collision"), "GA": acc_diff(main, a, "E-B", "all"), "GC": C_of(main, a),
+            "GK1_all": coverage_one_step(main, a, "all"), "GK1_collision": coverage_one_step(main, a, "collision"),
+            "GK2_non_collision": coverage_reappear(main, a, "non_collision"), "GK2_collision": coverage_reappear(main, a, "collision"),
+            "GD_D": D_of(main, a), "GD_ratio": HF_of(main, a),
+            "GX_diff": acc_diff(extrap, a, "E-B", "all"), "GX_C": C_of(extrap, a),
+            "neg_C": C_of(main, NEG_ARM, m=1), "neg_D": D_of(main, NEG_ARM, m=1)}
+
+
+def decide(st: Mapping[str, dict]) -> tuple[dict[str, bool], bool]:
+    """(passed per gate, negative control passed) from the statistics alone. A missing value or bound fails."""
     T = THRESHOLDS
+    lo1, hi1 = T["GK1"]["all"]
+    lo1i, hi1i = T["GK1"]["all_interval"]
+    k1a, k1c = st["GK1_all"], st["GK1_collision"]
+    k2n, k2c = st["GK2_non_collision"], st["GK2_collision"]
+    d, hf = st["GD_D"], st["GD_ratio"]
+    passed = {
+        "GN": _ge(st["GN"], "value", T["GN"]["diff"]) and _gt(st["GN"], "bonf_low", T["GN"]["diff_low"]),
+        "GA": _ge(st["GA"], "value", T["GA"]["diff"]) and _gt(st["GA"], "bonf_low", T["GA"]["diff_low"]),
+        "GC": _ge(st["GC"], "value", T["GC"]["C"]) and _gt(st["GC"], "bonf_low", T["GC"]["C_low"]),
+        "GK1": (_ge(k1a, "value", lo1) and _le(k1a, "value", hi1) and _ge(k1a, "bonf_low", lo1i) and _le(k1a, "bonf_high", hi1i)
+                and _ge(k1c, "value", T["GK1"]["collision"]) and _gt(k1c, "bonf_low", T["GK1"]["collision_low"])),
+        "GK2": (_ge(k2n, "value", T["GK2"]["non_collision"]) and _gt(k2n, "bonf_low", T["GK2"]["non_collision_low"])
+                and _ge(k2c, "value", T["GK2"]["collision"]) and _gt(k2c, "bonf_low", T["GK2"]["collision_low"])),
+        "GD": (_ge(d, "value", T["GD"]["D"]) and _gt(d, "bonf_low", T["GD"]["D_low"])
+               and _le(hf, "value", T["GD"]["ratio"]) and _le(hf, "bonf_high", T["GD"]["ratio_high"])),
+        "GX": (_ge(st["GX_diff"], "value", T["GX"]["diff"]) and _gt(st["GX_diff"], "bonf_low", T["GX"]["diff_low"])
+               and _ge(st["GX_C"], "value", T["GX"]["C"]) and _gt(st["GX_C"], "bonf_low", T["GX"]["C_low"])),
+    }
+    neg = (_lt(st["neg_C"], "ci_high", T["negative_control"]["C_high_below"])
+           and _lt(st["neg_D"], "ci_high", T["negative_control"]["D_high_below"]))
+    return {k: bool(v) for k, v in passed.items()}, bool(neg)
+
+
+GATE_STATS = {"GN": ("GN",), "GA": ("GA",), "GC": ("GC",), "GK1": ("GK1_all", "GK1_collision"),
+              "GK2": ("GK2_non_collision", "GK2_collision"), "GD": ("GD_D", "GD_ratio"), "GX": ("GX_diff", "GX_C")}
+
+
+def evaluate(main, extrap, *, n_main, n_extrap, labels_ok, student_ok, replay_ok, weights_ok) -> dict[str, Any]:
     lg = legality(main, extrap, n_main=n_main, n_extrap=n_extrap, labels_ok=labels_ok, student_ok=student_ok,
                   replay_ok=replay_ok, weights_ok=weights_ok)
     valid = all(v["passed"] for v in lg.values())
-    a = MAIN_ARM
-    gn = acc_diff(main, a, "E-B", "non_collision")
-    ga = acc_diff(main, a, "E-B", "all")
-    gc = C_of(main, a)
-    k1a, k1c = coverage_one_step(main, a, "all"), coverage_one_step(main, a, "collision")
-    k2n, k2c = coverage_reappear(main, a, "non_collision"), coverage_reappear(main, a, "collision")
-    d, hf = D_of(main, a), HF_of(main, a)
-    gxa, gxc = acc_diff(extrap, a, "E-B", "all"), C_of(extrap, a)
-    c_neg = C_of(main, NEG_ARM, m=1)
-    d_neg = D_of(main, NEG_ARM, m=1)
-    lo1, hi1 = T["GK1"]["all"]
-    lo1i, hi1i = T["GK1"]["all_interval"]
-    g = {
-        "GN": {"passed": _ge(gn, "value", T["GN"]["diff"]) and _gt(gn, "bonf_low", T["GN"]["diff_low"]), "diff": gn},
-        "GA": {"passed": _ge(ga, "value", T["GA"]["diff"]) and _gt(ga, "bonf_low", T["GA"]["diff_low"]), "diff": ga},
-        "GC": {"passed": _ge(gc, "value", T["GC"]["C"]) and _gt(gc, "bonf_low", T["GC"]["C_low"]), "C": gc},
-        "GK1": {"passed": (_ge(k1a, "value", lo1) and _le(k1a, "value", hi1) and _ge(k1a, "bonf_low", lo1i) and _le(k1a, "bonf_high", hi1i)
-                           and _ge(k1c, "value", T["GK1"]["collision"]) and _gt(k1c, "bonf_low", T["GK1"]["collision_low"])),
-                "all": k1a, "collision": k1c},
-        "GK2": {"passed": (_ge(k2n, "value", T["GK2"]["non_collision"]) and _gt(k2n, "bonf_low", T["GK2"]["non_collision_low"])
-                           and _ge(k2c, "value", T["GK2"]["collision"]) and _gt(k2c, "bonf_low", T["GK2"]["collision_low"])),
-                "non_collision": k2n, "collision": k2c},
-        "GD": {"passed": (_ge(d, "value", T["GD"]["D"]) and _gt(d, "bonf_low", T["GD"]["D_low"])
-                          and _le(hf, "value", T["GD"]["ratio"]) and _le(hf, "bonf_high", T["GD"]["ratio_high"])), "D": d, "ratio": hf},
-        "GX": {"passed": (_ge(gxa, "value", T["GX"]["diff"]) and _gt(gxa, "bonf_low", T["GX"]["diff_low"])
-                          and _ge(gxc, "value", T["GX"]["C"]) and _gt(gxc, "bonf_low", T["GX"]["C_low"])), "diff": gxa, "C": gxc},
-    }
-    neg = {"passed": _lt(c_neg, "ci_high", T["negative_control"]["C_high_below"]) and _lt(d_neg, "ci_high", T["negative_control"]["D_high_below"]),
-           "C": c_neg, "D": d_neg}
-    if not neg["passed"]:
+    st = gate_stats(main, extrap)
+    passed, neg_ok = decide(st)
+    g = {k: {"passed": passed[k], **{name: st[name] for name in GATE_STATS[k]}} for k in GATE_STATS}
+    neg = {"passed": neg_ok, "C": st["neg_C"], "D": st["neg_D"]}
+    if not neg_ok:
         for k in ("GA", "GC", "GX"):
             g[k] = dict(g[k], passed=False, void="negative control failed")
     if not valid:
