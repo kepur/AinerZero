@@ -19,6 +19,9 @@ for ak in keys:
     probe = defaultdict(float)
     for w in W:
         cells = [w["cells"][f"{arm}#{s}@{tag}"] for s in (1, 2, 3)]
+        if any(c.get("diverged") for c in cells):
+            diverged = locals().get("diverged", 0) + sum(1 for c in cells if c.get("diverged"))
+            continue
         if w["events"]:
             per = np.mean([c["correct"] for c in cells], axis=0)
             coll = np.array([e[3] == 1 for e in w["events"]])
@@ -33,7 +36,7 @@ for ak in keys:
             if c["probe"]:
                 for k, v in c["probe"].items():
                     probe[k] += v
-    o = {"acc_coll": acc["coll"][0] / acc["coll"][1], "acc_all": acc["all"][0] / acc["all"][1],
+    o = {"acc_coll": acc["coll"][0] / max(acc["coll"][1], 1), "acc_all": acc["all"][0] / max(acc["all"][1], 1),
          "n_coll_events": int(acc["coll"][1]), "n_events": int(acc["all"][1]),
          "idf1": float(np.mean(idf1)), "n_tracks": float(np.mean(ntr)),
          "births_per_world": {k: v / len(W) for k, v in births.items()}, "swaps_per_world": swaps / len(W),
@@ -44,7 +47,11 @@ for ak in keys:
                       "coll_pos_err": probe["coll_pos"] / max(probe["n_coll"], 1),
                       "free_vel_err": probe["free_m"] / max(probe["n_free"], 1), "free_pos_err": probe["free_pos"] / max(probe["n_free"], 1),
                       "coll_share": probe["n_coll"] / max(probe["n_coll"] + probe["n_free"], 1)}
+    o["diverged_cells"] = locals().get("diverged", 0)
+    o["worlds_used"] = len(W) - sum(1 for w in W if any(w["cells"][f"{arm}#{s}@{tag}"].get("diverged") for s in (1, 2, 3)))
     out[ak] = o
+    if "diverged" in locals():
+        del diverged
 
 print(f"{'cell':12} {'accC':>6} {'accA':>6} {'idf1':>6} {'trk':>5} {'bVis':>5} {'bGap':>5} {'swap':>5} | cov all/coll/graze/free | nll all/coll/free | bias2 free, spread free, bias2 coll, spread coll")
 for ak, o in out.items():
@@ -56,6 +63,9 @@ for ak, o in out.items():
 for ak, o in out.items():
     if "probe" in o:
         print(ak, json.dumps({k: round(v, 5) if isinstance(v, float) else v for k, v in o["probe"].items()}))
+for ak, o in out.items():
+    if o["diverged_cells"]:
+        print(ak, "diverged cells", o["diverged_cells"], "worlds used", o["worlds_used"])
 print("n events", out[keys[0]]["n_events"], "collision", out[keys[0]]["n_coll_events"], "elapsed", round(r.get("elapsed_s", 0)))
 if len(sys.argv) > 2:
     json.dump(out, open(sys.argv[2], "w"), indent=1)

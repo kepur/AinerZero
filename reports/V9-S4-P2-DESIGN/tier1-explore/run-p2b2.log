@@ -1,0 +1,56 @@
+lock held by 59545
+pool 240000 156s
+  R#1 step 2000 loss 4.4849 72s
+  R#1 step 4000 loss 4.7362 146s
+  R#1 step 6000 loss 4.6972 220s
+  R#1 step 8000 loss 3.7202 294s
+  R#1 step 10000 loss 4.0818 367s
+  R#1 step 12000 loss 176.4449 441s
+  R#1 step 14000 loss 3.6637 515s
+  R#1 step 16000 loss 7.3674 589s
+  R#1 step 18000 loss 4.9175 663s
+  R#1 step 20000 loss 4.8247 736s
+R#1 736s loss 4.824716567993164
+  R#2 step 2000 loss 4.8221 73s
+  R#2 step 4000 loss 3.9244 147s
+  R#2 step 6000 loss 4.4480 221s
+  R#2 step 8000 loss 4.4217 295s
+  R#2 step 10000 loss 4.8747 369s
+  R#2 step 12000 loss 100.1623 443s
+  R#2 step 14000 loss 6.3808 517s
+  R#2 step 16000 loss 5.0596 591s
+  R#2 step 18000 loss 4.4731 721s
+  R#2 step 20000 loss 5.4673 1140s
+R#2 1140s loss 5.467310428619385
+  R#3 step 2000 loss 6.0057 218s
+  R#3 step 4000 loss 4.1684 336s
+  R#3 step 6000 loss 3.8705 460s
+  R#3 step 8000 loss 4.5249 623s
+  R#3 step 10000 loss 4.7568 806s
+  R#3 step 12000 loss 6.0424 959s
+  R#3 step 14000 loss 3502.4878 1123s
+  R#3 step 16000 loss 814.3806 1264s
+  R#3 step 18000 loss 4.6600 1396s
+  R#3 step 20000 loss 4.2824 1529s
+R#3 1529s loss 4.282371520996094
+pool {2: 376, 3: 960, 4: 4852, 5: 4908, 6: 5496, 7: 4960, 8: 3884, 9: 1416, 10: 896, 11: 368, 12: 76} 102s
+QR#1 28s loss -5.2623138427734375
+pool {2: 376, 3: 952, 4: 4228, 5: 5424, 6: 5568, 7: 4836, 8: 3404, 9: 1892, 10: 860, 11: 572, 12: 52, 13: 12, 14: 16} 108s
+QR#2 49s loss -5.521721839904785
+pool {2: 364, 3: 984, 4: 4076, 5: 5196, 6: 5604, 7: 5324, 8: 3484, 9: 1632, 10: 1064, 11: 212, 12: 216, 13: 36} 167s
+QR#3 43s loss -5.581695556640625
+Traceback (most recent call last):
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-P2-DESIGN/tier1-explore/explore_p2b.py", line 290, in <module>
+    cmd_eval(int(sys.argv[2]), sys.argv[3], sys.argv[4])
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-P2-DESIGN/tier1-explore/explore_p2b.py", line 253, in cmd_eval
+    ids, n_tracks = F.track(dets, ep.pillars, probe, rng, F.FilterConfig(), on_predict=cal)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/filter.py", line 108, in track
+    assign = _associate(P, z, last, t, cfg)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/filter.py", line 64, in _associate
+    for r, c in hungarian(dist):
+                ^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/assign.py", line 20, in hungarian
+    raise ValueError("cost must be finite")
+ValueError: cost must be finite
