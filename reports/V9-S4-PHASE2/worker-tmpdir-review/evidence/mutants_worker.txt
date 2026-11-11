@@ -1,0 +1,26 @@
+lock held by 33142
+== clean_worker: 工作进程测试基线（不改源码）
+   imported from copy: ['/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mutate_worker_jMRzTN/clean_worker/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   result: baseline-ok  exit=0  2 passed in 2.08s
+
+== M01_remove_call_in_init: 变异 1：去掉 init() 里的 private_compile_dir() 调用
+   imported from copy: ['/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mutate_worker_jMRzTN/M01_remove_call_in_init/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/worker_p2.py: -'def init(weights: Mapping[str, str]) -> None:\n    private_compile_dir()'
+                                                 +'def init(weights: Mapping[str, str]) -> None:'
+   result: killed  exit=1  1 failed, 1 passed in 2.32s
+   FAILED tests/v9/experiments/test_s4p2_worker_native.py::test_init_sets_the_directory_before_anything_else
+
+== M02_call_after_build_models: 变异 2：将 private_compile_dir() 挪到 build_models 之后
+   imported from copy: ['/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mutate_worker_jMRzTN/M02_call_after_build_models/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/worker_p2.py: -'private_compile_dir()\n    mx.set_default_device(mx.cpu)\n    models, counters, dyn = build_models(weights)'
+                                                 +'mx.set_default_device(mx.cpu)\n    models, counters, dyn = build_models(weights)\n    private_compile_dir()'
+   result: killed  exit=1  1 failed, 1 passed in 2.03s
+   FAILED tests/v9/experiments/test_s4p2_worker_native.py::test_init_sets_the_directory_before_anything_else
+
+== M03_dir_without_pid: 变异 3：目录不带 pid，即所有进程共用一个目录
+   imported from copy: ['/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mutate_worker_jMRzTN/M03_dir_without_pid/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/worker_p2.py: -'d = Path(tempfile.gettempdir()) / "ainerzero-mlx-cpu" / str(os.getpid())'
+                                                 +'d = Path(tempfile.gettempdir()) / "ainerzero-mlx-cpu"'
+   result: killed  exit=1  1 failed, 1 passed in 1.43s
+   FAILED tests/v9/experiments/test_s4p2_worker_native.py::test_each_worker_compiles_into_its_own_directory
+

@@ -1,0 +1,130 @@
+commit d14e04b28153eab5ca3d8f6ea069c4ccec51110c
+Author: mac <mac@Hz.local>
+Date:   Wed Nov 11 17:18:28 2026 +0000
+
+    S4 phase 2: a private MLX compile directory per evaluation worker; probe p1 failure kept; P218 and P219 accepted
+    
+    - Probe p1 stopped in evaluation: six workers compiled the same fused CPU
+      kernel (nn.relu is an mx.compile function) into the shared cache that a
+      reboot had emptied, and collided on one shared library (ld errno 17).
+      Reproduced: 23 of 48 runs fail with a shared directory, 0 of 48 with one
+      directory per process. Workers now set their own TMPDIR first thing; a
+      native test checks that MLX writes the kernels there.
+    - P218 (gemini-k7b2): independent NumPy recompute tool, bit-identical on the
+      round G records; P219 (gemini-h8f2): reserve and tau = DT boundary tests.
+    - The failed probe's report, log and run directory are kept as they are.
+    The worker change is not yet reviewed by a non-author.
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+diff --git a/src/ainerzero/v9/experiments/s4/worker_p2.py b/src/ainerzero/v9/experiments/s4/worker_p2.py
+index 3c800ab..d711aa4 100644
+--- a/src/ainerzero/v9/experiments/s4/worker_p2.py
++++ b/src/ainerzero/v9/experiments/s4/worker_p2.py
+@@ -10,6 +10,9 @@ errors of L-int-g and E-B from the exact truth.
+ 
+ from __future__ import annotations
+ 
++import os
++import tempfile
++from pathlib import Path
+ from typing import Any, Callable, Mapping
+ 
+ import mlx.core as mx
+@@ -48,7 +51,24 @@ def build_models(weights: Mapping[str, str]) -> tuple[dict[str, Callable], dict[
+     return models, counters, dyn
+ 
+ 
++def private_compile_dir() -> Path:
++    """Give this process its own temporary directory for MLX's compiled CPU kernels.
++
++    MLX compiles fused CPU kernels (``nn.relu`` is an ``mx.compile`` function) into a cache under
++    the temporary directory. Workers that compile the same kernel at the same time write the same
++    shared library and fail: probe p1 (2026-11-11) stopped with ``ld: open() failed, errno=17``
++    after a reboot had emptied the cache (``reports/V9-S4-PHASE2/probe-p1-failure/``). With a
++    directory per process, compilations never share a file. Must run before the first MLX
++    computation of the process."""
++    d = Path(tempfile.gettempdir()) / "ainerzero-mlx-cpu" / str(os.getpid())
++    d.mkdir(parents=True, exist_ok=True)
++    os.environ["TMPDIR"] = str(d)
++    tempfile.tempdir = None
++    return d
++
++
+ def init(weights: Mapping[str, str]) -> None:
++    private_compile_dir()
+     mx.set_default_device(mx.cpu)
+     models, counters, dyn = build_models(weights)
+     _MODELS.clear(); _COUNTERS.clear(); _DYN.clear()
+diff --git a/tests/conftest.py b/tests/conftest.py
+index bf5edb8..817c0a0 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -252,6 +252,7 @@ NATIVE_MODULES = {
+     # S4 phase 2: contact-gated models (MLX) and the runner.
+     "test_s4_gated.py": "module-level importorskip mlx.core (S4 phase 2 contact-gated models)",
+     "test_s4p2_runner_native.py": "runs the real S4 phase 2 runner (MLX) in throwaway copies",
++    "test_s4p2_worker_native.py": "spawns fresh processes that compile MLX CPU kernels (S4 phase 2 workers)",
+ }
+ 
+ # Individual tests in otherwise pure-CPU modules (prefix match on node id).
+diff --git a/tests/v9/experiments/test_s4p2_worker_native.py b/tests/v9/experiments/test_s4p2_worker_native.py
+new file mode 100644
+index 0000000..34def85
+--- /dev/null
++++ b/tests/v9/experiments/test_s4p2_worker_native.py
+@@ -0,0 +1,54 @@
++"""S4 phase 2 evaluation workers compile MLX CPU kernels in a directory of their own (probe p1,
++2026-11-11: workers compiling the same kernel into the shared cache collided). Native: runs MLX in
++fresh processes, because MLX fixes its kernel-cache directory at the first compilation of a process."""
++
++from __future__ import annotations
++
++import json
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++pytest.importorskip("mlx.core")
++
++SRC = Path(__file__).resolve().parents[3] / "src"
++
++CHILD = r"""
++import json, sys, os
++sys.path.insert(0, {src!r})
++from ainerzero.v9.experiments.s4 import worker_p2 as WK
++before = os.environ.get("TMPDIR")
++d = WK.private_compile_dir()
++import mlx.core as mx, mlx.nn as nn
++mx.set_default_device(mx.cpu)
++mx.eval(nn.relu(mx.ones(({k}, 1, 7)) - mx.ones((1, 3, 7))))       # a broadcast pattern no cache holds yet
++libs = [str(p) for p in d.rglob("*.so")] + [str(p) for p in d.rglob("*.dylib")]
++print(json.dumps({{"dir": str(d), "pid": os.getpid(), "before": before, "libs": libs}}))
++"""
++
++
++def _child(tmp_path, k):
++    env = {"PATH": "/usr/bin:/bin", "HOME": str(Path.home()), "TMPDIR": str(tmp_path)}
++    r = subprocess.run([sys.executable, "-I", "-c", CHILD.format(src=str(SRC), k=k)], env=env, capture_output=True, text=True, timeout=300)
++    assert r.returncode == 0, r.stderr[-2000:]
++    return json.loads(r.stdout.strip().splitlines()[-1])
++
++
++def test_each_worker_compiles_into_its_own_directory(tmp_path) -> None:
++    a, b = _child(tmp_path, 11), _child(tmp_path, 13)
++    for r in (a, b):
++        assert r["dir"].startswith(str(tmp_path)) and r["dir"].endswith(f"ainerzero-mlx-cpu/{r['pid']}")
++        assert r["libs"] and all(lib.startswith(r["dir"]) for lib in r["libs"])   # MLX honoured the new directory
++    assert a["dir"] != b["dir"]
++
++
++def test_init_sets_the_directory_before_anything_else(monkeypatch) -> None:
++    from ainerzero.v9.experiments.s4 import worker_p2 as WK
++
++    calls = []
++    monkeypatch.setattr(WK, "private_compile_dir", lambda: calls.append("dir"))
++    monkeypatch.setattr(WK, "build_models", lambda w: (calls.append("models"), ({}, {}, {}))[1])
++    WK.init({})
++    assert calls == ["dir", "models"]
