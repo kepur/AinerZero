@@ -1,0 +1,166 @@
+$ grep -n '盘间重叠时' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+10:| 应修 S1：「没有盘间接触时 E-P 与 E-B 一样」不精确 | 改为「没有盘间重叠时」：生成器对重叠、正在分开的一对也做推开，日志里没有接触（§9） |
+281:  - 门开时的预测来自学习模型，不是 E-P。门关时 E-P 与 E-B 只在盘间重叠时不同：生成器对重叠、正在分开的一对也会推开，日志里却没有接触（P213 `evidence/physics/ep_vs_eb_overlap.txt`）。真值世界里重叠很少，但成员状态是带噪的估计，成员之间重叠并不少见。
+
+$ grep -n 'GK1 全部步主要由门关' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+11:| 应修 S2：「持平」的范围 | 「持平」限定在这个滤波器的重认和校准上。C 会饱和，D 只有 0.85，学到的响应不等于物理。另外写明 GK1 全部步主要由门关的约 98% 盘步决定（§1 读法、§5、§9） |
+128:- **GK1 全部步主要由门关的盘步决定。** 门关的约 98% 盘步就是 E-B 加登记噪声。E-B 本身在全部步上只有 0.83，没过，是因为碰撞后恢复的那几步拉低了覆盖率。真正检验学习部分的是碰撞步那一半，以及 GK2 的有碰撞那一半。
+
+$ grep -n '0.0368' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+13:| 应修 S4：数字与表述 | 残差训练每步 0.0368 秒，一期 L-int 0.0176 秒，是 2.1 倍（r0 写的 0.033 秒、2.6 倍出自未存档的小池基准，已改）；门限 0.3、0.7 拆成两行；§0 的 0.60、0.86 注明是没有碰撞的事件；§7 单世界耗时写明出处 |
+120:- **残差模型没有用。** 单体误差减半，D 反而降到 0.785，没有碰撞的事件仍低 0.058。网络的修正在不该动的地方还是不为零。另外，残差模型训练每步 0.0368 秒，一期 L-int 是 0.0176 秒，约 2.1 倍；种子 3 的损失在第 14000 步冲到 3502，之后回落。
+
+$ grep -n '门限 0.3' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+13:| 应修 S4：数字与表述 | 残差训练每步 0.0368 秒，一期 L-int 0.0176 秒，是 2.1 倍（r0 写的 0.033 秒、2.6 倍出自未存档的小池基准，已改）；门限 0.3、0.7 拆成两行；§0 的 0.60、0.86 注明是没有碰撞的事件；§7 单世界耗时写明出处 |
+75:| L-int-g，门限 0.3 | 0.667 | 0.885 | 0.837 | | 0.98 | 0.901 / 0.867 | 0.829 / 0.906 |
+153:| L-int-g3、L-int-g7 | 同上，门限 0.3、0.7 | L-int 的预测 | 描述：门限敏感性 |
+228:- 门限 0.3、0.7，几何门控，2% 随机门；
+
+$ grep -n '门限 0.7' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+76:| L-int-g，门限 0.7 | 0.658 | 0.887 | 0.836 | | 0.94 | 0.904 / 0.882 | 0.825 / 0.907 |
+
+$ grep -n '在没有碰撞的事件上，L-int 的预测' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+31:- **误差在隐藏期里累积，集合又盖不住。** 隐藏期中位 25 步。到重新出现那一刻，在没有碰撞的事件上，L-int 的预测对真实位置的 90% 覆盖率只有 0.60，E-B 是 0.86。
+
+$ grep -n 'Bonferroni 上界（m = 12）' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+14:| 建议 R1：负对照用了未校正的 95% 上界 | 改用 Bonferroni 上界（m = 12） |
+190:**负对照：** L-ind-geo 的 C 和 D，Bonferroni 上界（m = 12）都必须 < 0.5。否则说明门本身就能带来收益，GA、GC、GX 作废。G 轮中 C 是 0.039（上界 0.185），D 是 0.000（上界 0.011）。
+
+$ grep -n 'L-int-rand（2% 随机门）' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+93:| L-int-rand（2% 随机门） | 0.431 | 0.884 | 0.785 | 0.034 | 0.856 / 0.661 | 0.880 / 0.529 | 2.0% |
+
+$ grep -n '门的判定不调用物理' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+16:| 建议 R3：代码约束的写法 | 改为「门的判定不调用物理；门控模型只调用 E-B（`world.physics(disks=False)`），不调用 E-P」，并写明 E-B 就是生成器同一个函数去掉盘间碰撞（§3） |
+162:- **代码约束：** 门的判定不调用物理。门控模型只调用 E-B（`world.physics(disks=False)`），不调用 E-P。门关时预测与 E-B 逐位相同；L-int-g 等门开时与 L-int 逐位相同。有测试。
+
+$ grep -n '生成器的同一个函数去掉盘间碰撞' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+45:**结论的范围：** 单体运动（直线、撞墙、撞柱）用的是 E-B。它不是另写的规则，而是生成器的同一个函数去掉盘间碰撞（`models.py`：`W.physics(P, V, pillars, disks=False)`），属于声明的真值输入（§9）。学到的只有「什么时候碰」（接触头）和「碰了以后怎样」（L-int 的预测）。
+
+$ grep -n '种子标签' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+64:**A–F 轮，主评测 40 个世界（6 盘），种子标签 `"q1"`，区间 95%：**
+
+$ grep -n '机器空闲' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+17:| 建议 R4：摸底点估计对滤波器随机数敏感 | §5 的摸底值改用登记代码和登记种子在摸底世界上重跑的第七轮；探针在机器空闲时测耗时（§7） |
+248:**探针**（冻结前，只用 `s4p2-probe`）：跑一遍正式运行器，确认合法性门、样本数、耗时；探针上的门值只作参考。**探针和 final 都要在机器空闲时跑**：G 轮跑的时候本机负载一度到 378，60 个世界用了 970 秒；P213 复跑时单世界从 22 秒拖到 13 分钟。评测预留按探针的标记后耗时 × 4 × 1.5 算，忙时测的耗时会把预留抬高。
+254:  - 冒烟（27 格，机器空闲，单进程）主评测每世界约 9 秒、外推约 11 秒；
+
+$ grep -n '门控混合跟踪器' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+9:| **必修 M1**：代用模型 SCATTER（知道什么时候碰，碰时只把速度方向随机打乱）拿到 C 0.738，GA、GC、GK1 只差 0.002–0.012。负对照 L-ind-geo 排除不了「门开、把不确定性放宽」，所以「收益来自学到的碰撞响应」证据不够 | 按建议 (a)：**登记对照臂 L-sc-g**（门与 L-int-g 相同，门开时位置取 E-B、速度取 E-B 的速度转一个均匀随机角，速率不变），**新增门 GR**：有碰撞的事件上 L-int-g − L-sc-g ≥ 0，Bonferroni 下界 > 0；m 由 11 改为 12。GA、GC、GK 的结论改写为「门控混合跟踪器的重认与校准」；只有 GR 过了，才把收益归给学到的响应（§0、§5、§9） |
+43:(1)–(3) 说的是**门控混合跟踪器**；(3) 回答架构 S4 第三条（不确定观测下的概率校准），一期只报告、没判定。只有 (4) 把收益归给学到的响应；学到的响应本身准不准，由 GD 回答。
+121:- **门控混合跟踪器在这个滤波器里与 E-P 持平。** 只有约 1–3% 的盘步用到学习模型，其余都是 E-B。门限从 0.3 到 0.7 几乎不变；换成几何规则当门也一样。
+197:- GA、GC、GK1 碰撞步的门槛正落在 SCATTER 之上 0.002–0.012，final 的 200 个世界上 SCATTER 类模型可能过掉其中一两个。所以这几个门的结论只说「门控混合跟踪器」，不把收益归给学到的响应。
+207:  - GR 不过的话，结论只能是「门控混合跟踪器能补回重认和校准」，学到的响应在重认上没有证明比乱猜方向强。
+284:  - 所以这一阶段能说的是：门控混合跟踪器在这个滤波器里的重认与校准与 E-P 持平；一期的代价来自学习模型在不该用的地方被用上（GN 的非劣界是 0.03）；学到的响应在动力学上补回 E-B 碰撞误差的 85%（GD），在重认上是否胜过乱猜方向由 GR 判定。
+
+$ grep -n '只有 (4) 把收益归给' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+43:(1)–(3) 说的是**门控混合跟踪器**；(3) 回答架构 S4 第三条（不确定观测下的概率校准），一期只报告、没判定。只有 (4) 把收益归给学到的响应；学到的响应本身准不准，由 GD 回答。
+
+$ grep -n '能把收益归给学到的响应的' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+198:- 能把收益归给学到的响应的，只有 GR（重认上）和 GD（动力学上）。SCATTER 类模型的 D 是负的，GD 稳稳挡住它。
+
+$ grep -n 'GR 不过的话' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+207:  - GR 不过的话，结论只能是「门控混合跟踪器能补回重认和校准」，学到的响应在重认上没有证明比乱猜方向强。
+
+$ grep -n '按世界数开方粗估' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+206:  - G 轮 40 个世界上下界是 −0.003。final 主评测 200 个世界，按世界数开方粗估，区间宽度约为现在的 0.45 倍。点估计不变时，下界约 +0.02。这是推断，未实测。
+
+$ grep -n '谁过不了' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+12:| 应修 S3：「谁过不了」与门槛理由 | 按 P213 的代用模型表和摸底第七轮补齐（§5） |
+179:| 门 | 判据 | 数据 | 摸底值（G 轮，Bonferroni m = 12） | 谁过不了（P213、G 轮） |
+
+$ grep -n 'SCATTER 的 C 下界' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+187:| **GX 外推到 10 盘** | 全部事件上 L-int-g − E-B ≥ +0.03，下界 > 0；C ≥ 0.6，下界 > 0.4 | 外推 | +0.089 [+0.047, +0.136]；1.025 [0.782, 1.261] | 一期 L-int（差值 +0.027）、随机门、L-ind-geo；SCATTER 的 C 下界 0.287 |
+
+$ grep -n 'GN 是非劣门' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+195:- GN 是非劣门。E-B 本身就过，门永远关、随机门也过。它只挡一期那种 −0.05 的代价，单独不说明任何收益。
+
+$ grep -n 'L-sc-g 本身（0）' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+188:| **GR 学到的响应胜过只放宽** | 有碰撞的事件上 L-int-g − L-sc-g ≥ 0，下界 > 0 | 主评测 | +0.046 [−0.003, +0.099]（**40 个世界上不过**） | L-sc-g 本身（0）；任何响应不比随机方向好的模型 |
+
+$ grep -n '门开时位置取 E-B' reports/V9-S4-P2-DESIGN/DESIGN-r1.md
+9:| **必修 M1**：代用模型 SCATTER（知道什么时候碰，碰时只把速度方向随机打乱）拿到 C 0.738，GA、GC、GK1 只差 0.002–0.012。负对照 L-ind-geo 排除不了「门开、把不确定性放宽」，所以「收益来自学到的碰撞响应」证据不够 | 按建议 (a)：**登记对照臂 L-sc-g**（门与 L-int-g 相同，门开时位置取 E-B、速度取 E-B 的速度转一个均匀随机角，速率不变），**新增门 GR**：有碰撞的事件上 L-int-g − L-sc-g ≥ 0，Bonferroni 下界 > 0；m 由 11 改为 12。GA、GC、GK 的结论改写为「门控混合跟踪器的重认与校准」；只有 GR 过了，才把收益归给学到的响应（§0、§5、§9） |
+
+$ grep -n '^- \*\*M1' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+21:- **M1 负对照与「收益来自学到的交互」。** SCATTER（几何门，门开时把 E-B 的速度方向均匀随机转一个角，速率不变）没有任何碰撞知识，D = −0.144，却拿到 C 0.738，GK2 过，GA、GC、GK1、GN 只差 0.002–0.012，外推上 GX 只差 C 的下界。有碰撞的事件上 L-int-g 只比它多 +0.046 [+0.008, +0.085]。登记负对照 L-ind-geo 只排除了「门开但预测照旧」，排除不了「门开、把不确定性放宽」。所以 `DESIGN-r0.md:85-86` 的「起作用的是学到的碰撞响应」「收益来自学到的交互，不是门本身」，以及 `:145` 负对照「否则说明门本身就能带来收益」的推理，都不成立。二选一：
+
+$ grep -n '^- \*\*S1' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+27:- **S1 §9 的前提。** 「门关时 E-P 与 E-B 本来就相同（没有盘间接触时两者一样）」应为「没有盘间重叠时」。生成器对重叠、正在分开的一对也做推开，日志里却没有接触（§1b，`evidence/physics/ep_vs_eb_overlap.txt`）。
+
+$ grep -n '^- \*\*S2' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+28:- **S2 「持平」的范围。** C 会饱和，L-int-g 的 D 只有 0.85。重认和校准上与 E-P 持平，说明的是剩下的误差在这个滤波器里不影响重认和校准，不说明学到的响应接近物理。§1 读法和 §9 结论句要补上这个限定。还要写明 GK1 全部步主要由门关的约 98% 盘步决定（§1b 第 2、3 条）。
+
+$ grep -n '^- \*\*S3' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+29:- **S3 §5「谁过不了」与门槛理由。** 按本复核的代用模型结果补齐（§2 表）：
+
+$ grep -n '^- \*\*S4' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+34:- **S4 数字与表述。**
+
+$ grep -n '^- \*\*R1' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+42:- **R1** 负对照用未校正的 95% 上界（`analysis_p2.py:273`），对「上界 < 0.5」是宽松的一侧。改用 Bonferroni 上界，或写明理由（§3d）。
+
+$ grep -n '^- \*\*R2' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+43:- **R2** 把随机门（RAND）登记为描述量：它直接证明「门的时机不可替代」（C 0.063）。成本是每个世界 3 格。
+
+$ grep -n '^- \*\*R3' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+44:- **R3** `DESIGN-r0.md:119`「门控代码不得调用世界模块的物理」改为「门的判定不调用物理；门控模型只调用 E-B（即 `world.physics(disks=False)`），不调用 E-P」，与测试一致。§0 或 §9 写明 E-B 就是生成器同一函数去掉盘间碰撞（§1a、§3c）。
+
+$ grep -n '^- \*\*R4' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+45:- **R4** 摸底点估计对滤波器随机数敏感：换成登记种子，L-int-g 的 GN 从 +0.018 变为 +0.003（§2 第 5 条）。§5 的「摸底值」要注明种子标签。另外，探针的耗时最好在机器空闲时测，评测预留按它的 6 倍算（§5 第 4 条）。
+
+$ grep -n 'GC 对它并不稳' reports/V9-S4-P2-DESIGN/r0-review/REPORT.md
+30:  - 门永远开挡在 GN、GA、GC、GK1、GK2、GX，GC 对它并不稳，GX 只靠差值半边；
+
+$ grep -n -F '"L-sc-g": ' src/ainerzero/v9/experiments/s4/analysis_p2.py
+42:    "L-sc-g": ("L-int", 0.5, "scatter"),
+
+$ grep -n -F '"L-int-rand": ' src/ainerzero/v9/experiments/s4/analysis_p2.py
+43:    "L-int-rand": ("L-int", ("random", RAND_RATE), "learned"),
+
+$ grep -n -F 'N_COMPARISONS = 12' src/ainerzero/v9/experiments/s4/analysis_p2.py
+50:N_COMPARISONS = 12                 # GN, GA, GC, GK1 (2), GK2 (2), GD (2), GX (2), GR
+
+$ grep -n -F '"GR": {"diff"' src/ainerzero/v9/experiments/s4/analysis_p2.py
+65:    "GR": {"diff": 0.0, "diff_low": 0.0},
+
+$ grep -n -F '"negative_control": {' src/ainerzero/v9/experiments/s4/analysis_p2.py
+66:    "negative_control": {"C_high_below": 0.5, "D_high_below": 0.5},     # Bonferroni upper bounds
+
+$ grep -n -F '"GR": acc_diff' src/ainerzero/v9/experiments/s4/analysis_p2.py
+300:            "GR": acc_diff(main, a, SCATTER_ARM, "collision"),
+
+$ grep -n -F '"neg_C": C_of' src/ainerzero/v9/experiments/s4/analysis_p2.py
+301:            "neg_C": C_of(main, NEG_ARM), "neg_D": D_of(main, NEG_ARM)}
+
+$ grep -n -F 'for k in ("GA", "GC", "GX")' src/ainerzero/v9/experiments/s4/analysis_p2.py
+344:        for k in ("GA", "GC", "GX"):
+
+$ sed -n 56,70p src/ainerzero/v9/experiments/s4/gated.py
+def head_gate(logits: np.ndarray, P: np.ndarray, p: float) -> np.ndarray:
+    """[M, n] bool: some other disk within MSG_RADIUS with contact probability above ``p``."""
+    if not 0.0 < p < 1.0:
+        raise ValueError("the gate threshold must lie in (0, 1)")
+    n = P.shape[1]
+    dist = np.linalg.norm(P[:, :, None] - P[:, None], axis=-1)
+    near = (dist < L.MSG_RADIUS) & ~np.eye(n, dtype=bool)[None]
+    return ((np.asarray(logits, dtype=np.float64) > math.log(p / (1 - p))) & near).any(-1)
+
+
+def scatter_velocity(v: np.ndarray, theta: np.ndarray) -> np.ndarray:
+    """Turn each velocity v [..., 2] by the angle theta [...]; the speed is kept."""
+    c, s = np.cos(theta), np.sin(theta)
+    return np.stack([c * v[..., 0] - s * v[..., 1], s * v[..., 0] + c * v[..., 1]], -1)
+
+
+$ sed -n 116,127p src/ainerzero/v9/experiments/s4/gated.py
+        else:
+            g = self._rng.random(P.shape[:2]) < self.rate
+        if self.counter is not None:
+            self.counter[0] += int(g.sum())
+            self.counter[1] += int(g.size)
+        if self.response == "scatter":
+            theta = self._rng.uniform(0.0, 2 * math.pi, P.shape[:2])
+            return pb, np.where(g[..., None], scatter_velocity(vb, theta), vb)
+        g = g[..., None]
+        return (np.where(g, np.array(p_, dtype=np.float64), pb), np.where(g, np.array(v_, dtype=np.float64), vb))
+
+
