@@ -1,0 +1,64 @@
+{
+  "task": "ainerzero.V9.P225",
+  "review_type": "L2_non_author_review",
+  "reviewer": "gemini-k7x2",
+  "target": "reports/V9-S5-DESIGN/DESIGN-r0.md",
+  "target_commit": "8a038c2",
+  "verdict": "request_changes",
+  "sections": {
+    "1_problem_formulation": {
+      "verdict": "request_changes",
+      "answers_S5_row": true,
+      "answers_E4": true,
+      "id_leakage_guarded": true,
+      "external_pretrain_declared": true,
+      "unknown_scale_declared": true,
+      "missing_items": [
+        "multi_teacher_synergy_ablation_missing",
+        "3d_relation_pairwise_metric_undefined"
+      ]
+    },
+    "2_arms_and_controls": {
+      "verdict": "request_changes",
+      "A0_vs_distill_fairness": "unequal_hyperparameter_search",
+      "C_sh_isolates_content": false,
+      "C_sh_flaw": "mismatched_teacher_if_A_star_is_A1",
+      "dev_selection_bias_avoided": true
+    },
+    "3_gates_and_statistics": {
+      "verdict": "request_changes",
+      "GT1_3_calibrated": false,
+      "GA_structure": "fatal_asymmetry_unreachable_target",
+      "GR_calibrated": true,
+      "bonferroni_family_split": true,
+      "bonferroni_text_conflict": "table_95pct_vs_text_98.3pct",
+      "world_cluster_bootstrap": true,
+      "seeds_averaged_first": "captures_world_variance_not_seed_variance"
+    },
+    "4_budget": {
+      "verdict": "request_changes",
+      "worlds": 506,
+      "frames": 129536,
+      "vjepa_segments": 6560,
+      "vjepa_storage_gb": 21.066,
+      "student_frames_gb": 19.499,
+      "da2_storage_gb": 0.201,
+      "row_203_omissions": "enumerates_only_9_runs_omits_15_to_33_runs",
+      "row_204_underestimate": "0.5h_insufficient_for_78_head_trainings",
+      "mlx_lock_confusion": "mixes_cpu_render_into_mlx_lock"
+    },
+    "5_spot_checks": {
+      "verdict": "verified",
+      "explore_s5c_rlt_reproduced": true,
+      "explore_s5c_round_c_sha_restored": "3d76ab02fdfee755074d5700a6c1d276d8e69d48aac3b2cc10e4f3ca4327e4e8",
+      "round_a_rho_objects_median": -0.9811685828278212,
+      "round_b_table_matched": true
+    },
+    "6_required_changes": {
+      "blockers": 2,
+      "high": 2,
+      "medium": 2,
+      "low": 1
+    }
+  }
+}
