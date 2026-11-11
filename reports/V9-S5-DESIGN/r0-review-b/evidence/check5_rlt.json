@@ -1,0 +1,27 @@
+{
+  "slow_drift_test": {
+    "num_frames": 10,
+    "step_size": 0.015,
+    "tau": 0.02,
+    "tokens_retained": 1,
+    "retained_values": [
+      0.0
+    ],
+    "run_lengths": [
+      10
+    ],
+    "max_reconstruction_error": 0.13499999046325684,
+    "compares_to_previous_frame_not_anchor": true
+  },
+  "static_clip_retention_rate_tau_002": 0.125,
+  "theoretical_lower_bound": 0.125,
+  "static_clip_retention_rate_tau_0": 1.0,
+  "tau_zero_explanation": "Under tau=0.0, diff_max >= tau (0.0 >= 0.0) is True, so no tokens are dropped (rate=1.0). Under any positive tau > 0 (e.g. tau=0.02), identical frames satisfy diff < tau and are merged, yielding the exact theoretical lower bound of 1/8 (12.5%).",
+  "eq10_consistency": {
+    "eq10_formula": "||p_t - p_{t-1}||_inf < tau",
+    "implementation_formula": "diff_max[t] = ||video_chunks[t+1] - video_chunks[t]||_inf < tau",
+    "literal_match": true,
+    "design_s3_usage": "R-arm applies Eq 10 to tubelet-2 tokens (chunks of 2 frames), so p_t is tubelet t.",
+    "accumulated_drift_note": "Because Eq 10 and rlt.py use Markovian (p_{t-1}) rather than anchor-based comparison, slowly drifting background or camera pan can accumulate reconstruction errors exceeding tau."
+  }
+}

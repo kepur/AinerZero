@@ -1,0 +1,79 @@
+{
+  "world_seeds": [
+    1211346038,
+    849658657,
+    1018980974,
+    1645549838
+  ],
+  "agent_seeds": [
+    1476499916,
+    715381212,
+    995997296,
+    178235790
+  ],
+  "seeds_strictly_disjoint": true,
+  "normalization_independent_of_test": true,
+  "vjepa_lambda_sweep": {
+    "inv_all": {
+      "lam_1": 0.9388647940833779,
+      "lam_100": 0.9406418974920135,
+      "lam_1000": 0.9341399585797822,
+      "max_delta": 0.001777103408635683
+    },
+    "logd_nonsky_obj": {
+      "lam_1": 0.9198593305056039,
+      "lam_100": 0.923862655764652,
+      "max_delta": 0.004003325259048118
+    },
+    "disk_all": {
+      "lam_1": 0.7655689856052037,
+      "lam_100": 0.7715718908286594,
+      "max_delta": 0.006002905223455701
+    }
+  },
+  "lambda_leakage_assessment": "Selecting lambda on the test set is a formal hyperparameter selection leak, but empirical sensitivity is <= 0.006 (0.6 percentage points). The conclusion that V-JEPA representations (R2 ~0.92-0.94) vastly outperform raw pixels (R2 ~0.21-0.27) remains unaffected.",
+  "data_flow_audit": [
+    {
+      "stream": "Agent Pose (x0, y0, heading)",
+      "enters_student": false,
+      "destination": "render() camera placement only"
+    },
+    {
+      "stream": "Object IDs (-2..105)",
+      "enters_student": false,
+      "destination": "Discarded / label generation only"
+    },
+    {
+      "stream": "Ground Truth Depth [H, W]",
+      "enters_student": false,
+      "destination": "R1 supervision label only"
+    },
+    {
+      "stream": "RGB Frames [T, H, W, 3]",
+      "enters_student": true,
+      "destination": "Student PerceptionEncoder input"
+    },
+    {
+      "stream": "DA2 Output [56, 56]",
+      "enters_student": false,
+      "destination": "A1/A3 distillation loss target only"
+    },
+    {
+      "stream": "V-JEPA Tokens [N, 1024]",
+      "enters_student": false,
+      "destination": "A2/A3/A4 distillation/alignment loss target only"
+    }
+  ],
+  "no_forbidden_information_in_student_input": true,
+  "r2_grid_analysis": {
+    "grid_shape": [
+      12,
+      7
+    ],
+    "value_type": "binary occupancy {0, 1}",
+    "loss_type": "BCE",
+    "carries_disk_id": false,
+    "carries_count": false,
+    "multiple_disk_collision_behavior": "Saturates at 1 (set occupancy). Must not store integer counts since BCE is used."
+  }
+}
