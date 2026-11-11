@@ -1,0 +1,64 @@
+diff --git a/tests/v9/experiments/test_s4_gated.py b/tests/v9/experiments/test_s4_gated.py
+index f24f455..e5dc9d3 100644
+--- a/tests/v9/experiments/test_s4_gated.py
++++ b/tests/v9/experiments/test_s4_gated.py
+@@ -139,6 +139,40 @@ def test_real_contact_opens_the_geo_gate_only_for_the_pair() -> None:
+     assert not G.geo_gate(P, V2).any()
+ 
+ 
++def test_geo_gate_boundary_at_tau_equals_dt() -> None:
++    # Pair of disks where contact time tau is exactly equal to W.DT bit for bit:
++    # D = 1.0 (between centers (4.0, 5.0) and (5.0, 5.0)), approach velocity V = 4.0.
++    # Gap = D - 2 * W.RADIUS = 1.0 - 0.6 = 0.4.
++    # a = 16, b = -8, c = 0.64, disc = 64 - 40.96 = 23.04. sqrt(disc) = 4.8.
++    # tau = (-(-8) - 4.8) / 32 = 3.2 / 32 = 0.1 == W.DT (exact exponent shift in binary float64).
++    P = np.array([[[4.0, 5.0], [5.0, 5.0]]], dtype=np.float64)
++    V = np.array([[[0.0, 0.0], [-4.0, 0.0]]], dtype=np.float64)
++
++    d = P[:, None, :, :] - P[:, :, None, :]
++    u = V[:, None, :, :] - V[:, :, None, :]
++    a = (u * u).sum(-1)
++    b = 2 * (d * u).sum(-1)
++    c = (d * d).sum(-1) - (2 * W.RADIUS) ** 2
++    disc = b * b - 4 * a * c
++    tau = (-b - np.sqrt(np.maximum(disc, 0.0))) / (2 * np.where(a > 0, a, 1.0))
++    tau_val = float(tau[0, 0, 1])
++
++    # Assert constructed tau is bitwise identical to W.DT:
++    assert tau_val == W.DT
++    assert tau_val.hex() == float(W.DT).hex()
++    assert np.asarray(tau_val).tobytes() == np.asarray(W.DT).tobytes()
++
++    # Assert gate decision matches registered Phase 1 baseline (cv_contact_pairs):
++    assert A.cv_contact_pairs(P[0], V[0]) == set()
++    g = G.geo_gate(P, V)
++    assert not g.any()
++
++    # Point just inside the boundary (tau < W.DT): both baseline and geo_gate flag contact
++    P_inside = np.array([[[4.0, 5.0], [5.0 - 1e-6, 5.0]]], dtype=np.float64)
++    assert A.cv_contact_pairs(P_inside[0], V[0]) == {(0, 1)}
++    assert G.geo_gate(P_inside, V)[0].all()
++
++
+ def _names(fn) -> set[str]:
+     tree = ast.parse(textwrap.dedent(inspect.getsource(fn)))
+     out = set()
+diff --git a/tests/v9/experiments/test_s4p2_runner_native.py b/tests/v9/experiments/test_s4p2_runner_native.py
+index 376720f..4a713f7 100644
+--- a/tests/v9/experiments/test_s4p2_runner_native.py
++++ b/tests/v9/experiments/test_s4p2_runner_native.py
+@@ -317,11 +317,12 @@ def test_final_refuses_a_changed_weight_file_before_the_marker(tmp_path) -> None
+     assert not (root / "reports/final.json").exists()
+ 
+ 
+-def test_final_refuses_when_the_wall_clock_left_is_below_the_reserve(tmp_path) -> None:
++@pytest.mark.parametrize("reserve", [10 ** 6, 1000])
++def test_final_refuses_when_the_wall_clock_left_is_below_the_reserve(tmp_path, reserve) -> None:
+     root = _make_root(tmp_path)
+     _frozen(root)
+     pre = json.loads((root / PREREG).read_text())
+-    pre["budget"]["eval_reserve_s"] = 10 ** 6
++    pre["budget"]["eval_reserve_s"] = reserve
+     (root / PREREG).write_text(json.dumps(pre))
+     _git(root, "add", ".")
+     _git(root, "commit", "-qm", "freeze with a reserve above the limit")

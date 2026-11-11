@@ -1,0 +1,12 @@
+lock held by 6260
+== clean_runner_reserve: 运行器预留检查基线（不改源码）
+   imported from copy: ['/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p219_run_zgANCw/clean_runner_reserve/src/ainerzero/v9/experiments/s4/gated.py', '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p219_run_zgANCw/clean_runner_reserve/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p219_run_zgANCw/clean_runner_reserve/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   result: baseline-ok  exit=0  2 passed, 18 deselected in 25.15s
+
+== ru_reserve_tenth: 运行器：写标记前预留检查放宽十倍（ru_reserve_tenth）
+   imported from copy: ['/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p219_run_zgANCw/ru_reserve_tenth/src/ainerzero/v9/experiments/s4/gated.py', '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p219_run_zgANCw/ru_reserve_tenth/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p219_run_zgANCw/ru_reserve_tenth/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   reports/V9-S4-PHASE2/run_s4p2.py: -'if deadline.left() < reserve:'
+                                     +'if deadline.left() < reserve / 10:'
+   result: killed  exit=1  1 failed, 1 passed, 18 deselected in 34.31s
+   FAILED tests/v9/experiments/test_s4p2_runner_native.py::test_final_refuses_when_the_wall_clock_left_is_below_the_reserve[1000]
+

@@ -1,0 +1,46 @@
+[     9.0s] evaluation worlds 75
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/process.py", line 263, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/worker_p2.py", line 60, in evaluate_world
+    rec = P2.world_record(ep, task["kind"], task["ns"], _MODELS, counters=_COUNTERS, dyn_models=_DYN)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/analysis_p2.py", line 172, in world_record
+    cell = track_cell(ep, m, ns, s, events, arm)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/analysis_p2.py", line 150, in track_cell
+    ids, n_tracks = F.track(A.student_detections(ep), ep.pillars, model, rng, F.FilterConfig(), on_predict=cal)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/filter.py", line 107, in track
+    P, V = _predict(P, V, model, pillars, cfg, rng)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/filter.py", line 47, in _predict
+    out = model(P, V, pillars)
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/learned_mlx.py", line 381, in step
+    mx.eval(p, v)
+RuntimeError: [Compile::eval_cpu] Failed to compile function Cf4IBroadcastABDf4IBroadcastBAEf4OMaximumCD_VC_f4_10408321403207385874_contiguous: Failed to execute command with return code 1: "g++ -std=c++17 -O3 -Wall -fPIC -shared -I "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/mlx/include" "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mlx/0.32.2/cpu/Cf4IBroadcastABDf4IBroadcastBAEf4OMaximumCD_VC_f4_10408321403207385874_contiguous.cpp" -o "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mlx/0.32.2/cpu/libCf4IBroadcastABDf4IBroadcastBAEf4OMaximumCD_VC_f4_10408321403207385874_contiguous.so" 2>&1", the output is: ld: open() failed, errno=17 (File exists) for '/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mlx/0.32.2/cpu/libCf4IBroadcastABDf4IBroadcastBAEf4OMaximumCD_VC_f4_10408321403207385874_contiguous.so'
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-PHASE2/run_s4p2.py", line 330, in <module>
+    main()
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-PHASE2/run_s4p2.py", line 270, in main
+    records = evaluate_parallel(tasks, weights, deadline, say, out / "worlds.partial.jsonl")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-PHASE2/run_s4p2.py", line 196, in evaluate_parallel
+    results[i] = f.result()
+                 ^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+RuntimeError: [Compile::eval_cpu] Failed to compile function Cf4IBroadcastABDf4IBroadcastBAEf4OMaximumCD_VC_f4_10408321403207385874_contiguous: Failed to execute command with return code 1: "g++ -std=c++17 -O3 -Wall -fPIC -shared -I "/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/mlx/include" "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mlx/0.32.2/cpu/Cf4IBroadcastABDf4IBroadcastBAEf4OMaximumCD_VC_f4_10408321403207385874_contiguous.cpp" -o "/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mlx/0.32.2/cpu/libCf4IBroadcastABDf4IBroadcastBAEf4OMaximumCD_VC_f4_10408321403207385874_contiguous.so" 2>&1", the output is: ld: open() failed, errno=17 (File exists) for '/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/mlx/0.32.2/cpu/libCf4IBroadcastABDf4IBroadcastBAEf4OMaximumCD_VC_f4_10408321403207385874_contiguous.so'
+clang++: error: linker command failed with exit code 1 (use -v to see invocation)

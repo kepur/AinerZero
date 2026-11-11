@@ -252,6 +252,7 @@ NATIVE_MODULES = {
     # S4 phase 2: contact-gated models (MLX) and the runner.
     "test_s4_gated.py": "module-level importorskip mlx.core (S4 phase 2 contact-gated models)",
     "test_s4p2_runner_native.py": "runs the real S4 phase 2 runner (MLX) in throwaway copies",
+    "test_s4p2_worker_native.py": "spawns fresh processes that compile MLX CPU kernels (S4 phase 2 workers)",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).

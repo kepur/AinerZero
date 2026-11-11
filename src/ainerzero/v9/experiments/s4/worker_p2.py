@@ -10,6 +10,9 @@ errors of L-int-g and E-B from the exact truth.
 
 from __future__ import annotations
 
+import os
+import tempfile
+from pathlib import Path
 from typing import Any, Callable, Mapping
 
 import mlx.core as mx
@@ -48,7 +51,24 @@ def build_models(weights: Mapping[str, str]) -> tuple[dict[str, Callable], dict[
     return models, counters, dyn
 
 
+def private_compile_dir() -> Path:
+    """Give this process its own temporary directory for MLX's compiled CPU kernels.
+
+    MLX compiles fused CPU kernels (``nn.relu`` is an ``mx.compile`` function) into a cache under
+    the temporary directory. Workers that compile the same kernel at the same time write the same
+    shared library and fail: probe p1 (2026-11-11) stopped with ``ld: open() failed, errno=17``
+    after a reboot had emptied the cache (``reports/V9-S4-PHASE2/probe-p1-failure/``). With a
+    directory per process, compilations never share a file. Must run before the first MLX
+    computation of the process."""
+    d = Path(tempfile.gettempdir()) / "ainerzero-mlx-cpu" / str(os.getpid())
+    d.mkdir(parents=True, exist_ok=True)
+    os.environ["TMPDIR"] = str(d)
+    tempfile.tempdir = None
+    return d
+
+
 def init(weights: Mapping[str, str]) -> None:
+    private_compile_dir()
     mx.set_default_device(mx.cpu)
     models, counters, dyn = build_models(weights)
     _MODELS.clear(); _COUNTERS.clear(); _DYN.clear()

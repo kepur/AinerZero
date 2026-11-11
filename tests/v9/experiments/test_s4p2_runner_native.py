@@ -317,11 +317,12 @@ def test_final_refuses_a_changed_weight_file_before_the_marker(tmp_path) -> None
     assert not (root / "reports/final.json").exists()
 
 
-def test_final_refuses_when_the_wall_clock_left_is_below_the_reserve(tmp_path) -> None:
+@pytest.mark.parametrize("reserve", [10 ** 6, 1000])
+def test_final_refuses_when_the_wall_clock_left_is_below_the_reserve(tmp_path, reserve) -> None:
     root = _make_root(tmp_path)
     _frozen(root)
     pre = json.loads((root / PREREG).read_text())
-    pre["budget"]["eval_reserve_s"] = 10 ** 6
+    pre["budget"]["eval_reserve_s"] = reserve
     (root / PREREG).write_text(json.dumps(pre))
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "freeze with a reserve above the limit")
