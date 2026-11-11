@@ -1,0 +1,46 @@
+=== 1.1 预登记 SHA 三方比对 ===
+PREREG-r1.json on disk : cf02286e77ef480df71cde722b3d9af2ab658044635b5b8557090ce36320de30
+FINAL_READ_ONCE.json    : cf02286e77ef480df71cde722b3d9af2ab658044635b5b8557090ce36320de30
+final.json              : cf02286e77ef480df71cde722b3d9af2ab658044635b5b8557090ce36320de30
+-> 预登记 SHA 三方严格完全一致: MATCH
+
+=== 1.2 标记写入时间 vs 89ef2c6 提交时间 ===
+Commit 89ef2c6 time : 1794418202 (2026-11-11T17:30:02Z)
+Marker mtime        : 1794418214.1033494 (float timestamp)
+Difference (marker - commit): 12.1 s
+-> 标记写入时间严格晚于 89ef2c6 提交时间 (+12.1s): PASS
+
+=== 1.3 代码清单哈希在 final、预登记、探针三方一致性 ===
+PREREG-r1.json code_manifest_sha256 : 38c07bbfd6cf1ad1b2bb9dfeab88dd619481cab43985966212bee6fccccd6ae1
+final.json code_manifest_sha256     : 38c07bbfd6cf1ad1b2bb9dfeab88dd619481cab43985966212bee6fccccd6ae1
+probe-p2.json code_manifest_sha256  : 38c07bbfd6cf1ad1b2bb9dfeab88dd619481cab43985966212bee6fccccd6ae1
+run_guard recomputed manifest SHA   : 38c07bbfd6cf1ad1b2bb9dfeab88dd619481cab43985966212bee6fccccd6ae1
+-> code_manifest_sha256 四方比对完全一致 (38c07bbfd6cf1ad1b2bb9dfeab88dd619481cab43985966212bee6fccccd6ae1): MATCH
+code_dirty      : []
+late_violations : []
+-> code_dirty 与 late_violations 均为空: PASS
+
+=== 1.4 预登记 manifest 42 个文件逐个重算 SHA ===
+Checked 42 files from manifest:
+-> 全部 42 个清单文件 SHA 逐个比对完全一致: 42/42 MATCH
+
+=== 1.5 final.json 登记的文件 SHA 与权重 SHA 比对 ===
+Checking 4 final artifacts files:
+  worlds.jsonl: 9380f487e324c781... OK
+  worlds.partial.jsonl: f64e4cf684b785fa... OK
+  labels.jsonl: 673e89929aaee0c5... OK
+  replay.json: 099301f182ae96db... OK
+-> final.json 落盘文件 SHA 全部吻合: MATCH
+Checking 6 weight files:
+  L-int#1: 88ea6c9b619098e0... OK
+  L-int#2: c99bc0f709e36f67... OK
+  L-int#3: 241659f14be2b29e... OK
+  L-ind#1: a4905a8c79c5ab02... OK
+  L-ind#2: 8447cee6a2920e85... OK
+  L-ind#3: 191dcf99913f47e4... OK
+-> final.json 权重 SHA 全部吻合: MATCH
+
+=== 1.6 final.log 异常核验 ===
+final.log lines: 14
+Lines containing warning/error/failed/exception: 0
+-> final.log 正常完成，无未处理异常: PASS
