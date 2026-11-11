@@ -1,0 +1,28 @@
+$ shasum -a 256 artifacts/v9/s4/phase1/final-final/weights/{L-int,L-ind}#{1,2,3}.safetensors
+88ea6c9b619098e0b0e5db39f95f9e4c1c61dedaa3e54132c550c4cc4632020c  artifacts/v9/s4/phase1/final-final/weights/L-int#1.safetensors
+c99bc0f709e36f674c7165751348fba0263ac294a996fbc3276a9f36e0437d3f  artifacts/v9/s4/phase1/final-final/weights/L-int#2.safetensors
+241659f14be2b29e655de0f6785672a3f1c4e1529abb7f8db08734002e65cba6  artifacts/v9/s4/phase1/final-final/weights/L-int#3.safetensors
+a4905a8c79c5ab02ec7e68ef0ba094b4ef4173886a731d9cd8c761d30500fd04  artifacts/v9/s4/phase1/final-final/weights/L-ind#1.safetensors
+8447cee6a2920e853853e3169ac7689db27aedf3ccd441d77736fa8e6208ada5  artifacts/v9/s4/phase1/final-final/weights/L-ind#2.safetensors
+191dcf99913f47e48537d28af4836195adc238adc8e7fe6c9f6869007b0401bc  artifacts/v9/s4/phase1/final-final/weights/L-ind#3.safetensors
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n "" | sed -n 50,57p
+50:WEIGHTS_SHA256 = {   # phase-1 final (reports/V9-S4-PHASE1/final/final.json, files_sha256)
+51:    "L-int#1": "88ea6c9b619098e0b0e5db39f95f9e4c1c61dedaa3e54132c550c4cc4632020c",
+52:    "L-int#2": "c99bc0f709e36f674c7165751348fba0263ac294a996fbc3276a9f36e0437d3f",
+53:    "L-int#3": "241659f14be2b29e655de0f6785672a3f1c4e1529abb7f8db08734002e65cba6",
+54:    "L-ind#1": "a4905a8c79c5ab02ec7e68ef0ba094b4ef4173886a731d9cd8c761d30500fd04",
+55:    "L-ind#2": "8447cee6a2920e853853e3169ac7689db27aedf3ccd441d77736fa8e6208ada5",
+56:    "L-ind#3": "191dcf99913f47e48537d28af4836195adc238adc8e7fe6c9f6869007b0401bc",
+57:}
+
+$ python3 -c (final.json files_sha256 中 L-int#、L-ind# 六项)
+a4905a8c79c5ab02ec7e68ef0ba094b4ef4173886a731d9cd8c761d30500fd04 weights/L-ind#1.safetensors
+8447cee6a2920e853853e3169ac7689db27aedf3ccd441d77736fa8e6208ada5 weights/L-ind#2.safetensors
+191dcf99913f47e48537d28af4836195adc238adc8e7fe6c9f6869007b0401bc weights/L-ind#3.safetensors
+88ea6c9b619098e0b0e5db39f95f9e4c1c61dedaa3e54132c550c4cc4632020c weights/L-int#1.safetensors
+c99bc0f709e36f674c7165751348fba0263ac294a996fbc3276a9f36e0437d3f weights/L-int#2.safetensors
+241659f14be2b29e655de0f6785672a3f1c4e1529abb7f8db08734002e65cba6 weights/L-int#3.safetensors
+
+$ 三方逐个比对
+disk == runner: True | runner == phase-1 final.json: True

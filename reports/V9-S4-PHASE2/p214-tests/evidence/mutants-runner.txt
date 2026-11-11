@@ -1,0 +1,20 @@
+lock held by 81012
+== clean_runner: MLX 运行器测试基线（不改源码）
+   imported from copy: ['/private/tmp/p217_mutants_runner/clean_runner/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_runner/clean_runner/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_runner/clean_runner/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   result: baseline-ok  exit=0  19 passed in 336.35s (0:05:36)
+== M08b_weight_files_checked_after_marker_in_final: 运行器：final 时权重文件 SHA 核对挪到写标记之后（smoke/probe 不变）
+   imported from copy: ['/private/tmp/p217_mutants_runner/M08b_weight_files_checked_after_marker_in_final/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_runner/M08b_weight_files_checked_after_marker_in_final/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_runner/M08b_weight_files_checked_after_marker_in_final/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   reports/V9-S4-PHASE2/run_s4p2.py: -'weights = check_weights()\n        ns = namespace(a.stage)'
+                                     +'weights = check_weights() if a.stage != "final" else None\n        ns = namespace(a.stage)'
+   reports/V9-S4-PHASE2/run_s4p2.py: -'R["final_read_marker_sha256"] = sha(FINAL_MARKER)'
+                                     +'weights = check_weights()\n            R["weights_sha256"] = {n: sha(p) for n, p in weights.items()}\n            R["final_read_marker_sha256"'
+   reports/V9-S4-PHASE2/run_s4p2.py: -'"weights_sha256": {n: sha(p) for n, p in weights.items()}, "workers": WORKERS}'
+                                     +'"weights_sha256": {n: sha(p) for n, p in (weights or {}).items()}, "workers": WORKERS}'
+   result: killed  exit=1  1 failed, 17 passed in 331.17s (0:05:31)
+   FAILED tests/v9/experiments/test_s4p2_runner_native.py::test_final_refuses_a_changed_weight_file_before_the_marker
+== X06_reserve_check_removed: 运行器：删掉写标记前的剩余墙钟 >= 评测预留检查
+   imported from copy: ['/private/tmp/p217_mutants_runner/X06_reserve_check_removed/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_runner/X06_reserve_check_removed/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_runner/X06_reserve_check_removed/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   reports/V9-S4-PHASE2/run_s4p2.py: -'if deadline.left() < reserve:\n                raise GD.GuardError(f"only {deadline.left():.0f} s left, the evaluation needs {reserve:.0f} s:'
+                                     +''
+   result: killed  exit=1  1 failed, 18 passed in 447.44s (0:07:27)
+   FAILED tests/v9/experiments/test_s4p2_runner_native.py::test_final_refuses_when_the_wall_clock_left_is_below_the_reserve

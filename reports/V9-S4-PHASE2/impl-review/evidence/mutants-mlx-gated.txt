@@ -1,0 +1,18 @@
+$ .venv/bin/python reports/V9-S4-PHASE1/impl-review-r2-recheck/evidence/harness/hold_lock.py artifacts/locks/m0-worker.lock .venv/bin/python reports/V9-S4-PHASE2/impl-review/evidence/mutate_p214.py /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/1fcb6199-c621-49f4-8b74-8b93b4f7dd7a/scratchpad/mut M01_gate_open_closed_swapped M02_head_threshold_ge X09_geo_gate_tau_le_dt
+lock held by 28920
+== M01_gate_open_closed_swapped: 门开取 E-B、门关取学习模型（互换）
+   src/ainerzero/v9/experiments/s4/gated.py: -'g = g[..., None]'
+                                             +'g = ~g[..., None]'
+   result: killed  exit=1  3 failed, 5 passed in 0.79s
+   FAILED tests/v9/experiments/test_s4_gated.py::test_closed_gate_is_eb_and_open_gate_is_the_learned_model_bit_for_bit
+   FAILED tests/v9/experiments/test_s4_gated.py::test_gate_switches_per_member_and_per_disk
+   FAILED tests/v9/experiments/test_s4_gated.py::test_geo_gated_independent_model_and_refusals
+== M02_head_threshold_ge: 头门：接触概率 > p 改成 >= p
+   src/ainerzero/v9/experiments/s4/gated.py: -'np.float64) > math.log(p / (1 - p)))'
+                                             +'np.float64) >= math.log(p / (1 - p)))'
+   result: killed  exit=1  1 failed, 7 passed in 1.46s
+   FAILED tests/v9/experiments/test_s4_gated.py::test_head_gate_threshold_and_neighbourhood
+== X09_geo_gate_tau_le_dt: 几何门：tau < DT 改成 tau <= DT（边界）
+   src/ainerzero/v9/experiments/s4/gated.py: -'(tau >= 0) & (tau < W.DT))'
+                                             +'(tau >= 0) & (tau <= W.DT))'
+   result: SURVIVED  exit=0  8 passed in 0.73s

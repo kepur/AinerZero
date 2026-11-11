@@ -301,3 +301,29 @@ def test_make_prereg_refuses_a_probe_with_other_weights(tmp_path) -> None:
     m = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"), "--probe", str(root / HERE / "probe.json"),
                         "--out", str(root / PREREG)], cwd=root, env=env, capture_output=True, text=True, timeout=120)
     assert m.returncode != 0 and "权重" in m.stderr + m.stdout and not (root / PREREG).exists()
+
+
+def test_final_refuses_a_changed_weight_file_before_the_marker(tmp_path) -> None:
+    root = _make_root(tmp_path)
+    _frozen(root)
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "freeze")
+    w = root / WEIGHTS / "L-int#2.safetensors"           # artifacts/ is not tracked by git, editing it keeps git clean
+    b = bytearray(w.read_bytes())
+    b[-1] ^= 1
+    w.write_bytes(bytes(b))
+    _refused(_run(root, *FINAL, report="reports/final.json"), "weights missing or changed")
+    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()
+    assert not (root / "reports/final.json").exists()
+
+
+def test_final_refuses_when_the_wall_clock_left_is_below_the_reserve(tmp_path) -> None:
+    root = _make_root(tmp_path)
+    _frozen(root)
+    pre = json.loads((root / PREREG).read_text())
+    pre["budget"]["eval_reserve_s"] = 10 ** 6
+    (root / PREREG).write_text(json.dumps(pre))
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "freeze with a reserve above the limit")
+    _refused(_run(root, *FINAL, report="reports/final.json"), "the final read is not spent")
+    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()

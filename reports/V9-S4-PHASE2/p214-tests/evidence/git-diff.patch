@@ -1,0 +1,131 @@
+diff --git a/tests/v9/experiments/test_s4_analysis_p2.py b/tests/v9/experiments/test_s4_analysis_p2.py
+index 7f94652..902bc40 100644
+--- a/tests/v9/experiments/test_s4_analysis_p2.py
++++ b/tests/v9/experiments/test_s4_analysis_p2.py
+@@ -161,6 +161,18 @@ def test_bonferroni_is_twelve_comparisons(good) -> None:
+     assert alt == c
+ 
+ 
++def test_every_gate_statistic_is_bonferroni_corrected() -> None:
++    st = P2.gate_stats(records(), records(100, "extrap", seed=1, coll_share=0.38))
++    gate_keys = [k for keys in P2.GATE_STATS.values() for k in keys]
++    assert len(gate_keys) == P2.N_COMPARISONS == 12
++    for k in gate_keys:
++        s = st[k]
++        assert s["bonf_low"] < s["ci_low"] and s["bonf_high"] > s["ci_high"], k
++    for k in ("neg_C", "neg_D"):
++        s = st[k]
++        assert s["bonf_low"] < s["ci_low"] and s["bonf_high"] > s["ci_high"], k
++
++
+ def test_phase1_like_model_fails_the_non_collision_gate() -> None:
+     r = _eval(records(spec={"L-int-g": BASE["L-int"]}))
+     g = r["gates"]
+@@ -187,6 +199,16 @@ def test_collision_reappearance_coverage_below_threshold_fails() -> None:
+     assert not g["GK2"]["passed"] and g["GK1"]["passed"]
+ 
+ 
++def test_GX_reads_the_extrapolation_records() -> None:
++    ext = records(100, "extrap", seed=1, coll_share=0.38,
++                  spec={"L-int-g": (0.42, 0.97, 0.90, 0.88, 0.91, 0.83)})
++    r = _eval(extrap=ext)
++    g = r["gates"]
++    assert g["GC"]["passed"]
++    assert g["GX"]["GX_diff"]["value"] >= 0.03          # the diff half passes
++    assert not g["GX"]["passed"] and g["GX"]["GX_C"]["value"] < 0.3
++
++
+ def test_a_scatter_control_as_good_as_the_learned_response_fails_GR() -> None:
+     r = _eval(records(spec={"L-sc-g": BASE["L-int-g"]}))
+     assert not r["gates"]["GR"]["passed"]
+@@ -236,6 +258,16 @@ def test_seed_averaging_per_event() -> None:
+     assert np.array_equal(n_all, [3 * 440.0] * 3) and (ins_all >= ins).all()
+ 
+ 
++def test_event_values_are_averaged_over_the_three_seeds() -> None:
++    recs = records(2, n_events=4)
++    for r in recs:
++        for s, val in zip(P2.SEEDS, (1, 0, 0)):
++            r["cells"][P2.cell_key("L-int-g", s)]["correct"] = [val] * 4
++            r["cells"][P2.cell_key("L-int-g", s)]["reappear"] = [val] * 4
++    np.testing.assert_allclose(P2.event_sums(recs, "L-int-g", "all"), [4 / 3, 4 / 3])
++    np.testing.assert_allclose(P2.event_sums(recs, "L-int-g", "all", "reappear"), [4 / 3, 4 / 3])
++
++
+ def test_descriptive_summary_runs_on_both_partitions() -> None:
+     d = P2.summarize_descriptive(records(20), records(10, "extrap", seed=3), P2.HAND + P2.LEARNED)
+     assert set(d["main"]) == set(P2.HAND + P2.LEARNED)
+@@ -316,12 +348,39 @@ def test_negative_control_needs_a_small_upper_bound(key, stat) -> None:
+     assert not neg and all(passed.values())
+ 
+ 
++@pytest.mark.parametrize("key,gate,stat", [
++    ("GN", "GN", _st(0.0, -0.031, 0.03, ci_low=-0.02, ci_high=0.02)),
++    ("GA", "GA", _st(0.06, -0.001, 0.10, ci_low=0.01, ci_high=0.09)),
++    ("GC", "GC", _st(0.95, 0.50, 1.20, ci_low=0.60, ci_high=1.10)),
++    ("GK1_all", "GK1", _st(0.90, 0.849, 0.95, ci_low=0.86, ci_high=0.94)),
++    ("GK1_all", "GK1", _st(0.90, 0.85, 0.951, ci_low=0.86, ci_high=0.94)),
++    ("GK1_collision", "GK1", _st(0.88, 0.80, 0.92, ci_low=0.82, ci_high=0.91)),
++    ("GK2_non_collision", "GK2", _st(0.90, 0.80, 0.95, ci_low=0.82, ci_high=0.93)),
++    ("GK2_collision", "GK2", _st(0.82, 0.65, 0.90, ci_low=0.70, ci_high=0.88)),
++    ("GD_D", "GD", _st(0.85, 0.70, 0.92, ci_low=0.75, ci_high=0.90)),
++    ("GD_ratio", "GD", _st(0.03, 0.01, 0.151, ci_low=0.02, ci_high=0.14)),
++    ("GX_diff", "GX", _st(0.08, 0.0, 0.12, ci_low=0.02, ci_high=0.11)),
++    ("GX_C", "GX", _st(1.0, 0.40, 1.30, ci_low=0.50, ci_high=1.20)),
++    ("GR", "GR", _st(0.05, 0.0, 0.10, ci_low=0.02, ci_high=0.09)),
++])
++def test_gates_read_the_bonferroni_bounds_not_the_95_percent_ones(key, gate, stat) -> None:
++    st = _passing()
++    st[key] = stat
++    passed, neg = P2.decide(st)
++    assert not passed[gate] and neg
++
++
+ def test_negative_control_reads_the_bonferroni_upper_bound() -> None:
+     st = _passing()
+     st["neg_C"] = _st(0.2, -0.1, 0.7, ci_low=0.0, ci_high=0.45)       # 95% below 0.5, Bonferroni not: fails
+     assert not P2.decide(st)[1]
+     st["neg_C"] = _st(0.2, -0.1, 0.45, ci_low=0.0, ci_high=0.55)
+     assert P2.decide(st)[1]
++    st = _passing()
++    st["neg_D"] = _st(0.2, -0.1, 0.7, ci_low=0.0, ci_high=0.45)       # 95% below 0.5, Bonferroni not: fails
++    assert not P2.decide(st)[1]
++    st["neg_D"] = _st(0.2, -0.1, 0.45, ci_low=0.0, ci_high=0.55)
++    assert P2.decide(st)[1]
+ 
+ 
+ class _Stoch:
+diff --git a/tests/v9/experiments/test_s4p2_runner_native.py b/tests/v9/experiments/test_s4p2_runner_native.py
+index 7c92922..376720f 100644
+--- a/tests/v9/experiments/test_s4p2_runner_native.py
++++ b/tests/v9/experiments/test_s4p2_runner_native.py
+@@ -301,3 +301,29 @@ def test_make_prereg_refuses_a_probe_with_other_weights(tmp_path) -> None:
+     m = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"), "--probe", str(root / HERE / "probe.json"),
+                         "--out", str(root / PREREG)], cwd=root, env=env, capture_output=True, text=True, timeout=120)
+     assert m.returncode != 0 and "权重" in m.stderr + m.stdout and not (root / PREREG).exists()
++
++
++def test_final_refuses_a_changed_weight_file_before_the_marker(tmp_path) -> None:
++    root = _make_root(tmp_path)
++    _frozen(root)
++    _git(root, "add", ".")
++    _git(root, "commit", "-qm", "freeze")
++    w = root / WEIGHTS / "L-int#2.safetensors"           # artifacts/ is not tracked by git, editing it keeps git clean
++    b = bytearray(w.read_bytes())
++    b[-1] ^= 1
++    w.write_bytes(bytes(b))
++    _refused(_run(root, *FINAL, report="reports/final.json"), "weights missing or changed")
++    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()
++    assert not (root / "reports/final.json").exists()
++
++
++def test_final_refuses_when_the_wall_clock_left_is_below_the_reserve(tmp_path) -> None:
++    root = _make_root(tmp_path)
++    _frozen(root)
++    pre = json.loads((root / PREREG).read_text())
++    pre["budget"]["eval_reserve_s"] = 10 ** 6
++    (root / PREREG).write_text(json.dumps(pre))
++    _git(root, "add", ".")
++    _git(root, "commit", "-qm", "freeze with a reserve above the limit")
++    _refused(_run(root, *FINAL, report="reports/final.json"), "the final read is not spent")
++    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()

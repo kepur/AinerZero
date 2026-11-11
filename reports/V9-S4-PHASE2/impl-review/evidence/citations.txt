@@ -1,0 +1,813 @@
+$ git rev-parse HEAD
+060905d975f17280ccee6a4b1100f8c5d295d475
+
+$ git diff --stat c5387d8 HEAD -- src tests reports/V9-S4-PHASE2 reports/V9-S4-P2-DESIGN pyproject.toml
+ reports/V9-S4-P2-DESIGN/DESIGN-r1.md               |  288 +++++
+ reports/V9-S4-P2-DESIGN/r0-review/REPORT.md        |  361 ++++++
+ reports/V9-S4-P2-DESIGN/r0-review/SHA256SUMS.txt   |   40 +
+ .../r0-review/evidence/citations.txt               |  255 ++++
+ .../r0-review/evidence/make_citations.sh           |   51 +
+ .../r0-review/evidence/make_metrics.py             |   22 +
+ .../r0-review/evidence/make_sums.sh                |    6 +
+ .../r0-review/evidence/metrics.json                |  102 ++
+ .../evidence/metrics/one_step_rows-p2f-main.txt    |    9 +
+ .../metrics/one_step_rows-surrogates-extrap.txt    |   12 +
+ .../metrics/one_step_rows-surrogates-main.txt      |   12 +
+ .../r0-review/evidence/metrics/one_step_rows.py    |   23 +
+ .../evidence/numbers/check_design_numbers.py       |  247 ++++
+ .../evidence/numbers/check_design_numbers.txt      |  132 ++
+ .../r0-review/evidence/physics/ep_vs_eb_overlap.py |   13 +
+ .../evidence/physics/ep_vs_eb_overlap.txt          |    4 +
+ .../r0-review/evidence/repro/compare_first3.py     |   22 +
+ .../r0-review/evidence/repro/compare_first3.txt    |   68 +
+ .../evidence/repro/results-p2f-first3.json         |    1 +
+ .../r0-review/evidence/repro/run_repro_p2f.log     |   27 +
+ .../r0-review/evidence/repro/run_repro_p2f.sh      |    8 +
+ .../r0-review/evidence/repro/summary-diff.txt      |   15 +
+ .../evidence/repro/summary-p2a.recomputed.txt      |   18 +
+ .../evidence/repro/summary-p2d.recomputed.stderr   |   10 +
+ .../evidence/repro/summary-p2d.recomputed.txt      |   19 +
+ .../evidence/repro/summary-p2e.recomputed.stderr   |    0
+ .../evidence/repro/summary-p2e.recomputed.txt      |   15 +
+ .../repro/summary-p2f-extrap.recomputed.txt        |   17 +
+ .../evidence/repro/summary-p2f-main.recomputed.txt |   17 +
+ .../r0-review/evidence/surrogates/gates.json       | 1346 ++++++++++++++++++++
+ .../r0-review/evidence/surrogates/gates.txt        |  159 +++
+ .../evidence/surrogates/gates_surrogates.py        |   86 ++
+ .../evidence/surrogates/records-extrap.json        |    1 +
+ .../evidence/surrogates/records-main.json          |    1 +
+ .../r0-review/evidence/surrogates/run-extrap.log   |   27 +
+ .../r0-review/evidence/surrogates/run-main.log     |   44 +
+ .../r0-review/evidence/surrogates/run_both.sh      |    6 +
+ .../evidence/surrogates/run_surrogates.sh          |    9 +
+ .../r0-review/evidence/surrogates/table.md         |   38 +
+ .../evidence/surrogates/table_surrogates.py        |   41 +
+ .../evidence/surrogates/track_surrogates.py        |  132 ++
+ .../r0-review/evidence/weights-used.sha256         |    6 +
+ .../V9-S4-P2-DESIGN/tier1-explore/explore_p2g.py   |   55 +
+ .../V9-S4-P2-DESIGN/tier1-explore/results-p2g.json |    1 +
+ .../V9-S4-P2-DESIGN/tier1-explore/summary-p2g.txt  |   47 +
+ reports/V9-S4-PHASE2/make_prereg.py                |    5 +-
+ reports/V9-S4-PHASE2/verify_replay_p2.py           |    4 +-
+ src/ainerzero/v9/experiments/s4/analysis_p2.py     |   65 +-
+ src/ainerzero/v9/experiments/s4/gated.py           |  115 +-
+ src/ainerzero/v9/experiments/s4/worker_p2.py       |   13 +-
+ tests/v9/experiments/test_s4_analysis_p2.py        |   68 +-
+ tests/v9/experiments/test_s4_gated.py              |   63 +-
+ tests/v9/experiments/test_s4p2_runner_native.py    |    5 +-
+ 53 files changed, 4077 insertions(+), 74 deletions(-)
+
+$ git show c5387d8:reports/V9-S4-P2-DESIGN/DESIGN-r0.md | grep -n ...
+110:| **L-int-g** | 每个盘：门开时取 L-int 的预测，否则取 E-B；门是 L-int 的接触头，与半径 1.5 内任一盘的接触概率 > 0.5 | **主臂** |
+117:- **门只读成员状态。** 成员状态是滤波器自己的估计，不读真值。
+118:- **门是逐成员、逐盘判定的。** 同一条轨迹的不同成员可以一个用 L-int、一个用 E-B。
+119:- **代码约束：** 门控代码不得调用世界模块的物理。门关时，预测必须与 E-B 逐位相同；门开时，必须与 L-int 逐位相同。有测试。
+127:**事件与准确率：** 重新出现事件、「有碰撞」的定义与一期相同。每个事件三个种子取平均。分三类报告：有碰撞、没有碰撞、全部。
+129:**一步覆盖率：** 轨迹在 t−1 和 t 都分到检测时，取 t 步观测更新之前的预测集合（均值、样本协方差），看真实位置是否落在 90% 椭圆里。按被检测盘在 t−1 → t 这一步的类型分类：碰撞（接触日志有盘间接触）、其余。三个种子的行合在一起数。
+131:**重新出现时的覆盖率：** 对每个重新出现事件（a 步可见，b 步再次可见），取 a 步时持有这个盘的那条轨迹，看它在 b 步观测更新之前的预测集合，真实位置是否落在 90% 椭圆里。每个事件三个种子取平均。分有碰撞、没有碰撞两类。
+137:| **GN 没有碰撞不输** | 没有碰撞的事件上 L-int-g − E-B ≥ −0.01，下界 > −0.03 | 主评测 | +0.018 [−0.000, +0.035] | 一期 L-int（−0.050） |
+145:**负对照：** L-ind-geo 的 C 的 95% 上界必须 < 0.5，D 的 95% 上界必须 < 0.5。否则说明门本身就能带来收益，GA、GC、GX 作废。摸底中 C 是 0.11 [0.00, 0.22]，D 是 0.0005。
+157:- 另报 Bonferroni 区间。m = 11：GN、GA、GC、GK1 两项、GK2 两项、GD 两项、GX 两项。门的「下界、上界、区间」一律用 Bonferroni 区间。
+184:- 启动顺序：拿锁 → `python -I`、新字节码目录、冻结清单、已加载模块、第三方版本、git（final）→ 权重 SHA → 分区 → final 只读一次标记 → 运行目录。
+185:- final 只读一次标记写在生成第一个 `s4p2-final` 世界之前。
+197:- final 300 个世界，6 个工作进程，预计约 15–30 分钟；硬上限 2 小时，评测预留按探针耗时 × 4 × 1.5 算；
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/gated.py | grep -n '' | sed -n '11,12p'
+11:Gates read only the member states the filter passes in (its own estimates), never the truth. With
+12:the gate closed the prediction is E-B's bit for bit, with it open the learned model's bit for bit.
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/gated.py | grep -n '' | sed -n '30,53p'
+30:def geo_gate(P: np.ndarray, V: np.ndarray) -> np.ndarray:
+31:    """[M, n] bool for member states P, V [M, n, 2]: the disk is in a pair that the phase-1 contact
+32:    baseline flags (approaching and touching within DT on straight lines, or overlapping and approaching)."""
+33:    d = P[:, None, :, :] - P[:, :, None, :]                  # d[m, i, j] = p_j - p_i
+34:    u = V[:, None, :, :] - V[:, :, None, :]
+35:    a = (u * u).sum(-1)
+36:    b = 2 * (d * u).sum(-1)
+37:    c = (d * d).sum(-1) - (2 * W.RADIUS) ** 2
+38:    disc = b * b - 4 * a * c
+39:    with np.errstate(invalid="ignore", divide="ignore"):
+40:        tau = (-b - np.sqrt(np.maximum(disc, 0.0))) / (2 * np.where(a > 0, a, 1.0))
+41:    hit = ((c <= 0) & (b < 0)) | ((a > 0) & (disc >= 0) & (b < 0) & (tau >= 0) & (tau < W.DT))
+42:    hit &= ~np.eye(P.shape[1], dtype=bool)[None]
+43:    return hit.any(-1)
+44:
+45:
+46:def head_gate(logits: np.ndarray, P: np.ndarray, p: float) -> np.ndarray:
+47:    """[M, n] bool: some other disk within MSG_RADIUS with contact probability above ``p``."""
+48:    if not 0.0 < p < 1.0:
+49:        raise ValueError("the gate threshold must lie in (0, 1)")
+50:    n = P.shape[1]
+51:    dist = np.linalg.norm(P[:, :, None] - P[:, None], axis=-1)
+52:    near = (dist < L.MSG_RADIUS) & ~np.eye(n, dtype=bool)[None]
+53:    return ((np.asarray(logits, dtype=np.float64) > math.log(p / (1 - p))) & near).any(-1)
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/gated.py | grep -n '' | sed -n '69,84p'
+69:    def step(P, V, pillars):
+70:        pb, vb = Mo.bounce(P, V, pillars)
+71:        if P.shape[1] < 2:
+72:            if counter is not None:
+73:                counter[1] += P.shape[0] * P.shape[1]
+74:            return pb, vb
+75:        pil = mx.array(np.broadcast_to(np.array(pillars, dtype=np.float32), (P.shape[0], L.N_PILLARS, 3)))
+76:        p_, v_, logits, _ = net(mx.array(P.astype(np.float32)), mx.array(V.astype(np.float32)), pil)
+77:        mx.eval(p_, v_)
+78:        g = geo_gate(P, V) if gate == "geo" else head_gate(np.array(logits), P, float(gate))
+79:        if counter is not None:
+80:            counter[0] += int(g.sum())
+81:            counter[1] += int(g.size)
+82:        g = g[..., None]
+83:        return (np.where(g, np.array(p_, dtype=np.float64), pb), np.where(g, np.array(v_, dtype=np.float64), vb))
+84:    return step
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/models.py | grep -n '' | sed -n '20,23p'
+20:def bounce(P: np.ndarray, V: np.ndarray, pillars: Sequence[W.Pillar]):
+21:    """E-B: constant velocity with wall and pillar reflections; no disk-disk collisions."""
+22:    p, v, _ = W.physics(P, V, pillars, disks=False)
+23:    return p, v
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/world.py | grep -n '' | sed -n '46,46p'
+46:REGISTERED = frozenset({"s4p1-final", "s4p2-final"})
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/world.py | grep -n '' | sed -n '127,127p'
+127:    contacts: tuple[tuple[str, int, int], ...]  # contacts during t -> t+1, truth
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/filter.py | grep -n '' | sed -n '106,110p'
+106:        if P.shape[1]:
+107:            P, V = _predict(P, V, model, pillars, cfg, rng)
+108:        assign = _associate(P, z, last, t, cfg)
+109:        if on_predict is not None:
+110:            on_predict(t, P.copy(), V.copy(), dict(assign), list(last))
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/metrics.py | grep -n '' | sed -n '84,99p'
+84:    draws = rng.integers(0, n_w, size=(n_boot, n_w))
+85:    tot = arr[:, draws].sum(-1)                                              # [K, n_boot]
+86:    with np.errstate(divide="ignore", invalid="ignore"):
+87:        boot = np.array(stat(**dict(zip(names, tot))), dtype=np.float64)
+88:    boot = boot[np.isfinite(boot)]
+89:    if not np.isfinite(point) or len(boot) < n_boot:
+90:        # An undefined ratio (e.g. E-P no better than E-B) in the point value or in any resample:
+91:        # dropping those resamples would narrow the interval, so no interval is given and every
+92:        # gate that needs one fails. The point value is kept when it is defined.
+93:        return {"value": float(point) if np.isfinite(point) else None, "ci_low": None, "ci_high": None,
+94:                "bonf_low": None, "bonf_high": None, "n_worlds": int(n_w), "n_boot_finite": int(len(boot))}
+95:    tail = (1 - LEVEL) / 2
+96:    lo, hi = np.quantile(boot, [tail, 1 - tail])
+97:    blo, bhi = np.quantile(boot, [tail / m, 1 - tail / m])
+98:    return {"value": float(point), "ci_low": float(lo), "ci_high": float(hi), "bonf_low": float(blo), "bonf_high": float(bhi),
+99:            "n_worlds": int(n_w), "n_boot_finite": int(len(boot))}
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis.py | grep -n ...
+35:SEEDS = (1, 2, 3)
+37:EXPECTED_COLL_DISK_STEPS_PER_40 = 552
+38:SAMPLE_BAND = 0.25
+39:DYN_FLOOR = 0.75
+311:CHI2_2_90 = -2 * np.log(0.1)           # 90% region of a 2-D Gaussian
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '36,55p'
+36:GATES = {"L-int-g": 0.5, "L-int-g3": 0.3, "L-int-g7": 0.7, "L-int-geo": "geo", "L-ind-geo": "geo"}   # arm -> gate
+37:BASE_MODEL = {"L-int": "L-int", "L-int-g": "L-int", "L-int-g3": "L-int", "L-int-g7": "L-int", "L-int-geo": "L-int", "L-ind-geo": "L-ind"}
+38:BOOT_SEED = 20261111
+39:N_COMPARISONS = 11                 # GN, GA, GC, GK1 (2), GK2 (2), GD (2), GX (2)
+40:EXPECTED_COLL_EVENTS_PER_40 = 267  # exploration round A, s4x-p2a
+41:EXPECTED_COLL_DISK_STEPS_PER_40 = A.EXPECTED_COLL_DISK_STEPS_PER_40
+42:SAMPLE_BAND = A.SAMPLE_BAND
+43:DYN_FLOOR = A.DYN_FLOOR
+44:GAP_BINS = (0, 10, 25, 50)         # reappearance coverage by hidden length: [0,10), [10,25), [25,50), [50, inf)
+45:
+46:THRESHOLDS = {
+47:    "GN": {"diff": -0.01, "diff_low": -0.03},
+48:    "GA": {"diff": 0.03, "diff_low": 0.0},
+49:    "GC": {"C": 0.75, "C_low": 0.5},
+50:    "GK1": {"all": (0.87, 0.93), "all_interval": (0.85, 0.95), "collision": 0.85, "collision_low": 0.80},
+51:    "GK2": {"non_collision": 0.85, "non_collision_low": 0.80, "collision": 0.75, "collision_low": 0.65},
+52:    "GD": {"D": 0.8, "D_low": 0.7, "ratio": 0.10, "ratio_high": 0.15},
+53:    "GX": {"diff": 0.03, "diff_low": 0.0, "C": 0.6, "C_low": 0.4},
+54:    "negative_control": {"C_high_below": 0.5, "D_high_below": 0.5},
+55:}
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '94,118p'
+94:    def __call__(self, t, P, V, assign, last):
+95:        s = self.ep.steps[t]
+96:        if t in self.want:
+97:            self.snaps[t] = P.copy()
+98:        if t == 0:
+99:            return
+100:        touched = {i for kind, i, j in self.ep.steps[t - 1].contacts if kind == "disk"} | {j for kind, i, j in self.ep.steps[t - 1].contacts if kind == "disk"}
+101:        for r, k in assign.items():
+102:            if last[k] != t - 1:
+103:                continue
+104:            truth = int(s.truth_ids[r])
+105:            row = self.one["collision" if truth in touched else "other"]
+106:            row[0] += 1
+107:            row[1] += int(_gauss_inside(P[:, k], s.positions[truth]))
+108:
+109:
+110:def reappearance_inside(ep: W.Episode, ids: Sequence[np.ndarray], events: Sequence[dict], snaps: Mapping[int, np.ndarray]) -> list[int]:
+111:    """Per event: whether the true position at b lies in the 90% ellipse of the ensemble predicted at b
+112:    (before the update) for the track that held the disk at a."""
+113:    at = [dict(zip(s.truth_ids.tolist(), np.asarray(i).tolist())) for s, i in zip(ep.steps, ids)]
+114:    out = []
+115:    for e in events:
+116:        trk = at[e["a"]][e["k"]]
+117:        out.append(int(_gauss_inside(snaps[e["b"]][:, trk], ep.steps[e["b"]].positions[e["k"]])))
+118:    return out
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '157,158p'
+157:def _event_mean(r: dict, arm: str, field: str) -> np.ndarray:
+158:    return np.mean([np.asarray(r["cells"][cell_key(arm, s)][field], dtype=np.float64) for s in SEEDS], axis=0) if r["events"] else np.zeros(0)
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '175,184p'
+175:def one_step_sums(records: Sequence[dict], arm: str, which: str) -> tuple[np.ndarray, np.ndarray]:
+176:    """Per world (inside, rows) of the one-step coverage, the three seeds pooled; which: collision or all."""
+177:    parts = ("collision",) if which == "collision" else ("collision", "other")
+178:    ins = np.array([float(sum(r["cells"][cell_key(arm, s)]["one_step"][p][1] for s in SEEDS for p in parts)) for r in records])
+179:    n = np.array([float(sum(r["cells"][cell_key(arm, s)]["one_step"][p][0] for s in SEEDS for p in parts)) for r in records])
+180:    return ins, n
+181:
+182:
+183:def _boot(stat, sums, m):
+184:    return Me.bootstrap(stat, sums, seed=BOOT_SEED, m=m)
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '224,242p'
+224:def legality(main, extrap, *, n_main, n_extrap, labels_ok, student_ok, replay_ok, weights_ok) -> dict[str, Any]:
+225:    acc = {a: acc_of(main, a, "collision")["value"] for a in ("E-CV", "E-B", "E-P")}
+226:    missing = [a for a, v in acc.items() if v is None]
+227:    floor = not missing and acc["E-CV"] < acc["E-B"] < acc["E-P"]
+228:    n_coll_events = int(event_counts(main, "collision").sum())
+229:    expected = EXPECTED_COLL_EVENTS_PER_40 * n_main / 40
+230:    n_coll_steps = int(_dyn(main, "E-B", "n_coll").sum()) if main else 0
+231:    dyn_expected = EXPECTED_COLL_DISK_STEPS_PER_40 * n_main / 40
+232:    return {
+233:        "labels": {"passed": bool(labels_ok)},
+234:        "student_view": {"passed": bool(student_ok)},
+235:        "floor": {"passed": bool(floor), "acc": acc, **({"undefined": missing} if missing else {})},
+236:        "complete": {"passed": len(main) == n_main and len(extrap) == n_extrap, "main": len(main), "extrap": len(extrap),
+237:                     "registered": [n_main, n_extrap]},
+238:        "samples": {"passed": bool(abs(n_coll_events - expected) <= SAMPLE_BAND * expected and n_coll_steps >= DYN_FLOOR * dyn_expected),
+239:                    "collision_events": n_coll_events, "expected": expected, "collision_disk_steps": n_coll_steps, "dyn_expected": dyn_expected},
+240:        "determinism": {"passed": bool(replay_ok)},
+241:        "weights": {"passed": bool(weights_ok)},
+242:    }
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '265,320p'
+265:def gate_stats(main, extrap) -> dict[str, dict]:
+266:    """Every statistic a gate or the negative control reads (Bonferroni m = N_COMPARISONS for the gates)."""
+267:    a = MAIN_ARM
+268:    return {"GN": acc_diff(main, a, "E-B", "non_collision"), "GA": acc_diff(main, a, "E-B", "all"), "GC": C_of(main, a),
+269:            "GK1_all": coverage_one_step(main, a, "all"), "GK1_collision": coverage_one_step(main, a, "collision"),
+270:            "GK2_non_collision": coverage_reappear(main, a, "non_collision"), "GK2_collision": coverage_reappear(main, a, "collision"),
+271:            "GD_D": D_of(main, a), "GD_ratio": HF_of(main, a),
+272:            "GX_diff": acc_diff(extrap, a, "E-B", "all"), "GX_C": C_of(extrap, a),
+273:            "neg_C": C_of(main, NEG_ARM, m=1), "neg_D": D_of(main, NEG_ARM, m=1)}
+274:
+275:
+276:def decide(st: Mapping[str, dict]) -> tuple[dict[str, bool], bool]:
+277:    """(passed per gate, negative control passed) from the statistics alone. A missing value or bound fails."""
+278:    T = THRESHOLDS
+279:    lo1, hi1 = T["GK1"]["all"]
+280:    lo1i, hi1i = T["GK1"]["all_interval"]
+281:    k1a, k1c = st["GK1_all"], st["GK1_collision"]
+282:    k2n, k2c = st["GK2_non_collision"], st["GK2_collision"]
+283:    d, hf = st["GD_D"], st["GD_ratio"]
+284:    passed = {
+285:        "GN": _ge(st["GN"], "value", T["GN"]["diff"]) and _gt(st["GN"], "bonf_low", T["GN"]["diff_low"]),
+286:        "GA": _ge(st["GA"], "value", T["GA"]["diff"]) and _gt(st["GA"], "bonf_low", T["GA"]["diff_low"]),
+287:        "GC": _ge(st["GC"], "value", T["GC"]["C"]) and _gt(st["GC"], "bonf_low", T["GC"]["C_low"]),
+288:        "GK1": (_ge(k1a, "value", lo1) and _le(k1a, "value", hi1) and _ge(k1a, "bonf_low", lo1i) and _le(k1a, "bonf_high", hi1i)
+289:                and _ge(k1c, "value", T["GK1"]["collision"]) and _gt(k1c, "bonf_low", T["GK1"]["collision_low"])),
+290:        "GK2": (_ge(k2n, "value", T["GK2"]["non_collision"]) and _gt(k2n, "bonf_low", T["GK2"]["non_collision_low"])
+291:                and _ge(k2c, "value", T["GK2"]["collision"]) and _gt(k2c, "bonf_low", T["GK2"]["collision_low"])),
+292:        "GD": (_ge(d, "value", T["GD"]["D"]) and _gt(d, "bonf_low", T["GD"]["D_low"])
+293:               and _le(hf, "value", T["GD"]["ratio"]) and _le(hf, "bonf_high", T["GD"]["ratio_high"])),
+294:        "GX": (_ge(st["GX_diff"], "value", T["GX"]["diff"]) and _gt(st["GX_diff"], "bonf_low", T["GX"]["diff_low"])
+295:               and _ge(st["GX_C"], "value", T["GX"]["C"]) and _gt(st["GX_C"], "bonf_low", T["GX"]["C_low"])),
+296:    }
+297:    neg = (_lt(st["neg_C"], "ci_high", T["negative_control"]["C_high_below"])
+298:           and _lt(st["neg_D"], "ci_high", T["negative_control"]["D_high_below"]))
+299:    return {k: bool(v) for k, v in passed.items()}, bool(neg)
+300:
+301:
+302:GATE_STATS = {"GN": ("GN",), "GA": ("GA",), "GC": ("GC",), "GK1": ("GK1_all", "GK1_collision"),
+303:              "GK2": ("GK2_non_collision", "GK2_collision"), "GD": ("GD_D", "GD_ratio"), "GX": ("GX_diff", "GX_C")}
+304:
+305:
+306:def evaluate(main, extrap, *, n_main, n_extrap, labels_ok, student_ok, replay_ok, weights_ok) -> dict[str, Any]:
+307:    lg = legality(main, extrap, n_main=n_main, n_extrap=n_extrap, labels_ok=labels_ok, student_ok=student_ok,
+308:                  replay_ok=replay_ok, weights_ok=weights_ok)
+309:    valid = all(v["passed"] for v in lg.values())
+310:    st = gate_stats(main, extrap)
+311:    passed, neg_ok = decide(st)
+312:    g = {k: {"passed": passed[k], **{name: st[name] for name in GATE_STATS[k]}} for k in GATE_STATS}
+313:    neg = {"passed": neg_ok, "C": st["neg_C"], "D": st["neg_D"]}
+314:    if not neg_ok:
+315:        for k in ("GA", "GC", "GX"):
+316:            g[k] = dict(g[k], passed=False, void="negative control failed")
+317:    if not valid:
+318:        for k in g:
+319:            g[k] = dict(g[k], passed=False, void="legality failed")
+320:    return {"valid": valid, "legality": lg, "negative_control": neg, "gates": g}
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n '' | sed -n '12,14p'
+12:启动顺序：拿锁 → python -I、新字节码目录、冻结清单、已加载模块、第三方版本、git（final）→ 权重 SHA → 分区
+13:→ 请求 → final 只读一次标记是否已存在 → 运行目录、占报告。任何一步失败都不写标记。
+14:final 的只读一次标记写在剩余墙钟够评测预留之后、生成第一个登记世界之前。
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n '' | sed -n '80,114p'
+80:def startup_checks(stage):
+81:    """Run after the lock is held. Returns (prereg or None, its sha, git head, versions)."""
+82:    versions = GD.third_party_versions(REPO, THIRD_PARTY)
+83:    if stage != "final":
+84:        return None, None, None, versions
+85:    if not sys.flags.isolated:
+86:        raise GD.GuardError("final must run with python -I")
+87:    GD.require_fresh_pycache(STARTED)
+88:    pre = json.loads(PREREG.read_text(encoding="utf-8"))
+89:    bad = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])
+90:    if bad:
+91:        raise GD.GuardError("frozen manifest does not hold: " + "; ".join(bad[:6]))
+92:    if versions != pre["third_party"]:
+93:        raise GD.GuardError(f"library versions differ from the preregistration: {versions}")
+94:    if pre.get("weights_sha256") != WEIGHTS_SHA256:
+95:        raise GD.GuardError("the weights registered in the preregistration differ from the runner's")
+96:    head, dirty = GD.check_git_clean(REPO, list(pre["manifest"]) + [str(PREREG.relative_to(REPO))])
+97:    if dirty:
+98:        raise GD.GuardError("frozen files are not committed: " + "; ".join(dirty[:6]))
+99:    return pre, sha(PREREG), head, versions
+100:
+101:
+102:def check_weights():
+103:    """Every phase-1 weight file the arms use, present and with its registered SHA. Returns name -> path."""
+104:    out, bad = {}, []
+105:    for name, want in WEIGHTS_SHA256.items():
+106:        p = WEIGHTS_DIR / f"{name}.safetensors"
+107:        if not p.is_file() or sha(p) != want:
+108:            bad.append(name)
+109:        out[name] = str(p)
+110:    if bad:
+111:        raise GD.GuardError(f"weights missing or changed: {bad}")
+112:    if sorted(out) != sorted(WK.weight_names()):
+113:        raise GD.GuardError("the registered weights do not match the arms")
+114:    return out
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n '' | sed -n '222,266p'
+222:    with GD.RunLock(LOCK) as lock:
+223:        pre, pre_sha, head, versions = startup_checks(a.stage)
+224:        weights = check_weights()
+225:        ns = namespace(a.stage)
+226:        check_request(a, pre)
+227:        report = Path(a.report)
+228:        run_id = f"{a.stage}-{a.use_id or 'final'}"
+229:        out = ROOT / run_id
+230:        if out.exists():
+231:            raise GD.GuardError(f"run directory already exists: {out}")
+232:        if a.stage == "final" and FINAL_MARKER.exists():
+233:            raise GD.GuardError("final has already been read")
+234:        GD.claim_report(report)
+235:        out.mkdir(parents=True)
+236:
+237:        code = code_manifest()
+238:        code_head, code_dirty = GD.check_git_clean(REPO, list(code))
+239:        R = {"schema": "s4.phase2.v1", "stage": a.stage, "use_id": a.use_id, "namespace": ns, "sizes": cfg["sizes"],
+240:             "prereg_sha256": pre_sha, "git_head": head or code_head, "code_manifest_sha256": manifest_sha(code),
+241:             "code_dirty": code_dirty, "third_party": versions, "arms": list(P2.HAND + P2.LEARNED), "gates": P2.GATES,
+242:             "weights_sha256": {n: sha(p) for n, p in weights.items()}, "workers": WORKERS}
+243:
+244:        def save():
+245:            R["elapsed_s"] = round(time.monotonic() - t0, 1)
+246:            R["peak_rss_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+247:            report.write_text(json.dumps(R, ensure_ascii=False, indent=1), encoding="utf-8")
+248:
+249:        def say(*x):
+250:            print(f"[{time.monotonic() - t0:8.1f}s]", *x, flush=True)
+251:
+252:        save()
+253:        deadline.check()
+254:        R["pre_eval_seconds"] = round(time.monotonic() - t0, 1)
+255:
+256:        registered = a.stage == "final"
+257:        if registered:
+258:            reserve = float(pre["budget"]["eval_reserve_s"])
+259:            if deadline.left() < reserve:
+260:                raise GD.GuardError(f"only {deadline.left():.0f} s left, the evaluation needs {reserve:.0f} s: the final read is not spent")
+261:            # The one read of the registered partition starts here; nothing above generates it.
+262:            GD.consume_final_read(lock, FINAL_MARKER, a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
+263:            R["final_read_marker_sha256"] = sha(FINAL_MARKER)
+264:            save()
+265:        t_post = time.monotonic()                                   # everything from here on is what the reserve must cover
+266:        eval_eps = [(kind, W.generate_episode(ns, w, n, allow_registered=registered)) for kind, w, n in P2.eval_world_ids(cfg["sizes"])]
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n '' | sed -n '300,303p'
+300:        weights_ok = all(sha(p) == WEIGHTS_SHA256[n] for n, p in weights.items())
+301:        R["checks"] = {"student_view": st, "labels": lab, "replay": rep, "weights": {"passed": weights_ok}}
+302:        R["result"] = P2.evaluate(main_r, ext_r, n_main=cfg["sizes"][0], n_extrap=cfg["sizes"][1], labels_ok=bool(lab.get("passed")),
+303:                                  student_ok=st["passed"], replay_ok=bool(rep.get("passed")), weights_ok=weights_ok)
+
+$ git show c5387d8:reports/V9-S4-PHASE2/make_prereg.py | grep -n '' | sed -n '53,57p'
+53:    # Wall clock: the final evaluates 4x the probe's worlds; 1.5x margin on everything after the marker.
+54:    scale = sum(P2.SIZES["final"]) / sum(P2.SIZES["probe"])
+55:    eval_reserve = math.ceil(1.5 * scale * pr["post_marker_seconds"])
+56:    if 1.2 * pr["pre_eval_seconds"] + eval_reserve > HARD_LIMIT_S:
+57:        raise SystemExit(f"预计超出硬上限：评测预留 {eval_reserve} 秒")
+
+$ git show c5387d8:reports/V9-S4-PHASE2/verify_replay_p2.py | grep -n '' | sed -n '33,51p'
+33:    for w in rep["worlds"]:
+34:        rec = records[(w["kind"], w["world"])]
+35:        dets = [np.array(d, dtype=np.float64).reshape(-1, 2) for d in w["detections"]]
+36:        pillars = tuple(tuple(p) for p in w["pillars"])
+37:        for arm, s, m in cells:
+38:            key = P2.cell_key(arm, s)
+39:            rng = np.random.default_rng(P2.filter_seed(rep["ns"], w["world"], s))
+40:            ids, _ = F.track(dets, pillars, m, rng, F.FilterConfig())
+41:            checked += 1
+42:            if key not in rec["cells"] or P2.ids_digest(ids) != rec["cells"][key]["ids_sha256"]:
+43:                bad.append(f"{w['kind']} {w['world']} {key}")
+44:                continue
+45:            at = [dict(zip(t, np.asarray(i).tolist())) for t, i in zip(w["truth_ids"], ids)]
+46:            correct = [int(at[a][k] == at[b][k]) for k, a, b, _, _ in rec["events"]]
+47:            if correct != rec["cells"][key]["correct"]:
+48:                bad.append(f"{w['kind']} {w['world']} {key} reid")
+49:    expected = len(rep["worlds"]) * len(cells)
+50:    print(json.dumps({"passed": expected > 0 and checked == expected and not bad, "checked": checked, "cells_per_world": len(cells),
+51:                      "mismatches": bad[:20]}))
+
+$ git show c5387d8:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '149,153p'
+149:def test_bonferroni_is_eleven_comparisons(good) -> None:
+150:    c = good["gates"]["GC"]["GC"]
+151:    assert c["bonf_low"] < c["ci_low"] < c["value"] < c["ci_high"] < c["bonf_high"]
+152:    alt = P2.C_of(records(), "L-int-g", m=11)
+153:    assert alt == c
+
+$ git show c5387d8:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '210,222p'
+210:def test_seed_averaging_per_event() -> None:
+211:    recs = records(3, n_events=5)
+212:    arm = "L-int-g"
+213:    want = []
+214:    for r in recs:
+215:        per = np.mean([r["cells"][P2.cell_key(arm, s)]["correct"] for s in P2.SEEDS], axis=0)
+216:        m = np.array([e[3] == 0 for e in r["events"]])
+217:        want.append(per[m].sum())
+218:    assert np.allclose(P2.event_sums(recs, arm, "non_collision"), want)
+219:    ins, n = P2.one_step_sums(recs, arm, "collision")
+220:    assert np.array_equal(n, [3 * 40.0] * 3)
+221:    ins_all, n_all = P2.one_step_sums(recs, arm, "all")
+222:    assert np.array_equal(n_all, [3 * 440.0] * 3) and (ins_all >= ins).all()
+
+$ git show c5387d8:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '234,236p'
+234:def _st(value, low, high, ci_low=None, ci_high=None):
+235:    return {"value": value, "bonf_low": low, "bonf_high": high, "ci_low": low if ci_low is None else ci_low,
+236:            "ci_high": high if ci_high is None else ci_high}
+
+$ git show c5387d8:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '99,119p'
+99:def records(n=200, kind="main", spec=None, seed=0, n_events=30, coll_share=0.22, dyn=None):
+100:    spec = dict(BASE, **(spec or {}))
+101:    rng = np.random.default_rng(seed)
+102:    dyn = dyn or {"L-int-g": (0.15, 0.03), "L-ind-geo": (1.0, 0.0), "L-int": (0.13, 0.07)}   # (coll error / E-B, graze ratio)
+103:    dyn = {"L-int-g3": (0.15, 0.03), "L-int-g7": (0.16, 0.02), "L-int-geo": (0.15, 0.0)} | dyn
+104:    out = []
+105:    for w in range(n):
+106:        coll = rng.random(n_events) < coll_share
+107:        ev = [[0, 0, 5, int(c), int(g)] for c, g in zip(coll, rng.integers(0, 80, n_events))]
+108:        cells = {}
+109:        for arm, (pc, pn, k1, k1c, k2n, k2c) in spec.items():
+110:            for s in P2.SEEDS:
+111:                p = np.where(coll, pc, pn)
+112:                q = np.where(coll, k2c, k2n)
+113:                rows_c, rows_o = 40, 400
+114:                cells[P2.cell_key(arm, s)] = {
+115:                    "correct": (rng.random(n_events) < p).astype(int).tolist(),
+116:                    "reappear": (rng.random(n_events) < q).astype(int).tolist(),
+117:                    "one_step": {"collision": [rows_c, int(rng.binomial(rows_c, k1c))],
+118:                                 "other": [rows_o, int(rng.binomial(rows_o, (k1 * (rows_c + rows_o) - k1c * rows_c) / rows_o))]},
+119:                    "idf1": 0.7, "n_tracks": 7, "gate": [2, 100]}
+
+$ git show c5387d8:tests/v9/experiments/test_s4p2_runner_native.py | grep -n '' | sed -n '182,193p'
+182:@pytest.mark.parametrize("how", ["changed", "missing"])
+183:def test_changed_or_missing_weights_are_refused_before_anything(tmp_path, how) -> None:
+184:    root = _make_root(tmp_path)
+185:    w = root / WEIGHTS / "L-ind#2.safetensors"
+186:    if how == "changed":
+187:        b = bytearray(w.read_bytes())
+188:        b[-1] ^= 1
+189:        w.write_bytes(bytes(b))
+190:    else:
+191:        w.unlink()
+192:    _refused(_run(root, *SMOKE), "weights missing or changed")
+193:    _nothing_spent(root)
+
+$ git show c5387d8:tests/v9/experiments/test_s4p2_runner_native.py | grep -n '' | sed -n '247,286p'
+247:def test_final_path_after_a_frozen_probe(tmp_path) -> None:
+248:    """probe -> make_prereg -> commit -> final: the final writes the one-time marker after the start-up
+249:    checks, and a second final is refused; bad finals before it spend nothing."""
+250:    root = _make_root(tmp_path)
+251:    probe, pre = _frozen(root)
+252:    assert pre["final_approval_line"] == APPROVAL and pre["gates"] == json.loads(json.dumps(P2.THRESHOLDS))
+253:    assert RUNNER in pre["manifest"] and all(v in pre["manifest"] for v in VERIFY) and "reports/DESIGN.md" in pre["manifest"]
+254:    assert "src/ainerzero/v9/experiments/s4/gated.py" in pre["manifest"] and "src/ainerzero/v9/experiments/s4/worker_p2.py" in pre["manifest"]
+255:    assert pre["weights_sha256"] == probe["weights_sha256"]
+256:    assert pre["budget"]["eval_reserve_s"] == math.ceil(1.5 * 4 * probe["post_marker_seconds"])
+257:    _refused(_run(root, *FINAL, report="reports/f0.json"), "not committed")
+258:    _git(root, "add", ".")
+259:    _git(root, "commit", "-qm", "freeze")
+260:    _refused(_run(root, *FINAL, "--use-id", "x", report="reports/f1.json"), "takes no use id")
+261:    _refused(_run(root, "--stage", "final", "--approval", "wrong", report="reports/f2.json"), "approval line")
+262:    _refused(_run(root, *FINAL, report="reports/f3.json", pycache=False), "pycache_prefix")
+263:    _refused(_run(root, *FINAL, report="reports/f4.json", isolated=False), "python -I")
+264:    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()
+265:    r = _run(root, *FINAL, report="reports/final.json")
+266:    assert r.returncode == 0, r.stderr[-3000:]
+267:    R = json.loads((root / "reports/final.json").read_text())
+268:    assert R["prereg_sha256"] == _sha(root / PREREG) and R["late_violations"] == [] and R["namespace"] == STAND_IN["final"]
+269:    marker = json.loads((root / ARTS / "FINAL_READ_ONCE.json").read_text())
+270:    assert marker["prereg_sha256"] == R["prereg_sha256"] and R["final_read_marker_sha256"] == _sha(root / ARTS / "FINAL_READ_ONCE.json")
+271:    _refused(_run(root, *FINAL, report="reports/final2.json"), "run directory already exists")
+272:    shutil.rmtree(root / ARTS / "final-final")
+273:    _refused(_run(root, *FINAL, report="reports/final3.json"), "already been read")
+274:    assert not (root / ARTS / "final-final").exists() and not (root / "reports/final3.json").exists()
+275:
+276:
+277:def test_final_refuses_weights_that_differ_from_the_preregistration(tmp_path) -> None:
+278:    root = _make_root(tmp_path)
+279:    _frozen(root)
+280:    pre = json.loads((root / PREREG).read_text())
+281:    pre["weights_sha256"]["L-int#1"] = "0" * 64
+282:    (root / PREREG).write_text(json.dumps(pre))
+283:    _git(root, "add", ".")
+284:    _git(root, "commit", "-qm", "freeze with other weights")
+285:    _refused(_run(root, *FINAL, report="reports/final.json"), "weights registered in the preregistration differ")
+286:    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists() and not (root / "reports/final.json").exists()
+
+$ git show c5387d8:tests/v9/experiments/test_s4_gated.py | grep -n '' | sed -n '151,158p'
+151:def test_gates_never_read_the_world_or_its_physics() -> None:
+152:    for fn in (G.geo_gate, G.head_gate):
+153:        names = _names(fn)
+154:        assert not any(x.startswith("W.") and x not in ("W.RADIUS", "W.DT") for x in names), names
+155:        assert "W.physics" not in names
+156:    names = _names(G.gated_model)
+157:    assert "W.physics" not in names and "Mo.true_physics" not in names
+158:    assert {x for x in names if x.startswith("Mo.")} == {"Mo.bounce"}
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n '' | sed -n '117,146p'
+117:def namespace(stage):
+118:    if stage == "smoke":
+119:        if SMOKE_NS in set(P2.NAMESPACES.values()) | set(W.REGISTERED):
+120:            raise GD.GuardError(f"smoke must not read a registered partition: {SMOKE_NS}")
+121:        return SMOKE_NS
+122:    ns = P2.NAMESPACES[stage]
+123:    if len(set(P2.NAMESPACES.values())) != 2:
+124:        raise GD.GuardError("partitions must be distinct")
+125:    if stage == "probe" and ns in W.REGISTERED:
+126:        raise GD.GuardError("probe must not read the registered final partition")
+127:    if stage == "final" and ns not in W.REGISTERED:
+128:        raise GD.GuardError("the final partition must be registered in the world module")
+129:    return ns
+130:
+131:
+132:def check_request(a, pre):
+133:    """Refuse a malformed request before anything is claimed or spent."""
+134:    if a.use_id is not None and not GD.valid_use_id(a.use_id):
+135:        raise GD.GuardError(f"invalid use id: {a.use_id!r}")
+136:    if a.stage in ("smoke", "probe"):
+137:        if not a.use_id:
+138:            raise GD.GuardError(f"a {a.stage} run needs a use id")
+139:        if a.approval:
+140:            raise GD.GuardError("only final takes an approval line")
+141:        return
+142:    if a.use_id is not None:
+143:        raise GD.GuardError("final takes no use id")
+144:    if (a.approval or "").strip() != pre["final_approval_line"]:
+145:        raise GD.GuardError("missing the unique approval line")
+146:
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n '' | sed -n '166,176p'
+166:def independent_check(script, *args, deadline):
+167:    left = deadline.left()
+168:    if left <= 0:
+169:        raise GD.GuardError("wall-clock limit reached")
+170:    try:
+171:        r = subprocess.run([sys.executable, "-I", str(script), *map(str, args)], capture_output=True, text=True, timeout=left)
+172:    except subprocess.TimeoutExpired as exc:
+173:        raise GD.GuardError("wall-clock limit reached") from exc
+174:    if r.returncode != 0:
+175:        return {"passed": False, "error": r.stderr[-2000:]}
+176:    return json.loads(r.stdout)
+
+$ git show c5387d8:tests/v9/experiments/test_s4_gated.py | grep -n '' | sed -n '62,86p'
+62:def test_head_gate_threshold_and_neighbourhood() -> None:
+63:    P = np.array([[[1.0, 1.0], [1.5, 1.0], [5.0, 5.0]]])
+64:    lg = np.full((1, 3, 3), 10.0)                      # every pair "certain"
+65:    g = G.head_gate(lg, P, 0.5)
+66:    assert g.tolist() == [[True, True, False]]          # disk 2 has nobody within MSG_RADIUS; no self pairs
+67:    lg = np.full((1, 3, 3), math.log(0.3 / 0.7))        # probability exactly 0.3
+68:    assert not G.head_gate(lg, P, 0.3).any()            # strictly above the threshold
+69:    assert G.head_gate(lg + 1e-9, P, 0.3)[0, :2].all()
+70:    for bad in (0.0, 1.0, -0.1):
+71:        with pytest.raises(ValueError):
+72:            G.head_gate(lg, P, bad)
+73:
+74:
+75:def test_closed_gate_is_eb_and_open_gate_is_the_learned_model_bit_for_bit(nets, monkeypatch) -> None:
+76:    net = nets[0]
+77:    rng = np.random.default_rng(1)
+78:    P, V = _states(rng)
+79:    learned = L.as_process_model(net)(P, V, PILLARS)
+80:    eb = Mo.bounce(P, V, PILLARS)
+81:    monkeypatch.setattr(G, "head_gate", lambda lg, P, p: np.zeros(P.shape[:2], bool))
+82:    out = G.gated_model(net, 0.5)(P, V, PILLARS)
+83:    assert np.array_equal(out[0], eb[0]) and np.array_equal(out[1], eb[1])
+84:    monkeypatch.setattr(G, "head_gate", lambda lg, P, p: np.ones(P.shape[:2], bool))
+85:    out = G.gated_model(net, 0.5)(P, V, PILLARS)
+86:    assert np.array_equal(out[0], learned[0]) and np.array_equal(out[1], learned[1])
+
+$ git show c5387d8:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '54,69p'
+54:def test_one_step_rows_classify_by_the_contact_in_the_previous_step() -> None:
+55:    steps = [SimpleNamespace(truth_ids=np.array([0, 1]), positions=np.array([[1.0, 1.0], [1.6, 1.0]]), contacts=(("disk", 0, 1),)),
+56:             SimpleNamespace(truth_ids=np.array([1, 0]), positions=np.array([[0.9, 1.0], [1.7, 1.0]]), contacts=())]
+57:    ep = SimpleNamespace(steps=steps)
+58:    hook = P2.Calibration(ep, want=[1])
+59:    P = np.zeros((64, 3, 2))
+60:    P[:, 0] = _ens([0.9, 1.0], 0.05)        # track 0 holds disk 0: inside
+61:    P[:, 1] = _ens([3.0, 3.0], 0.05)        # track 1 holds disk 1: outside
+62:    P[:, 2] = _ens([0.0, 0.0], 0.05)
+63:    hook(0, P, P, {}, [])
+64:    hook(1, P, P, {1: 0, 0: 1, }, [0, 0, -5])
+65:    assert hook.one["collision"] == [2, 1] and hook.one["other"] == [0, 0]
+66:    assert np.array_equal(hook.snaps[1], P)
+67:    hook2 = P2.Calibration(ep, want=[])
+68:    hook2(1, P, P, {1: 0, 0: 2}, [0, 0, -5])                  # track 2 was not assigned at t-1: no row
+69:    assert hook2.one["collision"] == [1, 1]
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/worker_p2.py | grep -n '' | sed -n '38,47p'
+38:    for s in P2.SEEDS:
+39:        lint = nets[f"L-int#{s}"]
+40:        models[f"L-int#{s}"] = dyn[f"L-int#{s}"] = L.as_process_model(lint)
+41:        for arm, gate in P2.GATES.items():
+42:            base = nets[f"{P2.BASE_MODEL[arm]}#{s}"]
+43:            c = [0, 0]
+44:            counters[f"{arm}#{s}"] = c
+45:            models[f"{arm}#{s}"] = G.gated_model(base, gate, counter=c)
+46:            dyn[f"{arm}#{s}"] = G.gated_model(base, gate)
+47:    return models, counters, dyn
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/filter.py | grep -n '' | sed -n '35,43p'
+35:@dataclass(frozen=True)
+36:class FilterConfig:
+37:    members: int = 32
+38:    q_pos: float = 0.01
+39:    q_vel: float = 0.05
+40:    obs_sigma: float = W.SIGMA
+41:    gate_base: float = 0.6
+42:    gate_grow: float = 1.5
+43:    speed: tuple[float, float] = W.SPEED
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '58,72p'
+58:def eval_world_ids(stage_sizes: tuple[int, int]) -> list[tuple[str, int, int]]:
+59:    return A.eval_world_ids(stage_sizes)
+60:
+61:
+62:def cell_key(arm: str, seed: int) -> str:
+63:    return f"{arm}#{seed}"
+64:
+65:
+66:def filter_seed(ns: str, w: int, seed: int) -> int:
+67:    return A.filter_seed(ns, w, seed, "base")
+68:
+69:
+70:def ids_digest(ids: Sequence[np.ndarray]) -> str:
+71:    return hashlib.sha256(json.dumps([np.asarray(i).tolist() for i in ids]).encode()).hexdigest()
+72:
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '121,128p'
+121:# --- one world ------------------------------------------------------------------------------------
+122:def track_cell(ep: W.Episode, model: Callable, ns: str, seed: int, events: Sequence[dict]) -> dict[str, Any]:
+123:    rng = np.random.default_rng(filter_seed(ns, ep.world_index, seed))
+124:    cal = Calibration(ep, [e["b"] for e in events])
+125:    ids, n_tracks = F.track(A.student_detections(ep), ep.pillars, model, rng, F.FilterConfig(), on_predict=cal)
+126:    return {"correct": [x["correct"] for x in Me.reid(ep, ids, events)], "one_step": cal.one,
+127:            "reappear": reappearance_inside(ep, ids, events, cal.snaps), "idf1": Me.idf1(ep, ids),
+128:            "n_tracks": n_tracks, "ids_sha256": ids_digest(ids)}
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n '' | sed -n '40,66p'
+40:HERE = REPO / "reports/V9-S4-PHASE2"
+41:ROOT = REPO / "artifacts/v9/s4/phase2"
+42:PREREG = HERE / "PREREG-r1.json"
+43:VERIFY_LABELS = HERE / "verify_labels_p2.py"
+44:VERIFY_REPLAY = HERE / "verify_replay_p2.py"
+45:LOCK = REPO / "artifacts/locks/m0-worker.lock"
+46:FINAL_MARKER = ROOT / "FINAL_READ_ONCE.json"
+47:THIRD_PARTY = ("numpy", "mlx")
+48:SMOKE_NS = "s4p2x-smoke-eval"
+49:WEIGHTS_DIR = REPO / "artifacts/v9/s4/phase1/final-final/weights"
+50:WEIGHTS_SHA256 = {   # phase-1 final (reports/V9-S4-PHASE1/final/final.json, files_sha256)
+51:    "L-int#1": "88ea6c9b619098e0b0e5db39f95f9e4c1c61dedaa3e54132c550c4cc4632020c",
+52:    "L-int#2": "c99bc0f709e36f674c7165751348fba0263ac294a996fbc3276a9f36e0437d3f",
+53:    "L-int#3": "241659f14be2b29e655de0f6785672a3f1c4e1529abb7f8db08734002e65cba6",
+54:    "L-ind#1": "a4905a8c79c5ab02ec7e68ef0ba094b4ef4173886a731d9cd8c761d30500fd04",
+55:    "L-ind#2": "8447cee6a2920e853853e3169ac7689db27aedf3ccd441d77736fa8e6208ada5",
+56:    "L-ind#3": "191dcf99913f47e48537d28af4836195adc238adc8e7fe6c9f6869007b0401bc",
+57:}
+58:WORKERS = 6
+59:REPLAY_WORLDS = {"main": 3, "extrap": 2}
+60:STUDENT_WORLDS, STUDENT_CUT = 2, 150
+61:STAGES = {
+62:    "smoke": {"sizes": (4, 2), "limit": 1800},
+63:    "probe": {"sizes": P2.SIZES["probe"], "limit": 2 * 3600},
+64:    "final": {"sizes": P2.SIZES["final"], "limit": 2 * 3600},
+65:}
+66:
+
+$ git show c5387d8:reports/V9-S4-PHASE2/run_s4p2.py | grep -n '' | sed -n '149,163p'
+149:def student_check(eps, weights):
+150:    """Field whitelist and future-frame mutation (as phase 1), on E-P and L-int-g seed 1."""
+151:    keys_ok = W.STUDENT_KEYS == {"t", "agent", "detections"} and all(set(W.student_view(s)) == W.STUDENT_KEYS for ep in eps for s in ep.steps)
+152:    models, _, _ = WK.build_models(weights)
+153:    use = {"E-P": Mo.true_physics, f"{P2.MAIN_ARM}#1": models[f"{P2.MAIN_ARM}#1"]}
+154:    rows = []
+155:    for ep in eps[:STUDENT_WORLDS]:
+156:        dets = A.student_detections(ep)
+157:        mut = A.future_mutation(dets, STUDENT_CUT)
+158:        for name, m in use.items():
+159:            a, _ = F.track(dets, ep.pillars, m, np.random.default_rng(7))
+160:            b, _ = F.track(mut, ep.pillars, m, np.random.default_rng(7))
+161:            rows.append({"world": ep.world_index, "model": name, **A.mutation_row(a, b, mut, STUDENT_CUT)})
+162:    ok = keys_ok and rows and all(r["prefix_equal"] and r["consumed"] and r["suffix_changed"] for r in rows)
+163:    return {"passed": bool(ok), "keys_ok": keys_ok, "rows": rows}
+
+$ git show c5387d8:reports/V9-S4-P2-DESIGN/tier1-explore/explore_p2e.py | grep -n '' | sed -n '38,45p'
+38:        pp, vv = mx.array(P.astype(np.float32)), mx.array(V.astype(np.float32))
+39:        p, v, lg, _ = net(pp, vv, pil)
+40:        d = np.linalg.norm(P[:, :, None] - P[:, None], axis=-1) + np.eye(P.shape[1])[None] * 99
+41:        prob = 1 / (1 + np.exp(-np.array(lg, dtype=np.float64)))
+42:        g = ((prob > gate_p) & (d < L.MSG_RADIUS)).any(-1)[..., None]     # [M, n, 1]
+43:        if stats is not None:
+44:            stats[0] += int(g.sum()); stats[1] += g.size
+45:        out = [np.where(g, np.array(p, dtype=np.float64), pb), np.where(g, np.array(v, dtype=np.float64), vb)]
+
+$ git show c5387d8:reports/V9-S4-PHASE2/make_prereg.py | grep -n training
+85:                   "device": "local CPU (MLX CPU device)", "cloud": False, "paid": False, "training": False},
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis.py | grep -n '' | sed -n '321,337p'
+321:def cv_contact_pairs(p: np.ndarray, v: np.ndarray) -> set[tuple[int, int]]:
+322:    """Baseline: a pair approaching on straight lines that touches within one step."""
+323:    out = set()
+324:    n = len(p)
+325:    for i in range(n):
+326:        for j in range(i + 1, n):
+327:            d, u = p[j] - p[i], v[j] - v[i]
+328:            a, b, c = u @ u, 2 * d @ u, d @ d - (2 * W.RADIUS) ** 2
+329:            if c <= 0 and b < 0:
+330:                out.add((i, j))
+331:                continue
+332:            disc = b * b - 4 * a * c
+333:            if a > 0 and disc >= 0 and b < 0:
+334:                tau = (-b - np.sqrt(disc)) / (2 * a)
+335:                if 0 <= tau < W.DT:
+336:                    out.add((i, j))
+337:    return out
+
+$ git show c5387d8:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '243,263p'
+243:
+244:
+245:def _ge(stat, key, thr):
+246:    v = stat.get(key)
+247:    return v is not None and v >= thr
+248:
+249:
+250:def _gt(stat, key, thr):
+251:    v = stat.get(key)
+252:    return v is not None and v > thr
+253:
+254:
+255:def _le(stat, key, thr):
+256:    v = stat.get(key)
+257:    return v is not None and v <= thr
+258:
+259:
+260:def _lt(stat, key, thr):
+261:    v = stat.get(key)
+262:    return v is not None and v < thr
+263:
+
+$ git show c5387d8:reports/V9-S4-PHASE2/make_prereg.py | grep -n '' | sed -n '17,22p'
+17:HERE = REPO / "reports/V9-S4-PHASE2"
+18:RUNNER = HERE / "run_s4p2.py"
+19:VERIFY = [HERE / "verify_labels_p2.py", HERE / "verify_replay_p2.py"]
+20:APPROVAL = "S4-P2-FINAL-READ-APPROVED-TIER1-20261111"
+21:HARD_LIMIT_S = 2 * 3600
+22:
+
+$ git show c5387d8:tests/v9/experiments/test_s4_gated.py | grep -n '' | sed -n '47,59p'
+47:def test_geo_gate_equals_the_phase1_contact_baseline() -> None:
+48:    rng = np.random.default_rng(0)
+49:    hits = 0
+50:    for _ in range(300):
+51:        n = int(rng.integers(2, 9))
+52:        P, V = _states(rng, m=1, n=n)
+53:        ref = np.zeros(n, bool)
+54:        for i, j in A.cv_contact_pairs(P[0], V[0]):
+55:            ref[i] = ref[j] = True
+56:        got = G.geo_gate(P, V)[0]
+57:        assert np.array_equal(got, ref)
+58:        hits += int(ref.sum())
+59:    assert hits > 100
+

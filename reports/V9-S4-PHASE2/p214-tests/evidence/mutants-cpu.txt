@@ -1,0 +1,43 @@
+== clean_analysis: 纯 CPU 分析测试基线（不改源码）
+   imported from copy: ['/private/tmp/p217_mutants_cpu/clean_analysis/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_cpu/clean_analysis/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_cpu/clean_analysis/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   result: baseline-ok  exit=0  68 passed in 13.89s
+== X01_GC_uses_95_not_bonferroni: GC 的下界改用 95% 区间 ci_low 而非 Bonferroni 区间 bonf_low
+   imported from copy: ['/private/tmp/p217_mutants_cpu/X01_GC_uses_95_not_bonferroni/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_cpu/X01_GC_uses_95_not_bonferroni/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_cpu/X01_GC_uses_95_not_bonferroni/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'_gt(st["GC"], "bonf_low", T["GC"]["C_low"])'
+                                                   +'_gt(st["GC"], "ci_low", T["GC"]["C_low"])'
+   result: killed  exit=1  1 failed, 67 passed in 17.75s
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_gates_read_the_bonferroni_bounds_not_the_95_percent_ones[GC-GC-stat2]
+== X01_GR_uses_95_not_bonferroni: GR 的下界改用 95% 区间 ci_low 而非 Bonferroni 区间 bonf_low
+   imported from copy: ['/private/tmp/p217_mutants_cpu/X01_GR_uses_95_not_bonferroni/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_cpu/X01_GR_uses_95_not_bonferroni/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_cpu/X01_GR_uses_95_not_bonferroni/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'_gt(st["GR"], "bonf_low", T["GR"]["diff_low"])'
+                                                   +'_gt(st["GR"], "ci_low", T["GR"]["diff_low"])'
+   result: killed  exit=1  1 failed, 67 passed in 30.36s
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_gates_read_the_bonferroni_bounds_not_the_95_percent_ones[GR-GR-stat12]
+== X02_GD_D_bonferroni_m1: GD 的 D 统计用 m=1（退化为 95% 区间）
+   imported from copy: ['/private/tmp/p217_mutants_cpu/X02_GD_D_bonferroni_m1/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_cpu/X02_GD_D_bonferroni_m1/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_cpu/X02_GD_D_bonferroni_m1/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'"GD_D": D_of(main, a),'
+                                                   +'"GD_D": D_of(main, a, m=1),'
+   result: killed  exit=1  1 failed, 67 passed in 34.85s
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_every_gate_statistic_is_bonferroni_corrected
+== X03_GX_C_from_main_records: GX 的 C 误读主评测而非外推
+   imported from copy: ['/private/tmp/p217_mutants_cpu/X03_GX_C_from_main_records/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_cpu/X03_GX_C_from_main_records/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_cpu/X03_GX_C_from_main_records/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'"GX_C": C_of(extrap, a)'
+                                                   +'"GX_C": C_of(main, a)'
+   result: killed  exit=1  1 failed, 67 passed in 43.79s
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_GX_reads_the_extrapolation_records
+== X04_seed_average_seed1_only: 每个事件的对错与重新出现覆盖率只取种子 1
+   imported from copy: ['/private/tmp/p217_mutants_cpu/X04_seed_average_seed1_only/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_cpu/X04_seed_average_seed1_only/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_cpu/X04_seed_average_seed1_only/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'for s in SEEDS], axis=0) if r["events"] else np.zeros(0)'
+                                                   +'for s in SEEDS[:1]], axis=0) if r["events"] else np.zeros(0)'
+   result: killed  exit=1  3 failed, 65 passed in 50.30s
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_a_gated_model_like_the_exploration_passes_every_gate
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_seed_averaging_per_event
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_event_values_are_averaged_over_the_three_seeds
+== X07_neg_control_uses_95_high: 负对照 neg_C 与 neg_D 改回读 95% 上界 ci_high（退回 r0 口径）
+   imported from copy: ['/private/tmp/p217_mutants_cpu/X07_neg_control_uses_95_high/src/ainerzero/v9/experiments/s4/gated.py', '/private/tmp/p217_mutants_cpu/X07_neg_control_uses_95_high/src/ainerzero/v9/experiments/s4/analysis_p2.py', '/private/tmp/p217_mutants_cpu/X07_neg_control_uses_95_high/src/ainerzero/v9/experiments/s4/worker_p2.py']
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'_lt(st["neg_C"], "bonf_high", T["negative_control"]["C_high_below"])'
+                                                   +'_lt(st["neg_C"], "ci_high", T["negative_control"]["C_high_below"])'
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'_lt(st["neg_D"], "bonf_high", T["negative_control"]["D_high_below"])'
+                                                   +'_lt(st["neg_D"], "ci_high", T["negative_control"]["D_high_below"])'
+   result: killed  exit=1  1 failed, 67 passed in 53.00s
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_negative_control_reads_the_bonferroni_upper_bound

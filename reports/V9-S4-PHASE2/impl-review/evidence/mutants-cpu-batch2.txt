@@ -1,0 +1,22 @@
+== X01_GC_uses_95_not_bonferroni: GC 的下界改用 95% 区间而非 Bonferroni 区间
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'_gt(st["GC"], "bonf_low", T["GC"]["C_low"])'
+                                                   +'_gt(st["GC"], "ci_low", T["GC"]["C_low"])'
+   result: SURVIVED  exit=0  48 passed in 32.66s
+== X02_GD_D_bonferroni_m1: GD 的 D 统计用 m=1（Bonferroni 退化为 95%）
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'"GD_D": D_of(main, a),'
+                                                   +'"GD_D": D_of(main, a, m=1),'
+   result: SURVIVED  exit=0  48 passed in 31.31s
+== X03_GX_C_from_main_records: GX 的 C 误读主评测而非外推
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'"GX_C": C_of(extrap, a)'
+                                                   +'"GX_C": C_of(main, a)'
+   result: SURVIVED  exit=0  48 passed in 32.46s
+== X04_seed_average_seed1_only: 事件按种子平均改成只取种子 1
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'np.mean([np.asarray(r["cells"][cell_key(arm, s)][field], dtype=np.float64) for s in SEEDS], axis=0)'
+                                                   +'np.mean([np.asarray(r["cells"][cell_key(arm, s)][field], dtype=np.float64) for s in SEEDS[:1]], axis=0)'
+   result: SURVIVED  exit=0  48 passed in 28.75s
+== X05_GK2_collision_uses_non_collision: GK2 有碰撞改用全部事件
+   src/ainerzero/v9/experiments/s4/analysis_p2.py: -'"GK2_collision": coverage_reappear(main, a, "collision")'
+                                                   +'"GK2_collision": coverage_reappear(main, a, "all")'
+   result: killed  exit=1  2 failed, 46 passed in 27.32s
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_always_closed_gate_is_eb_and_fails
+   FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_collision_reappearance_coverage_below_threshold_fails

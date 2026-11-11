@@ -1,0 +1,27 @@
+$ .venv/bin/python reports/V9-S4-PHASE1/impl-review-r2-recheck/evidence/harness/hold_lock.py artifacts/locks/m0-worker.lock .venv/bin/python reports/V9-S4-PHASE2/impl-review/evidence/mutate_p214.py --jobs 5 /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/1fcb6199-c621-49f4-8b74-8b93b4f7dd7a/scratchpad/mut-mlx M08a_prereg_weights_checked_after_marker X06_reserve_check_removed X07_request_checked_after_report_claim X08_prereg_reserve_without_margin unmutated_gated
+lock held by 44963
+== M08a_prereg_weights_checked_after_marker: 运行器：预登记权重 SHA 与运行器的比对挪到写只读一次标记之后
+   reports/V9-S4-PHASE2/run_s4p2.py: -'if pre.get("weights_sha256") != WEIGHTS_SHA256:\n        raise GD.GuardError("the weights registered in the preregistration differ from the r'
+                                     +''
+   reports/V9-S4-PHASE2/run_s4p2.py: -'R["final_read_marker_sha256"] = sha(FINAL_MARKER)'
+                                     +'if pre.get("weights_sha256") != WEIGHTS_SHA256:\n                raise GD.GuardError("the weights registered in the preregistration differ fr'
+   result: killed  exit=1  1 failed, 15 passed in 200.27s (0:03:20)
+   FAILED tests/v9/experiments/test_s4p2_runner_native.py::test_final_refuses_weights_that_differ_from_the_preregistration
+== X06_reserve_check_removed: 运行器：删掉写标记前的剩余墙钟 >= 评测预留检查
+   reports/V9-S4-PHASE2/run_s4p2.py: -'if deadline.left() < reserve:\n                raise GD.GuardError(f"only {deadline.left():.0f} s left, the evaluation needs {reserve:.0f} s:'
+                                     +''
+   result: SURVIVED  exit=0  17 passed in 216.72s (0:03:36)
+== X07_request_checked_after_report_claim: 运行器：请求检查挪到占报告、建运行目录之后
+   reports/V9-S4-PHASE2/run_s4p2.py: -'check_request(a, pre)\n        report = Path(a.report)'
+                                     +'report = Path(a.report)'
+   reports/V9-S4-PHASE2/run_s4p2.py: -'GD.claim_report(report)\n        out.mkdir(parents=True)'
+                                     +'GD.claim_report(report)\n        out.mkdir(parents=True)\n        check_request(a, pre)'
+   result: killed  exit=1  1 failed, 3 passed in 49.00s
+   FAILED tests/v9/experiments/test_s4p2_runner_native.py::test_bad_requests_claim_nothing[args0-needs a use id]
+== X08_prereg_reserve_without_margin: make_prereg：评测预留去掉 1.5 倍余量
+   reports/V9-S4-PHASE2/make_prereg.py: -'eval_reserve = math.ceil(1.5 * scale * pr["post_marker_seconds"])'
+                                        +'eval_reserve = math.ceil(scale * pr["post_marker_seconds"])'
+   result: killed  exit=1  1 failed, 14 passed in 143.97s (0:02:23)
+   FAILED tests/v9/experiments/test_s4p2_runner_native.py::test_final_path_after_a_frozen_probe
+== unmutated_gated: 不改，门控测试基线（MLX，经锁）
+   result: baseline-ok  exit=0  8 passed in 1.33s

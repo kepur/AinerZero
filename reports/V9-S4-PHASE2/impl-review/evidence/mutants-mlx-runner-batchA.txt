@@ -1,0 +1,12 @@
+$ .venv/bin/python reports/V9-S4-PHASE1/impl-review-r2-recheck/evidence/harness/hold_lock.py artifacts/locks/m0-worker.lock .venv/bin/python reports/V9-S4-PHASE2/impl-review/evidence/mutate_p214.py --jobs 2 /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/1fcb6199-c621-49f4-8b74-8b93b4f7dd7a/scratchpad/mut-mlx unmutated_runner M08b_weight_files_checked_after_marker_in_final
+lock held by 35573
+== M08b_weight_files_checked_after_marker_in_final: 运行器：final 时权重文件 SHA 核对挪到写标记之后（smoke/probe 不变）
+   reports/V9-S4-PHASE2/run_s4p2.py: -'weights = check_weights()\n        ns = namespace(a.stage)'
+                                     +'weights = check_weights() if a.stage != "final" else None\n        ns = namespace(a.stage)'
+   reports/V9-S4-PHASE2/run_s4p2.py: -'R["final_read_marker_sha256"] = sha(FINAL_MARKER)'
+                                     +'weights = check_weights()\n            R["weights_sha256"] = {n: sha(p) for n, p in weights.items()}\n            R["final_read_marker_sha256"'
+   reports/V9-S4-PHASE2/run_s4p2.py: -'"weights_sha256": {n: sha(p) for n, p in weights.items()}, "workers": WORKERS}'
+                                     +'"weights_sha256": {n: sha(p) for n, p in (weights or {}).items()}, "workers": WORKERS}'
+   result: SURVIVED  exit=0  17 passed in 271.30s (0:04:31)
+== unmutated_runner: 不改，运行器测试基线（MLX，经锁）
+   result: baseline-ok  exit=0  17 passed in 271.30s (0:04:31)

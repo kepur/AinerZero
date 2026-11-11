@@ -1,0 +1,56 @@
+Wed Nov 11 11:15:00 UTC 2026
+$ git status --short -- src tests reports/V9-S4-PHASE2 reports/V9-S4-P2-DESIGN pyproject.toml
+ M reports/V9-S4-PHASE2/make_prereg.py
+ M reports/V9-S4-PHASE2/verify_replay_p2.py
+ M src/ainerzero/v9/experiments/s4/analysis_p2.py
+ M src/ainerzero/v9/experiments/s4/gated.py
+ M src/ainerzero/v9/experiments/s4/worker_p2.py
+ M tests/v9/experiments/test_s4_analysis_p2.py
+ M tests/v9/experiments/test_s4_gated.py
+ M tests/v9/experiments/test_s4p2_runner_native.py
+?? reports/V9-S4-P2-DESIGN/r0-review/
+?? reports/V9-S4-PHASE2/impl-review/
+$ git diff --stat c5387d8 -- src tests reports/V9-S4-PHASE2 pyproject.toml
+ reports/V9-S4-PHASE2/make_prereg.py             |   5 +-
+ reports/V9-S4-PHASE2/verify_replay_p2.py        |   4 +-
+ src/ainerzero/v9/experiments/s4/analysis_p2.py  |  65 ++++++++++----
+ src/ainerzero/v9/experiments/s4/gated.py        | 115 +++++++++++++++++-------
+ src/ainerzero/v9/experiments/s4/worker_p2.py    |  13 +--
+ tests/v9/experiments/test_s4_analysis_p2.py     |  68 +++++++++++---
+ tests/v9/experiments/test_s4_gated.py           |  63 ++++++++++++-
+ tests/v9/experiments/test_s4p2_runner_native.py |   5 +-
+ 8 files changed, 264 insertions(+), 74 deletions(-)
+$ stat 修改时间
+2026-11-11T11:12:12 src/ainerzero/v9/experiments/s4/gated.py
+2026-11-11T11:12:53 src/ainerzero/v9/experiments/s4/analysis_p2.py
+2026-11-11T11:12:53 src/ainerzero/v9/experiments/s4/worker_p2.py
+2026-11-11T11:12:53 reports/V9-S4-PHASE2/verify_replay_p2.py
+2026-11-11T11:14:16 reports/V9-S4-PHASE2/make_prereg.py
+2026-11-11T09:38:55 reports/V9-S4-PHASE2/run_s4p2.py
+2026-11-11T11:13:12 tests/v9/experiments/test_s4_gated.py
+2026-11-11T11:13:38 tests/v9/experiments/test_s4_analysis_p2.py
+2026-11-11T11:14:16 tests/v9/experiments/test_s4p2_runner_native.py
+
+# 收尾时（11:48 UTC）补记：上述改动已提交
+$ git log --oneline -3
+060905d Research log: P213 accepted, design r1, exploration round G
+50f9edf S4 phase 2: P213 review (r0 returned, accepted after tier-1 check); design r1 with scatter control L-sc-g and gate GR; code delta; exploration round G
+5698eef Research log: fix the time of the review-card note
+$ git show --stat 50f9edf -- src tests reports/V9-S4-PHASE2
+50f9edf856aa9d0d8d134ba556f064bd70421c8c
+S4 phase 2: P213 review (r0 returned, accepted after tier-1 check); design r1 with scatter control L-sc-g and gate GR; code delta; exploration round G
+
+ reports/V9-S4-PHASE2/make_prereg.py             |   5 +-
+ reports/V9-S4-PHASE2/verify_replay_p2.py        |   4 +-
+ src/ainerzero/v9/experiments/s4/analysis_p2.py  |  65 ++++++++++----
+ src/ainerzero/v9/experiments/s4/gated.py        | 115 +++++++++++++++++-------
+ src/ainerzero/v9/experiments/s4/worker_p2.py    |  13 +--
+ tests/v9/experiments/test_s4_analysis_p2.py     |  68 +++++++++++---
+ tests/v9/experiments/test_s4_gated.py           |  63 ++++++++++++-
+ tests/v9/experiments/test_s4p2_runner_native.py |   5 +-
+ 8 files changed, 264 insertions(+), 74 deletions(-)
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n "N_COMPARISONS = \|bonf_high\", T\[\"negative_control\"\]"
+50:N_COMPARISONS = 12                 # GN, GA, GC, GK1 (2), GK2 (2), GD (2), GX (2), GR
+326:    neg = (_lt(st["neg_C"], "bonf_high", T["negative_control"]["C_high_below"])
+327:           and _lt(st["neg_D"], "bonf_high", T["negative_control"]["D_high_below"]))
