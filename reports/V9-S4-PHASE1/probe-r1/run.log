@@ -1,0 +1,64 @@
+[   171.2s] pools {'full': 240000, 'eighth': 30000, 'sigma': 120000}
+[   343.0s] trained L-ind#1 171.8 s, last loss 31.493484497070312
+[   625.0s] trained L-int#1 282.0 s, last loss 6.496980667114258
+[   993.9s] trained L-int-c#1 368.9 s, last loss 7.115283966064453
+[  1297.1s] trained L-int-e8#1 303.3 s, last loss 3.5662951469421387
+[  1742.2s] trained L-int-c-e8#1 445.1 s, last loss 3.884016752243042
+[  1775.4s] trained L-int-s#1 33.2 s, last loss -1.7074962854385376
+[  1942.5s] trained L-ind#2 167.1 s, last loss 29.73061180114746
+[  2297.9s] trained L-int#2 355.4 s, last loss 5.200613975524902
+[  2748.3s] trained L-int-c#2 450.4 s, last loss 5.32103967666626
+[  3113.6s] trained L-int-e8#2 365.3 s, last loss 3.568743944168091
+[  3570.8s] trained L-int-c-e8#2 457.1 s, last loss 4.583681106567383
+[  3604.6s] trained L-int-s#2 33.9 s, last loss -1.7265033721923828
+[  3774.1s] trained L-ind#3 169.5 s, last loss 34.26191711425781
+[  4129.4s] trained L-int#3 355.2 s, last loss 4.258134841918945
+[  4580.0s] trained L-int-c#3 450.6 s, last loss 4.3276777267456055
+[  4944.7s] trained L-int-e8#3 364.8 s, last loss 4.293725490570068
+[  5394.0s] trained L-int-c-e8#3 449.3 s, last loss 4.973774433135986
+[  5427.5s] trained L-int-s#3 33.5 s, last loss -1.7093433141708374
+[  5452.0s] evaluation worlds 75
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/process.py", line 263, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/worker_mlx.py", line 58, in evaluate_world
+    rec = A.world_record(ep, kind, ns, cells, _MODELS)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/analysis.py", line 173, in world_record
+    ids, n_tracks = track_cell(ep, cell, model, ns)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/analysis.py", line 152, in track_cell
+    return F.track(student_detections(ep), ep.pillars, model, rng, cfg)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/filter.py", line 108, in track
+    assign = _associate(P, z, last, t, cfg)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/filter.py", line 64, in _associate
+    for r, c in hungarian(dist):
+                ^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/assign.py", line 20, in hungarian
+    raise ValueError("cost must be finite")
+ValueError: cost must be finite
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-PHASE1/run_s4p1.py", line 364, in <module>
+    main()
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-PHASE1/run_s4p1.py", line 317, in main
+    records = evaluate_parallel(tasks, weights, refs, deadline, say, out / "worlds.partial.jsonl")
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S4-PHASE1/run_s4p1.py", line 240, in evaluate_parallel
+    results[i] = f.result()
+                 ^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+ValueError: cost must be finite
+exit=1

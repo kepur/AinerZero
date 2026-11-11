@@ -48,6 +48,10 @@ FINAL_MARKER = ROOT / "FINAL_READ_ONCE.json"
 THIRD_PARTY = ("numpy", "mlx")
 SMOKE = {"train": "s4p1x-smoke-train", "eval": "s4p1x-smoke-eval"}
 LEARNED = ("L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8", "L-int-s")
+# L-int-s is trained and gives the calibration description, but it is not a tracking arm: sampling the
+# filter's process noise from its variance head feeds back on unobserved tracks and diverges (probe r1:
+# non-finite in all 12 worlds checked; DESIGN-r3, implementation notes). It is not tracked, not replayed.
+TRACKED = tuple(a for a in LEARNED if a != "L-int-s")
 EIGHTH = 8
 CELL_LIMIT_S = 600
 WORKERS = 6
@@ -278,7 +282,7 @@ def main():
         code_head, code_dirty = GD.check_git_clean(REPO, list(code))
         R = {"schema": "s4.phase1.v1", "stage": a.stage, "use_id": a.use_id, "namespaces": ns, "steps": steps, "batch": batch,
              "sizes": cfg["sizes"], "prereg_sha256": pre_sha, "git_head": head or code_head, "code_manifest_sha256": manifest_sha(code),
-             "code_dirty": code_dirty, "third_party": versions, "learned_arms": list(LEARNED), "workers": WORKERS}
+             "code_dirty": code_dirty, "third_party": versions, "learned_arms": list(LEARNED), "tracked_arms": list(TRACKED), "workers": WORKERS}
 
         def save():
             R["elapsed_s"] = round(time.monotonic() - t0, 1)
@@ -310,7 +314,7 @@ def main():
         t_post = time.monotonic()                                          # everything from here on is what the reserve must cover
         eval_eps = [(kind, W.generate_episode(ns["eval"], w, n, allow_registered=registered)) for kind, w, n in A.eval_world_ids(cfg["sizes"])]
         say("evaluation worlds", len(eval_eps))
-        main_cells = [(c.arm, c.seed, c.variant) for c in A.plan_cells(LEARNED)]
+        main_cells = [(c.arm, c.seed, c.variant) for c in A.plan_cells(TRACKED)]
         base_cells = [c for c in main_cells if c[2] == "base"]
         tasks = [{"kind": kind, "ns": ns["eval"], "episode": ep, "cells": main_cells if kind == "main" else base_cells} for kind, ep in eval_eps]
         t_eval = time.monotonic()
@@ -329,7 +333,7 @@ def main():
         picks = []
         for kind, k in REPLAY_WORLDS.items():
             picks += [(kd, ep) for kd, ep in eval_eps if kd == kind][:k]
-        replay.write_text(json.dumps({"ns": ns["eval"], "weights": {n: str(Path(p).relative_to(out)) for n, p in weights.items()},
+        replay.write_text(json.dumps({"ns": ns["eval"], "weights": {n: str(Path(p).relative_to(out)) for n, p in weights.items() if n.split("#")[0] in TRACKED},
                                       "worlds": [{"kind": kd, "world": ep.world_index, "pillars": [list(p) for p in ep.pillars],
                                                   "detections": [d.tolist() for d in A.student_detections(ep)],
                                                   "truth_ids": [s.truth_ids.tolist() for s in ep.steps]} for kd, ep in picks]}), encoding="utf-8")
@@ -347,7 +351,7 @@ def main():
         R["checks"] = {"student_view": st, "labels": lab, "replay": rep}
         R["result"] = A.evaluate(main_r, ext_r, n_main=cfg["sizes"][0], n_extrap=cfg["sizes"][1], labels_ok=bool(lab.get("passed")),
                                  student_ok=st["passed"], replay_ok=bool(rep.get("passed")))
-        R["descriptive"] = A.summarize_descriptive(main_r, ext_r, LEARNED)
+        R["descriptive"] = A.summarize_descriptive(main_r, ext_r, TRACKED)
         if pre:
             late = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])
             R["late_violations"] = late

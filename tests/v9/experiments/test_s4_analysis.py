@@ -424,3 +424,21 @@ def test_future_mutation_comparison() -> None:
     peek = [x if t != 2 else x[::-1] for t, x in enumerate(length_only)]      # an id before the cut changed
     assert not A.mutation_row(a, peek, mut, 2)["prefix_equal"]
     assert not A.mutation_row(a, a, mut, 2)["consumed"]                       # did not consume the mutated lists
+    short_steps = [x[: len(d)] for x, d in zip(a[:-1], mut[:-1])]
+    assert not A.mutation_row(a, short_steps, mut, 2)["consumed"]
+
+
+def test_mutation_row_consumed_requires_equal_step_count() -> None:
+    """consumed requires len(b) == len(mut); returning one fewer step with matching per-step
+    lengths must not pass as consumed (suggestion A, kills an_mut_row_consumed_steps_only)."""
+    rng = np.random.default_rng(1)
+    dets = [rng.random((4, 2)) for _ in range(6)]
+    mut = A.future_mutation(dets, 2)
+    a = [np.arange(4) + 4 * t for t in range(6)]
+    # All steps except the last one, with per-step lengths matching mut[:-1]
+    short_steps = [x if t <= 2 else x[:3] for t, x in enumerate(a[:-1])]
+    assert len(short_steps) == len(mut) - 1
+    assert all(len(y) == len(d) for y, d in zip(short_steps, mut))
+    row = A.mutation_row(a, short_steps, mut, 2)
+    assert not row["consumed"]
+

@@ -1,0 +1,301 @@
+=== count cpu_default ===
+........................................................................ [ 93%]
+.....                                                                    [100%]
+77 passed in 17.78s
+
+=== count mlx_learned ===
+........................................                                 [100%]
+40 passed in 5.77s
+
+=== count runner ===
+................................                                         [100%]
+32 passed in 179.39s (0:02:59)
+
+=== mutant an_mut_row_consumed_steps_only ===
+.................................................................F
+=================================== FAILURES ===================================
+_______________________ test_future_mutation_comparison ________________________
+
+    def test_future_mutation_comparison() -> None:
+        """The comparison used by the student-view legality check (aligned prefix after the cut)."""
+        rng = np.random.default_rng(0)
+        dets = [rng.random((4, 2)) for _ in range(6)]
+        mut = A.future_mutation(dets, 2)
+        assert [len(d) for d in mut] == [4, 4, 4, 3, 3, 3] and np.allclose(mut[4], dets[4][:3] + 0.5)
+        a = [np.arange(4) + 4 * t for t in range(6)]
+        # a tracker that reads only the lengths of the mutated lists: the same ids, truncated
+        length_only = [x if t <= 2 else x[:3] for t, x in enumerate(a)]
+        row = A.mutation_row(a, length_only, mut, 2)
+        assert row["prefix_equal"] and row["consumed"] and not row["suffix_changed"]
+        # a tracker that never associates: ids are new-track counters, shifted by the dropped detections
+        counter, c = [], 0
+        for d in mut:
+            counter.append(np.arange(c, c + len(d)))
+            c += len(d)
+        assert A.mutation_row(a, counter, mut, 2) == {"prefix_equal": True, "consumed": True, "suffix_changed": True}
+        honest = [x if t <= 2 else np.array([x[1], x[0], x[2]]) for t, x in enumerate(a)]
+        assert A.mutation_row(a, honest, mut, 2)["suffix_changed"]
+        peek = [x if t != 2 else x[::-1] for t, x in enumerate(length_only)]      # an id before the cut changed
+        assert not A.mutation_row(a, peek, mut, 2)["prefix_equal"]
+        assert not A.mutation_row(a, a, mut, 2)["consumed"]                       # did not consume the mutated lists
+        short_steps = [x[: len(d)] for x, d in zip(a[:-1], mut[:-1])]
+>       assert not A.mutation_row(a, short_steps, mut, 2)["consumed"]
+E       assert not True
+
+tests/v9/experiments/test_s4_analysis.py:428: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_analysis.py::test_future_mutation_comparison
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 65 passed in 14.50s
+
+=== mutant mp_reserve_eval_only ===
+..............F
+=================================== FAILURES ===================================
+_____________________ test_final_path_after_a_frozen_probe _____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-468/test_final_path_after_a_frozen0')
+
+    def test_final_path_after_a_frozen_probe(tmp_path) -> None:
+        """probe -> make_prereg -> commit -> final: the final reads the preregistered steps, writes the
+        one-time marker, and a second final is refused; a final with --steps is refused first."""
+        root = _make_root(tmp_path)
+        r = _run(root, *PROBE, report=f"{HERE}/probe.json")
+        assert r.returncode == 0, r.stderr[-3000:]
+        probe = json.loads((root / HERE / "probe.json").read_text())
+        probe["result"]["valid"] = True            # two worlds cannot meet the sample gate; the freeze tool only reads this flag
+        (root / HERE / "probe.json").write_text(json.dumps(probe))
+        _git(root, "add", ".")
+        _git(root, "commit", "-qm", "probe")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+        m = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"), "--probe", str(root / HERE / "probe.json"),
+                            "--out", str(root / PREREG)], cwd=root, env=env, capture_output=True, text=True, timeout=120)
+        assert m.returncode == 0, m.stderr[-2000:]
+        pre = json.loads((root / PREREG).read_text())
+        assert pre["training"]["steps"] == 3 and pre["training"]["batch"] == 4 and pre["final_approval_line"] == APPROVAL
+        assert RUNNER in pre["manifest"] and all(v in pre["manifest"] for v in VERIFY) and "reports/DESIGN.md" in pre["manifest"]
+        assert "src/ainerzero/v9/experiments/s4/worker_mlx.py" in pre["manifest"]
+        scale = sum(A.SIZES["final"]) / sum(A.SIZES["probe"])
+        assert scale == 4
+>       assert pre["budget"]["eval_reserve_s"] == math.ceil(1.5 * scale * probe["post_marker_seconds"])
+E       assert 49 == 65
+E        +  where 65 = <built-in function ceil>(((1.5 * 4.0) * 10.7))
+E        +    where <built-in function ceil> = math.ceil
+
+tests/v9/experiments/test_s4p1_runner_native.py:264: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4p1_runner_native.py::test_final_path_after_a_frozen_probe
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 14 passed in 55.77s
+
+=== mutant mp_budget_ignores_reserve ===
+................F
+=================================== FAILURES ===================================
+____ test_make_prereg_refuses_when_training_plus_reserve_exceeds_four_hours ____
+
+small_probe = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-469/probe0/fake')
+
+    def test_make_prereg_refuses_when_training_plus_reserve_exceeds_four_hours(small_probe) -> None:
+        """The budget guard checks 1.2 * pre_eval_seconds + eval_reserve_s > 4 * 3600 (14400 s);
+        ignoring the reserve lets an over-budget run freeze (kills mp_budget_ignores_reserve)."""
+        root = small_probe
+        pr = json.loads((root / HERE / "probe.json").read_text())
+        # 1. Over budget: 1.2 * 10000 = 12000 <= 14400, reserve = ceil(1.5 * 4 * 500) = 3000 -> total 15000 > 14400
+        pr["pre_eval_seconds"] = 10000.0
+        pr["post_marker_seconds"] = 500.0
+        p_bad = root / HERE / "probe_over.json"
+        p_bad.write_text(json.dumps(pr))
+        out_bad = root / HERE / "prereg_over.json"
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+        m_bad = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"),
+                                "--probe", str(p_bad), "--out", str(out_bad)],
+                               cwd=root, env=env, capture_output=True, text=True, timeout=120)
+>       assert m_bad.returncode != 0
+E       AssertionError: assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-I', '/private/var/folders/zv/vypfm1y97...x3br0000gn/T/pytest-of-mac/pytest-469/probe0/fake/reports/V9-S4-PHASE1/prereg_over.json files frozen: 40\n', stderr='').returncode
+
+tests/v9/experiments/test_s4p1_runner_native.py:337: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4p1_runner_native.py::test_make_prereg_refuses_when_training_plus_reserve_exceeds_four_hours
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 16 passed in 85.27s (0:01:25)
+
+=== mutant ru_post_marker_after_generation ===
+.................F
+=================================== FAILURES ===================================
+____________ test_post_marker_timing_starts_before_eval_generation _____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-470/test_post_marker_timing_starts0')
+
+    def test_post_marker_timing_starts_before_eval_generation(tmp_path) -> None:
+        """The post-marker timer starts before evaluation worlds are generated so that world generation
+        is covered by the evaluation reserve (kills ru_post_marker_after_generation)."""
+        root = _make_root(tmp_path)
+        w = root / "src/ainerzero/v9/experiments/s4/world.py"
+        w.write_text(w.read_text() + f"""
+    import time
+    _orig_generate = generate_episode
+    def generate_episode(ns, *args, **kwargs):
+        if ns == "{STAND_IN['probe']}":
+            time.sleep(4.0)
+        return _orig_generate(ns, *args, **kwargs)
+    """)
+        _git(root, "add", ".")
+        _git(root, "commit", "-qm", "wrap_world")
+        r = _run(root, *PROBE)
+        assert r.returncode == 0, r.stderr[-3000:]
+        R = json.loads((root / "reports/out.json").read_text())
+        # The probe evaluates 2 main + 1 extrapolation worlds, sleeping 4 s each: 12 s that only the
+        # generation of evaluation worlds accounts for. A timer started after the generation leaves
+        # only the other post-marker work (files, gates, description, the late check) in the difference.
+        diff = R["post_marker_seconds"] - R["eval_seconds"] - R["check_seconds"]
+>       assert diff >= 11.5, f"post_marker_seconds must include eval world generation: {diff=}"
+E       AssertionError: post_marker_seconds must include eval world generation: diff=0.09999999999999964
+E       assert 0.09999999999999964 >= 11.5
+
+tests/v9/experiments/test_s4p1_runner_native.py:376: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4p1_runner_native.py::test_post_marker_timing_starts_before_eval_generation
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 17 passed in 111.17s (0:01:51)
+
+=== mutant ru_tracked_all ===
+.F
+=================================== FAILURES ===================================
+_______________ test_smoke_runs_end_to_end_and_records_its_files _______________
+
+smoke = (PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-471/smoke0/fake'), {'schema'....v1', 'stage': 'smoke', 'use_id': 's1', 'namespaces': {'train': 's4p1x-smoke-train', 'eval': 's4p1x-smoke-eval'}, ...})
+
+    def test_smoke_runs_end_to_end_and_records_its_files(smoke) -> None:
+        root, R = smoke
+        out = root / ARTS / "smoke-s1"
+        assert set(R["training"]["cells"]) == {f"{a}#{s}" for a in ("L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8", "L-int-s") for s in (1, 2, 3)}
+        for name, digest in R["files_sha256"].items():
+            assert _sha(out / name) == digest, name
+        recs = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]
+        assert [r["kind"] for r in recs] == ["main", "main", "extrap"]
+        main_keys = set(recs[0]["reid"])
+        # L-int-s is trained (above) and described (calibration, below) but neither tracked nor replayed
+>       assert R["tracked_arms"] == ["L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8"]
+E       AssertionError: assert ['L-ind', 'L-...8', 'L-int-s'] == ['L-ind', 'L-... 'L-int-c-e8']
+E         
+E         Left contains one more item: 'L-int-s'
+E         Use -v to get more diff
+
+tests/v9/experiments/test_s4p1_runner_native.py:151: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4p1_runner_native.py::test_smoke_runs_end_to_end_and_records_its_files
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 passed in 13.07s
+
+=== mutant ru_cells_learned ===
+.F
+=================================== FAILURES ===================================
+_______________ test_smoke_runs_end_to_end_and_records_its_files _______________
+
+smoke = (PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-472/smoke0/fake'), {'schema'....v1', 'stage': 'smoke', 'use_id': 's1', 'namespaces': {'train': 's4p1x-smoke-train', 'eval': 's4p1x-smoke-eval'}, ...})
+
+    def test_smoke_runs_end_to_end_and_records_its_files(smoke) -> None:
+        root, R = smoke
+        out = root / ARTS / "smoke-s1"
+        assert set(R["training"]["cells"]) == {f"{a}#{s}" for a in ("L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8", "L-int-s") for s in (1, 2, 3)}
+        for name, digest in R["files_sha256"].items():
+            assert _sha(out / name) == digest, name
+        recs = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]
+        assert [r["kind"] for r in recs] == ["main", "main", "extrap"]
+        main_keys = set(recs[0]["reid"])
+        # L-int-s is trained (above) and described (calibration, below) but neither tracked nor replayed
+        assert R["tracked_arms"] == ["L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8"]
+>       assert not any(k.startswith("L-int-s") for r in recs for k in r["reid"])
+E       assert not True
+E        +  where True = any(<generator object test_smoke_runs_end_to_end_and_records_its_files.<locals>.<genexpr> at 0x107526180>)
+
+tests/v9/experiments/test_s4p1_runner_native.py:152: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4p1_runner_native.py::test_smoke_runs_end_to_end_and_records_its_files
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 passed in 12.99s
+
+=== mutant ru_replay_unfiltered ===
+.F
+=================================== FAILURES ===================================
+_______________ test_smoke_runs_end_to_end_and_records_its_files _______________
+
+smoke = (PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-473/smoke0/fake'), {'schema'....v1', 'stage': 'smoke', 'use_id': 's1', 'namespaces': {'train': 's4p1x-smoke-train', 'eval': 's4p1x-smoke-eval'}, ...})
+
+    def test_smoke_runs_end_to_end_and_records_its_files(smoke) -> None:
+        root, R = smoke
+        out = root / ARTS / "smoke-s1"
+        assert set(R["training"]["cells"]) == {f"{a}#{s}" for a in ("L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8", "L-int-s") for s in (1, 2, 3)}
+        for name, digest in R["files_sha256"].items():
+            assert _sha(out / name) == digest, name
+        recs = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]
+        assert [r["kind"] for r in recs] == ["main", "main", "extrap"]
+        main_keys = set(recs[0]["reid"])
+        # L-int-s is trained (above) and described (calibration, below) but neither tracked nor replayed
+        assert R["tracked_arms"] == ["L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8"]
+        assert not any(k.startswith("L-int-s") for r in recs for k in r["reid"])
+        assert {c.key for c in A.plan_cells(R["tracked_arms"])} == main_keys
+        assert {k for k in recs[2]["reid"]} == {c.key for c in A.plan_cells(R["tracked_arms"]) if c.variant == "base"}
+        assert all(set(r["descriptive"]["calibration"]) == {"L-int-s#1", "L-int-s#2", "L-int-s#3"} for r in recs)
+        rep = json.loads((out / "replay.json").read_text())
+>       assert set(rep["weights"]) == {f"{a}#{s}" for a in R["tracked_arms"] for s in (1, 2, 3)}
+E       AssertionError: assert {'L-ind#1', '...L-int#3', ...} == {'L-ind#1', '...L-int#3', ...}
+E         
+E         Extra items in the left set:
+E         'L-int-s#2'
+E         'L-int-s#3'
+E         'L-int-s#1'
+E         Use -v to get more diff
+
+tests/v9/experiments/test_s4p1_runner_native.py:157: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4p1_runner_native.py::test_smoke_runs_end_to_end_and_records_its_files
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 passed in 11.06s
+
+=== mutant ru_descriptive_learned ===
+E
+==================================== ERRORS ====================================
+__________ ERROR at setup of test_copy_never_uses_the_real_partitions __________
+
+tmp_path_factory = TempPathFactory(_given_basetemp=None, _trace=<pluggy._tracing.TagTracerSub object at 0x106049fd0>, _basetemp=PosixPath...ar/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-474'), _retention_count=3, _retention_policy='all')
+
+    @pytest.fixture(scope="module")
+    def smoke(tmp_path_factory):
+        root = _make_root(tmp_path_factory.mktemp("smoke"))
+        lm = root / "src/ainerzero/v9/experiments/s4/learned_mlx.py"
+        lm.write_text(lm.read_text() + TRAIN_SPY)
+        _git(root, "add", ".")
+        _git(root, "commit", "-qm", "spy")
+        os.environ["S4_TRAIN_LOG"] = str(root / "train_calls.jsonl")
+        r = _run(root, *SMOKE)
+>       assert r.returncode == 0, r.stderr[-3000:]
+E       AssertionError: Traceback (most recent call last):
+E           File "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-474/smoke0/fake/reports/V9-S4-PHASE1/run_s4p1.py", line 368, in <module>
+E             main()
+E           File "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-474/smoke0/fake/reports/V9-S4-PHASE1/run_s4p1.py", line 354, in main
+E             R["descriptive"] = A.summarize_descriptive(main_r, ext_r, LEARNED)
+E                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-474/smoke0/fake/src/ainerzero/v9/experiments/s4/analysis.py", line 495, in summarize_descriptive
+E             out: dict[str, Any] = {"tracking": descriptive_tracking(main, extrap, learned_arms)}
+E                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-474/smoke0/fake/src/ainerzero/v9/experiments/s4/analysis.py", line 298, in descriptive_tracking
+E             out["acc_collision"][part] = {a: acc_of(recs, a)["value"] for a in arms}
+E                                              ^^^^^^^^^^^^^^^
+E           File "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-474/smoke0/fake/src/ainerzero/v9/experiments/s4/analysis.py", line 228, in acc_of
+E             return Me.bootstrap(Me.stat_diff, {"x": acc_sums(records, arm, variant, collision=collision), "y": np.zeros(len(records)),
+E                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           File "/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-474/smoke0/fake/src/ainerzero/v9/experiments/s4/analysis.py", line 196, in acc_sums
+E             per = np.mean([np.asarray(r["reid"][Cell(arm, s, variant).key], dtype=np.float64) for s in SEEDS], axis=0) if r["events"] else np.zeros(0)
+E                                       ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E         KeyError: 'L-int-s#1@base'
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-I', '-X', 'pycache_prefix=/private/var... else np.zeros(0)\n                              ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^\nKeyError: \'L-int-s#1@base\'\n').returncode
+
+tests/v9/experiments/test_s4p1_runner_native.py:130: AssertionError
+=========================== short test summary info ============================
+ERROR tests/v9/experiments/test_s4p1_runner_native.py::test_copy_never_uses_the_real_partitions
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 error in 11.81s
+

@@ -12,6 +12,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -146,10 +147,16 @@ def test_smoke_runs_end_to_end_and_records_its_files(smoke) -> None:
     recs = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]
     assert [r["kind"] for r in recs] == ["main", "main", "extrap"]
     main_keys = set(recs[0]["reid"])
-    assert {c.key for c in A.plan_cells(R["learned_arms"])} == main_keys
-    assert {k for k in recs[2]["reid"]} == {c.key for c in A.plan_cells(R["learned_arms"]) if c.variant == "base"}
+    # L-int-s is trained (above) and described (calibration, below) but neither tracked nor replayed
+    assert R["tracked_arms"] == ["L-ind", "L-int", "L-int-c", "L-int-e8", "L-int-c-e8"]
+    assert not any(k.startswith("L-int-s") for r in recs for k in r["reid"])
+    assert {c.key for c in A.plan_cells(R["tracked_arms"])} == main_keys
+    assert {k for k in recs[2]["reid"]} == {c.key for c in A.plan_cells(R["tracked_arms"]) if c.variant == "base"}
+    assert all(set(r["descriptive"]["calibration"]) == {"L-int-s#1", "L-int-s#2", "L-int-s#3"} for r in recs)
+    rep = json.loads((out / "replay.json").read_text())
+    assert set(rep["weights"]) == {f"{a}#{s}" for a in R["tracked_arms"] for s in (1, 2, 3)}
     assert R["checks"]["labels"]["passed"] and R["checks"]["replay"]["passed"] and R["checks"]["student_view"]["passed"]
-    assert R["checks"]["replay"]["checked"] == 2 * (18 + 6)                  # learned cells plus E-B and E-P
+    assert R["checks"]["replay"]["checked"] == 2 * (15 + 6)                  # tracked learned cells plus E-B and E-P
     assert "worlds.partial.jsonl" in R["files_sha256"] and R["result"]["legality"]["complete"]["passed"]
     assert R["pre_eval_seconds"] > 0 and R["post_marker_seconds"] > 0
     assert set(R["result"]["gates"]) == {"HD", "HF", "HD-x", "H1", "H2", "H3"}
@@ -252,6 +259,9 @@ def test_final_path_after_a_frozen_probe(tmp_path) -> None:
     assert pre["training"]["steps"] == 3 and pre["training"]["batch"] == 4 and pre["final_approval_line"] == APPROVAL
     assert RUNNER in pre["manifest"] and all(v in pre["manifest"] for v in VERIFY) and "reports/DESIGN.md" in pre["manifest"]
     assert "src/ainerzero/v9/experiments/s4/worker_mlx.py" in pre["manifest"]
+    scale = sum(A.SIZES["final"]) / sum(A.SIZES["probe"])
+    assert scale == 4
+    assert pre["budget"]["eval_reserve_s"] == math.ceil(1.5 * scale * probe["post_marker_seconds"])
     _refused(_run(root, *FINAL, report="reports/f0.json"), "not committed")
     _git(root, "add", ".")
     _git(root, "commit", "-qm", "freeze")
@@ -270,6 +280,100 @@ def test_final_path_after_a_frozen_probe(tmp_path) -> None:
     _refused(_run(root, *FINAL, report="reports/final3.json"), "already been read")
     # refused up front: no run directory, no claimed report, nothing trained
     assert not (root / ARTS / "final-final").exists() and not (root / "reports/final3.json").exists()
+
+
+@pytest.fixture(scope="module")
+def small_probe(tmp_path_factory):
+    root = _make_root(tmp_path_factory.mktemp("probe"))
+    r = _run(root, *PROBE, report=f"{HERE}/probe.json")
+    assert r.returncode == 0, r.stderr[-3000:]
+    probe = json.loads((root / HERE / "probe.json").read_text())
+    probe["result"]["valid"] = True
+    (root / HERE / "probe.json").write_text(json.dumps(probe))
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "probe")
+    return root
+
+
+def test_make_prereg_reserve_is_post_marker_time(small_probe) -> None:
+    """The evaluation reserve is ceil(1.5 * scale * post_marker_seconds), not eval_seconds;
+    and scale is sum(SIZES['final']) / sum(SIZES['probe']) == 4 (kills mp_reserve_eval_only)."""
+    root = small_probe
+    pr = json.loads((root / HERE / "probe.json").read_text())
+    pr["post_marker_seconds"] = 100.0
+    pr["eval_seconds"] = 37.0
+    pr["pre_eval_seconds"] = 1000.0
+    p1 = root / HERE / "probe_time.json"
+    p1.write_text(json.dumps(pr))
+    out1 = root / HERE / "prereg_time.json"
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+    m = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"),
+                        "--probe", str(p1), "--out", str(out1)],
+                       cwd=root, env=env, capture_output=True, text=True, timeout=120)
+    assert m.returncode == 0, m.stderr[-2000:]
+    pre = json.loads(out1.read_text())
+    scale = sum(A.SIZES["final"]) / sum(A.SIZES["probe"])
+    assert scale == 4
+    assert pre["budget"]["eval_reserve_s"] == math.ceil(1.5 * scale * 100.0)
+    assert pre["budget"]["eval_reserve_s"] != math.ceil(1.5 * scale * 37.0)
+    assert pre["budget"]["probe_train_seconds"] == 1000.0
+
+
+def test_make_prereg_refuses_when_training_plus_reserve_exceeds_four_hours(small_probe) -> None:
+    """The budget guard checks 1.2 * pre_eval_seconds + eval_reserve_s > 4 * 3600 (14400 s);
+    ignoring the reserve lets an over-budget run freeze (kills mp_budget_ignores_reserve)."""
+    root = small_probe
+    pr = json.loads((root / HERE / "probe.json").read_text())
+    # 1. Over budget: 1.2 * 10000 = 12000 <= 14400, reserve = ceil(1.5 * 4 * 500) = 3000 -> total 15000 > 14400
+    pr["pre_eval_seconds"] = 10000.0
+    pr["post_marker_seconds"] = 500.0
+    p_bad = root / HERE / "probe_over.json"
+    p_bad.write_text(json.dumps(pr))
+    out_bad = root / HERE / "prereg_over.json"
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+    m_bad = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"),
+                            "--probe", str(p_bad), "--out", str(out_bad)],
+                           cwd=root, env=env, capture_output=True, text=True, timeout=120)
+    assert m_bad.returncode != 0
+    assert "预计超出硬上限" in m_bad.stderr
+    assert not out_bad.exists()
+
+    # 2. Boundary: 1.2 * 10000 = 12000, reserve = ceil(1.5 * 4 * 400) = 2400 -> total exactly 14400 passes
+    pr["pre_eval_seconds"] = 10000.0
+    pr["post_marker_seconds"] = 400.0
+    p_edge = root / HERE / "probe_edge.json"
+    p_edge.write_text(json.dumps(pr))
+    out_edge = root / HERE / "prereg_edge.json"
+    m_edge = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"),
+                             "--probe", str(p_edge), "--out", str(out_edge)],
+                            cwd=root, env=env, capture_output=True, text=True, timeout=120)
+    assert m_edge.returncode == 0, m_edge.stderr[-2000:]
+    assert out_edge.exists()
+
+
+def test_post_marker_timing_starts_before_eval_generation(tmp_path) -> None:
+    """The post-marker timer starts before evaluation worlds are generated so that world generation
+    is covered by the evaluation reserve (kills ru_post_marker_after_generation)."""
+    root = _make_root(tmp_path)
+    w = root / "src/ainerzero/v9/experiments/s4/world.py"
+    w.write_text(w.read_text() + f"""
+import time
+_orig_generate = generate_episode
+def generate_episode(ns, *args, **kwargs):
+    if ns == "{STAND_IN['probe']}":
+        time.sleep(4.0)
+    return _orig_generate(ns, *args, **kwargs)
+""")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "wrap_world")
+    r = _run(root, *PROBE)
+    assert r.returncode == 0, r.stderr[-3000:]
+    R = json.loads((root / "reports/out.json").read_text())
+    # The probe evaluates 2 main + 1 extrapolation worlds, sleeping 4 s each: 12 s that only the
+    # generation of evaluation worlds accounts for. A timer started after the generation leaves
+    # only the other post-marker work (files, gates, description, the late check) in the difference.
+    diff = R["post_marker_seconds"] - R["eval_seconds"] - R["check_seconds"]
+    assert diff >= 11.5, f"post_marker_seconds must include eval world generation: {diff=}"
 
 
 def _frozen_root(tmp_path, extra=(), reserve=0, plant=None, before_freeze=None, third_party=None):
@@ -413,7 +517,7 @@ def test_replay_verifier_catches_a_changed_assignment(smoke, tmp_path) -> None:
         return json.loads(r.stdout)
 
     honest, tampered = verify(out / "worlds.jsonl"), verify(bad)
-    assert honest["passed"] and honest["checked"] == 2 * (18 + 6)
+    assert honest["passed"] and honest["checked"] == 2 * (15 + 6)
     assert not tampered["passed"] and tampered["mismatches"] == [f"{w['kind']} {w['world']} {key}"]
     # a hand-made cell (the denominator of C) and a flipped correctness flag are caught too
     recs2 = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]

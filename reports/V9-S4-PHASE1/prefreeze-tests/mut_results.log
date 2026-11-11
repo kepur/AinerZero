@@ -1,0 +1,188 @@
+=== Mutant: an_mut_row_consumed_steps_only (status=killed, rc=1, 8.0s) ===
+.....................F
+=================================== FAILURES ===================================
+_______________________ test_future_mutation_comparison ________________________
+
+    def test_future_mutation_comparison() -> None:
+        """The comparison used by the student-view legality check (aligned prefix after the cut)."""
+        rng = np.random.default_rng(0)
+        dets = [rng.random((4, 2)) for _ in range(6)]
+        mut = A.future_mutation(dets, 2)
+        assert [len(d) for d in mut] == [4, 4, 4, 3, 3, 3] and np.allclose(mut[4], dets[4][:3] + 0.5)
+        a = [np.arange(4) + 4 * t for t in range(6)]
+        # a tracker that reads only the lengths of the mutated lists: the same ids, truncated
+        length_only = [x if t <= 2 else x[:3] for t, x in enumerate(a)]
+        row = A.mutation_row(a, length_only, mut, 2)
+        assert row["prefix_equal"] and row["consumed"] and not row["suffix_changed"]
+        # a tracker that never associates: ids are new-track counters, shifted by the dropped detections
+        counter, c = [], 0
+        for d in mut:
+            counter.append(np.arange(c, c + len(d)))
+            c += len(d)
+        assert A.mutation_row(a, counter, mut, 2) == {"prefix_equal": True, "consumed": True, "suffix_changed": True}
+        honest = [x if t <= 2 else np.array([x[1], x[0], x[2]]) for t, x in enumerate(a)]
+        assert A.mutation_row(a, honest, mut, 2)["suffix_changed"]
+        peek = [x if t != 2 else x[::-1] for t, x in enumerate(length_only)]      # an id before the cut changed
+        assert not A.mutation_row(a, peek, mut, 2)["prefix_equal"]
+        assert not A.mutation_row(a, a, mut, 2)["consumed"]                       # did not consume the mutated lists
+        short_steps = [x[: len(d)] for x, d in zip(a[:-1], mut[:-1])]
+>       assert not A.mutation_row(a, short_steps, mut, 2)["consumed"]
+E       assert not True
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/an_mut_row_consumed_steps_only/tests/v9/experiments/test_s4_analysis.py:428: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/an_mut_row_consumed_steps_only/tests/v9/experiments/test_s4_analysis.py::test_future_mutation_comparison
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 21 passed in 7.39s
+
+
+=== Mutant: mp_reserve_eval_only (status=killed, rc=1, 61.9s) ===
+..............F
+=================================== FAILURES ===================================
+_____________________ test_final_path_after_a_frozen_probe _____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-461/test_final_path_after_a_frozen0')
+
+    def test_final_path_after_a_frozen_probe(tmp_path) -> None:
+        """probe -> make_prereg -> commit -> final: the final reads the preregistered steps, writes the
+        one-time marker, and a second final is refused; a final with --steps is refused first."""
+        root = _make_root(tmp_path)
+        r = _run(root, *PROBE, report=f"{HERE}/probe.json")
+        assert r.returncode == 0, r.stderr[-3000:]
+        probe = json.loads((root / HERE / "probe.json").read_text())
+        probe["result"]["valid"] = True            # two worlds cannot meet the sample gate; the freeze tool only reads this flag
+        (root / HERE / "probe.json").write_text(json.dumps(probe))
+        _git(root, "add", ".")
+        _git(root, "commit", "-qm", "probe")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+        m = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"), "--probe", str(root / HERE / "probe.json"),
+                            "--out", str(root / PREREG)], cwd=root, env=env, capture_output=True, text=True, timeout=120)
+        assert m.returncode == 0, m.stderr[-2000:]
+        pre = json.loads((root / PREREG).read_text())
+        assert pre["training"]["steps"] == 3 and pre["training"]["batch"] == 4 and pre["final_approval_line"] == APPROVAL
+        assert RUNNER in pre["manifest"] and all(v in pre["manifest"] for v in VERIFY) and "reports/DESIGN.md" in pre["manifest"]
+        assert "src/ainerzero/v9/experiments/s4/worker_mlx.py" in pre["manifest"]
+        scale = sum(A.SIZES["final"]) / sum(A.SIZES["probe"])
+        assert scale == 4
+>       assert pre["budget"]["eval_reserve_s"] == math.ceil(1.5 * scale * probe["post_marker_seconds"])
+E       assert 47 == 65
+E        +  where 65 = <built-in function ceil>(((1.5 * 4.0) * 10.7))
+E        +    where <built-in function ceil> = math.ceil
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/mp_reserve_eval_only/tests/v9/experiments/test_s4p1_runner_native.py:258: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/mp_reserve_eval_only/tests/v9/experiments/test_s4p1_runner_native.py::test_final_path_after_a_frozen_probe
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 14 passed in 61.65s (0:01:01)
+
+
+=== Mutant: mp_budget_ignores_reserve (status=killed, rc=1, 90.3s) ===
+................F
+=================================== FAILURES ===================================
+____ test_make_prereg_refuses_when_training_plus_reserve_exceeds_four_hours ____
+
+small_probe = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-462/probe0/fake')
+
+    def test_make_prereg_refuses_when_training_plus_reserve_exceeds_four_hours(small_probe) -> None:
+        """The budget guard checks 1.2 * pre_eval_seconds + eval_reserve_s > 4 * 3600 (14400 s);
+        ignoring the reserve lets an over-budget run freeze (kills mp_budget_ignores_reserve)."""
+        root = small_probe
+        pr = json.loads((root / HERE / "probe.json").read_text())
+        # 1. Over budget: 1.2 * 10000 = 12000 <= 14400, reserve = ceil(1.5 * 4 * 500) = 3000 -> total 15000 > 14400
+        pr["pre_eval_seconds"] = 10000.0
+        pr["post_marker_seconds"] = 500.0
+        p_bad = root / HERE / "probe_over.json"
+        p_bad.write_text(json.dumps(pr))
+        out_bad = root / HERE / "prereg_over.json"
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+        m_bad = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"),
+                                "--probe", str(p_bad), "--out", str(out_bad)],
+                               cwd=root, env=env, capture_output=True, text=True, timeout=120)
+>       assert m_bad.returncode != 0
+E       AssertionError: assert 0 != 0
+E        +  where 0 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-I', '/private/var/folders/zv/vypfm1y97...x3br0000gn/T/pytest-of-mac/pytest-462/probe0/fake/reports/V9-S4-PHASE1/prereg_over.json files frozen: 40\n', stderr='').returncode
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/mp_budget_ignores_reserve/tests/v9/experiments/test_s4p1_runner_native.py:331: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/mp_budget_ignores_reserve/tests/v9/experiments/test_s4p1_runner_native.py::test_make_prereg_refuses_when_training_plus_reserve_exceeds_four_hours
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 16 passed in 90.07s (0:01:30)
+
+
+=== Mutant: ru_post_marker_after_generation (status=killed, rc=1, 107.6s) ===
+.................F
+=================================== FAILURES ===================================
+____________ test_post_marker_timing_starts_before_eval_generation _____________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-463/test_post_marker_timing_starts0')
+
+    def test_post_marker_timing_starts_before_eval_generation(tmp_path) -> None:
+        """The post-marker timer starts before evaluation worlds are generated so that world generation
+        is covered by the evaluation reserve (kills ru_post_marker_after_generation)."""
+        root = _make_root(tmp_path)
+        w = root / "src/ainerzero/v9/experiments/s4/world.py"
+        w.write_text(w.read_text() + f"""
+    import time
+    _orig_generate = generate_episode
+    def generate_episode(ns, *args, **kwargs):
+        if ns == "{STAND_IN['probe']}":
+            time.sleep(1.0)
+        return _orig_generate(ns, *args, **kwargs)
+    """)
+        _git(root, "add", ".")
+        _git(root, "commit", "-qm", "wrap_world")
+        r = _run(root, *PROBE)
+        assert r.returncode == 0, r.stderr[-3000:]
+        R = json.loads((root / "reports/out.json").read_text())
+        # Probe evaluates 2 main + 1 extrap = 3 worlds, sleeping 1.0 s each -> 3.0 s.
+        diff = R["post_marker_seconds"] - R["eval_seconds"] - R["check_seconds"]
+>       assert diff >= 2.9, f"post_marker_seconds must include eval world generation: {diff=}"
+E       AssertionError: post_marker_seconds must include eval world generation: diff=0.0999999999999992
+E       assert 0.0999999999999992 >= 2.9
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/ru_post_marker_after_generation/tests/v9/experiments/test_s4p1_runner_native.py:368: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/ru_post_marker_after_generation/tests/v9/experiments/test_s4p1_runner_native.py::test_post_marker_timing_starts_before_eval_generation
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 17 passed in 107.43s (0:01:47)
+
+
+=== Mutant: mp_reserve_no_margin (status=killed, rc=1, 59.2s) ===
+..............F
+=================================== FAILURES ===================================
+_____________________ test_final_path_after_a_frozen_probe _____________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-464/test_final_path_after_a_frozen0')
+
+    def test_final_path_after_a_frozen_probe(tmp_path) -> None:
+        """probe -> make_prereg -> commit -> final: the final reads the preregistered steps, writes the
+        one-time marker, and a second final is refused; a final with --steps is refused first."""
+        root = _make_root(tmp_path)
+        r = _run(root, *PROBE, report=f"{HERE}/probe.json")
+        assert r.returncode == 0, r.stderr[-3000:]
+        probe = json.loads((root / HERE / "probe.json").read_text())
+        probe["result"]["valid"] = True            # two worlds cannot meet the sample gate; the freeze tool only reads this flag
+        (root / HERE / "probe.json").write_text(json.dumps(probe))
+        _git(root, "add", ".")
+        _git(root, "commit", "-qm", "probe")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+        m = subprocess.run([sys.executable, "-I", str(root / MAKE), "--design", str(root / "reports/DESIGN.md"), "--probe", str(root / HERE / "probe.json"),
+                            "--out", str(root / PREREG)], cwd=root, env=env, capture_output=True, text=True, timeout=120)
+        assert m.returncode == 0, m.stderr[-2000:]
+        pre = json.loads((root / PREREG).read_text())
+        assert pre["training"]["steps"] == 3 and pre["training"]["batch"] == 4 and pre["final_approval_line"] == APPROVAL
+        assert RUNNER in pre["manifest"] and all(v in pre["manifest"] for v in VERIFY) and "reports/DESIGN.md" in pre["manifest"]
+        assert "src/ainerzero/v9/experiments/s4/worker_mlx.py" in pre["manifest"]
+        scale = sum(A.SIZES["final"]) / sum(A.SIZES["probe"])
+        assert scale == 4
+>       assert pre["budget"]["eval_reserve_s"] == math.ceil(1.5 * scale * probe["post_marker_seconds"])
+E       assert 43 == 65
+E        +  where 65 = <built-in function ceil>(((1.5 * 4.0) * 10.7))
+E        +    where <built-in function ceil> = math.ceil
+
+/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/mp_reserve_no_margin/tests/v9/experiments/test_s4p1_runner_native.py:258: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/s4-prefreeze-u55rnr8c/mp_reserve_no_margin/tests/v9/experiments/test_s4p1_runner_native.py::test_final_path_after_a_frozen_probe
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 14 passed in 58.98s
+
