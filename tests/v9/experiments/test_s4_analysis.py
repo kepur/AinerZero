@@ -26,7 +26,7 @@ def ep():
 def test_partitions() -> None:
     assert A.NAMESPACES == {"train": "s4p1-train", "probe": "s4p1-probe", "final": "s4p1-final"}
     assert set(A.NAMESPACES.values()).isdisjoint({"s4x-explore", "s4x-rv1110"})
-    assert W.REGISTERED == {A.NAMESPACES["final"]}
+    assert A.NAMESPACES["final"] in W.REGISTERED and W.REGISTERED == {"s4p1-final", "s4p2-final"}
     n = [A.train_disks("s4p1-train", w) for w in range(400)]
     assert set(n) == {4, 5, 6, 7, 8} and all(50 <= n.count(k) <= 110 for k in range(4, 9))
     ids = A.eval_world_ids(A.SIZES["final"])

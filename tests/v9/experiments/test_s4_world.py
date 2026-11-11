@@ -58,7 +58,7 @@ def test_registered_partitions_are_refused_before_anything_is_generated(name, mo
 
 
 def test_registered_names() -> None:
-    assert W.REGISTERED == {"s4p1-final"}
+    assert W.REGISTERED == {"s4p1-final", "s4p2-final"}
 
 
 # --- physics ---------------------------------------------------------------------------------

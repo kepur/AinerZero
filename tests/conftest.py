@@ -249,6 +249,9 @@ NATIVE_MODULES = {
     # S4 phase 1: learned dynamics in MLX.
     "test_s4_learned_mlx.py": "module-level importorskip mlx.core (S4 learned dynamics, pools, training)",
     "test_s4p1_runner_native.py": "runs the real S4 phase 1 runner (MLX) in throwaway copies",
+    # S4 phase 2: contact-gated models (MLX) and the runner.
+    "test_s4_gated.py": "module-level importorskip mlx.core (S4 phase 2 contact-gated models)",
+    "test_s4p2_runner_native.py": "runs the real S4 phase 2 runner (MLX) in throwaway copies",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).

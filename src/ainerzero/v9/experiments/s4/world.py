@@ -42,8 +42,8 @@ AGENT_TURN = 0.3
 SIGMA = 0.05
 P_MISS = 0.05
 
-# Registered partitions that only a registered run may generate (dev is not used in phase 1).
-REGISTERED = frozenset({"s4p1-final"})
+# Registered partitions that only a registered run may generate (phase 1 and phase 2 finals; no dev).
+REGISTERED = frozenset({"s4p1-final", "s4p2-final"})
 
 Pillar = tuple[float, float, float]
 
