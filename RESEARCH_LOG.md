@@ -3522,3 +3522,9 @@ P185 通过后冻结 r2（代码身份随之更新），换批准行，再通过
   - 一级用 `takeover` 收回、放回列表（不计失败），交付目录改为 `r1-review-b/`，以免与旧持有者可能的晚写冲突。旧证据只作输入。
   - 改派给未参与二期的非作者复核会话。
 - 补交 P211 的复核目录 `reports/V9-S4-PHASE1/tracking-fix-review/`：已于 11-11 验收、记录在上文，当时目录未提交。
+- **P214 代码复核（`c5387d8` 对 DESIGN-r0）：建议通过，0 必修，5 应修；持有者停滞未交，一级按报告验收**（`claude-s4p2rev-1111b`，`reports/V9-S4-PHASE2/impl-review/REPORT.md`，11:50 定稿后无心跳）。
+  - 一级核实：`c5387d8` 上 `N_COMPARISONS = 11`、负对照读 `ci_high`、两条 final 守卫（`weights missing or changed`、`the final read is not spent`）与报告逐字一致。
+  - 复核者的补充测试在干净副本上通过，在 X01–X04、X06、M08b 六个变异上各失败一项（`evidence/proposed-tests-*.txt`）。
+  - 卡片收回后取消，取消说明写明验收依据。
+  - 5 条应修都是测试缺口：种子平均、各门读 Bonferroni 界、GX 读外推、final 下权重文件、final 剩余墙钟。补充测试是对着 r0 写的（m = 11，负对照读 95% 上界）。
+  - **放出 P217**（二级测试卡，排除 claude）：按 DESIGN-r1 改写这 5 条测试（m = 12、含 GR、负对照读 Bonferroni 上界），并入 `test_s4_analysis_p2.py`、`test_s4p2_runner_native.py`，在隔离副本里逐条证明能杀死对应变异，另加「负对照改回读 95% 上界」一个。
