@@ -1,0 +1,112 @@
+{
+  "task_id": "ainerzero.V9.P222",
+  "base_commit": "95bac00",
+  "head_commit": "c0a901c285a06065f2a5f115c9e57c4de4ad8ce0",
+  "default_cpu_entry": {
+    "command": ".venv/bin/python reports/V9-S4-PHASE1/impl-review-r2-recheck/evidence/harness/pyt.py . -q -p no:cacheprovider",
+    "collected": 4231,
+    "passed": 4230,
+    "failed": 1,
+    "skipped": 0,
+    "deselected": 7,
+    "duration_s": 1281.64,
+    "exit_code": 1
+  },
+  "native_mlx_entry": {
+    "command": ".venv/bin/python reports/V9-S4-PHASE1/impl-review-r2-recheck/evidence/harness/hold_lock.py artifacts/locks/m0-worker.lock .venv/bin/python reports/V9-S4-PHASE1/impl-review-r2-recheck/evidence/harness/pyt.py . -q -p no:cacheprovider --native-mlx",
+    "collected": 5030,
+    "passed": 5021,
+    "failed": 9,
+    "skipped": 0,
+    "deselected": 0,
+    "duration_s": 1706.08,
+    "exit_code": 1
+  },
+  "failures": [
+    {
+      "nodeid": "tests/test_cpu_collection.py::test_native_modules_carry_native_mark",
+      "category": "contract_mark_missing",
+      "introduced_commit": "1f6ffd5",
+      "affects": [
+        "S3",
+        "S4"
+      ],
+      "cpu_entry": true,
+      "native_entry": true
+    },
+    {
+      "nodeid": "tests/test_hermetic_guards.py::test_function_guard_intercepts_protected_connect_and_flock",
+      "category": "hermetic_guard_opt_in_conflict",
+      "introduced_commit": "70514b7",
+      "affects": [],
+      "cpu_entry": false,
+      "native_entry": true
+    },
+    {
+      "nodeid": "tests/v9/experiments/test_s2_data_runner.py::test_zero_mlx_imported",
+      "category": "process_module_pollution",
+      "introduced_commit": "577ff67",
+      "affects": [
+        "S2"
+      ],
+      "cpu_entry": false,
+      "native_entry": true
+    },
+    {
+      "nodeid": "tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_a]",
+      "category": "global_device_state_pollution",
+      "introduced_commit": "c478e0a",
+      "affects": [
+        "S2"
+      ],
+      "cpu_entry": false,
+      "native_entry": true
+    },
+    {
+      "nodeid": "tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_b]",
+      "category": "global_device_state_pollution",
+      "introduced_commit": "c478e0a",
+      "affects": [
+        "S2"
+      ],
+      "cpu_entry": false,
+      "native_entry": true
+    },
+    {
+      "nodeid": "tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_c]",
+      "category": "global_device_state_pollution",
+      "introduced_commit": "c478e0a",
+      "affects": [
+        "S2"
+      ],
+      "cpu_entry": false,
+      "native_entry": true
+    },
+    {
+      "nodeid": "tests/v9/experiments/test_s2_probe_eval_native.py::test_native_three_arms_fit_and_probe_errors_smoke",
+      "category": "fixture_stale_missing_holdout",
+      "introduced_commit": "3de52bf",
+      "affects": [
+        "S2"
+      ],
+      "cpu_entry": false,
+      "native_entry": true
+    },
+    {
+      "nodeid": "tests/v9/geometry/test_canonical.py::test_cpu_only_imports",
+      "category": "process_module_pollution",
+      "introduced_commit": "577ff67",
+      "affects": [],
+      "cpu_entry": false,
+      "native_entry": true
+    },
+    {
+      "nodeid": "tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only",
+      "category": "process_module_pollution",
+      "introduced_commit": "577ff67",
+      "affects": [],
+      "cpu_entry": false,
+      "native_entry": true
+    }
+  ]
+}

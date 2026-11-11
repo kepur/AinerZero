@@ -1,0 +1,244 @@
+lock held by 89137
+........................................................................ [  1%]
+........................................................................ [  2%]
+........................................................................ [  4%]
+........................................................................ [  5%]
+........................................................................ [  7%]
+........................................................................ [  8%]
+........................................................................ [ 10%]
+........................................................................ [ 11%]
+........................................................................ [ 12%]
+........................................................................ [ 14%]
+........................................................................ [ 15%]
+.................F...................................................... [ 17%]
+........................................................................ [ 18%]
+........................................................................ [ 20%]
+........................................................................ [ 21%]
+........................................................................ [ 22%]
+........................................................................ [ 24%]
+........................................................................ [ 25%]
+........................................................................ [ 27%]
+........................................................................ [ 28%]
+........................................................................ [ 30%]
+........................................................................ [ 31%]
+..................................................F..................... [ 32%]
+........................................................................ [ 34%]
+........................................................................ [ 35%]
+........................................................................ [ 37%]
+........................................................................ [ 38%]
+........................................................................ [ 40%]
+........................................................................ [ 41%]
+........................................................................ [ 42%]
+........................................................................ [ 44%]
+........................................................................ [ 45%]
+........................................................................ [ 47%]
+........................................................................ [ 48%]
+........................................................................ [ 50%]
+........................................................................ [ 51%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 55%]
+........................................................................ [ 57%]
+........................................................................ [ 58%]
+........................................................................ [ 60%]
+........................................................................ [ 61%]
+........................................................................ [ 62%]
+........................................................................ [ 64%]
+........................................................................ [ 65%]
+........................................................................ [ 67%]
+........................................................................ [ 68%]
+........................................................................ [ 70%]
+........................................................................ [ 71%]
+........................................................................ [ 73%]
+........................................................................ [ 74%]
+...............................F........................................ [ 75%]
+..................................................................FFF... [ 77%]
+.........................................................F.............. [ 78%]
+........................................................................ [ 80%]
+........................................................................ [ 81%]
+........................................................................ [ 83%]
+........................................................................ [ 84%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 88%]
+........................................................................ [ 90%]
+........................................................................ [ 91%]
+........................................................................ [ 93%]
+........................................................................ [ 94%]
+............................F........................................... [ 95%]
+.............................................................F.......... [ 97%]
+........................................................................ [ 98%]
+..............................................................           [100%]
+=================================== FAILURES ===================================
+____________________ test_native_modules_carry_native_mark _____________________
+
+    def test_native_modules_carry_native_mark():
+        for name, path in _native_paths().items():
+>           assert 'pytestmark = pytest.mark.native_mlx' in path.read_text(), name
+E           AssertionError: test_s3_arms_mlx.py
+E           assert 'pytestmark = pytest.mark.native_mlx' in '"""Contract tests for the S3 MLX arms (DESIGN-r2 §3, §8)."""\n\nfrom __future__ import annotations\n\nimport numpy as....shape[1], axis=1)\n    assert (cand[mask] <= q_k[mask] - 5).all()\n    assert (np.array(batch["oracle"]) < q).all()\n'
+E            +  where '"""Contract tests for the S3 MLX arms (DESIGN-r2 §3, §8)."""\n\nfrom __future__ import annotations\n\nimport numpy as....shape[1], axis=1)\n    assert (cand[mask] <= q_k[mask] - 5).all()\n    assert (np.array(batch["oracle"]) < q).all()\n' = read_text()
+E            +    where read_text = PosixPath('/Users/mac/AinerWorkFlow/AinerZero/tests/v9/experiments/test_s3_arms_mlx.py').read_text
+
+tests/test_cpu_collection.py:117: AssertionError
+__________ test_function_guard_intercepts_protected_connect_and_flock __________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-7/test_function_guard_intercepts0')
+
+    def test_function_guard_intercepts_protected_connect_and_flock(tmp_path):
+        fake_root = _stage_fake_root(tmp_path)
+        protected_db = fake_root / "artifacts" / "v9" / "s1" / "phase1" / "control.sqlite3"
+        protected_lock = fake_root / "artifacts" / "locks" / "m0-worker.lock"
+    
+        guarded_connect = conftest.make_guarded_connect(fake_root)
+        guarded_flock = conftest.make_guarded_flock(fake_root)
+        guarded_lockf = conftest.make_guarded_lockf(fake_root)
+    
+        # 1. Connect targeting protected db raises
+>       with pytest.raises(RuntimeError, match="Hermetic test guard violation: sqlite3.connect"):
+E       Failed: DID NOT RAISE RuntimeError
+
+tests/test_hermetic_guards.py:56: Failed
+____________________________ test_zero_mlx_imported ____________________________
+
+    def test_zero_mlx_imported() -> None:
+        """Zero MLX imports in data_runner and its dependencies."""
+        import sys
+    
+>       assert "mlx" not in sys.modules, "mlx should not be loaded in pure-CPU suite"
+E       AssertionError: mlx should not be loaded in pure-CPU suite
+E       assert 'mlx' not in {'sys': <module 'sys' (built-in)>, 'builtins': <module 'builtins' (built-in)>, '_frozen_importlib': <module '_frozen_importlib' (frozen)>, '_imp': <module '_imp' (built-in)>, ...}
+E        +  where {'sys': <module 'sys' (built-in)>, 'builtins': <module 'builtins' (built-in)>, '_frozen_importlib': <module '_frozen_importlib' (frozen)>, '_imp': <module '_imp' (built-in)>, ...} = <module 'sys' (built-in)>.modules
+
+tests/v9/experiments/test_s2_data_runner.py:35: AssertionError
+____________ test_inference_runs_on_cpu_and_training_on_gpu[arm_a] _____________
+
+arm_id = 'arm_a'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12ddce7b0>
+
+    @pytest.mark.parametrize("arm_id", ARMS)
+    def test_inference_runs_on_cpu_and_training_on_gpu(arm_id, monkeypatch):
+>       assert mx.default_device() == mx.gpu, "test assumes the process default device is the GPU"
+E       AssertionError: test assumes the process default device is the GPU
+E       assert Device(cpu, 0) == DeviceType.gpu
+E        +  where Device(cpu, 0) = <nanobind.nb_func object at 0x105232c20>()
+E        +    where <nanobind.nb_func object at 0x105232c20> = mx.default_device
+E        +  and   DeviceType.gpu = mx.gpu
+
+tests/v9/experiments/test_s2_plan_device_native.py:68: AssertionError
+____________ test_inference_runs_on_cpu_and_training_on_gpu[arm_b] _____________
+
+arm_id = 'arm_b'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12ddcee70>
+
+    @pytest.mark.parametrize("arm_id", ARMS)
+    def test_inference_runs_on_cpu_and_training_on_gpu(arm_id, monkeypatch):
+>       assert mx.default_device() == mx.gpu, "test assumes the process default device is the GPU"
+E       AssertionError: test assumes the process default device is the GPU
+E       assert Device(cpu, 0) == DeviceType.gpu
+E        +  where Device(cpu, 0) = <nanobind.nb_func object at 0x105232c20>()
+E        +    where <nanobind.nb_func object at 0x105232c20> = mx.default_device
+E        +  and   DeviceType.gpu = mx.gpu
+
+tests/v9/experiments/test_s2_plan_device_native.py:68: AssertionError
+____________ test_inference_runs_on_cpu_and_training_on_gpu[arm_c] _____________
+
+arm_id = 'arm_c'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x12ddcc7d0>
+
+    @pytest.mark.parametrize("arm_id", ARMS)
+    def test_inference_runs_on_cpu_and_training_on_gpu(arm_id, monkeypatch):
+>       assert mx.default_device() == mx.gpu, "test assumes the process default device is the GPU"
+E       AssertionError: test assumes the process default device is the GPU
+E       assert Device(cpu, 0) == DeviceType.gpu
+E        +  where Device(cpu, 0) = <nanobind.nb_func object at 0x105232c20>()
+E        +    where <nanobind.nb_func object at 0x105232c20> = mx.default_device
+E        +  and   DeviceType.gpu = mx.gpu
+
+tests/v9/experiments/test_s2_plan_device_native.py:68: AssertionError
+______________ test_native_three_arms_fit_and_probe_errors_smoke _______________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-7/test_native_three_arms_fit_and0')
+
+    def test_native_three_arms_fit_and_probe_errors_smoke(tmp_path: Path) -> None:
+        """Card W6: Real MLX 3 arms randomly initialized; fit_probe and probe_errors run cleanly in <= 30s."""
+        from ainerzero.v9.experiments.s2 import adapters_mlx
+    
+        train_dir = tmp_path / "native_train"
+        dev_dir = tmp_path / "native_dev"
+        _make_native_test_dataset(train_dir)
+        _make_native_test_dataset(dev_dir)
+    
+        t_start = time.perf_counter()
+        timings: dict[str, float] = {}
+        mean_errors: dict[str, dict[int, float]] = {}
+    
+        for arm_id in ("arm_a", "arm_b", "arm_c"):
+            t0 = time.perf_counter()
+            arm = adapters_mlx.make_mlx_arm(arm_id)
+            arm.init(seed=42)
+    
+            # 1. Fit probe (scaled down to 50 samples for speed)
+>           fitted_probe = probe_eval.fit_probe(
+                arm,
+                train_dir,
+                n_samples=50,
+                seed_namespace="s2p1-train-v1|probe",
+            )
+
+tests/v9/experiments/test_s2_probe_eval_native.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/ainerzero/v9/experiments/s2/probe_eval.py:111: in fit_probe
+    holdout_idx = {int(w) for w in get_holdout_world_indices(root)}
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+train_root = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-7/test_native_three_arms_fit_and0/native_train')
+n_worlds = None, holdout_fraction = None
+
+    def get_holdout_world_indices(
+        train_root: Path,
+        n_worlds: int | None = None,
+        holdout_fraction: float | None = None,
+    ) -> set[int]:
+        """Retrieve and verify holdout world indices for train partition (DESIGN-r2 Appendix D1/D2).
+    
+        F5:
+        - HOLDOUT_WORLDS.json must exist and be valid JSON (file missing or corrupted raises error; no fallback recompute).
+        - Recorded holdout worlds are recomputed from world directories and compared; mismatch raises error (tamper check).
+        - Holdout set cannot be empty; world directory names must be parseable.
+        """
+        holdout_file = train_root / "HOLDOUT_WORLDS.json"
+        if not holdout_file.is_file():
+>           raise FileNotFoundError(f"Missing HOLDOUT_WORLDS.json in train data directory: {holdout_file}")
+E           FileNotFoundError: Missing HOLDOUT_WORLDS.json in train data directory: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-7/test_native_three_arms_fit_and0/native_train/HOLDOUT_WORLDS.json
+
+src/ainerzero/v9/experiments/s2/train_runner.py:204: FileNotFoundError
+____________________________ test_cpu_only_imports _____________________________
+
+    def test_cpu_only_imports():
+        forbidden = {"mlx", "torch", "onnxruntime", "tensorflow", "jax"}
+>       assert not any(name.split(".")[0] in forbidden for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_cpu_only_imports.<locals>.<genexpr> at 0x12da1a5e0>)
+
+tests/v9/geometry/test_canonical.py:116: AssertionError
+__________________________ test_imports_are_cpu_only ___________________________
+
+    def test_imports_are_cpu_only():
+>       assert not any(name.split('.')[0] in {'mlx', 'torch', 'onnxruntime', 'tensorflow'} for name in sys.modules)
+E       assert not True
+E        +  where True = any(<generator object test_imports_are_cpu_only.<locals>.<genexpr> at 0x701a5ce5a0>)
+
+tests/v9/geometry/test_geometry.py:260: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_cpu_collection.py::test_native_modules_carry_native_mark - ...
+FAILED tests/test_hermetic_guards.py::test_function_guard_intercepts_protected_connect_and_flock
+FAILED tests/v9/experiments/test_s2_data_runner.py::test_zero_mlx_imported - ...
+FAILED tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_a]
+FAILED tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_b]
+FAILED tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_c]
+FAILED tests/v9/experiments/test_s2_probe_eval_native.py::test_native_three_arms_fit_and_probe_errors_smoke
+FAILED tests/v9/geometry/test_canonical.py::test_cpu_only_imports - assert no...
+FAILED tests/v9/geometry/test_geometry.py::test_imports_are_cpu_only - assert...
+9 failed, 5021 passed in 1706.08s (0:28:26)
