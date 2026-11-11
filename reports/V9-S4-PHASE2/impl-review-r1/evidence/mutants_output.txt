@@ -1,0 +1,426 @@
+S4 Phase 2 r1 Mutation Results (10 mutants)
+============================================================
+
+Mutant: scatter_speed_not_preserved
+File: src/ainerzero/v9/experiments/s4/gated.py
+Status: KILLED
+Summary: 1 failed, 10 deselected in 0.29s
+----------------------------------------
+Stdout:
+lock held by 53778
+F
+=================================== FAILURES ===================================
+_____ test_scatter_response_turns_eb_velocity_keeps_speed_and_eb_position ______
+
+nets = (Dynamics(
+  (msg1): Linear(input_dims=6, output_dims=64, bias=True)
+  (msg2): Linear(input_dims=64, output_dims=64, b... (up2): Linear(input_dims=128, output_dims=128, bias=True)
+  (out): Linear(input_dims=128, output_dims=4, bias=True)
+))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106ffeae0>
+
+    def test_scatter_response_turns_eb_velocity_keeps_speed_and_eb_position(nets, monkeypatch) -> None:
+        net = nets[0]
+        rng = np.random.default_rng(10)
+        P, V = _states(rng)
+        mask = rng.random(P.shape[:2]) < 0.5
+        monkeypatch.setattr(G, "head_gate", lambda lg, P, p: mask)
+        m = G.gated_model(net, 0.5, response="scatter")
+        m.reseed(123)
+        out = m(P, V, PILLARS)
+        pb, vb = Mo.bounce(P, V, PILLARS)
+        assert np.array_equal(out[0], pb)                                    # positions are E-B's everywhere
+        assert np.array_equal(out[1][~mask], vb[~mask])
+>       assert np.allclose(np.linalg.norm(out[1][mask], axis=-1), np.linalg.norm(vb[mask], axis=-1))
+E       AssertionError: assert False
+E        +  where False = <function allclose at 0x106adcf70>(array([1.48344628, 0.88363882, 0.71320348, 3.6640709 , 1.80069923,\n       0.55408472, 2.75729145, 2.52946218, 2.989600...8092926,\n       0.7529087 , 2.77886979, 2.67078021, 2.6444618 , 5.35730872,\n       1.49102777, 4.78957698, 1.09670072]), array([0.98896419, 0.58909255, 0.47546899, 2.44271394, 1.20046615,\n       0.36938982, 1.8381943 , 1.68630812, 1.993067...5395284,\n       0.50193913, 1.85257986, 1.78052014, 1.76297453, 3.57153915,\n       0.99401851, 3.19305132, 0.73113381]))
+E        +    where <function allclose at 0x106adcf70> = np.allclose
+E        +    and   array([1.48344628, 0.88363882, 0.71320348, 3.6640709 , 1.80069923,\n       0.55408472, 2.75729145, 2.52946218, 2.989600...8092926,\n       0.7529087 , 2.77886979, 2.67078021, 2.6444618 , 5.35730872,\n       1.49102777, 4.78957698, 1.09670072]) = <function norm at 0x106bc55f0>(array([[-0.39300915, -1.43043933],\n       [ 0.06340074, -0.8813614 ],\n       [-0.71279977, -0.02399376],\n       [-0.50... 3.41464312],\n       [-1.434957  , -0.40504596],\n       [ 3.33812601,  3.43467064],\n       [ 0.21698813, -1.07502029]]), axis=-1)
+E        +      where <function norm at 0x106bc55f0> = <module 'numpy.linalg' from '/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/linalg/__init__.py'>.norm
+E        +        where <module 'numpy.linalg' from '/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/linalg/__init__.py'> = np.linalg
+E        +    and   array([0.98896419, 0.58909255, 0.47546899, 2.44271394, 1.20046615,\n       0.36938982, 1.8381943 , 1.68630812, 1.993067...5395284,\n       0.50193913, 1.85257986, 1.78052014, 1.76297453, 3.57153915,\n       0.99401851, 3.19305132, 0.73113381]) = <function norm at 0x106bc55f0>(array([[ 9.76813909e-01,  1.54546922e-01],\n       [-1.55059652e-01, -5.68319041e-01],\n       [-1.03707126e-01,  4.6402....79027987e-01, -9.77763667e-01],\n       [ 3.05852517e+00, -9.17060794e-01],\n       [-3.91900317e-03, -7.31123310e-01]]), axis=-1)
+E        +      where <function norm at 0x106bc55f0> = <module 'numpy.linalg' from '/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/linalg/__init__.py'>.norm
+E        +        where <module 'numpy.linalg' from '/Users/mac/AinerWorkFlow/AinerZero/.venv/lib/python3.12/site-packages/numpy/linalg/__init__.py'> = np.linalg
+
+tests/v9/experiments/test_s4_gated.py:175: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_gated.py::test_scatter_response_turns_eb_velocity_keeps_speed_and_eb_position
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 10 deselected in 0.29s
+
+
+============================================================
+
+Mutant: scatter_alters_vel_when_closed
+File: src/ainerzero/v9/experiments/s4/gated.py
+Status: KILLED
+Summary: 1 failed, 10 deselected in 0.29s
+----------------------------------------
+Stdout:
+lock held by 53782
+F
+=================================== FAILURES ===================================
+_____ test_scatter_response_turns_eb_velocity_keeps_speed_and_eb_position ______
+
+nets = (Dynamics(
+  (msg1): Linear(input_dims=6, output_dims=64, bias=True)
+  (msg2): Linear(input_dims=64, output_dims=64, b... (up2): Linear(input_dims=128, output_dims=128, bias=True)
+  (out): Linear(input_dims=128, output_dims=4, bias=True)
+))
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x104d0fb30>
+
+    def test_scatter_response_turns_eb_velocity_keeps_speed_and_eb_position(nets, monkeypatch) -> None:
+        net = nets[0]
+        rng = np.random.default_rng(10)
+        P, V = _states(rng)
+        mask = rng.random(P.shape[:2]) < 0.5
+        monkeypatch.setattr(G, "head_gate", lambda lg, P, p: mask)
+        m = G.gated_model(net, 0.5, response="scatter")
+        m.reseed(123)
+        out = m(P, V, PILLARS)
+        pb, vb = Mo.bounce(P, V, PILLARS)
+        assert np.array_equal(out[0], pb)                                    # positions are E-B's everywhere
+>       assert np.array_equal(out[1][~mask], vb[~mask])
+E       assert False
+E        +  where False = <function array_equal at 0x1048f97f0>(array([[-1.09026533,  0.27988251],\n       [-1.59060821, -0.80610155],\n       [-0.98863132, -0.89235333],\n       [ 0.48... 2.66971651],\n       [-0.06977688, -0.12893267],\n       [ 1.52586106,  0.92139301],\n       [-0.80280699, -2.14858183]]), array([[-0.23933643,  1.09987762],\n       [ 0.14057087, -1.7776597 ],\n       [-0.71563532,  1.12318851],\n       [-1.42...-2.11531162],\n       [-0.13385762,  0.05978784],\n       [ 0.2646516 , -1.76271852],\n       [-0.99462449, -2.066791  ]]))
+E        +    where <function array_equal at 0x1048f97f0> = np.array_equal
+
+tests/v9/experiments/test_s4_gated.py:174: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_gated.py::test_scatter_response_turns_eb_velocity_keeps_speed_and_eb_position
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 10 deselected in 0.29s
+
+
+============================================================
+
+Mutant: track_and_dyn_share_seed
+File: src/ainerzero/v9/experiments/s4/analysis_p2.py
+Status: KILLED
+Summary: 1 failed, 51 deselected in 0.99s
+----------------------------------------
+Stdout:
+F
+=================================== FAILURES ===================================
+________ test_stochastic_arms_are_reseeded_per_world_seed_arm_and_pass _________
+
+    def test_stochastic_arms_are_reseeded_per_world_seed_arm_and_pass() -> None:
+        ep = W.generate_episode("test-s4p2-seed", 3, 4, steps=40)
+        tr, dy = _Stoch(), _Stoch()
+        rec = P2.world_record(ep, "main", "test-s4p2-seed", {"X#2": tr}, dyn_models={"X#2": dy, "E-B": Mo.bounce})
+        assert tr.seeds == [P2.rng_seed("test-s4p2-seed", 3, 2, "X", "track")]
+>       assert dy.seeds == [P2.rng_seed("test-s4p2-seed", 3, 2, "X", "dyn")]
+E       assert [1323768808] == [997135920]
+E         
+E         At index 0 diff: 1323768808 != 997135920
+E         Use -v to get more diff
+
+tests/v9/experiments/test_s4_analysis_p2.py:346: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_stochastic_arms_are_reseeded_per_world_seed_arm_and_pass
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 51 deselected in 0.99s
+
+
+============================================================
+
+Mutant: replay_does_not_reseed
+File: reports/V9-S4-PHASE2/verify_replay_p2.py
+Status: KILLED
+Summary: 1 failed, 16 deselected in 9.76s
+----------------------------------------
+Stdout:
+lock held by 53790
+F
+=================================== FAILURES ===================================
+_______________ test_smoke_runs_end_to_end_and_records_its_files _______________
+
+smoke = (PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-508/smoke0/fake'), {'schema': 's4.phase2.v1', 'stage': 'smoke', 'use_id': 's1', 'namespace': 's4p2x-test-eval', ...})
+
+    def test_smoke_runs_end_to_end_and_records_its_files(smoke) -> None:
+        root, R = smoke
+        out = root / ARTS / "smoke-s1"
+        for name, digest in R["files_sha256"].items():
+            assert _sha(out / name) == digest, name
+        recs = [json.loads(x) for x in (out / "worlds.jsonl").read_text().splitlines()]
+        assert [r["kind"] for r in recs] == ["main", "main", "extrap"]
+        want = {P2.cell_key(a, s) for a in P2.HAND + P2.LEARNED for s in P2.SEEDS}
+        assert all(set(r["cells"]) == want for r in recs)
+        assert all(set(r["dyn"]) == {"E-B"} | {f"{a}#{s}" for a in ("L-int", *P2.GATES) for s in P2.SEEDS} for r in recs)
+        assert all("kstep" in r for r in recs if r["kind"] == "main") and all("kstep" not in r for r in recs if r["kind"] == "extrap")
+        assert all(r["cells"][f"{a}#1"]["gate"][1] > 0 for r in recs for a in P2.GATES)
+        assert all("gate" not in r["cells"][f"{a}#1"] for r in recs for a in ("E-B", "L-int"))
+        rep = json.loads((out / "replay.json").read_text())
+        assert set(rep["weights"]) == {f"{a}#{s}" for a in ("L-int", "L-ind") for s in P2.SEEDS}
+>       assert R["checks"]["labels"]["passed"] and R["checks"]["replay"]["passed"] and R["checks"]["student_view"]["passed"]
+E       assert (True and False)
+
+tests/v9/experiments/test_s4p2_runner_native.py:141: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4p2_runner_native.py::test_smoke_runs_end_to_end_and_records_its_files
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 16 deselected in 9.76s
+
+
+============================================================
+
+Mutant: gr_lower_bound_ge
+File: src/ainerzero/v9/experiments/s4/analysis_p2.py
+Status: KILLED
+Summary: 1 failed, 50 deselected in 1.42s
+----------------------------------------
+Stdout:
+F
+=================================== FAILURES ===================================
+__________ test_decide_fails_each_gate_at_its_boundary[GR-stat24-GR] ___________
+
+key = 'GR'
+stat = {'value': 0.03, 'bonf_low': 0.0, 'bonf_high': 0.06, 'ci_low': 0.0, ...}
+gate = 'GR'
+
+    @pytest.mark.parametrize("key,stat,gate", [
+        ("GN", _st(-0.005, -0.031, 0.02), "GN"),            # point fine, Bonferroni lower bound too low
+        ("GN", _st(-0.011, -0.02, 0.0), "GN"),              # point below -0.01
+        ("GN", _st(0.0, -0.03, 0.03), "GN"),                # lower bound must be strictly above -0.03
+        ("GA", _st(0.03, 0.0, 0.06), "GA"),                 # lower bound must be strictly above 0
+        ("GA", _st(0.029, 0.01, 0.05), "GA"),
+        ("GC", _st(0.74, 0.6, 0.9), "GC"),
+        ("GC", _st(0.9, 0.5, 1.2), "GC"),
+        ("GK1_all", _st(0.90, 0.849, 0.93), "GK1"),         # point inside, interval leaves [0.85, 0.95]
+        ("GK1_all", _st(0.90, 0.87, 0.951), "GK1"),
+        ("GK1_all", _st(0.931, 0.90, 0.95), "GK1"),         # point above 0.93
+        ("GK1_all", _st(0.869, 0.86, 0.88), "GK1"),
+        ("GK1_collision", _st(0.849, 0.82, 0.88), "GK1"),
+        ("GK1_collision", _st(0.86, 0.80, 0.90), "GK1"),
+        ("GK2_non_collision", _st(0.849, 0.82, 0.87), "GK2"),
+        ("GK2_non_collision", _st(0.86, 0.80, 0.90), "GK2"),
+        ("GK2_collision", _st(0.749, 0.70, 0.80), "GK2"),
+        ("GK2_collision", _st(0.80, 0.65, 0.90), "GK2"),
+        ("GD_D", _st(0.79, 0.75, 0.83), "GD"),
+        ("GD_D", _st(0.85, 0.70, 0.9), "GD"),
+        ("GD_ratio", _st(0.101, 0.08, 0.12), "GD"),
+        ("GD_ratio", _st(0.09, 0.05, 0.151), "GD"),
+        ("GX_diff", _st(0.05, 0.0, 0.1), "GX"),
+        ("GX_C", _st(0.59, 0.45, 0.8), "GX"),
+        ("GX_C", _st(0.9, 0.4, 1.2), "GX"),
+        ("GR", _st(0.03, 0.0, 0.06), "GR"),                  # lower bound must be strictly above 0
+        ("GR", _st(-0.001, -0.03, 0.03), "GR"),
+        ("GC", {"value": None, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}, "GC"),
+        ("GK1_all", {"value": 0.9, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}, "GK1"),
+    ])
+    def test_decide_fails_each_gate_at_its_boundary(key, stat, gate) -> None:
+        st = _passing()
+        st[key] = stat
+        passed, neg = P2.decide(st)
+>       assert not passed[gate] and neg
+E       assert (not True)
+
+tests/v9/experiments/test_s4_analysis_p2.py:302: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_decide_fails_each_gate_at_its_boundary[GR-stat24-GR]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 50 deselected in 1.42s
+
+
+============================================================
+
+Mutant: neg_control_95_percent
+File: src/ainerzero/v9/experiments/s4/analysis_p2.py
+Status: KILLED
+Summary: 1 failed, 51 deselected in 1.24s
+----------------------------------------
+Stdout:
+F
+=================================== FAILURES ===================================
+____________ test_negative_control_reads_the_bonferroni_upper_bound ____________
+
+    def test_negative_control_reads_the_bonferroni_upper_bound() -> None:
+        st = _passing()
+        st["neg_C"] = _st(0.2, -0.1, 0.7, ci_low=0.0, ci_high=0.45)       # 95% below 0.5, Bonferroni not: fails
+>       assert not P2.decide(st)[1]
+E       assert not True
+
+tests/v9/experiments/test_s4_analysis_p2.py:322: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_negative_control_reads_the_bonferroni_upper_bound
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 51 deselected in 1.24s
+
+
+============================================================
+
+Mutant: rand_rate_not_002
+File: src/ainerzero/v9/experiments/s4/analysis_p2.py
+Status: KILLED
+Summary: 1 failed, 51 deselected in 1.19s
+----------------------------------------
+Stdout:
+F
+=================================== FAILURES ===================================
+__________________________ test_registered_constants ___________________________
+
+    def test_registered_constants() -> None:
+        assert P2.NAMESPACES == {"probe": "s4p2-probe", "final": "s4p2-final"}
+        assert P2.SIZES == {"probe": (50, 25), "final": (200, 100)}
+        assert P2.NAMESPACES["final"] in W.REGISTERED and P2.NAMESPACES["probe"] not in W.REGISTERED
+        assert P2.BOOT_SEED == 20261111 and P2.N_COMPARISONS == 12
+>       assert P2.ARM_SPEC == {"L-int-g": ("L-int", 0.5, "learned"), "L-int-g3": ("L-int", 0.3, "learned"), "L-int-g7": ("L-int", 0.7, "learned"),
+                               "L-int-geo": ("L-int", "geo", "learned"), "L-ind-geo": ("L-ind", "geo", "learned"),
+                               "L-sc-g": ("L-int", 0.5, "scatter"), "L-int-rand": ("L-int", ("random", 0.02), "learned")}
+E       AssertionError: assert {'L-int-g': (...earned'), ...} == {'L-int-g': (...earned'), ...}
+E         
+E         Omitting 6 identical items, use -vv to show
+E         Differing items:
+E         {'L-int-rand': ('L-int', ('random', 0.05), 'learned')} != {'L-int-rand': ('L-int', ('random', 0.02), 'learned')}
+E         Use -v to get more diff
+
+tests/v9/experiments/test_s4_analysis_p2.py:24: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_registered_constants
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 51 deselected in 1.19s
+
+
+============================================================
+
+Mutant: bonferroni_m_not_12
+File: src/ainerzero/v9/experiments/s4/analysis_p2.py
+Status: KILLED
+Summary: 1 failed, 50 deselected in 1.28s
+----------------------------------------
+Stdout:
+F
+=================================== FAILURES ===================================
+__________________________ test_registered_constants ___________________________
+
+    def test_registered_constants() -> None:
+        assert P2.NAMESPACES == {"probe": "s4p2-probe", "final": "s4p2-final"}
+        assert P2.SIZES == {"probe": (50, 25), "final": (200, 100)}
+        assert P2.NAMESPACES["final"] in W.REGISTERED and P2.NAMESPACES["probe"] not in W.REGISTERED
+>       assert P2.BOOT_SEED == 20261111 and P2.N_COMPARISONS == 12
+E       assert (20261111 == 20261111 and 11 == 12)
+E        +  where 20261111 = P2.BOOT_SEED
+E        +  and   11 = P2.N_COMPARISONS
+
+tests/v9/experiments/test_s4_analysis_p2.py:23: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_registered_constants
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 50 deselected in 1.28s
+
+
+============================================================
+
+Mutant: scatter_arm_gate_mismatch
+File: src/ainerzero/v9/experiments/s4/analysis_p2.py
+Status: KILLED
+Summary: 1 failed, 51 deselected in 1.30s
+----------------------------------------
+Stdout:
+F
+=================================== FAILURES ===================================
+__________________________ test_registered_constants ___________________________
+
+    def test_registered_constants() -> None:
+        assert P2.NAMESPACES == {"probe": "s4p2-probe", "final": "s4p2-final"}
+        assert P2.SIZES == {"probe": (50, 25), "final": (200, 100)}
+        assert P2.NAMESPACES["final"] in W.REGISTERED and P2.NAMESPACES["probe"] not in W.REGISTERED
+        assert P2.BOOT_SEED == 20261111 and P2.N_COMPARISONS == 12
+>       assert P2.ARM_SPEC == {"L-int-g": ("L-int", 0.5, "learned"), "L-int-g3": ("L-int", 0.3, "learned"), "L-int-g7": ("L-int", 0.7, "learned"),
+                               "L-int-geo": ("L-int", "geo", "learned"), "L-ind-geo": ("L-ind", "geo", "learned"),
+                               "L-sc-g": ("L-int", 0.5, "scatter"), "L-int-rand": ("L-int", ("random", 0.02), "learned")}
+E       AssertionError: assert {'L-int-g': (...earned'), ...} == {'L-int-g': (...earned'), ...}
+E         
+E         Omitting 6 identical items, use -vv to show
+E         Differing items:
+E         {'L-sc-g': ('L-int', 'geo', 'scatter')} != {'L-sc-g': ('L-int', 0.5, 'scatter')}
+E         Use -v to get more diff
+
+tests/v9/experiments/test_s4_analysis_p2.py:24: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_analysis_p2.py::test_registered_constants
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 51 deselected in 1.30s
+
+
+============================================================
+
+Mutant: stochastic_run_without_reseed
+File: src/ainerzero/v9/experiments/s4/gated.py
+Status: KILLED
+Summary: 1 failed, 10 deselected in 0.41s
+----------------------------------------
+Stdout:
+lock held by 53949
+F
+=================================== FAILURES ===================================
+_____________ test_stochastic_arms_need_a_seed_and_repeat_with_it ______________
+
+nets = (Dynamics(
+  (msg1): Linear(input_dims=6, output_dims=64, bias=True)
+  (msg2): Linear(input_dims=64, output_dims=64, b... (up2): Linear(input_dims=128, output_dims=128, bias=True)
+  (out): Linear(input_dims=128, output_dims=4, bias=True)
+))
+
+    def test_stochastic_arms_need_a_seed_and_repeat_with_it(nets) -> None:
+        rng = np.random.default_rng(11)
+        P, V = _states(rng)
+        for gate, resp in ((0.5, "scatter"), (("random", 0.3), "learned"), ("geo", "scatter")):
+            m = G.gated_model(nets[0], gate, response=resp)
+            assert m.stochastic
+            with pytest.raises(RuntimeError):
+>               m(P, V, PILLARS)
+
+tests/v9/experiments/test_s4_gated.py:188: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <ainerzero.v9.experiments.s4.gated.GatedModel object at 0x103a95730>
+P = array([[[0.64713955, 1.64805023],
+        [1.92404557, 0.37746032],
+        [0.69940043, 2.80616976],
+        [0.49013...2, 1.39090149],
+        [0.96175394, 2.58210745],
+        [2.30287916, 1.77364375],
+        [2.08598389, 2.16915359]]])
+V = array([[[ 0.50545277, -0.8953824 ],
+        [ 0.35655781, -0.01994304],
+        [-0.24448887, -0.88136532],
+        [ ...1523548],
+        [-0.88113862, -0.23693158],
+        [-0.67606151,  0.34935023],
+        [-0.68899773, -1.28337306]]])
+pillars = ((8.0, 8.0, 0.5), (2.0, 8.0, 0.6), (8.0, 2.0, 0.4))
+
+    def __call__(self, P, V, pillars):
+        # check removed
+        pb, vb = Mo.bounce(P, V, pillars)
+        if P.shape[1] < 2:
+            if self.counter is not None:
+                self.counter[1] += P.shape[0] * P.shape[1]
+            return pb, vb
+        pil = mx.array(np.broadcast_to(np.array(pillars, dtype=np.float32), (P.shape[0], L.N_PILLARS, 3)))
+        p_, v_, logits, _ = self.net(mx.array(P.astype(np.float32)), mx.array(V.astype(np.float32)), pil)
+        mx.eval(p_, v_)
+        if self.kind == "geo":
+            g = geo_gate(P, V)
+        elif self.kind == "head":
+            g = head_gate(np.array(logits), P, self.p)
+        else:
+            g = self._rng.random(P.shape[:2]) < self.rate
+        if self.counter is not None:
+            self.counter[0] += int(g.sum())
+            self.counter[1] += int(g.size)
+        if self.response == "scatter":
+>           theta = self._rng.uniform(0.0, 2 * math.pi, P.shape[:2])
+                    ^^^^^^^^^^^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'uniform'
+
+/tmp/s4p2_r1_isolated/src/ainerzero/v9/experiments/s4/gated.py:121: AttributeError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s4_gated.py::test_stochastic_arms_need_a_seed_and_repeat_with_it
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 10 deselected in 0.41s
+
+
+============================================================
+

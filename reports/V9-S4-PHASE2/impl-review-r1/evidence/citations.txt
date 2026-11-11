@@ -1,0 +1,464 @@
+=== 1. Commit and Diff Context ===
+$ git rev-parse 50f9edf
+50f9edf856aa9d0d8d134ba556f064bd70421c8c
+
+$ git diff --stat c5387d8 50f9edf -- src/ tests/ reports/V9-S4-PHASE2/
+ reports/V9-S4-PHASE2/make_prereg.py             |   5 +-
+ reports/V9-S4-PHASE2/verify_replay_p2.py        |   4 +-
+ src/ainerzero/v9/experiments/s4/analysis_p2.py  |  65 ++++++++++----
+ src/ainerzero/v9/experiments/s4/gated.py        | 115 +++++++++++++++++-------
+ src/ainerzero/v9/experiments/s4/worker_p2.py    |  13 +--
+ tests/v9/experiments/test_s4_analysis_p2.py     |  68 +++++++++++---
+ tests/v9/experiments/test_s4_gated.py           |  63 ++++++++++++-
+ tests/v9/experiments/test_s4p2_runner_native.py |   5 +-
+ 8 files changed, 264 insertions(+), 74 deletions(-)
+
+=== 2. Design Basis (DESIGN-r1.md) ===
+$ git show 50f9edf:reports/V9-S4-P2-DESIGN/DESIGN-r1.md | grep -n ... (Design r1 Table & §3, §5, §6)
+9:| **必修 M1**：代用模型 SCATTER（知道什么时候碰，碰时只把速度方向随机打乱）拿到 C 0.738，GA、GC、GK1 只差 0.002–0.012。负对照 L-ind-geo 排除不了「门开、把不确定性放宽」，所以「收益来自学到的碰撞响应」证据不够 | 按建议 (a)：**登记对照臂 L-sc-g**（门与 L-int-g 相同，门开时位置取 E-B、速度取 E-B 的速度转一个均匀随机角，速率不变），**新增门 GR**：有碰撞的事件上 L-int-g − L-sc-g ≥ 0，Bonferroni 下界 > 0；m 由 11 改为 12。GA、GC、GK 的结论改写为「门控混合跟踪器的重认与校准」；只有 GR 过了，才把收益归给学到的响应（§0、§5、§9） |
+14:| 建议 R1：负对照用了未校正的 95% 上界 | 改用 Bonferroni 上界（m = 12） |
+15:| 建议 R2：随机门登记为描述量 | 登记 L-int-rand（门以 2% 的比例随机打开，开时取 L-int）为描述臂 |
+16:| 建议 R3：代码约束的写法 | 改为「门的判定不调用物理；门控模型只调用 E-B（`world.physics(disks=False)`），不调用 E-P」，并写明 E-B 就是生成器同一个函数去掉盘间碰撞（§3） |
+58:| **G** | `explore_p2g.py`、`summary-p2g.txt`、`results-p2g.json` | **登记代码、登记种子**下的全部 11 个臂（含 r1 新增的 L-sc-g、L-int-rand），按 `analysis_p2.decide` 判门 |
+92:| **L-sc-g（门同 L-int-g，速度方向随机）** | **0.612** | **0.857** | **0.803** | **0.738** | **0.901 / 0.858** | **0.890 / 0.755** | 2.9% |
+93:| L-int-rand（2% 随机门） | 0.431 | 0.884 | 0.785 | 0.034 | 0.856 / 0.661 | 0.880 / 0.529 | 2.0% |
+95:- L-int-g − L-sc-g（按世界，95%）：有碰撞 +0.046 [+0.012, +0.083]，没有碰撞 +0.022 [+0.005, +0.039]，全部 +0.028 [+0.011, +0.044]。
+97:- 登记判门（m = 12）：L-int-g 过 GN、GA、GC、GK1、GK2、GD、GX；**不过 GR**。GR 是 +0.046，Bonferroni 区间 [−0.003, +0.099]，40 个世界上下界刚好低于 0。负对照通过（C 0.039，Bonferroni 上界 0.185）。
+107:| L-sc-g | 0.452 | 0.824 | 0.681 | 0.650 | 0.898 / 0.861 | 0.864 / 0.686 |
+123:  - L-sc-g 不懂碰撞，C 也有 0.738，GK2 两半都过。
+124:  - 学到的响应在此之上多出：有碰撞的事件 +0.046，没有碰撞的事件 +0.022。后者是因为 L-sc-g 在误报的门上打乱了速度方向，而 L-int 在近失时不误伤。
+125:  - 门的时机不可替代：同样比例随机打开（L-int-rand），C 只有 0.034。
+156:| **L-sc-g** | **同 L-int-g** | **位置取 E-B；速度取 E-B 的速度转一个均匀随机角，速率不变** | **GR 的对照：知道什么时候碰，不知道怎样碰** |
+157:| L-int-rand | 每个成员、每个盘独立以 2% 打开 | L-int 的预测 | 描述：门的时机能否被同样比例的随机打开替代 |
+163:- **有随机数的臂**（L-sc-g、L-int-rand）用自己的生成器，不碰滤波器的随机数。每次跟踪、每次算动力学和之前，按（命名空间、世界、种子、臂、用途）重设种子：`derive_seed(ns, "arm-rng", world, seed, arm, "track" | "dyn")`。没重设就拒绝运行。重放按同一规则重设。
+179:| 门 | 判据 | 数据 | 摸底值（G 轮，Bonferroni m = 12） | 谁过不了（P213、G 轮） |
+183:| **GC 碰撞差距的补回** | C ≥ 0.75，下界 > 0.5 | 主评测，有碰撞 | 0.917 [0.741, 1.125] | 一期 L-int（0.665）、随机门、L-ind-geo；L-sc-g 0.738 |
+188:| **GR 学到的响应胜过只放宽** | 有碰撞的事件上 L-int-g − L-sc-g ≥ 0，下界 > 0 | 主评测 | +0.046 [−0.003, +0.099]（**40 个世界上不过**） | L-sc-g 本身（0）；任何响应不比随机方向好的模型 |
+190:**负对照：** L-ind-geo 的 C 和 D，Bonferroni 上界（m = 12）都必须 < 0.5。否则说明门本身就能带来收益，GA、GC、GX 作废。G 轮中 C 是 0.039（上界 0.185），D 是 0.000（上界 0.011）。
+211:- 另报 Bonferroni 区间。m = 12：GN、GA、GC、GK1 两项、GK2 两项、GD 两项、GX 两项、GR。门和负对照的「下界、上界、区间」一律用 Bonferroni 区间。
+224:| 确定性 | 另一个进程从权重重放主评测前 3 个、外推前 2 个世界的全部 33 个跟踪格（有随机数的臂按登记规则重设种子），分配摘要与每个事件的对错逐位相同 |
+229:- L-int-g − L-sc-g 在三类事件上的差（主评测、外推）；
+243:- 校准钩子与跟踪在同一遍里算：钩子只读副本。确定性门的重放会核对分配摘要。
+244:- 标签与确定性由另一个 `python -I` 进程核对。
+283:  - 但持平的大部分来自「知道什么时候碰、碰时放宽集合」：L-sc-g 也有 C 0.74。学到的响应只在 GR 过时，才能说它在重认上比乱猜方向强。
+
+=== 3. Implementation: gated.py ===
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/gated.py | grep -n '' | sed -n '37,40p'
+37:RESPONSES = ("learned", "scatter")
+38:
+39:
+40:def geo_gate(P: np.ndarray, V: np.ndarray) -> np.ndarray:
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/gated.py | grep -n '' | sed -n '66,70p'
+66:def scatter_velocity(v: np.ndarray, theta: np.ndarray) -> np.ndarray:
+67:    """Turn each velocity v [..., 2] by the angle theta [...]; the speed is kept."""
+68:    c, s = np.cos(theta), np.sin(theta)
+69:    return np.stack([c * v[..., 0] - s * v[..., 1], s * v[..., 0] + c * v[..., 1]], -1)
+70:
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/gated.py | grep -n '' | sed -n '72,100p'
+72:class GatedModel:
+73:    """Process model (P, V [M, n, 2], pillars) -> (P', V'). See the module docstring for gates and
+74:    responses. ``counter``, if given, accumulates [disk-steps with the gate open, all disk-steps]."""
+75:
+76:    def __init__(self, net: L.Dynamics, gate, *, response: str = "learned", counter: list | None = None):
+77:        if net.arm == "L-int-s":
+78:            raise ValueError("gate a mean model, not L-int-s")
+79:        if response not in RESPONSES:
+80:            raise ValueError(f"unknown response {response!r}")
+81:        if isinstance(gate, (tuple, list)):
+82:            if len(gate) != 2 or gate[0] != "random" or not 0.0 < float(gate[1]) < 1.0:
+83:                raise ValueError("a random gate is ('random', rate) with rate in (0, 1)")
+84:            self.kind, self.rate = "random", float(gate[1])
+85:        elif gate == "geo":
+86:            self.kind = "geo"
+87:        else:
+88:            p = float(gate)
+89:            if not 0.0 < p < 1.0:
+90:                raise ValueError("the gate threshold must lie in (0, 1)")
+91:            if not net.interact:
+92:                raise ValueError("the contact-head gate needs a model with a contact head")
+93:            self.kind, self.p = "head", p
+94:        self.net, self.response, self.counter = net, response, counter
+95:        self.stochastic = self.kind == "random" or response == "scatter"
+96:        self._rng: np.random.Generator | None = None
+97:
+98:    def reseed(self, seed: int) -> None:
+99:        self._rng = np.random.default_rng(seed)
+100:
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/gated.py | grep -n '' | sed -n '102,126p'
+102:        if self.stochastic and self._rng is None:
+103:            raise RuntimeError("a stochastic gated arm needs reseed() before it runs")
+104:        pb, vb = Mo.bounce(P, V, pillars)
+105:        if P.shape[1] < 2:
+106:            if self.counter is not None:
+107:                self.counter[1] += P.shape[0] * P.shape[1]
+108:            return pb, vb
+109:        pil = mx.array(np.broadcast_to(np.array(pillars, dtype=np.float32), (P.shape[0], L.N_PILLARS, 3)))
+110:        p_, v_, logits, _ = self.net(mx.array(P.astype(np.float32)), mx.array(V.astype(np.float32)), pil)
+111:        mx.eval(p_, v_)
+112:        if self.kind == "geo":
+113:            g = geo_gate(P, V)
+114:        elif self.kind == "head":
+115:            g = head_gate(np.array(logits), P, self.p)
+116:        else:
+117:            g = self._rng.random(P.shape[:2]) < self.rate
+118:        if self.counter is not None:
+119:            self.counter[0] += int(g.sum())
+120:            self.counter[1] += int(g.size)
+121:        if self.response == "scatter":
+122:            theta = self._rng.uniform(0.0, 2 * math.pi, P.shape[:2])
+123:            return pb, np.where(g[..., None], scatter_velocity(vb, theta), vb)
+124:        g = g[..., None]
+125:        return (np.where(g, np.array(p_, dtype=np.float64), pb), np.where(g, np.array(v_, dtype=np.float64), vb))
+126:
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/gated.py | grep -n '' | sed -n '128,138p'
+128:def gated_model(net: L.Dynamics, gate, *, response: str = "learned", counter: list | None = None) -> GatedModel:
+129:    return GatedModel(net, gate, response=response, counter=counter)
+130:
+131:
+132:def reseed_if_stochastic(model, seed: int) -> None:
+133:    """Set the generator of a stochastic arm; a deterministic model is left alone."""
+134:    if getattr(model, "stochastic", False):
+135:        model.reseed(seed)
+
+=== 4. Implementation: analysis_p2.py ===
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '35,50p'
+35:RAND_RATE = 0.02                   # random gate: about the share at which the L-int-g gate opens (exploration)
+36:ARM_SPEC = {                       # gated arm -> (base model, gate, response where the gate is open)
+37:    "L-int-g": ("L-int", 0.5, "learned"),
+38:    "L-int-g3": ("L-int", 0.3, "learned"),
+39:    "L-int-g7": ("L-int", 0.7, "learned"),
+40:    "L-int-geo": ("L-int", "geo", "learned"),
+41:    "L-ind-geo": ("L-ind", "geo", "learned"),
+42:    "L-sc-g": ("L-int", 0.5, "scatter"),
+43:    "L-int-rand": ("L-int", ("random", RAND_RATE), "learned"),
+44:}
+45:LEARNED = ("L-int", *ARM_SPEC)
+46:MAIN_ARM, NEG_ARM, SCATTER_ARM = "L-int-g", "L-ind-geo", "L-sc-g"
+47:GATES = {arm: spec[1] for arm, spec in ARM_SPEC.items()}
+48:BASE_MODEL = {"L-int": "L-int"} | {arm: spec[0] for arm, spec in ARM_SPEC.items()}
+49:BOOT_SEED = 20261111
+50:N_COMPARISONS = 12                 # GN, GA, GC, GK1 (2), GK2 (2), GD (2), GX (2), GR
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '60,67p'
+60:    "GC": {"C": 0.75, "C_low": 0.5},
+61:    "GK1": {"all": (0.87, 0.93), "all_interval": (0.85, 0.95), "collision": 0.85, "collision_low": 0.80},
+62:    "GK2": {"non_collision": 0.85, "non_collision_low": 0.80, "collision": 0.75, "collision_low": 0.65},
+63:    "GD": {"D": 0.8, "D_low": 0.7, "ratio": 0.10, "ratio_high": 0.15},
+64:    "GX": {"diff": 0.03, "diff_low": 0.0, "C": 0.6, "C_low": 0.4},
+65:    "GR": {"diff": 0.0, "diff_low": 0.0},
+66:    "negative_control": {"C_high_below": 0.5, "D_high_below": 0.5},     # Bonferroni upper bounds
+67:}
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '82,93p'
+82:def rng_seed(ns: str, w: int, seed: int, arm: str, use: str) -> int:
+83:    """Seed of a stochastic arm's own generator for one pass (use: "track" or "dyn")."""
+84:    return W.derive_seed(ns, "arm-rng", w, seed, arm, use)
+85:
+86:
+87:def reseed_if_stochastic(model, seed: int) -> None:
+88:    """Set the generator of a stochastic arm (gated.GatedModel with a random gate or the scatter
+89:    response); deterministic models are left alone. Duck-typed so this module stays free of MLX."""
+90:    if getattr(model, "stochastic", False):
+91:        model.reseed(seed)
+92:
+93:
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '145,152p'
+145:# --- one world ------------------------------------------------------------------------------------
+146:def track_cell(ep: W.Episode, model: Callable, ns: str, seed: int, events: Sequence[dict], arm: str) -> dict[str, Any]:
+147:    reseed_if_stochastic(model, rng_seed(ns, ep.world_index, seed, arm, "track"))
+148:    rng = np.random.default_rng(filter_seed(ns, ep.world_index, seed))
+149:    cal = Calibration(ep, [e["b"] for e in events])
+150:    ids, n_tracks = F.track(A.student_detections(ep), ep.pillars, model, rng, F.FilterConfig(), on_predict=cal)
+151:    return {"correct": [x["correct"] for x in Me.reid(ep, ids, events)], "one_step": cal.one,
+152:            "reappear": reappearance_inside(ep, ids, events, cal.snaps), "idf1": Me.idf1(ep, ids),
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '165,180p'
+165:    for name, m in models.items():
+166:        seeds = [int(name.split("#")[1])] if "#" in name else list(SEEDS)
+167:        arm = name.split("#")[0]
+168:        for s in seeds:
+169:            c = counters.get(f"{arm}#{s}") if counters else None
+170:            if c is not None:
+171:                c[0] = c[1] = 0
+172:            cell = track_cell(ep, m, ns, s, events, arm)
+173:            if c is not None:
+174:                cell["gate"] = [int(c[0]), int(c[1])]
+175:            rec["cells"][cell_key(arm, s)] = cell
+176:    for name, m in (dyn_models or {}).items():
+177:        if "#" in name:
+178:            reseed_if_stochastic(m, rng_seed(ns, ep.world_index, int(name.split("#")[1]), name.split("#")[0], "dyn"))
+179:        rec["dyn"][name] = A.dyn_sums(ep, m)
+180:    return rec
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '295,301p'
+295:    return {"GN": acc_diff(main, a, "E-B", "non_collision"), "GA": acc_diff(main, a, "E-B", "all"), "GC": C_of(main, a),
+296:            "GK1_all": coverage_one_step(main, a, "all"), "GK1_collision": coverage_one_step(main, a, "collision"),
+297:            "GK2_non_collision": coverage_reappear(main, a, "non_collision"), "GK2_collision": coverage_reappear(main, a, "collision"),
+298:            "GD_D": D_of(main, a), "GD_ratio": HF_of(main, a),
+299:            "GX_diff": acc_diff(extrap, a, "E-B", "all"), "GX_C": C_of(extrap, a),
+300:            "GR": acc_diff(main, a, SCATTER_ARM, "collision"),
+301:            "neg_C": C_of(main, NEG_ARM), "neg_D": D_of(main, NEG_ARM)}
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '315,330p'
+315:        "GC": _ge(st["GC"], "value", T["GC"]["C"]) and _gt(st["GC"], "bonf_low", T["GC"]["C_low"]),
+316:        "GK1": (_ge(k1a, "value", lo1) and _le(k1a, "value", hi1) and _ge(k1a, "bonf_low", lo1i) and _le(k1a, "bonf_high", hi1i)
+317:                and _ge(k1c, "value", T["GK1"]["collision"]) and _gt(k1c, "bonf_low", T["GK1"]["collision_low"])),
+318:        "GK2": (_ge(k2n, "value", T["GK2"]["non_collision"]) and _gt(k2n, "bonf_low", T["GK2"]["non_collision_low"])
+319:                and _ge(k2c, "value", T["GK2"]["collision"]) and _gt(k2c, "bonf_low", T["GK2"]["collision_low"])),
+320:        "GD": (_ge(d, "value", T["GD"]["D"]) and _gt(d, "bonf_low", T["GD"]["D_low"])
+321:               and _le(hf, "value", T["GD"]["ratio"]) and _le(hf, "bonf_high", T["GD"]["ratio_high"])),
+322:        "GX": (_ge(st["GX_diff"], "value", T["GX"]["diff"]) and _gt(st["GX_diff"], "bonf_low", T["GX"]["diff_low"])
+323:               and _ge(st["GX_C"], "value", T["GX"]["C"]) and _gt(st["GX_C"], "bonf_low", T["GX"]["C_low"])),
+324:        "GR": _ge(st["GR"], "value", T["GR"]["diff"]) and _gt(st["GR"], "bonf_low", T["GR"]["diff_low"]),
+325:    }
+326:    neg = (_lt(st["neg_C"], "bonf_high", T["negative_control"]["C_high_below"])
+327:           and _lt(st["neg_D"], "bonf_high", T["negative_control"]["D_high_below"]))
+328:    return {k: bool(v) for k, v in passed.items()}, bool(neg)
+329:
+330:
+
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/analysis_p2.py | grep -n '' | sed -n '385,400p'
+385:                row["C"] = C_of(recs, arm, m=1)
+386:                row["diff_non_collision_vs_EB"] = acc_diff(recs, arm, "E-B", "non_collision", m=1)
+387:                row["diff_all_vs_EB"] = acc_diff(recs, arm, "E-B", "all", m=1)
+388:            if arm in ARM_SPEC:
+389:                o = sum(r["cells"][cell_key(arm, s)].get("gate", [0, 0])[0] for r in recs for s in SEEDS)
+390:                t = sum(r["cells"][cell_key(arm, s)].get("gate", [0, 0])[1] for r in recs for s in SEEDS)
+391:                row["gate_share"] = o / t if t else None
+392:            d[arm] = row
+393:        out[part] = d
+394:    out["dynamics"] = {part: {name: {"D": D_of(recs, name, m=1)["value"], "HF": HF_of(recs, name, m=1)["value"]}
+395:                              for name in ("L-int", *ARM_SPEC)} for part, recs in (("main", main), ("extrap", extrap)) if recs}
+396:    out["learned_minus_scatter"] = {part: {w: acc_diff(recs, MAIN_ARM, SCATTER_ARM, w, m=1) for w in ("collision", "non_collision", "all")}
+397:                                    for part, recs in (("main", main), ("extrap", extrap)) if recs}
+398:    return out
+
+=== 5. Implementation: worker_p2.py, verify_replay_p2.py, make_prereg.py ===
+$ git show 50f9edf:src/ainerzero/v9/experiments/s4/worker_p2.py | grep -n '' | sed -n '38,48p'
+38:    dyn: dict[str, Callable] = {"E-B": Mo.bounce}
+39:    for s in P2.SEEDS:
+40:        lint = nets[f"L-int#{s}"]
+41:        models[f"L-int#{s}"] = dyn[f"L-int#{s}"] = L.as_process_model(lint)
+42:        for arm, (base_name, gate, response) in P2.ARM_SPEC.items():
+43:            base = nets[f"{base_name}#{s}"]
+44:            c = [0, 0]
+45:            counters[f"{arm}#{s}"] = c
+46:            models[f"{arm}#{s}"] = G.gated_model(base, gate, response=response, counter=c)
+47:            dyn[f"{arm}#{s}"] = G.gated_model(base, gate, response=response)
+48:    return models, counters, dyn
+
+$ git show 50f9edf:reports/V9-S4-PHASE2/verify_replay_p2.py | grep -n '' | sed -n '35,45p'
+35:        rec = records[(w["kind"], w["world"])]
+36:        dets = [np.array(d, dtype=np.float64).reshape(-1, 2) for d in w["detections"]]
+37:        pillars = tuple(tuple(p) for p in w["pillars"])
+38:        for arm, s, m in cells:
+39:            key = P2.cell_key(arm, s)
+40:            P2.reseed_if_stochastic(m, P2.rng_seed(rep["ns"], w["world"], s, arm, "track"))
+41:            rng = np.random.default_rng(P2.filter_seed(rep["ns"], w["world"], s))
+42:            ids, _ = F.track(dets, pillars, m, rng, F.FilterConfig())
+43:            checked += 1
+44:            if key not in rec["cells"] or P2.ids_digest(ids) != rec["cells"][key]["ids_sha256"]:
+45:                bad.append(f"{w['kind']} {w['world']} {key}")
+
+$ git show 50f9edf:reports/V9-S4-PHASE2/make_prereg.py | grep -n '' | sed -n '70,76p'
+70:        "filter": {"members": cfg.members, "q_pos": cfg.q_pos, "q_vel": cfg.q_vel, "obs_sigma": cfg.obs_sigma, "gate_base": cfg.gate_base,
+71:                   "gate_grow": cfg.gate_grow, "new_track_speed": list(cfg.speed), "filter_seed": "derive_seed(ns, 'filter', world, seed, 'base')"},
+72:        "arms": {"hand": list(P2.HAND), "learned": list(P2.LEARNED), "spec": {a: [b, g, r] for a, (b, g, r) in P2.ARM_SPEC.items()},
+73:                 "random_gate_rate": P2.RAND_RATE, "main": P2.MAIN_ARM, "negative_control": P2.NEG_ARM, "scatter_control": P2.SCATTER_ARM,
+74:                 "seeds": list(P2.SEEDS), "arm_rng_seed": "derive_seed(ns, 'arm-rng', world, seed, arm, 'track' | 'dyn')"},
+75:        "weights_sha256": weights,
+76:        "weights_dir": "artifacts/v9/s4/phase1/final-final/weights",
+
+=== 6. Test Suite Evidence ===
+$ git show 50f9edf:tests/v9/experiments/test_s4_gated.py | grep -n '' | sed -n '160,219p'
+160:
+161:
+162:# --- phase-2 r1 controls: the scatter response and the random gate -------------------------------
+163:def test_scatter_response_turns_eb_velocity_keeps_speed_and_eb_position(nets, monkeypatch) -> None:
+164:    net = nets[0]
+165:    rng = np.random.default_rng(10)
+166:    P, V = _states(rng)
+167:    mask = rng.random(P.shape[:2]) < 0.5
+168:    monkeypatch.setattr(G, "head_gate", lambda lg, P, p: mask)
+169:    m = G.gated_model(net, 0.5, response="scatter")
+170:    m.reseed(123)
+171:    out = m(P, V, PILLARS)
+172:    pb, vb = Mo.bounce(P, V, PILLARS)
+173:    assert np.array_equal(out[0], pb)                                    # positions are E-B's everywhere
+174:    assert np.array_equal(out[1][~mask], vb[~mask])
+175:    assert np.allclose(np.linalg.norm(out[1][mask], axis=-1), np.linalg.norm(vb[mask], axis=-1))
+176:    assert not np.allclose(out[1][mask], vb[mask])
+177:    theta = np.random.default_rng(123).uniform(0.0, 2 * math.pi, P.shape[:2])
+178:    assert np.allclose(out[1], np.where(mask[..., None], G.scatter_velocity(vb, theta), vb))
+179:
+180:
+181:def test_stochastic_arms_need_a_seed_and_repeat_with_it(nets) -> None:
+182:    rng = np.random.default_rng(11)
+183:    P, V = _states(rng)
+184:    for gate, resp in ((0.5, "scatter"), (("random", 0.3), "learned"), ("geo", "scatter")):
+185:        m = G.gated_model(nets[0], gate, response=resp)
+186:        assert m.stochastic
+187:        with pytest.raises(RuntimeError):
+188:            m(P, V, PILLARS)
+189:        m.reseed(5)
+190:        a = m(P, V, PILLARS)
+191:        m.reseed(5)
+192:        b = m(P, V, PILLARS)
+193:        m.reseed(6)
+194:        c = m(P, V, PILLARS)
+195:        assert all(np.array_equal(x, y) for x, y in zip(a, b))
+196:        assert not all(np.array_equal(x, y) for x, y in zip(a, c))
+197:    d = G.gated_model(nets[0], 0.5)
+198:    assert not d.stochastic
+199:    G.reseed_if_stochastic(d, 1)                                         # deterministic arms ignore it
+200:    d(P, V, PILLARS)
+201:
+202:
+203:def test_random_gate_opens_at_its_rate_and_uses_the_learned_model(nets) -> None:
+204:    net = nets[0]
+205:    P, V = _states(np.random.default_rng(12), m=200, n=6)
+206:    cnt = [0, 0]
+207:    m = G.gated_model(net, ("random", 0.1), counter=cnt)
+208:    m.reseed(9)
+209:    out = m(P, V, PILLARS)
+210:    g = np.random.default_rng(9).random(P.shape[:2]) < 0.1
+211:    learned = L.as_process_model(net)(P, V, PILLARS)
+212:    eb = Mo.bounce(P, V, PILLARS)
+213:    assert np.array_equal(out[1][g], learned[1][g]) and np.array_equal(out[1][~g], eb[1][~g])
+214:    assert cnt == [int(g.sum()), g.size] and 0.07 < cnt[0] / cnt[1] < 0.13
+215:    for bad in (("random", 0.0), ("random", 1.0), ("rand", 0.1), ("random",)):
+216:        with pytest.raises(ValueError):
+217:            G.gated_model(net, bad)
+218:    with pytest.raises(ValueError):
+219:        G.gated_model(net, 0.5, response="other")
+
+$ git show 50f9edf:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '20,37p'
+20:    assert P2.NAMESPACES == {"probe": "s4p2-probe", "final": "s4p2-final"}
+21:    assert P2.SIZES == {"probe": (50, 25), "final": (200, 100)}
+22:    assert P2.NAMESPACES["final"] in W.REGISTERED and P2.NAMESPACES["probe"] not in W.REGISTERED
+23:    assert P2.BOOT_SEED == 20261111 and P2.N_COMPARISONS == 12
+24:    assert P2.ARM_SPEC == {"L-int-g": ("L-int", 0.5, "learned"), "L-int-g3": ("L-int", 0.3, "learned"), "L-int-g7": ("L-int", 0.7, "learned"),
+25:                           "L-int-geo": ("L-int", "geo", "learned"), "L-ind-geo": ("L-ind", "geo", "learned"),
+26:                           "L-sc-g": ("L-int", 0.5, "scatter"), "L-int-rand": ("L-int", ("random", 0.02), "learned")}
+27:    assert P2.ARM_SPEC[P2.SCATTER_ARM][1] == P2.ARM_SPEC[P2.MAIN_ARM][1]          # the scatter control has the main arm's gate
+28:    assert P2.LEARNED == ("L-int", *P2.ARM_SPEC)
+29:    assert P2.THRESHOLDS["GN"] == {"diff": -0.01, "diff_low": -0.03}
+30:    assert P2.THRESHOLDS["GA"] == {"diff": 0.03, "diff_low": 0.0}
+31:    assert P2.THRESHOLDS["GC"] == {"C": 0.75, "C_low": 0.5}
+32:    assert P2.THRESHOLDS["GK1"] == {"all": (0.87, 0.93), "all_interval": (0.85, 0.95), "collision": 0.85, "collision_low": 0.80}
+33:    assert P2.THRESHOLDS["GK2"] == {"non_collision": 0.85, "non_collision_low": 0.80, "collision": 0.75, "collision_low": 0.65}
+34:    assert P2.THRESHOLDS["GD"] == {"D": 0.8, "D_low": 0.7, "ratio": 0.10, "ratio_high": 0.15}
+35:    assert P2.THRESHOLDS["GX"] == {"diff": 0.03, "diff_low": 0.0, "C": 0.6, "C_low": 0.4}
+36:    assert P2.THRESHOLDS["GR"] == {"diff": 0.0, "diff_low": 0.0}
+37:    assert P2.THRESHOLDS["negative_control"] == {"C_high_below": 0.5, "D_high_below": 0.5}
+
+$ git show 50f9edf:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '150,165p'
+150:
+151:def test_a_gated_model_like_the_exploration_passes_every_gate(good) -> None:
+152:    assert good["valid"], good["legality"]
+153:    assert good["negative_control"]["passed"]
+154:    assert {k: v["passed"] for k, v in good["gates"].items()} == {k: True for k in ("GN", "GA", "GC", "GK1", "GK2", "GD", "GX", "GR")}
+155:
+156:
+157:def test_bonferroni_is_twelve_comparisons(good) -> None:
+158:    c = good["gates"]["GC"]["GC"]
+159:    assert c["bonf_low"] < c["ci_low"] < c["value"] < c["ci_high"] < c["bonf_high"]
+160:    alt = P2.C_of(records(), "L-int-g", m=12)
+161:    assert alt == c
+162:
+163:
+164:def test_phase1_like_model_fails_the_non_collision_gate() -> None:
+165:    r = _eval(records(spec={"L-int-g": BASE["L-int"]}))
+
+$ git show 50f9edf:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '185,195p'
+185:    spec = {"L-int-g": (0.66, 0.89, 0.90, 0.88, 0.91, 0.66)}
+186:    g = _eval(records(spec=spec))["gates"]
+187:    assert not g["GK2"]["passed"] and g["GK1"]["passed"]
+188:
+189:
+190:def test_a_scatter_control_as_good_as_the_learned_response_fails_GR() -> None:
+191:    r = _eval(records(spec={"L-sc-g": BASE["L-int-g"]}))
+192:    assert not r["gates"]["GR"]["passed"]
+193:    assert all(r["gates"][k]["passed"] for k in ("GN", "GA", "GC", "GK1", "GK2", "GD", "GX"))
+194:
+195:
+
+$ git show 50f9edf:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '290,305p'
+290:    ("GX_diff", _st(0.05, 0.0, 0.1), "GX"),
+291:    ("GX_C", _st(0.59, 0.45, 0.8), "GX"),
+292:    ("GX_C", _st(0.9, 0.4, 1.2), "GX"),
+293:    ("GR", _st(0.03, 0.0, 0.06), "GR"),                  # lower bound must be strictly above 0
+294:    ("GR", _st(-0.001, -0.03, 0.03), "GR"),
+295:    ("GC", {"value": None, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}, "GC"),
+296:    ("GK1_all", {"value": 0.9, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}, "GK1"),
+297:])
+298:def test_decide_fails_each_gate_at_its_boundary(key, stat, gate) -> None:
+299:    st = _passing()
+300:    st[key] = stat
+301:    passed, neg = P2.decide(st)
+302:    assert not passed[gate] and neg
+303:    assert all(v for k, v in passed.items() if k != gate)
+304:
+305:
+
+$ git show 50f9edf:tests/v9/experiments/test_s4_analysis_p2.py | grep -n '' | sed -n '315,348p'
+315:    passed, neg = P2.decide(st)
+316:    assert not neg and all(passed.values())
+317:
+318:
+319:def test_negative_control_reads_the_bonferroni_upper_bound() -> None:
+320:    st = _passing()
+321:    st["neg_C"] = _st(0.2, -0.1, 0.7, ci_low=0.0, ci_high=0.45)       # 95% below 0.5, Bonferroni not: fails
+322:    assert not P2.decide(st)[1]
+323:    st["neg_C"] = _st(0.2, -0.1, 0.45, ci_low=0.0, ci_high=0.55)
+324:    assert P2.decide(st)[1]
+325:
+326:
+327:class _Stoch:
+328:    """Stand-in stochastic process model: records its seeds; E-B underneath."""
+329:    stochastic = True
+330:
+331:    def __init__(self):
+332:        self.seeds = []
+333:
+334:    def reseed(self, seed):
+335:        self.seeds.append(seed)
+336:
+337:    def __call__(self, P, V, pillars):
+338:        return Mo.bounce(P, V, pillars)
+339:
+340:
+341:def test_stochastic_arms_are_reseeded_per_world_seed_arm_and_pass() -> None:
+342:    ep = W.generate_episode("test-s4p2-seed", 3, 4, steps=40)
+343:    tr, dy = _Stoch(), _Stoch()
+344:    rec = P2.world_record(ep, "main", "test-s4p2-seed", {"X#2": tr}, dyn_models={"X#2": dy, "E-B": Mo.bounce})
+345:    assert tr.seeds == [P2.rng_seed("test-s4p2-seed", 3, 2, "X", "track")]
+346:    assert dy.seeds == [P2.rng_seed("test-s4p2-seed", 3, 2, "X", "dyn")]
+347:    assert len({P2.rng_seed("n", 0, 1, "X", "track"), P2.rng_seed("n", 0, 1, "X", "dyn"), P2.rng_seed("n", 0, 2, "X", "track"),
+348:                P2.rng_seed("n", 1, 1, "X", "track"), P2.rng_seed("n", 0, 1, "Y", "track")}) == 5
+
+$ git show 50f9edf:tests/v9/experiments/test_s4p2_runner_native.py | grep -n '' | sed -n '135,152p'
+135:    assert all(set(r["dyn"]) == {"E-B"} | {f"{a}#{s}" for a in ("L-int", *P2.GATES) for s in P2.SEEDS} for r in recs)
+136:    assert all("kstep" in r for r in recs if r["kind"] == "main") and all("kstep" not in r for r in recs if r["kind"] == "extrap")
+137:    assert all(r["cells"][f"{a}#1"]["gate"][1] > 0 for r in recs for a in P2.GATES)
+138:    assert all("gate" not in r["cells"][f"{a}#1"] for r in recs for a in ("E-B", "L-int"))
+139:    rep = json.loads((out / "replay.json").read_text())
+140:    assert set(rep["weights"]) == {f"{a}#{s}" for a in ("L-int", "L-ind") for s in P2.SEEDS}
+141:    assert R["checks"]["labels"]["passed"] and R["checks"]["replay"]["passed"] and R["checks"]["student_view"]["passed"]
+142:    assert R["checks"]["weights"]["passed"]
+143:    assert R["checks"]["replay"]["checked"] == 2 * 33 == 2 * 3 * (len(P2.HAND) + len(P2.LEARNED))
+144:    assert R["weights_sha256"] == {n: _sha(root / WEIGHTS / f"{n}.safetensors") for n in R["weights_sha256"]}
+145:    assert R["pre_eval_seconds"] >= 0 and R["post_marker_seconds"] > 0
+146:    assert set(R["result"]["gates"]) == {"GN", "GA", "GC", "GK1", "GK2", "GD", "GX", "GR"}
+147:    assert 0 < R["descriptive"]["main"]["L-int-rand"]["gate_share"] < 0.06
+148:    assert not R["result"]["legality"]["samples"]["passed"]       # two worlds are far below the registered sample counts
+149:    assert R["prereg_sha256"] is None and R["code_dirty"] == []
+150:    assert set(R["descriptive"]["main"]) == set(P2.HAND + P2.LEARNED)
+151:    assert "L-int-g" in R["descriptive"]["kstep_position_error"]
+152:    assert not (root / ARTS / "FINAL_READ_ONCE.json").exists()
+

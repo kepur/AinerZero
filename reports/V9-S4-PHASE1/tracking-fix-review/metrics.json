@@ -1,0 +1,66 @@
+{
+  "task": "ainerzero.V9.P211",
+  "review_type": "independent_code_and_diagnosis_review",
+  "target_commit": "a95f196",
+  "author": "claude",
+  "reviewer": "gemini-b8k2",
+  "session_fingerprint": "sess-c23947e69a93",
+  "verdict": "RECOMMEND_ACCEPT",
+  "required_fixes_count": 0,
+  "diagnosis_verified": {
+    "total_worlds": 12,
+    "total_error_cells": 18,
+    "error_type": "ValueError: cost must be finite",
+    "failing_arm": "L-int-s",
+    "errors_by_seed": {
+      "seed_1": 1,
+      "seed_2": 5,
+      "seed_3": 12
+    },
+    "other_learned_arms_errors": 0,
+    "pre_failure_speed_range": [282.38, 661.32]
+  },
+  "callsites_clean": {
+    "tracking_cells_clean": true,
+    "filter_calibration_clean": true,
+    "replay_json_clean": true,
+    "student_view_clean": true,
+    "summarize_descriptive_clean": true,
+    "calibration_preserved": true
+  },
+  "gates_untouched": {
+    "legality_gates_checked": 6,
+    "negative_control_checked": 1,
+    "hypothesis_gates_checked": 6,
+    "gates_using_lint_s": 0,
+    "thresholds_changed": false,
+    "partitions_changed": false
+  },
+  "tests_verified": {
+    "smoke_test_asserts_effective": true,
+    "post_marker_timing_test_effective": true,
+    "timing_threshold_seconds": 11.5
+  },
+  "mutations_executed": [
+    {
+      "name": "an_calib_names_drops_lint_s",
+      "file": "src/ainerzero/v9/experiments/s4/analysis.py",
+      "line": 427,
+      "status": "killed",
+      "failed_test": "test_calibration_rows_and_references",
+      "error": "KeyError: 'L-int-s'",
+      "test_summary": "1 failed, 61 passed in 14.63s"
+    },
+    {
+      "name": "an_calib_rows_var_constant",
+      "file": "src/ainerzero/v9/experiments/s4/analysis.py",
+      "line": 436,
+      "status": "killed",
+      "failed_test": "test_calibration_rows_and_references",
+      "error": "AssertionError: assert 0.9869513641755635 < 0.97",
+      "test_summary": "1 failed, 61 passed in 14.59s"
+    }
+  ],
+  "mutations_killed_count": 2,
+  "mutations_survived_count": 0
+}
