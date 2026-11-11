@@ -1,0 +1,44 @@
+{
+  "branch_a_concurrent_ticker_and_completion": {
+    "question": "计时器线程与 complete_run 同时运行时，会不会把同一段时间算两次？会计锁是否覆盖了「先读、再扣」？",
+    "lines": "src/ainerzero/v9/experiments/s2/worker.py:243-252, 358-375",
+    "mechanism": "complete_run 中通过 with self._accounting_lock 完整包裹 already = float(self.store.get_run(run_id).reserved_active_seconds) 与 self.store.consume(..., active_seconds=remainder)；catch_up 中同样通过 with self._ledger._accounting_lock 包裹 consume 与 self._last = now。两处互斥保证要么 catch_up 先提交并推移已扣基准，要么 complete_run 先提交并将 run 置为完成态（后续 catch_up 捕获 LifecycleError 退出）。",
+    "verdict": "SAFE_NO_DOUBLE_COUNT"
+  },
+  "branch_b_runner_self_completion_vs_execute_work_cell": {
+    "question": "runner 自己完成运行（train_runner、data_runner），与 execute_work_cell 完成运行，两条路径是否都正确？",
+    "lines": "src/ainerzero/v9/experiments/s2/worker.py:431-441, tests/v9/experiments/test_s2_active_ticker.py:74-81",
+    "mechanism": "runner 自行调用 complete_run 后，execute_work_cell 检查 run_record.state in TERMINAL_STATES，跳过重复 complete_run；stub runner 未自调时由 execute_work_cell 调用 complete_run 统一完成。两路径均在 finally 中通过 ticker.stop() 干净终止守护线程。",
+    "verdict": "SAFE_BOTH_PATHS_CORRECT"
+  },
+  "branch_c_runner_exception_handling_and_threads": {
+    "question": "runner 抛出异常时，计时器是否停止，线程有没有泄漏？",
+    "lines": "src/ainerzero/v9/experiments/s2/worker.py:377-380, 442-457",
+    "mechanism": "execute_work_cell 在 except Exception 块以及 finally 块均显式调用 ticker.stop()。_ActiveTimeTicker.stop() 触发 self._stop.set() 唤醒等待，并在线程存活时调用 self._thread.join() 同步等待结束。线程设为 daemon=True。test_runner_exception_stops_ticker_and_fails_run 验证线程池无残留。",
+    "verdict": "SAFE_NO_THREAD_LEAK"
+  },
+  "branch_d_train_runner_early_wall_budget_stop": {
+    "question": "train_runner 因墙钟提前停止的路径里，直接调用了 ledger.store.consume，有了计时器之后是否会出问题？",
+    "lines": "src/ainerzero/v9/experiments/s2/train_runner.py:576-586",
+    "mechanism": "train_runner 在未完成时调用 ledger.store.consume(run_id, active_seconds=float(elapsed), ...) 被包裹在 try...except Exception: pass 中，若已扣时长加总超限会被静默捕获，随后立刻调用 ledger.stop_run(run_id, reason='wall_budget_exceeded')。由于 ticker 在后台持续按 15s 推进，数据库中实际已记录准确的部分消耗时长；stop_run 后 run 离开工作态，ticker 触发 LifecycleError 退出。",
+    "verdict": "SAFE_NO_CORRUPTION"
+  },
+  "branch_e_system_sleep_and_monotonic_clock": {
+    "question": "系统休眠后（墙钟跳变，单调时钟不跳），会怎样？",
+    "lines": "src/ainerzero/v9/experiments/s2/worker.py:343, 360, src/ainerzero/runtime/lifecycle.py:370-372",
+    "mechanism": "单调时钟 time.monotonic() 在休眠时不跳变，保证 CPU 活跃增量计算不出现负数或异常激增；但在 RunStore.consume 内部，instant 采用 real wall-clock（time.time()），remaining['wall_seconds'] 会因为 instant - created_at 跳变而骤减至 0。下一次 catch_up 时 consume 触发 BudgetExceeded('wall_time_budget')，写入 _overruns，并在 complete_run 时判定该格失败，准确守护了日历墙钟窗口硬上限。",
+    "verdict": "SAFE_STRICT_WALLCLOCK_GUARD"
+  },
+  "branch_f_runstore_connection_and_concurrency": {
+    "question": "RunStore 共用一个连接（check_same_thread=False 加 RLock），跨线程使用是否安全？",
+    "lines": "src/ainerzero/runtime/lifecycle.py:200-203, 222-231, src/ainerzero/v9/experiments/s2/worker.py:169",
+    "mechanism": "RunStore 初始化时指定 check_same_thread=False，并使用 self._lock = threading.RLock() 互斥所有事务（BEGIN IMMEDIATE ... COMMIT/ROLLBACK）。S2Ledger 上层再增加 self._accounting_lock 互斥应用层读写组合操作，多线程并发完全安全，不存在连接冲突或脏读。",
+    "verdict": "SAFE_THREAD_SAFE"
+  },
+  "branch_g_phase_budget_ceiling_aggregation": {
+    "question": "_check_phase_budget_ceiling 统计总额时，是否因为改动而少计或多计？",
+    "lines": "src/ainerzero/v9/experiments/s2/commands.py:268-281, tests/v9/experiments/test_s2_active_ticker.py:117-127",
+    "mechanism": "_check_phase_budget_ceiling 查询 runs 表的 active_seconds。改动前未完成/失败格子的 active_seconds 往往为 0，导致按整格预算回退偏大统计；改动后 ticker 实时把实际活跃秒数入库，失败格子按真实消耗秒数统计，完成格子按全量秒数统计，总额既无漏计也无虚高多计。",
+    "verdict": "SAFE_ACCURATE_ACCOUNTING"
+  }
+}

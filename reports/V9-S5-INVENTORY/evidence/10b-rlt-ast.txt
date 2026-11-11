@@ -1,0 +1,23 @@
+$ python3 -c 'import ast; from pathlib import Path; src=Path("/Users/mac/AinerWorkFlow/AinerZero/tests/v9/tokenization/test_rlt.py").read_text(); tree=ast.parse(src); names=[n.name for n in ast.walk(tree) if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef)) and n.name.startswith("test")]; print(len(names)); print("\n".join(names)); print("import mlx", "import mlx" in src)'
+18
+test_basic_shape_and_restoration
+test_tau_zero_no_removal
+test_still_image_rate_one_over_T
+test_determinism
+test_restoration_error_bounded_by_tau
+test_tau_zero_rate_one
+test_still_image_exact_rate
+test_camera_pan_rate
+test_local_action_rate_bounds
+test_pseudo_still_tau_sensitivity
+test_theoretical_rate_one_beat
+test_theoretical_rate_one_beat_two
+test_error_wrong_direction_comparison
+test_error_run_length_off_by_one
+test_error_ignore_first_frame
+test_single_frame
+test_all_identical_frames
+test_all_different_frames_tau_zero
+import mlx False
+
+注：evidence/10-rlt-tests.txt 里的 def_test_count=0 是脚本用「行首 def test_」计数，测函数有缩进，所以计成 0。以本文件的 ast 计数 18 为准。

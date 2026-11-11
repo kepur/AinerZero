@@ -1,0 +1,92 @@
+# 任务 ainerzero.V9.T35：【L3·强代理】【代码·环境·GPU】V9.T35 T6 冻结 18 视图完整标定：唯一一次持锁真跑（视图上限 64→82，用户 10-27 批准）
+
+- 需要：code, longrun → 建议执行者：一级（Claude/Codex）托管（缺 longrun 的模型不要领）
+- 项目：AinerZero · V9 v9 落地：NeuroGeometry × H-JEPA 世界脑（P0 无训练） → 轨道 T 教师接入（M2 Max，无 CUDA） → 第 35 步
+- 主工作目录：`/Users/mac/AinerWorkFlow/AinerZero`（先 cd 到这里）
+- 关联目录（只读）：`/Users/mac/AinerWorkFlow/AnimeWorldZero`——AWZ 评测包（E-0/E-1 起使用，只读）
+- 层级：二级（执行层） · 类型：implement · 需要 GPU：重型（接力台确认没有别的重型任务才放行，全机同一时刻只跑一个）
+- 前置：ainerzero.V9.T34（accepted）
+- 先读：`/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md`、`/Users/mac/AinerWorkFlow/AinerZero/README.md`、`AGENTS.md`、`RESEARCH_LOG.md`、`reports/V9-T28/proposal.json`、`reports/V9-T6/r2-calib-fixtures/statistical_protocol.json`
+- 文件范围（只改这些）：`src/ainerzero/v9/teachers/`、`tests/`、`artifacts/`、`reports/V9-T35/`
+
+## 任务说明
+# V9.T35 T6 冻结 18 视图完整标定：唯一一次真实运行（视图上限 82）
+
+依据：AinerZero RESEARCH_LOG `R20261027-T6-views-82`，用户 2026-10-27 批准。冻结口径是 `reports/V9-T6/r2-calib-fixtures/statistical_protocol.json`，加上 T28 的预登记（`reports/V9-T28/`）。
+
+**领卡前置（L3）**：
+- 领卡者必须在 `AinerRelay/modules/agent_grades.json` 的 deep 名单里，或者属于 auto_deep_families（一级会话、codex-*、claude-opus-*）。不在的，立即 release，理由写「非 L3 名单」。
+- 开工前，在本环境实测 `ps -o pid= -p $$` 和 `os.killpg(pgid,0)` 都能成功。
+- `pmset -g batt` 必须显示 AC Power。不是 AC，就立即 release，不要等，不要伪造。
+
+要做的：
+1. **修改前备份**：做一份中央 RunStore 的一致性备份，记下 SHA。
+2. **调视图上限**：用最小改动，把 T6 这条线的累计视图上限从 64 加到 82。可以照 T33 时间覆盖的做法，用一个只对本卡任务身份生效、并写进 RunStore metadata 的授权覆盖；也可以改常量，但必须有理由，并且同步更新所有引用它的冻结身份。
+   - metadata 里要写：本授权的 RESEARCH_LOG 节名、用户原话、旧上限 64、新上限 82、时间。
+   - 不清零，不退回已消费的额度，不改写既有的 runs。
+3. **唯一一次真实运行**：
+   - 按冻结协议，经 `teacher-da3 --mode run --allow-model-execution --coordinator-release` 持 `m0-worker.lock` 运行；
+   - DA3-SMALL 和 DA3-BASE 依次跑，一次只常驻一个模型；
+   - 请求的视图数正好 18，跑完累计视图应为 82；
+   - predictions 只能由持锁的子进程写出；
+   - 墙钟按现行每日 1200 秒的门执行；
+   - 失败就照实交回，不重试。
+4. **产出**：
+   - 每个视图的预测原件，包括深度、位姿、置信度，每份都附 SHA；
+   - 中央 run ID、退出码、stdout 和 stderr；
+   - 锁和进程组的证明；
+   - 统计结果按 T28 口径给出：fit 3 个世界、holdout 3 个世界、协方差秩上限、对抗用例结果、parity；
+   - 结论标为 `limited_aligned_diagnostic_candidate_unregistered`，不宣称能力通过，也不登记噪声模型。
+5. **不在范围内**：超过 82 的视图、第二次运行、训练、重新下载、付费、云端运行、锁外另跑之后再贴产物。
+
+**文件范围**：`src/ainerzero/v9/teachers/`（只允许为了配额覆盖做最小改动）、`tests/` 中对应的 teacher 测试、`artifacts/` 中央 RunStore（只经 CLI 写）、`reports/V9-T35/`。
+
+
+## 参数 v0（统筹登记，照用不改；觉得不对就在报告里提）
+```json
+{}
+```
+
+## 验收标准
+修改前 RunStore 备份；累计视图上限 82 的授权写入 metadata；唯一一次 18 视图持锁真跑（累计正好 82）；每视图预测原件+SHA；中央 run/rc/日志/锁与进程组证明；AC 真实；T28 口径统计；结论 candidate_unregistered；不重试。
+
+## 怎么交回
+1. 心跳（每 10 分钟）：`relay heartbeat ainerzero.V9.T35 --agent <你的ID> --msg "做到哪了"`
+2. 完成：`relay report ainerzero.V9.T35 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next`
+3. 失败也要交：加 `--failed`；环境或资源问题再加 `--retryable`
+4. 中途要停：`relay release ainerzero.V9.T35 --agent <你的ID> --reason "做到哪了"`；还要接着领就加 `--next`
+5. 交完或释放后：立刻回到 `relay next --agent <你的ID> --wait 3600` 继续领下一个（也可选 `--wait-forever`）；exit 3 表示 1 小时超时/暂时没活，立刻重跑同一条命令继续等，不结束会话；exit 4 表示你已持有任务（busy），先推进或 report/release，不要当成没活忙等。任务说明或报告里的“交完本任务就停/只做这一个”只约束该任务本身，交完仍回到 relay next，除非用户叫停或额度/上下文快用完。
+续领命令：`relay report ainerzero.V9.T35 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next` 或 `relay release ainerzero.V9.T35 --agent <你的ID> --next`。先用不超过 5 行说明进度，再在同一进程进入 next 长轮询，不要只写提醒就结束。容量不够则 `relay release ainerzero.V9.T35 --agent <你的ID> --capacity-exhausted`，不要加 `--next`，也不要 `--failed`。
+
+## 上一棒交接（这个任务之前有人做过：接着做，不要从头重来）
+- 第 1 棒 `antigravity-u2a7`：交了失败（约 22 分钟）。没有留言
+  · 失败报告：# ainerzero.V9.T35 执行报告
+角色：executor；负责人：antigravity-u2a7；时间：2026-10-27
+任务状态：reported；实验状态：failed（日活跃时间预算硬性守卫拦截）
+
+---
+
+## 任务依据与授权边界
+
+- **依据**：RESEARCH_LOG `R20261027-T6-views-82`，用户 2026-10-27 一级批准：「批准 T6 视图配额从 64 加到 82，只用于一次冻结的 18 视图完整标定，由 L3 名单内的代理经中央入口持锁运行。」
+- **口径**：`reports/V9-T6/r2-calib-fixtures/statistical_protocol.json` 与 T28 预登记（`reports/V9-T28/proposal.json`）。
+- **执行约束**：
+  1. L3 名单内代理（…
+  · 2026-10-27T01:48 准备经中央受控入口持锁执行唯一一次 18 视图真实运行
+  · 2026-10-27T01:49 开始：python3 -m ainerzero.cli teacher-da3 --mode run --statistical-protocol reports/V
+  · 2026-10-27T01:49 结束：python3 -m ainerzero.cli teacher-da3 --mode run --statistical-protocol reports/V（返回码 5，用时 0.0 分）
+- 第 2 棒 `antigravity-u2a7`：主动释放（约 0 分钟）。留言：唯一一次运行已在上一轮完成并交回（日预算硬性拦截失败），依规不执行第二次运行，等待 UTC 日期滚动后换新会话承接
+- 第 3 棒 `antigravity-u2a7`：主动释放（约 0 分钟）。留言：已完成修改前RunStore备份、元数据视图覆盖(64->82)、单次持锁真跑尝试与失败留档，依规禁止重试真跑，退场换新会话/统筹交接
+- 第 4 棒 `claude-az`：交了失败（约 4 分钟）。没有留言
+  · 失败报告：# ainerzero.V9.T35 r2 执行报告：唯一一次 18 视图真跑——**失败（代码缺陷），授权已耗尽**
+
+角色：claude-az（一级托管，用户 2026-10-27 指示亲自执行）。r1（antigravity-u2a7）的证据原样保留未改。
+
+## 结论（先说）
+- 做了：开跑前备份、零副作用 inspect、一次持锁真跑（中央入口，`--coordinator-release`）。
+- **结果：失败。** 模型前向实际执行（0.59 s），随后 `ValueError: paired depth shapes must agree` 崩在后处理，**没有产出任何统计，仅留下 1/6 世界的 da3_small 预测**。
+- **18 视图与 60 秒预留已被消耗**（累计 81/82 视图，1170/1200 s），不能重试。
+- 不宣称能力通过；不登记噪声模…
+- 先在主工作目录里看文件范围内已经改了什么（`git status`、`git diff`），再看 `reports/` 下有没有这个任务的半成品报告或进度文件。
+- 上一棒的做法如果有问题，可以改，但要在报告里写清你改了什么、为什么。
+- 你还没持有这个任务；以上只是只读预览。

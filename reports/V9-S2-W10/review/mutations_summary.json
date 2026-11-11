@@ -1,0 +1,58 @@
+[
+  {
+    "id": "M1",
+    "name": "W10-M1_device_ignored",
+    "description": "In adapters_mlx._planning_device, execute fn directly without mx.stream(target)",
+    "failed_tests_count": 3,
+    "result": "RED (FAILED: 3 failed, 15 passed)",
+    "restored_sha_match": true
+  },
+  {
+    "id": "M2",
+    "name": "W10-M2_train_on_planning_device",
+    "description": "In adapters_mlx, wrap MLXArmBAdapter.train_step with _planning_device",
+    "failed_tests_count": 2,
+    "result": "RED (FAILED: 2 failed, 16 passed)",
+    "restored_sha_match": true
+  },
+  {
+    "id": "M3",
+    "name": "W10-M3_predict_l2_unwrapped",
+    "description": "In adapters_mlx, unwrap MLXArmCAdapter.predict_l2 (remove @_planning_device)",
+    "failed_tests_count": 2,
+    "result": "RED (FAILED: 2 failed, 16 passed)",
+    "restored_sha_match": true
+  },
+  {
+    "id": "M4",
+    "name": "W10-M4_unknown_device_falls_back",
+    "description": "In adapters_mlx._planning_device, fallback to mx.gpu instead of raising ValueError",
+    "failed_tests_count": 1,
+    "result": "RED (FAILED: 1 failed, 17 passed)",
+    "restored_sha_match": true
+  },
+  {
+    "id": "M5",
+    "name": "W10-M5_init_no_rebuild_arm_b",
+    "description": "In adapters_mlx, Arm B init sets mx.random.seed(seed) but does not rebuild model",
+    "failed_tests_count": 2,
+    "result": "RED (FAILED: 2 failed, 16 passed)",
+    "restored_sha_match": true
+  },
+  {
+    "id": "M6",
+    "name": "W10-M6_silent_seed42_fallback_arm_c",
+    "description": "In adapters_mlx, Arm C train_step restores silent self.init(seed=42) when optimizer is None",
+    "failed_tests_count": 1,
+    "result": "RED (FAILED: 1 failed, 17 passed)",
+    "restored_sha_match": true
+  },
+  {
+    "id": "M7",
+    "name": "W10-M7_self_chosen_spec_device_gpu",
+    "description": "In spec.py, set PLAN_INFERENCE_DEVICE = 'gpu' instead of 'cpu'",
+    "failed_tests_count": 3,
+    "result": "RED (FAILED: 3 failed, 15 passed)",
+    "restored_sha_match": true
+  }
+]

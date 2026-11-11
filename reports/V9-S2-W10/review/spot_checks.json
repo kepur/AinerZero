@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "claim": "adapters_mlx._planning_device 装饰器包住三臂共 12 个推理方法（encode、predict_l1、cost_fn、latents、encode_l2、predict_l2），在 mx.stream(<device>) 内计算并转换成 numpy。",
+    "target_file": "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "target_lines": "34-45, 225, 239, 265, 271, 401, 408, 433, 632, 639, 662, 676, 694",
+    "verification": "MATCH",
+    "notes": "逐字与代码结构核对完全一致：定义 _planning_device 并在 target = getattr(mx, spec.PLAN_INFERENCE_DEVICE, None) 下以 with mx.stream(target) 包裹，三臂共计恰好 12 个推理方法被装饰。"
+  },
+  {
+    "id": 2,
+    "claim": "修复：init(seed) 先 mx.random.seed(seed)，再重建模型和优化器。同时去掉 train_step 里静默 init(seed=42) 的回退，改为报错。",
+    "target_file": "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "target_lines": "161-167, 173-174, 293-299, 305-306, 450-456, 462-463",
+    "verification": "MATCH",
+    "notes": "三臂的 init(seed) 均显式调用 mx.random.seed(int(seed)) 并重新实例化 model 和 optimizer；train_step 在 self.optimizer is None 时抛出 RuntimeError(\"train_step called before init(seed)...\")，绝无静默 seed=42。"
+  },
+  {
+    "id": 3,
+    "claim": "设备由 spec.PLAN_INFERENCE_DEVICE 决定，只追加，值为 \"cpu\"。不认识的值直接报错，不回退。",
+    "target_file": "src/ainerzero/v9/experiments/s2/spec.py",
+    "target_lines": "340-344",
+    "verification": "MATCH",
+    "notes": "spec.py 在文件最末尾只追加 PLAN_INFERENCE_DEVICE: str = \"cpu\"，adapters_mlx.py 中 target is None 时 raise ValueError(\"spec.PLAN_INFERENCE_DEVICE must be 'cpu' or 'gpu'...\")，严格 fail-closed。"
+  },
+  {
+    "id": 4,
+    "claim": "坏对照：M1 忽略设备 3 条失败；M2 训练也包进 2 条失败；M3 predict_l2 不包 2 条失败；M4 未知设备回退 1 条失败；M5 臂 B init 不重建 2 条失败；M6 臂 C 恢复静默种子 1 条失败。",
+    "target_file": "reports/V9-S2-W10/w10muts.py & tests/v9/experiments/test_s2_plan_device_native.py",
+    "target_lines": "w10muts.py:5-12",
+    "verification": "MATCH",
+    "notes": "复核者在独立隔离副本 /tmp/s2_w10_mutation_env 中亲手复做 M1-M6，变异失败条数依次为 3, 2, 2, 1, 2, 1 条，与报告声明完全吻合。"
+  }
+]

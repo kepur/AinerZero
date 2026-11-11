@@ -1,0 +1,42 @@
+[
+  {
+    "id": "SC-1",
+    "claim": "登记运行 P193 中，臂 B 种子 42 训练了 677 s，单格上限 1200 s，却以 Budget exhausted: wall_time_budget 被拒（RESEARCH_LOG R20261109-S2-train-r3-refused）。",
+    "file": "RESEARCH_LOG.md",
+    "lines": "2803-2808",
+    "found": "## R20261109-S2-train-r3-refused：训练第 2 格被账本拒绝——S2 worker 在完成时一次性扣减用时，同一段时间被算两次（一级 claude，2026-11-09）\n- **臂 B 种子 42：** 07:08–07:19，训练完 677 s 后以 Budget exhausted: wall_time_budget 被拒，账本记为 failed；驱动脚本随即停止。",
+    "status": "EXACT_MATCH"
+  },
+  {
+    "id": "SC-2",
+    "claim": "RunStore 的 consume 要求 amount ≤ 单格上限 − max(已过墙钟, 已扣时长)，文档字符串原文为「reserve before dispatch, never after performing it」。",
+    "file": "src/ainerzero/runtime/lifecycle.py",
+    "lines": "370-372, 795",
+    "found": "Line 370-372: budget[\"max_wall_seconds\"] - max(0.0, instant - row[\"created_at\"], row[\"active_seconds\"]). Line 795: \"\"\"Atomically reserve a unit before dispatch, never after performing it.\"\"\"",
+    "status": "EXACT_MATCH"
+  },
+  {
+    "id": "SC-3",
+    "claim": "_ActiveTimeTicker：execute_work_cell 在 begin_run 之后启动一个守护线程，每 RESERVATION_CHUNK_SECONDS（15 s）调用一次 store.consume，把上次以来的单调时钟增量补记进账本；账本拒绝时（BudgetExceeded），在 ledger._overruns[run_id] 里记下原因，计时器随之停止；运行离开工作状态时直接停止；finally 和 except 中都会停止并 join。",
+    "file": "src/ainerzero/v9/experiments/s2/worker.py",
+    "lines": "39, 317-380, 415, 442-457",
+    "found": "Line 39: RESERVATION_CHUNK_SECONDS: float = 15.0\nLine 344-346: self._thread = threading.Thread(target=self._loop, daemon=True)\nLine 367-375: except BudgetExceeded as exc: self._ledger._overruns[self._run_id] = ...; self._stop.set()\nexcept LifecycleError: self._stop.set()\nLine 377-380: def stop(): self._stop.set(); if self._thread.is_alive(): self._thread.join()\nLine 415: ticker = _ActiveTimeTicker(ledger, run_id, reservation_chunk_seconds).start()\nLine 443, 457: ticker.stop() in except and finally blocks",
+    "status": "EXACT_MATCH"
+  },
+  {
+    "id": "SC-4",
+    "claim": "S2Ledger.complete_run：如果有超时记录，抛出 BudgetExceeded，这一格判为失败；否则，在会计锁内读取已扣的 reserved_active_seconds，只扣 max(0, 报告用时 − 已扣) 的余量和优化步数。",
+    "file": "src/ainerzero/v9/experiments/s2/worker.py",
+    "lines": "239-252",
+    "found": "Line 239-242: overrun = self._overruns.get(run_id)\nif overrun is not None: raise BudgetExceeded(overrun, {})\nLine 243-252: with self._accounting_lock:\nalready = float(self.store.get_run(run_id).reserved_active_seconds)\nremainder = max(0.0, float(active_seconds) - already)\nif remainder > 0 or optimizer_steps > 0: self.store.consume(run_id, active_seconds=remainder, optimizer_steps=int(optimizer_steps))",
+    "status": "EXACT_MATCH"
+  },
+  {
+    "id": "SC-5",
+    "claim": "用例：tests/v9/experiments/test_s2_active_ticker.py，共 8 条，覆盖正常完成、未补记被拒、runner 自调 complete_run、真实超时失败、runner 抛出异常、短格子记账、总额部分统计、非正数间隔。",
+    "file": "tests/v9/experiments/test_s2_active_ticker.py",
+    "lines": "57-132",
+    "found": "8 test functions in test_s2_active_ticker.py all present and tested: test_cell_longer_than_half_budget_completes, test_without_in_flight_catch_up_the_same_cell_is_refused, test_self_completing_runner_is_not_double_counted, test_real_overrun_fails_the_cell, test_runner_exception_stops_ticker_and_fails_run, test_short_cell_accounting_unchanged, test_phase_ceiling_counts_partial_consumption_of_failed_cell, test_nonpositive_chunk_is_refused.",
+    "status": "EXACT_MATCH"
+  }
+]

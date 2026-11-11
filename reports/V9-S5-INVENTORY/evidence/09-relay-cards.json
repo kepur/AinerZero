@@ -1,0 +1,141 @@
+{
+  "ainerzero.V9.P5": {
+    "id": "ainerzero.V9.P5",
+    "title": "【代码·数学】S5 视觉强化：多教师合一、教师表示对齐、RLT 开/关（草稿：训练预算待用户批准）",
+    "status": "draft",
+    "display_label": "草稿",
+    "kind": "code",
+    "assignee": null,
+    "acceptance": "待批准后补全",
+    "depends_on": [
+      "ainerzero.V9.P3",
+      "ainerzero.V9.T4",
+      "ainerzero.V9.T8"
+    ],
+    "file_scope": [
+      "src/ainerzero/v9/",
+      "reports/V9-S5/"
+    ],
+    "needs": [
+      "code",
+      "math",
+      "longrun"
+    ],
+    "attempts": 0,
+    "result_head": null
+  },
+  "ainerzero.V9.P6": {
+    "id": "ainerzero.V9.P6",
+    "title": "【代码·数学·复核】独立复核 ainerzero.V9.P5（草稿）",
+    "status": "draft",
+    "display_label": "草稿",
+    "kind": "verify",
+    "assignee": null,
+    "acceptance": "≥6 个新不利反例真实非零",
+    "depends_on": [
+      "ainerzero.V9.P5"
+    ],
+    "file_scope": [
+      "reports/V-V9-P5/"
+    ],
+    "needs": [
+      "code",
+      "math"
+    ],
+    "attempts": 0,
+    "result_head": null
+  },
+  "ainerzero.V9.T4": {
+    "id": "ainerzero.V9.T4",
+    "title": "【代码·环境·GPU基准】V9.T4 教师接入：vjepa2-mlx + V-JEPA 2.1 ViT-L + Core ML Depth Anything V2 Small，M2 Max 基准（用户已批准）",
+    "status": "accepted",
+    "display_label": "通过",
+    "kind": "implement",
+    "assignee": "antigravity-h4d8",
+    "acceptance": "1. `env.lock.txt` 存在；主环境前后 freeze 无差异。\n2. `downloads.json` 里 revision 与 SHA256 齐全，只含批准的文件，总量 ≤ 2 GB。\n3. 数值检查全部断言化、真实非零退出；V-JEPA 与 DA2 各至少 1 个故意改坏对照变红。\n4. `bench.json` 每个模型都有：加载耗时、首帧延迟、稳态吞吐（中位数＋范围）、每千样本时间（标外推）、特征/缓存体积、内存峰值两口径。DA2 三种 compute units 齐全。\n5. GPU 墙钟合计 ≤ 30 分钟，有计时证据。\n6. 文件只落在 `envs/teachers/`、`artifacts/teachers/`、`reports/V9-T4/`。\n7. 报告列出未验证项，至少包括“未对照官方 PyTorch 参考”。",
+    "depends_on": [
+      "awz.V9.A10"
+    ],
+    "file_scope": [
+      "envs/teachers/",
+      "artifacts/teachers/",
+      "reports/V9-T4/"
+    ],
+    "needs": [
+      "code"
+    ],
+    "attempts": 0,
+    "result_head": "# ainerzero.V9.T4 教师接入与 M2 Max 推理基准报告\n\n- **任务 ID**：`ainerzero.V9.T4`\n- **执行者**：`antigravity-h4d8`\n- **主工作目录**：`/Users/mac/AinerWorkFlow/AinerZero`\n- **用户授权依据**：2026-10-16 用户原话「批准 T4」，记录见 AinerZero RESEARCH_LOG `R20261016-T4`\n- **硬件平台**：Apple M2 Max (12-core CPU, 38-core GPU, 16-core Neural Engine, 96GB 统一内存)\n- **供电状态**：AC 供电（pmset -g ps: `Now drawing from 'AC Power'`, Battery 100%）\n- **文件变更范围**：\n  - `envs/teachers/`\n  - `artifacts/teachers/`\n  - `reports/V9-T4/`\n\n---\n\n## 一、隔离环境与下载资产核验\n\n### 1. 隔离虚拟环境（.venv-t4）\n- **路径**：`envs/teachers/.venv-t4`（独立 Python 3.12.2，由 uv 构建）。\n- **依赖清单**：见 [env.lock.txt](file:///Users/mac/AinerWorkFlow/AinerZero/reports/V9-T4/env.lock.txt)。安装了 `mlx==0.32.4`、`coremltools==9.0`、`vjepa2-core-mlx==0.1.0`（源码可编辑安装自 `envs/teachers/src/vjepa2-mlx/packages/vjepa2-core-mlx`，commit `2de6caef0820894520271a8943761cc0b3cf8c22`）、`numpy==2.5.4`、`safetensors==0.8.0`、`pillow==13.0.0` 等。\n- **环境安全准则**：未触碰主环境 `.venv` / `.venv-ainerzero`，零 PyTorch，零 JAX，未安装到系统 Python。\n- **主环境冻结比对**：\n  - 开工前冻结：[main_env_pre.freeze.txt](file:///Users/mac/AinerWorkFlow/AinerZero/reports/V9-T4/main_env_pre.freeze.txt)\n  - 收工后冻结：[main_env_post.freeze.txt](file:///Users/mac/AinerWorkFlow/AinerZero/re"
+  },
+  "ainerzero.V9.T8": {
+    "id": "ainerzero.V9.T8",
+    "title": "【代码】V9.T8 RLT 停帧去重 numpy 参考实现与合成停帧片段测试（纯 CPU）",
+    "status": "accepted",
+    "display_label": "通过",
+    "kind": "code",
+    "assignee": "opencode-de3b",
+    "acceptance": "还原误差 ≤ τ；各合成片段保留率与理论值一致；τ=0 不去重；3 个故意改坏对照变红；未导入 MLX/torch",
+    "depends_on": [
+      "awz.V9.A10"
+    ],
+    "file_scope": [
+      "src/ainerzero/v9/tokenization/",
+      "tests/v9/tokenization/",
+      "reports/V9-T8/"
+    ],
+    "needs": [
+      "code"
+    ],
+    "attempts": 1,
+    "result_head": "# RLT Frame Dropping Reference Implementation & Synthetic Test Report\n# Task: ainerzero.V9.T8 — V9.T8 RLT停帧去重 numpy 参考实现与合成停帧片段测试（纯CPU）\n\n**Agent ID**: opencode-de3b  \n**Task**: ainerzero.V9.T8  \n**Model**: Nemotron 3 Ultra Free  \n**Date**: 2026-10-20  \n\n---\n\n## 1. Implementation: `src/ainerzero/v9/tokenization/rlt.py`\n\n### 1.1 RLT Algorithm (Equation 10, ARCHITECTURE_V9 §4)\n\nThe implementation implements Run-Length Tokenization (RLT) frame dropping as specified in ARCHITECTURE_V9 §4, item 10:\n\n> **RLT停帧去重**：同一位置的图块若 `‖p_t − p_{t−1}‖_∞ < τ` 就并入上一个 token，并以游程长度编码位置；`τ` 在登记时冻结，报告 token 保留率与精度损失。\n\n**Core algorithm**:\n- Input: video chunk sequence `[T, H/p, W/p, D]`\n- For each spatial position `(h, w)`, compute `‖p_t − p_{t−1}‖_∞` (L∞ norm across the D-dimensional feature vector)\n- If `‖p_t − p_{t−1}‖_∞ < τ`: current frame's patch at `(h, w)` is merged into the previous token (run-length encoded)\n- If `‖p_t − p_{t−1}‖_∞ >= τ`: current frame starts a new token\n- First frame at each position is always kept\n\n**Key functions**:\n- `rlt_frame_dropping(video_chunks, tau)`: Main reference implementation in numpy\n  - Returns: `retained`, `run_lengths`, `positions`, `restoration`, `retention_rate"
+  },
+  "ainerzero.V9.T6": {
+    "id": "ainerzero.V9.T6",
+    "title": "【代码·环境·GPU】V9.T6 DA3-Small/Base 几何教师：关键帧相机位姿与多视角深度（草稿：下载 + PyTorch 待批准）",
+    "status": "blocked",
+    "display_label": "阻塞",
+    "kind": "implement",
+    "assignee": "gemini-kzer",
+    "acceptance": "待批准后补全",
+    "depends_on": [
+      "ainerzero.V9.T2",
+      "ainerzero.V9.T27",
+      "ainerzero.V9.T31"
+    ],
+    "file_scope": [
+      "envs/teachers/t6/",
+      "envs/teachers/.venv-t6/",
+      "artifacts/teachers/da3/",
+      "reports/V9-T6/"
+    ],
+    "needs": [
+      "code"
+    ],
+    "attempts": 5,
+    "result_head": "# ainerzero.V9.T6 执行报告（r4）：DA3-Small/Base 真实产物留档与资源/配额守卫拦截报告\n\n- **任务 ID**：`ainerzero.V9.T6`（第 4 轮，尝试 4/3 次）\n- **执行者**：`gemini-kzer`\n- **项目**：AinerZero · V9 落地：NeuroGeometry × H-JEPA 世界脑（P0 无训练） → 轨道 T 教师接入\n- **主工作目录**：`/Users/mac/AinerWorkFlow/AinerZero`\n- **层级**：二级（执行层）· 类型：implement · GPU：重型（受控使用 Apple Silicon MPS 后端，独占 `m0-worker.lock`）\n- **依据**：`RESEARCH_LOG.md` R20261026-T6 一级批准（关键字：“批准 T6”）、params v2、ADR-0012、`COORDINATION.md`、`AGENTS.md`\n- **结论状态**：**资源/配额拦截（RETRYABLE）**，依统筹意见“若卡面尝试用尽：新开续修卡承接，保留 r4 张量归档不覆盖”完整交回。\n\n---\n\n## 一、真实产物全量归档（彻底闭合打回项 1）\n\n在 `reports/V9-T6/r4/predictions/` 下已完整生成并归档 **60 个预测文件**（109,777,368 字节），全部经实机 Apple Silicon MPS 后端真实推理生成：\n- **清单文件**：[reports/V9-T6/r4/predictions/predictions_manifest.json](file:///Users/mac/AinerWorkFlow/AinerZero/reports/V9-T6/r4/predictions/predictions_manifest.json)（SHA256: `7d5b700703927322e60b3647f60af170f3b0be271d9baa46fac6faf27cb369ec`）；\n- **DA3-SMALL**：6 房间多帧 `prediction.safetensors` + 6 份 `candidate.json` + 18 份单帧 `view_*.safetensors`；\n- **DA3-BASE**：6 房间多帧 `prediction.safetensors` + 6 份 `candidate.json` + 18 份单帧 `view_*.safetensors`；\n- **标定证据**：[reports/V9-T6/r4/calibration_evidence.json](file:///Users/mac/AinerWorkFlow/Ai"
+  },
+  "ainerzero.V9.T35": {
+    "id": "ainerzero.V9.T35",
+    "title": "【L3·强代理】【代码·环境·GPU】V9.T35 T6 冻结 18 视图完整标定：唯一一次持锁真跑（视图上限 64→82，用户 10-27 批准）",
+    "status": "failed",
+    "display_label": "失败",
+    "kind": "implement",
+    "assignee": "claude-az",
+    "acceptance": "修改前 RunStore 备份；累计视图上限 82 的授权写入 metadata；唯一一次 18 视图持锁真跑（累计正好 82）；每视图预测原件+SHA；中央 run/rc/日志/锁与进程组证明；AC 真实；T28 口径统计；结论 candidate_unregistered；不重试。",
+    "depends_on": [
+      "ainerzero.V9.T34"
+    ],
+    "file_scope": [
+      "src/ainerzero/v9/teachers/",
+      "tests/",
+      "artifacts/",
+      "reports/V9-T35/"
+    ],
+    "needs": [
+      "code",
+      "longrun"
+    ],
+    "attempts": 2,
+    "result_head": "# ainerzero.V9.T35 r2 执行报告：唯一一次 18 视图真跑——**失败（代码缺陷），授权已耗尽**\n\n角色：claude-az（一级托管，用户 2026-10-27 指示亲自执行）。r1（antigravity-u2a7）的证据原样保留未改。\n\n## 结论（先说）\n- 做了：开跑前备份、零副作用 inspect、一次持锁真跑（中央入口，`--coordinator-release`）。\n- **结果：失败。** 模型前向实际执行（0.59 s），随后 `ValueError: paired depth shapes must agree` 崩在后处理，**没有产出任何统计，仅留下 1/6 世界的 da3_small 预测**。\n- **18 视图与 60 秒预留已被消耗**（累计 81/82 视图，1170/1200 s），不能重试。\n- 不宣称能力通过；不登记噪声模型；`candidate_unregistered` 的结论都谈不上——没有候选。\n\n## 前置（全部实测）\nAC 供电（`pmset`）、`ps`/`killpg` 通过、一级会话属 auto-deep、inspect `can_run=true`、内存余量 82%、swap 111 MB。\n开跑前备份 `reports/V9-T35/runs-db-before-run-r2.sqlite3` SHA256 `f84337f59a14ac163b30e5fe5b404fa15f8d798c5dcb50d79e82e8b445ff3a1f`。\n\n## 失败根因\n- 真值深度 **210×280**（`depth_camera_z.npy`），DA3 输出 **378×504**（`process_res=504`）。\n- `da3_calibration_runner.py:240` 与 `:392` 两处 `compute_depth_metrics(res[\"depth\"][1], gt_depths[1])` 直接传入未缩放的预测深度，而 `compute_depth_metrics` 要求严格同形。\n- 同文件 `compute_t28_7d_residual`（行 100–108）已有“预测 resize 到真值尺寸”的逻辑，**但没复用到这两处调用**。\n- **全仓库没有任何测试引用 `da3_calibration_runner` / `run_full_calibration`**——这唯一一次授权真跑是该路径第一次被执行。T26/T27/T30/T31 验收的是监督与账本，没有覆盖标定 runner 本身。\n\n## 预测原件：部分保留（更正）\n持锁 worker 子进程写出了 **da3_small 第 1 个世界 `t6-analytic-room-0"
+  }
+}

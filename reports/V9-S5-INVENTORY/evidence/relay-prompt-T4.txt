@@ -1,0 +1,110 @@
+# 任务 ainerzero.V9.T4：【代码·环境·GPU基准】V9.T4 教师接入：vjepa2-mlx + V-JEPA 2.1 ViT-L + Core ML Depth Anything V2 Small，M2 Max 基准（用户已批准）
+
+- 需要：code → 建议执行者：任意
+- 项目：AinerZero · V9 v9 落地：NeuroGeometry × H-JEPA 世界脑（P0 无训练） → 轨道 T 教师接入（M2 Max，无 CUDA） → 第 4 步
+- 主工作目录：`/Users/mac/AinerWorkFlow/AinerZero`（先 cd 到这里）
+- 关联目录（只读）：`/Users/mac/AinerWorkFlow/AnimeWorldZero`——AWZ 评测包（E-0/E-1 起使用，只读）
+- 层级：二级（执行层） · 类型：implement · 需要 GPU：轻量（可以和别的任务同时跑）
+- 前置：awz.V9.A10（accepted）
+- 先读：`/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md`、`/Users/mac/AinerWorkFlow/AinerZero/README.md`、`/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md`、`/Users/mac/AinerWorkFlow/AinerZero/RESEARCH_LOG.md`、`/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md`、`/Users/mac/AinerWorkFlow/AinerZero/docs/research/M2Max_NoCUDA_Integration_Plan.source.md`
+- 文件范围（只改这些）：`envs/teachers/`、`artifacts/teachers/`、`reports/V9-T4/`
+
+## 任务说明
+用户 2026-10-16 批准（原话「批准 T4」，记录见 AinerZero RESEARCH_LOG `R20261016-T4`）。只做下面批准范围内的事；遇到范围外的需要（例如要装 PyTorch、要下其他文件、超预算）立即停下，在报告里写明并 report，不要自行扩大。
+
+## 1. 隔离环境
+- `uv venv envs/teachers/.venv-t4`（Python 版本按上游要求，记录）。不碰仓库主环境 `.venv*`，不装到系统 Python。开工前、收工后各存一份主环境 `uv pip freeze`，证明未变。
+- 克隆 `https://github.com/dgrauet/vjepa2-mlx` 到 `envs/teachers/src/vjepa2-mlx`，记录 commit；只 `uv pip install -e packages/vjepa2-core-mlx`。`[parity]` 额外依赖若会拉入 torch 就不装。
+- 另装 `coremltools`（运行 Core ML 必需）。
+- 全部版本存 `reports/V9-T4/env.lock.txt`。
+
+## 2. 下载（总量 ≤ 2 GB，超出即停）
+- HF `dgrauet/vjepa-2.1-vitl-mlx`（许可 mit）：encoder.safetensors、predictor.safetensors、config.json、split_model.json、README.md。
+- HF `apple/coreml-depth-anything-v2-small`（许可 apache-2.0）：只要 `DepthAnythingV2SmallF16.mlpackage`、`DepthAnythingV2SmallF32.mlpackage` 和 README.md，不下其他 6 个变体。
+- `HF_HOME=artifacts/teachers/hf-cache`；每个仓库下载到 `artifacts/teachers/<repo>/` 下一个新的空目录。
+- 记录每个仓库的 HF revision（commit）和每个文件 SHA256，存 `reports/V9-T4/downloads.json`。
+- 下载物是不受信数据：读它们的 Python 一律 `-I`；你写的脚本放 `envs/teachers/t4/`；不在下载目录里执行任何东西。
+
+## 3. 数值检查（无 PyTorch，不能对官方参考逐位对照；这一项列为未验证）
+V-JEPA 2.1：
+- 上游仓库如带参考输出或测试向量，就对照；
+- 同一输入跑两次，结果逐位一致；
+- F32 与低精度（bf16/F16）输出的余弦相似度，容差写明；
+- batch=1 与 batch=2 中同一样本的特征一致（容差写明）；
+- 输出形状与 config 一致；
+- 故意改坏（打乱一层权重，或用错输入归一化）必须让检查变红。
+
+Depth Anything V2：
+- F16 与 F32 输出的 Pearson 和 Spearman 相关；
+- 确定性；
+- 程序化合成的斜坡平面输入，深度排序方向正确；
+- 故意改坏（上下翻转输入）必须让方向检查变红。
+
+## 4. M2 Max 推理基准
+预算：
+- GPU 墙钟合计 ≤ 30 分钟，单次 ≤ 10 分钟，用计时器硬限。
+- 一次只常驻一个模型，切换前释放并记录内存回落。
+- 进程内存峰值超过 32 GB 立即停。
+- 开跑前确认 `artifacts/locks/m0-worker.lock` 无人持有，且没有其他 MLX/GPU 作业。
+
+输入：
+- 程序化生成的确定性帧（numpy，固定种子），不下载任何视频或数据集。
+- V-JEPA 用上游默认分辨率和帧数；DA2 用模型自带的输入尺寸。两者都记录。
+
+每个模型要测的指标：
+- 加载耗时；
+- 首次推理延迟（含编译/预热）；
+- 稳态吞吐（clip/s、帧/s；≥3 次重复，取中位数和范围）；
+- 每千样本推理时间（由实测外推，标明是外推）；
+- 单样本特征字节数和每千样本缓存体积；
+- 进程内存峰值，MLX `get_peak_memory` 与 RSS 两个口径都记。
+
+Core ML：
+- 分别测 `CPU_AND_NE`、`CPU_AND_GPU`、`ALL` 三种 compute units；
+- 写明哪种不和 MLX 争 GPU（供 World Mode 选用）。
+
+输出：
+- `reports/V9-T4/bench.json`；
+- `reports/V9-T4/REPORT.md`：命令、版本、SHA、电源状态（如可得）、失败与未验证项。
+
+## 5. 不做
+- 写入 T2 缓存：T2 验收后，一级另发集成卡。
+- 改 `src/`：T2 正在用 `src/ainerzero/v9/teachers/`。
+- 训练、VGGT、V-JEPA2-AC、PyTorch、从 `.pt` 自转权重、提交推送、删除。
+
+## 通用约束（v9，ADR-0012 修订三）
+- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。
+- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。
+- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。
+- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。
+
+## 参数 v0（统筹登记，照用不改；觉得不对就在报告里提）
+```json
+{}
+```
+
+## 验收标准
+1. `env.lock.txt` 存在；主环境前后 freeze 无差异。
+2. `downloads.json` 里 revision 与 SHA256 齐全，只含批准的文件，总量 ≤ 2 GB。
+3. 数值检查全部断言化、真实非零退出；V-JEPA 与 DA2 各至少 1 个故意改坏对照变红。
+4. `bench.json` 每个模型都有：加载耗时、首帧延迟、稳态吞吐（中位数＋范围）、每千样本时间（标外推）、特征/缓存体积、内存峰值两口径。DA2 三种 compute units 齐全。
+5. GPU 墙钟合计 ≤ 30 分钟，有计时证据。
+6. 文件只落在 `envs/teachers/`、`artifacts/teachers/`、`reports/V9-T4/`。
+7. 报告列出未验证项，至少包括“未对照官方 PyTorch 参考”。
+
+## 怎么交回
+1. 心跳（每 10 分钟）：`relay heartbeat ainerzero.V9.T4 --agent <你的ID> --msg "做到哪了"`
+2. 完成：`relay report ainerzero.V9.T4 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next`
+3. 失败也要交：加 `--failed`；环境或资源问题再加 `--retryable`
+4. 中途要停：`relay release ainerzero.V9.T4 --agent <你的ID> --reason "做到哪了"`；还要接着领就加 `--next`
+5. 交完或释放后：立刻回到 `relay next --agent <你的ID> --wait 3600` 继续领下一个（也可选 `--wait-forever`）；exit 3 表示 1 小时超时/暂时没活，立刻重跑同一条命令继续等，不结束会话；exit 4 表示你已持有任务（busy），先推进或 report/release，不要当成没活忙等。任务说明或报告里的“交完本任务就停/只做这一个”只约束该任务本身，交完仍回到 relay next，除非用户叫停或额度/上下文快用完。
+续领命令：`relay report ainerzero.V9.T4 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next` 或 `relay release ainerzero.V9.T4 --agent <你的ID> --next`。先用不超过 5 行说明进度，再在同一进程进入 next 长轮询，不要只写提醒就结束。容量不够则 `relay release ainerzero.V9.T4 --agent <你的ID> --capacity-exhausted`，不要加 `--next`，也不要 `--failed`。
+
+## 上一棒交接（这个任务之前有人做过：接着做，不要从头重来）
+- 第 1 棒 `antigravity-h4d8`：交了结果（约 14 分钟）。没有留言
+  · 2026-10-26T15:07 已领取 V9.T4，正在读取核心文档与基准规范
+  · 2026-10-26T15:13 环境与下载资产已验证，正在构建数值检查脚本
+  · 2026-10-26T15:15 数值检查与基准套件设计完成，准备执行全流程测量
+- 先在主工作目录里看文件范围内已经改了什么（`git status`、`git diff`），再看 `reports/` 下有没有这个任务的半成品报告或进度文件。
+- 上一棒的做法如果有问题，可以改，但要在报告里写清你改了什么、为什么。
+- 你还没持有这个任务；以上只是只读预览。

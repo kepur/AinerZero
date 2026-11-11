@@ -1,0 +1,34 @@
+[
+  {
+    "id": "SC-1",
+    "claim": "用户批准：11-08「批准改为 30」（RESEARCH_LOG R20261108-S2-redraw-30）。起因：登记运行 P188 在 train 第 11 个世界失败；全量模拟表明冻结的上限 5 次在登记规模下不可行（R20261108-S2-data-r2-failed，reports/V9-S2-DATA-r2/worldscan/）。",
+    "file": "RESEARCH_LOG.md",
+    "lines": "2733-2740",
+    "found": "## R20261108-S2-redraw-30：用户批准把世界重抽上限从 5 次改为 30 次（一级 claude 登记，2026-11-08）\n- **用户原话：**「批准改为 30」，11-08，claude 会话。\n- 一级的提问是「世界重抽上限从 5 次改为 30 次（0.3 门槛不变），批准吗？」，依据是 R20261108-S2-data-r2-failed 的全量模拟。",
+    "status": "EXACT_MATCH"
+  },
+  {
+    "id": "SC-2",
+    "claim": "spec.py：末尾追加 MAX_REDRAW_RETRIES = 30，原有的 = 5 那一行不动，遵守「只追加」的规则；MAX_REJECTION_RATE 仍为 0.30。",
+    "file": "src/ainerzero/v9/experiments/s2/spec.py",
+    "lines": "75-76, 344-346",
+    "found": "Line 75: MAX_REJECTION_RATE = 0.30\nLine 76: MAX_REDRAW_RETRIES = 5  # Redraw attempts upper bound\nLine 344: # --- 用户 11-08 批准（RESEARCH_LOG R20261108-S2-redraw-30）：世界重抽上限 5→30；拒绝门槛 MAX_REJECTION_RATE 0.30 不变。\nLine 346: MAX_REDRAW_RETRIES = 30",
+    "status": "EXACT_MATCH"
+  },
+  {
+    "id": "SC-3",
+    "claim": "world.py：import spec；WORLD_REJECTION_RATE_THRESHOLD、WORLD_REDRAW_MAX 改为 spec 的别名；prepare_world_with_long_pairs(max_world_redraws=None, rejection_threshold=None) 与 world_rejection_requires_redraw(threshold=None) 在调用时读取 spec；max_world_redraws < 1 时报错。",
+    "file": "src/ainerzero/v9/experiments/s2/world.py",
+    "lines": "55-58, 455-456, 650-655",
+    "found": "Line 56: WORLD_REJECTION_RATE_THRESHOLD = spec.MAX_REJECTION_RATE\nLine 57: WORLD_REDRAW_MAX = spec.MAX_REDRAW_RETRIES\nLine 455: limit = float(spec.MAX_REJECTION_RATE) if threshold is None else float(threshold)\nLine 650-655: if max_world_redraws is None: max_world_redraws = int(spec.MAX_REDRAW_RETRIES)\nif rejection_threshold is None: rejection_threshold = float(spec.MAX_REJECTION_RATE)\nif int(max_world_redraws) < 1: raise ValueError(...)",
+    "status": "EXACT_MATCH"
+  },
+  {
+    "id": "SC-4",
+    "claim": "登记种子里最难的世界用默认值都能通过，且重抽次数与扫描结果完全一致：train 11 需 8 次（即 P188 失败的那个世界），train 173 需 20 次，dev 14 需 17 次",
+    "file": "reports/V9-S2-DATA-r2/worldscan/ & in-memory seed scan (Step 4)",
+    "lines": "reports/V9-S2-DATA-r2/worldscan/train_0.json & dev.json",
+    "found": "In-memory seed scan confirmed: train world 11: 8 attempts (7 redraws); train world 173: 20 attempts (19 redraws); dev world 14: 17 attempts (16 redraws). All 200 train worlds and 50 dev worlds passed.",
+    "status": "EXACT_MATCH"
+  }
+]

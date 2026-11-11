@@ -1,0 +1,87 @@
+{
+  "task_id": "ainerzero.V9.P185",
+  "reviewed_task_id": "ainerzero.V9.P184",
+  "agent_id": "gemini-k8d4",
+  "tier": 2,
+  "status": "completed",
+  "recommendation": "RECOMMEND_ACCEPT",
+  "scope_verification": {
+    "modules_modified_count": 5,
+    "sha256_all_matched": true,
+    "diff_matches_saved_patch": true,
+    "saved_patch_file": "reports/V9-S2-W10/git_diff.patch",
+    "working_tree_other_files_accounted": true
+  },
+  "zero_fallback_check": {
+    "patterns_checked": [
+      "or []",
+      "or {}",
+      "getattr(..., default)",
+      "if ... is None else",
+      "default_",
+      "seed=42"
+    ],
+    "fail_closed_confirmed": true,
+    "silent_fallback_found": false,
+    "seed_42_fallback_eliminated": true
+  },
+  "boundaries_and_seed": {
+    "inference_methods_wrapped": 12,
+    "non_inference_methods_not_wrapped": true,
+    "load_trained_model_does_not_call_init": true,
+    "train_runner_calls_init_before_train_step": true,
+    "seed_determines_weights_across_processes": true
+  },
+  "isolated_mutations": {
+    "isolation_dir": "/tmp/s2_w10_mutation_env",
+    "import_assertion_passed": true,
+    "mutation_count": 7,
+    "all_mutations_turned_red": true,
+    "all_shas_restored": true
+  },
+  "native_mlx_tests": {
+    "command": ".venv/bin/pytest tests/v9/experiments/test_s2_arms_mlx_native.py tests/v9/experiments/test_s2_adapters_mlx_native.py tests/v9/experiments/test_s2_arm_a_batched_native.py tests/v9/experiments/test_s2_learned_planning_native.py tests/v9/experiments/test_s2_production_e2e_native.py tests/v9/experiments/test_s2_train_native.py tests/v9/experiments/test_s2_plan_device_native.py --native-mlx -v",
+    "tests_total": 37,
+    "tests_passed": 37
+  },
+  "smoke_rehearsal_independent": {
+    "output_root_temp": true,
+    "elapsed_seconds": 174.9,
+    "ceiling_seconds": 1200.0,
+    "reasons_empty": true,
+    "step_times": {
+      "arm_a": 0.117523455619812,
+      "arm_b": 0.19253361225128174,
+      "arm_c": 0.2633127450942993
+    },
+    "plan_times_median": {
+      "arm_a": 1.9619239375024335,
+      "arm_b": 2.2777242709998973,
+      "arm_c": 1.0988881874982326
+    },
+    "step3_passed": true,
+    "step4_oracle_passed": true,
+    "step4_oracle_success_rate": 1.0,
+    "step4_oracle_fuse_triggered": false,
+    "budget_total_seconds": 33485,
+    "budget_ceiling_seconds": 54000,
+    "budget_headroom_percent": 38.0
+  },
+  "full_test_suite": {
+    "command": "PYTHONPATH=.:src .venv/bin/pytest tests/ -ra -q",
+    "exec_supervision": "relay exec --every 120",
+    "tests_total": 3725,
+    "tests_passed": 3725,
+    "tests_failed": 0,
+    "tests_deselected": 7,
+    "artifacts_scanned_before": 84283,
+    "artifacts_scanned_after": 84283,
+    "artifacts_diff_count": 0,
+    "duration_seconds": 1090.2
+  },
+  "spot_checks": {
+    "total_checked": 4,
+    "verbatim_matches": 4,
+    "discrepancies": 0
+  }
+}

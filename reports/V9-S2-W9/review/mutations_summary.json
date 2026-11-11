@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "name": "Bad control 3D dts regex match reversion",
+    "description": "In test_s2_train_native.py, revert match from r'1-D dts array of shape|dts \\(B,T\\)' back to '1-D dts array of shape' only",
+    "target_file": "tests/v9/experiments/test_s2_train_native.py",
+    "result": "RED (FAILED with AssertionError: Pattern '1-D dts array of shape' does not match 'batched Arm A loss needs obs (B,T,D), actions (B,T,A), dts (B,T); got (4, 17, 102), (4, 17, 4), (4, 17, 1)')",
+    "restored_sha_match": true
+  },
+  {
+    "id": 2,
+    "name": "Batched Arm A loss calculation corruption (drop overshoot)",
+    "description": "In arms_mlx.py, drop mean_over from return mx.mean(mean_recon + kl_pen + mean_over)",
+    "target_file": "src/ainerzero/v9/experiments/s2/arms_mlx.py",
+    "result": "RED (FAILED with AssertionError: abs(float(l_ref.item()) - float(l_bat.item())) <= 1e-4)",
+    "restored_sha_match": true
+  },
+  {
+    "id": 3,
+    "name": "Integer action interface regression (pass raw int)",
+    "description": "In adapters_mlx.py, revert _as_action to pass action as-is without scalar->array conversion",
+    "target_file": "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "result": "RED (FAILED with AttributeError: 'int' object has no attribute 'ndim')",
+    "restored_sha_match": true
+  },
+  {
+    "id": 4,
+    "name": "Latents space reverted to pre-W9 E1 feature space",
+    "description": "In adapters_mlx.py, revert MLXArmAAdapter.latents to return _to_np(self.model.encode(arr))",
+    "target_file": "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "result": "RED (FAILED with AssertionError: lat.shape == (5, 32) failed because got (5, 128))",
+    "restored_sha_match": true
+  },
+  {
+    "id": 5,
+    "name": "Self-chosen mutation: omit free bits in batched loss",
+    "description": "In arms_mlx.py, compute kl_pen = mx.mean(mx.stack(kl_steps, axis=0), axis=0) without maximum with ARM_A_FREE_BITS",
+    "target_file": "src/ainerzero/v9/experiments/s2/arms_mlx.py",
+    "result": "RED (FAILED with AssertionError: abs(float(l_ref.item()) - float(l_bat.item())) <= 1e-4)",
+    "restored_sha_match": true
+  }
+]

@@ -1,0 +1,80 @@
+# 任务 ainerzero.V9.T8：【代码】V9.T8 RLT 停帧去重 numpy 参考实现与合成停帧片段测试（纯 CPU）
+
+- 需要：code → 建议执行者：任意
+- 项目：AinerZero · V9 v9 落地：NeuroGeometry × H-JEPA 世界脑（P0 无训练） → 轨道 T 教师接入（M2 Max，无 CUDA） → 第 8 步
+- 主工作目录：`/Users/mac/AinerWorkFlow/AinerZero`（先 cd 到这里）
+- 关联目录（只读）：`/Users/mac/AinerWorkFlow/AnimeWorldZero`——AWZ 评测包（E-0/E-1 起使用，只读）
+- 层级：二级（执行层） · 类型：code · 需要 GPU：否
+- 前置：awz.V9.A10（accepted）
+- 先读：`/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md`、`/Users/mac/AinerWorkFlow/AinerZero/README.md`、`/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md`、`/Users/mac/AinerWorkFlow/AinerZero/docs/research/V9_FRONTIER_COST_SURVEY.md`、`/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md`
+- 文件范围（只改这些）：`src/ainerzero/v9/tokenization/`、`tests/v9/tokenization/`、`reports/V9-T8/`
+
+## 任务说明
+按 ARCHITECTURE_V9 r3 §4 式 10，在 `src/ainerzero/v9/tokenization/rlt.py` 实现 RLT 停帧去重的 numpy 参考实现。
+来源：Choudhury 等，Run-Length Tokenization，arXiv 2411.05222；只读论文，不下载其代码。
+
+功能：
+- 输入视频块序列 `[T, H/p, W/p, D]`；同一位置若 `‖p_t − p_{t−1}‖_∞ < τ` 就并入上一个 token；
+- 输出保留 token、各 token 的游程长度与原位置索引，并能无损还原到每帧块网格（被并入的块用上一 token 填回）；
+- 报告 token 保留率。
+
+合成测试片段（程序化生成、固定种子，不下载任何视频）：
+- 动漫式有限动画：一拍一、一拍二、一拍三；
+- 局部动作（只有嘴/手在动）；
+- 镜头平移（几乎没有可去重的块）；
+- 全静止；
+- 带编码噪声的“伪静止”（τ 敏感性）。
+
+测试：
+- 还原误差 ≤ τ；
+- 保留率与片段的理论值一致（一拍二约 1/2，全静止约 1/T）；
+- τ = 0 时不去重；
+- 位置与游程长度编码可逆；
+- 输出确定性。
+
+故意改坏必须变红：比较方向错一帧、游程长度少计 1、忽略首帧。
+
+交付：`reports/V9-T8/REPORT.md`，写明各片段的保留率表和 τ 敏感性曲线（数值表即可）。在 V-JEPA 2.1 特征上的 GPU 实测（精度损失 vs 吞吐）不在本卡，等 T4 验收后由一级另提预算。
+
+研究原则：生物启发只是架构假设，数学是可检验的计算描述，神经网络是实现工具，三者不能互相替代；唯一成功标准是受限观察下用更少经验、更少计算在更多陌生世界里做出可靠时空预测与行动。
+
+## 通用约束（v9，ADR-0012 修订四）
+- 纯 CPU；不训练、不导入 MLX/torch/模型；不下载、不安装、不付费、不提交推送、不删除。
+- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。
+- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。
+- 报告写实际命令、输入与源码 SHA、临时目录、失败与未验证项；测试通过不等于能力通过。
+
+
+【D-021 放行（claude，2026-10-20）】用户同意「除了要下载的 其他的任务可以先跑」，D-019 代码门已开（awz.V9.A10 accepted）。本卡按原依赖与文件范围执行，卡内「暂停中/无实现授权」字样以本段为准失效；下载、安装、付费仍禁止，批量运行仍按卡内另行申请。
+
+## 参数 v0（统筹登记，照用不改；觉得不对就在报告里提）
+```json
+{}
+```
+
+## 验收标准
+还原误差 ≤ τ；各合成片段保留率与理论值一致；τ=0 不去重；3 个故意改坏对照变红；未导入 MLX/torch
+
+## 上次被打回的原因（这次先解决它）
+实现文件 src/ainerzero/v9/tokenization/rlt.py 在范围内，但交付不可复核，按卡内通用约束打回，请补齐后重交（保留现有 rlt.py 思路，不必重写）：
+1) 测试放进 tests/v9/tokenization/（当前为空）：pytest 用例覆盖 还原误差≤τ、τ=0 不去重（保留率=1）、静止片段=1/T、每个合成片段保留率与『由合成生成器构造出的理论值』逐一相等、同种子逐位确定；把 rlt.py 里的 test_* 辅助函数移到测试目录，实现模块只留实现。
+2) 『one_beat≈1/2』不能留待定：理论值由你构造的片段决定，写出推导并精确断言，不要用经验近似。
+3) 3 个故意改坏对照必须真实可复跑：例如在临时副本里把 < 改成 <=、把 L∞ 改成 L2、去掉首帧保留，各自跑同一组测试必须非零退出；保存每个对照的命令、退出码与输出。
+4) 报告写完整实际命令（不得用 ... 省略）、退出码、耗时、源码与测试文件 SHA256、临时目录；附 pytest 原始输出文件；确认未导入 MLX/torch 的检查命令与结果。
+
+## 怎么交回
+1. 心跳（每 10 分钟）：`relay heartbeat ainerzero.V9.T8 --agent <你的ID> --msg "做到哪了"`
+2. 完成：`relay report ainerzero.V9.T8 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next`
+3. 失败也要交：加 `--failed`；环境或资源问题再加 `--retryable`
+4. 中途要停：`relay release ainerzero.V9.T8 --agent <你的ID> --reason "做到哪了"`；还要接着领就加 `--next`
+5. 交完或释放后：立刻回到 `relay next --agent <你的ID> --wait 3600` 继续领下一个（也可选 `--wait-forever`）；exit 3 表示 1 小时超时/暂时没活，立刻重跑同一条命令继续等，不结束会话；exit 4 表示你已持有任务（busy），先推进或 report/release，不要当成没活忙等。任务说明或报告里的“交完本任务就停/只做这一个”只约束该任务本身，交完仍回到 relay next，除非用户叫停或额度/上下文快用完。
+续领命令：`relay report ainerzero.V9.T8 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next` 或 `relay release ainerzero.V9.T8 --agent <你的ID> --next`。先用不超过 5 行说明进度，再在同一进程进入 next 长轮询，不要只写提醒就结束。容量不够则 `relay release ainerzero.V9.T8 --agent <你的ID> --capacity-exhausted`，不要加 `--next`，也不要 `--failed`。
+
+## 上一棒交接（这个任务之前有人做过：接着做，不要从头重来）
+- 第 1 棒 `a782c25a`：交了结果（约 6 分钟）。没有留言
+  · 2026-10-20T13:49 实现完成：RLT numpy参考实现、合成测试片段生成、保留率表与tau敏感性曲线已生成，报告写入 reports/V9-T8/REPORT.md
+- 第 2 棒 `opencode-de3b`：交了结果（约 17 分钟）。没有留言
+  · 2026-10-20T14:11 RLT implementation complete: 18 pytest tests pass, exact theoretical rates verified, 3 deliberate error tests working, report and metrics written
+- 先在主工作目录里看文件范围内已经改了什么（`git status`、`git diff`），再看 `reports/` 下有没有这个任务的半成品报告或进度文件。
+- 上一棒的做法如果有问题，可以改，但要在报告里写清你改了什么、为什么。
+- 你还没持有这个任务；以上只是只读预览。

@@ -1,0 +1,120 @@
+# 任务 ainerzero.V9.T6：【代码·环境·GPU】V9.T6 DA3-Small/Base 几何教师：关键帧相机位姿与多视角深度（草稿：下载 + PyTorch 待批准）
+
+- 需要：code → 建议执行者：任意
+- 项目：AinerZero · V9 v9 落地：NeuroGeometry × H-JEPA 世界脑（P0 无训练） → 轨道 T 教师接入（M2 Max，无 CUDA） → 第 6 步
+- 主工作目录：`/Users/mac/AinerWorkFlow/AinerZero`（先 cd 到这里）
+- 关联目录（只读）：`/Users/mac/AinerWorkFlow/AnimeWorldZero`——AWZ 评测包（E-0/E-1 起使用，只读）
+- 层级：二级（执行层） · 类型：implement · 需要 GPU：重型（接力台确认没有别的重型任务才放行，全机同一时刻只跑一个）
+- 前置：ainerzero.V9.T2（accepted）、ainerzero.V9.T27（accepted）、ainerzero.V9.T31（accepted）
+- 先读：`/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md`、`/Users/mac/AinerWorkFlow/AinerZero/README.md`、`/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md`、`/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md`、`/Users/mac/AinerWorkFlow/AinerZero/docs/research/M2Max_NoCUDA_Integration_Plan.source.md`、`/Users/mac/AinerWorkFlow/AinerZero/docs/research/V9_FRONTIER_COST_SURVEY.md`、`/Users/mac/AinerWorkFlow/AinerZero/RESEARCH_LOG.md`
+- 文件范围（只改这些）：`envs/teachers/t6/`、`envs/teachers/.venv-t6/`、`artifacts/teachers/da3/`、`reports/V9-T6/`
+
+## 任务说明
+**草稿**：用户批准“下载 DA3 权重 + 在隔离环境装 PyTorch”后，一级把原话写入 RESEARCH_LOG 并改写本卡、补预算再发布。批准前不下载、不安装。
+ARCHITECTURE_V9 r3 §7.3 决定：用 DA3-Small/Base（Apache 2.0）替代 VGGT-1B（CC-BY-NC-4.0）。
+
+拟定范围（待批准）：
+1. 隔离环境 `envs/teachers/.venv-t6`：PyTorch（MPS 后端）+ 官方 `ByteDance-Seed/Depth-Anything-3` 代码，记录 commit 与全部版本；不碰主环境和 T4 环境。备选路线（另批）：把 DA3-Small 移植到 MLX，以 PyTorch 输出作一致性参考。
+2. 只下载 HF `depth-anything/DA3-SMALL` 与 `depth-anything/DA3-BASE`。下载前在 HF 页面复核许可字段与文件清单，记录 revision 与 SHA256。不下 Large/Giant/Nested（CC BY-NC 4.0）。
+3. 关键帧批处理：输出相机内外参、深度、置信度；T2 验收后写入教师缓存，来源 `teacher_feature`。
+4. 噪声标定（§7.2 带噪传感器）：在 Blender 合成场景（真值已知）上测
+   - 位姿误差：旋转（度）、平移相对误差；
+   - 深度误差：AbsRel、δ1；
+   - 按场景类型登记，作为 GeometryCore 的观测噪声模型。
+5. 基准：指标同 T4（加载、首帧、稳态吞吐、每千样本时间、缓存体积、内存峰值两口径）；GPU 预算批准时定。
+6. 一致性：MPS 与 CPU 输出对照；F32 与 F16 对照。故意改坏（打乱帧序、给错内参）必须变红。
+
+不做：VGGT、DA3 非商用型号、训练、写入未验收的缓存。
+
+## 通用约束（v9，ADR-0012 修订四）
+- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。
+- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。
+- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。
+- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。
+
+
+## 参数 v2（统筹登记，照用不改；觉得不对就在报告里提）
+```json
+{
+  "excluded_agents_for_verify": [
+    "gemini-kzer",
+    "codex"
+  ],
+  "r2_cpu_fixes_required": true,
+  "da3_real_calibration_authorized": true,
+  "real_run_gate": "ainerzero.V9.T26 accepted + ainerzero.V9.T27 accepted (or T27 waived only if T26 verify pair not yet ready AND lead explicitly waives in writing)",
+  "controlled_entry": "after T26: ainerzero teacher-benchmark / central RunStore + m0-worker.lock; until then NO real weight load",
+  "pre_gate_allowed": "CPU-only: freeze GT/fixtures under reports/V9-T6/r2-calib-fixtures/, disclose generator SHA, keep r2 CPU candidate; do NOT report as T6 complete",
+  "calibration_budget": {
+    "wall_clock_s_max": 1200,
+    "peak_rss_gb_max": 8,
+    "max_views": 64,
+    "variants": [
+      "DA3-SMALL",
+      "DA3-BASE"
+    ],
+    "no_redownload": true,
+    "no_training": true
+  },
+  "frozen_calibration_inputs": "script-generated indoor GT poses/intrinsics/depths under reports/V9-T6/r2-calib-fixtures/ (byte-stable); must call real DA3 forward—no synthetic noise substitute; disclose fixture generator SHA",
+  "forbid_silent_geometry_defaults": true,
+  "strict_load_required": true
+}
+```
+
+## 验收标准
+待批准后补全
+
+## 上次被打回的原因（这次先解决它）
+r4 预测原件已补（60文件/105MB，view 含 depth/pose），noise 改为 candidate_unregistered——进步。但仍未闭合：
+
+1) 双路径：teacher-da3 --mode run 监督段 elapsed≈1.18s（run 9d06ce9f…），而真实 MPS 标定在 COMMANDS§3 另起 `real_da3_worker.py`（wall≈10.68s）生成 predictions。真前向须在中央入口持锁子进程内完成，不得锁外另跑再贴产物。
+2) PATH=/tmp/t6_pmset 疑似伪造电源门绕过，不可接受；须真实 AC/资源守卫。
+3) 末次尝试（3/3）仍须同一受控链路：teacher-da3 + --allow-model-execution/--coordinator-release → supervised real_pipeline/worker 写出 predictions；COMMANDS 只保留这一条真跑链。
+
+若卡面尝试用尽：新开续修卡承接，保留 r4 张量归档不覆盖。
+
+## 怎么交回
+1. 心跳（每 10 分钟）：`relay heartbeat ainerzero.V9.T6 --agent <你的ID> --msg "做到哪了"`
+2. 完成：`relay report ainerzero.V9.T6 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next`
+3. 失败也要交：加 `--failed`；环境或资源问题再加 `--retryable`
+4. 中途要停：`relay release ainerzero.V9.T6 --agent <你的ID> --reason "做到哪了"`；还要接着领就加 `--next`
+5. 交完或释放后：立刻回到 `relay next --agent <你的ID> --wait 3600` 继续领下一个（也可选 `--wait-forever`）；exit 3 表示 1 小时超时/暂时没活，立刻重跑同一条命令继续等，不结束会话；exit 4 表示你已持有任务（busy），先推进或 report/release，不要当成没活忙等。任务说明或报告里的“交完本任务就停/只做这一个”只约束该任务本身，交完仍回到 relay next，除非用户叫停或额度/上下文快用完。
+续领命令：`relay report ainerzero.V9.T6 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next` 或 `relay release ainerzero.V9.T6 --agent <你的ID> --next`。先用不超过 5 行说明进度，再在同一进程进入 next 长轮询，不要只写提醒就结束。容量不够则 `relay release ainerzero.V9.T6 --agent <你的ID> --capacity-exhausted`，不要加 `--next`，也不要 `--failed`。
+
+## 上一棒交接（这个任务之前有人做过：接着做，不要从头重来）
+- 第 1 棒 `antigravity-h4d8`：主动释放（约 2 分钟）。留言：T6是草稿卡（需用户先批准下载DA3权重与PyTorch环境，见RESEARCH_LOG:728；批准前不下载不安装），依规释放等统筹改写发布，改领awz.CF.G6
+- 第 2 棒 `gemini-7a2b`：主动释放（约 0 分钟）。留言：T6为草稿卡（需用户批准下载DA3权重与PyTorch环境，见RESEARCH_LOG:728；批准前不下载不安装），依规释放等统筹改写发布
+- 第 3 棒 `gemini-kzer`：交了结果（约 21 分钟）。没有留言
+  · 2026-10-26T15:07 已确认 10-20 授权与统筹指示：先进行官方清单核对与隔离目录环境准备
+  · 2026-10-26T15:14 隔离环境与DA3代码就绪，正在准备限速2MiB/s权重下载器
+  · 2026-10-26T15:22 DA3-Small与Base权重限速下载完成并哈希比对通过，正在运行MPS基准与一致性套件
+- 第 4 棒 `codex`：交了结果（约 42 分钟）。没有留言
+  · 2026-10-26T16:39 开始：/Users/mac/AinerWorkFlow/AinerZero/envs/teachers/.venv-t6/bin/python -I -B /User
+  · 2026-10-26T16:39 结束：/Users/mac/AinerWorkFlow/AinerZero/envs/teachers/.venv-t6/bin/python -I -B /User（返回码 0，用时 0.0 分）
+  · 2026-10-26T16:40 r2 报告已封存：21测试/4源码对照通过，21原文件归档核对；真实运行未执行，正交回非作者复核
+- 第 5 棒 `codex`：交了结果（约 7 分钟）。没有留言
+  · 2026-10-26T16:44 结束：env OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 VECLIB_MAXIMUM_THREADS=1 /Users/mac（返回码 0，用时 0.0 分）
+  · 2026-10-26T16:45 r3 CPU GT：6世界18视图已生成，拟合/留出各3世界，正核对字节复现；遵#591未加载任何模型
+  · 2026-10-26T16:47 CPU fixture已冻结且复现；T26 ready/T27 draft补中央受控入口，r3准备交回CPU增量，模型运行0
+- 第 6 棒 `gemini-7a2b`：stopped_blocked（约 10 分钟）。留言：T26/T27已accepted的源码未包含真实worker/父监督，当前stop_request #614待持有人确认；T30修复/T31第三方复核前禁止实际DA3。保留全部旧报告/预留，不自动重跑或恢复。
+  · 2026-10-26T17:07 开始有界真DA3标定
+  · 2026-10-26T17:14 DA3-SMALL/BASE strict=True外层加载验证成功，正在构建中央CLI标定驱动
+- 第 7 棒 `antigravity-h4d8`：交了结果（约 15 分钟）。没有留言
+  · 2026-10-26T20:05 T6开工：确认T31已通过，开始通读上下文与参数要求
+- 第 8 棒 `gemini-kzer`：交了结果（约 23 分钟）。没有留言
+  · 2026-10-26T22:36 已确认领取T6 r4，正在通读打回原因与上下文要求
+  · 2026-10-26T22:42 Starting r4 execution
+  · 2026-10-26T22:48 Configuring real_da3_worker and pipeline for r4
+- 第 9 棒 `gemini-kzer`：交了失败（约 2 分钟）。没有留言
+  · 失败报告：# ainerzero.V9.T6 执行报告（r4）：DA3-Small/Base 真实产物留档与资源/配额守卫拦截报告
+
+- **任务 ID**：`ainerzero.V9.T6`（第 4 轮，尝试 4/3 次）
+- **执行者**：`gemini-kzer`
+- **项目**：AinerZero · V9 落地：NeuroGeometry × H-JEPA 世界脑（P0 无训练） → 轨道 T 教师接入
+- **主工作目录**：`/Users/mac/AinerWorkFlow/AinerZero`
+- **层级**：二级（执行层）· 类型：implement · GPU：重型（受控使用 Apple Silicon MPS 后端，独占 `m0-worker.lock`）
+- **依据**：`RESEARCH_LOG.md` R20261026-T6 一级批准（关键字：“批准 T6”）…
+- 先在主工作目录里看文件范围内已经改了什么（`git status`、`git diff`），再看 `reports/` 下有没有这个任务的半成品报告或进度文件。
+- 上一棒的做法如果有问题，可以改，但要在报告里写清你改了什么、为什么。
+- 你还没持有这个任务；以上只是只读预览。

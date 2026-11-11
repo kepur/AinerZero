@@ -1,0 +1,47 @@
+# 任务 ainerzero.V9.P5：【代码·数学】S5 视觉强化：多教师合一、教师表示对齐、RLT 开/关（草稿：训练预算待用户批准）
+
+- 需要：code, math, longrun → 建议执行者：一级（Claude/Codex）托管（缺 math、longrun 的模型不要领）
+- 项目：AinerZero · V9 v9 落地：NeuroGeometry × H-JEPA 世界脑（P0 无训练） → 轨道 P S1–S2 实验（需用户批准训练） → 第 5 步
+- 主工作目录：`/Users/mac/AinerWorkFlow/AinerZero`（先 cd 到这里）
+- 关联目录（只读）：`/Users/mac/AinerWorkFlow/AnimeWorldZero`——AWZ 评测包（E-0/E-1 起使用，只读）
+- 层级：二级（执行层） · 类型：code · 需要 GPU：轻量（可以和别的任务同时跑）
+- 前置：ainerzero.V9.P3（cancelled）、ainerzero.V9.T4（accepted）、ainerzero.V9.T8（accepted）
+- 先读：`/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md`、`/Users/mac/AinerWorkFlow/AinerZero/README.md`、`/Users/mac/AinerWorkFlow/AinerZero/ARCHITECTURE_V9.md`、`/Users/mac/AinerWorkFlow/AinerZero/docs/research/V9_FRONTIER_COST_SURVEY.md`、`/Users/mac/AinerWorkFlow/AnimeWorldZero/docs/adr/ADR-0012-v9-neurogeometry-hjepa.md`
+- 文件范围（只改这些）：`src/ainerzero/v9/`、`reports/V9-S5/`
+
+## 任务说明
+**草稿**：S2 过门、T4 验收后，用户批准训练预算，一级再改写发布。批准前不得训练。
+
+按 ARCHITECTURE_V9 r3 §5 的 S5 与 §7.6：
+1. 多教师合一（Theia 式，arXiv 2407.20179）：把缓存里的 V-JEPA 2.1、DA2/DA3 等已批准教师的特征，蒸馏进一个小 MLX 学生编码器。比较：
+   - 单教师学生；
+   - 多教师学生；
+   - 直接用教师。
+   指标：下游 S1/S2 指标、World Mode 常驻内存、每千样本时间。
+2. 教师表示对齐（式 11，REPA 式，arXiv 2410.06940）：在世界脑主干的中间层加对齐损失，记录“达到同一预测误差所需步数”。只作加速项，能力报告注明借外部教师。
+3. RLT（式 10，ainerzero.V9.T8 实现）开/关对照：token 保留率、墙钟、精度损失。
+
+常设对照：M2 记忆干扰诊断原样报告，与 D 候选同表。外部预训练如实标注；对象 ID 不得泄露。
+
+## 通用约束（v9，ADR-0012 修订四）
+- 不训练；批准范围外不下载、不安装、不付费；不提交推送、不删除。
+- 只改文件范围内的文件；他人未提交改动不碰；原报告与失败证据保留。
+- 所有判定用断言，脚本真实非零退出；附“故意改坏必须变红”的对照。
+- 报告写实际命令、输入与源码/权重 SHA、临时目录、内存峰值与耗时、失败与未验证项。
+
+
+## 参数 v0（统筹登记，照用不改；觉得不对就在报告里提）
+```json
+{}
+```
+
+## 验收标准
+待批准后补全
+
+## 怎么交回
+1. 心跳（每 10 分钟）：`relay heartbeat ainerzero.V9.P5 --agent <你的ID> --msg "做到哪了"`
+2. 完成：`relay report ainerzero.V9.P5 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next`
+3. 失败也要交：加 `--failed`；环境或资源问题再加 `--retryable`
+4. 中途要停：`relay release ainerzero.V9.P5 --agent <你的ID> --reason "做到哪了"`；还要接着领就加 `--next`
+5. 交完或释放后：立刻回到 `relay next --agent <你的ID> --wait 3600` 继续领下一个（也可选 `--wait-forever`）；exit 3 表示 1 小时超时/暂时没活，立刻重跑同一条命令继续等，不结束会话；exit 4 表示你已持有任务（busy），先推进或 report/release，不要当成没活忙等。任务说明或报告里的“交完本任务就停/只做这一个”只约束该任务本身，交完仍回到 relay next，除非用户叫停或额度/上下文快用完。
+续领命令：`relay report ainerzero.V9.P5 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next` 或 `relay release ainerzero.V9.P5 --agent <你的ID> --next`。先用不超过 5 行说明进度，再在同一进程进入 next 长轮询，不要只写提醒就结束。容量不够则 `relay release ainerzero.V9.P5 --agent <你的ID> --capacity-exhausted`，不要加 `--next`，也不要 `--failed`。

@@ -1,0 +1,34 @@
+[
+  {
+    "id": 1,
+    "claim": "arms_mlx.arm_a_loss_mlx_batched：批次维度并行。B 条序列同时推进 GRU、先验、后验，时间维仍逐步循环；每条序列先在时间上取均值，再各自施加 free bits，最后取批次均值，与「逐条序列调用 arm_a_loss_mlx 再平均」在语义上等价；原逐条函数保留，作为参考实现和单序列入口。",
+    "target_file": "src/ainerzero/v9/experiments/s2/arms_mlx.py",
+    "target_lines": "514-606 (原函数), 627-681 (batched)",
+    "verification": "MATCH",
+    "notes": "逐字与逻辑核验完全一致。单步循环推进 GRU 与 prior/posterior，时间求均值后对每条序列应用 float(spec.ARM_A_FREE_BITS)，最终求批次均值；原逐条函数保留未删。"
+  },
+  {
+    "id": 2,
+    "claim": "_as_action：三个臂 predict_l1 的单样本路径把 Python int 或 numpy 标量转成 (1,) 数组；one-hot 和索引数组保持原样。",
+    "target_file": "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "target_lines": "35-38, 211, 370, 592",
+    "verification": "MATCH",
+    "notes": "定义 def _as_action(a: Any) -> np.ndarray: arr = np.asarray(a, dtype=np.float32); return arr.reshape(1) if arr.ndim == 0 else arr。三臂 predict_l1 均通过 _as_action(a) 传参。"
+  },
+  {
+    "id": 3,
+    "claim": "MLXArmAAdapter.latents：改为在零 GRU 状态下取后验均值，与 encode 处于同一规划潜空间，支持批量；原先返回 128 维的 E1 特征，导致 smoke 动作敏感性检查维度报错。",
+    "target_file": "src/ainerzero/v9/experiments/s2/adapters_mlx.py",
+    "target_lines": "236-244",
+    "verification": "MATCH",
+    "notes": "在 h0 为零状态下调用 self.model.posterior(h0, flat)，返回后验均值并在 (B, latent_dim) 规划空间中重构，修复了动作敏感性检查维度报错。"
+  },
+  {
+    "id": 4,
+    "claim": "smoke.check_smoke_budget：dev 与 final 推算改读 spec。曲线倍数原本写死为「1 + 2.5」，现按 N_FWD_DEV_LEVELS 相对主档 N_FWD 计算，主档只计一次；回合数取 DEV_LONG_GOAL_EPISODES 与 FINAL_LONG_GOAL_EPISODES，种子数取 TRAINING_SEEDS；短目标回合数 100 在 spec 中没有登记常量，暂时保留并在代码中注明。",
+    "target_file": "src/ainerzero/v9/experiments/s2/smoke.py",
+    "target_lines": "365-389",
+    "verification": "MATCH",
+    "notes": "curve_multiplier 计算改为 1.0 + sum(float(lv)/n_primary for lv in spec.N_FWD_DEV_LEVELS if int(lv) != int(spec.N_FWD))，回合数读取 DEV_LONG_GOAL_EPISODES 与 FINAL_LONG_GOAL_EPISODES，常量读取严格与 spec 一致。"
+  }
+]
