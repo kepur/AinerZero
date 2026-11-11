@@ -153,6 +153,67 @@ def test_gates_never_read_the_world_or_its_physics() -> None:
         names = _names(fn)
         assert not any(x.startswith("W.") and x not in ("W.RADIUS", "W.DT") for x in names), names
         assert "W.physics" not in names
-    names = _names(G.gated_model)
+    names = _names(G.GatedModel.__call__)
     assert "W.physics" not in names and "Mo.true_physics" not in names
     assert {x for x in names if x.startswith("Mo.")} == {"Mo.bounce"}
+    assert "W.physics" not in _names(G.GatedModel.__init__) and "W.physics" not in _names(G.scatter_velocity)
+
+
+# --- phase-2 r1 controls: the scatter response and the random gate -------------------------------
+def test_scatter_response_turns_eb_velocity_keeps_speed_and_eb_position(nets, monkeypatch) -> None:
+    net = nets[0]
+    rng = np.random.default_rng(10)
+    P, V = _states(rng)
+    mask = rng.random(P.shape[:2]) < 0.5
+    monkeypatch.setattr(G, "head_gate", lambda lg, P, p: mask)
+    m = G.gated_model(net, 0.5, response="scatter")
+    m.reseed(123)
+    out = m(P, V, PILLARS)
+    pb, vb = Mo.bounce(P, V, PILLARS)
+    assert np.array_equal(out[0], pb)                                    # positions are E-B's everywhere
+    assert np.array_equal(out[1][~mask], vb[~mask])
+    assert np.allclose(np.linalg.norm(out[1][mask], axis=-1), np.linalg.norm(vb[mask], axis=-1))
+    assert not np.allclose(out[1][mask], vb[mask])
+    theta = np.random.default_rng(123).uniform(0.0, 2 * math.pi, P.shape[:2])
+    assert np.allclose(out[1], np.where(mask[..., None], G.scatter_velocity(vb, theta), vb))
+
+
+def test_stochastic_arms_need_a_seed_and_repeat_with_it(nets) -> None:
+    rng = np.random.default_rng(11)
+    P, V = _states(rng)
+    for gate, resp in ((0.5, "scatter"), (("random", 0.3), "learned"), ("geo", "scatter")):
+        m = G.gated_model(nets[0], gate, response=resp)
+        assert m.stochastic
+        with pytest.raises(RuntimeError):
+            m(P, V, PILLARS)
+        m.reseed(5)
+        a = m(P, V, PILLARS)
+        m.reseed(5)
+        b = m(P, V, PILLARS)
+        m.reseed(6)
+        c = m(P, V, PILLARS)
+        assert all(np.array_equal(x, y) for x, y in zip(a, b))
+        assert not all(np.array_equal(x, y) for x, y in zip(a, c))
+    d = G.gated_model(nets[0], 0.5)
+    assert not d.stochastic
+    G.reseed_if_stochastic(d, 1)                                         # deterministic arms ignore it
+    d(P, V, PILLARS)
+
+
+def test_random_gate_opens_at_its_rate_and_uses_the_learned_model(nets) -> None:
+    net = nets[0]
+    P, V = _states(np.random.default_rng(12), m=200, n=6)
+    cnt = [0, 0]
+    m = G.gated_model(net, ("random", 0.1), counter=cnt)
+    m.reseed(9)
+    out = m(P, V, PILLARS)
+    g = np.random.default_rng(9).random(P.shape[:2]) < 0.1
+    learned = L.as_process_model(net)(P, V, PILLARS)
+    eb = Mo.bounce(P, V, PILLARS)
+    assert np.array_equal(out[1][g], learned[1][g]) and np.array_equal(out[1][~g], eb[1][~g])
+    assert cnt == [int(g.sum()), g.size] and 0.07 < cnt[0] / cnt[1] < 0.13
+    for bad in (("random", 0.0), ("random", 1.0), ("rand", 0.1), ("random",)):
+        with pytest.raises(ValueError):
+            G.gated_model(net, bad)
+    with pytest.raises(ValueError):
+        G.gated_model(net, 0.5, response="other")

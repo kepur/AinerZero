@@ -1,0 +1,255 @@
+# citations for reports/V9-S4-P2-DESIGN/r0-review/REPORT.md; repository HEAD 5698eef5541842816dbbb4746f506d2607cda7ec
+# each block: the command, then its raw output (cat -n numbering = file line numbers)
+$ shasum -a 256 reports/V9-S4-P2-DESIGN/DESIGN-r0.md; git diff --stat ff1a162 HEAD -- reports/V9-S4-P2-DESIGN/DESIGN-r0.md
+46cf07c1c9f4d009f8ad6f3ece8eab6cad97140eafa97539fd1fa9fce6369189  reports/V9-S4-P2-DESIGN/DESIGN-r0.md
+ reports/V9-S4-P2-DESIGN/DESIGN-r0.md | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+$ sed -n '14,17p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 14)
+    14	- **学习模型在不碰撞时也有误差。** 每步速度误差在开阔处约 0.01，靠近墙柱约 0.09，E-B 是 0。
+    15	- **误差在隐藏期里累积，集合又盖不住。** 隐藏期中位 25 步。到重新出现那一刻，L-int 的预测对真实位置的 90% 覆盖率只有 0.60，E-B 是 0.86。
+    16	- **代价落在没有碰撞的事件上。** L-int 比 E-B 低 0.050。
+    17	- 「带噪输入 D 约 0.57」这一条，大半来自一期训练扰动分布太苛刻。在滤波器实际产生的成员状态上，D 是 0.84。
+
+$ sed -n '20,21p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 20)
+    20	- 一期的权重不动，**只在 L-int 自己的接触头判定「这一步会碰」的盘上用它**，其余盘按 E-B 的墙柱规则走（下称 L-int-g）。这样在三类事件上都与真实物理 E-P 持平，预测分布的校准也与 E-P 持平。
+    21	- 门打开时换成不懂交互的 L-ind，收益消失。
+
+$ sed -n '30,30p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 30)
+    30	结论的范围：单体运动（直线、撞墙、撞柱）用的是手写规则，属于声明的真值输入（§9）；学到的只有「什么时候碰」和「碰了以后怎样」。
+
+$ sed -n '59,59p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 59)
+    59	| L-int-g，门限 0.3 / 0.7 | 0.667 / 0.658 | 0.885 / 0.887 | 0.837 / 0.836 | | 0.98 / 0.94 | 0.901 / 0.904 | 0.829 / 0.825 |
+
+$ sed -n '74,74p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 74)
+    74	**从精确真值出发的动力学：** L-int-g 的 D 主评测 0.85、外推 0.86，HF 比 0.026，一期 L-int 是 0.07。门打开的盘步占 2.0%。
+
+$ sed -n '84,86p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 84)
+    84	- **残差模型没有用。** 单体误差减半，D 反而降到 0.785，没有碰撞的事件仍低 0.058。网络的修正在不该动的地方还是不为零。另外：残差模型训练每步 0.033 秒，是 L-int 的 2.6 倍；种子 3 的损失在第 14000 步冲到 3502，之后回落。
+    85	- **门控把学习模型限制在它擅长的地方。** 只有约 2% 的盘步用到它，其余都是精确的 E-B。结果与 E-P 在三类事件和校准上都持平。门限从 0.3 到 0.7 几乎不变；换成几何规则当门也一样。所以起作用的是学到的碰撞响应，接触头只是一个够用的「什么时候」。
+    86	- **负对照成立。** 门打开但换成 L-ind 时，C 只有 0.10–0.11。收益来自学到的交互，不是门本身。
+
+$ sed -n '110,110p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 110)
+   110	| **L-int-g** | 每个盘：门开时取 L-int 的预测，否则取 E-B；门是 L-int 的接触头，与半径 1.5 内任一盘的接触概率 > 0.5 | **主臂** |
+
+$ sed -n '117,119p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 117)
+   117	- **门只读成员状态。** 成员状态是滤波器自己的估计，不读真值。
+   118	- **门是逐成员、逐盘判定的。** 同一条轨迹的不同成员可以一个用 L-int、一个用 E-B。
+   119	- **代码约束：** 门控代码不得调用世界模块的物理。门关时，预测必须与 E-B 逐位相同；门开时，必须与 L-int 逐位相同。有测试。
+
+$ sed -n '129,131p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 129)
+   129	**一步覆盖率：** 轨迹在 t−1 和 t 都分到检测时，取 t 步观测更新之前的预测集合（均值、样本协方差），看真实位置是否落在 90% 椭圆里。按被检测盘在 t−1 → t 这一步的类型分类：碰撞（接触日志有盘间接触）、其余。三个种子的行合在一起数。
+   130	
+   131	**重新出现时的覆盖率：** 对每个重新出现事件（a 步可见，b 步再次可见），取 a 步时持有这个盘的那条轨迹，看它在 b 步观测更新之前的预测集合，真实位置是否落在 90% 椭圆里。每个事件三个种子取平均。分有碰撞、没有碰撞两类。
+
+$ sed -n '135,147p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 135)
+   135	| 门 | 判据 | 数据 | 摸底值（40 + 20 个世界） | 谁过不了 |
+   136	|---|---|---|---|---|
+   137	| **GN 没有碰撞不输** | 没有碰撞的事件上 L-int-g − E-B ≥ −0.01，下界 > −0.03 | 主评测 | +0.018 [−0.000, +0.035] | 一期 L-int（−0.050） |
+   138	| **GA 全部事件胜过 E-B** | 全部事件上 L-int-g − E-B ≥ +0.03，下界 > 0 | 主评测 | +0.067 [+0.042, +0.091] | 一期 L-int（+0.001）、L-ind-geo（+0.006） |
+   139	| **GC 碰撞差距的补回** | C ≥ 0.75，下界 > 0.5 | 主评测，有碰撞 | 0.96 [0.86, 1.05] | 一期 L-int（0.72）、L-ind-geo（0.11） |
+   140	| **GK1 一步预测校准** | 全部步：点估计在 [0.87, 0.93]，区间在 [0.85, 0.95] 内；碰撞步：点估计 ≥ 0.85，下界 > 0.80 | 主评测 | 0.904；0.883 | E-B（碰撞步 0.582）、一期 L-int（0.743） |
+   141	| **GK2 重新出现时校准** | 没有碰撞的事件：≥ 0.85，下界 > 0.80；有碰撞的事件：≥ 0.75，下界 > 0.65 | 主评测 | 0.909；0.825 | E-B（有碰撞 0.464）、一期 L-int（0.596、0.539） |
+   142	| **GD 动力学** | 从精确真值出发：D ≥ 0.8，下界 > 0.7；HF 比 ≤ 0.1，上界 ≤ 0.15（定义同一期 HD、HF） | 主评测真值序列 | D 0.85，HF 0.026 | 门漏掉碰撞的模型 |
+   143	| **GX 外推到 10 盘** | 全部事件上 L-int-g − E-B ≥ +0.03，下界 > 0；C ≥ 0.6，下界 > 0.4 | 外推 | +0.088；1.01 | |
+   144	
+   145	**负对照：** L-ind-geo 的 C 的 95% 上界必须 < 0.5，D 的 95% 上界必须 < 0.5。否则说明门本身就能带来收益，GA、GC、GX 作废。摸底中 C 是 0.11 [0.00, 0.22]，D 是 0.0005。
+   146	
+   147	（一期的写法是「下界 < 0.25」。区间越宽越容易满足，挡不住「门本身带来一半收益」的情况。这里改为要求上界小，即有把握地说门本身带来的不到一半。）
+
+$ sed -n '150,158p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 150)
+   150	- GN 是非劣：E-P 相对 E-B 也只多 +0.013。只要求「不比 E-B 差超过 0.03」，挡住的是一期这种 −0.05 的代价。
+   151	- GA 的 +0.03 约是 E-P 优势（+0.066）的一半。
+   152	- GC 的 0.75 高于一期 L-int 的 0.72。一期设计写过 C 会饱和（只懂一半碰撞的代用模型也有 0.72），所以 GC 只回答「补回了多少」；「懂多少碰撞」仍由 GD 回答。
+   153	- GK1、GK2 的参照是 E-P：真实物理放进同一个滤波器，就是这个覆盖率。门槛比 E-P 的摸底值低约 0.05–0.07，挡住的是 E-B（碰撞时 0.46–0.58）和一期 L-int（0.54–0.74）。
+   154	
+   155	**统计：**
+   156	- 按世界配对 bootstrap，10000 次，95%，种子 20261111。比值（C、D、覆盖率、准确率差）的分子分母一起重采样。
+   157	- 另报 Bonferroni 区间。m = 11：GN、GA、GC、GK1 两项、GK2 两项、GD 两项、GX 两项。门的「下界、上界、区间」一律用 Bonferroni 区间。
+   158	- 比值和差值只要分母不为正就是无定义。无定义按不过算（同一期实现补记）。
+
+$ sed -n '196,197p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 196)
+   196	- 摸底中单进程每个主评测世界约 9 秒、外推约 30 秒（9 个臂 × 3 个种子）；
+   197	- final 300 个世界，6 个工作进程，预计约 15–30 分钟；硬上限 2 小时，评测预留按探针耗时 × 4 × 1.5 算；
+
+$ sed -n '216,225p' reports/V9-S4-P2-DESIGN/DESIGN-r0.md | cat -n (offset 216)
+   216	- **真值输入（比一期多一项）：**
+   217	  - 墙柱反弹的规则与几何：E-B 本身就是这一规则，L-int-g 门关时完全依赖它；
+   218	  - 智能体位姿；
+   219	  - 新建轨迹的速度先验；
+   220	  - 一期权重的训练标签来自模拟器。
+   221	- **L-int-g 与 E-P 持平，可能被读成「门控只是把 E-P 拼回来」。** 不是：
+   222	  - 门开时的预测来自学习模型，负对照 L-ind-geo 说明换成不懂交互的模型就没有收益；
+   223	  - 门关时 E-P 与 E-B 本来就相同（没有盘间接触时两者一样）。
+   224	  
+   225	  所以这一阶段说明的是：一期学到的碰撞响应已经够用，一期的代价全部来自它在不该用的地方被用上。
+
+$ sed -n '204,204p' reports/V9-S4-DESIGN/DESIGN-r3.md | cat -n (offset 204)
+   204	| **H1（对重识别够用）** | C(L-int) ≥ 0.5，下界 > 0.25 | 主评测，有碰撞 | 经验问题。C 会饱和，只懂一半碰撞的代用模型也有 0.72，所以 H1 只回答「够不够用」，不回答「学到了多少交互」，后者由 HD 回答 |
+
+$ sed -n '60,64p' src/ainerzero/v9/experiments/s4/world.py | cat -n (offset 60)
+    60	    """One step of DT for B independent copies; p and v are [B, N, 2] and are not modified.
+    61	
+    62	    Returns (p, v, contacts). With ``log`` the contacts of copy 0 are listed as ("disk", i, j)
+    63	    with i < j, ("wall", i, -1) and ("pillar", i, k): a contact is a substep in which the
+    64	    normal velocity was reversed.
+
+$ sed -n '99,113p' src/ainerzero/v9/experiments/s4/world.py | cat -n (offset 99)
+    99	        if disks and n > 1:
+   100	            d = p[:, None, :, :] - p[:, :, None, :]                 # d[b, i, j] = p_j - p_i
+   101	            dist = np.linalg.norm(d, axis=-1)
+   102	            nrm = d / np.maximum(dist, 1e-9)[..., None]
+   103	            rel = ((v[:, :, None, :] - v[:, None, :, :]) * nrm).sum(-1)  # (v_i - v_j) . n_ij
+   104	            upper = np.triu(np.ones((n, n), bool), 1)[None]
+   105	            ok = upper & (dist < 2 * RADIUS) & (dist > 1e-9)
+   106	            approach = ok & (rel > 0)
+   107	            if log:
+   108	                for i, j in zip(*np.nonzero(approach[0])):
+   109	                    note("disk", int(i), int(j))
+   110	            dv = np.where(approach[..., None], rel[..., None] * nrm, 0.0)  # equal masses
+   111	            v = v - dv.sum(2) + dv.sum(1)
+   112	            push = np.where(ok, 2 * RADIUS - dist, 0.0)[..., None] * nrm / 2
+   113	            p = p - push.sum(2) + push.sum(1)
+
+$ sed -n '127,127p' src/ainerzero/v9/experiments/s4/world.py | cat -n (offset 127)
+   127	    contacts: tuple[tuple[str, int, int], ...]  # contacts during t -> t+1, truth
+
+$ sed -n '20,22p' src/ainerzero/v9/experiments/s4/models.py | cat -n (offset 20)
+    20	def bounce(P: np.ndarray, V: np.ndarray, pillars: Sequence[W.Pillar]):
+    21	    """E-B: constant velocity with wall and pillar reflections; no disk-disk collisions."""
+    22	    p, v, _ = W.physics(P, V, pillars, disks=False)
+
+$ sed -n '46,53p' src/ainerzero/v9/experiments/s4/gated.py | cat -n (offset 46)
+    46	def head_gate(logits: np.ndarray, P: np.ndarray, p: float) -> np.ndarray:
+    47	    """[M, n] bool: some other disk within MSG_RADIUS with contact probability above ``p``."""
+    48	    if not 0.0 < p < 1.0:
+    49	        raise ValueError("the gate threshold must lie in (0, 1)")
+    50	    n = P.shape[1]
+    51	    dist = np.linalg.norm(P[:, :, None] - P[:, None], axis=-1)
+    52	    near = (dist < L.MSG_RADIUS) & ~np.eye(n, dtype=bool)[None]
+    53	    return ((np.asarray(logits, dtype=np.float64) > math.log(p / (1 - p))) & near).any(-1)
+
+$ sed -n '69,83p' src/ainerzero/v9/experiments/s4/gated.py | cat -n (offset 69)
+    69	    def step(P, V, pillars):
+    70	        pb, vb = Mo.bounce(P, V, pillars)
+    71	        if P.shape[1] < 2:
+    72	            if counter is not None:
+    73	                counter[1] += P.shape[0] * P.shape[1]
+    74	            return pb, vb
+    75	        pil = mx.array(np.broadcast_to(np.array(pillars, dtype=np.float32), (P.shape[0], L.N_PILLARS, 3)))
+    76	        p_, v_, logits, _ = net(mx.array(P.astype(np.float32)), mx.array(V.astype(np.float32)), pil)
+    77	        mx.eval(p_, v_)
+    78	        g = geo_gate(P, V) if gate == "geo" else head_gate(np.array(logits), P, float(gate))
+    79	        if counter is not None:
+    80	            counter[0] += int(g.sum())
+    81	            counter[1] += int(g.size)
+    82	        g = g[..., None]
+    83	        return (np.where(g, np.array(p_, dtype=np.float64), pb), np.where(g, np.array(v_, dtype=np.float64), vb))
+
+$ sed -n '11,13p' src/ainerzero/v9/experiments/s4/analysis_p2.py | cat -n (offset 11)
+    11	Every arm is tracked with the filter seed of (world, seed) used in phase 1 (variant "base"), so arms
+    12	share their random numbers. An event's correctness and its reappearance coverage are averaged over
+    13	the three seeds before summing per world; one-step rows of the three seeds are pooled.
+
+$ sed -n '33,39p' src/ainerzero/v9/experiments/s4/analysis_p2.py | cat -n (offset 33)
+    33	HAND = ("E-CV", "E-B", "E-P")
+    34	LEARNED = ("L-int", "L-int-g", "L-int-g3", "L-int-g7", "L-int-geo", "L-ind-geo")
+    35	MAIN_ARM, NEG_ARM = "L-int-g", "L-ind-geo"
+    36	GATES = {"L-int-g": 0.5, "L-int-g3": 0.3, "L-int-g7": 0.7, "L-int-geo": "geo", "L-ind-geo": "geo"}   # arm -> gate
+    37	BASE_MODEL = {"L-int": "L-int", "L-int-g": "L-int", "L-int-g3": "L-int", "L-int-g7": "L-int", "L-int-geo": "L-int", "L-ind-geo": "L-ind"}
+    38	BOOT_SEED = 20261111
+    39	N_COMPARISONS = 11                 # GN, GA, GC, GK1 (2), GK2 (2), GD (2), GX (2)
+
+$ sed -n '64,67p' src/ainerzero/v9/experiments/s4/analysis_p2.py | cat -n (offset 64)
+    64	
+    65	
+    66	def filter_seed(ns: str, w: int, seed: int) -> int:
+    67	    return A.filter_seed(ns, w, seed, "base")
+
+$ sed -n '94,107p' src/ainerzero/v9/experiments/s4/analysis_p2.py | cat -n (offset 94)
+    94	    def __call__(self, t, P, V, assign, last):
+    95	        s = self.ep.steps[t]
+    96	        if t in self.want:
+    97	            self.snaps[t] = P.copy()
+    98	        if t == 0:
+    99	            return
+   100	        touched = {i for kind, i, j in self.ep.steps[t - 1].contacts if kind == "disk"} | {j for kind, i, j in self.ep.steps[t - 1].contacts if kind == "disk"}
+   101	        for r, k in assign.items():
+   102	            if last[k] != t - 1:
+   103	                continue
+   104	            truth = int(s.truth_ids[r])
+   105	            row = self.one["collision" if truth in touched else "other"]
+   106	            row[0] += 1
+   107	            row[1] += int(_gauss_inside(P[:, k], s.positions[truth]))
+
+$ sed -n '110,118p' src/ainerzero/v9/experiments/s4/analysis_p2.py | cat -n (offset 110)
+   110	def reappearance_inside(ep: W.Episode, ids: Sequence[np.ndarray], events: Sequence[dict], snaps: Mapping[int, np.ndarray]) -> list[int]:
+   111	    """Per event: whether the true position at b lies in the 90% ellipse of the ensemble predicted at b
+   112	    (before the update) for the track that held the disk at a."""
+   113	    at = [dict(zip(s.truth_ids.tolist(), np.asarray(i).tolist())) for s, i in zip(ep.steps, ids)]
+   114	    out = []
+   115	    for e in events:
+   116	        trk = at[e["a"]][e["k"]]
+   117	        out.append(int(_gauss_inside(snaps[e["b"]][:, trk], ep.steps[e["b"]].positions[e["k"]])))
+   118	    return out
+
+$ sed -n '265,273p' src/ainerzero/v9/experiments/s4/analysis_p2.py | cat -n (offset 265)
+   265	def gate_stats(main, extrap) -> dict[str, dict]:
+   266	    """Every statistic a gate or the negative control reads (Bonferroni m = N_COMPARISONS for the gates)."""
+   267	    a = MAIN_ARM
+   268	    return {"GN": acc_diff(main, a, "E-B", "non_collision"), "GA": acc_diff(main, a, "E-B", "all"), "GC": C_of(main, a),
+   269	            "GK1_all": coverage_one_step(main, a, "all"), "GK1_collision": coverage_one_step(main, a, "collision"),
+   270	            "GK2_non_collision": coverage_reappear(main, a, "non_collision"), "GK2_collision": coverage_reappear(main, a, "collision"),
+   271	            "GD_D": D_of(main, a), "GD_ratio": HF_of(main, a),
+   272	            "GX_diff": acc_diff(extrap, a, "E-B", "all"), "GX_C": C_of(extrap, a),
+   273	            "neg_C": C_of(main, NEG_ARM, m=1), "neg_D": D_of(main, NEG_ARM, m=1)}
+
+$ sed -n '297,298p' src/ainerzero/v9/experiments/s4/analysis_p2.py | cat -n (offset 297)
+   297	    neg = (_lt(st["neg_C"], "ci_high", T["negative_control"]["C_high_below"])
+   298	           and _lt(st["neg_D"], "ci_high", T["negative_control"]["D_high_below"]))
+
+$ sed -n '314,316p' src/ainerzero/v9/experiments/s4/analysis_p2.py | cat -n (offset 314)
+   314	    if not neg_ok:
+   315	        for k in ("GA", "GC", "GX"):
+   316	            g[k] = dict(g[k], passed=False, void="negative control failed")
+
+$ sed -n '89,94p' src/ainerzero/v9/experiments/s4/metrics.py | cat -n (offset 89)
+    89	    if not np.isfinite(point) or len(boot) < n_boot:
+    90	        # An undefined ratio (e.g. E-P no better than E-B) in the point value or in any resample:
+    91	        # dropping those resamples would narrow the interval, so no interval is given and every
+    92	        # gate that needs one fails. The point value is kept when it is defined.
+    93	        return {"value": float(point) if np.isfinite(point) else None, "ci_low": None, "ci_high": None,
+    94	                "bonf_low": None, "bonf_high": None, "n_worlds": int(n_w), "n_boot_finite": int(len(boot))}
+
+$ sed -n '108,110p' src/ainerzero/v9/experiments/s4/filter.py | cat -n (offset 108)
+   108	        assign = _associate(P, z, last, t, cfg)
+   109	        if on_predict is not None:
+   110	            on_predict(t, P.copy(), V.copy(), dict(assign), list(last))
+
+$ sed -n '95,95p' reports/V9-S4-P2-DESIGN/tier1-explore/explore_p2f.py | cat -n (offset 95)
+    95	                rng = np.random.default_rng(W.derive_seed(XA.NS, "filter", w, s, "q1"))
+
+$ sed -n '13,13p' reports/V9-S4-P2-DESIGN/tier1-explore/run-p2b2.log | cat -n (offset 13)
+    13	R#1 736s loss 4.824716567993164
+
+$ sed -n '40,41p' reports/V9-S4-P2-DESIGN/tier1-explore/run-p2f.log | cat -n (offset 40)
+    40	main 38 603s
+    41	main 39 616s
+
+$ sed -n '60,61p' reports/V9-S4-P2-DESIGN/tier1-explore/run-p2f.log | cat -n (offset 60)
+    60	extrap 1018 1330s
+    61	extrap 1019 1380s
+
+$ sed -n '41,41p' reports/V9-S4-P2-DESIGN/tier1-explore/run-p2e.log | cat -n (offset 41)
+    41	world 39 331s
+
+$ grep -n 'L-int-g@0.5\|^E-B\|^E-P' reports/V9-S4-P2-DESIGN/tier1-explore/summary-p2f-main.txt
+2:E-B               0.421  0.873  0.774 | +0.000 [+0.000,+0.000] | +0.000 [+0.000,+0.000] | 0.00 [0.00,0.00]
+3:E-P               0.673  0.886  0.839 | +0.013 [-0.004,+0.030] | +0.066 [+0.041,+0.089] | 1.00 [1.00,1.00]
+6:L-int-g@0.5       0.662  0.890  0.840 | +0.018 [-0.000,+0.035] | +0.067 [+0.042,+0.091] | 0.96 [0.86,1.05]
+11:E-B              1-step 0.829/0.582/0.842 | reappear coll 0.464 non 0.860 | gaps 0.831 0.798 0.772 0.674 | nll 1.56(med) err 1.052 spread 0.873 n 3648
+12:E-P              1-step 0.905/0.883/0.906 | reappear coll 0.825 non 0.907 | gaps 0.942 0.923 0.891 0.773 | nll 1.41(med) err 0.909 spread 1.041 n 3648
+15:L-int-g@0.5      1-step 0.904/0.883/0.906 | reappear coll 0.825 non 0.909 | gaps 0.939 0.930 0.888 0.779 | nll 1.39(med) err 0.902 spread 1.024 n 3648
+
+$ grep -n 'def test_gates_never_read_the_world_or_its_physics' tests/v9/experiments/test_s4_gated.py
+151:def test_gates_never_read_the_world_or_its_physics() -> None:

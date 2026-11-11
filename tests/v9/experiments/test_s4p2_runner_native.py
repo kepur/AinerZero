@@ -140,10 +140,11 @@ def test_smoke_runs_end_to_end_and_records_its_files(smoke) -> None:
     assert set(rep["weights"]) == {f"{a}#{s}" for a in ("L-int", "L-ind") for s in P2.SEEDS}
     assert R["checks"]["labels"]["passed"] and R["checks"]["replay"]["passed"] and R["checks"]["student_view"]["passed"]
     assert R["checks"]["weights"]["passed"]
-    assert R["checks"]["replay"]["checked"] == 2 * 27
+    assert R["checks"]["replay"]["checked"] == 2 * 33 == 2 * 3 * (len(P2.HAND) + len(P2.LEARNED))
     assert R["weights_sha256"] == {n: _sha(root / WEIGHTS / f"{n}.safetensors") for n in R["weights_sha256"]}
     assert R["pre_eval_seconds"] >= 0 and R["post_marker_seconds"] > 0
-    assert set(R["result"]["gates"]) == {"GN", "GA", "GC", "GK1", "GK2", "GD", "GX"}
+    assert set(R["result"]["gates"]) == {"GN", "GA", "GC", "GK1", "GK2", "GD", "GX", "GR"}
+    assert 0 < R["descriptive"]["main"]["L-int-rand"]["gate_share"] < 0.06
     assert not R["result"]["legality"]["samples"]["passed"]       # two worlds are far below the registered sample counts
     assert R["prereg_sha256"] is None and R["code_dirty"] == []
     assert set(R["descriptive"]["main"]) == set(P2.HAND + P2.LEARNED)

@@ -20,8 +20,12 @@ def test_registered_constants() -> None:
     assert P2.NAMESPACES == {"probe": "s4p2-probe", "final": "s4p2-final"}
     assert P2.SIZES == {"probe": (50, 25), "final": (200, 100)}
     assert P2.NAMESPACES["final"] in W.REGISTERED and P2.NAMESPACES["probe"] not in W.REGISTERED
-    assert P2.BOOT_SEED == 20261111 and P2.N_COMPARISONS == 11
-    assert P2.GATES == {"L-int-g": 0.5, "L-int-g3": 0.3, "L-int-g7": 0.7, "L-int-geo": "geo", "L-ind-geo": "geo"}
+    assert P2.BOOT_SEED == 20261111 and P2.N_COMPARISONS == 12
+    assert P2.ARM_SPEC == {"L-int-g": ("L-int", 0.5, "learned"), "L-int-g3": ("L-int", 0.3, "learned"), "L-int-g7": ("L-int", 0.7, "learned"),
+                           "L-int-geo": ("L-int", "geo", "learned"), "L-ind-geo": ("L-ind", "geo", "learned"),
+                           "L-sc-g": ("L-int", 0.5, "scatter"), "L-int-rand": ("L-int", ("random", 0.02), "learned")}
+    assert P2.ARM_SPEC[P2.SCATTER_ARM][1] == P2.ARM_SPEC[P2.MAIN_ARM][1]          # the scatter control has the main arm's gate
+    assert P2.LEARNED == ("L-int", *P2.ARM_SPEC)
     assert P2.THRESHOLDS["GN"] == {"diff": -0.01, "diff_low": -0.03}
     assert P2.THRESHOLDS["GA"] == {"diff": 0.03, "diff_low": 0.0}
     assert P2.THRESHOLDS["GC"] == {"C": 0.75, "C_low": 0.5}
@@ -29,6 +33,8 @@ def test_registered_constants() -> None:
     assert P2.THRESHOLDS["GK2"] == {"non_collision": 0.85, "non_collision_low": 0.80, "collision": 0.75, "collision_low": 0.65}
     assert P2.THRESHOLDS["GD"] == {"D": 0.8, "D_low": 0.7, "ratio": 0.10, "ratio_high": 0.15}
     assert P2.THRESHOLDS["GX"] == {"diff": 0.03, "diff_low": 0.0, "C": 0.6, "C_low": 0.4}
+    assert P2.THRESHOLDS["GR"] == {"diff": 0.0, "diff_low": 0.0}
+    assert P2.THRESHOLDS["negative_control"] == {"C_high_below": 0.5, "D_high_below": 0.5}
 
 
 # --- hooks -------------------------------------------------------------------------------------------
@@ -74,7 +80,7 @@ def test_hook_does_not_change_tracking() -> None:
     ev = W.reappearances(ep)
     rng = lambda: np.random.default_rng(5)
     a, _ = F.track(A.student_detections(ep), ep.pillars, Mo.true_physics, rng())
-    cell = P2.track_cell(ep, Mo.true_physics, "test-s4p2-hook", 1, ev)
+    cell = P2.track_cell(ep, Mo.true_physics, "test-s4p2-hook", 1, ev, "E-P")
     b, _ = F.track(A.student_detections(ep), ep.pillars, Mo.true_physics, np.random.default_rng(P2.filter_seed("test-s4p2-hook", 0, 1)))
     assert cell["ids_sha256"] == P2.ids_digest(b)
     assert len(cell["reappear"]) == len(ev) == len(cell["correct"])
@@ -93,6 +99,8 @@ BASE = {  # arm -> (p correct on collision events, on non-collision events, one-
     "L-int-g7": (0.66, 0.89, 0.90, 0.88, 0.91, 0.83),
     "L-int-geo": (0.66, 0.89, 0.90, 0.88, 0.91, 0.83),
     "L-ind-geo": (0.44, 0.87, 0.83, 0.59, 0.86, 0.46),
+    "L-sc-g": (0.60, 0.87, 0.90, 0.84, 0.90, 0.75),
+    "L-int-rand": (0.44, 0.88, 0.85, 0.66, 0.88, 0.51),
 }
 
 
@@ -100,7 +108,7 @@ def records(n=200, kind="main", spec=None, seed=0, n_events=30, coll_share=0.22,
     spec = dict(BASE, **(spec or {}))
     rng = np.random.default_rng(seed)
     dyn = dyn or {"L-int-g": (0.15, 0.03), "L-ind-geo": (1.0, 0.0), "L-int": (0.13, 0.07)}   # (coll error / E-B, graze ratio)
-    dyn = {"L-int-g3": (0.15, 0.03), "L-int-g7": (0.16, 0.02), "L-int-geo": (0.15, 0.0)} | dyn
+    dyn = {"L-int-g3": (0.15, 0.03), "L-int-g7": (0.16, 0.02), "L-int-geo": (0.15, 0.0), "L-sc-g": (1.14, 0.0), "L-int-rand": (0.99, 0.0)} | dyn
     out = []
     for w in range(n):
         coll = rng.random(n_events) < coll_share
@@ -143,13 +151,13 @@ def good():
 def test_a_gated_model_like_the_exploration_passes_every_gate(good) -> None:
     assert good["valid"], good["legality"]
     assert good["negative_control"]["passed"]
-    assert {k: v["passed"] for k, v in good["gates"].items()} == {k: True for k in ("GN", "GA", "GC", "GK1", "GK2", "GD", "GX")}
+    assert {k: v["passed"] for k, v in good["gates"].items()} == {k: True for k in ("GN", "GA", "GC", "GK1", "GK2", "GD", "GX", "GR")}
 
 
-def test_bonferroni_is_eleven_comparisons(good) -> None:
+def test_bonferroni_is_twelve_comparisons(good) -> None:
     c = good["gates"]["GC"]["GC"]
     assert c["bonf_low"] < c["ci_low"] < c["value"] < c["ci_high"] < c["bonf_high"]
-    alt = P2.C_of(records(), "L-int-g", m=11)
+    alt = P2.C_of(records(), "L-int-g", m=12)
     assert alt == c
 
 
@@ -177,6 +185,12 @@ def test_collision_reappearance_coverage_below_threshold_fails() -> None:
     spec = {"L-int-g": (0.66, 0.89, 0.90, 0.88, 0.91, 0.66)}
     g = _eval(records(spec=spec))["gates"]
     assert not g["GK2"]["passed"] and g["GK1"]["passed"]
+
+
+def test_a_scatter_control_as_good_as_the_learned_response_fails_GR() -> None:
+    r = _eval(records(spec={"L-sc-g": BASE["L-int-g"]}))
+    assert not r["gates"]["GR"]["passed"]
+    assert all(r["gates"][k]["passed"] for k in ("GN", "GA", "GC", "GK1", "GK2", "GD", "GX"))
 
 
 def test_negative_control_failure_voids_the_tracking_gates() -> None:
@@ -227,7 +241,8 @@ def test_descriptive_summary_runs_on_both_partitions() -> None:
     assert set(d["main"]) == set(P2.HAND + P2.LEARNED)
     assert d["main"]["L-int-g"]["gate_share"] == pytest.approx(0.02)
     assert set(d["main"]["L-int-g"]["reappear_by_gap"]) == {"0-10", "10-25", "25-50", "50-inf"}
-    assert set(d["dynamics"]["main"]) == {"L-int", *P2.GATES}
+    assert set(d["dynamics"]["main"]) == {"L-int", *P2.ARM_SPEC}
+    assert set(d["learned_minus_scatter"]["main"]) == {"collision", "non_collision", "all"}
 
 
 # --- the decision rule alone, at its boundaries -------------------------------------------------
@@ -237,7 +252,7 @@ def _st(value, low, high, ci_low=None, ci_high=None):
 
 
 def _passing():
-    return {"GN": _st(0.0, -0.02, 0.02), "GA": _st(0.06, 0.03, 0.09), "GC": _st(0.95, 0.8, 1.1),
+    return {"GN": _st(0.0, -0.02, 0.02), "GA": _st(0.06, 0.03, 0.09), "GC": _st(0.95, 0.8, 1.1), "GR": _st(0.05, 0.02, 0.08),
             "GK1_all": _st(0.90, 0.88, 0.92), "GK1_collision": _st(0.88, 0.84, 0.91),
             "GK2_non_collision": _st(0.90, 0.87, 0.93), "GK2_collision": _st(0.82, 0.75, 0.88),
             "GD_D": _st(0.85, 0.82, 0.88), "GD_ratio": _st(0.03, 0.02, 0.04),
@@ -275,6 +290,8 @@ def test_decide_passes_the_reference_statistics() -> None:
     ("GX_diff", _st(0.05, 0.0, 0.1), "GX"),
     ("GX_C", _st(0.59, 0.45, 0.8), "GX"),
     ("GX_C", _st(0.9, 0.4, 1.2), "GX"),
+    ("GR", _st(0.03, 0.0, 0.06), "GR"),                  # lower bound must be strictly above 0
+    ("GR", _st(-0.001, -0.03, 0.03), "GR"),
     ("GC", {"value": None, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}, "GC"),
     ("GK1_all", {"value": 0.9, "bonf_low": None, "bonf_high": None, "ci_low": None, "ci_high": None}, "GK1"),
 ])
@@ -299,9 +316,34 @@ def test_negative_control_needs_a_small_upper_bound(key, stat) -> None:
     assert not neg and all(passed.values())
 
 
-def test_negative_control_reads_the_95_percent_upper_bound() -> None:
+def test_negative_control_reads_the_bonferroni_upper_bound() -> None:
     st = _passing()
-    st["neg_C"] = _st(0.2, -0.1, 0.7, ci_low=0.0, ci_high=0.45)       # Bonferroni wide, 95% below 0.5
-    assert P2.decide(st)[1]
-    st["neg_C"] = _st(0.2, -0.1, 0.45, ci_low=0.0, ci_high=0.55)
+    st["neg_C"] = _st(0.2, -0.1, 0.7, ci_low=0.0, ci_high=0.45)       # 95% below 0.5, Bonferroni not: fails
     assert not P2.decide(st)[1]
+    st["neg_C"] = _st(0.2, -0.1, 0.45, ci_low=0.0, ci_high=0.55)
+    assert P2.decide(st)[1]
+
+
+class _Stoch:
+    """Stand-in stochastic process model: records its seeds; E-B underneath."""
+    stochastic = True
+
+    def __init__(self):
+        self.seeds = []
+
+    def reseed(self, seed):
+        self.seeds.append(seed)
+
+    def __call__(self, P, V, pillars):
+        return Mo.bounce(P, V, pillars)
+
+
+def test_stochastic_arms_are_reseeded_per_world_seed_arm_and_pass() -> None:
+    ep = W.generate_episode("test-s4p2-seed", 3, 4, steps=40)
+    tr, dy = _Stoch(), _Stoch()
+    rec = P2.world_record(ep, "main", "test-s4p2-seed", {"X#2": tr}, dyn_models={"X#2": dy, "E-B": Mo.bounce})
+    assert tr.seeds == [P2.rng_seed("test-s4p2-seed", 3, 2, "X", "track")]
+    assert dy.seeds == [P2.rng_seed("test-s4p2-seed", 3, 2, "X", "dyn")]
+    assert len({P2.rng_seed("n", 0, 1, "X", "track"), P2.rng_seed("n", 0, 1, "X", "dyn"), P2.rng_seed("n", 0, 2, "X", "track"),
+                P2.rng_seed("n", 1, 1, "X", "track"), P2.rng_seed("n", 0, 1, "Y", "track")}) == 5
+    assert "X#2" in rec["cells"] and "X#2" in rec["dyn"]

@@ -1,8 +1,9 @@
 """S4 phase 2 evaluation worker (MLX on CPU). Runs in a spawned process; never generates worlds.
 
 ``build_models(weights)`` loads the phase-1 L-int and L-ind of each seed and builds every tracked
-model: the hand arms, ungated L-int and the gated arms (analysis_p2.GATES), plus separate copies for
-the dynamics sums (no gate counters). ``init`` keeps them per process; ``evaluate_world(task)``
+model: the hand arms, ungated L-int and the gated arms (analysis_p2.ARM_SPEC: gate and response),
+plus separate copies for the dynamics sums (no gate counters). Stochastic arms are reseeded per pass
+by analysis_p2. ``init`` keeps them per process; ``evaluate_world(task)``
 returns the record of one world (analysis_p2.world_record) and, on main worlds, the k-step position
 errors of L-int-g and E-B from the exact truth.
 """
@@ -38,12 +39,12 @@ def build_models(weights: Mapping[str, str]) -> tuple[dict[str, Callable], dict[
     for s in P2.SEEDS:
         lint = nets[f"L-int#{s}"]
         models[f"L-int#{s}"] = dyn[f"L-int#{s}"] = L.as_process_model(lint)
-        for arm, gate in P2.GATES.items():
-            base = nets[f"{P2.BASE_MODEL[arm]}#{s}"]
+        for arm, (base_name, gate, response) in P2.ARM_SPEC.items():
+            base = nets[f"{base_name}#{s}"]
             c = [0, 0]
             counters[f"{arm}#{s}"] = c
-            models[f"{arm}#{s}"] = G.gated_model(base, gate, counter=c)
-            dyn[f"{arm}#{s}"] = G.gated_model(base, gate)
+            models[f"{arm}#{s}"] = G.gated_model(base, gate, response=response, counter=c)
+            dyn[f"{arm}#{s}"] = G.gated_model(base, gate, response=response)
     return models, counters, dyn
 
 

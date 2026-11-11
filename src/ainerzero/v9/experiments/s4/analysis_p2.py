@@ -5,11 +5,12 @@
   correctness of every event, the one-step coverage counts (collision steps and the others), the
   reappearance coverage of every event, IDF1, track count, a digest of the track ids and the gate
   share; the dynamics sums from the exact truth;
-- aggregation over seeds and worlds; the gates GN, GA, GC, GK1, GK2, GD, GX, the negative control
-  and the legality gates.
+- aggregation over seeds and worlds; the gates GN, GA, GC, GK1, GK2, GD, GX, GR, the negative
+  control and the legality gates.
 
 Every arm is tracked with the filter seed of (world, seed) used in phase 1 (variant "base"), so arms
-share their random numbers. An event's correctness and its reappearance coverage are averaged over
+share their random numbers. Stochastic arms (a random gate, the scatter response) draw from their own
+generator, reseeded per (world, seed, arm, pass) before every tracking and dynamics pass. An event's correctness and its reappearance coverage are averaged over
 the three seeds before summing per world; one-step rows of the three seeds are pooled.
 """
 
@@ -31,12 +32,22 @@ NAMESPACES = {"probe": "s4p2-probe", "final": "s4p2-final"}
 SIZES = {"probe": (50, 25), "final": (200, 100)}            # (main, extrapolation) worlds
 SEEDS = A.SEEDS
 HAND = ("E-CV", "E-B", "E-P")
-LEARNED = ("L-int", "L-int-g", "L-int-g3", "L-int-g7", "L-int-geo", "L-ind-geo")
-MAIN_ARM, NEG_ARM = "L-int-g", "L-ind-geo"
-GATES = {"L-int-g": 0.5, "L-int-g3": 0.3, "L-int-g7": 0.7, "L-int-geo": "geo", "L-ind-geo": "geo"}   # arm -> gate
-BASE_MODEL = {"L-int": "L-int", "L-int-g": "L-int", "L-int-g3": "L-int", "L-int-g7": "L-int", "L-int-geo": "L-int", "L-ind-geo": "L-ind"}
+RAND_RATE = 0.02                   # random gate: about the share at which the L-int-g gate opens (exploration)
+ARM_SPEC = {                       # gated arm -> (base model, gate, response where the gate is open)
+    "L-int-g": ("L-int", 0.5, "learned"),
+    "L-int-g3": ("L-int", 0.3, "learned"),
+    "L-int-g7": ("L-int", 0.7, "learned"),
+    "L-int-geo": ("L-int", "geo", "learned"),
+    "L-ind-geo": ("L-ind", "geo", "learned"),
+    "L-sc-g": ("L-int", 0.5, "scatter"),
+    "L-int-rand": ("L-int", ("random", RAND_RATE), "learned"),
+}
+LEARNED = ("L-int", *ARM_SPEC)
+MAIN_ARM, NEG_ARM, SCATTER_ARM = "L-int-g", "L-ind-geo", "L-sc-g"
+GATES = {arm: spec[1] for arm, spec in ARM_SPEC.items()}
+BASE_MODEL = {"L-int": "L-int"} | {arm: spec[0] for arm, spec in ARM_SPEC.items()}
 BOOT_SEED = 20261111
-N_COMPARISONS = 11                 # GN, GA, GC, GK1 (2), GK2 (2), GD (2), GX (2)
+N_COMPARISONS = 12                 # GN, GA, GC, GK1 (2), GK2 (2), GD (2), GX (2), GR
 EXPECTED_COLL_EVENTS_PER_40 = 267  # exploration round A, s4x-p2a
 EXPECTED_COLL_DISK_STEPS_PER_40 = A.EXPECTED_COLL_DISK_STEPS_PER_40
 SAMPLE_BAND = A.SAMPLE_BAND
@@ -51,7 +62,8 @@ THRESHOLDS = {
     "GK2": {"non_collision": 0.85, "non_collision_low": 0.80, "collision": 0.75, "collision_low": 0.65},
     "GD": {"D": 0.8, "D_low": 0.7, "ratio": 0.10, "ratio_high": 0.15},
     "GX": {"diff": 0.03, "diff_low": 0.0, "C": 0.6, "C_low": 0.4},
-    "negative_control": {"C_high_below": 0.5, "D_high_below": 0.5},
+    "GR": {"diff": 0.0, "diff_low": 0.0},
+    "negative_control": {"C_high_below": 0.5, "D_high_below": 0.5},     # Bonferroni upper bounds
 }
 
 
@@ -65,6 +77,18 @@ def cell_key(arm: str, seed: int) -> str:
 
 def filter_seed(ns: str, w: int, seed: int) -> int:
     return A.filter_seed(ns, w, seed, "base")
+
+
+def rng_seed(ns: str, w: int, seed: int, arm: str, use: str) -> int:
+    """Seed of a stochastic arm's own generator for one pass (use: "track" or "dyn")."""
+    return W.derive_seed(ns, "arm-rng", w, seed, arm, use)
+
+
+def reseed_if_stochastic(model, seed: int) -> None:
+    """Set the generator of a stochastic arm (gated.GatedModel with a random gate or the scatter
+    response); deterministic models are left alone. Duck-typed so this module stays free of MLX."""
+    if getattr(model, "stochastic", False):
+        model.reseed(seed)
 
 
 def ids_digest(ids: Sequence[np.ndarray]) -> str:
@@ -119,7 +143,8 @@ def reappearance_inside(ep: W.Episode, ids: Sequence[np.ndarray], events: Sequen
 
 
 # --- one world ------------------------------------------------------------------------------------
-def track_cell(ep: W.Episode, model: Callable, ns: str, seed: int, events: Sequence[dict]) -> dict[str, Any]:
+def track_cell(ep: W.Episode, model: Callable, ns: str, seed: int, events: Sequence[dict], arm: str) -> dict[str, Any]:
+    reseed_if_stochastic(model, rng_seed(ns, ep.world_index, seed, arm, "track"))
     rng = np.random.default_rng(filter_seed(ns, ep.world_index, seed))
     cal = Calibration(ep, [e["b"] for e in events])
     ids, n_tracks = F.track(A.student_detections(ep), ep.pillars, model, rng, F.FilterConfig(), on_predict=cal)
@@ -144,11 +169,13 @@ def world_record(ep: W.Episode, kind: str, ns: str, models: Mapping[str, Callabl
             c = counters.get(f"{arm}#{s}") if counters else None
             if c is not None:
                 c[0] = c[1] = 0
-            cell = track_cell(ep, m, ns, s, events)
+            cell = track_cell(ep, m, ns, s, events, arm)
             if c is not None:
                 cell["gate"] = [int(c[0]), int(c[1])]
             rec["cells"][cell_key(arm, s)] = cell
     for name, m in (dyn_models or {}).items():
+        if "#" in name:
+            reseed_if_stochastic(m, rng_seed(ns, ep.world_index, int(name.split("#")[1]), name.split("#")[0], "dyn"))
         rec["dyn"][name] = A.dyn_sums(ep, m)
     return rec
 
@@ -270,7 +297,8 @@ def gate_stats(main, extrap) -> dict[str, dict]:
             "GK2_non_collision": coverage_reappear(main, a, "non_collision"), "GK2_collision": coverage_reappear(main, a, "collision"),
             "GD_D": D_of(main, a), "GD_ratio": HF_of(main, a),
             "GX_diff": acc_diff(extrap, a, "E-B", "all"), "GX_C": C_of(extrap, a),
-            "neg_C": C_of(main, NEG_ARM, m=1), "neg_D": D_of(main, NEG_ARM, m=1)}
+            "GR": acc_diff(main, a, SCATTER_ARM, "collision"),
+            "neg_C": C_of(main, NEG_ARM), "neg_D": D_of(main, NEG_ARM)}
 
 
 def decide(st: Mapping[str, dict]) -> tuple[dict[str, bool], bool]:
@@ -293,14 +321,15 @@ def decide(st: Mapping[str, dict]) -> tuple[dict[str, bool], bool]:
                and _le(hf, "value", T["GD"]["ratio"]) and _le(hf, "bonf_high", T["GD"]["ratio_high"])),
         "GX": (_ge(st["GX_diff"], "value", T["GX"]["diff"]) and _gt(st["GX_diff"], "bonf_low", T["GX"]["diff_low"])
                and _ge(st["GX_C"], "value", T["GX"]["C"]) and _gt(st["GX_C"], "bonf_low", T["GX"]["C_low"])),
+        "GR": _ge(st["GR"], "value", T["GR"]["diff"]) and _gt(st["GR"], "bonf_low", T["GR"]["diff_low"]),
     }
-    neg = (_lt(st["neg_C"], "ci_high", T["negative_control"]["C_high_below"])
-           and _lt(st["neg_D"], "ci_high", T["negative_control"]["D_high_below"]))
+    neg = (_lt(st["neg_C"], "bonf_high", T["negative_control"]["C_high_below"])
+           and _lt(st["neg_D"], "bonf_high", T["negative_control"]["D_high_below"]))
     return {k: bool(v) for k, v in passed.items()}, bool(neg)
 
 
 GATE_STATS = {"GN": ("GN",), "GA": ("GA",), "GC": ("GC",), "GK1": ("GK1_all", "GK1_collision"),
-              "GK2": ("GK2_non_collision", "GK2_collision"), "GD": ("GD_D", "GD_ratio"), "GX": ("GX_diff", "GX_C")}
+              "GK2": ("GK2_non_collision", "GK2_collision"), "GD": ("GD_D", "GD_ratio"), "GX": ("GX_diff", "GX_C"), "GR": ("GR",)}
 
 
 def evaluate(main, extrap, *, n_main, n_extrap, labels_ok, student_ok, replay_ok, weights_ok) -> dict[str, Any]:
@@ -356,12 +385,14 @@ def summarize_descriptive(main, extrap, arms: Sequence[str]) -> dict[str, Any]:
                 row["C"] = C_of(recs, arm, m=1)
                 row["diff_non_collision_vs_EB"] = acc_diff(recs, arm, "E-B", "non_collision", m=1)
                 row["diff_all_vs_EB"] = acc_diff(recs, arm, "E-B", "all", m=1)
-            if arm in GATES:
+            if arm in ARM_SPEC:
                 o = sum(r["cells"][cell_key(arm, s)].get("gate", [0, 0])[0] for r in recs for s in SEEDS)
                 t = sum(r["cells"][cell_key(arm, s)].get("gate", [0, 0])[1] for r in recs for s in SEEDS)
                 row["gate_share"] = o / t if t else None
             d[arm] = row
         out[part] = d
     out["dynamics"] = {part: {name: {"D": D_of(recs, name, m=1)["value"], "HF": HF_of(recs, name, m=1)["value"]}
-                              for name in ("L-int", *GATES)} for part, recs in (("main", main), ("extrap", extrap)) if recs}
+                              for name in ("L-int", *ARM_SPEC)} for part, recs in (("main", main), ("extrap", extrap)) if recs}
+    out["learned_minus_scatter"] = {part: {w: acc_diff(recs, MAIN_ARM, SCATTER_ARM, w, m=1) for w in ("collision", "non_collision", "all")}
+                                    for part, recs in (("main", main), ("extrap", extrap)) if recs}
     return out
