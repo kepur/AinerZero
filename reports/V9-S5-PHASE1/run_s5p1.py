@@ -47,8 +47,10 @@ CELL_LIMIT_S = 45 * 60
 STAGE_LIMIT_S = {
     "smoke": 15 * 60,
     "probe": int(1.5 * 3600),
-    "dev-tune": 2 * 3600,
-    "dev-distill": 4 * 3600,
+    # Raised after probe-20261112c measured real step times; user approved a 22 h lock budget on 2026-11-12
+    # (design r1 implementation-stage addendum 6).
+    "dev-tune": 3 * 3600,
+    "dev-distill": 8 * 3600,
 }
 SMOKE_PARTITIONS = {
     "pool": "s5test-smoke-pool",
