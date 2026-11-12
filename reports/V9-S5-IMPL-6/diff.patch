@@ -1,0 +1,1900 @@
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 7d6de1a..8e0d09f 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -256,6 +256,7 @@ NATIVE_MODULES = {
+     # S5: Student ViT, losses, heads in MLX.
+     "test_s5_student_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 student ViT, losses, heads)",
+     "test_s5_train_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 data reading and training loops in MLX)",
++    "test_s5_runner_native.py": "runs the S5 pre-freeze runner smoke path (MLX) in a throwaway copy",
+ }
+ 
+ # Individual tests in otherwise pure-CPU modules (prefix match on node id).
+diff --git a/src/ainerzero/v9/experiments/s5/evaluate.py b/src/ainerzero/v9/experiments/s5/evaluate.py
+new file mode 100644
+index 0000000..e78d891
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/evaluate.py
+@@ -0,0 +1,226 @@
++"""S5 评测汇总。
++
++``evaluate`` 调用 ``train.predict`` 再交给 ``metrics``。``per_world_stat`` 只依赖预测数组，
++供 ``metrics.paired_world_bootstrap`` 在抽到的世界上重算同一指标的差值。世界被抽中多次时，
++段按 ``expand_world_index`` 重复计入。
++"""
++
++from __future__ import annotations
++
++from typing import Any, Callable
++
++import numpy as np
++
++from ainerzero.v9.experiments.s5 import metrics
++from ainerzero.v9.experiments.s5.data import ClipIndex, load_item
++from ainerzero.v9.experiments.s5.tokens import rlt_keep
++
++SCALAR_METRICS = (
++    "r2_ap",
++    "r3_ap",
++    "r2_ap_near",
++    "r2_ap_mid",
++    "r2_ap_far",
++    "r3_ap_near",
++    "r3_ap_mid",
++    "r3_ap_far",
++    "r1_rmse",
++    "r1_rmse_object",
++    "r1_rmse_floor",
++    "ordering_all",
++    "keep_rate",
++)
++
++
++def _reorder_by_world(world_ids: np.ndarray) -> tuple[np.ndarray, np.ndarray, int]:
++    """把段排成按世界连续的块，返回 (新下标, 世界原号, 每世界段数)。"""
++    order_worlds: list[int] = []
++    seen: set[int] = set()
++    for raw in world_ids.tolist():
++        world = int(raw)
++        if world not in seen:
++            seen.add(world)
++            order_worlds.append(world)
++    groups: dict[int, list[int]] = {world: [] for world in order_worlds}
++    for index, raw in enumerate(world_ids.tolist()):
++        groups[int(raw)].append(index)
++    counts = {len(groups[world]) for world in order_worlds}
++    if len(counts) != 1:
++        raise ValueError(f"each world needs the same number of clips, got {counts}")
++    clips_per_world = int(next(iter(counts)))
++    order: list[int] = []
++    for world in order_worlds:
++        order.extend(groups[world])
++    return np.asarray(order, dtype=np.int64), np.asarray(order_worlds, dtype=np.int64), clips_per_world
++
++
++def _take(array: np.ndarray, clips: np.ndarray) -> np.ndarray:
++    return np.asarray(array)[np.asarray(clips, dtype=np.int64)]
++
++
++def _take_list(rows: list[Any], clips: np.ndarray) -> list[Any]:
++    return [rows[int(i)] for i in np.asarray(clips, dtype=np.int64)]
++
++
++def metric_value(ev: dict[str, Any], clips: np.ndarray, metric: str) -> float:
++    """在给定段下标（可重复）上重算一个标量指标。"""
++    if metric not in SCALAR_METRICS:
++        raise ValueError(f"unknown metric {metric!r}; expected one of {SCALAR_METRICS}")
++    clips = np.asarray(clips, dtype=np.int64)
++    if metric == "keep_rate":
++        per_clip = ev.get("keep_rate_per_clip")
++        if per_clip is None:
++            return float("nan")
++        return float(np.mean(_take(per_clip, clips)))
++    if metric == "r2_ap":
++        return float(metrics.grid_ap(_take(ev["r2_logit"], clips), _take(ev["r2"], clips)))
++    if metric == "r3_ap":
++        return float(metrics.grid_ap(_take(ev["r3_logit"], clips), _take(ev["r3"], clips)))
++    if metric.startswith("r2_ap_") or metric.startswith("r3_ap_"):
++        which, _, group = metric.partition("_ap_")
++        scores = _take(ev[f"{which}_logit"], clips)
++        targets = _take(ev[which], clips)
++        grouped = metrics.grid_ap_by_distance(scores, targets)
++        return float(grouped[group])
++    pred_logd = _take(ev["r1_logd"], clips)
++    target_logd = _take(ev["r1_target"], clips)
++    if metric == "r1_rmse":
++        return float(metrics.logd_rmse(pred_logd, target_logd))
++    if metric == "r1_rmse_object":
++        return float(metrics.logd_rmse(pred_logd, target_logd, obj=_take(ev["r1_obj"], clips), split="object"))
++    if metric == "r1_rmse_floor":
++        return float(
++            metrics.logd_rmse(
++                pred_logd,
++                target_logd,
++                sky=_take(ev["r1_sky"], clips),
++                obj=_take(ev["r1_obj"], clips),
++                split="floor",
++            )
++        )
++    pred_last = pred_logd[:, -1]
++    ordering = metrics.ordering_accuracy(
++        pred_last,
++        _take_list(ev["ordering_pairs"], clips),
++        _take_list(ev["disk_groups"], clips),
++    )
++    return float(ordering["all"][1])
++
++
++def paired_group_stat(
++    group_a: list[dict[str, Any]],
++    group_b: list[dict[str, Any]],
++    metric: str,
++) -> Callable[[np.ndarray], float]:
++    """多个种子先在同一批段上各自重算，再取平均，然后做 A 减 B。"""
++    if not group_a or not group_b:
++        raise ValueError("both groups need at least one eval")
++    clips_per_world = int(group_a[0]["clips_per_world"])
++    groups = (*group_a, *group_b)
++    if any(int(ev["clips_per_world"]) != clips_per_world for ev in groups):
++        raise ValueError("clips_per_world mismatch")
++
++    def stat(world_idx: np.ndarray) -> float:
++        clips = metrics.expand_world_index(world_idx, clips_per_world=clips_per_world)
++        mean_a = sum(metric_value(ev, clips, metric) for ev in group_a) / len(group_a)
++        mean_b = sum(metric_value(ev, clips, metric) for ev in group_b) / len(group_b)
++        return float(mean_a - mean_b)
++
++    return stat
++
++
++def per_world_stat(
++    eval_a: dict[str, Any],
++    eval_b: dict[str, Any],
++    metric: str,
++) -> Callable[[np.ndarray], float]:
++    """返回 ``stat(world_idx) = metric(A) - metric(B)``，两边都只在这些世界上重算。
++
++    ``world_idx`` 里的重复世界会经 ``metrics.expand_world_index`` 变成重复的段。
++    """
++    clips_per_world = int(eval_a["clips_per_world"])
++    if int(eval_b["clips_per_world"]) != clips_per_world:
++        raise ValueError("eval_a and eval_b clips_per_world differ")
++
++    def stat(world_idx: np.ndarray) -> float:
++        clips = metrics.expand_world_index(world_idx, clips_per_world=clips_per_world)
++        return float(metric_value(eval_a, clips, metric) - metric_value(eval_b, clips, metric))
++
++    return stat
++
++
++def _summarize(ev: dict[str, Any], threshold: float) -> dict[str, Any]:
++    clips = np.arange(ev["r2"].shape[0], dtype=np.int64)
++    recall_r2 = metrics.disk_recall(ev["r2_logit"], ev["disk_groups"], threshold, "occlusion_group")
++    recall_dist = metrics.disk_recall(ev["r2_logit"], ev["disk_groups"], threshold, "distance_group")
++    ordering = metrics.ordering_accuracy(
++        ev["r1_logd"][:, -1],
++        ev["ordering_pairs"],
++        ev["disk_groups"],
++    )
++    summary = {
++        "r2_ap": metric_value(ev, clips, "r2_ap"),
++        "r3_ap": metric_value(ev, clips, "r3_ap"),
++        "r2_ap_by_distance": metrics.grid_ap_by_distance(ev["r2_logit"], ev["r2"]),
++        "r3_ap_by_distance": metrics.grid_ap_by_distance(ev["r3_logit"], ev["r3"]),
++        "r2_recall_occlusion": recall_r2,
++        "r2_recall_distance": recall_dist,
++        "r1_rmse": metric_value(ev, clips, "r1_rmse"),
++        "r1_rmse_object": metric_value(ev, clips, "r1_rmse_object"),
++        "r1_rmse_floor": metric_value(ev, clips, "r1_rmse_floor"),
++        "ordering_accuracy": ordering,
++        "threshold": float(threshold),
++    }
++    if ev.get("keep_rate_per_clip") is not None:
++        summary["keep_rate"] = float(np.mean(ev["keep_rate_per_clip"]))
++    return summary
++
++
++def evaluate(student: Any, heads: Any, index: ClipIndex, *, tau: float | None = None, threshold: float = 0.5) -> dict[str, Any]:
++    """逐段预测后计算 R1/R2/R3、召回、次序，以及可选的 RLT keep 率。
++
++    返回的预测和标签已按世界排成连续段，``world_ids[k]`` 对应段 ``[k*clips_per_world, (k+1)*clips_per_world)``。
++    """
++    from ainerzero.v9.experiments.s5.train import predict
++
++    predicted = predict(student, heads, index, tau=tau)
++    r1_target, r1_sky, r1_obj = [], [], []
++    r2, r3 = [], []
++    disks, pairs = [], []
++    worlds = []
++    keep_rates = []
++    for i in range(len(index)):
++        item = load_item(index, i)
++        worlds.append(int(item["world"]))
++        r1_target.append(np.asarray(item["r1_logd"]))
++        r1_sky.append(np.asarray(item["r1_sky"]))
++        r1_obj.append(np.asarray(item["r1_obj"]))
++        r2.append(np.asarray(item["r2"]))
++        r3.append(np.asarray(item["r3"]))
++        disks.append(item["disk_groups"])
++        pairs.append(item["ordering_pairs"])
++        if tau is not None:
++            kept, _run_len = rlt_keep(item["patches"], tau)
++            keep_rates.append(float(np.mean(kept)))
++
++    order, world_ids, clips_per_world = _reorder_by_world(np.asarray(worlds, dtype=np.int64))
++    ev: dict[str, Any] = {
++        "r1_logd": np.asarray(predicted["r1_logd"])[order],
++        "r2_logit": np.asarray(predicted["r2_logit"])[order],
++        "r3_logit": np.asarray(predicted["r3_logit"])[order],
++        "r1_target": np.stack(r1_target, axis=0)[order],
++        "r1_sky": np.stack(r1_sky, axis=0)[order],
++        "r1_obj": np.stack(r1_obj, axis=0)[order],
++        "r2": np.stack(r2, axis=0)[order],
++        "r3": np.stack(r3, axis=0)[order],
++        "disk_groups": [disks[int(i)] for i in order],
++        "ordering_pairs": [pairs[int(i)] for i in order],
++        "world_ids": world_ids,
++        "clips_per_world": clips_per_world,
++        "threshold": float(threshold),
++        "tau": tau,
++    }
++    if tau is not None:
++        ev["keep_rate_per_clip"] = np.asarray(keep_rates, dtype=np.float64)[order]
++    ev["metrics"] = _summarize(ev, threshold)
++    return ev
+diff --git a/reports/V9-S5-PHASE1/plan_s5p1.py b/reports/V9-S5-PHASE1/plan_s5p1.py
+new file mode 100644
+index 0000000..6f579a8
+--- /dev/null
++++ b/reports/V9-S5-PHASE1/plan_s5p1.py
+@@ -0,0 +1,330 @@
++"""S5 冻结前各阶段的格清单、选参、选 A* 与 GT1 功效。纯标准库，不训练。"""
++
++from __future__ import annotations
++
++import math
++
++BATCH = 8
++CLIPS_PER_WORLD = 16
++POOL_WORLDS = 250
++LAB_WORLDS = 128
++DISTILL_EPOCHS = 15
++SUPER_EPOCHS = {64: 300, 512: 60, 2048: 20}
++L_WORLDS = {64: 4, 512: 32, 2048: 128}
++DISTILL_LRS = (3e-4, 1e-3)
++SUPER_LRS = (3e-4, 1e-3)
++ETAS = (0.1, 0.5, 1.0)
++ARM_ORDER = ("A1", "A2", "A3")
++SEG_PER_S = 54.0
++FINAL_WORLD_CAP = 96
++GT1_EFFECT = 0.05
++GT1_LEVEL = 1.0 - 0.05 / 3.0
++GT1_POWER = 0.80
++PROBE_STEP_SCALE = 0.1
++TUNE_DISTILL_STEP_SCALE = 0.25
++
++# 设计 §6 的整段墙钟，dry-run 在逐步估算之外另报这组数。
++STAGE_WALL_H = {
++    "probe": 0.5,
++    "dev-tune": 1.6,
++    "dev-distill": 2.0 + 0.75 + 0.47,
++}
++
++
++HEADS_CACHE_SEG_PER_S = 54.0   # 学生前向抽取并缓存特征（按 54 段/秒）
++HEADS_TRAIN_STEP_PER_S = 100.0  # 仅更新读出头参数的优化器步速（按 100 步/秒估算）
++
++
++def steps_for(n_clips: int, epochs: int, batch: int = BATCH) -> int:
++    return max(1, int(epochs) * (int(n_clips) // int(batch)))
++
++
++def wall_seconds(n_clips: int, epochs: int, *, kind: str = "train", batch: int = BATCH) -> float:
++    """按设计里的每秒段数估算墙钟，只用于 dry-run。
++
++    对于 heads 格子，学生模型已冻结，耗时按「缓存一次学生特征 + 只训读出头」估算；
++    单头耗时约 25–89 s（平均约 50 s），dev-distill 54 个读出头合计约 0.81 h（对照设计 §6 的 0.75 h）；
++    待 probe 实测后校准覆盖。
++    """
++    if kind == "heads":
++        steps = steps_for(n_clips, epochs, batch)
++        cache_s = float(n_clips / HEADS_CACHE_SEG_PER_S)
++        train_s = float(steps / HEADS_TRAIN_STEP_PER_S)
++        return cache_s + train_s
++    return float(n_clips * epochs / SEG_PER_S)
++
++
++def scaled_epochs(design_epochs: int, scale: float) -> int:
++    return max(1, int(round(design_epochs * scale)))
++
++
++def normal_ppf(p: float) -> float:
++    """标准正态分位数。Acklam 近似，足够用来锁定功效公式。"""
++    if not 0.0 < p < 1.0:
++        raise ValueError(f"probability out of range: {p}")
++    a = (
++        -3.969683028665376e01,
++        2.209460984245205e02,
++        -2.759285104469687e02,
++        1.383577518672690e02,
++        -3.066479806614716e01,
++        2.506628277459239e00,
++    )
++    b = (
++        -5.447609879822406e01,
++        1.615858368580409e02,
++        -1.556989798598866e02,
++        6.680131188771972e01,
++        -1.328068155288572e01,
++    )
++    c = (
++        -7.784894002430293e-03,
++        -3.223964580411365e-01,
++        -2.400758277161838e00,
++        -2.549732539343734e00,
++        4.374664141464968e00,
++        2.938163982698783e00,
++    )
++    d = (
++        7.784695709041462e-03,
++        3.224671290700398e-01,
++        2.445134137142996e00,
++        3.754408661907416e00,
++    )
++    plow = 0.02425
++    if p < plow:
++        q = math.sqrt(-2.0 * math.log(p))
++        num = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
++        den = ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0)
++        return num / den
++    if p > 1.0 - plow:
++        q = math.sqrt(-2.0 * math.log(1.0 - p))
++        num = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
++        den = ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0)
++        return -(num / den)
++    q = p - 0.5
++    r = q * q
++    num = (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q
++    den = (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0)
++    return num / den
++
++
++def worlds_for_power(
++    sigma_world: float,
++    *,
++    effect: float = GT1_EFFECT,
++    level: float = GT1_LEVEL,
++    power: float = GT1_POWER,
++    cap: int = FINAL_WORLD_CAP,
++) -> dict[str, float | int | None]:
++    """GT1：真效应为 ``effect`` 时，98.3% 区间下界大于 0 的功效达到 ``power`` 所需世界数。
++
++    ``sigma_world`` 是配对差值的世界级标准差。区间用等尾分位，所以正态临界值取
++    ``(1-level)/2`` 而不是 ``1-level``。功效项再加 ``normal_ppf(power)``。
++    设计补记把 ``s5p1-final`` 封在 ``cap`` 个世界；超出的数仍记在 ``n_uncapped``。
++    """
++    if sigma_world < 0 or effect <= 0 or not 0.0 < power < 1.0:
++        raise ValueError("sigma, effect and power are out of range")
++    z_ci = normal_ppf(1.0 - (1.0 - level) / 2.0)
++    z_pow = normal_ppf(power)
++    if sigma_world == 0.0:
++        n_uncapped = 1
++    else:
++        n_uncapped = int(math.ceil((sigma_world * (z_ci + z_pow) / effect) ** 2))
++    return {
++        "n_uncapped": n_uncapped,
++        "n_worlds": min(n_uncapped, int(cap)),
++        "capped": bool(n_uncapped > cap),
++        "effect": float(effect),
++        "level": float(level),
++        "power": float(power),
++        "sigma_world": float(sigma_world),
++        "z_ci": float(z_ci),
++        "z_power": float(z_pow),
++    }
++
++
++def _mean(rows: list[float]) -> float:
++    if not rows:
++        raise ValueError("no rows to average")
++    return float(sum(rows) / len(rows))
++
++
++def select_a_star(rows: list[dict]) -> dict:
++    """L=64 的 R2 AP：先在蒸馏种子内平均读出种子，再在蒸馏种子间平均。
++
++    平局按 A1 < A2 < A3 取靠前的臂。
++    """
++    buckets: dict[str, dict[int, list[float]]] = {arm: {} for arm in ARM_ORDER}
++    for row in rows:
++        arm = str(row["arm"])
++        if arm not in buckets:
++            raise ValueError(f"unexpected arm {arm!r}")
++        seed = int(row["distill_seed"])
++        buckets[arm].setdefault(seed, []).append(float(row["r2_ap"]))
++    scored = []
++    for arm in ARM_ORDER:
++        per_distill = [_mean(values) for values in buckets[arm].values()]
++        if not per_distill:
++            raise ValueError(f"arm {arm} has no rows")
++        scored.append((arm, _mean(per_distill)))
++    best_score = max(score for _arm, score in scored)
++    tied = [arm for arm, score in scored if score == best_score]
++    chosen = next(arm for arm in ARM_ORDER if arm in tied)
++    return {"arm": chosen, "score": best_score, "per_arm": {arm: score for arm, score in scored}, "tied": tied}
++
++
++def choose_value(rows: list[dict], value_key: str) -> dict:
++    """同一取值先对 R2 AP 取平均，再按平均分选；平局取更小的取值。"""
++    groups: dict[float, list[float]] = {}
++    for row in rows:
++        groups.setdefault(float(row[value_key]), []).append(float(row["r2_ap"]))
++    averaged = [{value_key: key, "r2_ap": _mean(values)} for key, values in groups.items()]
++    return choose_smaller(averaged, value_key)
++
++
++def choose_smaller(rows: list[dict], value_key: str) -> dict:
++    """R2 AP 高者胜；平局取 ``value_key`` 更小的那个。"""
++    if not rows:
++        raise ValueError("no rows")
++    best = max(float(row["r2_ap"]) for row in rows)
++    tied = [row for row in rows if float(row["r2_ap"]) == best]
++    tied.sort(key=lambda row: float(row[value_key]))
++    winner = tied[0]
++    return {"value": float(winner[value_key]), "r2_ap": float(winner["r2_ap"]), "tied": len(tied)}
++
++
++def _cell(cell_id: str, kind: str, **fields) -> dict:
++    n_clips = int(fields.pop("n_clips"))
++    epochs = int(fields.pop("epochs"))
++    batch = int(fields.pop("batch", BATCH))
++    fields.update(
++        {
++            "cell_id": cell_id,
++            "kind": kind,
++            "n_clips": n_clips,
++            "epochs": epochs,
++            "batch_size": batch,
++            "steps": steps_for(n_clips, epochs, batch),
++            "wall_s_est": wall_seconds(n_clips, epochs, kind=kind, batch=batch),
++        }
++    )
++    return fields
++
++
++def stage_cells(stage: str, *, pool_worlds: int = POOL_WORLDS, lab_worlds: int = LAB_WORLDS) -> list[dict]:
++    """该阶段要跑的训练格。smoke 的格由运行器另列（固定 2 步）。"""
++    if stage == "smoke":
++        return []
++    pool_clips = pool_worlds * CLIPS_PER_WORLD
++    if stage == "probe":
++        cells = []
++        distill_epochs = scaled_epochs(DISTILL_EPOCHS, PROBE_STEP_SCALE)
++        for arm in ARM_ORDER:
++            cells.append(_cell(
++                f"probe-distill-{arm}-s0", "distill", arm=arm, seed=0, lr=1e-3,
++                n_clips=pool_clips, epochs=distill_epochs, partition="s5p1-pool",
++            ))
++        for label_n, worlds in L_WORLDS.items():
++            epochs = scaled_epochs(SUPER_EPOCHS[label_n], PROBE_STEP_SCALE)
++            n_clips = worlds * CLIPS_PER_WORLD
++            cells.append(_cell(
++                f"probe-A0-L{label_n}-s0", "supervised", arm="A0", seed=0, lr=1e-3,
++                label_n=label_n, n_clips=n_clips, epochs=epochs, partition="s5p1-lab",
++            ))
++        cells.append(_cell(
++            "probe-A4-L512-s0", "supervised", arm="A4", seed=0, lr=1e-3, eta=0.5,
++            label_n=512, n_clips=L_WORLDS[512] * CLIPS_PER_WORLD,
++            epochs=scaled_epochs(SUPER_EPOCHS[512], PROBE_STEP_SCALE), partition="s5p1-lab",
++        ))
++        cells.append(_cell(
++            "probe-A0R-L512-s0", "supervised", arm="A0-R", seed=0, lr=1e-3, tau=0.02,
++            label_n=512, n_clips=L_WORLDS[512] * CLIPS_PER_WORLD,
++            epochs=scaled_epochs(SUPER_EPOCHS[512], PROBE_STEP_SCALE), partition="s5p1-lab",
++        ))
++        for arm in ARM_ORDER:
++            for label_n, worlds in L_WORLDS.items():
++                cells.append(_cell(
++                    f"probe-heads-{arm}-L{label_n}-s0", "heads", arm=arm, seed=0,
++                    distill_seed=0, readout_seed=0, lr=1e-3, label_n=label_n,
++                    n_clips=worlds * CLIPS_PER_WORLD,
++                    epochs=scaled_epochs(SUPER_EPOCHS[label_n], PROBE_STEP_SCALE),
++                    partition="s5p1-lab",
++                ))
++        return cells
++    if stage == "dev-tune":
++        cells = []
++        epochs = scaled_epochs(DISTILL_EPOCHS, TUNE_DISTILL_STEP_SCALE)
++        for lr in DISTILL_LRS:
++            cells.append(_cell(
++                f"tune-distill-A2-lr{lr}", "distill", arm="A2", seed=0, lr=lr,
++                n_clips=pool_clips, epochs=epochs, partition="s5p1-pool", role="distill_lr",
++            ))
++        for label_n, worlds in L_WORLDS.items():
++            for lr in SUPER_LRS:
++                cells.append(_cell(
++                    f"tune-A0-L{label_n}-lr{lr}", "supervised", arm="A0", seed=0, lr=lr,
++                    label_n=label_n, n_clips=worlds * CLIPS_PER_WORLD,
++                    epochs=SUPER_EPOCHS[label_n], partition="s5p1-lab", role="supervised_lr",
++                ))
++        for eta in ETAS:
++            cells.append(_cell(
++                f"tune-A4-eta{eta}", "supervised", arm="A4", seed=0, lr=None, eta=eta,
++                label_n=512, n_clips=L_WORLDS[512] * CLIPS_PER_WORLD,
++                epochs=SUPER_EPOCHS[512], partition="s5p1-lab", role="eta",
++            ))
++        return cells
++    if stage == "dev-distill":
++        cells = []
++        for arm in ARM_ORDER:
++            for seed in (0, 1):
++                cells.append(_cell(
++                    f"distill-{arm}-s{seed}", "distill", arm=arm, seed=seed, lr=None,
++                    n_clips=pool_clips, epochs=DISTILL_EPOCHS, partition="s5p1-pool",
++                ))
++        for arm in ARM_ORDER:
++            for distill_seed in (0, 1):
++                for label_n, worlds in L_WORLDS.items():
++                    for readout_seed in (0, 1, 2):
++                        cells.append(_cell(
++                            f"heads-{arm}-d{distill_seed}-L{label_n}-r{readout_seed}",
++                            "heads", arm=arm, seed=readout_seed, distill_seed=distill_seed,
++                            readout_seed=readout_seed, lr=None, label_n=label_n,
++                            n_clips=worlds * CLIPS_PER_WORLD, epochs=SUPER_EPOCHS[label_n],
++                            partition="s5p1-lab",
++                        ))
++        for seed in (0, 1, 2):
++            cells.append(_cell(
++                f"A0-L64-s{seed}", "supervised", arm="A0", seed=seed, lr=None,
++                label_n=64, n_clips=L_WORLDS[64] * CLIPS_PER_WORLD,
++                epochs=SUPER_EPOCHS[64], partition="s5p1-lab",
++            ))
++        return cells
++    raise ValueError(f"unknown stage {stage!r}")
++
++
++def summarize_stage(stage: str, cells: list[dict]) -> dict:
++    wall = float(sum(cell["wall_s_est"] for cell in cells))
++    summary = {
++        "stage": stage,
++        "n_cells": len(cells),
++        "steps": int(sum(cell["steps"] for cell in cells)),
++        "wall_s_est": wall,
++        "wall_h_est": wall / 3600.0,
++        "design_wall_h": STAGE_WALL_H.get(stage),
++        "cells": cells,
++    }
++    if stage in ("probe", "dev-distill"):
++        heads_cells = [cell for cell in cells if cell.get("kind") == "heads"]
++        if heads_cells:
++            heads_wall_s = float(sum(c["wall_s_est"] for c in heads_cells))
++            summary["heads_wall_est_s"] = heads_wall_s
++            summary["heads_wall_est_h"] = heads_wall_s / 3600.0
++            summary["heads_design_ref_h"] = 0.75 if stage == "dev-distill" else None
++            summary["heads_note"] = (
++                "读出头墙钟按「缓存一次学生特征 + 只训读出头」估算（单头约 25–89 s，平均约 50 s）；"
++                f"本阶段读出头总估算约 {heads_wall_s / 3600.0:.2f} h"
++                + ("（对照设计 §6 的 0.75 h）；" if stage == "dev-distill" else "；")
++                + "待 probe 实测后校准覆盖此估计。"
++            )
++    return summary
+diff --git a/reports/V9-S5-PHASE1/run_s5p1.py b/reports/V9-S5-PHASE1/run_s5p1.py
+new file mode 100644
+index 0000000..2e57636
+--- /dev/null
++++ b/reports/V9-S5-PHASE1/run_s5p1.py
+@@ -0,0 +1,715 @@
++"""S5 冻结前运行器：smoke、probe、dev-tune、dev-distill。
++
++真实的 probe / dev-tune / dev-distill 不由本卡启动。``--dry-run`` 只打印格清单，不拿锁、不训练。
++smoke 在临时目录物化 ``s5test-smoke-*``，不读 ``s5p1-pool/lab/dev``，不记 dev 使用次数。
++本运行器不生成、不读取 ``s5p1-final`` 与 ``s5p1-final-shift``。
++
++启动顺序：先拿 ``artifacts/locks/m0-worker.lock``，再检查字节码与 git，然后才写 ``events.jsonl``。
++锁被占时退出码 75，且不写运行目录。
++"""
++
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import multiprocessing as mp
++import os
++import resource
++import sys
++import time
++from pathlib import Path
++from typing import Callable
++
++STARTED = time.time()
++
++REPO = Path(__file__).resolve().parents[2]
++sys.path.insert(0, str(REPO / "src"))
++sys.path.insert(0, str(Path(__file__).resolve().parent))
++
++import numpy as np
++
++from ainerzero.v9.experiments.s3 import run_guard as GD
++from ainerzero.v9.experiments.s5.data import ClipIndex
++from ainerzero.v9.experiments.s5.materialize import materialize_partition
++from ainerzero.v9.experiments.s5.world import PARTITIONS, REGISTERED
++
++import plan_s5p1 as plan
++
++LOCK = REPO / "artifacts/locks/m0-worker.lock"
++RUNS = REPO / "artifacts/v9/s5/runs"
++LEDGER = REPO / "artifacts/v9/s5/dev-uses.json"
++DATA_ROOT = REPO / "artifacts/v9/s5/data"
++TEACHERS = REPO / "artifacts/v9/s5/teachers"
++DEV_MAX_USES = 8
++CELL_LIMIT_S = 45 * 60
++STAGE_LIMIT_S = {
++    "smoke": 15 * 60,
++    "probe": int(1.5 * 3600),
++    "dev-tune": 2 * 3600,
++    "dev-distill": 4 * 3600,
++}
++SMOKE_PARTITIONS = {
++    "pool": "s5test-smoke-pool",
++    "lab": "s5test-smoke-lab",
++    "dev": "s5test-smoke-dev",
++}
++SMOKE_WORLDS = {"pool": 2, "lab": 2, "dev": 1}
++SMOKE_CLIPS = (0, 1)
++SMOKE_STUDENT = {"d": 16, "depth": 1, "heads": 1}
++REAL_PARTITIONS = {"pool": "s5p1-pool", "lab": "s5p1-lab", "dev": "s5p1-dev"}
++FORBIDDEN = tuple(sorted(REGISTERED))
++THIRD_PARTY = ("numpy", "mlx")
++
++
++def sha256_file(path: Path) -> str:
++    digest = hashlib.sha256()
++    with path.open("rb") as handle:
++        for chunk in iter(lambda: handle.read(1 << 20), b""):
++            digest.update(chunk)
++    return digest.hexdigest()
++
++
++def cell_limit_seconds(cell_index: int) -> float:
++    return float(CELL_LIMIT_S)
++
++
++def _rss_mb() -> float:
++    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
++    if sys.platform == "darwin":
++        return float(rss) / (1024.0 * 1024.0)
++    return float(rss) / 1024.0
++
++
++def _json_default(value):
++    if isinstance(value, float) and (value != value or value in (float("inf"), float("-inf"))):
++        return None
++    if isinstance(value, Path):
++        return str(value)
++    raise TypeError(type(value))
++
++
++def _append(path: Path, record: dict) -> None:
++    with path.open("a", encoding="utf-8") as handle:
++        handle.write(json.dumps(record, ensure_ascii=False, default=_json_default) + "\n")
++
++
++def _refuse_final(name: str) -> None:
++    if str(name).startswith("s5p1-final"):
++        raise GD.GuardError(f"this runner must not touch a final partition: {name}")
++
++
++def smoke_cells() -> list[dict]:
++    """每个臂 2 步。蒸馏臂再各训 2 步读出头，评测才有 R1/R2/R3。"""
++    pool_n = SMOKE_WORLDS["pool"] * len(SMOKE_CLIPS)
++    lab_n = SMOKE_WORLDS["lab"] * len(SMOKE_CLIPS)
++    batch = 2
++    cells = []
++    for arm in plan.ARM_ORDER:
++        cells.append({
++            "cell_id": f"smoke-distill-{arm}", "kind": "distill", "arm": arm, "seed": 0,
++            "lr": 1e-3, "epochs": 1, "batch_size": batch, "n_clips": pool_n, "steps": 2,
++            "partition": SMOKE_PARTITIONS["pool"],
++        })
++        cells.append({
++            "cell_id": f"smoke-heads-{arm}", "kind": "heads", "arm": arm, "seed": 0,
++            "distill_seed": 0, "readout_seed": 0, "lr": 1e-3, "epochs": 1, "batch_size": batch,
++            "n_clips": lab_n, "steps": 2, "partition": SMOKE_PARTITIONS["lab"],
++        })
++    cells.append({
++        "cell_id": "smoke-A0", "kind": "supervised", "arm": "A0", "seed": 0, "lr": 1e-3,
++        "epochs": 1, "batch_size": batch, "n_clips": lab_n, "steps": 2,
++        "partition": SMOKE_PARTITIONS["lab"],
++    })
++    cells.append({
++        "cell_id": "smoke-A4", "kind": "supervised", "arm": "A4", "seed": 0, "lr": 1e-3,
++        "eta": 0.5, "epochs": 1, "batch_size": batch, "n_clips": lab_n, "steps": 2,
++        "partition": SMOKE_PARTITIONS["lab"],
++    })
++    cells.append({
++        "cell_id": "smoke-A0R", "kind": "supervised", "arm": "A0-R", "seed": 0, "lr": 1e-3,
++        "tau": 0.02, "epochs": 1, "batch_size": batch, "n_clips": lab_n, "steps": 2,
++        "partition": SMOKE_PARTITIONS["lab"],
++    })
++    for cell in cells:
++        _refuse_final(cell["partition"])
++        if not str(cell["partition"]).startswith("s5test-smoke-"):
++            raise GD.GuardError(f"smoke cell left the smoke namespace: {cell['partition']}")
++    return cells
++
++
++def dry_run_plan(stage: str) -> dict:
++    if stage == "smoke":
++        cells = smoke_cells()
++        return {
++            "stage": "smoke",
++            "dry_run": True,
++            "takes_lock": False,
++            "dev_uses": 0,
++            "student": SMOKE_STUDENT,
++            "note": "smoke 只用 s5test-smoke-* 和 d=16、深 1 的学生，每臂 2 步，用来把管线跑通。",
++            "n_cells": len(cells),
++            "steps": int(sum(cell["steps"] for cell in cells)),
++            "limit_s": STAGE_LIMIT_S["smoke"],
++            "cells": cells,
++        }
++    cells = plan.stage_cells(
++        stage,
++        pool_worlds=int(PARTITIONS["s5p1-pool"]),
++        lab_worlds=int(PARTITIONS["s5p1-lab"]),
++    )
++    for cell in cells:
++        _refuse_final(cell["partition"])
++    summary = plan.summarize_stage(stage, cells)
++    summary["dry_run"] = True
++    summary["takes_lock"] = False
++    summary["dev_uses"] = 1
++    summary["limit_s"] = STAGE_LIMIT_S[stage]
++    summary["cell_limit_s"] = CELL_LIMIT_S
++    summary["note"] = (
++        "probe 的轮数按设计步数的 1/10 取整，至少 1 轮。"
++        "dev-tune 的蒸馏学习率用 A2、约 1/4 步数；监督学习和 η 用设计轮数。"
++        "η 的学习率要等监督调参选出，dry-run 里记为 null。"
++        "逐步墙钟按 54 段/秒，另附设计 §6 的整段估算。"
++    )
++    return summary
++
++
++def _manifest() -> dict[str, str]:
++    entries = [
++        Path(__file__).resolve(),
++        REPO / "src/ainerzero/v9/experiments/s5/train.py",
++        REPO / "src/ainerzero/v9/experiments/s5/evaluate.py",
++        REPO / "src/ainerzero/v9/experiments/s5/data.py",
++        REPO / "src/ainerzero/v9/experiments/s5/metrics.py",
++        REPO / "src/ainerzero/v9/experiments/s5/tokens.py",
++    ]
++    return GD.build_manifest(REPO, entries, src_root=REPO / "src")
++
++
++def _write_fake_teachers(index: ClipIndex, root: Path) -> dict[str, str]:
++    """确定性 fp16 教师特征，并写 progress.jsonl。不调用教师模型。"""
++    vjepa_root = root / "vjepa"
++    da2_root = root / "da2"
++    ledgers = {vjepa_root: [], da2_root: []}
++    for i in range(len(index)):
++        world, clip = index[i]
++        rng = np.random.default_rng(10_000 + world * 100 + clip)
++        vjepa = rng.standard_normal((1568, 1024)).astype(np.float16)
++        da2 = rng.standard_normal((8, 56, 56)).astype(np.float16)
++        v_rel = f"world_{world:04d}/clip_{clip:02d}.vjepa.npy"
++        d_rel = f"world_{world:04d}/da2_{clip:02d}.da2.npy"
++        v_path = vjepa_root / v_rel
++        d_path = da2_root / d_rel
++        v_path.parent.mkdir(parents=True, exist_ok=True)
++        d_path.parent.mkdir(parents=True, exist_ok=True)
++        np.save(v_path, vjepa)
++        np.save(d_path, da2)
++        ledgers[vjepa_root].append({"file": v_rel, "sha256": sha256_file(v_path)})
++        ledgers[da2_root].append({"file": d_rel, "sha256": sha256_file(d_path)})
++    for folder, rows in ledgers.items():
++        text = "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows)
++        (folder / "progress.jsonl").write_text(text, encoding="utf-8")
++    return {"vjepa": str(vjepa_root), "da2": str(da2_root)}
++
++
++def _save_weights(module, path: Path) -> str:
++    import mlx.core as mx
++    from mlx.utils import tree_flatten
++
++    path.parent.mkdir(parents=True, exist_ok=True)
++    flat = dict(tree_flatten(module.parameters()))
++    mx.savez(str(path), **flat)
++    return sha256_file(path)
++
++
++def _data_fraction(log: dict) -> float | None:
++    rows = log.get("step_logs") or []
++    data_s = sum(float(row.get("data_s", 0.0)) for row in rows)
++    step_s = sum(float(row.get("step_s", 0.0)) for row in rows)
++    total = data_s + step_s
++    if total <= 0:
++        return None
++    return float(data_s / total)
++
++
++def _index_for(partition_dir: Path, clips) -> ClipIndex:
++    return ClipIndex(partition_dir, clips=clips)
++
++
++def _execute_cell_body(cell: dict, ctx: dict) -> dict:
++    import mlx.core as mx
++
++    from ainerzero.v9.experiments.s5.evaluate import evaluate
++    from ainerzero.v9.experiments.s5.student import Student
++    from ainerzero.v9.experiments.s5.train import TrainConfig, distill, train_heads, train_supervised
++
++    kind = cell["kind"]
++    smoke = ctx["stage"] == "smoke"
++    clips = SMOKE_CLIPS if smoke else None
++    index = _index_for(ctx["dirs"][cell["partition"]], clips)
++    student_kw = SMOKE_STUDENT if smoke else {}
++    weights_dir = ctx["weights"]
++    metrics_dir = ctx["metrics"]
++    cfg = TrainConfig(
++        lr=float(cell.get("lr") or 1e-3),
++        batch_size=int(cell["batch_size"]),
++        epochs=int(cell["epochs"]),
++        seed=int(cell["seed"]),
++        eta=cell.get("eta"),
++        tau=cell.get("tau"),
++        ckpt_dir=weights_dir / cell["cell_id"],
++    )
++    t0 = time.perf_counter()
++    files: dict[str, str] = {}
++    keep_rate = None
++    if kind == "distill":
++        student = Student(**student_kw)
++        student, heads, log = distill(cell["arm"], index, ctx["teachers"], cfg, student=student)
++        files[f"{cell['cell_id']}-student.npz"] = _save_weights(student, weights_dir / f"{cell['cell_id']}-student.npz")
++        files[f"{cell['cell_id']}-heads.npz"] = _save_weights(heads, weights_dir / f"{cell['cell_id']}-heads.npz")
++    elif kind == "heads":
++        arm = cell["arm"]
++        stage = ctx["stage"]
++        if stage == "smoke":
++            student_file = weights_dir / f"smoke-distill-{arm}-student.npz"
++        elif stage == "probe":
++            student_file = weights_dir / f"probe-distill-{arm}-s0-student.npz"
++        elif stage == "dev-distill":
++            distill_seed = cell.get("distill_seed", 0)
++            student_file = weights_dir / f"distill-{arm}-s{distill_seed}-student.npz"
++        else:
++            student_file = weights_dir / f"distill-{arm}-student.npz"
++        if not student_file.is_file():
++            raise GD.GuardError(f"student weights file missing: {student_file}")
++        student = Student(**student_kw)
++        student.load_weights(str(student_file))
++        heads, log = train_heads(student, index, cfg)
++        files[f"{cell['cell_id']}.npz"] = _save_weights(heads, weights_dir / f"{cell['cell_id']}.npz")
++    elif kind == "supervised":
++        student = Student(**student_kw)
++        teachers = ctx["teachers"] if cell.get("eta") is not None else None
++        student, heads, log = train_supervised(index, cfg, teachers=teachers, student=student)
++        files[f"{cell['cell_id']}-student.npz"] = _save_weights(student, weights_dir / f"{cell['cell_id']}-student.npz")
++        files[f"{cell['cell_id']}-heads.npz"] = _save_weights(heads, weights_dir / f"{cell['cell_id']}-heads.npz")
++    else:
++        raise GD.GuardError(f"unknown cell kind {kind!r}")
++
++    eval_index_name = SMOKE_PARTITIONS["dev"] if smoke else REAL_PARTITIONS["dev"]
++    eval_dir = ctx["dirs"][eval_index_name]
++    if kind == "heads":
++        ev = evaluate(student, heads, _index_for(eval_dir, clips), tau=cell.get("tau"))
++        keep_rate = ev["metrics"].get("keep_rate")
++        (metrics_dir / f"{cell['cell_id']}.json").write_text(
++            json.dumps({
++                "r2_ap": ev["metrics"]["r2_ap"], "keep_rate": keep_rate,
++                "lr": cell.get("lr"), "role": cell.get("role"), "arm": cell.get("arm"),
++                "distill_seed": cell.get("distill_seed"), "readout_seed": cell.get("readout_seed"),
++                "label_n": cell.get("label_n"),
++            }, default=_json_default),
++            encoding="utf-8",
++        )
++        _save_l64(cell, ev, ctx)
++    elif kind == "supervised":
++        ev = evaluate(student, heads, _index_for(eval_dir, clips), tau=cell.get("tau"))
++        keep_rate = ev["metrics"].get("keep_rate")
++        (metrics_dir / f"{cell['cell_id']}.json").write_text(
++            json.dumps({
++                "r2_ap": ev["metrics"]["r2_ap"], "r1_rmse": ev["metrics"]["r1_rmse"],
++                "keep_rate": keep_rate, "lr": cell.get("lr"), "role": cell.get("role"),
++                "arm": cell.get("arm"), "label_n": cell.get("label_n"),
++                "distill_seed": cell.get("distill_seed"), "readout_seed": cell.get("readout_seed"),
++                "seed": cell.get("seed"),
++            }, default=_json_default),
++            encoding="utf-8",
++        )
++        _save_l64(cell, ev, ctx)
++    wall = time.perf_counter() - t0
++    return {
++        "cell_id": cell["cell_id"],
++        "device": str(mx.default_device()),
++        "steps_logged": len(log.get("step_logs") or []),
++        "wall_s": wall,
++        "data_fraction": _data_fraction(log),
++        "rss_mb": _rss_mb(),
++        "keep_rate": keep_rate,
++        "checkpoints": log.get("checkpoints") or [],
++        "files": files,
++    }
++
++
++def _cell_worker_target(
++    cell: dict,
++    ctx_data: dict,
++    result_json_path: str,
++    err_json_path: str,
++    runner_fn: Callable[[dict, dict], dict] | None = None,
++) -> None:
++    try:
++        fn = runner_fn if runner_fn is not None else _execute_cell_body
++        ctx = {
++            "stage": ctx_data["stage"],
++            "out": Path(ctx_data["out"]),
++            "weights": Path(ctx_data["weights"]),
++            "metrics": Path(ctx_data["metrics"]),
++            "teachers": ctx_data["teachers"],
++            "lab_teachers": ctx_data.get("lab_teachers"),
++            "dirs": {k: Path(v) for k, v in ctx_data["dirs"].items()},
++        }
++        res = fn(cell, ctx)
++        with open(result_json_path, "w", encoding="utf-8") as f:
++            json.dump(res, f, ensure_ascii=False, default=_json_default)
++    except Exception as exc:
++        import traceback
++        with open(err_json_path, "w", encoding="utf-8") as f:
++            json.dump(
++                {
++                    "error": str(exc),
++                    "type": type(exc).__name__,
++                    "traceback": traceback.format_exc(),
++                },
++                f,
++                ensure_ascii=False,
++            )
++        sys.exit(1)
++
++
++def _save_l64(cell: dict, ev: dict, ctx: dict) -> None:
++    if cell.get("label_n") != 64:
++        return
++    np.savez_compressed(
++        ctx["metrics"] / f"{cell['cell_id']}.npz",
++        r2_logit=np.asarray(ev["r2_logit"]),
++        r2=np.asarray(ev["r2"]),
++    )
++
++
++def _eval_from_npz(path: Path) -> dict:
++    data = np.load(path)
++    n = int(data["r2"].shape[0])
++    clips_per_world = 16
++    if n % clips_per_world != 0:
++        raise GD.GuardError(f"{path.name} is not a whole number of worlds")
++    return {
++        "r2_logit": data["r2_logit"],
++        "r2": data["r2"],
++        "clips_per_world": clips_per_world,
++    }
++
++
++def _finalize_distill(metrics_dir: Path) -> dict:
++    """dev-distill 收尾：选 A*，再按 L=64 的逐段预测做世界级功效。"""
++    from ainerzero.v9.experiments.s5.evaluate import paired_group_stat
++    from ainerzero.v9.experiments.s5.metrics import paired_world_bootstrap
++
++    rows = []
++    a0_rows = []
++    for path in sorted(metrics_dir.glob("*.json")):
++        doc = json.loads(path.read_text(encoding="utf-8"))
++        doc["_path"] = path
++        if doc.get("label_n") != 64 or "r2_ap" not in doc:
++            continue
++        if doc.get("arm") in plan.ARM_ORDER and doc.get("distill_seed") is not None:
++            rows.append(doc)
++        elif doc.get("arm") == "A0":
++            a0_rows.append(doc)
++    if len({row["arm"] for row in rows}) < 3:
++        return {"skipped": "L=64 head rows are incomplete"}
++    chosen = plan.select_a_star(rows)
++    result = {"a_star": chosen}
++    star_npz = [metrics_dir / f"{row['_path'].stem}.npz" for row in rows if row["arm"] == chosen["arm"]]
++    a0_npz = [metrics_dir / f"{row['_path'].stem}.npz" for row in a0_rows]
++    if not star_npz or not a0_npz or not all(path.is_file() for path in star_npz + a0_npz):
++        result["power"] = None
++        return result
++    group_a = [_eval_from_npz(path) for path in star_npz]
++    group_b = [_eval_from_npz(path) for path in a0_npz]
++    n_worlds = int(group_a[0]["r2"].shape[0] // group_a[0]["clips_per_world"])
++    stat = paired_group_stat(group_a, group_b, "r2_ap")
++    boot = paired_world_bootstrap(n_worlds, stat, level=plan.GT1_LEVEL)
++    sigma = float(boot["bootstrap_std"]) * (n_worlds ** 0.5)
++    result["bootstrap"] = {
++        "point_estimate": boot["point_estimate"],
++        "ci_lower": boot["ci_lower"],
++        "ci_upper": boot["ci_upper"],
++        "n_nan": boot["n_nan"],
++        "sigma_world": sigma,
++    }
++    result["power"] = None if boot["n_nan"] else plan.worlds_for_power(sigma)
++    return result
++
++
++def _verify_tune(path: Path, expected: str) -> str:
++    if not path.is_file():
++        raise GD.GuardError(f"dev-tune result is missing: {path}")
++    got = sha256_file(path)
++    if got != expected.strip().lower():
++        raise GD.GuardError(f"dev-tune result SHA mismatch: got {got} != {expected}")
++    return got
++
++
++def _prepare_smoke(out: Path) -> dict[str, Path]:
++    dirs = {}
++    for role, name in SMOKE_PARTITIONS.items():
++        _refuse_final(name)
++        target = out / "data" / name
++        materialize_partition(name, target, world_range=(0, SMOKE_WORLDS[role]))
++        dirs[name] = target
++    return dirs
++
++
++def run_locked(
++    args,
++    lock: GD.RunLock,
++    *,
++    cells_override: list[dict] | None = None,
++    cell_runner: Callable[[dict, dict], dict] | None = None,
++) -> int:
++    GD._require_held(lock, LOCK)
++    GD.require_fresh_pycache(STARTED)
++    manifest = _manifest()
++    head, dirty = GD.check_git_clean(REPO, list(manifest))
++    if dirty:
++        raise GD.GuardError("frozen files are not committed: " + "; ".join(dirty[:6]))
++    ledger_before = LEDGER.read_bytes() if LEDGER.is_file() else None
++    tune = None
++    if args.stage == "dev-distill":
++        if not args.tune_file or not args.tune_sha:
++            raise GD.GuardError("dev-distill needs --tune-file and --tune-sha")
++        _verify_tune(Path(args.tune_file), args.tune_sha)
++        tune = json.loads(Path(args.tune_file).read_text(encoding="utf-8"))
++    if args.stage != "smoke":
++        GD.consume_dev_use(
++            lock, LEDGER, args.use_id, f"s5 {args.stage}",
++            max_uses=DEV_MAX_USES, expected_lock=LOCK,
++        )
++
++    stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
++    out = RUNS / f"{args.stage}-{args.use_id}-{stamp}"
++    if out.exists():
++        raise GD.GuardError(f"run directory already exists: {out}")
++    report = Path(args.report)
++    GD.claim_report(report)
++    out.mkdir(parents=True)
++    events = out / "events.jsonl"
++    weights = out / "weights"
++    metrics_dir = out / "metrics"
++    weights.mkdir()
++    metrics_dir.mkdir()
++    GD._require_held(lock, LOCK)
++    _append(events, {"event": "stage_start", "stage": args.stage, "use_id": args.use_id, "lock": str(LOCK)})
++
++    stage_deadline = GD.Deadline(STAGE_LIMIT_S[args.stage])
++    ctx = {
++        "stage": args.stage,
++        "out": out,
++        "weights": weights,
++        "metrics": metrics_dir,
++        "teachers": {},
++        "dirs": {},
++    }
++    completed: list[dict] = []
++    failed = None
++
++    runner_name = getattr(cell_runner, "__qualname__", None) or getattr(cell_runner, "__name__", str(cell_runner)) if cell_runner else "_execute_cell_body"
++
++    try:
++        stage_deadline.check()
++        if cells_override is not None:
++            cells = cells_override
++            if args.stage == "smoke" and (
++                cell_runner is None
++                or any(c.get("partition") in SMOKE_PARTITIONS.values() for c in cells)
++            ):
++                ctx["dirs"] = _prepare_smoke(out)
++                pool = _index_for(ctx["dirs"][SMOKE_PARTITIONS["pool"]], SMOKE_CLIPS)
++                lab = _index_for(ctx["dirs"][SMOKE_PARTITIONS["lab"]], SMOKE_CLIPS)
++                ctx["teachers"] = _write_fake_teachers(pool, out / "teachers" / "pool")
++                ctx["lab_teachers"] = _write_fake_teachers(lab, out / "teachers" / "lab")
++        elif args.stage == "smoke":
++            ctx["dirs"] = _prepare_smoke(out)
++            pool = _index_for(ctx["dirs"][SMOKE_PARTITIONS["pool"]], SMOKE_CLIPS)
++            lab = _index_for(ctx["dirs"][SMOKE_PARTITIONS["lab"]], SMOKE_CLIPS)
++            ctx["teachers"] = _write_fake_teachers(pool, out / "teachers" / "pool")
++            ctx["lab_teachers"] = _write_fake_teachers(lab, out / "teachers" / "lab")
++            cells = smoke_cells()
++        else:
++            cells = plan.stage_cells(
++                args.stage,
++                pool_worlds=int(PARTITIONS["s5p1-pool"]),
++                lab_worlds=int(PARTITIONS["s5p1-lab"]),
++            )
++            if tune is not None:
++                for cell in cells:
++                    key = "distill_lr" if cell["kind"] == "distill" else "supervised_lr"
++                    cell["lr"] = float(tune[key])
++            ctx["dirs"][REAL_PARTITIONS["dev"]] = DATA_ROOT / REAL_PARTITIONS["dev"]
++            for cell in cells:
++                _refuse_final(cell["partition"])
++                ctx["dirs"][cell["partition"]] = DATA_ROOT / cell["partition"]
++            ctx["teachers"] = {
++                "vjepa": str(TEACHERS / "vjepa"),
++                "da2": str(TEACHERS / "da2"),
++            }
++            ctx["lab_teachers"] = ctx["teachers"]
++
++        for index, cell in enumerate(cells):
++            cell_limit = cell_limit_seconds(index)
++            remaining_stage = stage_deadline.left()
++            timeout_s = min(cell_limit, remaining_stage)
++            if timeout_s <= 0.0:
++                failed = f"timeout: stage deadline reached before cell {cell['cell_id']}"
++                _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": "timeout", "limit_s": 0.0, "wall_s": 0.0})
++                break
++
++            _append(events, {"event": "cell_start", "cell_id": cell["cell_id"], "index": index})
++
++            result_path = out / f".cell_{index}_{cell['cell_id']}.result.json"
++            err_path = out / f".cell_{index}_{cell['cell_id']}.err.json"
++            result_path.unlink(missing_ok=True)
++            err_path.unlink(missing_ok=True)
++
++            if cell.get("role") == "eta" and cell.get("lr") is None:
++                tuned = []
++                for path in sorted(ctx["metrics"].glob("tune-A0-*.json")):
++                    tuned.append(json.loads(path.read_text(encoding="utf-8")))
++                if tuned:
++                    cell["lr"] = plan.choose_value(tuned, "lr")["value"]
++
++            ctx_data = {
++                "stage": ctx["stage"],
++                "out": str(ctx["out"]),
++                "weights": str(ctx["weights"]),
++                "metrics": str(ctx["metrics"]),
++                "teachers": ctx["lab_teachers"] if (cell.get("eta") is not None and ctx.get("lab_teachers")) else ctx["teachers"],
++                "lab_teachers": ctx.get("lab_teachers"),
++                "dirs": {k: str(v) for k, v in ctx["dirs"].items()},
++            }
++
++            mp_ctx = mp.get_context("spawn")
++            p = mp_ctx.Process(
++                target=_cell_worker_target,
++                args=(cell, ctx_data, str(result_path), str(err_path), cell_runner),
++            )
++            t_cell0 = time.perf_counter()
++            p.start()
++            p.join(timeout=timeout_s)
++
++            if p.is_alive():
++                p.terminate()
++                p.join(timeout=3.0)
++                if p.is_alive():
++                    p.kill()
++                    p.join()
++                cell_wall = time.perf_counter() - t_cell0
++                failed = f"timeout: cell {cell['cell_id']} timed out after {timeout_s:.1f}s"
++                _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": "timeout", "limit_s": timeout_s, "wall_s": cell_wall})
++                break
++
++            if p.exitcode != 0:
++                err_msg = f"cell process exited with code {p.exitcode}"
++                if err_path.is_file():
++                    try:
++                        err_data = json.loads(err_path.read_text(encoding="utf-8"))
++                        err_msg = f"{err_data.get('type')}: {err_data.get('error')}"
++                    except Exception:
++                        pass
++                failed = err_msg
++                _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": failed})
++                break
++
++            if not result_path.is_file():
++                failed = f"cell {cell['cell_id']} finished but result file is missing"
++                _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": failed})
++                break
++
++            result = json.loads(result_path.read_text(encoding="utf-8"))
++            result_path.unlink(missing_ok=True)
++
++            # 核对输出文件的 SHA256
++            try:
++                for fname, expected_sha in result.get("files", {}).items():
++                    fpath = weights / fname
++                    if not fpath.is_file():
++                        raise GD.GuardError(f"cell output file missing: {fname}")
++                    got_sha = sha256_file(fpath)
++                    if got_sha != expected_sha:
++                        raise GD.GuardError(f"cell output file SHA mismatch for {fname}: got {got_sha} != {expected_sha}")
++            except GD.GuardError as exc:
++                failed = str(exc)
++                _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": failed})
++                break
++
++            completed.append(result)
++            _append(events, {"event": "cell_end", **result})
++    except GD.GuardError as exc:
++        failed = str(exc)
++        _append(events, {"event": "stage_fail", "error": failed})
++
++    selection = _finalize_distill(metrics_dir) if args.stage == "dev-distill" else None
++    versions = {}
++    try:
++        versions = GD.third_party_versions(REPO, ("numpy",))
++    except GD.GuardError as exc:
++        versions = {"error": str(exc)}
++    stage_doc = {
++        "stage": args.stage,
++        "use_id": args.use_id,
++        "git_head": head,
++        "failed": failed,
++        "completed": [row["cell_id"] for row in completed],
++        "n_completed": len(completed),
++        "cell_runner_name": runner_name,
++        "manifest": manifest,
++        "third_party": versions,
++        "dev_ledger_written": args.stage != "smoke",
++        "smoke_partitions": SMOKE_PARTITIONS if args.stage == "smoke" else None,
++        "selection": selection,
++    }
++    (out / "stage.json").write_text(json.dumps(stage_doc, ensure_ascii=False, indent=1, default=_json_default), encoding="utf-8")
++    report.write_text(json.dumps({"out": str(out), "failed": failed, "n_completed": len(completed)}, ensure_ascii=False), encoding="utf-8")
++    _append(events, {"event": "stage_end", "failed": failed, "n_completed": len(completed)})
++    if args.stage == "smoke":
++        ledger_after = LEDGER.read_bytes() if LEDGER.is_file() else None
++        if ledger_before != ledger_after:
++            raise GD.GuardError("smoke changed the dev ledger")
++    return 2 if failed else 0
++
++
++def main(argv: list[str] | None = None) -> int:
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--stage", required=True, choices=sorted(STAGE_LIMIT_S))
++    parser.add_argument("--use-id")
++    parser.add_argument("--report")
++    parser.add_argument("--tune-file")
++    parser.add_argument("--tune-sha")
++    parser.add_argument("--dry-run", action="store_true")
++    args = parser.parse_args(argv)
++    if args.dry_run:
++        json.dump(dry_run_plan(args.stage), sys.stdout, ensure_ascii=False, indent=1, default=_json_default)
++        sys.stdout.write("\n")
++        return 0
++    if args.use_id is not None and not GD.valid_use_id(args.use_id):
++        print(f"invalid use id: {args.use_id!r}", file=sys.stderr)
++        return 1
++    if not args.use_id:
++        print(f"a {args.stage} run needs a use id", file=sys.stderr)
++        return 1
++    if not args.report:
++        print("a run needs --report", file=sys.stderr)
++        return 1
++    for name in REAL_PARTITIONS.values():
++        _refuse_final(name)
++    # acquire the shared lock before any run directory
++    try:
++        with GD.RunLock(LOCK) as lock:
++            return run_locked(args, lock)
++    except GD.GuardError as exc:
++        print(str(exc), file=sys.stderr)
++        if "lock is busy" in str(exc):
++            return 75
++        return 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/tests/v9/experiments/test_s5_evaluate.py b/tests/v9/experiments/test_s5_evaluate.py
+new file mode 100644
+index 0000000..2e0d640
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_evaluate.py
+@@ -0,0 +1,172 @@
++"""S5 评测汇总的纯 CPU 契约：世界子集上重算，与直接调用 metrics 一致。"""
++
++from __future__ import annotations
++
++import math
++import shutil
++import subprocess
++import sys
++import textwrap
++from pathlib import Path
++
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s5 import metrics as M
++from ainerzero.v9.experiments.s5.evaluate import metric_value, paired_group_stat, per_world_stat
++
++LIVE = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
++CPW = 2
++
++
++def _pack(scores: np.ndarray, targets: np.ndarray, *, shift: float = 0.0) -> dict:
++    n = scores.shape[0]
++    logd = np.full((n, 16, 14, 14), shift, dtype=np.float64)
++    return {
++        "r2_logit": scores,
++        "r3_logit": scores - 1.0,
++        "r2": targets,
++        "r3": targets,
++        "r1_logd": logd,
++        "r1_target": np.zeros((n, 16, 14, 14)),
++        "r1_sky": np.zeros((n, 16, 14, 14)),
++        "r1_obj": np.ones((n, 16, 14, 14)),
++        "disk_groups": [[] for _ in range(n)],
++        "ordering_pairs": [[] for _ in range(n)],
++        "world_ids": np.array([0, 1], dtype=np.int64),
++        "clips_per_world": CPW,
++        "threshold": 0.5,
++    }
++
++
++def _grids() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
++    scores_a = np.zeros((4, 12, 7), dtype=np.float64)
++    scores_b = np.zeros((4, 12, 7), dtype=np.float64)
++    targets = np.zeros((4, 12, 7), dtype=np.int64)
++    # 世界 0：正例分数高。世界 1：正例分数低，前面堆负例。
++    targets[0, 0, 0] = 1
++    targets[1, 1, 0] = 1
++    targets[2, 0, 0] = 1
++    targets[3, 1, 0] = 1
++    scores_a[0, 0, 0] = 4.0
++    scores_a[1, 1, 0] = 3.0
++    scores_a[2, 0, 0] = 0.0
++    scores_a[3, 1, 0] = 0.0
++    scores_a[2, 0, 1] = 5.0
++    scores_b[:] = scores_a
++    # 只改世界 1，把正例抬到最前。世界 0 的 AP 差为 0，两个世界一起则不是。
++    scores_b[2, 0, 0] = 10.0
++    scores_b[3, 1, 0] = 9.0
++    return scores_a, scores_b, targets
++
++
++def test_subset_matches_metrics_on_those_clips():
++    scores_a, scores_b, targets = _grids()
++    eval_a = _pack(scores_a, targets, shift=0.0)
++    eval_b = _pack(scores_b, targets, shift=2.0)
++    stat = per_world_stat(eval_a, eval_b, "r2_ap")
++    clips = M.expand_world_index(np.array([0]), clips_per_world=CPW)
++    expected = M.grid_ap(scores_a[clips], targets[clips]) - M.grid_ap(scores_b[clips], targets[clips])
++    assert stat(np.array([0])) == pytest.approx(expected, abs=1e-8)
++    assert stat(np.array([0])) == pytest.approx(0.0, abs=1e-8)
++    both = per_world_stat(eval_a, eval_b, "r2_ap")(np.array([0, 1]))
++    assert both != pytest.approx(0.0, abs=1e-6)
++
++
++def test_repeated_world_is_expanded_before_metrics(monkeypatch):
++    scores_a, scores_b, targets = _grids()
++    eval_a = _pack(scores_a, targets)
++    eval_b = _pack(scores_b, targets, shift=1.0)
++    seen = {}
++    real = M.expand_world_index
++
++    def wrapped(idx, clips_per_world=16):
++        seen["idx"] = np.asarray(idx).copy()
++        seen["cpw"] = clips_per_world
++        return real(idx, clips_per_world=clips_per_world)
++
++    monkeypatch.setattr(M, "expand_world_index", wrapped)
++    stat = per_world_stat(eval_a, eval_b, "r2_ap")
++    worlds = np.array([0, 0])
++    got = stat(worlds)
++    clips = real(worlds, clips_per_world=CPW)
++    expected = M.grid_ap(scores_a[clips], targets[clips]) - M.grid_ap(scores_b[clips], targets[clips])
++    assert np.array_equal(seen["idx"], worlds)
++    assert seen["cpw"] == CPW
++    assert len(clips) == 4
++    assert got == pytest.approx(expected, abs=1e-8)
++    # 重复之后的段数是两倍，RMSE 用另一套预测确认走的是展开后的下标。
++    rmse = per_world_stat(eval_a, eval_b, "r1_rmse")
++    assert rmse(worlds) == pytest.approx(-1.0, abs=1e-8)
++
++
++def test_floor_split_on_a_world_subset():
++    scores_a, scores_b, targets = _grids()
++    eval_a = _pack(scores_a, targets)
++    eval_b = _pack(scores_b, targets)
++    eval_a["r1_obj"][:] = 0.0
++    eval_a["r1_sky"][:] = 0.0
++    eval_b["r1_logd"][:] = 2.0
++    eval_b["r1_obj"][:] = 0.0
++    eval_b["r1_sky"][:] = 0.0
++    # 边界：floor = 1 - sky - obj = 1，整组计入。obj 若改成 >0.5 才算 floor，这组会被丢掉。
++    stat = per_world_stat(eval_a, eval_b, "r1_rmse_floor")
++    clips = M.expand_world_index(np.array([1]), clips_per_world=CPW)
++    rmse_a = M.logd_rmse(
++        eval_a["r1_logd"][clips], eval_a["r1_target"][clips],
++        sky=eval_a["r1_sky"][clips], obj=eval_a["r1_obj"][clips], split="floor",
++    )
++    rmse_b = M.logd_rmse(
++        eval_b["r1_logd"][clips], eval_b["r1_target"][clips],
++        sky=eval_b["r1_sky"][clips], obj=eval_b["r1_obj"][clips], split="floor",
++    )
++    assert stat(np.array([1])) == pytest.approx(rmse_a - rmse_b, abs=1e-8)
++    assert rmse_a == pytest.approx(0.0, abs=1e-8)
++    assert rmse_b == pytest.approx(2.0, abs=1e-8)
++
++
++def test_group_stat_averages_seeds_then_subtracts():
++    scores_a, scores_b, targets = _grids()
++    group_a = [_pack(scores_a, targets), _pack(scores_a, targets)]
++    group_b = [_pack(scores_b, targets)]
++    stat = paired_group_stat(group_a, group_b, "r2_ap")
++    worlds = np.array([0, 1])
++    clips = M.expand_world_index(worlds, clips_per_world=CPW)
++    mean_a = M.grid_ap(scores_a[clips], targets[clips])
++    mean_b = M.grid_ap(scores_b[clips], targets[clips])
++    assert stat(worlds) == pytest.approx(mean_a - mean_b, abs=1e-8)
++
++
++def test_subtraction_mutation_is_rejected(tmp_path: Path):
++    assert tmp_path.resolve() != LIVE
++    dest_root = tmp_path / "copy"
++    shutil.copytree(LIVE / "src/ainerzero", dest_root / "src/ainerzero", ignore=shutil.ignore_patterns("__pycache__"))
++    src = dest_root / "src/ainerzero/v9/experiments/s5/evaluate.py"
++    text = src.read_text(encoding="utf-8")
++    old = "return float(metric_value(eval_a, clips, metric) - metric_value(eval_b, clips, metric))"
++    assert text.count(old) == 1
++    src.write_text(text.replace(old, "return float(metric_value(eval_a, clips, metric) + metric_value(eval_b, clips, metric))"), encoding="utf-8")
++    script = tmp_path / "check.py"
++    script.write_text(textwrap.dedent("""
++        import numpy as np
++        from ainerzero.v9.experiments.s5.evaluate import per_world_stat
++        scores = np.zeros((2, 12, 7))
++        targets = np.zeros((2, 12, 7), dtype=np.int64)
++        targets[0, 0, 0] = 1
++        scores[0, 0, 0] = 3
++        def pack(shift):
++            return {
++                "r2_logit": scores, "r2": targets, "clips_per_world": 2,
++            }
++        # 两个模型的 AP 都是 1，差值必须是 0；改成相加会得到 2。
++        stat = per_world_stat(pack(0), pack(0), "r2_ap")
++        assert stat(np.array([0])) == 0.0
++    """), encoding="utf-8")
++    ran = subprocess.run(
++        [sys.executable, str(script)],
++        cwd=dest_root,
++        env={"PYTHONPATH": str(dest_root / "src")},
++        capture_output=True,
++        text=True,
++    )
++    assert ran.returncode != 0, ran.stdout + ran.stderr
+diff --git a/tests/v9/experiments/test_s5_runner_plan.py b/tests/v9/experiments/test_s5_runner_plan.py
+new file mode 100644
+index 0000000..1eba6b4
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_runner_plan.py
+@@ -0,0 +1,149 @@
++"""S5 冻结前运行器的纯 CPU 部分：格清单、选 A*、调参平局、功效，以及 dry-run 不拿锁。"""
++
++from __future__ import annotations
++
++import importlib.util
++import json
++import math
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++LIVE = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
++PLAN_PATH = LIVE / "reports/V9-S5-PHASE1/plan_s5p1.py"
++RUNNER = LIVE / "reports/V9-S5-PHASE1/run_s5p1.py"
++
++
++def _plan():
++    spec = importlib.util.spec_from_file_location("plan_s5p1_live", PLAN_PATH)
++    module = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(module)
++    return module
++
++
++def test_stage_cell_counts_match_the_design_grid():
++    plan = _plan()
++    probe = plan.stage_cells("probe")
++    tune = plan.stage_cells("dev-tune")
++    distill = plan.stage_cells("dev-distill")
++    assert sum(cell["kind"] == "distill" for cell in probe) == 3
++    assert sum(cell["arm"] == "A0" and cell["kind"] == "supervised" for cell in probe) == 3
++    assert any(cell["arm"] == "A4" and cell.get("eta") == 0.5 for cell in probe)
++    assert any(cell["arm"] == "A0-R" and cell.get("tau") == 0.02 for cell in probe)
++    assert sum(cell["kind"] == "heads" for cell in probe) == 9
++    assert len(tune) == 2 + 6 + 3
++    assert sum(cell["kind"] == "distill" for cell in distill) == 6
++    assert sum(cell["kind"] == "heads" for cell in distill) == 54
++    assert sum(cell["arm"] == "A0" for cell in distill) == 3
++    assert all(not str(cell["partition"]).startswith("s5p1-final") for cell in probe + tune + distill)
++    assert all(cell["steps"] >= 1 for cell in probe)
++
++
++def test_select_a_star_tie_takes_the_earlier_arm():
++    plan = _plan()
++    rows = []
++    for arm, score in (("A1", 0.50), ("A2", 0.90), ("A3", 0.20)):
++        for distill_seed in (0, 1):
++            for readout_seed in (0, 1, 2):
++                rows.append({
++                    "arm": arm, "distill_seed": distill_seed,
++                    "readout_seed": readout_seed, "r2_ap": score,
++                })
++    assert plan.select_a_star(rows)["arm"] == "A2"
++    tied = []
++    for arm in ("A1", "A2", "A3"):
++        for distill_seed in (0, 1):
++            for readout_seed in (0, 1, 2):
++                tied.append({
++                    "arm": arm, "distill_seed": distill_seed,
++                    "readout_seed": readout_seed, "r2_ap": 0.4,
++                })
++    chosen = plan.select_a_star(tied)
++    assert chosen["arm"] == "A1"
++    assert chosen["tied"] == ["A1", "A2", "A3"]
++
++
++def test_tune_tie_takes_the_smaller_value():
++    plan = _plan()
++    rows = [
++        {"lr": 1e-3, "r2_ap": 0.4},
++        {"lr": 3e-4, "r2_ap": 0.4},
++        {"lr": 1e-3, "r2_ap": 0.2},
++    ]
++    assert plan.choose_value(rows, "lr")["value"] == pytest.approx(3e-4)
++    eta_rows = [{"eta": 1.0, "r2_ap": 0.7}, {"eta": 0.1, "r2_ap": 0.7}, {"eta": 0.5, "r2_ap": 0.3}]
++    assert plan.choose_smaller(eta_rows, "eta")["value"] == pytest.approx(0.1)
++
++
++def test_power_uses_equal_tail_and_caps_at_96():
++    plan = _plan()
++    sigma = 0.12
++    got = plan.worlds_for_power(sigma)
++    z_ci = plan.normal_ppf(1.0 - (0.05 / 3.0) / 2.0)
++    z_pow = plan.normal_ppf(0.80)
++    expect = math.ceil((sigma * (z_ci + z_pow) / 0.05) ** 2)
++    assert got["n_uncapped"] == expect
++    assert got["n_worlds"] == expect
++    assert got["level"] == pytest.approx(1.0 - 0.05 / 3.0)
++    wide = plan.worlds_for_power(10.0)
++    assert wide["n_uncapped"] > 96
++    assert wide["n_worlds"] == 96
++    assert wide["capped"] is True
++    # 不把分位减半时，临界值更小，算出的世界数不该和等尾公式相同。
++    z_wrong = plan.normal_ppf(1.0 - (0.05 / 3.0))
++    wrong_n = math.ceil((sigma * (z_wrong + z_pow) / 0.05) ** 2)
++    assert wrong_n != expect
++
++
++def test_tie_order_mutation_is_rejected(tmp_path: Path):
++    assert tmp_path.resolve() != LIVE
++    text = PLAN_PATH.read_text(encoding="utf-8")
++    old = 'ARM_ORDER = ("A1", "A2", "A3")'
++    assert text.count(old) == 1
++    dest = tmp_path / "plan_s5p1.py"
++    dest.write_text(text.replace(old, 'ARM_ORDER = ("A3", "A2", "A1")', 1), encoding="utf-8")
++    script = tmp_path / "check.py"
++    script.write_text(
++        "import importlib.util\n"
++        "from pathlib import Path\n"
++        "spec = importlib.util.spec_from_file_location('plan_bad', Path('plan_s5p1.py'))\n"
++        "plan = importlib.util.module_from_spec(spec)\n"
++        "spec.loader.exec_module(plan)\n"
++        "rows = [{'arm': arm, 'distill_seed': 0, 'readout_seed': 0, 'r2_ap': 1.0} for arm in ('A1','A2','A3')]\n"
++        "assert plan.select_a_star(rows)['arm'] == 'A1'\n",
++        encoding="utf-8",
++    )
++    ran = subprocess.run([sys.executable, str(script)], cwd=tmp_path, capture_output=True, text=True)
++    assert ran.returncode != 0, ran.stdout + ran.stderr
++
++
++def test_dry_run_prints_the_grid_without_taking_the_lock(tmp_path: Path):
++    ran = subprocess.run(
++        [sys.executable, str(RUNNER), "--stage", "probe", "--dry-run"],
++        cwd=LIVE, capture_output=True, text=True, timeout=60,
++    )
++    assert ran.returncode == 0, ran.stderr[-1500:]
++    payload = json.loads(ran.stdout)
++    assert payload["dry_run"] is True
++    assert payload["takes_lock"] is False
++    assert payload["n_cells"] == 17
++    assert payload["dev_uses"] == 1
++
++
++def test_dry_run_dev_distill_heads_wall_clock_estimation():
++    plan = _plan()
++    distill_cells = plan.stage_cells("dev-distill")
++    summary = plan.summarize_stage("dev-distill", distill_cells)
++
++    # 验证 54 个读出头按「缓存一次学生特征 + 只训读出头」估算
++    heads_cells = [c for c in distill_cells if c["kind"] == "heads"]
++    assert len(heads_cells) == 54
++    assert "heads_wall_est_h" in summary
++    assert "heads_design_ref_h" in summary
++    assert summary["heads_design_ref_h"] == 0.75
++    # 估算值与设计 §6 的 0.75h 高度吻合（0.7h - 0.9h），而不是全量 ViT 反传的 >8h
++    assert 0.70 <= summary["heads_wall_est_h"] <= 0.90
++    assert summary["wall_h_est"] < 4.0, f"Total stage wall clock should be < 4.0h, got {summary['wall_h_est']}"
++    assert "heads_note" in summary
+diff --git a/tests/v9/experiments/test_s5_runner_native.py b/tests/v9/experiments/test_s5_runner_native.py
+new file mode 100644
+index 0000000..65fbe1e
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_runner_native.py
+@@ -0,0 +1,260 @@
++"""S5 冻结前运行器：在一次性副本里跑 smoke，并核对锁、超时和 dev-tune SHA。
++
++副本不是实盘仓库。改源码只发生在副本里，而且先断言路径不是 /Users/mac/AinerWorkFlow/AinerZero。
++"""
++
++from __future__ import annotations
++
++import fcntl
++import json
++import os
++import shutil
++import subprocess
++import sys
++import time
++from pathlib import Path
++
++import pytest
++
++pytest.importorskip("mlx.core")
++pytestmark = pytest.mark.native_mlx
++
++LIVE = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
++HERE = "reports/V9-S5-PHASE1"
++RUNS = "artifacts/v9/s5/runs"
++LEDGER = "artifacts/v9/s5/dev-uses.json"
++
++
++def _git(root: Path, *args: str) -> None:
++    subprocess.run(
++        ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
++        cwd=root, check=True, capture_output=True,
++    )
++
++
++def _make_root(tmp_path: Path) -> Path:
++    assert tmp_path.resolve() != LIVE
++    root = tmp_path / "fake"
++    shutil.copytree(LIVE / "src/ainerzero", root / "src/ainerzero", ignore=shutil.ignore_patterns("__pycache__"))
++    phase = root / HERE
++    phase.mkdir(parents=True)
++    for name in ("run_s5p1.py", "plan_s5p1.py"):
++        shutil.copy2(LIVE / HERE / name, phase / name)
++    (root / "artifacts/locks").mkdir(parents=True)
++    (root / ".gitignore").write_text("artifacts/\n__pycache__/\n", encoding="utf-8")
++    _git(root, "init", "-q")
++    _git(root, "add", ".")
++    _git(root, "commit", "-qm", "code")
++    assert root.resolve() != LIVE
++    return root
++
++
++def _run(root: Path, *args: str, env_extra: dict | None = None, timeout: int = 900):
++    assert root.resolve() != LIVE
++    fresh = root.parent / f"pyc-{time.monotonic_ns()}"
++    fresh.mkdir()
++    cmd = [sys.executable, "-I", "-X", f"pycache_prefix={fresh}", str(root / HERE / "run_s5p1.py"), *args]
++    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
++    if env_extra:
++        env.update(env_extra)
++    return subprocess.run(cmd, cwd=root, env=env, capture_output=True, text=True, timeout=timeout)
++
++
++def _mutate(root: Path, old: str, new: str, *, commit: bool = False) -> None:
++    assert root.resolve() != LIVE
++    path = root / HERE / "run_s5p1.py"
++    text = path.read_text(encoding="utf-8")
++    assert text.count(old) == 1, old
++    path.write_text(text.replace(old, new, 1), encoding="utf-8")
++    if commit:
++        _git(root, "add", "-u")
++        _git(root, "commit", "-qm", "mutate")
++
++
++def test_smoke_end_to_end_does_not_touch_dev_uses(tmp_path: Path):
++    root = _make_root(tmp_path)
++    report = "reports/smoke.json"
++    ran = _run(root, "--stage", "smoke", "--use-id", "s1", "--report", report)
++    assert ran.returncode == 0, ran.stderr[-4000:] + ran.stdout[-2000:]
++    assert not (root / LEDGER).exists()
++    runs = list((root / RUNS).iterdir())
++    assert len(runs) == 1
++    out = runs[0]
++    events = [json.loads(line) for line in (out / "events.jsonl").read_text(encoding="utf-8").splitlines()]
++    assert events[0]["event"] == "stage_start"
++    assert events[0]["lock"].endswith("artifacts/locks/m0-worker.lock")
++    stage = json.loads((out / "stage.json").read_text(encoding="utf-8"))
++    assert stage["failed"] is None
++    assert stage["dev_ledger_written"] is False
++    assert stage["smoke_partitions"]["dev"] == "s5test-smoke-dev"
++    blob = json.dumps(stage)
++    assert "s5p1-final" not in blob
++    logged = [row for row in events if row["event"] == "cell_end"]
++    assert logged
++    assert all(row["steps_logged"] == 2 for row in logged)
++    assert (out / "metrics" / "smoke-A0.json").is_file()
++    assert (out / "metrics" / "smoke-A0R.json").is_file()
++    # 验证训练与评测使用默认 GPU 设备，未被降级为 CPU
++    devices = [row.get("device", "") for row in logged]
++    assert devices and all("gpu" in d.lower() for d in devices), f"Expected GPU device in cell_end events, got {devices}"
++    assert stage.get("cell_runner_name") == "_execute_cell_body"
++
++
++def test_busy_lock_writes_nothing(tmp_path: Path):
++    root = _make_root(tmp_path)
++    lock = root / "artifacts/locks/m0-worker.lock"
++    handle = lock.open("a+")
++    fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
++    try:
++        ran = _run(root, "--stage", "smoke", "--use-id", "s1", "--report", "reports/out.json")
++    finally:
++        handle.close()
++    assert ran.returncode == 75, ran.stderr[-1500:]
++    assert "lock is busy" in ran.stderr
++    assert not (root / RUNS).exists()
++    assert not (root / "reports/out.json").exists()
++    assert not (root / LEDGER).exists()
++
++
++def test_cell_timeout_keeps_the_finished_cell(tmp_path: Path):
++    root = _make_root(tmp_path)
++    # 格子 0 正常，格子 1 时限设为 1.0 秒
++    _mutate(
++        root,
++        "def cell_limit_seconds(cell_index: int) -> float:\n    return float(CELL_LIMIT_S)\n",
++        "def cell_limit_seconds(cell_index: int) -> float:\n    return 1e9 if cell_index == 0 else 1.0\n",
++        commit=True,
++    )
++    # 让格子 1 (smoke-heads-A1) 记录起睡时刻并故意睡 25 秒
++    _mutate(
++        root,
++        "    t0 = time.perf_counter()\n",
++        "    if cell['cell_id'].startswith('smoke-heads-A1'):\n"
++        "        (ctx['out'] / 'c1_sleep_start.txt').write_text(str(time.monotonic()), encoding='utf-8')\n"
++        "        time.sleep(25.0)\n"
++        "    t0 = time.perf_counter()\n",
++        commit=True,
++    )
++    ran = _run(
++        root, "--stage", "smoke", "--use-id", "s1", "--report", "reports/out.json",
++        timeout=90,
++    )
++    t_after = time.monotonic()
++    assert ran.returncode == 2, ran.stderr[-1500:] + ran.stdout[-800:]
++    out = next((root / RUNS).iterdir())
++    # 验证超时子进程在时限（1.0s）加几秒内被硬性终止，远早于 25 秒睡眠结束
++    t_sleep_start = float((out / "c1_sleep_start.txt").read_text(encoding="utf-8"))
++    since_sleep = t_after - t_sleep_start
++    assert since_sleep < 6.0, f"Child process was not terminated promptly, slept {since_sleep}s"
++    events = [json.loads(line) for line in (out / "events.jsonl").read_text(encoding="utf-8").splitlines()]
++    fails = [row for row in events if row["event"] == "cell_fail"]
++    assert len(fails) == 1
++    assert fails[0]["cell_id"] == "smoke-heads-A1"
++    assert fails[0]["error"] == "timeout"
++    assert fails[0]["wall_s"] < 5.0
++    # 之前完成的格子 0 权重健全保留
++    assert (out / "weights" / "smoke-distill-A1-student.npz").is_file()
++    assert (out / "weights" / "smoke-distill-A1-heads.npz").is_file()
++    # 跑飞超时的格子 1 未生成最终产物
++    assert not (out / "weights" / "smoke-heads-A1.npz").exists()
++    stage = json.loads((out / "stage.json").read_text(encoding="utf-8"))
++    assert stage["completed"] == ["smoke-distill-A1"]
++    assert stage["n_completed"] == 1
++    assert "timeout" in str(stage["failed"]).lower()
++
++
++def test_changed_tune_file_is_refused_before_any_output(tmp_path: Path):
++    root = _make_root(tmp_path)
++    tune = root / "reports/tune.json"
++    tune.write_text('{"distill_lr": 0.0003, "supervised_lr": 0.0003, "eta": 0.1}\n', encoding="utf-8")
++    import hashlib
++    digest = hashlib.sha256(tune.read_bytes()).hexdigest()
++    raw = bytearray(tune.read_bytes())
++    raw[-2] ^= 1
++    tune.write_bytes(bytes(raw))
++    ran = _run(
++        root, "--stage", "dev-distill", "--use-id", "d1", "--report", "reports/out.json",
++        "--tune-file", str(tune), "--tune-sha", digest, timeout=120,
++    )
++    assert ran.returncode != 0, ran.stdout[-800:]
++    assert "SHA mismatch" in ran.stderr
++    assert not (root / RUNS).exists()
++    assert not (root / LEDGER).exists()
++    assert not (root / "reports/out.json").exists()
++
++
++def test_writing_before_the_lock_is_caught(tmp_path: Path):
++    root = _make_root(tmp_path)
++    _mutate(
++        root,
++        "    # acquire the shared lock before any run directory\n    try:\n",
++        "    RUNS.mkdir(parents=True, exist_ok=True)\n    (RUNS / 'leaked').write_text('x')\n    try:\n",
++    )
++    lock = root / "artifacts/locks/m0-worker.lock"
++    handle = lock.open("a+")
++    fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
++    try:
++        ran = _run(root, "--stage", "smoke", "--use-id", "s1", "--report", "reports/out.json", timeout=60)
++    finally:
++        handle.close()
++    assert (root / RUNS / "leaked").is_file()
++    assert not (ran.returncode == 75 and not (root / RUNS).exists())
++
++
++def test_timeout_exit_mutation_is_caught(tmp_path: Path):
++    root = _make_root(tmp_path)
++    # 坏对照：把子进程带时限等待去掉（p.join(timeout=None)），跑飞的格子将不会被按时终止
++    _mutate(root, "            p.join(timeout=timeout_s)\n", "            p.join(timeout=None)\n")
++    _mutate(
++        root,
++        "def cell_limit_seconds(cell_index: int) -> float:\n    return float(CELL_LIMIT_S)\n",
++        "def cell_limit_seconds(cell_index: int) -> float:\n    return 1e9 if cell_index == 0 else 0.5\n",
++        commit=True,
++    )
++    _mutate(
++        root,
++        "    t0 = time.perf_counter()\n",
++        "    if cell['cell_id'].startswith('smoke-heads-A1'):\n        time.sleep(2.0)\n    t0 = time.perf_counter()\n",
++        commit=True,
++    )
++    ran = _run(
++        root, "--stage", "smoke", "--use-id", "s1", "--report", "reports/out.json",
++        timeout=90,
++    )
++    # 去掉终止逻辑后，超时格子没有被终止而是跑完返回 0，违反「超时返回 2 且终止子进程」的断言
++    assert ran.returncode != 2
++
++
++def test_cpu_device_mutation_is_rejected(tmp_path: Path):
++    root = _make_root(tmp_path)
++    # 坏对照：强行在 _execute_cell_body 加上 mx.set_default_device(mx.cpu)
++    _mutate(
++        root,
++        "    kind = cell[\"kind\"]\n",
++        "    mx.set_default_device(mx.cpu)\n    kind = cell[\"kind\"]\n",
++        commit=True,
++    )
++    ran = _run(root, "--stage", "smoke", "--use-id", "s1", "--report", "reports/out.json")
++    assert ran.returncode == 0
++    out = next((root / RUNS).iterdir())
++    events = [json.loads(line) for line in (out / "events.jsonl").read_text(encoding="utf-8").splitlines()]
++    logged = [row for row in events if row["event"] == "cell_end"]
++    devices = [row.get("device", "") for row in logged]
++    # 证明一旦加入该行，设备就会变成 cpu 而不是 gpu
++    assert any("cpu" in d.lower() for d in devices)
++    assert not all("gpu" in d.lower() for d in devices)
++
++
++def test_s5_fake_cell_env_is_ignored(tmp_path: Path):
++    root = _make_root(tmp_path)
++    ran = _run(
++        root, "--stage", "smoke", "--use-id", "s1", "--report", "reports/out.json",
++        env_extra={"S5_FAKE_CELL": "1"}, timeout=120,
++    )
++    assert ran.returncode == 0
++    out = next((root / RUNS).iterdir())
++    # 证明即使设置 S5_FAKE_CELL=1，也不会生成 c0.ok，仍然按真实 smoke 跑满 9 个格子
++    assert not (out / "weights" / "c0.ok").exists()
++    stage = json.loads((out / "stage.json").read_text(encoding="utf-8"))
++    assert stage["n_completed"] == 9
++    assert (out / "metrics" / "smoke-A0.json").is_file()

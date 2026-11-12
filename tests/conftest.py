@@ -256,6 +256,7 @@ NATIVE_MODULES = {
     # S5: Student ViT, losses, heads in MLX.
     "test_s5_student_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 student ViT, losses, heads)",
     "test_s5_train_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 data reading and training loops in MLX)",
+    "test_s5_runner_native.py": "runs the S5 pre-freeze runner smoke path (MLX) in a throwaway copy",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).
