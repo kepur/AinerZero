@@ -1,0 +1,30 @@
+Setting up isolated copy at: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p233_mut_dwem5p34
+Imports from: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p233_mut_dwem5p34/src/ainerzero/__init__.py
+
+=== BASELINE: CPU Tests ===
+test_s5_labels.py baseline rc=0
+
+=== RUNNING CPU MUTATIONS (K1 - K4) ===
+[SURVIVED] K1_obj_excludes_non_wall (rc=0): ['15 passed in 6.64s']
+[SURVIVED] K2_disk_groups_unoccluded_wrong_id (rc=0): ['15 passed in 6.72s']
+[KILLED] K3_ordering_pairs_closer_inverted (rc=1): ['FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p233_mut_dwem5p34/tests/v9/experiments/test_s5_labels.py::test_ordering_pairs_contract', '1 failed, 14 passed in 7.67s']
+[KILLED] K4_mat_r3_uses_r2 (rc=1): ['FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p233_mut_dwem5p34/tests/v9/experiments/test_s5_world.py::test_materialize_end_to_end_matches_direct_calls[0]', 'FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p233_mut_dwem5p34/tests/v9/experiments/test_s5_world.py::test_materialize_end_to_end_matches_direct_calls[15]']
+
+=== BASELINE: Native MLX Tests (under lock) ===
+Lock busy (75), waiting 5s...
+Lock busy (75), waiting 5s...
+Lock busy (75), waiting 5s...
+Lock busy (75), waiting 5s...
+test_s5_student_mlx.py baseline rc=0
+
+=== RUNNING MLX MUTATIONS (K5 - K6) ===
+[KILLED] K5_student_compact_gather_prefix (rc=1): ['FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p233_mut_dwem5p34/tests/v9/experiments/test_s5_student_mlx.py::test_features_layer_index_with_partial_keep']
+[KILLED] K6_align_loss_drops_mask (rc=1): ['FAILED ../../../../../../../var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/p233_mut_dwem5p34/tests/v9/experiments/test_s5_student_mlx.py::test_distill_losses_average_only_inside_the_mask']
+
+=== MUTATION TEST SUMMARY ===
+  K1_obj_excludes_non_wall           : SURVIVED (rc=0) - obj 统计仅包含墙体(0)，漏掉柱子(1..P)与圆盘(100+i)；验证 test_r1_object_share_geometry 的盲区
+  K2_disk_groups_unoccluded_wrong_id : SURVIVED (rc=0) - 单独渲染单圆盘无遮挡像素时误用全局 disk_oid(100+i) 匹配单圆盘局部id(100)，导致 i>0 圆盘遮挡比全为0
+  K3_ordering_pairs_closer_inverted  : KILLED (rc=1) - 颠倒 ordering_pairs 中谁更近的真值判定；检验生产代码是否真正被测试把关
+  K4_mat_r3_uses_r2                  : KILLED (rc=1) - 物化时 R3 标签误用段末 R2 占据网格写入；检验物化端到端测试能否拦截
+  K5_student_compact_gather_prefix   : KILLED (rc=1) - Student 稀疏分支未按保留索引 gather，而是直接取前 k 个 token；破坏位置与时空对应关系
+  K6_align_loss_drops_mask           : KILLED (rc=1) - align_loss 内部调用底层余弦损失时丢弃了 mask 参数，导致无效 token 污染对齐损失

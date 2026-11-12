@@ -357,3 +357,49 @@ def test_r1_object_share_geometry():
     ids = frames[0][2]
     np.testing.assert_allclose(obj[6, 3], float((ids[96:112, 48:64] >= 0).mean()))
     np.testing.assert_allclose(obj[12, 3], float((ids[192:208, 48:64] >= 0).mean()))
+
+
+def test_r1_object_share_counts_pillars_and_disks():
+    """P233 K1: obj must count pillar and disk pixels, not only walls (tier-1, 11-12)."""
+    from types import SimpleNamespace
+
+    from ainerzero.v9.experiments.s5.render import render
+
+    agent = (5.0, 5.0, 0.0)
+    pillars = ((7.5, 5.6, 0.5),)
+    positions = np.array([[6.2, 4.6]])                 # one disk in front, right of centre
+    frames = [render(agent, positions, pillars, return_ids=True)] * 16
+    st = SimpleNamespace(agent=agent, positions=positions)
+    ep = SimpleNamespace(steps=[st] * 16, pillars=pillars)
+    obj = labels.r1(ep, 0, precomputed_frames=frames)["obj"][0]
+    ids = frames[0][2]
+    want = (ids >= 0).reshape(14, 16, 14, 16).mean(axis=(1, 3))
+    np.testing.assert_allclose(obj, want, atol=1e-6)
+    blocks = ids.reshape(14, 16, 14, 16).transpose(0, 2, 1, 3).reshape(14, 14, 256)
+    pillar_major = ((blocks >= 1) & (blocks < 100)).mean(-1) > 0.5
+    disk_major = (blocks >= 100).mean(-1) > 0.5
+    assert pillar_major.any() and disk_major.any(), "scene must contain pillar- and disk-dominated patches"
+    assert (obj[pillar_major] > 0.5).all() and (obj[disk_major] > 0.5).all()
+
+
+def test_disk_groups_occlusion_ratio_uses_single_disk_render():
+    """P233 K2: the occlusion denominator is the disk rendered alone (local id 100), for every disk index."""
+    from types import SimpleNamespace
+
+    from ainerzero.v9.experiments.s5.render import render
+
+    agent = (5.0, 5.0, 0.0)
+    pillars = ((7.0, 5.0, 0.4),)
+    # disk 0 behind the agent (never visible); disk 1 half behind the pillar; disk 2 in plain view
+    positions = np.array([[2.0, 5.0], [8.6, 5.45], [6.5, 3.8]])
+    st = SimpleNamespace(agent=agent, positions=positions)
+    ep = SimpleNamespace(steps=[st] * 16, pillars=pillars)
+    groups = {g["disk_id"]: g for g in labels.disk_groups(ep, 0)}
+    assert 0 not in groups and 2 in groups and 1 in groups
+    assert groups[2]["occlusion_ratio"] == pytest.approx(1.0)
+    assert groups[2]["occlusion_group"] == "full"
+    ids = render(agent, positions, pillars, return_ids=True)[2]
+    alone = render(agent, positions[1:2], (), return_ids=True)[2]
+    want = float((ids == 101).sum()) / float((alone == 100).sum())
+    assert 0.0 < want < 1.0
+    assert groups[1]["occlusion_ratio"] == pytest.approx(want)

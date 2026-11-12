@@ -1,0 +1,38 @@
+{
+  "reviewer": "gemini-r7b2",
+  "tier": 2,
+  "role": "review",
+  "task": "ainerzero.V9.P233",
+  "conclusion": "需补",
+  "verified_tasks": ["ainerzero.V9.P229", "ainerzero.V9.P230"],
+  "non_author_verified": true,
+  "obj_definition_conforms_design_r1": true,
+  "pool_e2e_state_leak": false,
+  "test_s5_world_duration_sec": 43.19,
+  "tests_reviewed": [
+    "pool_e2e",
+    "test_materialize_end_to_end_matches_direct_calls",
+    "test_materialize_end_to_end_clips_cover_disjoint_steps",
+    "test_materialize_end_to_end_shift_appearances",
+    "test_episode_registered_needs_both_flag_and_run_id",
+    "test_features_layer_index_matches_manual_blocks",
+    "test_features_layer_index_with_partial_keep",
+    "test_distill_losses_average_only_inside_the_mask",
+    "test_r1_object_share_geometry"
+  ],
+  "mutations_total": 6,
+  "mutations_killed": 4,
+  "mutations_survived": 2,
+  "mutations_detail": {
+    "K1_obj_excludes_non_wall": "SURVIVED (test_r1_object_share_geometry misses pillars and disks)",
+    "K2_disk_groups_unoccluded_wrong_id": "SURVIVED (test_disk_groups_contract lacks positive unoccluded assertion)",
+    "K3_ordering_pairs_closer_inverted": "KILLED (by test_ordering_pairs_contract)",
+    "K4_mat_r3_uses_r2": "KILLED (by test_materialize_end_to_end_matches_direct_calls)",
+    "K5_student_compact_gather_prefix": "KILLED (by test_features_layer_index_with_partial_keep)",
+    "K6_align_loss_drops_mask": "KILLED (by test_distill_losses_average_only_inside_the_mask)"
+  },
+  "required_additions": [
+    "test_r1_object_share_with_pillars_and_disks in tests/v9/experiments/test_s5_labels.py",
+    "test_disk_groups_unoccluded_positive_contract in tests/v9/experiments/test_s5_labels.py"
+  ]
+}
