@@ -597,6 +597,15 @@ def train_heads(
         "start_time": time.time(),
     }
 
+    # Labels are assembled once per call (tier-1, 2026-11-12). In probe-20261112c the per-step load_item
+    # recomputed tubelet patches only to read labels and took ~79% of head-training wall time.
+    label_items = [load_item(index, i, cache=active_cache) for i in range(len(index))]
+    all_r1_logd = np.stack([it["r1_logd"] for it in label_items], axis=0)
+    all_r1_sky = np.stack([it["r1_sky"] for it in label_items], axis=0)
+    all_r2 = np.stack([it["r2"] for it in label_items], axis=0)
+    all_r3 = np.stack([it["r3"] for it in label_items], axis=0)
+    del label_items
+
     step = 0
     t_start_all = time.perf_counter()
 
@@ -607,25 +616,14 @@ def train_heads(
 
             tokens_list = [cached_tokens[b][0] for b in b_indices]
             keep_list = [cached_tokens[b][2] for b in b_indices]
-
-            r1_logd_list = []
-            r1_sky_list = []
-            r2_list = []
-            r3_list = []
-
-            for b in b_indices:
-                it = load_item(index, b, cache=active_cache)
-                r1_logd_list.append(it["r1_logd"])
-                r1_sky_list.append(it["r1_sky"])
-                r2_list.append(it["r2"])
-                r3_list.append(it["r3"])
+            bi = np.asarray(b_indices, dtype=np.int64)
 
             b_tokens = mx.stack(tokens_list, axis=0)
             b_keep = mx.stack(keep_list, axis=0) if keep_list[0] is not None else None
-            r1_logd_mx = mx.array(np.stack(r1_logd_list, axis=0))
-            r1_sky_mx = mx.array(np.stack(r1_sky_list, axis=0))
-            r2_mx = mx.array(np.stack(r2_list, axis=0))
-            r3_mx = mx.array(np.stack(r3_list, axis=0))
+            r1_logd_mx = mx.array(all_r1_logd[bi])
+            r1_sky_mx = mx.array(all_r1_sky[bi])
+            r2_mx = mx.array(all_r2[bi])
+            r3_mx = mx.array(all_r3[bi])
 
             data_dt = time.perf_counter() - t_data_0
 

@@ -892,3 +892,18 @@ def test_train_and_predict_cache_rlt_keep_by_tau(train_fixture, monkeypatch):
     T.predict(s, h, idx, tau=0.1, cache=shared_cache)
     assert len(calls) == 8 and all(t == 0.1 for t in calls[4:])
 
+
+
+def test_train_heads_assembles_labels_once_per_call(train_fixture, monkeypatch):
+    """Head training must not reload items every step (tier-1, 11-12): at most one token pass and one label pass."""
+    idx = D.ClipIndex(train_fixture / "part")
+    calls = []
+    real = T.load_item
+    monkeypatch.setattr(T, "load_item", lambda *a, **k: (calls.append(1), real(*a, **k))[1])
+    mx.random.seed(31)
+    student = _make_small_student()
+    cfg = T.TrainConfig(lr=1e-2, batch_size=2, epochs=6, seed=31)
+    _, log = T.train_heads(student, idx, cfg)
+    steps = len(log["step_logs"])
+    assert steps >= 2 * len(idx) // 2
+    assert len(calls) <= 2 * len(idx), f"load_item called {len(calls)} times for {len(idx)} items over {steps} steps"

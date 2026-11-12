@@ -596,6 +596,15 @@ def run_locked(
                 _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": "timeout", "limit_s": 0.0, "wall_s": 0.0})
                 break
 
+            # Every cell is a fresh process importing code from the working tree, so the frozen
+            # manifest is re-checked before each cell (tier-1, 2026-11-12): an edit made while a stage
+            # runs must stop the stage instead of silently reaching later cells.
+            changed = GD.check_manifest(REPO, manifest)
+            if changed:
+                failed = "code changed during stage: " + "; ".join(changed[:6])
+                _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": failed})
+                break
+
             start_event: dict = {"event": "cell_start", "cell_id": cell["cell_id"], "index": index}
             part_name = cell.get("partition")
             if part_name in ctx["dirs"] and ctx["dirs"][part_name].exists():

@@ -563,3 +563,19 @@ def test_train_loops_use_item_cache_across_epochs(tmp_path: Path, monkeypatch):
     T.train_heads(student, idx, cfg)
     assert len(load_calls) == 4, f"Expected 4 np.load calls in train_heads with cache, got {len(load_calls)}"
 
+
+
+def test_code_change_during_a_stage_stops_the_next_cell(tmp_path: Path):
+    """Each cell re-checks the frozen manifest; editing a frozen file mid-stage must stop the stage (tier-1, 11-12)."""
+    root = _make_root(tmp_path)
+    _mutate_file(root, f"{HERE}/run_s5p1.py",
+                 "def _execute_cell_body(cell: dict, ctx: dict) -> dict:\n",
+                 "def _execute_cell_body(cell: dict, ctx: dict) -> dict:\n"
+                 "    _t = REPO / 'src/ainerzero/v9/experiments/s5/train.py'\n"
+                 "    _t.write_text(_t.read_text() + '\\n# touched mid-stage by a test\\n')\n")
+    ran = _run(root, "--stage", "smoke", "--use-id", "s-edit", "--report", "reports/out.json")
+    assert ran.returncode == 2, ran.stdout[-2000:] + ran.stderr[-2000:]
+    events = _events(root)
+    assert [e["cell_id"] for e in events if e["event"] == "cell_end"] == ["smoke-distill-A1"], events
+    fails = [e for e in events if e["event"] == "cell_fail"]
+    assert fails and "code changed during stage" in fails[0]["error"] and "train.py" in fails[0]["error"], fails
