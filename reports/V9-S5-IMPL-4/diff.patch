@@ -1,0 +1,1133 @@
+diff --git a/src/ainerzero/v9/experiments/s5/metrics.py b/src/ainerzero/v9/experiments/s5/metrics.py
+new file mode 100644
+index 0000000..22a9716
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/metrics.py
+@@ -0,0 +1,535 @@
++"""S5 评测指标与统计分析模块（纯 CPU / NumPy）。
++
++依据 reports/V9-S5-DESIGN/DESIGN-r1.md §4、§5 与末尾补记规范实现：
++1. grid_ap: 微平均网格平均精度（AP），并列时负例排前（保守口径）；
++2. grid_ap_by_distance: 按距离网格分组计算 AP（near, mid, far）；
++3. disk_recall: 按遮挡组或距离组计算圆盘二值占据召回率；
++4. logd_rmse: R1 对数深度 RMSE，支持全图、物体块、地面块分组切分；
++5. ordering_accuracy: 前后次序准确率，比较中心 patch 预测深度；
++6. steps_to_target / steps_to_target_stair: 达到目标 AP 的步数（线性插值 / 阶梯式），支持删失；
++7. ga_decision: 对齐加速 GA 门判定分析与多度量中位数比值；
++8. paired_world_bootstrap: 世界级配对自助法置信区间估计。
++"""
++
++from __future__ import annotations
++
++import math
++from typing import Any, Callable, Sequence
++
++import numpy as np
++
++AZIMUTH_BINS: int = 12
++DISTANCE_BINS: int = 7
++DIST_MIN: float = 0.5
++DIST_MAX: float = 7.0
++
++# 距离格边界：exp(linspace(log 0.5, log 7.0, 8))
++# 约为 [0.5, 0.729, 1.062, 1.549, 2.259, 3.293, 4.803, 7.0]
++DIST_BIN_EDGES = np.exp(np.linspace(np.log(DIST_MIN), np.log(DIST_MAX), DISTANCE_BINS + 1))
++
++# 距离分组定义：
++# near: 第 0–3 格 (< 2.259 m)
++# mid: 第 4–5 格 (2.259–4.803 m)
++# far: 第 6 格 (> 4.803 m)
++# 注：设计稿中的「< 2、2–4、> 4 m」是圆盘级连续几何分组，这里网格只能按格边界取近似。
++DISTANCE_GRID_GROUPS: dict[str, tuple[int, int]] = {
++    "near": (0, 4),
++    "mid": (4, 6),
++    "far": (6, 7),
++}
++
++
++def grid_ap(scores: np.ndarray, targets: np.ndarray) -> float:
++    """计算拉平后的微平均平均精度（Average Precision, AP）。
++
++    参数：
++        scores: 任意实数数组（如 logit 或概率），可为 [N, 12, 7] 或任意维度。
++        targets: 与 scores 形状一致的二值标签（0 或 1）。
++
++    返回：
++        float: 微平均 AP。若无正例（所有 target 为 0）则返回 float("nan")。
++
++    并列处理：
++        先按分数降序排序。当分数相等时，负例（target=0）排在正例（target=1）前面。
++        这是保守口径，可避免同分预测虚高正例排位。
++    """
++    s_flat = np.asarray(scores, dtype=np.float64).ravel()
++    t_flat = np.asarray(targets, dtype=np.int64).ravel()
++    if s_flat.shape != t_flat.shape:
++        raise ValueError(f"scores shape {scores.shape} != targets shape {targets.shape}")
++
++    num_pos = int(np.sum(t_flat == 1))
++    if num_pos == 0:
++        return float("nan")
++
++    # 保守并列口径：先按 -scores 升序（即 scores 降序），同分时 targets 升序（0 排在 1 前面）
++    order = np.lexsort((t_flat, -s_flat))
++    sorted_targets = t_flat[order]
++
++    cum_tp = np.cumsum(sorted_targets)
++    ranks = np.arange(1, len(sorted_targets) + 1, dtype=np.float64)
++    precisions = cum_tp / ranks
++
++    pos_mask = (sorted_targets == 1)
++    return float(np.mean(precisions[pos_mask]))
++
++
++def grid_ap_by_distance(scores: np.ndarray, targets: np.ndarray) -> dict[str, float]:
++    """按距离格分组计算微平均 AP。
++
++    距离格按边界 exp(linspace(log 0.5, log 7, 8)) 分三组：
++    - near: 第 0–3 格（< 2.26 m）
++    - mid: 第 4–5 格（2.26–4.80 m）
++    - far: 第 6 格（> 4.80 m）
++
++    注：设计稿中的「< 2、2–4、> 4 m」是圆盘级连续几何分组，这里网格只能按格边界取近似。
++
++    参数：
++        scores: [N, 12, 7] 评分
++        targets: [N, 12, 7] 目标
++
++    返回：
++        dict: {"near": ap_near, "mid": ap_mid, "far": ap_far}
++    """
++    scores = np.asarray(scores)
++    targets = np.asarray(targets)
++    if scores.shape[-1] != DISTANCE_BINS:
++        raise ValueError(f"expected last dimension {DISTANCE_BINS}, got {scores.shape}")
++
++    res = {}
++    for grp, (d_start, d_end) in DISTANCE_GRID_GROUPS.items():
++        sub_s = scores[..., d_start:d_end]
++        sub_t = targets[..., d_start:d_end]
++        res[grp] = grid_ap(sub_s, sub_t)
++    return res
++
++
++def disk_recall(
++    scores: np.ndarray,
++    disk_groups: list[list[dict[str, Any]]],
++    threshold: float,
++    key: str,
++) -> dict[str, tuple[int, int, float]]:
++    """按分组属性计算圆盘二值占据召回率。
++
++    每个圆盘在其 (azimuth_bin, distance_bin) 格上，若 sigmoid(score) >= threshold 记为命中。
++    按 key（"occlusion_group" 或 "distance_group"）分组，统计命中数、总数与召回率。
++
++    参数：
++        scores: [N, 12, 7] 或 [12, 7] 评分实数（取 sigmoid 与 threshold 比较）
++        disk_groups: 逐段的圆盘属性字典列表（list of list of dict）
++        threshold: 命中阈值（0.0 到 1.0）
++        key: 分组字段名，如 "occlusion_group" 或 "distance_group"
++
++    返回：
++        dict: {组名: (命中数, 总数, 召回率)}
++    """
++    s_arr = np.asarray(scores, dtype=np.float64)
++    if s_arr.ndim == 2:
++        s_arr = s_arr[None, ...]
++        disk_groups = [disk_groups]  # type: ignore
++
++    n_clips = len(disk_groups)
++    if s_arr.shape[0] != n_clips:
++        raise ValueError(f"scores clips {s_arr.shape[0]} != disk_groups len {n_clips}")
++
++    counts: dict[str, list[int]] = {}
++    if key == "occlusion_group":
++        counts = {"full": [0, 0], "partial": [0, 0]}
++    elif key == "distance_group":
++        counts = {"< 2": [0, 0], "2–4": [0, 0], "> 4": [0, 0]}
++
++    for c_idx in range(n_clips):
++        for disk in disk_groups[c_idx]:
++            grp = str(disk.get(key, "unknown"))
++            if grp not in counts:
++                counts[grp] = [0, 0]
++
++            az = int(disk["azimuth_bin"])
++            db = int(disk["distance_bin"])
++            val = float(s_arr[c_idx, az, db])
++            prob = 1.0 / (1.0 + math.exp(-max(min(val, 60.0), -60.0)))
++
++            is_hit = (prob >= threshold)
++            counts[grp][1] += 1
++            if is_hit:
++                counts[grp][0] += 1
++
++    out: dict[str, tuple[int, int, float]] = {}
++    for grp, (hit, tot) in counts.items():
++        rec = float(hit / tot) if tot > 0 else float("nan")
++        out[grp] = (hit, tot, rec)
++    return out
++
++
++def logd_rmse(
++    pred: np.ndarray,
++    target: np.ndarray,
++    *,
++    sky: np.ndarray | None = None,
++    obj: np.ndarray | None = None,
++    split: str | None = None,
++) -> float:
++    """计算 R1 非天空块对数深度均方根误差（RMSE）。
++
++    参数：
++        pred: [N, 16, 14, 14] 预测对数深度
++        target: [N, 16, 14, 14] 真值对数深度（纯天空块为 nan，不计入）
++        sky: 可选 [N, 16, 14, 14] 天空占比
++        obj: 可选 [N, 16, 14, 14] 物体占比
++        split: 切分选项，None 表示全部有效块；
++               "object": obj >= 0.5 的块；
++               "floor": 1 - sky - obj >= 0.5 的块。
++
++    返回：
++        float: RMSE。若无符合条件的块则返回 float("nan")。
++    """
++    p = np.asarray(pred, dtype=np.float64)
++    t = np.asarray(target, dtype=np.float64)
++    if p.shape != t.shape:
++        raise ValueError(f"pred shape {p.shape} != target shape {t.shape}")
++
++    valid = np.isfinite(t)
++
++    if split is None:
++        mask = valid
++    elif split == "object":
++        if obj is None:
++            raise ValueError("obj must be provided when split='object'")
++        o_arr = np.asarray(obj, dtype=np.float64)
++        mask = valid & (o_arr >= 0.5)
++    elif split == "floor":
++        if sky is None or obj is None:
++            raise ValueError("both sky and obj must be provided when split='floor'")
++        s_arr = np.asarray(sky, dtype=np.float64)
++        o_arr = np.asarray(obj, dtype=np.float64)
++        floor = 1.0 - s_arr - o_arr
++        mask = valid & (floor >= 0.5)
++    else:
++        raise ValueError(f"unknown split {split!r}; expected None, 'object', or 'floor'")
++
++    if not np.any(mask):
++        return float("nan")
++
++    diff = p[mask] - t[mask]
++    return float(np.sqrt(np.mean(diff ** 2)))
++
++
++def ordering_accuracy(
++    pred_logd_last: np.ndarray,
++    pairs: list[list[dict[str, Any]]],
++    disk_groups: list[list[dict[str, Any]]],
++) -> dict[str, tuple[int, float]]:
++    """计算段末帧成对前后次序判断准确率。
++
++    规则：
++    - 比较两对象各自 patch 处的预测对数深度，预测值较小者判定为较近。
++    - 若两处预测深度相等，判定为错误。
++    - 真值为 "equal" 的样本对不计入。
++    - 按 type ("disk_disk", "disk_pillar") 分组；
++    - 再按遮挡组分组：只要对里有一个圆盘的遮挡组为 "partial"，该对即归为 "partial"，否则为 "full"。
++      圆盘编号 id - 100 对应 disk_groups 中的 disk_id。
++
++    参数：
++        pred_logd_last: [N, 14, 14] 每段最后一帧的预测对数深度
++        pairs: 逐段的 ordering_pairs 列表（list of list of dict）
++        disk_groups: 逐段的 disk_groups 列表（list of list of dict）
++
++    返回：
++        dict: 各组的 (样本对数, 准确率)
++              包含 "all", "disk_disk", "disk_pillar", "full", "partial",
++              以及复合组 "disk_disk_full", "disk_disk_partial", "disk_pillar_full", "disk_pillar_partial"。
++    """
++    preds = np.asarray(pred_logd_last, dtype=np.float64)
++    if preds.ndim == 2:
++        preds = preds[None, ...]
++        pairs = [pairs]  # type: ignore
++        disk_groups = [disk_groups]  # type: ignore
++
++    n_clips = len(pairs)
++    if preds.shape[0] != n_clips:
++        raise ValueError(f"preds len {preds.shape[0]} != pairs len {n_clips}")
++
++    group_keys = [
++        "all",
++        "disk_disk",
++        "disk_pillar",
++        "full",
++        "partial",
++        "disk_disk_full",
++        "disk_disk_partial",
++        "disk_pillar_full",
++        "disk_pillar_partial",
++    ]
++    counts: dict[str, list[int]] = {k: [0, 0] for k in group_keys}
++
++    for c_idx in range(n_clips):
++        clip_disks = disk_groups[c_idx] if c_idx < len(disk_groups) else []
++        disk_occ = {int(d["disk_id"]): str(d.get("occlusion_group", "full")) for d in clip_disks}
++
++        for pair in pairs[c_idx]:
++            closer = pair.get("closer")
++            if closer == "equal":
++                continue  # 真值为 "equal" 的对不计
++
++            p_type = str(pair.get("type", "unknown"))
++            r_a, c_a = pair["patch_a"]
++            r_b, c_b = pair["patch_b"]
++
++            z_pred_a = float(preds[c_idx, r_a, c_a])
++            z_pred_b = float(preds[c_idx, r_b, c_b])
++
++            if math.isnan(z_pred_a) or math.isnan(z_pred_b) or z_pred_a == z_pred_b:
++                pred_closer = None
++            elif z_pred_a < z_pred_b:
++                pred_closer = "a"
++            else:
++                pred_closer = "b"
++
++            is_correct = (pred_closer is not None and pred_closer == closer)
++
++            # 遮挡组判定：只要对里有一个圆盘是 partial，即为 partial
++            # id - 100 对应 disk_id
++            id_a = int(pair["id_a"])
++            id_b = int(pair["id_b"])
++            occ_a = disk_occ.get(id_a - 100, "full")
++            if p_type == "disk_disk":
++                occ_b = disk_occ.get(id_b - 100, "full")
++                occ_group = "partial" if (occ_a == "partial" or occ_b == "partial") else "full"
++            else:
++                # disk_pillar：柱子没有遮挡组，只看圆盘
++                occ_group = "partial" if (occ_a == "partial") else "full"
++
++            matched_tags = ["all", p_type, occ_group, f"{p_type}_{occ_group}"]
++            for tag in matched_tags:
++                if tag not in counts:
++                    counts[tag] = [0, 0]
++                counts[tag][1] += 1
++                if is_correct:
++                    counts[tag][0] += 1
++
++    out: dict[str, tuple[int, float]] = {}
++    for tag, (correct, total) in counts.items():
++        acc = float(correct / total) if total > 0 else float("nan")
++        out[tag] = (total, acc)
++    return out
++
++
++def steps_to_target(
++    steps: Sequence[float] | np.ndarray,
++    ap: Sequence[float] | np.ndarray,
++    target: float,
++    cap: float,
++) -> tuple[float, bool]:
++    """计算达到目标 AP 的步数（线性插值）。
++
++    - 若首个检查点即达标 (ap[0] >= target)，返回 (steps[0], False)；
++    - 若在第 j 个检查点首次达标，在 (steps[j-1], ap[j-1]) 与 (steps[j], ap[j]) 之间线性插值；
++    - 若全序列未达标，返回 (cap, True)，第二项表示删失 (censored)。
++
++    参数：
++        steps: 严格递增的检查点步数序列
++        ap: 对应检查点的 AP 序列
++        target: 达标阈值
++        cap: 步数上限
++
++    返回：
++        tuple[float, bool]: (达标步数, 是否删失)
++    """
++    s_arr = np.asarray(steps, dtype=np.float64)
++    a_arr = np.asarray(ap, dtype=np.float64)
++    if len(s_arr) != len(a_arr) or len(s_arr) == 0:
++        raise ValueError("steps and ap must be non-empty and of equal length")
++
++    hits = np.where(a_arr >= target)[0]
++    if len(hits) == 0:
++        return float(cap), True
++
++    j = int(hits[0])
++    if j == 0:
++        return float(s_arr[0]), False
++
++    s_prev, a_prev = s_arr[j - 1], a_arr[j - 1]
++    s_curr, a_curr = s_arr[j], a_arr[j]
++    denom = a_curr - a_prev
++    if denom == 0.0:
++        return float(s_curr), False
++
++    ratio = (target - a_prev) / denom
++    interp_step = s_prev + ratio * (s_curr - s_prev)
++    return float(interp_step), False
++
++
++def steps_to_target_stair(
++    steps: Sequence[float] | np.ndarray,
++    ap: Sequence[float] | np.ndarray,
++    target: float,
++    cap: float,
++) -> tuple[float, bool]:
++    """阶梯版达标步数：取首次达标检查点的 steps[j]，不进行插值（仅作描述报告）。"""
++    s_arr = np.asarray(steps, dtype=np.float64)
++    a_arr = np.asarray(ap, dtype=np.float64)
++    if len(s_arr) != len(a_arr) or len(s_arr) == 0:
++        raise ValueError("steps and ap must be non-empty and of equal length")
++
++    hits = np.where(a_arr >= target)[0]
++    if len(hits) == 0:
++        return float(cap), True
++    return float(s_arr[hits[0]]), False
++
++
++def ga_decision(
++    a0_curves: Sequence[tuple[Sequence[float] | np.ndarray, Sequence[float] | np.ndarray]],
++    a4_curves: Sequence[tuple[Sequence[float] | np.ndarray, Sequence[float] | np.ndarray]],
++    cap: float,
++) -> dict[str, Any]:
++    """对齐加速 GA 门判定分析。
++
++    依据 DESIGN-r1 §4：
++    - 达标线 = 0.95 × A0 三条曲线末次检查点 R2 AP 的中位数；
++    - 两臂各自取三个种子步数的中位数；
++    - passed = median(A4) <= 0.7 × median(A0)；
++    - 另返回不插值的阶梯版分析。
++    """
++    if len(a0_curves) != 3 or len(a4_curves) != 3:
++        raise ValueError(f"expected 3 curves per arm, got a0={len(a0_curves)}, a4={len(a4_curves)}")
++
++    a0_last_aps = [float(curve[1][-1]) for curve in a0_curves]
++    a0_last_median = float(np.median(a0_last_aps))
++    target_ap = float(0.95 * a0_last_median)
++
++    # 线性插值版
++    a0_res = [steps_to_target(s, a, target_ap, cap) for s, a in a0_curves]
++    a0_steps = [r[0] for r in a0_res]
++    a0_censored = [r[1] for r in a0_res]
++
++    a4_res = [steps_to_target(s, a, target_ap, cap) for s, a in a4_curves]
++    a4_steps = [r[0] for r in a4_res]
++    a4_censored = [r[1] for r in a4_res]
++
++    median_a0 = float(np.median(a0_steps))
++    median_a4 = float(np.median(a4_steps))
++    ratio = float(median_a4 / median_a0) if median_a0 > 0 else float("inf")
++    passed = bool(median_a4 <= 0.7 * median_a0)
++
++    # 阶梯版
++    a0_stair_res = [steps_to_target_stair(s, a, target_ap, cap) for s, a in a0_curves]
++    a4_stair_res = [steps_to_target_stair(s, a, target_ap, cap) for s, a in a4_curves]
++    stair_a0_steps = [r[0] for r in a0_stair_res]
++    stair_a0_censored = [r[1] for r in a0_stair_res]
++    stair_a4_steps = [r[0] for r in a4_stair_res]
++    stair_a4_censored = [r[1] for r in a4_stair_res]
++
++    stair_median_a0 = float(np.median(stair_a0_steps))
++    stair_median_a4 = float(np.median(stair_a4_steps))
++    stair_ratio = float(stair_median_a4 / stair_median_a0) if stair_median_a0 > 0 else float("inf")
++    stair_passed = bool(stair_median_a4 <= 0.7 * stair_median_a0)
++
++    return {
++        "target_ap": target_ap,
++        "a0_last_median": a0_last_median,
++        "a0_last_aps": a0_last_aps,
++        "a0_steps": a0_steps,
++        "a0_censored": a0_censored,
++        "a4_steps": a4_steps,
++        "a4_censored": a4_censored,
++        "median_a0": median_a0,
++        "median_a4": median_a4,
++        "ratio": ratio,
++        "passed": passed,
++        "stair": {
++            "a0_steps": stair_a0_steps,
++            "a0_censored": stair_a0_censored,
++            "a4_steps": stair_a4_steps,
++            "a4_censored": stair_a4_censored,
++            "median_a0": stair_median_a0,
++            "median_a4": stair_median_a4,
++            "ratio": stair_ratio,
++            "passed": stair_passed,
++        },
++    }
++
++
++def expand_world_index(
++    world_indices: Sequence[int] | np.ndarray,
++    clips_per_world: int = 16,
++) -> np.ndarray:
++    """展开抽样的世界索引为段索引序列。
++
++    若某个世界被重复抽中多次，其包含的所有段将重复计入。
++
++    参数：
++        world_indices: 世界索引序列 [W]
++        clips_per_world: 每个世界的段数，默认为 16
++
++    返回：
++        np.ndarray: [W * clips_per_world] 段索引序列
++    """
++    w_arr = np.asarray(world_indices, dtype=np.int64)
++    offsets = np.arange(clips_per_world, dtype=np.int64)
++    return (w_arr[:, None] * clips_per_world + offsets[None, :]).ravel()
++
++
++def paired_world_bootstrap(
++    n_worlds: int,
++    stat_fn: Callable[[np.ndarray], float],
++    *,
++    n_boot: int = 2000,
++    seed: int = 0,
++    level: float = 0.95,
++) -> dict[str, Any]:
++    """世界级配对自助法置信区间估计。
++
++    依据 DESIGN-r1 §4：
++    - 以 final 的世界为单位有放回抽样；
++    - 同一世界的段一起抽（调用方在 stat_fn 中根据世界索引重算或索引统计量）；
++    - 返回点估计（全部世界）、等尾分位数置信区间 [lo, hi]。
++    - 当使用 Bonferroni 校正时，由调用方传入 level = 1 - 0.05 / 3 (约 0.9833)。
++
++    参数：
++        n_worlds: 世界总数
++        stat_fn: 统计量计算函数，接收形状为 [n_worlds] 的世界索引数组，返回标量统计值
++        n_boot: 自助重抽样次数，默认 2000
++        seed: 随机数发生器种子，默认 0
++        level: 置信水平，默认 0.95
++
++    返回：
++        dict: 包含 point_estimate, ci, ci_lower, ci_upper, level, n_boot, seed, n_nan 等字段。
++
++    nan 行为：
++        若某次重抽上 stat_fn 返回 nan（例如抽到的世界里一个正例都没有），
++        该次计入 n_nan。区间仍用 np.percentile，不用 nanpercentile，也不丢弃这些重抽。
++        因此只要 n_nan > 0，np.percentile 会把 ci_lower 与 ci_upper 都变成 nan。
++    """
++    if n_worlds <= 0:
++        raise ValueError(f"n_worlds must be > 0, got {n_worlds}")
++    if not (0.0 < level < 1.0):
++        raise ValueError(f"level must be in (0, 1), got {level}")
++
++    all_worlds = np.arange(n_worlds, dtype=np.int64)
++    point_est = float(stat_fn(all_worlds))
++
++    rng = np.random.default_rng(seed)
++    boot_vals = np.empty(n_boot, dtype=np.float64)
++
++    for b in range(n_boot):
++        boot_idx = rng.choice(n_worlds, size=n_worlds, replace=True)
++        boot_vals[b] = stat_fn(boot_idx)
++
++    alpha = 1.0 - level
++    # 等尾区间：下界分位是 alpha/2，上界是 1 - alpha/2。含 nan 时 percentile 传播为 nan。
++    lo = float(np.percentile(boot_vals, 100.0 * (alpha / 2.0)))
++    hi = float(np.percentile(boot_vals, 100.0 * (1.0 - alpha / 2.0)))
++    n_nan = int(np.isnan(boot_vals).sum())
++
++    return {
++        "point_estimate": point_est,
++        "ci": (lo, hi),
++        "ci_lower": lo,
++        "ci_upper": hi,
++        "level": float(level),
++        "n_boot": int(n_boot),
++        "seed": int(seed),
++        "n_nan": n_nan,
++        "bootstrap_std": float(np.std(boot_vals)),
++    }
+diff --git a/tests/v9/experiments/test_s5_metrics.py b/tests/v9/experiments/test_s5_metrics.py
+new file mode 100644
+index 0000000..0a42f57
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_metrics.py
+@@ -0,0 +1,586 @@
++"""S5 评测指标与统计模块契约测试（纯 CPU）。
++
++测试覆盖：
++- grid_ap: 手算例子（完美、反序、保守并列）、独立朴素实现比对、全0无正例返回nan；
++- grid_ap_by_distance: 距离格分组切分与常数边界、单组正例隔离；
++- disk_recall: sigmoid 与阈值 >= 判定、各组召回率统计；
++- logd_rmse: nan 过滤、object / floor 0.5 边界判定与分组切分；
++- ordering_accuracy: 预测相等算错、equal 对不计、partial 归属规则；
++- steps_to_target / stair: 首点达标、中间线性插值、未达标删失、非单调首发达标；
++- ga_decision: P228 §2.1 数值用例、达标线 0.589、通过/打回行为、A0==A4 判定 False；
++- paired_world_bootstrap: 确定性、常数退化单点、expand_world_index 重复计入、
++  等尾分位数（alpha/2）、n_nan。
++"""
++
++from __future__ import annotations
++
++import math
++from typing import Any
++
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s5 import metrics as M
++
++
++# ------------------------------------------------------------------------------------------------
++# 1. grid_ap
++# ------------------------------------------------------------------------------------------------
++def _naive_grid_ap(scores: np.ndarray, targets: np.ndarray) -> float:
++    """独立参照实现：纯 Python 遍历排序并按保守口径断言 AP。"""
++    s = scores.ravel().tolist()
++    t = targets.ravel().tolist()
++    num_pos = sum(1 for v in t if v == 1)
++    if num_pos == 0:
++        return float("nan")
++
++    # 保守排序：分数高的在前；分数相同时负例 (0) 排在正例 (1) 前面
++    items = sorted(zip(s, t), key=lambda x: (-x[0], x[1]))
++
++    tp = 0
++    prec_sum = 0.0
++    for rank, (_, target) in enumerate(items, start=1):
++        if target == 1:
++            tp += 1
++            prec_sum += tp / rank
++    return prec_sum / num_pos
++
++
++def test_grid_ap_perfect_ranking():
++    # 完美排序：AP = 1.0
++    scores = np.array([10.0, 9.0, 1.0, 0.0])
++    targets = np.array([1, 1, 0, 0])
++    ap = M.grid_ap(scores, targets)
++    assert ap == pytest.approx(1.0, abs=1e-8)
++
++
++def test_grid_ap_completely_reversed():
++    # 完全反序：
++    # 排序后: rank 1 (neg), rank 2 (neg), rank 3 (pos, prec=1/3), rank 4 (pos, prec=2/4=0.5)
++    # AP = (1/3 + 1/2) / 2 = 5/12 ≈ 0.41666667
++    scores = np.array([1.0, 2.0, 3.0, 4.0])
++    targets = np.array([1, 1, 0, 0])
++    ap = M.grid_ap(scores, targets)
++    assert ap == pytest.approx(5.0 / 12.0, abs=1e-8)
++
++
++def test_grid_ap_conservative_tie_breaking():
++    # 保守并列测试：
++    # 两个样本分数完全相同 (0.5, 0.5)，标签一正一负 (1, 0)
++    # 保守口径：负例排 rank 1 (prec 0/1)，正例排 rank 2 (prec 1/2 = 0.5) -> AP = 0.5
++    # 若乐观（正例先排）：正例排 rank 1 (prec 1/1 = 1.0) -> AP = 1.0
++    scores = np.array([0.5, 0.5])
++    targets = np.array([1, 0])
++    ap = M.grid_ap(scores, targets)
++    assert ap == pytest.approx(0.5, abs=1e-8)
++
++    # 复杂并列：
++    # 分数 [9.0, 5.0, 5.0, 1.0]，标签 [1, 1, 0, 0]
++    # 降序: 9.0 (t=1, rank 1, prec=1/1=1.0)
++    #       5.0 (t=0, rank 2, prec=1/2=0.5)  <-- 负例在同分时先排
++    #       5.0 (t=1, rank 3, prec=2/3)
++    #       1.0 (t=0, rank 4, prec=2/4=0.5)
++    # AP = (1.0 + 2/3) / 2 = 5/6 ≈ 0.83333333
++    scores2 = np.array([9.0, 5.0, 5.0, 1.0])
++    targets2 = np.array([1, 1, 0, 0])
++    assert M.grid_ap(scores2, targets2) == pytest.approx(5.0 / 6.0, abs=1e-8)
++
++
++def test_grid_ap_no_positives_returns_nan():
++    scores = np.array([0.9, 0.8, 0.1])
++    targets = np.array([0, 0, 0])
++    assert math.isnan(M.grid_ap(scores, targets))
++
++
++def test_grid_ap_matches_naive_implementation():
++    rng = np.random.default_rng(42)
++    for _ in range(10):
++        scores = rng.standard_normal((2, 12, 7))
++        targets = rng.integers(0, 2, size=(2, 12, 7))
++        got = M.grid_ap(scores, targets)
++        expected = _naive_grid_ap(scores, targets)
++        assert got == pytest.approx(expected, abs=1e-8)
++
++
++# ------------------------------------------------------------------------------------------------
++# 2. grid_ap_by_distance
++# ------------------------------------------------------------------------------------------------
++def test_grid_ap_by_distance_groups_and_nan_isolation():
++    scores = np.random.default_rng(0).standard_normal((1, 12, 7))
++    targets = np.zeros((1, 12, 7), dtype=np.uint8)
++
++    # 正例仅放在 far 组 (第 6 格)
++    targets[0, 2, 6] = 1
++    targets[0, 5, 6] = 1
++
++    res = M.grid_ap_by_distance(scores, targets)
++    assert set(res.keys()) == {"near", "mid", "far"}
++    assert math.isnan(res["near"])
++    assert math.isnan(res["mid"])
++
++    # far 组的值必须严格等于单独在该子网格上计算的 AP
++    expected_far = M.grid_ap(scores[..., 6:7], targets[..., 6:7])
++    assert res["far"] == pytest.approx(expected_far, abs=1e-8)
++
++    # 边界严格隔离测试：正例放在第 4 格 (属于 mid 组边界)
++    # near (0..3) 绝不能包含第 4 格，因此 near 必须为 nan，而 mid 必须有值
++    targets_mid = np.zeros((1, 12, 7), dtype=np.uint8)
++    targets_mid[0, 1, 4] = 1
++    res_mid = M.grid_ap_by_distance(scores, targets_mid)
++    assert math.isnan(res_mid["near"])
++    assert not math.isnan(res_mid["mid"])
++    assert math.isnan(res_mid["far"])
++
++
++def test_grid_ap_by_distance_mid_bin5_and_near_bin3():
++    """三个距离组都要落到自己的格上。
++
++    正例只在第 5 格时，mid 必须等于第 4–5 格上单独算的 AP。
++    若 mid 被缩成只有第 4 格，这一组没有正例，返回 nan，本断言失败。
++    正例只在第 3 格时，near 有正例、mid 为 nan。
++    切片下标写死，不读 DISTANCE_GRID_GROUPS，避免和被改坏的常量一起漂移。
++    """
++    scores = np.random.default_rng(7).standard_normal((2, 12, 7))
++
++    targets_bin5 = np.zeros((2, 12, 7), dtype=np.int64)
++    targets_bin5[0, 1, 5] = 1
++    targets_bin5[1, 4, 5] = 1
++    res5 = M.grid_ap_by_distance(scores, targets_bin5)
++    expected_mid = M.grid_ap(scores[..., 4:6], targets_bin5[..., 4:6])
++    assert not math.isnan(expected_mid)
++    assert math.isnan(M.grid_ap(scores[..., 4:5], targets_bin5[..., 4:5]))
++    assert res5["mid"] == pytest.approx(expected_mid, abs=1e-8)
++    assert math.isnan(res5["near"])
++    assert math.isnan(res5["far"])
++
++    targets_bin3 = np.zeros((2, 12, 7), dtype=np.int64)
++    targets_bin3[0, 0, 3] = 1
++    targets_bin3[1, 2, 3] = 1
++    res3 = M.grid_ap_by_distance(scores, targets_bin3)
++    expected_near = M.grid_ap(scores[..., 0:4], targets_bin3[..., 0:4])
++    assert not math.isnan(expected_near)
++    assert res3["near"] == pytest.approx(expected_near, abs=1e-8)
++    assert math.isnan(res3["mid"])
++    assert math.isnan(res3["far"])
++
++
++# ------------------------------------------------------------------------------------------------
++# 3. disk_recall
++# ------------------------------------------------------------------------------------------------
++def test_disk_recall_threshold_boundary_and_grouping():
++    # 构造 1 段，两圆盘：
++    # 圆盘 1 在 (az=2, dist=1)，分在 "full" 组，对应分数 = 0.0 (sigmoid(0.0) = 0.5)
++    # 圆盘 2 在 (az=5, dist=4)，分在 "partial" 组，对应分数 = -1.0 (sigmoid(-1.0) ≈ 0.2689 < 0.5)
++    scores = np.full((1, 12, 7), -10.0, dtype=np.float32)
++    scores[0, 2, 1] = 0.0
++    scores[0, 5, 4] = -1.0
++
++    disk_groups = [
++        [
++            {"azimuth_bin": 2, "distance_bin": 1, "occlusion_group": "full", "distance_group": "< 2"},
++            {"azimuth_bin": 5, "distance_bin": 4, "occlusion_group": "partial", "distance_group": "2–4"},
++        ]
++    ]
++
++    # threshold = 0.5，sigmoid(0.0) 刚好等于 0.5，按照 >= 算命中
++    rec_occ = M.disk_recall(scores, disk_groups, threshold=0.5, key="occlusion_group")
++    assert rec_occ["full"] == (1, 1, 1.0)
++    assert rec_occ["partial"] == (0, 1, 0.0)
++
++    # 按距离组划分
++    rec_dist = M.disk_recall(scores, disk_groups, threshold=0.5, key="distance_group")
++    assert rec_dist["< 2"] == (1, 1, 1.0)
++    assert rec_dist["2–4"] == (0, 1, 0.0)
++    assert math.isnan(rec_dist["> 4"][2]) and rec_dist["> 4"][1] == 0
++
++
++# ------------------------------------------------------------------------------------------------
++# 4. logd_rmse
++# ------------------------------------------------------------------------------------------------
++def test_logd_rmse_nan_filtering_and_split_boundaries():
++    pred = np.zeros((1, 16, 14, 14), dtype=np.float32)
++    target = np.full((1, 16, 14, 14), np.nan, dtype=np.float32)
++    sky = np.zeros((1, 16, 14, 14), dtype=np.float32)
++    obj = np.zeros((1, 16, 14, 14), dtype=np.float32)
++
++    # 块 A (0, 0, 1, 1): object 边界测试，obj = 0.5，diff = 2.0 - 1.0 = 1.0
++    pred[0, 0, 1, 1] = 2.0
++    target[0, 0, 1, 1] = 1.0
++    obj[0, 0, 1, 1] = 0.5
++    sky[0, 0, 1, 1] = 0.1
++
++    # 块 B (0, 0, 2, 2): floor 边界测试，1 - sky - obj = 1 - 0.5 - 0.0 = 0.5，diff = 3.0 - 1.0 = 2.0
++    pred[0, 0, 2, 2] = 3.0
++    target[0, 0, 2, 2] = 1.0
++    obj[0, 0, 2, 2] = 0.0
++    sky[0, 0, 2, 2] = 0.5
++
++    # 块 C (0, 0, 3, 3): 纯天空 target 为 nan，pred 任意，必须被忽略
++    pred[0, 0, 3, 3] = 999.0
++    target[0, 0, 3, 3] = np.nan
++
++    # 全量：包含块 A 和 块 B
++    rmse_all = M.logd_rmse(pred, target)
++    expected_all = math.sqrt((1.0**2 + 2.0**2) / 2.0)
++    assert rmse_all == pytest.approx(expected_all, abs=1e-6)
++
++    # object 切分：只有块 A (obj >= 0.5)
++    rmse_obj = M.logd_rmse(pred, target, obj=obj, split="object")
++    assert rmse_obj == pytest.approx(1.0, abs=1e-6)
++
++    # floor 切分：只有块 B (1 - sky - obj >= 0.5)
++    rmse_floor = M.logd_rmse(pred, target, sky=sky, obj=obj, split="floor")
++    assert rmse_floor == pytest.approx(2.0, abs=1e-6)
++
++
++# ------------------------------------------------------------------------------------------------
++# 5. ordering_accuracy
++# ------------------------------------------------------------------------------------------------
++def test_ordering_accuracy_rules():
++    pred_logd_last = np.zeros((1, 14, 14), dtype=np.float32)
++
++    # 设置预测深度
++    pred_logd_last[0, 2, 2] = 1.0  # object 100
++    pred_logd_last[0, 4, 4] = 2.0  # object 101
++    pred_logd_last[0, 6, 6] = 2.0  # object 102 (同分用于测试预测相等)
++    pred_logd_last[0, 8, 8] = 3.0  # pillar 1
++
++    disk_groups = [
++        [
++            {"disk_id": 0, "occlusion_group": "full"},     # 100
++            {"disk_id": 1, "occlusion_group": "partial"},  # 101
++            {"disk_id": 2, "occlusion_group": "full"},     # 102
++        ]
++    ]
++
++    pairs = [
++        [
++            # Pair 1: disk 100 vs disk 101 (closer="a", pred_a=1.0 < pred_b=2.0 -> correct)
++            # disk 101 为 partial，因此此 pair 应归入 partial
++            {
++                "type": "disk_disk",
++                "id_a": 100,
++                "id_b": 101,
++                "patch_a": (2, 2),
++                "patch_b": (4, 4),
++                "closer": "a",
++            },
++            # Pair 2: disk 101 vs disk 102 (closer="a", pred_a=2.0 == pred_b=2.0 -> 预测相等算错)
++            {
++                "type": "disk_disk",
++                "id_a": 101,
++                "id_b": 102,
++                "patch_a": (4, 4),
++                "patch_b": (6, 6),
++                "closer": "a",
++            },
++            # Pair 3: 真值为 "equal" 的样本对不计
++            {
++                "type": "disk_disk",
++                "id_a": 100,
++                "id_b": 102,
++                "patch_a": (2, 2),
++                "patch_b": (6, 6),
++                "closer": "equal",
++            },
++            # Pair 4: disk 100 vs pillar 1 (closer="a", pred_a=1.0 < pred_b=3.0 -> correct)
++            # disk 100 为 full，因此此 pair 归入 full
++            {
++                "type": "disk_pillar",
++                "id_a": 100,
++                "id_b": 1,
++                "patch_a": (2, 2),
++                "patch_b": (8, 8),
++                "closer": "a",
++            },
++        ]
++    ]
++
++    res = M.ordering_accuracy(pred_logd_last, pairs, disk_groups)
++
++    # 检查真值 equal 对被过滤：有效对数共 3 对
++    assert res["all"][0] == 3
++    # 3 对中有 Pair 1 与 Pair 4 正确，Pair 2 因同分算错，总准确率 = 2/3
++    assert res["all"][1] == pytest.approx(2.0 / 3.0, abs=1e-6)
++
++    # disk_disk: Pair 1 (正确) + Pair 2 (错误) -> 2 对，准确率 0.5
++    assert res["disk_disk"] == (2, 0.5)
++
++    # disk_pillar: Pair 4 (正确) -> 1 对，准确率 1.0
++    assert res["disk_pillar"] == (1, 1.0)
++
++    # partial 组: 包含 Pair 1 与 Pair 2 -> 2 对，准确率 0.5
++    assert res["partial"] == (2, 0.5)
++
++    # full 组: 包含 Pair 4 -> 1 对，准确率 1.0
++    assert res["full"] == (1, 1.0)
++
++
++def test_ordering_equal_prediction_wrong_for_both_truths():
++    """预测相等必须算错，且与真值是 a 还是 b 无关。
++
++    去掉「相等算错」后，相等比较会落到 else 分支，预测一律记成 b。
++    真值为 a 的那对仍然算错，真值为 b 的那对会被误判为对，准确率不再是 0。
++    """
++    pred = np.zeros((1, 14, 14), dtype=np.float64)
++    pred[0, 1, 1] = 2.0
++    pred[0, 2, 2] = 2.0
++    pred[0, 3, 3] = 4.0
++    pred[0, 4, 4] = 4.0
++
++    disk_groups = [[
++        {"disk_id": 0, "occlusion_group": "full"},
++        {"disk_id": 1, "occlusion_group": "full"},
++        {"disk_id": 2, "occlusion_group": "full"},
++        {"disk_id": 3, "occlusion_group": "full"},
++    ]]
++    pairs = [[
++        {
++            "type": "disk_disk",
++            "id_a": 100,
++            "id_b": 101,
++            "patch_a": (1, 1),
++            "patch_b": (2, 2),
++            "closer": "a",
++        },
++        {
++            "type": "disk_disk",
++            "id_a": 102,
++            "id_b": 103,
++            "patch_a": (3, 3),
++            "patch_b": (4, 4),
++            "closer": "b",
++        },
++    ]]
++
++    res = M.ordering_accuracy(pred, pairs, disk_groups)
++    assert res["all"] == (2, 0.0)
++    assert res["disk_disk"] == (2, 0.0)
++
++
++# ------------------------------------------------------------------------------------------------
++# 6. steps_to_target
++# ------------------------------------------------------------------------------------------------
++def test_steps_to_target_interpolation_and_censoring():
++    steps = [100.0, 200.0, 300.0, 400.0]
++    cap = 500.0
++
++    # 1. 首点即达标
++    ap_first = [0.65, 0.70, 0.75, 0.80]
++    s, censored = M.steps_to_target(steps, ap_first, target=0.60, cap=cap)
++    assert s == 100.0 and not censored
++
++    # 2. 中间线性插值：
++    # target=0.60，第 1 点为 (200, 0.50)，第 2 点为 (300, 0.70)
++    # 线性插值步数 = 200 + (0.60 - 0.50) / (0.70 - 0.50) * (300 - 200) = 250.0
++    ap_mid = [0.40, 0.50, 0.70, 0.80]
++    s, censored = M.steps_to_target(steps, ap_mid, target=0.60, cap=cap)
++    assert s == pytest.approx(250.0, abs=1e-6) and not censored
++
++    # 阶梯版：不插值，直接取 300.0
++    s_stair, c_stair = M.steps_to_target_stair(steps, ap_mid, target=0.60, cap=cap)
++    assert s_stair == 300.0 and not c_stair
++
++    # 3. 从未达标（删失）
++    ap_never = [0.10, 0.20, 0.30, 0.40]
++    s, censored = M.steps_to_target(steps, ap_never, target=0.60, cap=cap)
++    assert s == cap and censored
++    s_stair, c_stair = M.steps_to_target_stair(steps, ap_never, target=0.60, cap=cap)
++    assert s_stair == cap and c_stair
++
++    # 4. 非单调曲线：取首次跨过阈值处
++    # 在 step 100(0.40) 与 step 200(0.60) 之间首次跨过 0.55
++    # 插值: 100 + (0.55 - 0.40) / 0.20 * 100 = 175.0
++    ap_nonmon = [0.40, 0.60, 0.50, 0.70]
++    s, censored = M.steps_to_target(steps, ap_nonmon, target=0.55, cap=cap)
++    assert s == pytest.approx(175.0, abs=1e-6) and not censored
++
++
++# ------------------------------------------------------------------------------------------------
++# 7. ga_decision
++# ------------------------------------------------------------------------------------------------
++def test_ga_decision_p228_numerical_cases():
++    steps = np.linspace(100, 1600, 16)
++    cap = 1600.0
++
++    # A0 三个种子末次 AP 分别为 0.60, 0.62, 0.64 -> 中位数 0.62
++    # 达标线 = 0.95 * 0.62 = 0.589
++    # 构造曲线使得 A0 达到 0.589 的步数分别为 1200, 1300, 1400 -> A0 步数中位数为 1300
++    def make_a0_curve(reach_step: float, final_ap: float):
++        # 简单斜率构建
++        ap = np.linspace(0.2, final_ap, 16)
++        return (steps, ap)
++
++    # 调整使得达到 0.589 的步数准确匹配
++    c_a0_0 = (steps, np.where(steps >= 1200, 0.60, 0.50))
++    c_a0_1 = (steps, np.where(steps >= 1300, 0.62, 0.50))
++    c_a0_2 = (steps, np.where(steps >= 1400, 0.64, 0.50))
++    a0_curves = [c_a0_0, c_a0_1, c_a0_2]
++
++    # 情形 1A (P228 §2.1): A4 步数分别为 500, 600, 1600 (种子 3 删失)
++    # A4 中位数 = 600. 比值 600 / 1300 = 0.4615 <= 0.7 -> passed = True
++    c_a4_0 = (steps, np.where(steps >= 500, 0.590, 0.50))
++    c_a4_1 = (steps, np.where(steps >= 600, 0.595, 0.50))
++    c_a4_2 = (steps, np.full(16, 0.580))  # 从未达到 0.589，删失为 1600
++    a4_curves_pass = [c_a4_0, c_a4_1, c_a4_2]
++
++    res_pass = M.ga_decision(a0_curves, a4_curves_pass, cap=cap)
++    assert res_pass["a0_last_median"] == pytest.approx(0.62, abs=1e-6)
++    assert res_pass["target_ap"] == pytest.approx(0.589, abs=1e-6)
++    # 阶梯版（取检查点步数）：中位数分别为 1300 与 600
++    assert res_pass["stair"]["median_a0"] == 1300.0
++    assert res_pass["stair"]["median_a4"] == 600.0
++    assert res_pass["stair"]["ratio"] == pytest.approx(600.0 / 1300.0, abs=1e-6)
++    assert res_pass["stair"]["passed"] is True
++
++    # 线性插值版：
++    assert res_pass["median_a0"] == pytest.approx(1274.1666666666667, abs=1e-6)
++    assert res_pass["passed"] is True
++
++    # 情形 1B (P228 §2.1): A4 全部未能达到 0.589，全部删失为 1600
++    c_a4_fail = (steps, np.full(16, 0.580))
++    res_fail = M.ga_decision(a0_curves, [c_a4_fail, c_a4_fail, c_a4_fail], cap=cap)
++    assert res_fail["median_a4"] == 1600.0
++    assert res_fail["passed"] is False
++
++    # 零假设 H0: A4 与 A0 完全一样
++    res_h0 = M.ga_decision(a0_curves, a0_curves, cap=cap)
++    assert res_h0["ratio"] == pytest.approx(1.0, abs=1e-6)
++    assert res_h0["passed"] is False
++
++    # 临界判定测试：A4 步数中位数为 950，A0 步数中位数为 1274.17 (stair 为 1300)
++    # 比值约为 950 / 1274 ≈ 0.745 > 0.7，必须判定为 passed = False (严格防止阈值从 0.7 放宽)
++    c_a4_marginal = (steps, np.where(steps >= 950, 0.590, 0.50))
++    res_marginal = M.ga_decision(a0_curves, [c_a4_marginal, c_a4_marginal, c_a4_marginal], cap=cap)
++    assert 0.70 < res_marginal["ratio"] < 0.80
++    assert res_marginal["passed"] is False
++
++
++# ------------------------------------------------------------------------------------------------
++# 8. paired_world_bootstrap
++# ------------------------------------------------------------------------------------------------
++def test_paired_world_bootstrap_properties():
++    # 1. 种子固定时结果确定
++    res1 = M.paired_world_bootstrap(32, lambda idx: float(np.mean(idx)), n_boot=200, seed=123)
++    res2 = M.paired_world_bootstrap(32, lambda idx: float(np.mean(idx)), n_boot=200, seed=123)
++    assert res1["point_estimate"] == res2["point_estimate"]
++    assert res1["ci"] == res2["ci"]
++
++    # 2. stat_fn 恒为常数时区间退化成一点
++    res_const = M.paired_world_bootstrap(16, lambda idx: 42.0, n_boot=100, seed=0)
++    assert res_const["point_estimate"] == 42.0
++    assert res_const["ci_lower"] == 42.0
++    assert res_const["ci_upper"] == 42.0
++    assert res_const["bootstrap_std"] == 0.0
++
++    # 3. expand_world_index：验证世界抽样时段的重复展开
++    w_idx = np.array([2, 0, 2])
++    expanded = M.expand_world_index(w_idx, clips_per_world=16)
++    assert len(expanded) == 3 * 16
++    # 世界 2 的段 [32..47] 出现两次
++    assert np.array_equal(expanded[0:16], np.arange(32, 48))
++    assert np.array_equal(expanded[16:32], np.arange(0, 16))
++    assert np.array_equal(expanded[32:48], np.arange(32, 48))
++
++
++def test_paired_world_bootstrap_single_positive_world_repetition():
++    # 构造只有一个世界有正例的情形验证：
++    # 假设共 4 个世界，每个世界 2 段。
++    # 只有世界 0 包含正例：段 0 有 3 个正例，段 1 有 2 个正例（世界 0 共 5 个正例）；
++    # 世界 1、2、3 所有段正例数均为 0。
++    # 统计量定义为：抽样世界展开后的总正例数除以抽样段数。
++    world_pos = np.array([5, 0, 0, 0], dtype=np.int64)
++
++    def stat_fn(sampled_worlds: np.ndarray) -> float:
++        # 当世界 0 被重复抽中 k 次时，总正例数为 5 * k
++        k = np.sum(sampled_worlds == 0)
++        return float(5 * k)
++
++    # 验证当 sampled_worlds = [0, 0, 1, 2] 时，世界 0 被抽中 2 次，返回 10.0
++    assert stat_fn(np.array([0, 0, 1, 2])) == 10.0
++    # 点估计：全部 4 个世界 [0, 1, 2, 3]，世界 0 出现 1 次，返回 5.0
++    res = M.paired_world_bootstrap(4, stat_fn, n_boot=500, seed=42)
++    assert res["point_estimate"] == 5.0
++    # 在 4 个世界中重抽样 4 次，二项分布 B(4, 0.25)
++    # k 的取值可能为 0, 1, 2, 3, 4，对应统计量为 0, 5, 10, 15, 20
++    assert res["ci_lower"] <= 5.0 <= res["ci_upper"]
++    assert res["bootstrap_std"] > 0.0
++    assert res["n_nan"] == 0
++
++
++def _independent_world_bootstrap(n_worlds, stat_fn, n_boot, seed, level):
++    """按生产函数同一 seed、同一 rng.choice 顺序重放自助样本，分位用 alpha/2。"""
++    rng = np.random.default_rng(seed)
++    vals = np.empty(n_boot, dtype=np.float64)
++    for b in range(n_boot):
++        idx = rng.choice(n_worlds, size=n_worlds, replace=True)
++        vals[b] = float(stat_fn(idx))
++    alpha = 1.0 - level
++    lo = float(np.percentile(vals, 100.0 * (alpha / 2.0)))
++    hi = float(np.percentile(vals, 100.0 * (1.0 - alpha / 2.0)))
++    wrong_lo = float(np.percentile(vals, 100.0 * alpha))
++    return lo, hi, wrong_lo
++
++
++def test_paired_world_bootstrap_equal_tail_percentiles():
++    """等尾区间的下界必须是 (1-level)/2，不能是未减半的 alpha。"""
++    values = np.array([0.0, 1.0, 3.0, 6.0, 10.0, 15.0, 21.0, 28.0], dtype=np.float64)
++
++    def stat_fn(idx: np.ndarray) -> float:
++        return float(np.mean(values[np.asarray(idx, dtype=np.int64)]))
++
++    widths = []
++    for level in (0.95, 0.9833):
++        res = M.paired_world_bootstrap(
++            len(values), stat_fn, n_boot=2000, seed=0, level=level,
++        )
++        lo, hi, wrong_lo = _independent_world_bootstrap(
++            len(values), stat_fn, n_boot=2000, seed=0, level=level,
++        )
++        assert res["point_estimate"] == pytest.approx(float(np.mean(values)), abs=1e-12)
++        assert res["ci_lower"] == pytest.approx(lo, abs=1e-12)
++        assert res["ci_upper"] == pytest.approx(hi, abs=1e-12)
++        assert res["ci"] == (res["ci_lower"], res["ci_upper"])
++        assert abs(lo - wrong_lo) > 1e-4
++        assert res["n_nan"] == 0
++        assert res["n_boot"] == 2000
++        assert res["seed"] == 0
++        assert res["level"] == pytest.approx(level, abs=1e-12)
++        widths.append(hi - lo)
++    assert widths[1] > widths[0]
++
++
++def test_paired_world_bootstrap_counts_nan_replicates():
++    """重抽结果为 nan 时计入 n_nan，且 np.percentile 把整个区间变成 nan。"""
++    def stat_fn(idx: np.ndarray) -> float:
++        idx = np.asarray(idx)
++        if np.any(idx == 0):
++            return float(np.mean(idx))
++        return float("nan")
++
++    res = M.paired_world_bootstrap(5, stat_fn, n_boot=400, seed=1, level=0.95)
++    assert 0 < res["n_nan"] < 400
++    assert math.isnan(res["ci_lower"])
++    assert math.isnan(res["ci_upper"])
++    assert math.isnan(res["ci"][0]) and math.isnan(res["ci"][1])
++
++
++def test_metric_validation_and_error_handling():
++    # 维度不匹配报错
++    with pytest.raises(ValueError, match="scores shape"):
++        M.grid_ap(np.zeros((2, 12, 7)), np.zeros((3, 12, 7)))
++
++    # 距离格维度不匹配
++    with pytest.raises(ValueError, match="last dimension"):
++        M.grid_ap_by_distance(np.zeros((1, 12, 6)), np.zeros((1, 12, 6)))
++
++    # rmse 缺失必要参数
++    with pytest.raises(ValueError, match="obj must be provided"):
++        M.logd_rmse(np.zeros((1, 16, 14, 14)), np.zeros((1, 16, 14, 14)), split="object")
++
++    with pytest.raises(ValueError, match="both sky and obj"):
++        M.logd_rmse(np.zeros((1, 16, 14, 14)), np.zeros((1, 16, 14, 14)), split="floor")
++
++    # 未知 split
++    with pytest.raises(ValueError, match="unknown split"):
++        M.logd_rmse(np.zeros((1, 16, 14, 14)), np.zeros((1, 16, 14, 14)), split="invalid")
