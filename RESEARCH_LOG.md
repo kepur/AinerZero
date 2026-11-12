@@ -3937,3 +3937,15 @@ P185 通过后冻结 r2（代码身份随之更新），换批准行，再通过
     1. 运行器加「GPU 复位重跑」：格子报 `kIOGPUCommandBufferCallbackError` 或 `GPU error/recovery` 时重跑该格一次，每格至多 1 次、每阶段至多 3 次。被打断那次的检查点目录改名保留，记 `cell_retry` 事件，`stage.json` 记 `gpu_retries`。其他错误一律不重跑。
     2. 重跑 dev-distill 前，请用户关闭「预览」。
   - 验证：运行器原生测试全量 26 passed，计划测试 15 passed；在 HEAD 导出加补丁的副本里，基线 0 失败，6 处源码改动全部被拦住（永不重跑、任何错误都重跑、每格重跑 2 次、不改名保留、阶段上限 0、不计数）。重跑前的冻结清单复核没有单独测试。
+- （同条续）**dev-distill 重跑开跑**（use id `distill-20261112b`，23:08 UTC，dev 使用累计第 8 次，已用尽）。
+  - 开跑前，经用户同意（「可以，帮我退出」），一级用 AppleScript 正常退出了「预览」。
+  - 运行器已带 GPU 复位重跑（3c839cc），复核卡 P244 已验收（gemini-k7x2，基线 0 失败，6/6 拦住）。
+  - 待办，等 dev-distill 结束后再做：把复位标记收窄到 InnocentVictim 或 GPU error/recovery；补测「重跑前核对冻结清单」。
+- （同条续）**并行代码卡**：规格 `reports/V9-S5-FINAL/SPEC.md`（68062cb）。
+  - P245：登记运行器与预登记生成器，gemini-k7x2 已领。
+  - P246：独立复算脚本，已把 gemini-k7x2 写入排除名单后放出。
+  - P247：读出头标签对齐补测。
+  - 规格要点：
+    - A0 在 L=64 的 3 个模型复用 dev-distill 已训好的，钉 SHA，冻结后只在 final 上评，省约 0.5 h；
+    - GR 的墙钟对照取同一次登记运行里 C-sh 的蒸馏每步墙钟；
+    - C-sh 置换种子 20261113，自助法种子 20261114。
