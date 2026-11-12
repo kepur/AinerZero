@@ -306,6 +306,19 @@ def hermetic_artifacts_guard(request):
     )
 
 
+@pytest.fixture(autouse=True)
+def _restore_default_mlx_device_after_test(request):
+    if _native_enabled(request.config) and "mlx.core" in sys.modules:
+        import mlx.core as mx
+        if mx.default_device() != mx.gpu:
+            mx.set_default_device(mx.gpu)
+    yield
+    if _native_enabled(request.config) and "mlx.core" in sys.modules:
+        import mlx.core as mx
+        if mx.default_device() != mx.gpu:
+            mx.set_default_device(mx.gpu)
+
+
 def pytest_sessionfinish(session, exitstatus):
     if not _native_enabled(session.config):
         before = getattr(session, "_hermetic_stat_before", {})

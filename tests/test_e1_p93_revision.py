@@ -29,6 +29,8 @@ import mlx.utils
 import numpy as np
 import pytest
 
+_PRE_IMPORT_DEVICE = mx.default_device()
+
 from ainerzero.v9.experiments.e1 import spec
 from ainerzero.v9.experiments.e1.arms_net import (
     REGISTERED_PARAMETER_COUNT,
@@ -52,12 +54,17 @@ from ainerzero.v9.experiments.e1.train_runner import (
     train_cell,
 )
 
+mx.set_default_device(_PRE_IMPORT_DEVICE)
+
 pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
 
 
 @pytest.fixture(autouse=True)
 def ensure_cpu_device():
+    previous = mx.default_device()
     mx.set_default_device(mx.cpu)
+    yield
+    mx.set_default_device(previous)
 
 
 def _generate_moving_episode_prefix(num_frames: int = 10) -> tuple[dict[str, np.ndarray], StaticEnvironment, dict[str, BodyGeometry]]:

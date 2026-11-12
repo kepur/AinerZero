@@ -16,12 +16,17 @@ from ainerzero.v9.experiments.s3 import data as D  # noqa: E402
 from ainerzero.v9.experiments.s3 import replay as RP  # noqa: E402
 from ainerzero.v9.experiments.s3 import spec  # noqa: E402
 
+pytestmark = pytest.mark.native_mlx
+
 NS = "test-s3p2-arms"
 
 
 @pytest.fixture(scope="module", autouse=True)
 def _cpu():
+    prev = mx.default_device()
     mx.set_default_device(mx.cpu)
+    yield
+    mx.set_default_device(prev)
 
 
 @pytest.fixture(scope="module")

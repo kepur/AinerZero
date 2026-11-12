@@ -1,0 +1,17 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________________________ test_zero_mlx_imported ____________________________
+
+    def test_zero_mlx_imported() -> None:
+        """Zero MLX imports in data_runner and its dependencies."""
+        import sys
+    
+>       assert "mlx" not in sys.modules, "mlx should not be loaded in pure-CPU suite"
+E       AssertionError: mlx should not be loaded in pure-CPU suite
+E       assert 'mlx' not in {'sys': <module 'sys' (built-in)>, 'builtins': <module 'builtins' (built-in)>, '_frozen_importlib': <module '_frozen_importlib' (frozen)>, '_imp': <module '_imp' (built-in)>, ...}
+E        +  where {'sys': <module 'sys' (built-in)>, 'builtins': <module 'builtins' (built-in)>, '_frozen_importlib': <module '_frozen_importlib' (frozen)>, '_imp': <module '_imp' (built-in)>, ...} = <module 'sys' (built-in)>.modules
+
+/tmp/isolated_p227/tests/v9/experiments/test_s2_data_runner.py:35: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../tmp/isolated_p227/tests/v9/experiments/test_s2_data_runner.py::test_zero_mlx_imported
+1 failed, 11 deselected in 0.90s

@@ -1,0 +1,53 @@
+lock held by 5832
+......................FFF...........                                     [100%]
+=================================== FAILURES ===================================
+____________ test_inference_runs_on_cpu_and_training_on_gpu[arm_a] _____________
+
+arm_id = 'arm_a'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x108f4a060>
+
+    @pytest.mark.parametrize("arm_id", ARMS)
+    def test_inference_runs_on_cpu_and_training_on_gpu(arm_id, monkeypatch):
+>       assert mx.default_device() == mx.gpu, "test assumes the process default device is the GPU"
+E       AssertionError: test assumes the process default device is the GPU
+E       assert Device(cpu, 0) == DeviceType.gpu
+E        +  where Device(cpu, 0) = <nanobind.nb_func object at 0x102f67760>()
+E        +    where <nanobind.nb_func object at 0x102f67760> = mx.default_device
+E        +  and   DeviceType.gpu = mx.gpu
+
+tests/v9/experiments/test_s2_plan_device_native.py:68: AssertionError
+____________ test_inference_runs_on_cpu_and_training_on_gpu[arm_b] _____________
+
+arm_id = 'arm_b'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a038ce0>
+
+    @pytest.mark.parametrize("arm_id", ARMS)
+    def test_inference_runs_on_cpu_and_training_on_gpu(arm_id, monkeypatch):
+>       assert mx.default_device() == mx.gpu, "test assumes the process default device is the GPU"
+E       AssertionError: test assumes the process default device is the GPU
+E       assert Device(cpu, 0) == DeviceType.gpu
+E        +  where Device(cpu, 0) = <nanobind.nb_func object at 0x102f67760>()
+E        +    where <nanobind.nb_func object at 0x102f67760> = mx.default_device
+E        +  and   DeviceType.gpu = mx.gpu
+
+tests/v9/experiments/test_s2_plan_device_native.py:68: AssertionError
+____________ test_inference_runs_on_cpu_and_training_on_gpu[arm_c] _____________
+
+arm_id = 'arm_c'
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10a0392b0>
+
+    @pytest.mark.parametrize("arm_id", ARMS)
+    def test_inference_runs_on_cpu_and_training_on_gpu(arm_id, monkeypatch):
+>       assert mx.default_device() == mx.gpu, "test assumes the process default device is the GPU"
+E       AssertionError: test assumes the process default device is the GPU
+E       assert Device(cpu, 0) == DeviceType.gpu
+E        +  where Device(cpu, 0) = <nanobind.nb_func object at 0x102f67760>()
+E        +    where <nanobind.nb_func object at 0x102f67760> = mx.default_device
+E        +  and   DeviceType.gpu = mx.gpu
+
+tests/v9/experiments/test_s2_plan_device_native.py:68: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_a]
+FAILED tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_b]
+FAILED tests/v9/experiments/test_s2_plan_device_native.py::test_inference_runs_on_cpu_and_training_on_gpu[arm_c]
+3 failed, 33 passed in 2.68s

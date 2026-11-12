@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 mx = pytest.importorskip("mlx.core")
+pytestmark = pytest.mark.native_mlx
 from mlx.utils import tree_flatten  # noqa: E402
 
 from ainerzero.v9.experiments.s4 import learned_mlx as L  # noqa: E402

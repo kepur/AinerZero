@@ -43,7 +43,8 @@ def _stage_fake_root(base: Path) -> Path:
     return fake_root
 
 
-def test_function_guard_intercepts_protected_connect_and_flock(tmp_path):
+def test_function_guard_intercepts_protected_connect_and_flock(tmp_path, monkeypatch):
+    monkeypatch.setattr(conftest, "_hermetic_guards_active", True)
     fake_root = _stage_fake_root(tmp_path)
     protected_db = fake_root / "artifacts" / "v9" / "s1" / "phase1" / "control.sqlite3"
     protected_lock = fake_root / "artifacts" / "locks" / "m0-worker.lock"

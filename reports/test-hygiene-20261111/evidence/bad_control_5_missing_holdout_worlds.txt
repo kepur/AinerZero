@@ -1,0 +1,64 @@
+lock held by 6150
+F                                                                        [100%]
+=================================== FAILURES ===================================
+______________ test_native_three_arms_fit_and_probe_errors_smoke _______________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-18/test_native_three_arms_fit_and0')
+
+    def test_native_three_arms_fit_and_probe_errors_smoke(tmp_path: Path) -> None:
+        """Card W6: Real MLX 3 arms randomly initialized; fit_probe and probe_errors run cleanly in <= 30s."""
+        from ainerzero.v9.experiments.s2 import adapters_mlx
+    
+        train_dir = tmp_path / "native_train"
+        dev_dir = tmp_path / "native_dev"
+        _make_native_test_dataset(train_dir)
+        _make_native_test_dataset(dev_dir)
+    
+        t_start = time.perf_counter()
+        timings: dict[str, float] = {}
+        mean_errors: dict[str, dict[int, float]] = {}
+    
+        for arm_id in ("arm_a", "arm_b", "arm_c"):
+            t0 = time.perf_counter()
+            arm = adapters_mlx.make_mlx_arm(arm_id)
+            arm.init(seed=42)
+    
+            # 1. Fit probe (scaled down to 50 samples for speed)
+>           fitted_probe = probe_eval.fit_probe(
+                arm,
+                train_dir,
+                n_samples=50,
+                seed_namespace="s2p1-train-v1|probe",
+            )
+
+/tmp/isolated_p227/tests/v9/experiments/test_s2_probe_eval_native.py:66: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/isolated_p227/src/ainerzero/v9/experiments/s2/probe_eval.py:111: in fit_probe
+    holdout_idx = {int(w) for w in get_holdout_world_indices(root)}
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+train_root = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-18/test_native_three_arms_fit_and0/native_train')
+n_worlds = None, holdout_fraction = None
+
+    def get_holdout_world_indices(
+        train_root: Path,
+        n_worlds: int | None = None,
+        holdout_fraction: float | None = None,
+    ) -> set[int]:
+        """Retrieve and verify holdout world indices for train partition (DESIGN-r2 Appendix D1/D2).
+    
+        F5:
+        - HOLDOUT_WORLDS.json must exist and be valid JSON (file missing or corrupted raises error; no fallback recompute).
+        - Recorded holdout worlds are recomputed from world directories and compared; mismatch raises error (tamper check).
+        - Holdout set cannot be empty; world directory names must be parseable.
+        """
+        holdout_file = train_root / "HOLDOUT_WORLDS.json"
+        if not holdout_file.is_file():
+>           raise FileNotFoundError(f"Missing HOLDOUT_WORLDS.json in train data directory: {holdout_file}")
+E           FileNotFoundError: Missing HOLDOUT_WORLDS.json in train data directory: /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-18/test_native_three_arms_fit_and0/native_train/HOLDOUT_WORLDS.json
+
+/tmp/isolated_p227/src/ainerzero/v9/experiments/s2/train_runner.py:204: FileNotFoundError
+=========================== short test summary info ============================
+FAILED ../../../../tmp/isolated_p227/tests/v9/experiments/test_s2_probe_eval_native.py::test_native_three_arms_fit_and_probe_errors_smoke
+1 failed in 0.36s

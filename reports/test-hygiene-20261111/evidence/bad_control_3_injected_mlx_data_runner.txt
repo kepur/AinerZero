@@ -1,0 +1,29 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+____________________________ test_zero_mlx_imported ____________________________
+
+    def test_zero_mlx_imported() -> None:
+        """Zero MLX imports in data_runner and its dependencies."""
+        import subprocess
+        import sys
+    
+        src_dir = str(Path(__file__).resolve().parents[3] / "src")
+        code = (
+            f"import sys\n"
+            f"sys.path.insert(0, {src_dir!r})\n"
+            f"import ainerzero.v9.experiments.s2.data_runner\n"
+            f"assert 'mlx' not in sys.modules, 'mlx loaded by data_runner'\n"
+        )
+        res = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True)
+>       assert res.returncode == 0, f"data_runner dynamically imported MLX: {res.stderr}"
+E       AssertionError: data_runner dynamically imported MLX: Traceback (most recent call last):
+E           File "<string>", line 4, in <module>
+E         AssertionError: mlx loaded by data_runner
+E         
+E       assert 1 == 0
+E        +  where 1 = CompletedProcess(args=['/Users/mac/AinerWorkFlow/AinerZero/.venv/bin/python', '-I', '-c', "import sys\nsys.path.insert...aceback (most recent call last):\n  File "<string>", line 4, in <module>\nAssertionError: mlx loaded by data_runner\n').returncode
+
+/tmp/isolated_p227/tests/v9/experiments/test_s2_data_runner.py:44: AssertionError
+=========================== short test summary info ============================
+FAILED ../../../../tmp/isolated_p227/tests/v9/experiments/test_s2_data_runner.py::test_zero_mlx_imported
+1 failed, 11 deselected in 1.41s

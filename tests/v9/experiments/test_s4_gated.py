@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 
 mx = pytest.importorskip("mlx.core")
+pytestmark = pytest.mark.native_mlx
 
 from ainerzero.v9.experiments.s4 import analysis as A  # noqa: E402
 from ainerzero.v9.experiments.s4 import gated as G  # noqa: E402

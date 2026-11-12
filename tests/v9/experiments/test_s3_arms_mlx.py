@@ -14,10 +14,19 @@ from ainerzero.v9.experiments.s3 import batching as B  # noqa: E402
 from ainerzero.v9.experiments.s3 import data as D  # noqa: E402
 from ainerzero.v9.experiments.s3 import spec  # noqa: E402
 
+pytestmark = pytest.mark.native_mlx
+
+
+@pytest.fixture(autouse=True)
+def _cpu():
+    prev = mx.default_device()
+    mx.set_default_device(mx.cpu)
+    yield
+    mx.set_default_device(prev)
+
 
 @pytest.fixture(scope="module")
 def batch():
-    mx.set_default_device(mx.cpu)
     eps = []
     for i in range(3):
         ep = D.generate_episode(D.derive_seed("arms-test", "world", i), D.derive_seed("arms-test", "ep", i))

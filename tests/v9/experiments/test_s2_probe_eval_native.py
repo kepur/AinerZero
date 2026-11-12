@@ -18,31 +18,38 @@ from ainerzero.v9.experiments.s2 import probe_eval, spec
 pytestmark = pytest.mark.native_mlx
 
 
-def _make_native_test_dataset(root: Path) -> None:
+def _make_native_test_dataset(root: Path, n_worlds: int = 2, is_train: bool = False) -> None:
     """Create a minimal synthetic partition for fast MLX probe rollout smoke."""
     root.mkdir(parents=True, exist_ok=True)
-    w_dir = root / "world_0000"
-    w_dir.mkdir(parents=True, exist_ok=True)
+    for w_idx in range(n_worlds):
+        w_dir = root / f"world_{w_idx:04d}"
+        w_dir.mkdir(parents=True, exist_ok=True)
 
-    for ep_idx in range(2):
-        steps: list[dict[str, Any]] = []
-        for i in range(120):
-            view = np.zeros((spec.FOV_SIZE, spec.FOV_SIZE), dtype=np.int64)
-            obs = {
-                "view": view.tolist(),
-                "heading": [1, 0, 0, 0],
-                "last_action": [1, 0, 0, 0],
-                "dt": 1,
-            }
-            steps.append({
-                "student_obs": obs,
-                "action": i % spec.ACTION_DIM,
-                "dt": 1,
-                "truth_before": {"x": float(i % 10), "y": float((i // 10) % 10)},
-                "truth_after": {"x": float((i + 1) % 10), "y": float(((i + 1) // 10) % 10)},
-            })
-        ep_data = {"steps": steps}
-        (w_dir / f"episode_{ep_idx:04d}.json").write_text(json.dumps(ep_data), encoding="utf-8")
+        for ep_idx in range(2):
+            steps: list[dict[str, Any]] = []
+            for i in range(120):
+                view = np.zeros((spec.FOV_SIZE, spec.FOV_SIZE), dtype=np.int64)
+                obs = {
+                    "view": view.tolist(),
+                    "heading": [1, 0, 0, 0],
+                    "last_action": [1, 0, 0, 0],
+                    "dt": 1,
+                }
+                steps.append({
+                    "student_obs": obs,
+                    "action": i % spec.ACTION_DIM,
+                    "dt": 1,
+                    "truth_before": {"x": float(i % 10), "y": float((i // 10) % 10)},
+                    "truth_after": {"x": float((i + 1) % 10), "y": float(((i + 1) // 10) % 10)},
+                })
+            ep_data = {"steps": steps}
+            (w_dir / f"episode_{ep_idx:04d}.json").write_text(json.dumps(ep_data), encoding="utf-8")
+
+    if is_train:
+        (root / "HOLDOUT_WORLDS.json").write_text(
+            json.dumps({"holdout_worlds": [0]}),
+            encoding="utf-8",
+        )
 
 
 def test_native_three_arms_fit_and_probe_errors_smoke(tmp_path: Path) -> None:
@@ -51,8 +58,8 @@ def test_native_three_arms_fit_and_probe_errors_smoke(tmp_path: Path) -> None:
 
     train_dir = tmp_path / "native_train"
     dev_dir = tmp_path / "native_dev"
-    _make_native_test_dataset(train_dir)
-    _make_native_test_dataset(dev_dir)
+    _make_native_test_dataset(train_dir, n_worlds=2, is_train=True)
+    _make_native_test_dataset(dev_dir, n_worlds=1, is_train=False)
 
     t_start = time.perf_counter()
     timings: dict[str, float] = {}

@@ -23,6 +23,7 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("mlx.core")
+pytestmark = pytest.mark.native_mlx
 
 from ainerzero.v9.experiments.s4 import analysis_p2 as P2  # noqa: E402
 

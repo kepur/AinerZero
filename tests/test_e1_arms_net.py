@@ -24,6 +24,8 @@ import pytest
 
 import mlx.core as mx
 
+_PRE_IMPORT_DEVICE = mx.default_device()
+
 from ainerzero.v9.experiments.e1.arms_net import (
     DEFAULT_BIASED_PRIOR,
     DEFAULT_INPUT_DIM,
@@ -38,6 +40,8 @@ from ainerzero.v9.experiments.e1.arms_net import (
     count_parameters,
     project_onto_orthogonal_complement,
 )
+
+mx.set_default_device(_PRE_IMPORT_DEVICE)
 from ainerzero.v9.experiments.e1.jacobian import (
     PARAM_NAMES,
     compute_prior_jacobian,
@@ -58,7 +62,10 @@ pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
 @pytest.fixture(autouse=True)
 def ensure_cpu_device():
     """Ensure all tests run strictly on MLX CPU device."""
+    previous = mx.default_device()
     mx.set_default_device(mx.cpu)
+    yield
+    mx.set_default_device(previous)
 
 
 # =========================================================================

@@ -1,0 +1,474 @@
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 817c0a0..4aa05d3 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -253,6 +253,8 @@ NATIVE_MODULES = {
+     "test_s4_gated.py": "module-level importorskip mlx.core (S4 phase 2 contact-gated models)",
+     "test_s4p2_runner_native.py": "runs the real S4 phase 2 runner (MLX) in throwaway copies",
+     "test_s4p2_worker_native.py": "spawns fresh processes that compile MLX CPU kernels (S4 phase 2 workers)",
++    # S5: Student ViT, losses, heads in MLX.
++    "test_s5_student_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 student ViT, losses, heads)",
+ }
+ 
+ # Individual tests in otherwise pure-CPU modules (prefix match on node id).
+@@ -306,6 +308,19 @@ def hermetic_artifacts_guard(request):
+     )
+ 
+ 
++@pytest.fixture(autouse=True)
++def _restore_default_mlx_device_after_test(request):
++    if _native_enabled(request.config) and "mlx.core" in sys.modules:
++        import mlx.core as mx
++        if mx.default_device() != mx.gpu:
++            mx.set_default_device(mx.gpu)
++    yield
++    if _native_enabled(request.config) and "mlx.core" in sys.modules:
++        import mlx.core as mx
++        if mx.default_device() != mx.gpu:
++            mx.set_default_device(mx.gpu)
++
++
+ def pytest_sessionfinish(session, exitstatus):
+     if not _native_enabled(session.config):
+         before = getattr(session, "_hermetic_stat_before", {})
+diff --git a/tests/test_e1_arms_net.py b/tests/test_e1_arms_net.py
+index 76a3a32..f88bd75 100644
+--- a/tests/test_e1_arms_net.py
++++ b/tests/test_e1_arms_net.py
+@@ -24,6 +24,8 @@ import pytest
+ 
+ import mlx.core as mx
+ 
++_PRE_IMPORT_DEVICE = mx.default_device()
++
+ from ainerzero.v9.experiments.e1.arms_net import (
+     DEFAULT_BIASED_PRIOR,
+     DEFAULT_INPUT_DIM,
+@@ -38,6 +40,8 @@ from ainerzero.v9.experiments.e1.arms_net import (
+     count_parameters,
+     project_onto_orthogonal_complement,
+ )
++
++mx.set_default_device(_PRE_IMPORT_DEVICE)
+ from ainerzero.v9.experiments.e1.jacobian import (
+     PARAM_NAMES,
+     compute_prior_jacobian,
+@@ -58,7 +62,10 @@ pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+ @pytest.fixture(autouse=True)
+ def ensure_cpu_device():
+     """Ensure all tests run strictly on MLX CPU device."""
++    previous = mx.default_device()
+     mx.set_default_device(mx.cpu)
++    yield
++    mx.set_default_device(previous)
+ 
+ 
+ # =========================================================================
+diff --git a/tests/test_e1_p87_geometry.py b/tests/test_e1_p87_geometry.py
+index 63cadc0..84c6ce0 100644
+--- a/tests/test_e1_p87_geometry.py
++++ b/tests/test_e1_p87_geometry.py
+@@ -23,6 +23,8 @@ import numpy as np
+ import pytest
+ import mlx.core as mx
+ 
++_PRE_IMPORT_DEVICE = mx.default_device()
++
+ from ainerzero.v9.experiments.e1.prior import (
+     DEFAULT_BIASED_PRIOR,
+     DEFAULT_GROUND_FRICTION,
+@@ -53,6 +55,8 @@ from ainerzero.v9.experiments.e1.eval_runner import (
+ )
+ from ainerzero.v9.experiments.e1.train_runner import make_arm6_identifier
+ 
++mx.set_default_device(_PRE_IMPORT_DEVICE)
++
+ pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+ 
+ 
+diff --git a/tests/test_e1_p93_revision.py b/tests/test_e1_p93_revision.py
+index f304a7c..3f14c4a 100644
+--- a/tests/test_e1_p93_revision.py
++++ b/tests/test_e1_p93_revision.py
+@@ -29,6 +29,8 @@ import mlx.utils
+ import numpy as np
+ import pytest
+ 
++_PRE_IMPORT_DEVICE = mx.default_device()
++
+ from ainerzero.v9.experiments.e1 import spec
+ from ainerzero.v9.experiments.e1.arms_net import (
+     REGISTERED_PARAMETER_COUNT,
+@@ -52,12 +54,17 @@ from ainerzero.v9.experiments.e1.train_runner import (
+     train_cell,
+ )
+ 
++mx.set_default_device(_PRE_IMPORT_DEVICE)
++
+ pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+ 
+ 
+ @pytest.fixture(autouse=True)
+ def ensure_cpu_device():
++    previous = mx.default_device()
+     mx.set_default_device(mx.cpu)
++    yield
++    mx.set_default_device(previous)
+ 
+ 
+ def _generate_moving_episode_prefix(num_frames: int = 10) -> tuple[dict[str, np.ndarray], StaticEnvironment, dict[str, BodyGeometry]]:
+diff --git a/tests/test_e1_train_runner.py b/tests/test_e1_train_runner.py
+index 91b5bb3..dce4679 100644
+--- a/tests/test_e1_train_runner.py
++++ b/tests/test_e1_train_runner.py
+@@ -23,6 +23,8 @@ import mlx.core as mx
+ import numpy as np
+ import pytest
+ 
++_PRE_IMPORT_DEVICE = mx.default_device()
++
+ from ainerzero.v9.experiments.e1.arms_net import (
+     DEFAULT_INPUT_DIM,
+     DEFAULT_OUTPUT_DIM,
+@@ -37,13 +39,18 @@ from ainerzero.v9.experiments.e1.train_runner import (
+     train_cell,
+ )
+ 
++mx.set_default_device(_PRE_IMPORT_DEVICE)
++
+ pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
+ 
+ 
+ @pytest.fixture(autouse=True)
+ def ensure_cpu_device():
+     """Ensure all tests run strictly on MLX CPU device."""
++    previous = mx.default_device()
+     mx.set_default_device(mx.cpu)
++    yield
++    mx.set_default_device(previous)
+ 
+ 
+ def create_synthetic_student_dataset(directory: Path, num_sequences: int = 2, num_frames: int = 15) -> Path:
+diff --git a/tests/test_hermetic_guards.py b/tests/test_hermetic_guards.py
+index e89e04f..7e51979 100644
+--- a/tests/test_hermetic_guards.py
++++ b/tests/test_hermetic_guards.py
+@@ -43,7 +43,8 @@ def _stage_fake_root(base: Path) -> Path:
+     return fake_root
+ 
+ 
+-def test_function_guard_intercepts_protected_connect_and_flock(tmp_path):
++def test_function_guard_intercepts_protected_connect_and_flock(tmp_path, monkeypatch):
++    monkeypatch.setattr(conftest, "_hermetic_guards_active", True)
+     fake_root = _stage_fake_root(tmp_path)
+     protected_db = fake_root / "artifacts" / "v9" / "s1" / "phase1" / "control.sqlite3"
+     protected_lock = fake_root / "artifacts" / "locks" / "m0-worker.lock"
+diff --git a/tests/v9/experiments/test_s2_data_runner.py b/tests/v9/experiments/test_s2_data_runner.py
+index f925a9b..b9fabfd 100644
+--- a/tests/v9/experiments/test_s2_data_runner.py
++++ b/tests/v9/experiments/test_s2_data_runner.py
+@@ -30,9 +30,19 @@ from ainerzero.v9.experiments.s2.worker import S2Ledger
+ 
+ def test_zero_mlx_imported() -> None:
+     """Zero MLX imports in data_runner and its dependencies."""
++    import subprocess
+     import sys
+ 
+-    assert "mlx" not in sys.modules, "mlx should not be loaded in pure-CPU suite"
++    src_dir = str(Path(__file__).resolve().parents[3] / "src")
++    code = (
++        f"import sys\n"
++        f"sys.path.insert(0, {src_dir!r})\n"
++        f"import ainerzero.v9.experiments.s2.data_runner\n"
++        f"assert 'mlx' not in sys.modules, 'mlx loaded by data_runner'\n"
++    )
++    res = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True)
++    assert res.returncode == 0, f"data_runner dynamically imported MLX: {res.stderr}"
++
+     import ainerzero.v9.experiments.s2.data_runner as dr
+ 
+     tree = ast.parse(Path(dr.__file__).read_text(encoding="utf-8"))
+diff --git a/tests/v9/experiments/test_s2_probe_eval_native.py b/tests/v9/experiments/test_s2_probe_eval_native.py
+index 12d6801..a975883 100644
+--- a/tests/v9/experiments/test_s2_probe_eval_native.py
++++ b/tests/v9/experiments/test_s2_probe_eval_native.py
+@@ -18,31 +18,38 @@ from ainerzero.v9.experiments.s2 import probe_eval, spec
+ pytestmark = pytest.mark.native_mlx
+ 
+ 
+-def _make_native_test_dataset(root: Path) -> None:
++def _make_native_test_dataset(root: Path, n_worlds: int = 2, is_train: bool = False) -> None:
+     """Create a minimal synthetic partition for fast MLX probe rollout smoke."""
+     root.mkdir(parents=True, exist_ok=True)
+-    w_dir = root / "world_0000"
+-    w_dir.mkdir(parents=True, exist_ok=True)
+-
+-    for ep_idx in range(2):
+-        steps: list[dict[str, Any]] = []
+-        for i in range(120):
+-            view = np.zeros((spec.FOV_SIZE, spec.FOV_SIZE), dtype=np.int64)
+-            obs = {
+-                "view": view.tolist(),
+-                "heading": [1, 0, 0, 0],
+-                "last_action": [1, 0, 0, 0],
+-                "dt": 1,
+-            }
+-            steps.append({
+-                "student_obs": obs,
+-                "action": i % spec.ACTION_DIM,
+-                "dt": 1,
+-                "truth_before": {"x": float(i % 10), "y": float((i // 10) % 10)},
+-                "truth_after": {"x": float((i + 1) % 10), "y": float(((i + 1) // 10) % 10)},
+-            })
+-        ep_data = {"steps": steps}
+-        (w_dir / f"episode_{ep_idx:04d}.json").write_text(json.dumps(ep_data), encoding="utf-8")
++    for w_idx in range(n_worlds):
++        w_dir = root / f"world_{w_idx:04d}"
++        w_dir.mkdir(parents=True, exist_ok=True)
++
++        for ep_idx in range(2):
++            steps: list[dict[str, Any]] = []
++            for i in range(120):
++                view = np.zeros((spec.FOV_SIZE, spec.FOV_SIZE), dtype=np.int64)
++                obs = {
++                    "view": view.tolist(),
++                    "heading": [1, 0, 0, 0],
++                    "last_action": [1, 0, 0, 0],
++                    "dt": 1,
++                }
++                steps.append({
++                    "student_obs": obs,
++                    "action": i % spec.ACTION_DIM,
++                    "dt": 1,
++                    "truth_before": {"x": float(i % 10), "y": float((i // 10) % 10)},
++                    "truth_after": {"x": float((i + 1) % 10), "y": float(((i + 1) // 10) % 10)},
++                })
++            ep_data = {"steps": steps}
++            (w_dir / f"episode_{ep_idx:04d}.json").write_text(json.dumps(ep_data), encoding="utf-8")
++
++    if is_train:
++        (root / "HOLDOUT_WORLDS.json").write_text(
++            json.dumps({"holdout_worlds": [0]}),
++            encoding="utf-8",
++        )
+ 
+ 
+ def test_native_three_arms_fit_and_probe_errors_smoke(tmp_path: Path) -> None:
+@@ -51,8 +58,8 @@ def test_native_three_arms_fit_and_probe_errors_smoke(tmp_path: Path) -> None:
+ 
+     train_dir = tmp_path / "native_train"
+     dev_dir = tmp_path / "native_dev"
+-    _make_native_test_dataset(train_dir)
+-    _make_native_test_dataset(dev_dir)
++    _make_native_test_dataset(train_dir, n_worlds=2, is_train=True)
++    _make_native_test_dataset(dev_dir, n_worlds=1, is_train=False)
+ 
+     t_start = time.perf_counter()
+     timings: dict[str, float] = {}
+diff --git a/tests/v9/experiments/test_s3_arms_mlx.py b/tests/v9/experiments/test_s3_arms_mlx.py
+index baf2b47..0682f71 100644
+--- a/tests/v9/experiments/test_s3_arms_mlx.py
++++ b/tests/v9/experiments/test_s3_arms_mlx.py
+@@ -14,10 +14,19 @@ from ainerzero.v9.experiments.s3 import batching as B  # noqa: E402
+ from ainerzero.v9.experiments.s3 import data as D  # noqa: E402
+ from ainerzero.v9.experiments.s3 import spec  # noqa: E402
+ 
++pytestmark = pytest.mark.native_mlx
++
++
++@pytest.fixture(autouse=True)
++def _cpu():
++    prev = mx.default_device()
++    mx.set_default_device(mx.cpu)
++    yield
++    mx.set_default_device(prev)
++
+ 
+ @pytest.fixture(scope="module")
+ def batch():
+-    mx.set_default_device(mx.cpu)
+     eps = []
+     for i in range(3):
+         ep = D.generate_episode(D.derive_seed("arms-test", "world", i), D.derive_seed("arms-test", "ep", i))
+diff --git a/tests/v9/experiments/test_s3_isolation_contract.py b/tests/v9/experiments/test_s3_isolation_contract.py
+index b1fae60..b1c298f 100644
+--- a/tests/v9/experiments/test_s3_isolation_contract.py
++++ b/tests/v9/experiments/test_s3_isolation_contract.py
+@@ -27,6 +27,8 @@ from ainerzero.v9.experiments.s3 import batching as B  # noqa: E402
+ from ainerzero.v9.experiments.s3 import data as D  # noqa: E402
+ from ainerzero.v9.experiments.s3 import spec  # noqa: E402
+ 
++pytestmark = pytest.mark.native_mlx
++
+ NS = "test-s3-isolation"
+ NON_O = ("A0", "A1", "A2", "A3", "N")
+ ALL_FIELDS = (
+@@ -59,7 +61,10 @@ class Spy(dict):
+ 
+ @pytest.fixture(scope="module", autouse=True)
+ def _cpu():
++    prev = mx.default_device()
+     mx.set_default_device(mx.cpu)
++    yield
++    mx.set_default_device(prev)
+ 
+ 
+ @pytest.fixture(scope="module")
+diff --git a/tests/v9/experiments/test_s3p2_arms_mlx.py b/tests/v9/experiments/test_s3p2_arms_mlx.py
+index fc29739..b0cef0f 100644
+--- a/tests/v9/experiments/test_s3p2_arms_mlx.py
++++ b/tests/v9/experiments/test_s3p2_arms_mlx.py
+@@ -16,12 +16,17 @@ from ainerzero.v9.experiments.s3 import data as D  # noqa: E402
+ from ainerzero.v9.experiments.s3 import replay as RP  # noqa: E402
+ from ainerzero.v9.experiments.s3 import spec  # noqa: E402
+ 
++pytestmark = pytest.mark.native_mlx
++
+ NS = "test-s3p2-arms"
+ 
+ 
+ @pytest.fixture(scope="module", autouse=True)
+ def _cpu():
++    prev = mx.default_device()
+     mx.set_default_device(mx.cpu)
++    yield
++    mx.set_default_device(prev)
+ 
+ 
+ @pytest.fixture(scope="module")
+diff --git a/tests/v9/experiments/test_s3p2_runner_guards_native.py b/tests/v9/experiments/test_s3p2_runner_guards_native.py
+index 4681277..cb880d3 100644
+--- a/tests/v9/experiments/test_s3p2_runner_guards_native.py
++++ b/tests/v9/experiments/test_s3p2_runner_guards_native.py
+@@ -21,6 +21,7 @@ import numpy as np
+ import pytest
+ 
+ mx = pytest.importorskip("mlx.core")
++pytestmark = pytest.mark.native_mlx
+ 
+ from ainerzero.v9.experiments.s3 import analysis_p2 as AP  # noqa: E402
+ from ainerzero.v9.experiments.s3 import arms_mlx as A  # noqa: E402
+@@ -348,8 +349,12 @@ def run_module():
+     spec_ = importlib.util.spec_from_file_location("s3p2_runner_under_test", REPO / RUNNER)
+     mod = importlib.util.module_from_spec(spec_)
+     spec_.loader.exec_module(mod)
++    prev = mx.default_device()
+     mx.set_default_device(mx.cpu)
+-    return mod
++    try:
++        yield mod
++    finally:
++        mx.set_default_device(prev)
+ 
+ 
+ def test_registered_constants_of_the_runner(run_module) -> None:
+diff --git a/tests/v9/experiments/test_s4_gated.py b/tests/v9/experiments/test_s4_gated.py
+index e5dc9d3..a0e43b2 100644
+--- a/tests/v9/experiments/test_s4_gated.py
++++ b/tests/v9/experiments/test_s4_gated.py
+@@ -12,6 +12,7 @@ import numpy as np
+ import pytest
+ 
+ mx = pytest.importorskip("mlx.core")
++pytestmark = pytest.mark.native_mlx
+ 
+ from ainerzero.v9.experiments.s4 import analysis as A  # noqa: E402
+ from ainerzero.v9.experiments.s4 import gated as G  # noqa: E402
+diff --git a/tests/v9/experiments/test_s4_learned_mlx.py b/tests/v9/experiments/test_s4_learned_mlx.py
+index 5cf48d3..79c43dc 100644
+--- a/tests/v9/experiments/test_s4_learned_mlx.py
++++ b/tests/v9/experiments/test_s4_learned_mlx.py
+@@ -13,6 +13,7 @@ import numpy as np
+ import pytest
+ 
+ mx = pytest.importorskip("mlx.core")
++pytestmark = pytest.mark.native_mlx
+ from mlx.utils import tree_flatten  # noqa: E402
+ 
+ from ainerzero.v9.experiments.s4 import learned_mlx as L  # noqa: E402
+diff --git a/tests/v9/experiments/test_s4p1_runner_native.py b/tests/v9/experiments/test_s4p1_runner_native.py
+index ddda4e5..b632191 100644
+--- a/tests/v9/experiments/test_s4p1_runner_native.py
++++ b/tests/v9/experiments/test_s4p1_runner_native.py
+@@ -23,6 +23,7 @@ from pathlib import Path
+ import pytest
+ 
+ pytest.importorskip("mlx.core")
++pytestmark = pytest.mark.native_mlx
+ 
+ from ainerzero.v9.experiments.s3 import run_guard as GD  # noqa: E402
+ from ainerzero.v9.experiments.s4 import analysis as A  # noqa: E402
+diff --git a/tests/v9/experiments/test_s4p2_runner_native.py b/tests/v9/experiments/test_s4p2_runner_native.py
+index 4a713f7..761d526 100644
+--- a/tests/v9/experiments/test_s4p2_runner_native.py
++++ b/tests/v9/experiments/test_s4p2_runner_native.py
+@@ -23,6 +23,7 @@ from pathlib import Path
+ import pytest
+ 
+ pytest.importorskip("mlx.core")
++pytestmark = pytest.mark.native_mlx
+ 
+ from ainerzero.v9.experiments.s4 import analysis_p2 as P2  # noqa: E402
+ 
+diff --git a/tests/v9/experiments/test_s4p2_worker_native.py b/tests/v9/experiments/test_s4p2_worker_native.py
+index 34def85..e2133ae 100644
+--- a/tests/v9/experiments/test_s4p2_worker_native.py
++++ b/tests/v9/experiments/test_s4p2_worker_native.py
+@@ -12,6 +12,7 @@ from pathlib import Path
+ import pytest
+ 
+ pytest.importorskip("mlx.core")
++pytestmark = pytest.mark.native_mlx
+ 
+ SRC = Path(__file__).resolve().parents[3] / "src"
+ 
+diff --git a/tests/v9/geometry/test_canonical.py b/tests/v9/geometry/test_canonical.py
+index 34827aa..3a8806b 100644
+--- a/tests/v9/geometry/test_canonical.py
++++ b/tests/v9/geometry/test_canonical.py
+@@ -112,8 +112,20 @@ def act_grid(grid, frame, planar_pose):
+ 
+ 
+ def test_cpu_only_imports():
+-    forbidden = {"mlx", "torch", "onnxruntime", "tensorflow", "jax"}
+-    assert not any(name.split(".")[0] in forbidden for name in sys.modules)
++    import subprocess
++    from pathlib import Path
++
++    src_dir = str(Path(__file__).resolve().parents[3] / "src")
++    code = (
++        f"import sys\n"
++        f"sys.path.insert(0, {src_dir!r})\n"
++        f"import ainerzero.v9.geometry.canonical\n"
++        f"forbidden = {{'mlx', 'torch', 'onnxruntime', 'tensorflow', 'jax'}}\n"
++        f"loaded = {{name.split('.')[0] for name in sys.modules}} & forbidden\n"
++        f"assert not loaded, f'Forbidden modules loaded: {{loaded}}'\n"
++    )
++    res = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True)
++    assert res.returncode == 0, f"canonical dynamically imported forbidden modules: {res.stderr}"
+ 
+ 
+ def test_height_and_gravity_direction_are_preserved():
+diff --git a/tests/v9/geometry/test_geometry.py b/tests/v9/geometry/test_geometry.py
+index 5c7bf5e..25c80f6 100644
+--- a/tests/v9/geometry/test_geometry.py
++++ b/tests/v9/geometry/test_geometry.py
+@@ -257,4 +257,17 @@ def test_gravity_lift_is_group_action_not_full_rotation_invariance():
+ 
+ 
+ def test_imports_are_cpu_only():
+-    assert not any(name.split('.')[0] in {'mlx', 'torch', 'onnxruntime', 'tensorflow'} for name in sys.modules)
++    import subprocess
++    from pathlib import Path
++
++    src_dir = str(Path(__file__).resolve().parents[3] / "src")
++    code = (
++        f"import sys\n"
++        f"sys.path.insert(0, {src_dir!r})\n"
++        f"import ainerzero.v9.geometry\n"
++        f"forbidden = {{'mlx', 'torch', 'onnxruntime', 'tensorflow'}}\n"
++        f"loaded = {{name.split('.')[0] for name in sys.modules}} & forbidden\n"
++        f"assert not loaded, f'Forbidden modules loaded: {{loaded}}'\n"
++    )
++    res = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True)
++    assert res.returncode == 0, f"geometry dynamically imported forbidden modules: {res.stderr}"

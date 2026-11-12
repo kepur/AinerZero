@@ -27,6 +27,8 @@ from ainerzero.v9.experiments.s3 import batching as B  # noqa: E402
 from ainerzero.v9.experiments.s3 import data as D  # noqa: E402
 from ainerzero.v9.experiments.s3 import spec  # noqa: E402
 
+pytestmark = pytest.mark.native_mlx
+
 NS = "test-s3-isolation"
 NON_O = ("A0", "A1", "A2", "A3", "N")
 ALL_FIELDS = (
@@ -59,7 +61,10 @@ class Spy(dict):
 
 @pytest.fixture(scope="module", autouse=True)
 def _cpu():
+    prev = mx.default_device()
     mx.set_default_device(mx.cpu)
+    yield
+    mx.set_default_device(prev)
 
 
 @pytest.fixture(scope="module")

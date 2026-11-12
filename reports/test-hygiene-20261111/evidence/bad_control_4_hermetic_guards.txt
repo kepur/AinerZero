@@ -1,0 +1,24 @@
+lock held by 6097
+F                                                                        [100%]
+=================================== FAILURES ===================================
+__________ test_function_guard_intercepts_protected_connect_and_flock __________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-17/test_function_guard_intercepts0')
+
+    def test_function_guard_intercepts_protected_connect_and_flock(tmp_path):
+        fake_root = _stage_fake_root(tmp_path)
+        protected_db = fake_root / "artifacts" / "v9" / "s1" / "phase1" / "control.sqlite3"
+        protected_lock = fake_root / "artifacts" / "locks" / "m0-worker.lock"
+    
+        guarded_connect = conftest.make_guarded_connect(fake_root)
+        guarded_flock = conftest.make_guarded_flock(fake_root)
+        guarded_lockf = conftest.make_guarded_lockf(fake_root)
+    
+        # 1. Connect targeting protected db raises
+>       with pytest.raises(RuntimeError, match="Hermetic test guard violation: sqlite3.connect"):
+E       Failed: DID NOT RAISE RuntimeError
+
+/tmp/isolated_p227/tests/test_hermetic_guards.py:56: Failed
+=========================== short test summary info ============================
+FAILED ../../../../tmp/isolated_p227/tests/test_hermetic_guards.py::test_function_guard_intercepts_protected_connect_and_flock
+1 failed, 4 deselected in 0.03s

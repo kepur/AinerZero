@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("mlx.core")
+pytestmark = pytest.mark.native_mlx
 
 SRC = Path(__file__).resolve().parents[3] / "src"
 

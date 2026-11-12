@@ -21,6 +21,7 @@ import numpy as np
 import pytest
 
 mx = pytest.importorskip("mlx.core")
+pytestmark = pytest.mark.native_mlx
 
 from ainerzero.v9.experiments.s3 import analysis_p2 as AP  # noqa: E402
 from ainerzero.v9.experiments.s3 import arms_mlx as A  # noqa: E402
@@ -348,8 +349,12 @@ def run_module():
     spec_ = importlib.util.spec_from_file_location("s3p2_runner_under_test", REPO / RUNNER)
     mod = importlib.util.module_from_spec(spec_)
     spec_.loader.exec_module(mod)
+    prev = mx.default_device()
     mx.set_default_device(mx.cpu)
-    return mod
+    try:
+        yield mod
+    finally:
+        mx.set_default_device(prev)
 
 
 def test_registered_constants_of_the_runner(run_module) -> None:

@@ -257,4 +257,17 @@ def test_gravity_lift_is_group_action_not_full_rotation_invariance():
 
 
 def test_imports_are_cpu_only():
-    assert not any(name.split('.')[0] in {'mlx', 'torch', 'onnxruntime', 'tensorflow'} for name in sys.modules)
+    import subprocess
+    from pathlib import Path
+
+    src_dir = str(Path(__file__).resolve().parents[3] / "src")
+    code = (
+        f"import sys\n"
+        f"sys.path.insert(0, {src_dir!r})\n"
+        f"import ainerzero.v9.geometry\n"
+        f"forbidden = {{'mlx', 'torch', 'onnxruntime', 'tensorflow'}}\n"
+        f"loaded = {{name.split('.')[0] for name in sys.modules}} & forbidden\n"
+        f"assert not loaded, f'Forbidden modules loaded: {{loaded}}'\n"
+    )
+    res = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True)
+    assert res.returncode == 0, f"geometry dynamically imported forbidden modules: {res.stderr}"

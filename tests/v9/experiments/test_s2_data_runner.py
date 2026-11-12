@@ -30,9 +30,19 @@ from ainerzero.v9.experiments.s2.worker import S2Ledger
 
 def test_zero_mlx_imported() -> None:
     """Zero MLX imports in data_runner and its dependencies."""
+    import subprocess
     import sys
 
-    assert "mlx" not in sys.modules, "mlx should not be loaded in pure-CPU suite"
+    src_dir = str(Path(__file__).resolve().parents[3] / "src")
+    code = (
+        f"import sys\n"
+        f"sys.path.insert(0, {src_dir!r})\n"
+        f"import ainerzero.v9.experiments.s2.data_runner\n"
+        f"assert 'mlx' not in sys.modules, 'mlx loaded by data_runner'\n"
+    )
+    res = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True)
+    assert res.returncode == 0, f"data_runner dynamically imported MLX: {res.stderr}"
+
     import ainerzero.v9.experiments.s2.data_runner as dr
 
     tree = ast.parse(Path(dr.__file__).read_text(encoding="utf-8"))

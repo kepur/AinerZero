@@ -112,8 +112,20 @@ def act_grid(grid, frame, planar_pose):
 
 
 def test_cpu_only_imports():
-    forbidden = {"mlx", "torch", "onnxruntime", "tensorflow", "jax"}
-    assert not any(name.split(".")[0] in forbidden for name in sys.modules)
+    import subprocess
+    from pathlib import Path
+
+    src_dir = str(Path(__file__).resolve().parents[3] / "src")
+    code = (
+        f"import sys\n"
+        f"sys.path.insert(0, {src_dir!r})\n"
+        f"import ainerzero.v9.geometry.canonical\n"
+        f"forbidden = {{'mlx', 'torch', 'onnxruntime', 'tensorflow', 'jax'}}\n"
+        f"loaded = {{name.split('.')[0] for name in sys.modules}} & forbidden\n"
+        f"assert not loaded, f'Forbidden modules loaded: {{loaded}}'\n"
+    )
+    res = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True)
+    assert res.returncode == 0, f"canonical dynamically imported forbidden modules: {res.stderr}"
 
 
 def test_height_and_gravity_direction_are_preserved():

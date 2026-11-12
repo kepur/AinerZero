@@ -23,6 +23,8 @@ import numpy as np
 import pytest
 import mlx.core as mx
 
+_PRE_IMPORT_DEVICE = mx.default_device()
+
 from ainerzero.v9.experiments.e1.prior import (
     DEFAULT_BIASED_PRIOR,
     DEFAULT_GROUND_FRICTION,
@@ -52,6 +54,8 @@ from ainerzero.v9.experiments.e1.eval_runner import (
     inject_truth_static_materials,
 )
 from ainerzero.v9.experiments.e1.train_runner import make_arm6_identifier
+
+mx.set_default_device(_PRE_IMPORT_DEVICE)
 
 pytestmark = pytest.mark.native_mlx(reason="module-level real MLX import (A39)")
 
