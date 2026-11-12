@@ -96,3 +96,18 @@ CLI：`--prereg PATH --prereg-sha SHA --run-id ID --report PATH [--dry-run]`。
 - **默认入口（CPU）：** PREREG 生成与校验；格清单与 PREREG 一致；守卫顺序；dry-run 不拿锁。
 - **原生（经锁）：** 替身分区的端到端冒烟。用 `s5test-*` 世界、极小学生，把「登记分区」换成替身名字，跑完训练、评测、门。不得触及真实 final 名称。
 - 每条测试都写明一个源码坏对照，改源码的脚本先断言目标不是实盘仓库；副本用 `git archive HEAD` 导出，基线须 0 失败。
+
+## 补记 1（2026-11-12，一级）：输出命名约定（第 2 节与第 3 节共用，强制）
+
+采纳 P246 提出的约定（`reports/V9-S5-FINAL/RECOMPUTE-IMPL/evidence/metrics_filename_contract.txt`），运行器与复算脚本必须一致：
+
+- 逐段预测：`metrics/{model_id}.{partition}.npz`，`partition ∈ {s5p1-final, s5p1-final-shift}`。
+  - 必有数组：`r1_logd r2_logit r3_logit r1_target r1_sky r1_obj r2 r3 world_ids clips_per_world`；
+  - RLT 模型另存 `keep_rate_per_clip`；
+  - 旁文件：`metrics/{model_id}.{partition}.disk_groups.json`、`metrics/{model_id}.{partition}.ordering_pairs.json`。
+- `model_id` 格式：
+  - 读出头模型：`heads-{arm}-d{d}-L{L}-r{r}`，`arm ∈ {A1, A2, A3, C-sh, R}`。R 只有 L=512。A* 用实际臂名，不写 `A*`。
+  - 端到端模型：`{arm}-L{L}-s{s}`，`arm ∈ {A0, A4, A0-R, FT}`。A0-L64 复用 dev-distill 的三个模型，名字不变。
+  - GA 曲线：`metrics/ckpt-{arm}-L512-s{s}.json`，`arm ∈ {A0, A4}`，内容为 `{"steps": [...], "r2_ap": [...], "cap": 总步数}`，按步数升序，在 `s5p1-final` 上评。
+- 墙钟：`timing/{cell_id}.json`，内容含 `seconds_per_step`（该格训练步墙钟的中位数），至少要有 `distill-R-s{d}` 和 `distill-C-sh-s{d}`。
+- 门：`gates.json` 的顶层为 `{"gates": {"GT1": {...}, ...}}`。每个门含 `point_estimate ci_lower ci_upper level passed`，可选 `seed_std`；GA 另含 `median_a0 median_a4 ratio`，GR 另含 `keep_rate wall_drop`。
