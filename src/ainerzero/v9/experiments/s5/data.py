@@ -18,12 +18,68 @@ import numpy as np
 from ainerzero.v9.experiments.s5.tokens import tubelet_patches
 
 
+DEFAULT_CACHE_MAX_BYTES = 48 * (1024 ** 3)  # 48 GiB 默认上限
+
+# 进程级教师文件 SHA 核对缓存：每个进程每个文件只核对一次
+_VERIFIED_TEACHER_SHAS: dict[str, str] = {}
+_LEDGER_CACHE: dict[tuple[str, int, int], dict[str, str]] = {}
+
+
 def _sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
         while chunk := f.read(1 << 20):
             h.update(chunk)
     return h.hexdigest()
+
+
+class ItemCache:
+    """进程内数据与教师特征缓存（带字节上限）。
+
+    缓存内容：
+    - uint8 原始段数组 (clip_raw)
+    - 标签数组与元数据字典 (r1_logd, r1_sky, r1_obj, r2, r3, disk_groups, ordering_pairs)
+    - 教师特征数组 (vjepa, da2, fp16)
+    tubelet_patches 每次从 uint8 原始段现算，不入缓存。
+    超过 max_bytes 上限时不再缓存新条目，但照常读取返回，不报错。
+    """
+
+    def __init__(self, max_bytes: int = DEFAULT_CACHE_MAX_BYTES) -> None:
+        self.max_bytes = int(max_bytes)
+        self.used_bytes = 0
+        self._items: dict[str, Any] = {}
+        self.hits = 0
+        self.misses = 0
+
+    def get(self, key: str) -> Any | None:
+        if key in self._items:
+            self.hits += 1
+            return self._items[key]
+        self.misses += 1
+        return None
+
+    def put(self, key: str, value: Any, nbytes: int) -> bool:
+        nbytes = int(nbytes)
+        if key in self._items:
+            return True
+        if nbytes < 0 or self.used_bytes + nbytes > self.max_bytes:
+            return False
+        self._items[key] = value
+        self.used_bytes += nbytes
+        return True
+
+    def clear(self) -> None:
+        self._items.clear()
+        self.used_bytes = 0
+        self.hits = 0
+        self.misses = 0
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._items
+
 
 
 class ClipIndex:
@@ -112,14 +168,33 @@ class ClipIndex:
 
 def _load_progress_ledger(teachers_dir: Path) -> dict[str, str]:
     ledger_path = teachers_dir / "progress.jsonl"
+    if not ledger_path.exists():
+        return {}
+    st = ledger_path.stat()
+    cache_key = (str(ledger_path.resolve()), st.st_mtime_ns, st.st_size)
+    if cache_key in _LEDGER_CACHE:
+        return _LEDGER_CACHE[cache_key]
     ledger: dict[str, str] = {}
-    if ledger_path.exists():
-        for line in ledger_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line:
-                rec = json.loads(line)
-                ledger[rec["file"]] = rec["sha256"]
+    for line in ledger_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            rec = json.loads(line)
+            ledger[rec["file"]] = rec["sha256"]
+    _LEDGER_CACHE[cache_key] = ledger
     return ledger
+
+
+def _verify_teacher_file_once(file_path: Path, expected_sha: str, label: str) -> None:
+    """每个进程每个教师文件只算一次 SHA256；首次读入前若被改动照常报错。"""
+    key = str(file_path.resolve())
+    if _VERIFIED_TEACHER_SHAS.get(key) == expected_sha:
+        return
+    got_sha = _sha256_file(file_path)
+    if got_sha != expected_sha:
+        raise RuntimeError(
+            f"{label} feature {file_path} SHA mismatch: got {got_sha} != ledger {expected_sha}"
+        )
+    _VERIFIED_TEACHER_SHAS[key] = got_sha
 
 
 def load_item(
@@ -128,11 +203,12 @@ def load_item(
     *,
     teachers: str | Path | dict[str, str | Path] | None = None,
     appearance_suffix: str = "",
+    cache: ItemCache | None = None,
 ) -> dict[str, Any]:
     """读取指定索引 i 处的切片数据与标签。
 
     返回字典包含：
-    - patches: tubelet_patches 转换后的 float32 [8, 14, 14, 1536]
+    - patches: tubelet_patches 转换后的 float32 [8, 14, 14, 1536]（每次从 uint8 原始段现算）
     - r1_logd, r1_sky, r1_obj: 来自 labels_YY.npz
     - r2, r3: 网格占据标签 [12, 7]
     - disk_groups: 圆盘属性字典列表
@@ -143,48 +219,70 @@ def load_item(
     w, c = index[i]
     wdir = index.world_dirs[w]
 
-    # 1. 加载 clip
+    # 1. 加载 clip（缓存 uint8 原始段，patches 每次现算）
     suffix = f"_{appearance_suffix}" if appearance_suffix else ""
     clip_file = wdir / f"clip_{c:02d}{suffix}.npy"
     if not clip_file.exists():
         # 若未找到带特定 appearance 的，降级尝试无 suffix 的主文件
         clip_file = wdir / f"clip_{c:02d}.npy"
-    if not clip_file.exists():
-        raise FileNotFoundError(f"Clip file not found: {clip_file}")
 
-    clip_raw = np.load(clip_file)  # uint8 [16, 224, 224, 3]
+    clip_key = f"clip:{clip_file.resolve()}"
+    clip_raw = cache.get(clip_key) if cache is not None else None
+    if clip_raw is None:
+        if not clip_file.exists():
+            raise FileNotFoundError(f"Clip file not found: {clip_file}")
+        clip_raw = np.load(clip_file)  # uint8 [16, 224, 224, 3]
+        if cache is not None:
+            cache.put(clip_key, clip_raw, int(clip_raw.nbytes))
+
     patches = tubelet_patches(clip_raw)  # float32 [8, 14, 14, 1536]
 
-    # 2. 加载标签
+    # 2. 加载标签（缓存标签数组与字典）
     labels_file = wdir / f"labels_{c:02d}.npz"
-    if not labels_file.exists():
-        raise FileNotFoundError(f"Labels file not found: {labels_file}")
-
-    npz = np.load(labels_file, allow_pickle=True)
-    r1_logd = npz["r1_logd"]
-    r1_sky = npz["r1_sky"]
-    r1_obj = npz["r1_obj"]
-    r2 = npz["r2"]
-    r3 = npz["r3"]
-    disk_groups = json.loads(str(npz["disk_groups_json"]))
-    ordering_pairs = json.loads(str(npz["ordering_pairs_json"]))
+    labels_key = f"labels:{labels_file.resolve()}"
+    cached_labels = cache.get(labels_key) if cache is not None else None
+    if cached_labels is None:
+        if not labels_file.exists():
+            raise FileNotFoundError(f"Labels file not found: {labels_file}")
+        with np.load(labels_file, allow_pickle=True) as npz:
+            r1_logd = npz["r1_logd"]
+            r1_sky = npz["r1_sky"]
+            r1_obj = npz["r1_obj"]
+            r2 = npz["r2"]
+            r3 = npz["r3"]
+            disk_groups = json.loads(str(npz["disk_groups_json"]))
+            ordering_pairs = json.loads(str(npz["ordering_pairs_json"]))
+        cached_labels = {
+            "r1_logd": r1_logd,
+            "r1_sky": r1_sky,
+            "r1_obj": r1_obj,
+            "r2": r2,
+            "r3": r3,
+            "disk_groups": disk_groups,
+            "ordering_pairs": ordering_pairs,
+        }
+        if cache is not None:
+            lbl_bytes = int(
+                r1_logd.nbytes + r1_sky.nbytes + r1_obj.nbytes + r2.nbytes + r3.nbytes
+            )
+            cache.put(labels_key, cached_labels, lbl_bytes)
 
     item: dict[str, Any] = {
         "world": w,
         "clip": c,
         "patches": patches,
-        "r1_logd": r1_logd,
-        "r1_sky": r1_sky,
-        "r1_obj": r1_obj,
-        "r2": r2,
-        "r3": r3,
-        "disk_groups": disk_groups,
-        "ordering_pairs": ordering_pairs,
+        "r1_logd": cached_labels["r1_logd"],
+        "r1_sky": cached_labels["r1_sky"],
+        "r1_obj": cached_labels["r1_obj"],
+        "r2": cached_labels["r2"],
+        "r3": cached_labels["r3"],
+        "disk_groups": cached_labels["disk_groups"],
+        "ordering_pairs": cached_labels["ordering_pairs"],
     }
 
     # 3. 若指定了 teachers，加载教师特征并校验 progress 账本 SHA
     if teachers is not None:
-        item.update(load_teacher(index, i, teachers))
+        item.update(load_teacher(index, i, teachers, cache=cache))
 
     return item
 
@@ -194,48 +292,60 @@ def load_teacher(
     i: int,
     teachers: str | Path | dict[str, str | Path],
     *,
-    teacher_types: Sequence[str] = ("vjepa", "da2"),
+    teacher_types: Sequence[str] | None = None,
+    cache: ItemCache | None = None,
 ) -> dict[str, np.ndarray]:
-    """仅读取指定索引 i 处的教师特征，核对 progress.jsonl 账本中的 SHA256。"""
+    """仅读取指定索引 i 处的教师特征，核对 progress.jsonl 账本中的 SHA256（每进程每文件一次）。"""
     w, c = index[i]
     if isinstance(teachers, (str, Path)):
         vjepa_dir = Path(teachers)
         da2_dir = Path(teachers)
+        active_types = tuple(teacher_types) if teacher_types is not None else ("vjepa", "da2")
     else:
         vjepa_dir = Path(teachers.get("vjepa", teachers.get("vjepa_dir", ".")))
         da2_dir = Path(teachers.get("da2", teachers.get("da2_dir", ".")))
+        if teacher_types is not None:
+            active_types = tuple(teacher_types)
+        else:
+            active_types = tuple(
+                t for t in ("vjepa", "da2") if t in teachers or f"{t}_dir" in teachers
+            ) or ("vjepa", "da2")
 
     res: dict[str, np.ndarray] = {}
 
-    if "vjepa" in teacher_types:
+    if "vjepa" in active_types:
         vjepa_rel = f"world_{w:04d}/clip_{c:02d}.vjepa.npy"
         vjepa_file = vjepa_dir / vjepa_rel
-        if not vjepa_file.exists():
-            raise FileNotFoundError(f"V-JEPA feature not found: {vjepa_file}")
+        vjepa_key = f"vjepa:{vjepa_file.resolve()}"
+        vjepa_arr = cache.get(vjepa_key) if cache is not None else None
+        if vjepa_arr is None:
+            if not vjepa_file.exists():
+                raise FileNotFoundError(f"V-JEPA feature not found: {vjepa_file}")
 
-        vjepa_ledger = _load_progress_ledger(vjepa_dir)
-        if vjepa_rel in vjepa_ledger:
-            got_sha = _sha256_file(vjepa_file)
-            if got_sha != vjepa_ledger[vjepa_rel]:
-                raise RuntimeError(
-                    f"V-JEPA feature {vjepa_file} SHA mismatch: got {got_sha} != ledger {vjepa_ledger[vjepa_rel]}"
-                )
-        res["vjepa"] = np.load(vjepa_file)
+            vjepa_ledger = _load_progress_ledger(vjepa_dir)
+            if vjepa_rel in vjepa_ledger:
+                _verify_teacher_file_once(vjepa_file, vjepa_ledger[vjepa_rel], "V-JEPA")
+            vjepa_arr = np.load(vjepa_file)
+            if cache is not None:
+                cache.put(vjepa_key, vjepa_arr, int(vjepa_arr.nbytes))
+        res["vjepa"] = vjepa_arr
 
-    if "da2" in teacher_types:
+    if "da2" in active_types:
         da2_rel = f"world_{w:04d}/da2_{c:02d}.da2.npy"
         da2_file = da2_dir / da2_rel
-        if not da2_file.exists():
-            raise FileNotFoundError(f"DA2 feature not found: {da2_file}")
+        da2_key = f"da2:{da2_file.resolve()}"
+        da2_arr = cache.get(da2_key) if cache is not None else None
+        if da2_arr is None:
+            if not da2_file.exists():
+                raise FileNotFoundError(f"DA2 feature not found: {da2_file}")
 
-        da2_ledger = _load_progress_ledger(da2_dir)
-        if da2_rel in da2_ledger:
-            got_sha = _sha256_file(da2_file)
-            if got_sha != da2_ledger[da2_rel]:
-                raise RuntimeError(
-                    f"DA2 feature {da2_file} SHA mismatch: got {got_sha} != ledger {da2_ledger[da2_rel]}"
-                )
-        res["da2"] = np.load(da2_file)
+            da2_ledger = _load_progress_ledger(da2_dir)
+            if da2_rel in da2_ledger:
+                _verify_teacher_file_once(da2_file, da2_ledger[da2_rel], "DA2")
+            da2_arr = np.load(da2_file)
+            if cache is not None:
+                cache.put(da2_key, da2_arr, int(da2_arr.nbytes))
+        res["da2"] = da2_arr
 
     return res
 

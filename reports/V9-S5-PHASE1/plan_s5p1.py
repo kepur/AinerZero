@@ -31,6 +31,9 @@ STAGE_WALL_H = {
 }
 
 
+STEP_COMPUTE_S = 0.16          # probe 实测每步纯计算时间（批量 8，约 0.16 s）
+CACHED_STEP_DATA_S = 0.015     # 进程内缓存命中后每步现算 tubelet_patches 与组批耗时（约 0.015 s）
+COLD_READ_S_PER_CLIP = 0.02    # 首轮每段冷读文件与首次核对教师 SHA 耗时（约 0.02 s/段）
 HEADS_CACHE_SEG_PER_S = 54.0   # 学生前向抽取并缓存特征（按 54 段/秒）
 HEADS_TRAIN_STEP_PER_S = 100.0  # 仅更新读出头参数的优化器步速（按 100 步/秒估算）
 
@@ -40,18 +43,19 @@ def steps_for(n_clips: int, epochs: int, batch: int = BATCH) -> int:
 
 
 def wall_seconds(n_clips: int, epochs: int, *, kind: str = "train", batch: int = BATCH) -> float:
-    """按设计里的每秒段数估算墙钟，只用于 dry-run。
+    """按 probe 实测每步计算时间（约 0.16 s，批量 8）加缓存后读数据开销估算墙钟，只用于 dry-run。
 
     对于 heads 格子，学生模型已冻结，耗时按「缓存一次学生特征 + 只训读出头」估算；
-    单头耗时约 25–89 s（平均约 50 s），dev-distill 54 个读出头合计约 0.81 h（对照设计 §6 的 0.75 h）；
-    待 probe 实测后校准覆盖。
+    对于 distill / supervised 格子，耗时按「首轮冷读与单次教师 SHA 核对 + 每步 0.16s 计算与缓存现算 patches」估算。
     """
+    steps = steps_for(n_clips, epochs, batch)
     if kind == "heads":
-        steps = steps_for(n_clips, epochs, batch)
         cache_s = float(n_clips / HEADS_CACHE_SEG_PER_S)
         train_s = float(steps / HEADS_TRAIN_STEP_PER_S)
         return cache_s + train_s
-    return float(n_clips * epochs / SEG_PER_S)
+    cold_data_s = float(n_clips * COLD_READ_S_PER_CLIP)
+    step_s = float(steps * (STEP_COMPUTE_S + CACHED_STEP_DATA_S))
+    return cold_data_s + step_s
 
 
 def scaled_epochs(design_epochs: int, scale: float) -> int:
@@ -312,6 +316,9 @@ def summarize_stage(stage: str, cells: list[dict]) -> dict:
         "wall_s_est": wall,
         "wall_h_est": wall / 3600.0,
         "design_wall_h": STAGE_WALL_H.get(stage),
+        "step_compute_s": STEP_COMPUTE_S,
+        "cached_step_data_s": CACHED_STEP_DATA_S,
+        "cold_read_s_per_clip": COLD_READ_S_PER_CLIP,
         "cells": cells,
     }
     if stage in ("probe", "dev-distill"):

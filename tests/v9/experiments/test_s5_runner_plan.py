@@ -150,3 +150,26 @@ def test_dry_run_dev_distill_heads_wall_clock_estimation():
     assert 0.70 <= summary["heads_wall_est_h"] <= 0.90
     assert summary["wall_h_est"] < 4.0, f"Total stage wall clock should be < 4.0h, got {summary['wall_h_est']}"
     assert "heads_note" in summary
+
+
+def test_dry_run_uses_probe_step_compute_and_cached_data_estimate():
+    plan = _plan()
+    assert plan.STEP_COMPUTE_S == pytest.approx(0.16)
+    assert plan.CACHED_STEP_DATA_S > 0.0
+    assert plan.COLD_READ_S_PER_CLIP > 0.0
+
+    # 验证全量蒸馏单格 (4000 段, 15 轮, 7500 步) 的墙钟 = 4000 * COLD_READ + 7500 * (0.16 + CACHED_STEP_DATA)
+    expected_distill_s = 4000 * plan.COLD_READ_S_PER_CLIP + 7500 * (plan.STEP_COMPUTE_S + plan.CACHED_STEP_DATA_S)
+    assert plan.wall_seconds(4000, 15, kind="distill") == pytest.approx(expected_distill_s)
+
+    for stage, expected_design_h in (("probe", 0.5), ("dev-tune", 1.6), ("dev-distill", 3.22)):
+        ran = subprocess.run(
+            [sys.executable, str(RUNNER), "--stage", stage, "--dry-run"],
+            cwd=LIVE, capture_output=True, text=True, timeout=60,
+        )
+        assert ran.returncode == 0, ran.stderr[-1500:]
+        payload = json.loads(ran.stdout)
+        assert payload["design_wall_h"] == pytest.approx(expected_design_h)
+        assert payload["step_compute_s"] == pytest.approx(0.16)
+        assert payload["lab_subset_seed"] == 20261112
+

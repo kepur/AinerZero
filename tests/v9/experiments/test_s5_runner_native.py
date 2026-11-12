@@ -430,3 +430,136 @@ def test_preflight_requires_clip_files_not_only_a_manifest(tmp_path: Path):
     (root / "artifacts/v9/s5/data/s5p1-dev/world_0000/clip_00.npy").unlink()
     r = _preflight(root)
     assert r.returncode != 0 and "preflight" in r.stderr and "s5p1-dev" in r.stderr, r.stdout + r.stderr
+
+
+# ------------------------------------------------------------------------------------------------
+# P239：运行器按 label_n 取 lab 子集 + 训练循环共用 ItemCache 缓存
+# ------------------------------------------------------------------------------------------------
+def _setup_single_l64_cell_in_copy(root: Path) -> None:
+    assert root.resolve() not in (LIVE, REAL_REPO)
+    # s5test-smoke-lab 物化 2 个世界（32 段），把 L_WORLDS[64] 设为 1 个世界（16 段），用来区分「取子集」与「用全集」
+    _mutate_file(
+        root,
+        f"{HERE}/plan_s5p1.py",
+        "L_WORLDS = {64: 4, 512: 32, 2048: 128}",
+        "L_WORLDS = {64: 1, 512: 32, 2048: 128}",
+    )
+    # 只跑一个带 label_n=64 的 supervised 小格：epochs=2, batch_size=8 -> 16 * 2 // 8 = 4 步
+    _mutate_file(
+        root,
+        f"{HERE}/run_s5p1.py",
+        "    return cells\n",
+        "    return [{\n"
+        "        'cell_id': 'smoke-A0-L64', 'kind': 'supervised', 'arm': 'A0', 'seed': 0,\n"
+        "        'lr': 1e-3, 'label_n': 64, 'epochs': 2, 'batch_size': 8, 'n_clips': 16,\n"
+        "        'steps': 4, 'partition': SMOKE_PARTITIONS['lab'],\n"
+        "    }]\n",
+    )
+
+
+def test_label_n_subset_is_used_in_supervised_cell(tmp_path: Path):
+    from ainerzero.v9.experiments.s5.data import ClipIndex
+
+    root = _make_root(tmp_path)
+    _setup_single_l64_cell_in_copy(root)
+    ran = _run(root, "--stage", "smoke", "--use-id", "s-l64", "--report", "reports/out.json")
+    assert ran.returncode == 0, ran.stderr[-2000:] + ran.stdout[-2000:]
+
+    out = next((root / RUNS).iterdir())
+    events = _events(root)
+    starts = [e for e in events if e["event"] == "cell_start"]
+    ends = [e for e in events if e["event"] == "cell_end"]
+    assert len(starts) == 1 and len(ends) == 1
+
+    lab_dir = out / "data" / "s5test-smoke-lab"
+    expected_sub = ClipIndex(lab_dir).subset_by_worlds(1, seed=20261112)
+    assert len(expected_sub.worlds) == 1
+    assert len(expected_sub) == 1 * 16 == 16
+
+    # cell_start 记下子集世界清单与段数
+    assert starts[0]["worlds"] == expected_sub.worlds
+    assert starts[0]["n_worlds"] == 1
+    assert starts[0]["n_clips"] == 1 * 16 == 16
+
+    # cell_end 记实际步数 = 段数(16) * epochs(2) // batch(8) = 4
+    assert ends[0]["worlds"] == expected_sub.worlds
+    assert ends[0]["n_clips"] == 16
+    assert ends[0]["steps_logged"] == 4
+    assert ends[0]["steps"] == 4
+
+
+def test_removing_subset_by_worlds_mutation_is_caught(tmp_path: Path):
+    root = _make_root(tmp_path)
+    _setup_single_l64_cell_in_copy(root)
+    # 坏对照：去掉 _index_for 中的 subset_by_worlds，导致直接用整个 lab 分区（2 世界 = 32 段，8 步）
+    _mutate_file(
+        root,
+        f"{HERE}/run_s5p1.py",
+        "    if label_n is not None:\n"
+        "        return ClipIndex(partition_dir).subset_by_worlds(\n"
+        "            plan.L_WORLDS[int(label_n)], seed=LAB_SUBSET_SEED\n"
+        "        )\n",
+        "    if label_n is not None:\n"
+        "        return ClipIndex(partition_dir)\n",
+    )
+    ran = _run(root, "--stage", "smoke", "--use-id", "s-l64-bad", "--report", "reports/out.json")
+    assert ran.returncode == 0, ran.stderr[-2000:] + ran.stdout[-2000:]
+    events = _events(root)
+    starts = [e for e in events if e["event"] == "cell_start"]
+    ends = [e for e in events if e["event"] == "cell_end"]
+    # 去掉 subset_by_worlds 后，世界数变成 2、段数变成 32、步数变成 8，违反子集断言
+    assert not (
+        starts[0].get("n_worlds") == 1
+        and starts[0].get("n_clips") == 16
+        and ends[0].get("steps_logged") == 4
+    )
+
+
+def test_train_loops_use_item_cache_across_epochs(tmp_path: Path, monkeypatch):
+    from ainerzero.v9.experiments.s5 import data as D
+    from ainerzero.v9.experiments.s5 import train as T
+    from ainerzero.v9.experiments.s5.materialize import materialize_partition
+    from ainerzero.v9.experiments.s5.student import Student
+
+    part_dir = tmp_path / "part"
+    materialize_partition("s5test-cache", part_dir, world_range=(0, 1))
+    # 只保留前 2 段以加速测试
+    wdir = part_dir / "world_0000"
+    for cf in list(wdir.glob("clip_*.npy")) + list(wdir.glob("labels_*.npz")):
+        c_num = int(cf.name.split("_")[1].split(".")[0])
+        if c_num >= 2:
+            cf.unlink()
+
+    idx = D.ClipIndex(part_dir)
+    assert len(idx) == 2
+
+    mod = _runner_module(LIVE)
+    teachers = mod._write_fake_teachers(idx, tmp_path / "teachers")
+
+    load_calls = []
+    real_np_load = D.np.load
+
+    def counting_load(file, *args, **kwargs):
+        load_calls.append(str(file))
+        return real_np_load(file, *args, **kwargs)
+
+    monkeypatch.setattr(D.np, "load", counting_load)
+
+    cfg = T.TrainConfig(lr=1e-3, batch_size=2, epochs=3, seed=0)
+    student = Student(d=16, depth=1, heads=1)
+
+    # 1. distill 跑 3 轮（2 段数据）：每段 clip、labels、vjepa、da2 只在首轮读 1 次，共 2 * 4 = 8 次 np.load（若无缓存则是 24 次）
+    load_calls.clear()
+    T.distill("A3", idx, teachers, cfg, student=student)
+    assert len(load_calls) == 8, f"Expected 8 np.load calls with cache across 3 epochs, got {len(load_calls)}"
+
+    # 2. train_supervised 跑 3 轮（2 段数据，无教师）：每段 clip、labels 只在首轮读 1 次，共 2 * 2 = 4 次（若无缓存则是 12 次）
+    load_calls.clear()
+    T.train_supervised(idx, cfg, student=student)
+    assert len(load_calls) == 4, f"Expected 4 np.load calls with cache across 3 epochs, got {len(load_calls)}"
+
+    # 3. train_heads 跑 3 轮（2 段数据）：前置缓存特征时读 1 次 clip + labels，后续 3 轮训练读出头时 0 次磁盘读取，共 4 次（若无缓存则是 4 + 3*4 = 16 次）
+    load_calls.clear()
+    T.train_heads(student, idx, cfg)
+    assert len(load_calls) == 4, f"Expected 4 np.load calls in train_heads with cache, got {len(load_calls)}"
+

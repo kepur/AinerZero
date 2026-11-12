@@ -30,7 +30,7 @@ from ainerzero.v9.experiments.s5 import data as D
 from ainerzero.v9.experiments.s5 import train as T
 from ainerzero.v9.experiments.s5.heads import (
     DepthDistillHead,
-    GridHead,
+    FlatHead,
     R1Head,
     VJEPAProjHead,
 )
@@ -41,6 +41,7 @@ from ainerzero.v9.experiments.s5.losses import (
     ssi_depth_loss,
 )
 from ainerzero.v9.experiments.s5.materialize import materialize_partition
+from ainerzero.v9.experiments.s5.metrics import grid_ap
 from ainerzero.v9.experiments.s5.student import Student
 from ainerzero.v9.experiments.s5.tokens import rlt_keep
 
@@ -423,8 +424,8 @@ def test_predict_shapes_and_tau(train_fixture):
     student = _make_small_student()
     heads = T.HeadsContainer(
         r1=R1Head(d=student.d),
-        r2=GridHead(out=(12, 7), d=student.d, heads=student.heads),
-        r3=GridHead(out=(12, 7), d=student.d, heads=student.heads),
+        r2=FlatHead(d=student.d, k=4),
+        r3=FlatHead(d=student.d, k=4),
     )
 
     # 1. 无 tau 推理
@@ -622,8 +623,8 @@ def test_predict_restores_dropped_positions_from_run_start(train_fixture):
     idx = D.ClipIndex(train_fixture / "part")
     mx.random.seed(5)
     student = _make_small_student()
-    heads = T.HeadsContainer(r1=R1Head(d=32), r2=GridHead(out=(12, 7), d=32, heads=2),
-                             r3=GridHead(out=(12, 7), d=32, heads=2))
+    heads = T.HeadsContainer(r1=R1Head(d=32), r2=FlatHead(d=32, k=4),
+                             r3=FlatHead(d=32, k=4))
     out = T.predict(student, heads, idx, tau=0.02)
     plain = T.predict(student, heads, idx, tau=None)
     checked = 0
@@ -676,15 +677,173 @@ def test_a0r_r1_loss_ignores_dropped_token_values(train_fixture, monkeypatch):
 
 
 def test_predict_grid_logits_ignore_dropped_token_values(train_fixture, monkeypatch):
-    """P237 J2: under RLT, predict must mask dropped tokens for the R2/R3 grid heads."""
+    """RLT 下被并掉位置的值不影响 r2/r3。机理是 restore_runs 之后再读 FlatHead，不再是 GridHead 掩码。"""
     idx = D.ClipIndex(train_fixture / "part")
     outs = []
     for fill in (0.0, 1.0e3):
         monkeypatch.setattr(Student, "__call__", _fill_dropped(fill))
         mx.random.seed(21)
         student = _make_small_student()
-        heads = T.HeadsContainer(r1=R1Head(d=32), r2=GridHead(out=(12, 7), d=32, heads=2),
-                                 r3=GridHead(out=(12, 7), d=32, heads=2))
+        heads = T.HeadsContainer(r1=R1Head(d=32), r2=FlatHead(d=32, k=4),
+                                 r3=FlatHead(d=32, k=4))
         outs.append(T.predict(student, heads, idx, tau=0.02))
     for key in ("r2_logit", "r3_logit", "r1_logd"):
         np.testing.assert_allclose(outs[0][key], outs[1][key], rtol=1e-5, atol=1e-5, err_msg=key)
+
+
+# ------------------------------------------------------------------------------------------------
+# P240：FlatHead（最后一个管长逐 token 打分 + 按位置线性映射）
+# ------------------------------------------------------------------------------------------------
+def _mean_bce_with_logits(logits: np.ndarray, targets: np.ndarray) -> float:
+    x = np.asarray(logits, dtype=np.float64)
+    y = np.asarray(targets, dtype=np.float64)
+    per = np.maximum(x, 0.0) - x * y + np.log1p(np.exp(-np.abs(x)))
+    return float(np.mean(per))
+
+
+def _mean_pool_then_project(head: FlatHead, tokens: mx.array) -> mx.array:
+    """坏对照：展平前对 196 个位置做平均再广播。交换两个位置不再改变输出。"""
+    B = tokens.shape[0]
+    d = tokens.shape[-1]
+    last = tokens.reshape(B, 8, 196, d)[:, 7]
+    scores = head.score(head.norm(last))
+    pooled = mx.mean(scores, axis=1, keepdims=True)
+    flat = mx.broadcast_to(pooled, (B, 196, head.k)).reshape(B, 196 * head.k)
+    return head.position(flat).reshape(B, head.out[0], head.out[1])
+
+
+def test_flat_head_loss_is_unweighted_mean_bce():
+    """BCE with_logits 的 mean，不加正例权重。"""
+    logits = np.array([[0.2, -1.5, 0.7, 2.0], [-0.4, 0.1, 1.2, -2.2]], dtype=np.float32)
+    targets = np.array([[0.0, 1.0, 1.0, 0.0], [1.0, 0.0, 1.0, 0.0]], dtype=np.float32)
+    head = FlatHead(d=8, k=4)
+    got = float(head.loss(mx.array(logits), mx.array(targets)).item())
+    ref = _mean_bce_with_logits(logits, targets)
+    assert abs(got - ref) < 1e-5
+    weights = 1.0 + 9.0 * targets
+    per = np.maximum(logits, 0.0) - logits * targets + np.log1p(np.exp(-np.abs(logits)))
+    weighted = float(np.sum(weights * per) / np.sum(weights))
+    assert abs(weighted - ref) > 1e-3
+
+
+def test_flat_head_reads_only_the_last_tube():
+    """改 0–6 管长不变；改第 7 管长的任一 token 则变。"""
+    mx.random.seed(0)
+    head = FlatHead(d=16, k=4)
+    tokens = mx.random.normal((2, 1568, 16))
+    base = np.array(head(tokens))
+
+    early = np.array(tokens)
+    early.reshape(2, 8, 196, 16)[:, :7] = np.random.default_rng(1).normal(size=(2, 7, 196, 16))
+    same = np.array(head(mx.array(early)))
+    np.testing.assert_allclose(base, same, atol=1e-5)
+
+    last = np.array(tokens)
+    last.reshape(2, 8, 196, 16)[:, 7, 3, 0] += 5.0
+    changed = np.array(head(mx.array(last)))
+    assert float(np.max(np.abs(changed - base))) > 1e-3
+
+
+def test_flat_head_output_changes_when_positions_swap():
+    """两个不同位置互换后输出改变。平均池化坏对照则不变。"""
+    mx.random.seed(1)
+    head = FlatHead(d=16, k=4)
+    rng = np.random.default_rng(2)
+    raw = rng.normal(size=(1, 1568, 16)).astype(np.float32)
+    view = raw.reshape(1, 8, 196, 16)
+    view[0, 7, 0] = rng.normal(size=16).astype(np.float32)
+    view[0, 7, 17] = rng.normal(size=16).astype(np.float32)
+    swapped = raw.copy()
+    swapped_view = swapped.reshape(1, 8, 196, 16)
+    swapped_view[0, 7, 0], swapped_view[0, 7, 17] = view[0, 7, 17].copy(), view[0, 7, 0].copy()
+
+    tokens = mx.array(raw)
+    other = mx.array(swapped)
+    diff = float(np.max(np.abs(np.array(head(tokens)) - np.array(head(other)))))
+    assert diff > 1e-3
+
+    pooled_diff = float(np.max(np.abs(
+        np.array(_mean_pool_then_project(head, tokens)) - np.array(_mean_pool_then_project(head, other))
+    )))
+    assert pooled_diff < 1e-5
+
+
+def test_rlt_flat_head_receives_restored_tokens(train_fixture, monkeypatch):
+    """开 tau 时，predict 与 train_heads 送进 FlatHead 的是 restore_runs 之后的整段 token。"""
+    idx = D.ClipIndex(train_fixture / "part")
+    state = {"restored": None, "keep_seen": [], "fed": 0}
+    real_restore = T.restore_runs
+    real_call = FlatHead.__call__
+
+    def wrap_restore(tok, keep):
+        out = real_restore(tok, keep)
+        state["restored"] = out
+        state["keep_seen"].append(keep is not None)
+        return out
+
+    def wrap_call(self, tokens):
+        assert state["restored"] is not None, "FlatHead ran before restore_runs"
+        np.testing.assert_allclose(np.array(tokens), np.array(state["restored"]), atol=1e-5)
+        state["fed"] += 1
+        return real_call(self, tokens)
+
+    monkeypatch.setattr(T, "restore_runs", wrap_restore)
+    monkeypatch.setattr(FlatHead, "__call__", wrap_call)
+
+    dropped_last = 0
+    for n in range(len(idx)):
+        keep, _ = rlt_keep(D.load_item(idx, n)["patches"], 0.02)
+        dropped_last += int(np.count_nonzero(~keep[7]))
+    assert dropped_last > 0, "fixture must drop a last-tube token at tau=0.02"
+
+    mx.random.seed(2)
+    student = _make_small_student()
+    heads = T.HeadsContainer(
+        r1=R1Head(d=32), r2=FlatHead(d=32, k=4), r3=FlatHead(d=32, k=4)
+    )
+    T.predict(student, heads, idx, tau=0.02)
+    assert state["keep_seen"] and all(state["keep_seen"])
+    assert state["fed"] == 2 * len(idx)
+
+    state["restored"] = None
+    state["keep_seen"] = []
+    state["fed"] = 0
+    cfg = T.TrainConfig(lr=1e-2, batch_size=2, epochs=1, seed=3, tau=0.02)
+    T.train_heads(_make_small_student(), idx, cfg)
+    assert state["keep_seen"] and all(state["keep_seen"])
+    assert state["fed"] >= 2
+
+
+def test_supplied_r2_r3_heads_are_kept(train_fixture):
+    """调用方传入的 r2、r3 照用，不换成内部新建的头。"""
+    idx = D.ClipIndex(train_fixture / "part")
+    cfg = T.TrainConfig(lr=1e-3, batch_size=2, epochs=1, seed=1)
+    student = _make_small_student()
+    r2 = FlatHead(d=student.d, k=4)
+    r3 = FlatHead(d=student.d, k=4)
+    _, heads, _ = T.train_supervised(idx, cfg, student=student, heads={"r2": r2, "r3": r3})
+    assert heads["r2"] is r2 and heads["r3"] is r3
+    assert isinstance(heads["r1"], R1Head)
+
+
+def test_flat_head_train_ap_above_positive_rate(train_fixture):
+    """冻结随机学生，只训 FlatHead。训练集 R2 AP 明显高于正例率。"""
+    idx = D.ClipIndex(train_fixture / "part")
+    mx.random.seed(0)
+    student = _make_small_student()
+    before = {k: np.array(v) for k, v in tree_flatten(student.parameters())}
+    cfg = T.TrainConfig(lr=1e-2, weight_decay=0.0, batch_size=2, epochs=40, seed=0)
+    heads, _ = T.train_heads(student, idx, cfg)
+    after = {k: np.array(v) for k, v in tree_flatten(student.parameters())}
+    for k in before:
+        np.testing.assert_array_equal(before[k], after[k])
+    assert isinstance(heads["r2"], FlatHead) and heads["r2"].k == 4
+    assert isinstance(heads["r3"], FlatHead) and heads["r3"].k == 4
+
+    preds = T.predict(student, heads, idx)
+    targets = np.stack([D.load_item(idx, i)["r2"] for i in range(len(idx))], axis=0)
+    pos_rate = float(np.mean(targets))
+    assert pos_rate > 0.0
+    ap = grid_ap(preds["r2_logit"], targets)
+    print(f"P240_AP ap={ap:.6f} pos_rate={pos_rate:.6f} margin={ap - pos_rate:.6f}")
+    assert ap > pos_rate + 0.05, f"train R2 AP {ap} vs positive rate {pos_rate}"

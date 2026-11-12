@@ -27,13 +27,14 @@ import numpy as np
 
 from ainerzero.v9.experiments.s5.data import (
     ClipIndex,
+    ItemCache,
     batches,
     load_item,
     load_teacher,
 )
 from ainerzero.v9.experiments.s5.heads import (
     DepthDistillHead,
-    GridHead,
+    FlatHead,
     R1Head,
     VJEPAProjHead,
 )
@@ -195,10 +196,14 @@ def distill(
     perm_seed: int | None = None,
     student: Student | None = None,
     heads: HeadsContainer | dict[str, nn.Module] | None = None,
+    cache: ItemCache | None = None,
 ) -> tuple[Student, HeadsContainer, dict[str, Any]]:
     """教师特征蒸馏训练循环（A1、A2、A3、C-sh、R 臂）。"""
     if arm not in ("A1", "A2", "A3"):
         raise ValueError(f"Unknown arm {arm!r}; expected 'A1', 'A2', or 'A3'")
+
+    active_cache = cache if cache is not None else ItemCache()
+    t_types = ("da2",) if arm == "A1" else (("vjepa",) if arm == "A2" else ("vjepa", "da2"))
 
     mx.random.seed(cfg.seed)
     np.random.seed(cfg.seed)
@@ -257,12 +262,12 @@ def distill(
             run_len_list = []
 
             for b_idx in b_indices:
-                s_item = load_item(index, b_idx, appearance_suffix="")
+                s_item = load_item(index, b_idx, appearance_suffix="", cache=active_cache)
                 patches_list.append(s_item["patches"])
 
                 # 教师特征来源：普通情况来自 b_idx，C-sh 来自 perm_map[b_idx]
                 t_idx = perm_map[b_idx] if perm_map is not None else b_idx
-                t_item = load_teacher(index, t_idx, teachers)
+                t_item = load_teacher(index, t_idx, teachers, teacher_types=t_types, cache=active_cache)
                 if arm in ("A1", "A3"):
                     da2_list.append(t_item["da2"])
                 if arm in ("A2", "A3"):
@@ -355,8 +360,10 @@ def train_supervised(
     init_student: Student | None = None,
     student: Student | None = None,
     heads: HeadsContainer | dict[str, nn.Module] | None = None,
+    cache: ItemCache | None = None,
 ) -> tuple[Student, HeadsContainer, dict[str, Any]]:
     """端到端监督训练学生与读出头（A0、A4、A0-R、A* 全量微调）。"""
+    active_cache = cache if cache is not None else ItemCache()
     mx.random.seed(cfg.seed)
     np.random.seed(cfg.seed)
 
@@ -377,9 +384,9 @@ def train_supervised(
     if "r1" not in heads_dict:
         heads_dict["r1"] = R1Head(d=curr_student.d)
     if "r2" not in heads_dict:
-        heads_dict["r2"] = GridHead(out=(12, 7), d=curr_student.d, heads=curr_student.heads)
+        heads_dict["r2"] = FlatHead(d=curr_student.d, k=4)
     if "r3" not in heads_dict:
-        heads_dict["r3"] = GridHead(out=(12, 7), d=curr_student.d, heads=curr_student.heads)
+        heads_dict["r3"] = FlatHead(d=curr_student.d, k=4)
     if cfg.eta is not None and "align_proj" not in heads_dict:
         heads_dict["align_proj"] = VJEPAProjHead(d=curr_student.d, out_dim=1024)
 
@@ -417,7 +424,12 @@ def train_supervised(
             run_len_list = []
 
             for b_idx in b_indices:
-                item = load_item(index, b_idx, teachers=teachers if cfg.eta is not None else None)
+                item = load_item(
+                    index,
+                    b_idx,
+                    teachers=teachers if cfg.eta is not None else None,
+                    cache=active_cache,
+                )
                 patches_list.append(item["patches"])
                 r1_logd_list.append(item["r1_logd"])
                 r1_sky_list.append(item["r1_sky"])
@@ -455,11 +467,11 @@ def train_supervised(
                 pred_logd, pred_sky = model.heads["r1"](r1_tokens)
                 l_r1 = model.heads["r1"].loss(pred_logd, pred_sky, r1_logd_mx, r1_sky_mx)
 
-                # R2 / R3 网格分类损失
-                logits_r2 = model.heads["r2"](tokens, mask=mask)
+                # R2 / R3：与 R1 同一份 token。开 RLT 时已是 restore_runs 的结果，不再传注意力掩码。
+                logits_r2 = model.heads["r2"](r1_tokens)
                 l_r2 = model.heads["r2"].loss(logits_r2, r2_mx)
 
-                logits_r3 = model.heads["r3"](tokens, mask=mask)
+                logits_r3 = model.heads["r3"](r1_tokens)
                 l_r3 = model.heads["r3"].loss(logits_r3, r3_mx)
 
                 tot_loss = l_r1 + l_r2 + l_r3
@@ -522,8 +534,10 @@ def train_heads(
     *,
     heads: HeadsContainer | dict[str, nn.Module] | None = None,
     cache_dir: str | Path | None = None,
+    cache: ItemCache | None = None,
 ) -> tuple[HeadsContainer, dict[str, Any]]:
-    """学生冻结，仅训练读出头（R1Head 与两个 GridHead）。"""
+    """学生冻结，仅训练读出头（R1Head 与两个 FlatHead）。"""
+    active_cache = cache if cache is not None else ItemCache()
     mx.random.seed(cfg.seed)
     np.random.seed(cfg.seed)
 
@@ -537,9 +551,9 @@ def train_heads(
     if "r1" not in heads_dict:
         heads_dict["r1"] = R1Head(d=student.d)
     if "r2" not in heads_dict:
-        heads_dict["r2"] = GridHead(out=(12, 7), d=student.d, heads=student.heads)
+        heads_dict["r2"] = FlatHead(d=student.d, k=4)
     if "r3" not in heads_dict:
-        heads_dict["r3"] = GridHead(out=(12, 7), d=student.d, heads=student.heads)
+        heads_dict["r3"] = FlatHead(d=student.d, k=4)
 
     heads_container = HeadsContainer(**heads_dict)
 
@@ -548,7 +562,7 @@ def train_heads(
     t_cache_0 = time.perf_counter()
 
     for i in range(len(index)):
-        item = load_item(index, i)
+        item = load_item(index, i, cache=active_cache)
         patches_mx = mx.array(item["patches"][None, ...])
         if cfg.tau is not None:
             k, rl = rlt_keep(item["patches"], cfg.tau)
@@ -587,7 +601,6 @@ def train_heads(
             t_data_0 = time.perf_counter()
 
             tokens_list = [cached_tokens[b][0] for b in b_indices]
-            mask_list = [cached_tokens[b][1] for b in b_indices]
             keep_list = [cached_tokens[b][2] for b in b_indices]
 
             r1_logd_list = []
@@ -596,14 +609,13 @@ def train_heads(
             r3_list = []
 
             for b in b_indices:
-                it = load_item(index, b)
+                it = load_item(index, b, cache=active_cache)
                 r1_logd_list.append(it["r1_logd"])
                 r1_sky_list.append(it["r1_sky"])
                 r2_list.append(it["r2"])
                 r3_list.append(it["r3"])
 
             b_tokens = mx.stack(tokens_list, axis=0)
-            b_mask = mx.stack(mask_list, axis=0)
             b_keep = mx.stack(keep_list, axis=0) if keep_list[0] is not None else None
             r1_logd_mx = mx.array(np.stack(r1_logd_list, axis=0))
             r1_sky_mx = mx.array(np.stack(r1_sky_list, axis=0))
@@ -620,10 +632,10 @@ def train_heads(
                 pred_logd, pred_sky = model_heads["r1"](r1_tokens)
                 l_r1 = model_heads["r1"].loss(pred_logd, pred_sky, r1_logd_mx, r1_sky_mx)
 
-                logits_r2 = model_heads["r2"](b_tokens, mask=b_mask)
+                logits_r2 = model_heads["r2"](r1_tokens)
                 l_r2 = model_heads["r2"].loss(logits_r2, r2_mx)
 
-                logits_r3 = model_heads["r3"](b_tokens, mask=b_mask)
+                logits_r3 = model_heads["r3"](r1_tokens)
                 l_r3 = model_heads["r3"].loss(logits_r3, r3_mx)
 
                 return l_r1 + l_r2 + l_r3
@@ -672,8 +684,10 @@ def predict(
     *,
     tau: float | None = None,
     batch_size: int = 16,
+    cache: ItemCache | None = None,
 ) -> dict[str, Any]:
     """多头预测接口：输出 r1_logd [N, 16, 14, 14]、r2_logit [N, 12, 7]、r3_logit [N, 12, 7]。"""
+    active_cache = cache if cache is not None else ItemCache()
     heads_container = heads if isinstance(heads, HeadsContainer) else HeadsContainer(**heads)
 
     r1_logd_all = []
@@ -682,7 +696,7 @@ def predict(
     keep_rates = []
 
     for i in range(len(index)):
-        item = load_item(index, i)
+        item = load_item(index, i, cache=active_cache)
         patches_mx = mx.array(item["patches"][None, ...])
 
         if tau is not None:
@@ -690,14 +704,14 @@ def predict(
             keep_rates.append(float(np.mean(k)))
             k_mx = mx.array(k[None, ...])
             rl_mx = mx.array(rl[None, ...])
-            tokens, mask = student(patches_mx, keep=k_mx, run_len=rl_mx)
+            tokens, _mask = student(patches_mx, keep=k_mx, run_len=rl_mx)
         else:
-            tokens, mask = student(patches_mx)
+            tokens, _mask = student(patches_mx)
 
         r1_tokens = restore_runs(tokens, k_mx if tau is not None else None)
         pred_logd, _ = heads_container["r1"](r1_tokens)
-        r2_logit = heads_container["r2"](tokens, mask=mask)
-        r3_logit = heads_container["r3"](tokens, mask=mask)
+        r2_logit = heads_container["r2"](r1_tokens)
+        r3_logit = heads_container["r3"](r1_tokens)
 
         mx.eval(pred_logd, r2_logit, r3_logit)
         r1_logd_all.append(np.array(pred_logd[0]))

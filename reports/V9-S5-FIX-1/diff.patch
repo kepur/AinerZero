@@ -1,0 +1,1101 @@
+diff --git a/reports/V9-S5-PHASE1/plan_s5p1.py b/reports/V9-S5-PHASE1/plan_s5p1.py
+index 6f579a8..6f890c1 100644
+--- a/reports/V9-S5-PHASE1/plan_s5p1.py
++++ b/reports/V9-S5-PHASE1/plan_s5p1.py
+@@ -31,6 +31,9 @@ STAGE_WALL_H = {
+ }
+ 
+ 
++STEP_COMPUTE_S = 0.16          # probe 实测每步纯计算时间（批量 8，约 0.16 s）
++CACHED_STEP_DATA_S = 0.015     # 进程内缓存命中后每步现算 tubelet_patches 与组批耗时（约 0.015 s）
++COLD_READ_S_PER_CLIP = 0.02    # 首轮每段冷读文件与首次核对教师 SHA 耗时（约 0.02 s/段）
+ HEADS_CACHE_SEG_PER_S = 54.0   # 学生前向抽取并缓存特征（按 54 段/秒）
+ HEADS_TRAIN_STEP_PER_S = 100.0  # 仅更新读出头参数的优化器步速（按 100 步/秒估算）
+ 
+@@ -40,18 +43,19 @@ def steps_for(n_clips: int, epochs: int, batch: int = BATCH) -> int:
+ 
+ 
+ def wall_seconds(n_clips: int, epochs: int, *, kind: str = "train", batch: int = BATCH) -> float:
+-    """按设计里的每秒段数估算墙钟，只用于 dry-run。
++    """按 probe 实测每步计算时间（约 0.16 s，批量 8）加缓存后读数据开销估算墙钟，只用于 dry-run。
+ 
+     对于 heads 格子，学生模型已冻结，耗时按「缓存一次学生特征 + 只训读出头」估算；
+-    单头耗时约 25–89 s（平均约 50 s），dev-distill 54 个读出头合计约 0.81 h（对照设计 §6 的 0.75 h）；
+-    待 probe 实测后校准覆盖。
++    对于 distill / supervised 格子，耗时按「首轮冷读与单次教师 SHA 核对 + 每步 0.16s 计算与缓存现算 patches」估算。
+     """
++    steps = steps_for(n_clips, epochs, batch)
+     if kind == "heads":
+-        steps = steps_for(n_clips, epochs, batch)
+         cache_s = float(n_clips / HEADS_CACHE_SEG_PER_S)
+         train_s = float(steps / HEADS_TRAIN_STEP_PER_S)
+         return cache_s + train_s
+-    return float(n_clips * epochs / SEG_PER_S)
++    cold_data_s = float(n_clips * COLD_READ_S_PER_CLIP)
++    step_s = float(steps * (STEP_COMPUTE_S + CACHED_STEP_DATA_S))
++    return cold_data_s + step_s
+ 
+ 
+ def scaled_epochs(design_epochs: int, scale: float) -> int:
+@@ -312,6 +316,9 @@ def summarize_stage(stage: str, cells: list[dict]) -> dict:
+         "wall_s_est": wall,
+         "wall_h_est": wall / 3600.0,
+         "design_wall_h": STAGE_WALL_H.get(stage),
++        "step_compute_s": STEP_COMPUTE_S,
++        "cached_step_data_s": CACHED_STEP_DATA_S,
++        "cold_read_s_per_clip": COLD_READ_S_PER_CLIP,
+         "cells": cells,
+     }
+     if stage in ("probe", "dev-distill"):
+diff --git a/reports/V9-S5-PHASE1/run_s5p1.py b/reports/V9-S5-PHASE1/run_s5p1.py
+index ce8bf37..c6d0fbc 100644
+--- a/reports/V9-S5-PHASE1/run_s5p1.py
++++ b/reports/V9-S5-PHASE1/run_s5p1.py
+@@ -42,6 +42,7 @@ LEDGER = REPO / "artifacts/v9/s5/dev-uses.json"
+ DATA_ROOT = REPO / "artifacts/v9/s5/data"
+ TEACHERS = REPO / "artifacts/v9/s5/teachers"
+ DEV_MAX_USES = 8
++LAB_SUBSET_SEED = 20261112
+ CELL_LIMIT_S = 45 * 60
+ STAGE_LIMIT_S = {
+     "smoke": 15 * 60,
+@@ -188,11 +189,13 @@ def dry_run_plan(stage: str) -> dict:
+     summary["dev_uses"] = 1
+     summary["limit_s"] = STAGE_LIMIT_S[stage]
+     summary["cell_limit_s"] = CELL_LIMIT_S
++    summary["lab_subset_seed"] = LAB_SUBSET_SEED
+     summary["note"] = (
+         "probe 的轮数按设计步数的 1/10 取整，至少 1 轮。"
+         "dev-tune 的蒸馏学习率用 A2、约 1/4 步数；监督学习和 η 用设计轮数。"
+         "η 的学习率要等监督调参选出，dry-run 里记为 null。"
+-        "逐步墙钟按 54 段/秒，另附设计 §6 的整段估算。"
++        "带 label_n 的格子按 LAB_SUBSET_SEED=20261112 取 4/32/128 个世界的嵌套子集。"
++        "逐步墙钟按 probe 实测每步计算时间（约 0.16 s，批量 8）加进程内缓存后的读数据估算，另附设计 §6 的整段对照。"
+     )
+     return summary
+ 
+@@ -255,7 +258,11 @@ def _data_fraction(log: dict) -> float | None:
+     return float(data_s / total)
+ 
+ 
+-def _index_for(partition_dir: Path, clips) -> ClipIndex:
++def _index_for(partition_dir: Path, clips, *, label_n: int | None = None) -> ClipIndex:
++    if label_n is not None:
++        return ClipIndex(partition_dir).subset_by_worlds(
++            plan.L_WORLDS[int(label_n)], seed=LAB_SUBSET_SEED
++        )
+     return ClipIndex(partition_dir, clips=clips)
+ 
+ 
+@@ -269,7 +276,7 @@ def _execute_cell_body(cell: dict, ctx: dict) -> dict:
+     kind = cell["kind"]
+     smoke = ctx["stage"] == "smoke"
+     clips = SMOKE_CLIPS if smoke else None
+-    index = _index_for(ctx["dirs"][cell["partition"]], clips)
++    index = _index_for(ctx["dirs"][cell["partition"]], clips, label_n=cell.get("label_n"))
+     student_kw = SMOKE_STUDENT if smoke else {}
+     weights_dir = ctx["weights"]
+     metrics_dir = ctx["metrics"]
+@@ -347,10 +354,15 @@ def _execute_cell_body(cell: dict, ctx: dict) -> dict:
+         )
+         _save_l64(cell, ev, ctx)
+     wall = time.perf_counter() - t0
++    steps_logged = len(log.get("step_logs") or [])
+     return {
+         "cell_id": cell["cell_id"],
+         "device": str(mx.default_device()),
+-        "steps_logged": len(log.get("step_logs") or []),
++        "worlds": list(index.worlds),
++        "n_worlds": len(index.worlds),
++        "n_clips": len(index),
++        "steps_logged": steps_logged,
++        "steps": steps_logged,
+         "wall_s": wall,
+         "data_fraction": _data_fraction(log),
+         "rss_mb": _rss_mb(),
+@@ -582,7 +594,20 @@ def run_locked(
+                 _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": "timeout", "limit_s": 0.0, "wall_s": 0.0})
+                 break
+ 
+-            _append(events, {"event": "cell_start", "cell_id": cell["cell_id"], "index": index})
++            start_event: dict = {"event": "cell_start", "cell_id": cell["cell_id"], "index": index}
++            part_name = cell.get("partition")
++            if part_name in ctx["dirs"] and ctx["dirs"][part_name].exists():
++                start_idx = _index_for(
++                    ctx["dirs"][part_name],
++                    SMOKE_CLIPS if args.stage == "smoke" else None,
++                    label_n=cell.get("label_n"),
++                )
++                start_event["worlds"] = list(start_idx.worlds)
++                start_event["n_worlds"] = len(start_idx.worlds)
++                start_event["n_clips"] = len(start_idx)
++                if cell.get("label_n") is not None:
++                    start_event["label_n"] = int(cell["label_n"])
++            _append(events, start_event)
+ 
+             result_path = out / f".cell_{index}_{cell['cell_id']}.result.json"
+             err_path = out / f".cell_{index}_{cell['cell_id']}.err.json"
+diff --git a/src/ainerzero/v9/experiments/s5/data.py b/src/ainerzero/v9/experiments/s5/data.py
+index 6b9742e..5afa646 100644
+--- a/src/ainerzero/v9/experiments/s5/data.py
++++ b/src/ainerzero/v9/experiments/s5/data.py
+@@ -18,6 +18,13 @@ import numpy as np
+ from ainerzero.v9.experiments.s5.tokens import tubelet_patches
+ 
+ 
++DEFAULT_CACHE_MAX_BYTES = 48 * (1024 ** 3)  # 48 GiB 默认上限
++
++# 进程级教师文件 SHA 核对缓存：每个进程每个文件只核对一次
++_VERIFIED_TEACHER_SHAS: dict[str, str] = {}
++_LEDGER_CACHE: dict[tuple[str, int, int], dict[str, str]] = {}
++
++
+ def _sha256_file(path: Path) -> str:
+     h = hashlib.sha256()
+     with open(path, "rb") as f:
+@@ -26,6 +33,55 @@ def _sha256_file(path: Path) -> str:
+     return h.hexdigest()
+ 
+ 
++class ItemCache:
++    """进程内数据与教师特征缓存（带字节上限）。
++
++    缓存内容：
++    - uint8 原始段数组 (clip_raw)
++    - 标签数组与元数据字典 (r1_logd, r1_sky, r1_obj, r2, r3, disk_groups, ordering_pairs)
++    - 教师特征数组 (vjepa, da2, fp16)
++    tubelet_patches 每次从 uint8 原始段现算，不入缓存。
++    超过 max_bytes 上限时不再缓存新条目，但照常读取返回，不报错。
++    """
++
++    def __init__(self, max_bytes: int = DEFAULT_CACHE_MAX_BYTES) -> None:
++        self.max_bytes = int(max_bytes)
++        self.used_bytes = 0
++        self._items: dict[str, Any] = {}
++        self.hits = 0
++        self.misses = 0
++
++    def get(self, key: str) -> Any | None:
++        if key in self._items:
++            self.hits += 1
++            return self._items[key]
++        self.misses += 1
++        return None
++
++    def put(self, key: str, value: Any, nbytes: int) -> bool:
++        nbytes = int(nbytes)
++        if key in self._items:
++            return True
++        if nbytes < 0 or self.used_bytes + nbytes > self.max_bytes:
++            return False
++        self._items[key] = value
++        self.used_bytes += nbytes
++        return True
++
++    def clear(self) -> None:
++        self._items.clear()
++        self.used_bytes = 0
++        self.hits = 0
++        self.misses = 0
++
++    def __len__(self) -> int:
++        return len(self._items)
++
++    def __contains__(self, key: str) -> bool:
++        return key in self._items
++
++
++
+ class ClipIndex:
+     """分区数据切片索引。管理可用 (world, clip) 列表。"""
+ 
+@@ -112,27 +168,47 @@ class ClipIndex:
+ 
+ def _load_progress_ledger(teachers_dir: Path) -> dict[str, str]:
+     ledger_path = teachers_dir / "progress.jsonl"
++    if not ledger_path.exists():
++        return {}
++    st = ledger_path.stat()
++    cache_key = (str(ledger_path.resolve()), st.st_mtime_ns, st.st_size)
++    if cache_key in _LEDGER_CACHE:
++        return _LEDGER_CACHE[cache_key]
+     ledger: dict[str, str] = {}
+-    if ledger_path.exists():
+-        for line in ledger_path.read_text(encoding="utf-8").splitlines():
+-            line = line.strip()
+-            if line:
+-                rec = json.loads(line)
+-                ledger[rec["file"]] = rec["sha256"]
++    for line in ledger_path.read_text(encoding="utf-8").splitlines():
++        line = line.strip()
++        if line:
++            rec = json.loads(line)
++            ledger[rec["file"]] = rec["sha256"]
++    _LEDGER_CACHE[cache_key] = ledger
+     return ledger
+ 
+ 
++def _verify_teacher_file_once(file_path: Path, expected_sha: str, label: str) -> None:
++    """每个进程每个教师文件只算一次 SHA256；首次读入前若被改动照常报错。"""
++    key = str(file_path.resolve())
++    if _VERIFIED_TEACHER_SHAS.get(key) == expected_sha:
++        return
++    got_sha = _sha256_file(file_path)
++    if got_sha != expected_sha:
++        raise RuntimeError(
++            f"{label} feature {file_path} SHA mismatch: got {got_sha} != ledger {expected_sha}"
++        )
++    _VERIFIED_TEACHER_SHAS[key] = got_sha
++
++
+ def load_item(
+     index: ClipIndex,
+     i: int,
+     *,
+     teachers: str | Path | dict[str, str | Path] | None = None,
+     appearance_suffix: str = "",
++    cache: ItemCache | None = None,
+ ) -> dict[str, Any]:
+     """读取指定索引 i 处的切片数据与标签。
+ 
+     返回字典包含：
+-    - patches: tubelet_patches 转换后的 float32 [8, 14, 14, 1536]
++    - patches: tubelet_patches 转换后的 float32 [8, 14, 14, 1536]（每次从 uint8 原始段现算）
+     - r1_logd, r1_sky, r1_obj: 来自 labels_YY.npz
+     - r2, r3: 网格占据标签 [12, 7]
+     - disk_groups: 圆盘属性字典列表
+@@ -143,48 +219,70 @@ def load_item(
+     w, c = index[i]
+     wdir = index.world_dirs[w]
+ 
+-    # 1. 加载 clip
++    # 1. 加载 clip（缓存 uint8 原始段，patches 每次现算）
+     suffix = f"_{appearance_suffix}" if appearance_suffix else ""
+     clip_file = wdir / f"clip_{c:02d}{suffix}.npy"
+     if not clip_file.exists():
+         # 若未找到带特定 appearance 的，降级尝试无 suffix 的主文件
+         clip_file = wdir / f"clip_{c:02d}.npy"
+-    if not clip_file.exists():
+-        raise FileNotFoundError(f"Clip file not found: {clip_file}")
+ 
+-    clip_raw = np.load(clip_file)  # uint8 [16, 224, 224, 3]
++    clip_key = f"clip:{clip_file.resolve()}"
++    clip_raw = cache.get(clip_key) if cache is not None else None
++    if clip_raw is None:
++        if not clip_file.exists():
++            raise FileNotFoundError(f"Clip file not found: {clip_file}")
++        clip_raw = np.load(clip_file)  # uint8 [16, 224, 224, 3]
++        if cache is not None:
++            cache.put(clip_key, clip_raw, int(clip_raw.nbytes))
++
+     patches = tubelet_patches(clip_raw)  # float32 [8, 14, 14, 1536]
+ 
+-    # 2. 加载标签
++    # 2. 加载标签（缓存标签数组与字典）
+     labels_file = wdir / f"labels_{c:02d}.npz"
+-    if not labels_file.exists():
+-        raise FileNotFoundError(f"Labels file not found: {labels_file}")
+-
+-    npz = np.load(labels_file, allow_pickle=True)
+-    r1_logd = npz["r1_logd"]
+-    r1_sky = npz["r1_sky"]
+-    r1_obj = npz["r1_obj"]
+-    r2 = npz["r2"]
+-    r3 = npz["r3"]
+-    disk_groups = json.loads(str(npz["disk_groups_json"]))
+-    ordering_pairs = json.loads(str(npz["ordering_pairs_json"]))
++    labels_key = f"labels:{labels_file.resolve()}"
++    cached_labels = cache.get(labels_key) if cache is not None else None
++    if cached_labels is None:
++        if not labels_file.exists():
++            raise FileNotFoundError(f"Labels file not found: {labels_file}")
++        with np.load(labels_file, allow_pickle=True) as npz:
++            r1_logd = npz["r1_logd"]
++            r1_sky = npz["r1_sky"]
++            r1_obj = npz["r1_obj"]
++            r2 = npz["r2"]
++            r3 = npz["r3"]
++            disk_groups = json.loads(str(npz["disk_groups_json"]))
++            ordering_pairs = json.loads(str(npz["ordering_pairs_json"]))
++        cached_labels = {
++            "r1_logd": r1_logd,
++            "r1_sky": r1_sky,
++            "r1_obj": r1_obj,
++            "r2": r2,
++            "r3": r3,
++            "disk_groups": disk_groups,
++            "ordering_pairs": ordering_pairs,
++        }
++        if cache is not None:
++            lbl_bytes = int(
++                r1_logd.nbytes + r1_sky.nbytes + r1_obj.nbytes + r2.nbytes + r3.nbytes
++            )
++            cache.put(labels_key, cached_labels, lbl_bytes)
+ 
+     item: dict[str, Any] = {
+         "world": w,
+         "clip": c,
+         "patches": patches,
+-        "r1_logd": r1_logd,
+-        "r1_sky": r1_sky,
+-        "r1_obj": r1_obj,
+-        "r2": r2,
+-        "r3": r3,
+-        "disk_groups": disk_groups,
+-        "ordering_pairs": ordering_pairs,
++        "r1_logd": cached_labels["r1_logd"],
++        "r1_sky": cached_labels["r1_sky"],
++        "r1_obj": cached_labels["r1_obj"],
++        "r2": cached_labels["r2"],
++        "r3": cached_labels["r3"],
++        "disk_groups": cached_labels["disk_groups"],
++        "ordering_pairs": cached_labels["ordering_pairs"],
+     }
+ 
+     # 3. 若指定了 teachers，加载教师特征并校验 progress 账本 SHA
+     if teachers is not None:
+-        item.update(load_teacher(index, i, teachers))
++        item.update(load_teacher(index, i, teachers, cache=cache))
+ 
+     return item
+ 
+@@ -194,48 +292,60 @@ def load_teacher(
+     i: int,
+     teachers: str | Path | dict[str, str | Path],
+     *,
+-    teacher_types: Sequence[str] = ("vjepa", "da2"),
++    teacher_types: Sequence[str] | None = None,
++    cache: ItemCache | None = None,
+ ) -> dict[str, np.ndarray]:
+-    """仅读取指定索引 i 处的教师特征，核对 progress.jsonl 账本中的 SHA256。"""
++    """仅读取指定索引 i 处的教师特征，核对 progress.jsonl 账本中的 SHA256（每进程每文件一次）。"""
+     w, c = index[i]
+     if isinstance(teachers, (str, Path)):
+         vjepa_dir = Path(teachers)
+         da2_dir = Path(teachers)
++        active_types = tuple(teacher_types) if teacher_types is not None else ("vjepa", "da2")
+     else:
+         vjepa_dir = Path(teachers.get("vjepa", teachers.get("vjepa_dir", ".")))
+         da2_dir = Path(teachers.get("da2", teachers.get("da2_dir", ".")))
++        if teacher_types is not None:
++            active_types = tuple(teacher_types)
++        else:
++            active_types = tuple(
++                t for t in ("vjepa", "da2") if t in teachers or f"{t}_dir" in teachers
++            ) or ("vjepa", "da2")
+ 
+     res: dict[str, np.ndarray] = {}
+ 
+-    if "vjepa" in teacher_types:
++    if "vjepa" in active_types:
+         vjepa_rel = f"world_{w:04d}/clip_{c:02d}.vjepa.npy"
+         vjepa_file = vjepa_dir / vjepa_rel
+-        if not vjepa_file.exists():
+-            raise FileNotFoundError(f"V-JEPA feature not found: {vjepa_file}")
+-
+-        vjepa_ledger = _load_progress_ledger(vjepa_dir)
+-        if vjepa_rel in vjepa_ledger:
+-            got_sha = _sha256_file(vjepa_file)
+-            if got_sha != vjepa_ledger[vjepa_rel]:
+-                raise RuntimeError(
+-                    f"V-JEPA feature {vjepa_file} SHA mismatch: got {got_sha} != ledger {vjepa_ledger[vjepa_rel]}"
+-                )
+-        res["vjepa"] = np.load(vjepa_file)
+-
+-    if "da2" in teacher_types:
++        vjepa_key = f"vjepa:{vjepa_file.resolve()}"
++        vjepa_arr = cache.get(vjepa_key) if cache is not None else None
++        if vjepa_arr is None:
++            if not vjepa_file.exists():
++                raise FileNotFoundError(f"V-JEPA feature not found: {vjepa_file}")
++
++            vjepa_ledger = _load_progress_ledger(vjepa_dir)
++            if vjepa_rel in vjepa_ledger:
++                _verify_teacher_file_once(vjepa_file, vjepa_ledger[vjepa_rel], "V-JEPA")
++            vjepa_arr = np.load(vjepa_file)
++            if cache is not None:
++                cache.put(vjepa_key, vjepa_arr, int(vjepa_arr.nbytes))
++        res["vjepa"] = vjepa_arr
++
++    if "da2" in active_types:
+         da2_rel = f"world_{w:04d}/da2_{c:02d}.da2.npy"
+         da2_file = da2_dir / da2_rel
+-        if not da2_file.exists():
+-            raise FileNotFoundError(f"DA2 feature not found: {da2_file}")
+-
+-        da2_ledger = _load_progress_ledger(da2_dir)
+-        if da2_rel in da2_ledger:
+-            got_sha = _sha256_file(da2_file)
+-            if got_sha != da2_ledger[da2_rel]:
+-                raise RuntimeError(
+-                    f"DA2 feature {da2_file} SHA mismatch: got {got_sha} != ledger {da2_ledger[da2_rel]}"
+-                )
+-        res["da2"] = np.load(da2_file)
++        da2_key = f"da2:{da2_file.resolve()}"
++        da2_arr = cache.get(da2_key) if cache is not None else None
++        if da2_arr is None:
++            if not da2_file.exists():
++                raise FileNotFoundError(f"DA2 feature not found: {da2_file}")
++
++            da2_ledger = _load_progress_ledger(da2_dir)
++            if da2_rel in da2_ledger:
++                _verify_teacher_file_once(da2_file, da2_ledger[da2_rel], "DA2")
++            da2_arr = np.load(da2_file)
++            if cache is not None:
++                cache.put(da2_key, da2_arr, int(da2_arr.nbytes))
++        res["da2"] = da2_arr
+ 
+     return res
+ 
+diff --git a/src/ainerzero/v9/experiments/s5/train.py b/src/ainerzero/v9/experiments/s5/train.py
+index 244b21d..acf4170 100644
+--- a/src/ainerzero/v9/experiments/s5/train.py
++++ b/src/ainerzero/v9/experiments/s5/train.py
+@@ -27,13 +27,14 @@ import numpy as np
+ 
+ from ainerzero.v9.experiments.s5.data import (
+     ClipIndex,
++    ItemCache,
+     batches,
+     load_item,
+     load_teacher,
+ )
+ from ainerzero.v9.experiments.s5.heads import (
+     DepthDistillHead,
+-    GridHead,
++    FlatHead,
+     R1Head,
+     VJEPAProjHead,
+ )
+@@ -195,11 +196,15 @@ def distill(
+     perm_seed: int | None = None,
+     student: Student | None = None,
+     heads: HeadsContainer | dict[str, nn.Module] | None = None,
++    cache: ItemCache | None = None,
+ ) -> tuple[Student, HeadsContainer, dict[str, Any]]:
+     """教师特征蒸馏训练循环（A1、A2、A3、C-sh、R 臂）。"""
+     if arm not in ("A1", "A2", "A3"):
+         raise ValueError(f"Unknown arm {arm!r}; expected 'A1', 'A2', or 'A3'")
+ 
++    active_cache = cache if cache is not None else ItemCache()
++    t_types = ("da2",) if arm == "A1" else (("vjepa",) if arm == "A2" else ("vjepa", "da2"))
++
+     mx.random.seed(cfg.seed)
+     np.random.seed(cfg.seed)
+ 
+@@ -257,12 +262,12 @@ def distill(
+             run_len_list = []
+ 
+             for b_idx in b_indices:
+-                s_item = load_item(index, b_idx, appearance_suffix="")
++                s_item = load_item(index, b_idx, appearance_suffix="", cache=active_cache)
+                 patches_list.append(s_item["patches"])
+ 
+                 # 教师特征来源：普通情况来自 b_idx，C-sh 来自 perm_map[b_idx]
+                 t_idx = perm_map[b_idx] if perm_map is not None else b_idx
+-                t_item = load_teacher(index, t_idx, teachers)
++                t_item = load_teacher(index, t_idx, teachers, teacher_types=t_types, cache=active_cache)
+                 if arm in ("A1", "A3"):
+                     da2_list.append(t_item["da2"])
+                 if arm in ("A2", "A3"):
+@@ -355,8 +360,10 @@ def train_supervised(
+     init_student: Student | None = None,
+     student: Student | None = None,
+     heads: HeadsContainer | dict[str, nn.Module] | None = None,
++    cache: ItemCache | None = None,
+ ) -> tuple[Student, HeadsContainer, dict[str, Any]]:
+     """端到端监督训练学生与读出头（A0、A4、A0-R、A* 全量微调）。"""
++    active_cache = cache if cache is not None else ItemCache()
+     mx.random.seed(cfg.seed)
+     np.random.seed(cfg.seed)
+ 
+@@ -377,9 +384,9 @@ def train_supervised(
+     if "r1" not in heads_dict:
+         heads_dict["r1"] = R1Head(d=curr_student.d)
+     if "r2" not in heads_dict:
+-        heads_dict["r2"] = GridHead(out=(12, 7), d=curr_student.d, heads=curr_student.heads)
++        heads_dict["r2"] = FlatHead(d=curr_student.d, k=4)
+     if "r3" not in heads_dict:
+-        heads_dict["r3"] = GridHead(out=(12, 7), d=curr_student.d, heads=curr_student.heads)
++        heads_dict["r3"] = FlatHead(d=curr_student.d, k=4)
+     if cfg.eta is not None and "align_proj" not in heads_dict:
+         heads_dict["align_proj"] = VJEPAProjHead(d=curr_student.d, out_dim=1024)
+ 
+@@ -417,7 +424,12 @@ def train_supervised(
+             run_len_list = []
+ 
+             for b_idx in b_indices:
+-                item = load_item(index, b_idx, teachers=teachers if cfg.eta is not None else None)
++                item = load_item(
++                    index,
++                    b_idx,
++                    teachers=teachers if cfg.eta is not None else None,
++                    cache=active_cache,
++                )
+                 patches_list.append(item["patches"])
+                 r1_logd_list.append(item["r1_logd"])
+                 r1_sky_list.append(item["r1_sky"])
+@@ -455,11 +467,11 @@ def train_supervised(
+                 pred_logd, pred_sky = model.heads["r1"](r1_tokens)
+                 l_r1 = model.heads["r1"].loss(pred_logd, pred_sky, r1_logd_mx, r1_sky_mx)
+ 
+-                # R2 / R3 网格分类损失
+-                logits_r2 = model.heads["r2"](tokens, mask=mask)
++                # R2 / R3：与 R1 同一份 token。开 RLT 时已是 restore_runs 的结果，不再传注意力掩码。
++                logits_r2 = model.heads["r2"](r1_tokens)
+                 l_r2 = model.heads["r2"].loss(logits_r2, r2_mx)
+ 
+-                logits_r3 = model.heads["r3"](tokens, mask=mask)
++                logits_r3 = model.heads["r3"](r1_tokens)
+                 l_r3 = model.heads["r3"].loss(logits_r3, r3_mx)
+ 
+                 tot_loss = l_r1 + l_r2 + l_r3
+@@ -522,8 +534,10 @@ def train_heads(
+     *,
+     heads: HeadsContainer | dict[str, nn.Module] | None = None,
+     cache_dir: str | Path | None = None,
++    cache: ItemCache | None = None,
+ ) -> tuple[HeadsContainer, dict[str, Any]]:
+-    """学生冻结，仅训练读出头（R1Head 与两个 GridHead）。"""
++    """学生冻结，仅训练读出头（R1Head 与两个 FlatHead）。"""
++    active_cache = cache if cache is not None else ItemCache()
+     mx.random.seed(cfg.seed)
+     np.random.seed(cfg.seed)
+ 
+@@ -537,9 +551,9 @@ def train_heads(
+     if "r1" not in heads_dict:
+         heads_dict["r1"] = R1Head(d=student.d)
+     if "r2" not in heads_dict:
+-        heads_dict["r2"] = GridHead(out=(12, 7), d=student.d, heads=student.heads)
++        heads_dict["r2"] = FlatHead(d=student.d, k=4)
+     if "r3" not in heads_dict:
+-        heads_dict["r3"] = GridHead(out=(12, 7), d=student.d, heads=student.heads)
++        heads_dict["r3"] = FlatHead(d=student.d, k=4)
+ 
+     heads_container = HeadsContainer(**heads_dict)
+ 
+@@ -548,7 +562,7 @@ def train_heads(
+     t_cache_0 = time.perf_counter()
+ 
+     for i in range(len(index)):
+-        item = load_item(index, i)
++        item = load_item(index, i, cache=active_cache)
+         patches_mx = mx.array(item["patches"][None, ...])
+         if cfg.tau is not None:
+             k, rl = rlt_keep(item["patches"], cfg.tau)
+@@ -587,7 +601,6 @@ def train_heads(
+             t_data_0 = time.perf_counter()
+ 
+             tokens_list = [cached_tokens[b][0] for b in b_indices]
+-            mask_list = [cached_tokens[b][1] for b in b_indices]
+             keep_list = [cached_tokens[b][2] for b in b_indices]
+ 
+             r1_logd_list = []
+@@ -596,14 +609,13 @@ def train_heads(
+             r3_list = []
+ 
+             for b in b_indices:
+-                it = load_item(index, b)
++                it = load_item(index, b, cache=active_cache)
+                 r1_logd_list.append(it["r1_logd"])
+                 r1_sky_list.append(it["r1_sky"])
+                 r2_list.append(it["r2"])
+                 r3_list.append(it["r3"])
+ 
+             b_tokens = mx.stack(tokens_list, axis=0)
+-            b_mask = mx.stack(mask_list, axis=0)
+             b_keep = mx.stack(keep_list, axis=0) if keep_list[0] is not None else None
+             r1_logd_mx = mx.array(np.stack(r1_logd_list, axis=0))
+             r1_sky_mx = mx.array(np.stack(r1_sky_list, axis=0))
+@@ -620,10 +632,10 @@ def train_heads(
+                 pred_logd, pred_sky = model_heads["r1"](r1_tokens)
+                 l_r1 = model_heads["r1"].loss(pred_logd, pred_sky, r1_logd_mx, r1_sky_mx)
+ 
+-                logits_r2 = model_heads["r2"](b_tokens, mask=b_mask)
++                logits_r2 = model_heads["r2"](r1_tokens)
+                 l_r2 = model_heads["r2"].loss(logits_r2, r2_mx)
+ 
+-                logits_r3 = model_heads["r3"](b_tokens, mask=b_mask)
++                logits_r3 = model_heads["r3"](r1_tokens)
+                 l_r3 = model_heads["r3"].loss(logits_r3, r3_mx)
+ 
+                 return l_r1 + l_r2 + l_r3
+@@ -672,8 +684,10 @@ def predict(
+     *,
+     tau: float | None = None,
+     batch_size: int = 16,
++    cache: ItemCache | None = None,
+ ) -> dict[str, Any]:
+     """多头预测接口：输出 r1_logd [N, 16, 14, 14]、r2_logit [N, 12, 7]、r3_logit [N, 12, 7]。"""
++    active_cache = cache if cache is not None else ItemCache()
+     heads_container = heads if isinstance(heads, HeadsContainer) else HeadsContainer(**heads)
+ 
+     r1_logd_all = []
+@@ -682,7 +696,7 @@ def predict(
+     keep_rates = []
+ 
+     for i in range(len(index)):
+-        item = load_item(index, i)
++        item = load_item(index, i, cache=active_cache)
+         patches_mx = mx.array(item["patches"][None, ...])
+ 
+         if tau is not None:
+@@ -690,14 +704,14 @@ def predict(
+             keep_rates.append(float(np.mean(k)))
+             k_mx = mx.array(k[None, ...])
+             rl_mx = mx.array(rl[None, ...])
+-            tokens, mask = student(patches_mx, keep=k_mx, run_len=rl_mx)
++            tokens, _mask = student(patches_mx, keep=k_mx, run_len=rl_mx)
+         else:
+-            tokens, mask = student(patches_mx)
++            tokens, _mask = student(patches_mx)
+ 
+         r1_tokens = restore_runs(tokens, k_mx if tau is not None else None)
+         pred_logd, _ = heads_container["r1"](r1_tokens)
+-        r2_logit = heads_container["r2"](tokens, mask=mask)
+-        r3_logit = heads_container["r3"](tokens, mask=mask)
++        r2_logit = heads_container["r2"](r1_tokens)
++        r3_logit = heads_container["r3"](r1_tokens)
+ 
+         mx.eval(pred_logd, r2_logit, r3_logit)
+         r1_logd_all.append(np.array(pred_logd[0]))
+diff --git a/tests/v9/experiments/test_s5_data.py b/tests/v9/experiments/test_s5_data.py
+index 3afccc0..b0e0bb4 100644
+--- a/tests/v9/experiments/test_s5_data.py
++++ b/tests/v9/experiments/test_s5_data.py
+@@ -179,3 +179,263 @@ def test_load_teacher_only_reads_teacher_features(fixture_partition):
+ 
+     t_da2 = D.load_teacher(idx, 0, teachers, teacher_types=("da2",))
+     assert list(t_da2.keys()) == ["da2"]
++
++
++# ------------------------------------------------------------------------------------------------
++# P239：子集嵌套与确定性、ItemCache 进程内缓存、教师 SHA 单次核对、字节上限与坏对照
++# ------------------------------------------------------------------------------------------------
++LIVE_REPO = Path(__file__).resolve().parents[3]
++REAL_REPO = Path("/Users/mac/AinerWorkFlow/AinerZero").resolve()
++DATA_SRC = LIVE_REPO / "src/ainerzero/v9/experiments/s5/data.py"
++
++
++@pytest.fixture(autouse=True)
++def _reset_sha_cache():
++    D._VERIFIED_TEACHER_SHAS.clear()
++    D._LEDGER_CACHE.clear()
++
++
++def test_lab_subset_nesting_and_determinism_with_frozen_seed(tmp_path):
++    mock_lab = tmp_path / "mock_lab"
++    mock_lab.mkdir()
++    for w in range(128):
++        wdir = mock_lab / f"world_{w:04d}"
++        wdir.mkdir()
++        for c in range(16):
++            (wdir / f"clip_{c:02d}.npy").write_bytes(b"dummy")
++
++    idx = D.ClipIndex(mock_lab)
++    seed = 20261112
++    sub_64 = idx.subset_by_worlds(4, seed=seed)
++    sub_512 = idx.subset_by_worlds(32, seed=seed)
++    sub_2048 = idx.subset_by_worlds(128, seed=seed)
++
++    assert len(sub_64.worlds) == 4 and len(sub_64) == 64
++    assert len(sub_512.worlds) == 32 and len(sub_512) == 512
++    assert len(sub_2048.worlds) == 128 and len(sub_2048) == 2048
++
++    # L=64 的世界严格是 L=512 世界的子集，L=512 的世界严格是 L=2048 世界的子集
++    assert set(sub_64.worlds).issubset(set(sub_512.worlds))
++    assert set(sub_512.worlds).issubset(set(sub_2048.worlds))
++
++    # 同一种子两次结果完全相同
++    sub_64_again = idx.subset_by_worlds(4, seed=seed)
++    sub_512_again = idx.subset_by_worlds(32, seed=seed)
++    assert sub_64.worlds == sub_64_again.worlds
++    assert sub_64.items == sub_64_again.items
++    assert sub_512.worlds == sub_512_again.worlds
++    assert sub_512.items == sub_512_again.items
++
++
++def test_item_cache_second_read_does_not_call_np_load_and_matches_uncached(fixture_partition, monkeypatch):
++    idx = D.ClipIndex(fixture_partition / "part")
++    teachers = fixture_partition / "teachers"
++
++    # 先取不带缓存的参考结果
++    uncached = D.load_item(idx, 0, teachers=teachers, cache=None)
++    D._VERIFIED_TEACHER_SHAS.clear()
++
++    load_calls = []
++    real_np_load = D.np.load
++
++    def counting_np_load(file, *args, **kwargs):
++        load_calls.append(str(file))
++        return real_np_load(file, *args, **kwargs)
++
++    monkeypatch.setattr(D.np, "load", counting_np_load)
++
++    cache = D.ItemCache()
++    assert cache.max_bytes == D.DEFAULT_CACHE_MAX_BYTES == 48 * (1024 ** 3)
++
++    # 第一次读取：读取 clip_00.npy、labels_00.npz、clip_00.vjepa.npy、da2_00.da2.npy 共 4 次 np.load
++    first = D.load_item(idx, 0, teachers=teachers, cache=cache)
++    assert len(load_calls) == 4
++    assert cache.used_bytes > 0
++
++    # 第二次读取同一段：不再触发任何 np.load 文件读取
++    second = D.load_item(idx, 0, teachers=teachers, cache=cache)
++    assert len(load_calls) == 4, f"Second load_item should not call np.load, got {len(load_calls)}"
++
++    # load_teacher 再次读取同一段：也不触发任何 np.load
++    t_second = D.load_teacher(idx, 0, teachers, cache=cache)
++    assert len(load_calls) == 4, f"Second load_teacher should not call np.load, got {len(load_calls)}"
++
++    # 缓存结果与不缓存结果逐元素严格一致
++    for key in ("patches", "r1_logd", "r1_sky", "r1_obj", "r2", "r3", "vjepa", "da2"):
++        np.testing.assert_array_equal(first[key], uncached[key], err_msg=f"first vs uncached: {key}")
++        np.testing.assert_array_equal(second[key], uncached[key], err_msg=f"second vs uncached: {key}")
++    np.testing.assert_array_equal(t_second["vjepa"], uncached["vjepa"])
++    np.testing.assert_array_equal(t_second["da2"], uncached["da2"])
++    assert second["disk_groups"] == uncached["disk_groups"]
++    assert second["ordering_pairs"] == uncached["ordering_pairs"]
++
++
++def test_teacher_sha_computed_at_most_once_per_file_in_process(fixture_partition, monkeypatch):
++    idx = D.ClipIndex(fixture_partition / "part")
++    teachers = fixture_partition / "teachers"
++
++    sha_calls: dict[str, int] = {}
++    real_sha = D._sha256_file
++
++    def counting_sha(path: Path) -> str:
++        key = str(Path(path).resolve())
++        sha_calls[key] = sha_calls.get(key, 0) + 1
++        return real_sha(path)
++
++    monkeypatch.setattr(D, "_sha256_file", counting_sha)
++
++    # 即使不缓存数组（cache=None 或 max_bytes=0）或跨多个 ItemCache，每个教师文件的 SHA 在进程内也只算一次
++    cache1 = D.ItemCache(max_bytes=0)
++    cache2 = D.ItemCache()
++    for _ in range(3):
++        D.load_teacher(idx, 0, teachers, cache=cache1)
++        D.load_teacher(idx, 0, teachers, cache=cache2)
++        D.load_item(idx, 0, teachers=teachers, cache=None)
++
++    assert len(sha_calls) == 2  # clip_00.vjepa.npy 与 da2_00.da2.npy
++    assert all(count == 1 for count in sha_calls.values()), f"Expected 1 SHA call per file, got {sha_calls}"
++
++
++def test_item_cache_exceeding_max_bytes_reads_normally_without_error(fixture_partition):
++    idx = D.ClipIndex(fixture_partition / "part")
++    teachers = fixture_partition / "teachers"
++
++    uncached_0 = D.load_item(idx, 0, teachers=teachers, cache=None)
++    uncached_1 = D.load_item(idx, 1, teachers=teachers, cache=None)
++
++    # 设定只能装下 1 个 uint8 clip（约 2.4MB）而装不下 V-JEPA 特征（约 3.2MB）或第 2 段的上限
++    clip_bytes = 16 * 224 * 224 * 3  # 2,408,448 bytes
++    small_cache = D.ItemCache(max_bytes=clip_bytes + 4096)
++
++    got_0 = D.load_item(idx, 0, teachers=teachers, cache=small_cache)
++    got_1 = D.load_item(idx, 1, teachers=teachers, cache=small_cache)
++    got_0_again = D.load_item(idx, 0, teachers=teachers, cache=small_cache)
++
++    assert small_cache.used_bytes <= small_cache.max_bytes
++    for key in ("patches", "r1_logd", "r1_sky", "r1_obj", "r2", "r3", "vjepa", "da2"):
++        np.testing.assert_array_equal(got_0[key], uncached_0[key])
++        np.testing.assert_array_equal(got_1[key], uncached_1[key])
++        np.testing.assert_array_equal(got_0_again[key], uncached_0[key])
++
++
++def test_tampered_teacher_before_first_read_raises_with_cache(fixture_partition, tmp_path):
++    import shutil
++    bad_teachers = tmp_path / "bad_teachers_cached"
++    shutil.copytree(fixture_partition / "teachers", bad_teachers)
++
++    # 篡改第 0 段 V-JEPA 与第 1 段 DA2
++    v_file = bad_teachers / "world_0000" / "clip_00.vjepa.npy"
++    raw_v = bytearray(v_file.read_bytes())
++    raw_v[-1] ^= 0xFF
++    v_file.write_bytes(bytes(raw_v))
++
++    d_file = bad_teachers / "world_0000" / "da2_01.da2.npy"
++    raw_d = bytearray(d_file.read_bytes())
++    raw_d[-1] ^= 0xFF
++    d_file.write_bytes(bytes(raw_d))
++
++    idx = D.ClipIndex(fixture_partition / "part")
++    cache = D.ItemCache()
++    with pytest.raises(RuntimeError, match="SHA mismatch"):
++        D.load_item(idx, 0, teachers=bad_teachers, cache=cache)
++    with pytest.raises(RuntimeError, match="SHA mismatch"):
++        D.load_teacher(idx, 1, bad_teachers, cache=cache)
++
++
++def _run_mutated_data_check(tmp_path: Path, old: str, new: str, check_body: str) -> None:
++    import subprocess
++    import sys
++
++    assert tmp_path.resolve() not in (LIVE_REPO, REAL_REPO)
++    src_text = DATA_SRC.read_text(encoding="utf-8")
++    assert src_text.count(old) == 1, f"Expected 1 occurrence of {old!r}"
++    mut_file = tmp_path / "data_mut.py"
++    mut_file.write_text(src_text.replace(old, new, 1), encoding="utf-8")
++
++    script = tmp_path / "run_check.py"
++    script.write_text(
++        "import importlib.util, sys\n"
++        "from pathlib import Path\n"
++        f"sys.path.insert(0, {str(LIVE_REPO / 'src')!r})\n"
++        "spec = importlib.util.spec_from_file_location('data_mut', Path('data_mut.py'))\n"
++        "D = importlib.util.module_from_spec(spec)\n"
++        "spec.loader.exec_module(D)\n"
++        + check_body,
++        encoding="utf-8",
++    )
++    ran = subprocess.run([sys.executable, str(script)], cwd=tmp_path, capture_output=True, text=True)
++    assert ran.returncode != 0, "Mutation should have been caught!\n" + ran.stdout + ran.stderr
++
++
++def test_subset_nesting_mutation_is_rejected(tmp_path):
++    # 坏对照：把 subset_by_worlds 的种子改为依赖 n (seed + n)，破坏嵌套关系
++    _run_mutated_data_check(
++        tmp_path,
++        "rng = np.random.default_rng(seed)",
++        "rng = np.random.default_rng(seed + n)",
++        "mock = Path('mock')\n"
++        "for w in range(128):\n"
++        "    d = mock / f'world_{w:04d}'\n"
++        "    d.mkdir(parents=True)\n"
++        "    (d / 'clip_00.npy').write_bytes(b'x')\n"
++        "idx = D.ClipIndex(mock)\n"
++        "s4 = idx.subset_by_worlds(4, seed=20261112)\n"
++        "s32 = idx.subset_by_worlds(32, seed=20261112)\n"
++        "assert set(s4.worlds).issubset(set(s32.worlds))\n",
++    )
++
++
++def test_cache_disabled_mutation_is_rejected(fixture_partition, tmp_path):
++    # 坏对照：把 ItemCache.get 改成恒返回 None，第二次读取仍触发 np.load
++    _run_mutated_data_check(
++        tmp_path,
++        "        if key in self._items:\n            self.hits += 1\n            return self._items[key]",
++        "        if False:\n            return None",
++        f"idx = D.ClipIndex(Path({str(fixture_partition / 'part')!r}))\n"
++        f"teachers = Path({str(fixture_partition / 'teachers')!r})\n"
++        "calls = []\n"
++        "real_load = D.np.load\n"
++        "D.np.load = lambda f, *a, **kw: (calls.append(str(f)), real_load(f, *a, **kw))[1]\n"
++        "cache = D.ItemCache()\n"
++        "D.load_item(idx, 0, teachers=teachers, cache=cache)\n"
++        "n1 = len(calls)\n"
++        "D.load_item(idx, 0, teachers=teachers, cache=cache)\n"
++        "assert len(calls) == n1\n",
++    )
++
++
++def test_teacher_sha_every_time_mutation_is_rejected(fixture_partition, tmp_path):
++    # 坏对照：去掉 _VERIFIED_TEACHER_SHAS[key] = got_sha，导致每次都重算 SHA
++    _run_mutated_data_check(
++        tmp_path,
++        "    _VERIFIED_TEACHER_SHAS[key] = got_sha",
++        "    pass",
++        f"idx = D.ClipIndex(Path({str(fixture_partition / 'part')!r}))\n"
++        f"teachers = Path({str(fixture_partition / 'teachers')!r})\n"
++        "calls = []\n"
++        "real_sha = D._sha256_file\n"
++        "D._sha256_file = lambda p: (calls.append(str(p)), real_sha(p))[1]\n"
++        "D.load_teacher(idx, 0, teachers, cache=None)\n"
++        "D.load_teacher(idx, 0, teachers, cache=None)\n"
++        "assert len(calls) == 2\n",
++    )
++
++
++def test_teacher_sha_skip_verification_mutation_is_rejected(fixture_partition, tmp_path):
++    # 坏对照：把 _verify_teacher_file_once 改成直接 return，篡改文件不再报错
++    _run_mutated_data_check(
++        tmp_path,
++        "    if got_sha != expected_sha:\n        raise RuntimeError(",
++        "    if False:\n        raise RuntimeError(",
++        "import shutil\n"
++        f"bad = Path('bad_t'); shutil.copytree(Path({str(fixture_partition / 'teachers')!r}), bad)\n"
++        "vf = bad / 'world_0000' / 'clip_00.vjepa.npy'\n"
++        "raw = bytearray(vf.read_bytes()); raw[-1] ^= 0xFF; vf.write_bytes(bytes(raw))\n"
++        f"idx = D.ClipIndex(Path({str(fixture_partition / 'part')!r}))\n"
++        "try:\n"
++        "    D.load_item(idx, 0, teachers=bad, cache=D.ItemCache())\n"
++        "except RuntimeError:\n"
++        "    sys.exit(0)\n"
++        "sys.exit(1)\n",
++    )
++
+diff --git a/tests/v9/experiments/test_s5_runner_native.py b/tests/v9/experiments/test_s5_runner_native.py
+index b3e3366..382031a 100644
+--- a/tests/v9/experiments/test_s5_runner_native.py
++++ b/tests/v9/experiments/test_s5_runner_native.py
+@@ -430,3 +430,136 @@ def test_preflight_requires_clip_files_not_only_a_manifest(tmp_path: Path):
+     (root / "artifacts/v9/s5/data/s5p1-dev/world_0000/clip_00.npy").unlink()
+     r = _preflight(root)
+     assert r.returncode != 0 and "preflight" in r.stderr and "s5p1-dev" in r.stderr, r.stdout + r.stderr
++
++
++# ------------------------------------------------------------------------------------------------
++# P239：运行器按 label_n 取 lab 子集 + 训练循环共用 ItemCache 缓存
++# ------------------------------------------------------------------------------------------------
++def _setup_single_l64_cell_in_copy(root: Path) -> None:
++    assert root.resolve() not in (LIVE, REAL_REPO)
++    # s5test-smoke-lab 物化 2 个世界（32 段），把 L_WORLDS[64] 设为 1 个世界（16 段），用来区分「取子集」与「用全集」
++    _mutate_file(
++        root,
++        f"{HERE}/plan_s5p1.py",
++        "L_WORLDS = {64: 4, 512: 32, 2048: 128}",
++        "L_WORLDS = {64: 1, 512: 32, 2048: 128}",
++    )
++    # 只跑一个带 label_n=64 的 supervised 小格：epochs=2, batch_size=8 -> 16 * 2 // 8 = 4 步
++    _mutate_file(
++        root,
++        f"{HERE}/run_s5p1.py",
++        "    return cells\n",
++        "    return [{\n"
++        "        'cell_id': 'smoke-A0-L64', 'kind': 'supervised', 'arm': 'A0', 'seed': 0,\n"
++        "        'lr': 1e-3, 'label_n': 64, 'epochs': 2, 'batch_size': 8, 'n_clips': 16,\n"
++        "        'steps': 4, 'partition': SMOKE_PARTITIONS['lab'],\n"
++        "    }]\n",
++    )
++
++
++def test_label_n_subset_is_used_in_supervised_cell(tmp_path: Path):
++    from ainerzero.v9.experiments.s5.data import ClipIndex
++
++    root = _make_root(tmp_path)
++    _setup_single_l64_cell_in_copy(root)
++    ran = _run(root, "--stage", "smoke", "--use-id", "s-l64", "--report", "reports/out.json")
++    assert ran.returncode == 0, ran.stderr[-2000:] + ran.stdout[-2000:]
++
++    out = next((root / RUNS).iterdir())
++    events = _events(root)
++    starts = [e for e in events if e["event"] == "cell_start"]
++    ends = [e for e in events if e["event"] == "cell_end"]
++    assert len(starts) == 1 and len(ends) == 1
++
++    lab_dir = out / "data" / "s5test-smoke-lab"
++    expected_sub = ClipIndex(lab_dir).subset_by_worlds(1, seed=20261112)
++    assert len(expected_sub.worlds) == 1
++    assert len(expected_sub) == 1 * 16 == 16
++
++    # cell_start 记下子集世界清单与段数
++    assert starts[0]["worlds"] == expected_sub.worlds
++    assert starts[0]["n_worlds"] == 1
++    assert starts[0]["n_clips"] == 1 * 16 == 16
++
++    # cell_end 记实际步数 = 段数(16) * epochs(2) // batch(8) = 4
++    assert ends[0]["worlds"] == expected_sub.worlds
++    assert ends[0]["n_clips"] == 16
++    assert ends[0]["steps_logged"] == 4
++    assert ends[0]["steps"] == 4
++
++
++def test_removing_subset_by_worlds_mutation_is_caught(tmp_path: Path):
++    root = _make_root(tmp_path)
++    _setup_single_l64_cell_in_copy(root)
++    # 坏对照：去掉 _index_for 中的 subset_by_worlds，导致直接用整个 lab 分区（2 世界 = 32 段，8 步）
++    _mutate_file(
++        root,
++        f"{HERE}/run_s5p1.py",
++        "    if label_n is not None:\n"
++        "        return ClipIndex(partition_dir).subset_by_worlds(\n"
++        "            plan.L_WORLDS[int(label_n)], seed=LAB_SUBSET_SEED\n"
++        "        )\n",
++        "    if label_n is not None:\n"
++        "        return ClipIndex(partition_dir)\n",
++    )
++    ran = _run(root, "--stage", "smoke", "--use-id", "s-l64-bad", "--report", "reports/out.json")
++    assert ran.returncode == 0, ran.stderr[-2000:] + ran.stdout[-2000:]
++    events = _events(root)
++    starts = [e for e in events if e["event"] == "cell_start"]
++    ends = [e for e in events if e["event"] == "cell_end"]
++    # 去掉 subset_by_worlds 后，世界数变成 2、段数变成 32、步数变成 8，违反子集断言
++    assert not (
++        starts[0].get("n_worlds") == 1
++        and starts[0].get("n_clips") == 16
++        and ends[0].get("steps_logged") == 4
++    )
++
++
++def test_train_loops_use_item_cache_across_epochs(tmp_path: Path, monkeypatch):
++    from ainerzero.v9.experiments.s5 import data as D
++    from ainerzero.v9.experiments.s5 import train as T
++    from ainerzero.v9.experiments.s5.materialize import materialize_partition
++    from ainerzero.v9.experiments.s5.student import Student
++
++    part_dir = tmp_path / "part"
++    materialize_partition("s5test-cache", part_dir, world_range=(0, 1))
++    # 只保留前 2 段以加速测试
++    wdir = part_dir / "world_0000"
++    for cf in list(wdir.glob("clip_*.npy")) + list(wdir.glob("labels_*.npz")):
++        c_num = int(cf.name.split("_")[1].split(".")[0])
++        if c_num >= 2:
++            cf.unlink()
++
++    idx = D.ClipIndex(part_dir)
++    assert len(idx) == 2
++
++    mod = _runner_module(LIVE)
++    teachers = mod._write_fake_teachers(idx, tmp_path / "teachers")
++
++    load_calls = []
++    real_np_load = D.np.load
++
++    def counting_load(file, *args, **kwargs):
++        load_calls.append(str(file))
++        return real_np_load(file, *args, **kwargs)
++
++    monkeypatch.setattr(D.np, "load", counting_load)
++
++    cfg = T.TrainConfig(lr=1e-3, batch_size=2, epochs=3, seed=0)
++    student = Student(d=16, depth=1, heads=1)
++
++    # 1. distill 跑 3 轮（2 段数据）：每段 clip、labels、vjepa、da2 只在首轮读 1 次，共 2 * 4 = 8 次 np.load（若无缓存则是 24 次）
++    load_calls.clear()
++    T.distill("A3", idx, teachers, cfg, student=student)
++    assert len(load_calls) == 8, f"Expected 8 np.load calls with cache across 3 epochs, got {len(load_calls)}"
++
++    # 2. train_supervised 跑 3 轮（2 段数据，无教师）：每段 clip、labels 只在首轮读 1 次，共 2 * 2 = 4 次（若无缓存则是 12 次）
++    load_calls.clear()
++    T.train_supervised(idx, cfg, student=student)
++    assert len(load_calls) == 4, f"Expected 4 np.load calls with cache across 3 epochs, got {len(load_calls)}"
++
++    # 3. train_heads 跑 3 轮（2 段数据）：前置缓存特征时读 1 次 clip + labels，后续 3 轮训练读出头时 0 次磁盘读取，共 4 次（若无缓存则是 4 + 3*4 = 16 次）
++    load_calls.clear()
++    T.train_heads(student, idx, cfg)
++    assert len(load_calls) == 4, f"Expected 4 np.load calls in train_heads with cache, got {len(load_calls)}"
++
+diff --git a/tests/v9/experiments/test_s5_runner_plan.py b/tests/v9/experiments/test_s5_runner_plan.py
+index 41e3ebb..504ff5a 100644
+--- a/tests/v9/experiments/test_s5_runner_plan.py
++++ b/tests/v9/experiments/test_s5_runner_plan.py
+@@ -150,3 +150,26 @@ def test_dry_run_dev_distill_heads_wall_clock_estimation():
+     assert 0.70 <= summary["heads_wall_est_h"] <= 0.90
+     assert summary["wall_h_est"] < 4.0, f"Total stage wall clock should be < 4.0h, got {summary['wall_h_est']}"
+     assert "heads_note" in summary
++
++
++def test_dry_run_uses_probe_step_compute_and_cached_data_estimate():
++    plan = _plan()
++    assert plan.STEP_COMPUTE_S == pytest.approx(0.16)
++    assert plan.CACHED_STEP_DATA_S > 0.0
++    assert plan.COLD_READ_S_PER_CLIP > 0.0
++
++    # 验证全量蒸馏单格 (4000 段, 15 轮, 7500 步) 的墙钟 = 4000 * COLD_READ + 7500 * (0.16 + CACHED_STEP_DATA)
++    expected_distill_s = 4000 * plan.COLD_READ_S_PER_CLIP + 7500 * (plan.STEP_COMPUTE_S + plan.CACHED_STEP_DATA_S)
++    assert plan.wall_seconds(4000, 15, kind="distill") == pytest.approx(expected_distill_s)
++
++    for stage, expected_design_h in (("probe", 0.5), ("dev-tune", 1.6), ("dev-distill", 3.22)):
++        ran = subprocess.run(
++            [sys.executable, str(RUNNER), "--stage", stage, "--dry-run"],
++            cwd=LIVE, capture_output=True, text=True, timeout=60,
++        )
++        assert ran.returncode == 0, ran.stderr[-1500:]
++        payload = json.loads(ran.stdout)
++        assert payload["design_wall_h"] == pytest.approx(expected_design_h)
++        assert payload["step_compute_s"] == pytest.approx(0.16)
++        assert payload["lab_subset_seed"] == 20261112
++

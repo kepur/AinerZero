@@ -3,6 +3,7 @@
 包含：
 - `R1Head`：线性映射预测 2 帧对数深度与天空占比，与 `labels.r1` 的 [16, 14, 14] 对齐（NaN 缺失块不计损失）；
 - `GridHead`：注意力池化（1 个可学查询按 mask 池化）+ 2 层 MLP，输出 [12, 7] 占用 logits 与 BCE 损失；
+- `FlatHead`：只读最后一个管长，逐 token 打 k 分，再按位置线性映射到 [12, 7]（R2/R3 现用这个头）；
 - `DepthDistillHead`：每个 token 线性输出 4×4，重组成 [8, 56, 56] 空间网格；
 - `VJEPAProjHead`：线性 192 -> 1024 维度投影。
 """
@@ -117,6 +118,38 @@ class GridHead(nn.Module):
         """BCE 分类损失。"""
         t = targets.astype(mx.float32)
         return nn.losses.binary_cross_entropy(logits, t, with_logits=True)
+
+
+class FlatHead(nn.Module):
+    """R2/R3 读出头：最后一个管长逐 token 打分，再按位置线性映射到网格。
+
+    输入学生 token ``[B, 1568, d]``（或等价的 ``[B, 8, 14, 14, d]``）。
+    只取最后一个管长 ``reshape(B, 8, 196, d)[:, 7]``，LayerNorm 后线性投到
+    ``k`` 个分数，展平成 ``[B, 196*k]``，再一层线性映射到 ``12*7`` 个 logit。
+    损失是 BCE（with_logits、mean），不加正例权重。
+    """
+
+    def __init__(self, d: int = 192, k: int = 4, out: tuple[int, int] = (12, 7)):
+        super().__init__()
+        self.k = k
+        self.out = out
+        self.norm = nn.LayerNorm(d)
+        self.score = nn.Linear(d, k)
+        self.position = nn.Linear(196 * k, out[0] * out[1])
+
+    def __call__(self, tokens: mx.array) -> mx.array:
+        B = tokens.shape[0]
+        d = tokens.shape[-1]
+        last = tokens.reshape(B, 8, 196, d)[:, 7]
+        scores = self.score(self.norm(last)).reshape(B, 196 * self.k)
+        return self.position(scores).reshape(B, self.out[0], self.out[1])
+
+    def loss(self, logits: mx.array, targets: mx.array) -> mx.array:
+        """BCE（with_logits、mean）。不加正例权重。"""
+        t = targets.astype(mx.float32)
+        return nn.losses.binary_cross_entropy(
+            logits, t, with_logits=True, reduction="mean"
+        )
 
 
 class DepthDistillHead(nn.Module):

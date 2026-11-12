@@ -42,6 +42,7 @@ LEDGER = REPO / "artifacts/v9/s5/dev-uses.json"
 DATA_ROOT = REPO / "artifacts/v9/s5/data"
 TEACHERS = REPO / "artifacts/v9/s5/teachers"
 DEV_MAX_USES = 8
+LAB_SUBSET_SEED = 20261112
 CELL_LIMIT_S = 45 * 60
 STAGE_LIMIT_S = {
     "smoke": 15 * 60,
@@ -188,11 +189,13 @@ def dry_run_plan(stage: str) -> dict:
     summary["dev_uses"] = 1
     summary["limit_s"] = STAGE_LIMIT_S[stage]
     summary["cell_limit_s"] = CELL_LIMIT_S
+    summary["lab_subset_seed"] = LAB_SUBSET_SEED
     summary["note"] = (
         "probe 的轮数按设计步数的 1/10 取整，至少 1 轮。"
         "dev-tune 的蒸馏学习率用 A2、约 1/4 步数；监督学习和 η 用设计轮数。"
         "η 的学习率要等监督调参选出，dry-run 里记为 null。"
-        "逐步墙钟按 54 段/秒，另附设计 §6 的整段估算。"
+        "带 label_n 的格子按 LAB_SUBSET_SEED=20261112 取 4/32/128 个世界的嵌套子集。"
+        "逐步墙钟按 probe 实测每步计算时间（约 0.16 s，批量 8）加进程内缓存后的读数据估算，另附设计 §6 的整段对照。"
     )
     return summary
 
@@ -255,7 +258,11 @@ def _data_fraction(log: dict) -> float | None:
     return float(data_s / total)
 
 
-def _index_for(partition_dir: Path, clips) -> ClipIndex:
+def _index_for(partition_dir: Path, clips, *, label_n: int | None = None) -> ClipIndex:
+    if label_n is not None:
+        return ClipIndex(partition_dir).subset_by_worlds(
+            plan.L_WORLDS[int(label_n)], seed=LAB_SUBSET_SEED
+        )
     return ClipIndex(partition_dir, clips=clips)
 
 
@@ -269,7 +276,7 @@ def _execute_cell_body(cell: dict, ctx: dict) -> dict:
     kind = cell["kind"]
     smoke = ctx["stage"] == "smoke"
     clips = SMOKE_CLIPS if smoke else None
-    index = _index_for(ctx["dirs"][cell["partition"]], clips)
+    index = _index_for(ctx["dirs"][cell["partition"]], clips, label_n=cell.get("label_n"))
     student_kw = SMOKE_STUDENT if smoke else {}
     weights_dir = ctx["weights"]
     metrics_dir = ctx["metrics"]
@@ -347,10 +354,15 @@ def _execute_cell_body(cell: dict, ctx: dict) -> dict:
         )
         _save_l64(cell, ev, ctx)
     wall = time.perf_counter() - t0
+    steps_logged = len(log.get("step_logs") or [])
     return {
         "cell_id": cell["cell_id"],
         "device": str(mx.default_device()),
-        "steps_logged": len(log.get("step_logs") or []),
+        "worlds": list(index.worlds),
+        "n_worlds": len(index.worlds),
+        "n_clips": len(index),
+        "steps_logged": steps_logged,
+        "steps": steps_logged,
         "wall_s": wall,
         "data_fraction": _data_fraction(log),
         "rss_mb": _rss_mb(),
@@ -582,7 +594,20 @@ def run_locked(
                 _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": "timeout", "limit_s": 0.0, "wall_s": 0.0})
                 break
 
-            _append(events, {"event": "cell_start", "cell_id": cell["cell_id"], "index": index})
+            start_event: dict = {"event": "cell_start", "cell_id": cell["cell_id"], "index": index}
+            part_name = cell.get("partition")
+            if part_name in ctx["dirs"] and ctx["dirs"][part_name].exists():
+                start_idx = _index_for(
+                    ctx["dirs"][part_name],
+                    SMOKE_CLIPS if args.stage == "smoke" else None,
+                    label_n=cell.get("label_n"),
+                )
+                start_event["worlds"] = list(start_idx.worlds)
+                start_event["n_worlds"] = len(start_idx.worlds)
+                start_event["n_clips"] = len(start_idx)
+                if cell.get("label_n") is not None:
+                    start_event["label_n"] = int(cell["label_n"])
+            _append(events, start_event)
 
             result_path = out / f".cell_{index}_{cell['cell_id']}.result.json"
             err_path = out / f".cell_{index}_{cell['cell_id']}.err.json"

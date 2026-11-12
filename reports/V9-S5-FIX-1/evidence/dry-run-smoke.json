@@ -1,0 +1,133 @@
+{
+ "stage": "smoke",
+ "dry_run": true,
+ "takes_lock": false,
+ "dev_uses": 0,
+ "student": {
+  "d": 16,
+  "depth": 1,
+  "heads": 1
+ },
+ "note": "smoke 只用 s5test-smoke-* 和 d=16、深 1 的学生，每臂 2 步，用来把管线跑通。",
+ "n_cells": 9,
+ "steps": 18,
+ "limit_s": 900,
+ "cells": [
+  {
+   "cell_id": "smoke-distill-A1",
+   "kind": "distill",
+   "arm": "A1",
+   "seed": 0,
+   "lr": 0.001,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-pool"
+  },
+  {
+   "cell_id": "smoke-heads-A1",
+   "kind": "heads",
+   "arm": "A1",
+   "seed": 0,
+   "distill_seed": 0,
+   "readout_seed": 0,
+   "lr": 0.001,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-lab"
+  },
+  {
+   "cell_id": "smoke-distill-A2",
+   "kind": "distill",
+   "arm": "A2",
+   "seed": 0,
+   "lr": 0.001,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-pool"
+  },
+  {
+   "cell_id": "smoke-heads-A2",
+   "kind": "heads",
+   "arm": "A2",
+   "seed": 0,
+   "distill_seed": 0,
+   "readout_seed": 0,
+   "lr": 0.001,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-lab"
+  },
+  {
+   "cell_id": "smoke-distill-A3",
+   "kind": "distill",
+   "arm": "A3",
+   "seed": 0,
+   "lr": 0.001,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-pool"
+  },
+  {
+   "cell_id": "smoke-heads-A3",
+   "kind": "heads",
+   "arm": "A3",
+   "seed": 0,
+   "distill_seed": 0,
+   "readout_seed": 0,
+   "lr": 0.001,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-lab"
+  },
+  {
+   "cell_id": "smoke-A0",
+   "kind": "supervised",
+   "arm": "A0",
+   "seed": 0,
+   "lr": 0.001,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-lab"
+  },
+  {
+   "cell_id": "smoke-A4",
+   "kind": "supervised",
+   "arm": "A4",
+   "seed": 0,
+   "lr": 0.001,
+   "eta": 0.5,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-lab"
+  },
+  {
+   "cell_id": "smoke-A0R",
+   "kind": "supervised",
+   "arm": "A0-R",
+   "seed": 0,
+   "lr": 0.001,
+   "tau": 0.02,
+   "epochs": 1,
+   "batch_size": 2,
+   "n_clips": 4,
+   "steps": 2,
+   "partition": "s5test-smoke-lab"
+  }
+ ]
+}
