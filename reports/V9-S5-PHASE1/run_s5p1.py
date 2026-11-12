@@ -56,6 +56,11 @@ STAGE_LIMIT_S = {
     # candidates on dev (dev-tune trained them but never evaluated them) and re-runs the missing eta cells.
     "dev-tune-b": 1 * 3600,
 }
+# A Metal command buffer discarded because another process made the GPU restart (seen twice on 2026-11-12,
+# both caused by Preview) is an environment fault, not a property of the cell: re-run that cell once.
+GPU_RESET_MARKERS = ("kIOGPUCommandBufferCallbackError", "GPU error/recovery")
+MAX_GPU_RETRIES_PER_CELL = 1
+MAX_GPU_RETRIES_PER_STAGE = 3
 # Stages that read the dev-tune result, and the tune keys each one needs.
 TUNE_KEYS = {
     "dev-distill": ("distill_lr", "supervised_lr"),
@@ -170,6 +175,20 @@ def smoke_cells() -> list[dict]:
         if not str(cell["partition"]).startswith("s5test-smoke-"):
             raise GD.GuardError(f"smoke cell left the smoke namespace: {cell['partition']}")
     return cells
+
+
+def is_gpu_reset(text: str | None) -> bool:
+    return bool(text) and any(marker in str(text) for marker in GPU_RESET_MARKERS)
+
+
+def _set_aside_attempt(weights: Path, cell_id: str, attempt: int) -> str | None:
+    """把被 GPU 复位打断的那次尝试留下的检查点目录改名保留（作证据），新尝试从空目录开始。"""
+    ckpt = weights / cell_id
+    if not ckpt.exists():
+        return None
+    target = weights / f"{cell_id}.gpu-reset-attempt{attempt}"
+    ckpt.rename(target)
+    return target.name
 
 
 def _parse_etas(text) -> tuple[float, ...]:
@@ -652,6 +671,7 @@ def run_locked(
     }
     completed: list[dict] = []
     failed = None
+    gpu_retries = 0
 
     runner_name = getattr(cell_runner, "__qualname__", None) or getattr(cell_runner, "__name__", str(cell_runner)) if cell_runner else "_execute_cell_body"
 
@@ -740,35 +760,65 @@ def run_locked(
             }
 
             mp_ctx = mp.get_context("spawn")
-            p = mp_ctx.Process(
-                target=_cell_worker_target,
-                args=(cell, ctx_data, str(result_path), str(err_path), cell_runner),
-            )
-            t_cell0 = time.perf_counter()
-            p.start()
-            p.join(timeout=timeout_s)
+            attempt = 0
+            run_attempt = True
+            while run_attempt:
+                run_attempt = False
+                p = mp_ctx.Process(
+                    target=_cell_worker_target,
+                    args=(cell, ctx_data, str(result_path), str(err_path), cell_runner),
+                )
+                t_cell0 = time.perf_counter()
+                p.start()
+                p.join(timeout=timeout_s)
 
-            if p.is_alive():
-                p.terminate()
-                p.join(timeout=3.0)
                 if p.is_alive():
-                    p.kill()
-                    p.join()
-                cell_wall = time.perf_counter() - t_cell0
-                failed = f"timeout: cell {cell['cell_id']} timed out after {timeout_s:.1f}s"
-                _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": "timeout", "limit_s": timeout_s, "wall_s": cell_wall})
-                break
+                    p.terminate()
+                    p.join(timeout=3.0)
+                    if p.is_alive():
+                        p.kill()
+                        p.join()
+                    cell_wall = time.perf_counter() - t_cell0
+                    failed = f"timeout: cell {cell['cell_id']} timed out after {timeout_s:.1f}s"
+                    _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": "timeout", "limit_s": timeout_s, "wall_s": cell_wall})
+                    break
 
-            if p.exitcode != 0:
-                err_msg = f"cell process exited with code {p.exitcode}"
-                if err_path.is_file():
-                    try:
-                        err_data = json.loads(err_path.read_text(encoding="utf-8"))
-                        err_msg = f"{err_data.get('type')}: {err_data.get('error')}"
-                    except Exception:
-                        pass
-                failed = err_msg
-                _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": failed})
+                if p.exitcode != 0:
+                    err_msg = f"cell process exited with code {p.exitcode}"
+                    if err_path.is_file():
+                        try:
+                            err_data = json.loads(err_path.read_text(encoding="utf-8"))
+                            err_msg = f"{err_data.get('type')}: {err_data.get('error')}"
+                        except Exception:
+                            pass
+                    retry_left = stage_deadline.left()
+                    if (
+                        is_gpu_reset(err_msg)
+                        and attempt < MAX_GPU_RETRIES_PER_CELL
+                        and gpu_retries < MAX_GPU_RETRIES_PER_STAGE
+                        and retry_left > 0.0
+                    ):
+                        attempt += 1
+                        gpu_retries += 1
+                        aside = _set_aside_attempt(weights, cell["cell_id"], attempt)
+                        err_path.unlink(missing_ok=True)
+                        result_path.unlink(missing_ok=True)
+                        _append(events, {
+                            "event": "cell_retry", "cell_id": cell["cell_id"], "attempt": attempt,
+                            "error": err_msg, "wall_s": time.perf_counter() - t_cell0, "set_aside": aside,
+                        })
+                        changed = GD.check_manifest(REPO, manifest)
+                        if changed:
+                            failed = "code changed during stage: " + "; ".join(changed[:6])
+                            _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": failed})
+                            break
+                        timeout_s = min(cell_limit, retry_left)
+                        run_attempt = True
+                        continue
+                    failed = err_msg
+                    _append(events, {"event": "cell_fail", "cell_id": cell["cell_id"], "error": failed})
+                    break
+            if failed:
                 break
 
             if not result_path.is_file():
@@ -812,6 +862,7 @@ def run_locked(
         "failed": failed,
         "completed": [row["cell_id"] for row in completed],
         "n_completed": len(completed),
+        "gpu_retries": gpu_retries,
         "cell_runner_name": runner_name,
         "manifest": manifest,
         "third_party": versions,

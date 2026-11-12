@@ -689,3 +689,73 @@ def test_dev_tune_b_runs_the_readouts_and_eta_cells_with_the_tuned_lr(tmp_path: 
     assert "b-1" in (root / LEDGER).read_text(encoding="utf-8")
     stage = json.loads((out / "stage.json").read_text(encoding="utf-8"))
     assert stage["failed"] is None and stage["n_completed"] == 4
+
+
+# ------------------------------------------------------------------------------------------------
+# GPU 复位后重跑一次（2026-11-12：「预览」两次触发 GPU 重启，正在跑的格被连带丢弃）
+# ------------------------------------------------------------------------------------------------
+GPU_RESET_MSG = ("[METAL] Command buffer execution failed: Discarded (victim of GPU error/recovery) "
+                 "(00000005:kIOGPUCommandBufferCallbackErrorInnocentVictim).")
+
+
+def _inject_failures(root: Path, cell_id: str, n_failures: int, message: str) -> None:
+    """格 ``cell_id`` 的前 ``n_failures`` 次尝试先留下部分检查点，再抛 ``message``；尝试次数记在 attempts.txt。"""
+    _mutate_file(root, f"{HERE}/run_s5p1.py",
+                 "def _execute_cell_body(cell: dict, ctx: dict) -> dict:\n",
+                 "def _execute_cell_body(cell: dict, ctx: dict) -> dict:\n"
+                 f"    if cell['cell_id'] == {cell_id!r}:\n"
+                 "        _c = ctx['out'] / 'attempts.txt'\n"
+                 "        _n = int(_c.read_text()) if _c.exists() else 0\n"
+                 "        _c.write_text(str(_n + 1))\n"
+                 "        (ctx['weights'] / cell['cell_id']).mkdir(parents=True, exist_ok=True)\n"
+                 "        (ctx['weights'] / cell['cell_id'] / 'partial.txt').write_text(str(_n))\n"
+                 f"        if _n < {n_failures}:\n"
+                 f"            raise RuntimeError({message!r})\n")
+
+
+def test_gpu_reset_reruns_the_cell_once_and_the_stage_completes(tmp_path: Path):
+    root = _make_root(tmp_path)
+    _inject_failures(root, "smoke-distill-A1", 1, GPU_RESET_MSG)
+    ran = _run(root, "--stage", "smoke", "--use-id", "s-gpu1", "--report", "reports/out.json")
+    assert ran.returncode == 0, ran.stderr[-2000:] + ran.stdout[-2000:]
+    events = _events(root)
+    retries = [e for e in events if e["event"] == "cell_retry"]
+    assert [(e["cell_id"], e["attempt"]) for e in retries] == [("smoke-distill-A1", 1)], events
+    assert "kIOGPUCommandBufferCallbackError" in retries[0]["error"]
+    assert not [e for e in events if e["event"] == "cell_fail"]
+    out = next((root / RUNS).iterdir())
+    # 被打断那次的检查点改名保留，重跑从空目录开始
+    assert (out / "weights" / "smoke-distill-A1.gpu-reset-attempt1" / "partial.txt").read_text() == "0"
+    assert (out / "weights" / "smoke-distill-A1" / "partial.txt").read_text() == "1"
+    assert (out / "attempts.txt").read_text() == "2"
+    stage = json.loads((out / "stage.json").read_text(encoding="utf-8"))
+    assert stage["failed"] is None and stage["gpu_retries"] == 1
+    assert stage["completed"].count("smoke-distill-A1") == 1
+
+
+def test_gpu_reset_twice_on_one_cell_fails_the_stage(tmp_path: Path):
+    root = _make_root(tmp_path)
+    _inject_failures(root, "smoke-distill-A1", 2, GPU_RESET_MSG)
+    ran = _run(root, "--stage", "smoke", "--use-id", "s-gpu2", "--report", "reports/out.json")
+    assert ran.returncode == 2, ran.stderr[-2000:] + ran.stdout[-2000:]
+    events = _events(root)
+    assert [e["attempt"] for e in events if e["event"] == "cell_retry"] == [1]
+    fails = [e for e in events if e["event"] == "cell_fail"]
+    assert len(fails) == 1 and "kIOGPUCommandBufferCallbackError" in fails[0]["error"]
+    out = next((root / RUNS).iterdir())
+    assert (out / "attempts.txt").read_text() == "2"
+    stage = json.loads((out / "stage.json").read_text(encoding="utf-8"))
+    assert stage["completed"] == [] and stage["gpu_retries"] == 1
+
+
+def test_other_cell_errors_are_not_retried(tmp_path: Path):
+    root = _make_root(tmp_path)
+    _inject_failures(root, "smoke-distill-A1", 1, "[METAL] out of memory while allocating a buffer")
+    ran = _run(root, "--stage", "smoke", "--use-id", "s-gpu3", "--report", "reports/out.json")
+    assert ran.returncode == 2, ran.stderr[-2000:] + ran.stdout[-2000:]
+    events = _events(root)
+    assert not [e for e in events if e["event"] == "cell_retry"]
+    out = next((root / RUNS).iterdir())
+    assert (out / "attempts.txt").read_text() == "1"
+    stage = json.loads((out / "stage.json").read_text(encoding="utf-8"))
+    assert stage["gpu_retries"] == 0 and stage["completed"] == []
