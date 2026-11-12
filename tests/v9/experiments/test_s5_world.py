@@ -297,6 +297,7 @@ def test_materialize_end_to_end_matches_direct_calls(pool_e2e: Path, clip_idx: i
     r1 = labels.r1(ep, clip_idx)
     np.testing.assert_array_equal(lab["r1_logd"], r1["logd"])          # nan positions compare equal
     np.testing.assert_array_equal(lab["r1_sky"], r1["sky"])
+    np.testing.assert_array_equal(lab["r1_obj"], r1["obj"])
     np.testing.assert_array_equal(lab["r2"], labels.r2(ep, clip_idx))
     np.testing.assert_array_equal(lab["r3"], labels.r3(ep, clip_idx))
     assert _npz_json(lab, "disk_groups_json") == _roundtrip(labels.disk_groups(ep, clip_idx))

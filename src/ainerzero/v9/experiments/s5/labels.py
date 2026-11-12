@@ -55,10 +55,12 @@ def r1(
     *,
     precomputed_frames: list[tuple[np.ndarray, np.ndarray, np.ndarray]] | None = None,
 ) -> dict[str, np.ndarray]:
-    """生成 R1 深度标签：logd [16, 14, 14] float32 与 sky [16, 14, 14] float32。
+    """生成 R1 深度标签：logd、sky、obj，各为 [16, 14, 14] float32。
 
     - logd：每个 16×16 块里非天空像素的平均 log(max(z, 0.5))；全天空记 nan。
     - sky：每个 16×16 块里天空像素占比。
+    - obj：每个 16×16 块里物体像素（墙、柱子、圆盘，即编号 >= 0）占比；
+      地面占比 = 1 - sky - obj。用于按物体块与地面块分开报 R1 误差（DESIGN-r1 §4，一级 11-12 补）。
     - 若传入 precomputed_frames（16 帧渲染元组列表），直接复用避免重渲。
     """
     if not (0 <= clip_idx < 16):
@@ -67,6 +69,7 @@ def r1(
     base_t = clip_idx * 16
     logd_arr = np.full((16, GRID_H, GRID_W), np.nan, dtype=np.float32)
     sky_arr = np.zeros((16, GRID_H, GRID_W), dtype=np.float32)
+    obj_arr = np.zeros((16, GRID_H, GRID_W), dtype=np.float32)
 
     for k in range(16):
         if precomputed_frames is not None:
@@ -87,13 +90,14 @@ def r1(
                 sky_mask = (p_ids == -2) | (~np.isfinite(p_depth))
                 sky_count = int(np.sum(sky_mask))
                 sky_arr[k, r, c] = sky_count / (PATCH_SIZE * PATCH_SIZE)
+                obj_arr[k, r, c] = float(np.sum(p_ids >= 0)) / (PATCH_SIZE * PATCH_SIZE)
 
                 non_sky_mask = ~sky_mask
                 if np.any(non_sky_mask):
                     valid_z = np.maximum(p_depth[non_sky_mask], 0.5)
                     logd_arr[k, r, c] = float(np.mean(np.log(valid_z)))
 
-    return {"logd": logd_arr, "sky": sky_arr}
+    return {"logd": logd_arr, "sky": sky_arr, "obj": obj_arr}
 
 
 def _occupancy_grid(

@@ -148,6 +148,7 @@ def test_labels_precomputed_frames_parity():
     r1_pre = labels.r1(ep, 0, precomputed_frames=frames)
     np.testing.assert_allclose(r1_orig["logd"], r1_pre["logd"], equal_nan=True)
     np.testing.assert_allclose(r1_orig["sky"], r1_pre["sky"])
+    np.testing.assert_allclose(r1_orig["obj"], r1_pre["obj"])
 
     # 2. R2
     r2_orig = labels.r2(ep, 0)
@@ -329,3 +330,30 @@ def test_ordering_pairs_bad_control_inverted_depth():
         za, zb = 1.5, 3.0  # a 更近
         judged = bad_closer_judge(za, zb)
         assert judged == "a", f"Closer judge failed: got {judged}"
+
+
+
+def test_r1_object_share_geometry():
+    """obj counts wall, pillar and disk pixels; sky + obj + floor shares add up to one (tier-1, 11-12)."""
+    from types import SimpleNamespace
+
+    from ainerzero.v9.experiments.s5.render import render
+
+    agent = (8.0, 5.0, 0.0)                         # facing the east wall 2 m away
+    st = SimpleNamespace(agent=agent, positions=np.zeros((0, 2)))
+    ep = SimpleNamespace(steps=[st] * 16, pillars=())
+    frames = [render(agent, np.zeros((0, 2)), (), return_ids=True)] * 16
+    out = labels.r1(ep, 0, precomputed_frames=frames)
+    obj, sky = out["obj"][0], out["sky"][0]
+    assert obj.shape == (14, 14) and obj.dtype == np.float32
+    # row of patches just above the horizon is all wall (wall top is above the image centre at 2 m)
+    np.testing.assert_allclose(obj[6], 1.0)
+    # bottom row of patches is floor only
+    np.testing.assert_allclose(obj[13], 0.0)
+    np.testing.assert_allclose(sky[13], 0.0)
+    floor = 1.0 - sky - obj
+    assert (floor >= -1e-6).all() and (floor <= 1 + 1e-6).all()
+    # cross-check one patch against the id map directly
+    ids = frames[0][2]
+    np.testing.assert_allclose(obj[6, 3], float((ids[96:112, 48:64] >= 0).mean()))
+    np.testing.assert_allclose(obj[12, 3], float((ids[192:208, 48:64] >= 0).mean()))

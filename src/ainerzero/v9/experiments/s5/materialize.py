@@ -193,6 +193,7 @@ def materialize_partition(
                         labels_file,
                         r1_logd=lbl_r1["logd"],
                         r1_sky=lbl_r1["sky"],
+                        r1_obj=lbl_r1["obj"],
                         r2=lbl_r2,
                         r3=lbl_r3,
                         disk_groups_json=json.dumps(groups),
