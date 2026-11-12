@@ -1,0 +1,56 @@
+lock held by 82996
+======================================================================
+S5 IMPL-2: VIT, DISTILLATION, RLT & HEADS VERIFICATION
+======================================================================
+
+--- 测试 1：tubelet_patches 顺序与展平映射 ---
+Nonzero token pos: (t=3, h=5, w=9), inner offset d=214 (expected 214)
+Bad control (axis transpose) mismatch caught: True (got (np.int64(3), np.int64(9), np.int64(5)))
+
+--- 测试 2：rlt_keep 极值与权威等价性 ---
+Static clip retention rate: 0.125000 (expected 1/8 = 0.125000)
+Dynamic clip retention rate: 1.000000 (expected 1.0)
+
+--- 测试 3：restoration_error 误差分布 ---
+Gradient sequence reconstruction error: median=0.0600, p95=0.1050
+
+--- 测试 4：Student ViT 全保留一致性与掩码不变性 ---
+Full retention vs keep=None max diff: 0.00e+00 (< 1e-5)
+Masked token perturbation diff on retained tokens: 0.00e+00 (< 1e-5)
+
+--- 测试 5：ssi_depth_loss 尺度平移不变性 ---
+SSI depth loss invariance diff: 0.00e+00 (< 1e-5)
+SSI random pred loss: 0.7981 vs base 0.0991
+
+--- 测试 6：余弦蒸馏与对齐损失梯度 ---
+Cosine distill loss on identical inputs: -8.94e-09 (< 1e-5)
+Teacher side gradient max abs: 0.00e+00 (== 0.0)
+
+--- 测试 7：permutation 错排与确定性 ---
+Permutation fixed points count: 0 (strictly == 0)
+
+--- 测试 8：GridHead 掩码外部不变性 ---
+GridHead mask invariance diff: 0.00e+00 (< 1e-5)
+
+--- 测试 9：小规模过拟合冒烟测试 ---
+200 steps in 50.00s: l0=0.7016, l200=0.0000, ratio=0.00% (threshold < 20%)
+
+--- 对抗验证 1 (N3)：稀疏分支批补齐零向量隔离 ---
+Sample 0 retained tokens diff (batch vs single): 2.50e-06 (< 1e-4)
+
+--- 对抗验证 2 (N4)：SSI 平移与尺度不变性 ---
+SSI shift invariance diff (unmasked): 7.45e-09 (< 1e-5)
+
+--- 对抗验证 3 (N7)：R1Head 帧时间顺序 ---
+R1 frame ordering: correct frame 3 val=4.5, wrong frame 9 val=0.0
+
+--- 对抗验证 4 (N8)：DepthDistillHead 空间子网格排列 ---
+Depth grid pixel (9, 14) val=7.2, nonzeros=1
+
+--- 对抗验证 5 (N9)：游程长度嵌入有效性 ---
+Run-length embed diff on retained tokens: 3.7571 (> 0.05)
+
+Saved metrics to reports/V9-S5-IMPL-2/evidence/metrics.json
+======================================================================
+ALL TESTS & CONTRACTS VERIFIED SUCCESSFULLY
+======================================================================

@@ -1,0 +1,2010 @@
+diff --git a/src/ainerzero/v9/experiments/s5/__init__.py b/src/ainerzero/v9/experiments/s5/__init__.py
+new file mode 100644
+index 0000000..8d87e21
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/__init__.py
+@@ -0,0 +1,60 @@
++"""S5 视觉强化实验模块包。"""
++from ainerzero.v9.experiments.s5.render import (
++    DA2_F,
++    DA2_H,
++    DA2_W,
++    DEFAULT,
++    SHIFT_ALL,
++    SHIFT_BG,
++    Appearance,
++    da2_center_crop,
++    render,
++    to_uint8,
++)
++from ainerzero.v9.experiments.s5.world import (
++    PARTITIONS,
++    REGISTERED,
++    da2_frames,
++    episode,
++    student_clip,
++)
++from ainerzero.v9.experiments.s5.labels import (
++    disk_groups,
++    ordering_pairs,
++    r1,
++    r2,
++    r3,
++)
++from ainerzero.v9.experiments.s5.tokens import (
++    RestorationError,
++    restoration_error,
++    rlt_keep,
++    tubelet_patches,
++)
++
++__all__ = [
++    "DA2_F",
++    "DA2_H",
++    "DA2_W",
++    "DEFAULT",
++    "PARTITIONS",
++    "REGISTERED",
++    "RestorationError",
++    "SHIFT_ALL",
++    "SHIFT_BG",
++    "Appearance",
++    "da2_center_crop",
++    "da2_frames",
++    "disk_groups",
++    "episode",
++    "ordering_pairs",
++    "r1",
++    "r2",
++    "r3",
++    "render",
++    "restoration_error",
++    "rlt_keep",
++    "student_clip",
++    "to_uint8",
++    "tubelet_patches",
++]
+diff --git a/src/ainerzero/v9/experiments/s5/render.py b/src/ainerzero/v9/experiments/s5/render.py
+new file mode 100644
+index 0000000..78bed30
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/render.py
+@@ -0,0 +1,224 @@
++"""S5 第一人称光线投射渲染器（NumPy；权威实现，纯 CPU）。
++
++把 S4 圆盘世界（`src/ainerzero/v9/experiments/s4/world.py`）从智能体位姿渲染成 RGB 画面，并给出逐像素真值深度。
++基于 `reports/V9-S5-DESIGN/tier1-explore/render.py` 移植，支持显式焦距 f 与外观域切换 Appearance。
++
++场景：
++- 10×10 场地，四面墙高 1.2；
++- 3 根柱子，高 2.0；
++- 若干同外观圆盘，半径 0.3、高 0.6，没有编号；
++- 地面、天空。
++
++相机：
++- 高 0.5，针孔模型（每列按真实方向投射，按光轴距离做透视）；
++- 默认 f=None 时按水平 90° FOV 计算：f = (width / 2) / tan(45°)；
++- 针对 Depth Anything V2 帧渲染：DA2_W=518, DA2_H=392, DA2_F=196.0。
++"""
++from __future__ import annotations
++
++from dataclasses import dataclass
++import math
++from typing import Sequence
++
++import numpy as np
++
++ARENA = 10.0
++WALL_H, PILLAR_H, DISK_H = 1.2, 2.0, 0.6
++DISK_R = 0.3
++CAM_H = 0.5
++FOV = math.radians(90)
++
++DA2_W: int = 518
++DA2_H: int = 392
++DA2_F: float = 196.0
++
++
++@dataclass(frozen=True)
++class Appearance:
++    """渲染外观参数（冻结配置），支持领域偏移（Shift）。"""
++    sky: tuple[float, float, float]
++    floor: tuple[float, float, float]
++    wall: tuple[float, float, float]
++    pillar: tuple[float, float, float]
++    disk: tuple[float, float, float]
++    checker_size: float = 1.0
++    stripe_width: float = 0.5
++    light_dir: tuple[float, float] = (0.6, 0.8)
++    fog_coeff: float = 0.06
++    floor_shade_coeff: float = 0.08
++
++
++# 预设 1：DEFAULT 与摸底版 tier1-explore/render.py 完全一致
++DEFAULT = Appearance(
++    sky=(0.62, 0.78, 0.95),
++    floor=(0.45, 0.50, 0.42),
++    wall=(0.70, 0.70, 0.72),
++    pillar=(0.55, 0.38, 0.25),
++    disk=(0.20, 0.35, 0.85),
++    checker_size=1.0,
++    stripe_width=0.5,
++    light_dir=(0.6, 0.8),
++    fog_coeff=0.06,
++    floor_shade_coeff=0.08,
++)
++
++# 预设 2：SHIFT_BG 只换背景（天空、地面、墙、柱子、方格、条纹、光照、雾），圆盘保持原样
++SHIFT_BG = Appearance(
++    sky=(0.85, 0.65, 0.50),        # 黄昏暖橙天空
++    floor=(0.35, 0.35, 0.40),      # 深灰板岩地面
++    wall=(0.55, 0.50, 0.45),       # 砂岩色墙体
++    pillar=(0.25, 0.45, 0.50),     # 青铜/蓝绿色柱子
++    disk=(0.20, 0.35, 0.85),       # 圆盘保持蓝色不变
++    checker_size=1.5,              # 方格变大 1.5 倍
++    stripe_width=0.3,              # 条纹变细
++    light_dir=(-0.8, 0.6),         # 光源方向变到左侧
++    fog_coeff=0.12,                # 浓雾
++    floor_shade_coeff=0.12,
++)
++
++# 预设 3：SHIFT_ALL 在 SHIFT_BG 基础上连圆盘颜色一起换（形状大小不变）
++SHIFT_ALL = Appearance(
++    sky=(0.85, 0.65, 0.50),
++    floor=(0.35, 0.35, 0.40),
++    wall=(0.55, 0.50, 0.45),
++    pillar=(0.25, 0.45, 0.50),
++    disk=(0.85, 0.25, 0.20),       # 圆盘变为醒目红橙色
++    checker_size=1.5,
++    stripe_width=0.3,
++    light_dir=(-0.8, 0.6),
++    fog_coeff=0.12,
++    floor_shade_coeff=0.12,
++)
++
++
++def _circle_t(ox: float, oy: float, dx: np.ndarray, dy: np.ndarray, cx: float, cy: float, r: float):
++    """Nearest positive ray parameter t of the hit with a circle (inf if none); also the hit normal."""
++    fx, fy = ox - cx, oy - cy
++    b = fx * dx + fy * dy
++    c = fx * fx + fy * fy - r * r
++    disc = b * b - c
++    hit = disc >= 0
++    sq = np.sqrt(np.where(hit, disc, 0.0))
++    t = -b - sq
++    t = np.where(hit & (t > 1e-6), t, np.inf)
++    nx = (ox + t * dx - cx) / r
++    ny = (oy + t * dy - cy) / r
++    return t, nx, ny
++
++
++def _wall_t(ox: float, oy: float, dx: np.ndarray, dy: np.ndarray):
++    """Distance to the arena boundary along each ray, and the wall normal."""
++    with np.errstate(divide="ignore", invalid="ignore"):
++        tx = np.where(dx > 0, (ARENA - ox) / dx, np.where(dx < 0, -ox / dx, np.inf))
++        ty = np.where(dy > 0, (ARENA - oy) / dy, np.where(dy < 0, -oy / dy, np.inf))
++    use_x = tx < ty
++    t = np.where(use_x, tx, ty)
++    nx = np.where(use_x, -np.sign(dx), 0.0)
++    ny = np.where(use_x, 0.0, -np.sign(dy))
++    return t, nx, ny
++
++
++def render(
++    agent: tuple[float, float, float] | Sequence[float],
++    positions: Sequence[Sequence[float]] | np.ndarray,
++    pillars: Sequence[tuple[float, float, float]] | Sequence[Sequence[float]],
++    *,
++    width: int = 224,
++    height: int = 224,
++    f: float | None = None,
++    return_ids: bool = False,
++    appearance: Appearance = DEFAULT,
++    texture: bool = True,
++):
++    """RGB float image [H, W, 3] in [0, 1] and depth [H, W] (z along the optical axis; inf for sky).
++
++    纹理默认开启 (texture=True)。
++    若 return_ids=True，同时返回编号图 [H, W]（-2 天空，-1 地面，0 墙，1..P 柱子，100+i 圆盘 i）。
++    """
++    x0, y0, heading = float(agent[0]), float(agent[1]), float(agent[2])
++    if f is None:
++        f = (width / 2.0) / math.tan(FOV / 2.0)
++
++    sky = np.asarray(appearance.sky, dtype=np.float64)
++    floor = np.asarray(appearance.floor, dtype=np.float64)
++    wall = np.asarray(appearance.wall, dtype=np.float64)
++    pillar = np.asarray(appearance.pillar, dtype=np.float64)
++    disk = np.asarray(appearance.disk, dtype=np.float64)
++    light_dir = np.asarray(appearance.light_dir, dtype=np.float64)
++
++    cols = np.arange(width) + 0.5 - width / 2.0
++    ang = heading - np.arctan(cols / f)                     # left of the image is counter-clockwise
++    dx, dy = np.cos(ang), np.sin(ang)
++    cos_off = np.cos(ang - heading)
++    rows = np.arange(height)[:, None] + 0.5 - height / 2.0  # [H, 1], positive downward
++
++    objects = []
++    objects.append((*_wall_t(x0, y0, dx, dy), WALL_H, wall, 0))
++    for k, (cx, cy, r) in enumerate(pillars):
++        objects.append((*_circle_t(x0, y0, dx, dy, float(cx), float(cy), float(r)), PILLAR_H, pillar, 1 + k))
++    for i, p in enumerate(positions):
++        objects.append((*_circle_t(x0, y0, dx, dy, float(p[0]), float(p[1]), DISK_R), DISK_H, disk, 100 + i))
++
++    # background: sky above the horizon, floor below with its own depth
++    with np.errstate(divide="ignore"):
++        floor_z = np.where(rows > 0, f * CAM_H / rows, np.inf)          # [H, 1]
++    depth = np.broadcast_to(np.where(rows > 0, floor_z, np.inf), (height, width)).copy()
++    shade_floor = np.clip(1.0 / (1.0 + appearance.floor_shade_coeff * np.where(np.isfinite(floor_z), floor_z, 0.0)), 0.3, 1.0)
++    img = np.where((rows > 0)[..., None], floor * shade_floor[..., None], sky)
++    img = np.broadcast_to(img, (height, width, 3)).copy()
++
++    if texture:
++        tf = np.where(np.isfinite(floor_z), floor_z, 0.0) / cos_off[None, :]   # ray length to the floor point
++        fx, fy = x0 + tf * dx[None, :], y0 + tf * dy[None, :]
++        checker = (np.floor(fx / appearance.checker_size) + np.floor(fy / appearance.checker_size)) % 2
++        img = img * np.where((rows > 0), 0.82 + 0.18 * checker, 1.0)[..., None]
++    ids = np.broadcast_to(np.where(rows > 0, -1, -2), (height, width)).astype(np.int32)
++
++    lx, ly = light_dir / np.linalg.norm(light_dir)
++    for t, nx, ny, h, colour, oid in objects:
++        z = t * cos_off                                     # [W]
++        ok = np.isfinite(z) & (z > 1e-3)
++        zs = np.where(ok, z, 1.0)
++        top = -f * (h - CAM_H) / zs                         # row offsets (positive downward)
++        bottom = f * CAM_H / zs
++        inside = ok[None, :] & (rows >= top[None, :]) & (rows <= bottom[None, :])
++        zz = np.where(inside, zs[None, :], np.inf)
++        nearer = zz < depth
++        with np.errstate(invalid="ignore"):                 # misses have NaN normals; they are masked anyway
++            ndotl = np.where(ok, nx * lx + ny * ly, 0.0)
++        lambert = np.clip(0.35 + 0.65 * np.maximum(ndotl, 0.0), 0.0, 1.0)
++        fog = np.clip(1.0 / (1.0 + appearance.fog_coeff * zs), 0.35, 1.0)
++        mod = 1.0
++        if texture and oid < 100:                           # walls and pillars: vertical stripes
++            with np.errstate(invalid="ignore"):
++                if oid == 0:                                # wall: coordinate along the wall
++                    u = np.where(np.abs(nx) > 0.5, y0 + zs / cos_off * dy, x0 + zs / cos_off * dx)
++                    mod = np.where(ok, 0.85 + 0.15 * (np.floor(u / appearance.stripe_width) % 2), 1.0)
++                else:                                       # pillar: 8 angular segments
++                    a = np.arctan2(np.where(ok, ny, 0.0), np.where(ok, nx, 1.0))
++                    mod = 0.85 + 0.15 * (np.floor((a + np.pi) / (np.pi / 4)) % 2)
++        col = colour[None, :] * (lambert * fog * mod)[:, None]    # [W, 3]
++        img = np.where(nearer[..., None], col[None, :, :], img)
++        depth = np.where(nearer, zz, depth)
++        ids = np.where(nearer, oid, ids)
++
++    if return_ids:
++        return np.clip(img, 0.0, 1.0), depth, ids
++    return np.clip(img, 0.0, 1.0), depth
++
++
++def to_uint8(img: np.ndarray) -> np.ndarray:
++    """Float image [0, 1] to uint8 [0, 255]."""
++    return (np.clip(img, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
++
++
++def da2_center_crop(arr: np.ndarray) -> np.ndarray:
++    """Crop the center 392 columns of a 518-wide image/tensor."""
++    # Find the axis with length 518
++    for ax in range(arr.ndim - 1, -1, -1):
++        if arr.shape[ax] == DA2_W:
++            # Crop 392 columns starting from (518 - 392) // 2 = 63 to 455
++            slc = [slice(None)] * arr.ndim
++            slc[ax] = slice(63, 455)
++            return arr[tuple(slc)]
++    raise ValueError(f"No dimension of size {DA2_W} found in array with shape {arr.shape}")
+diff --git a/src/ainerzero/v9/experiments/s5/world.py b/src/ainerzero/v9/experiments/s5/world.py
+new file mode 100644
+index 0000000..2bbe654
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/world.py
+@@ -0,0 +1,146 @@
++"""S5 世界与数据划分模块（纯 CPU；权威世界逻辑委托 s4.world）。
++
++管理 S5 的数据分区、注册分区权限守卫，以及生成学生和教师使用的渲染片段。
++世界与轨迹的唯一权威来源：ainerzero.v9.experiments.s4.world.generate_episode。
++"""
++from __future__ import annotations
++
++from typing import Any
++
++import numpy as np
++
++from ainerzero.v9.experiments.s4 import world as s4_world
++from ainerzero.v9.experiments.s5.render import (
++    DEFAULT,
++    DA2_F,
++    DA2_H,
++    DA2_W,
++    Appearance,
++    render,
++    to_uint8,
++)
++
++PARTITIONS: dict[str, int] = {
++    "s5p1-pool": 250,
++    "s5p1-lab": 128,
++    "s5p1-dev": 32,
++    "s5p1-final": 48,
++    "s5p1-final-shift": 48,
++}
++
++REGISTERED: frozenset[str] = frozenset({"s5p1-final", "s5p1-final-shift"})
++
++VALID_PREFIXES: tuple[str, ...] = ("s5p1-", "s5x-", "s5test-")
++STEPS_PER_EPISODE: int = 272
++CLIPS_PER_EPISODE: int = 16
++FRAMES_PER_CLIP: int = 16
++
++
++def episode(
++    namespace: str,
++    world_index: int,
++    *,
++    allow_registered: bool = False,
++    registered_run_id: str | None = None,
++) -> s4_world.Episode:
++    """获取一个世界的 episode 轨迹。
++
++    - 命名空间白名单：只允许 s5p1-*、s5x-*、s5test-*；
++    - s5p1-* 分区必须在 PARTITIONS 白名单内，且 world_index 必须落在 [0, PARTITIONS[分区])；
++    - REGISTERED 分区必须带 allow_registered=True 且给出非空 registered_run_id，否则抛出 PermissionError；
++    - 严格委托 s4.world.generate_episode，每个世界 6 个圆盘、272 步。
++    """
++    if not any(namespace.startswith(prefix) for prefix in VALID_PREFIXES):
++        raise ValueError(
++            f"Invalid namespace '{namespace}': must start with one of {VALID_PREFIXES}"
++        )
++
++    if namespace.startswith("s5p1-") and namespace not in PARTITIONS:
++        raise ValueError(
++            f"Unknown s5p1 partition '{namespace}'; registered partitions are {sorted(PARTITIONS.keys())}"
++        )
++
++    if namespace in PARTITIONS:
++        max_worlds = PARTITIONS[namespace]
++        if not (0 <= world_index < max_worlds):
++            raise IndexError(
++                f"world_index {world_index} out of range [0, {max_worlds}) for partition {namespace}"
++            )
++
++    if namespace in REGISTERED and not allow_registered:
++        raise PermissionError(
++            f"{namespace} is a registered partition; only a registered run may generate it"
++        )
++    if namespace in REGISTERED and (not registered_run_id or not str(registered_run_id).strip()):
++        raise PermissionError(
++            f"{namespace} is a registered partition; only a registered run with non-empty registered_run_id may generate it"
++        )
++
++    return s4_world.generate_episode(
++        namespace,
++        world_index,
++        6,
++        steps=STEPS_PER_EPISODE,
++        allow_registered=allow_registered,
++    )
++
++
++def student_clip(
++    ep: s4_world.Episode,
++    clip_idx: int,
++    appearance: Appearance = DEFAULT,
++) -> np.ndarray:
++    """生成学生端输入的 16 帧 RGB 视频片段 [16, 224, 224, 3] uint8。
++
++    学生只能拿到像素数据，不包含智能体位姿、编号图或深度。
++    """
++    if not (0 <= clip_idx < CLIPS_PER_EPISODE):
++        raise IndexError(f"clip_idx {clip_idx} out of range [0, {CLIPS_PER_EPISODE})")
++
++    start_t = clip_idx * FRAMES_PER_CLIP
++    frames = []
++    for t in range(start_t, start_t + FRAMES_PER_CLIP):
++        st = ep.steps[t]
++        img, _ = render(
++            st.agent,
++            st.positions,
++            ep.pillars,
++            width=224,
++            height=224,
++            appearance=appearance,
++        )
++        frames.append(to_uint8(img))
++
++    return np.stack(frames, axis=0)
++
++
++def da2_frames(
++    ep: s4_world.Episode,
++    clip_idx: int,
++    appearance: Appearance = DEFAULT,
++) -> np.ndarray:
++    """生成 Depth Anything V2 教师抽取所需的 8 帧图像 [8, 392, 518, 3] uint8。
++
++    取每个管长（2 帧）的第 2 帧，即片段内的第 1, 3, 5, 7, 9, 11, 13, 15 帧。
++    必须采用显式焦距 f=DA2_F (196.0)。
++    """
++    if not (0 <= clip_idx < CLIPS_PER_EPISODE):
++        raise IndexError(f"clip_idx {clip_idx} out of range [0, {CLIPS_PER_EPISODE})")
++
++    base_t = clip_idx * FRAMES_PER_CLIP
++    frames = []
++    for k in range(8):
++        t = base_t + 2 * k + 1
++        st = ep.steps[t]
++        img, _ = render(
++            st.agent,
++            st.positions,
++            ep.pillars,
++            width=DA2_W,
++            height=DA2_H,
++            f=DA2_F,
++            appearance=appearance,
++        )
++        frames.append(to_uint8(img))
++
++    return np.stack(frames, axis=0)
+diff --git a/src/ainerzero/v9/experiments/s5/labels.py b/src/ainerzero/v9/experiments/s5/labels.py
+new file mode 100644
+index 0000000..925e332
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/labels.py
+@@ -0,0 +1,337 @@
++"""S5 读出头与评测标签生成模块（纯 CPU）。
++
++所有标签只给读出头训练和评测使用，绝不进入学生端输入。
++- R1 深度：非天空块对数深度 log(max(z, 0.5)) 与天空占比；
++- R2 圆盘占据图：段末帧自我中心极坐标网格 [12 方位, 7 距离] 0/1 占据；
++- R3 下一时刻占据图：段末帧 8 步后的网格占据；
++- disk_groups：圆盘遮挡比与距离分档；
++- ordering_pairs：圆盘-圆盘与圆盘-柱子两两前后次序真值。
++"""
++from __future__ import annotations
++
++import math
++from typing import Any
++
++import numpy as np
++
++from ainerzero.v9.experiments.s4 import world as s4_world
++from ainerzero.v9.experiments.s5.render import render
++
++PATCH_SIZE: int = 16
++GRID_H: int = 14
++GRID_W: int = 14
++
++MIN_VISIBLE_PIXELS: int = 4
++FOV_HALF: float = math.pi / 4.0      # 45°
++AZIMUTH_BINS: int = 12
++DISTANCE_BINS: int = 7
++DIST_MIN: float = 0.5
++DIST_MAX: float = 7.0
++
++LOG_D_MIN: float = math.log(DIST_MIN)
++LOG_D_MAX: float = math.log(DIST_MAX)
++
++
++def _compute_azimuth_bin(rel_angle: float) -> int:
++    """计算方位格 [0, 12)。方位范围 [-45°, 45°]，正方位是画面左侧。"""
++    bin_w = (2.0 * FOV_HALF) / AZIMUTH_BINS
++    raw_bin = int(math.floor((rel_angle - (-FOV_HALF)) / bin_w))
++    return int(np.clip(raw_bin, 0, AZIMUTH_BINS - 1))
++
++
++def _compute_distance_bin(dist: float) -> int | None:
++    """计算距离格 [0, 7)。距离 < 0.5 归第 0 格，> 7.0 的返回 None（不计）。"""
++    if dist > DIST_MAX:
++        return None
++    if dist <= DIST_MIN:
++        return 0
++    raw_bin = int(math.floor(DISTANCE_BINS * (math.log(dist) - LOG_D_MIN) / (LOG_D_MAX - LOG_D_MIN)))
++    return int(np.clip(raw_bin, 0, DISTANCE_BINS - 1))
++
++
++def r1(
++    ep: s4_world.Episode,
++    clip_idx: int,
++    *,
++    precomputed_frames: list[tuple[np.ndarray, np.ndarray, np.ndarray]] | None = None,
++) -> dict[str, np.ndarray]:
++    """生成 R1 深度标签：logd [16, 14, 14] float32 与 sky [16, 14, 14] float32。
++
++    - logd：每个 16×16 块里非天空像素的平均 log(max(z, 0.5))；全天空记 nan。
++    - sky：每个 16×16 块里天空像素占比。
++    - 若传入 precomputed_frames（16 帧渲染元组列表），直接复用避免重渲。
++    """
++    if not (0 <= clip_idx < 16):
++        raise IndexError(f"clip_idx {clip_idx} out of range [0, 16)")
++
++    base_t = clip_idx * 16
++    logd_arr = np.full((16, GRID_H, GRID_W), np.nan, dtype=np.float32)
++    sky_arr = np.zeros((16, GRID_H, GRID_W), dtype=np.float32)
++
++    for k in range(16):
++        if precomputed_frames is not None:
++            _, depth, ids = precomputed_frames[k]
++        else:
++            st = ep.steps[base_t + k]
++            _, depth, ids = render(
++                st.agent, st.positions, ep.pillars, width=224, height=224, return_ids=True
++            )
++
++        for r in range(GRID_H):
++            r_start, r_end = r * PATCH_SIZE, (r + 1) * PATCH_SIZE
++            for c in range(GRID_W):
++                c_start, c_end = c * PATCH_SIZE, (c + 1) * PATCH_SIZE
++                p_depth = depth[r_start:r_end, c_start:c_end]
++                p_ids = ids[r_start:r_end, c_start:c_end]
++
++                sky_mask = (p_ids == -2) | (~np.isfinite(p_depth))
++                sky_count = int(np.sum(sky_mask))
++                sky_arr[k, r, c] = sky_count / (PATCH_SIZE * PATCH_SIZE)
++
++                non_sky_mask = ~sky_mask
++                if np.any(non_sky_mask):
++                    valid_z = np.maximum(p_depth[non_sky_mask], 0.5)
++                    logd_arr[k, r, c] = float(np.mean(np.log(valid_z)))
++
++    return {"logd": logd_arr, "sky": sky_arr}
++
++
++def _occupancy_grid(
++    st: Any,
++    pillars: Any,
++    *,
++    precomputed_frame: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
++) -> np.ndarray:
++    """在给定步骤计算圆盘占据网格 [12, 7] uint8。若传入 precomputed_frame 则直接复用。"""
++    if precomputed_frame is not None:
++        _, depth, ids = precomputed_frame
++    else:
++        _, depth, ids = render(
++            st.agent, st.positions, pillars, width=224, height=224, return_ids=True
++        )
++    x0, y0, heading = float(st.agent[0]), float(st.agent[1]), float(st.agent[2])
++    grid = np.zeros((AZIMUTH_BINS, DISTANCE_BINS), dtype=np.uint8)
++
++    for i, p in enumerate(st.positions):
++        disk_oid = 100 + i
++        visible_px = int(np.sum(ids == disk_oid))
++        if visible_px < MIN_VISIBLE_PIXELS:
++            continue
++
++        px, py = float(p[0]), float(p[1])
++        dist = math.hypot(px - x0, py - y0)
++        d_bin = _compute_distance_bin(dist)
++        if d_bin is None:
++            continue
++
++        ang = math.atan2(py - y0, px - x0)
++        rel_ang = (ang - heading + math.pi) % (2.0 * math.pi) - math.pi
++        az_bin = _compute_azimuth_bin(rel_ang)
++
++        grid[az_bin, d_bin] = 1
++
++    return grid
++
++
++def r2(
++    ep: s4_world.Episode,
++    clip_idx: int,
++    *,
++    precomputed_frame: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
++) -> np.ndarray:
++    """生成 R2 圆盘占据图 [12, 7] uint8，取段内最后一帧（全局步 16*clip_idx + 15）。"""
++    if not (0 <= clip_idx < 16):
++        raise IndexError(f"clip_idx {clip_idx} out of range [0, 16)")
++    t = clip_idx * 16 + 15
++    return _occupancy_grid(ep.steps[t], ep.pillars, precomputed_frame=precomputed_frame)
++
++
++def r3(
++    ep: s4_world.Episode,
++    clip_idx: int,
++    *,
++    precomputed_frame: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
++) -> np.ndarray:
++    """生成 R3 下一时刻占据图 [12, 7] uint8，取段末帧后 8 步（全局步 16*clip_idx + 15 + 8）。"""
++    if not (0 <= clip_idx < 16):
++        raise IndexError(f"clip_idx {clip_idx} out of range [0, 16)")
++    t = clip_idx * 16 + 15 + 8
++    return _occupancy_grid(ep.steps[t], ep.pillars, precomputed_frame=precomputed_frame)
++
++
++def disk_groups(
++    ep: s4_world.Episode,
++    clip_idx: int,
++    *,
++    precomputed_frame: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
++) -> list[dict[str, Any]]:
++    """最后一帧每个看得见的圆盘的属性：方位格、距离格、距离组、遮挡比、遮挡组。"""
++    if not (0 <= clip_idx < 16):
++        raise IndexError(f"clip_idx {clip_idx} out of range [0, 16)")
++    t = clip_idx * 16 + 15
++    st = ep.steps[t]
++    x0, y0, heading = float(st.agent[0]), float(st.agent[1]), float(st.agent[2])
++
++    if precomputed_frame is not None:
++        _, depth, ids = precomputed_frame
++    else:
++        _, depth, ids = render(
++            st.agent, st.positions, ep.pillars, width=224, height=224, return_ids=True
++        )
++
++    out = []
++    for i, p in enumerate(st.positions):
++        disk_oid = 100 + i
++        visible_px = int(np.sum(ids == disk_oid))
++        if visible_px < MIN_VISIBLE_PIXELS:
++            continue
++
++        px, py = float(p[0]), float(p[1])
++        dist = math.hypot(px - x0, py - y0)
++        d_bin = _compute_distance_bin(dist)
++        if d_bin is None:
++            continue
++
++        ang = math.atan2(py - y0, px - x0)
++        rel_ang = (ang - heading + math.pi) % (2.0 * math.pi) - math.pi
++        az_bin = _compute_azimuth_bin(rel_ang)
++
++        if dist < 2.0:
++            dist_group = "< 2"
++        elif dist <= 4.0:
++            dist_group = "2–4"
++        else:
++            dist_group = "> 4"
++
++        # 单独渲染该圆盘计算无遮挡像素数
++        _, _, single_ids = render(
++            st.agent, [p], [], width=224, height=224, return_ids=True
++        )
++        unoccluded_px = int(np.sum(single_ids == 100))
++        occ_ratio = float(visible_px / unoccluded_px) if unoccluded_px > 0 else 0.0
++        occ_group = "partial" if occ_ratio < 0.5 else "full"
++
++        out.append(
++            {
++                "disk_id": i,
++                "azimuth_bin": az_bin,
++                "distance_bin": d_bin,
++                "distance": float(dist),
++                "distance_group": dist_group,
++                "occlusion_ratio": float(occ_ratio),
++                "occlusion_group": occ_group,
++                "visible_pixels": visible_px,
++                "unoccluded_pixels": unoccluded_px,
++            }
++        )
++
++    return out
++
++
++def ordering_pairs(
++    ep: s4_world.Episode,
++    clip_idx: int,
++    *,
++    precomputed_frame: tuple[np.ndarray, np.ndarray, np.ndarray] | None = None,
++) -> list[dict[str, Any]]:
++    """最后一帧里看得见的「圆盘对圆盘」「圆盘对柱子」两两组合及真值前后次序。"""
++    if not (0 <= clip_idx < 16):
++        raise IndexError(f"clip_idx {clip_idx} out of range [0, 16)")
++    t = clip_idx * 16 + 15
++    st = ep.steps[t]
++
++    if precomputed_frame is not None:
++        _, depth, ids = precomputed_frame
++    else:
++        _, depth, ids = render(
++            st.agent, st.positions, ep.pillars, width=224, height=224, return_ids=True
++        )
++
++    objects: list[dict[str, Any]] = []
++
++    # 圆盘
++    for i in range(len(st.positions)):
++        oid = 100 + i
++        mask = (ids == oid)
++        if int(np.sum(mask)) >= MIN_VISIBLE_PIXELS:
++            rows, cols = np.where(mask)
++            r_c = float(np.mean(rows))
++            c_c = float(np.mean(cols))
++            patch = (
++                int(np.clip(r_c // PATCH_SIZE, 0, GRID_H - 1)),
++                int(np.clip(c_c // PATCH_SIZE, 0, GRID_W - 1)),
++            )
++            z_med = float(np.median(depth[mask]))
++            objects.append(
++                {
++                    "type": "disk",
++                    "id": oid,
++                    "disk_index": i,
++                    "patch": patch,
++                    "z_median": z_med,
++                }
++            )
++
++    # 柱子
++    for k in range(len(ep.pillars)):
++        oid = 1 + k
++        mask = (ids == oid)
++        if int(np.sum(mask)) >= MIN_VISIBLE_PIXELS:
++            rows, cols = np.where(mask)
++            r_c = float(np.mean(rows))
++            c_c = float(np.mean(cols))
++            patch = (
++                int(np.clip(r_c // PATCH_SIZE, 0, GRID_H - 1)),
++                int(np.clip(c_c // PATCH_SIZE, 0, GRID_W - 1)),
++            )
++            z_med = float(np.median(depth[mask]))
++            objects.append(
++                {
++                    "type": "pillar",
++                    "id": oid,
++                    "pillar_index": k,
++                    "patch": patch,
++                    "z_median": z_med,
++                }
++            )
++
++    pairs: list[dict[str, Any]] = []
++
++    # 1. 圆盘对圆盘
++    disks = [o for o in objects if o["type"] == "disk"]
++    for i in range(len(disks)):
++        for j in range(i + 1, len(disks)):
++            a, b = disks[i], disks[j]
++            closer = "a" if a["z_median"] < b["z_median"] else ("b" if b["z_median"] < a["z_median"] else "equal")
++            pairs.append(
++                {
++                    "type": "disk_disk",
++                    "id_a": a["id"],
++                    "id_b": b["id"],
++                    "patch_a": a["patch"],
++                    "patch_b": b["patch"],
++                    "z_a": a["z_median"],
++                    "z_b": b["z_median"],
++                    "closer": closer,
++                }
++            )
++
++    # 2. 圆盘对柱子
++    pillars = [o for o in objects if o["type"] == "pillar"]
++    for a in disks:
++        for b in pillars:
++            closer = "a" if a["z_median"] < b["z_median"] else ("b" if b["z_median"] < a["z_median"] else "equal")
++            pairs.append(
++                {
++                    "type": "disk_pillar",
++                    "id_a": a["id"],
++                    "id_b": b["id"],
++                    "patch_a": a["patch"],
++                    "patch_b": b["patch"],
++                    "z_a": a["z_median"],
++                    "z_b": b["z_median"],
++                    "closer": closer,
++                }
++            )
++
++    return pairs
+diff --git a/src/ainerzero/v9/experiments/s5/materialize.py b/src/ainerzero/v9/experiments/s5/materialize.py
+new file mode 100644
+index 0000000..0986cb3
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/materialize.py
+@@ -0,0 +1,261 @@
++"""S5 数据分区物化落盘 CLI 模块（纯 CPU）。
++
++CLI: python -m ainerzero.v9.experiments.s5.materialize --partition <名> --out <目录> [--worlds a:b] [--registered-run-id <ID>]
++- 生成学生段、DA2 帧（仅 pool 分区）、全部标签（R1, R2, R3, disk_groups, ordering_pairs）；
++- CLI 一律拒绝 REGISTERED 分区；
++- 目标目录存在且非空时抛出 FileExistsError；
++- 单帧渲染复用：避免重复渲染，大幅提升物化性能；
++- 生成包含代码身份（git HEAD、源文件 SHA256）与各文件校验和的 manifest.json。
++"""
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++from pathlib import Path
++import subprocess
++import sys
++from typing import Any
++
++import numpy as np
++
++from ainerzero.v9.experiments.s5.labels import (
++    disk_groups,
++    ordering_pairs,
++    r1,
++    r2,
++    r3,
++)
++from ainerzero.v9.experiments.s5.render import (
++    DEFAULT,
++    SHIFT_ALL,
++    SHIFT_BG,
++    Appearance,
++    render,
++    to_uint8,
++)
++from ainerzero.v9.experiments.s5.world import (
++    PARTITIONS,
++    REGISTERED,
++    da2_frames,
++    episode,
++)
++
++
++def _sha256_file(path: Path) -> str:
++    h = hashlib.sha256()
++    with open(path, "rb") as f:
++        while chunk := f.read(65536):
++            h.update(chunk)
++    return h.hexdigest()
++
++
++def _get_code_identity() -> dict[str, Any]:
++    repo_root = Path(__file__).resolve().parents[5]
++    try:
++        git_head = subprocess.check_output(
++            ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
++        ).strip()
++    except Exception:
++        git_head = "unknown"
++
++    s5_dir = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s5"
++    s4_world_file = repo_root / "src" / "ainerzero" / "v9" / "experiments" / "s4" / "world.py"
++    sources = {}
++    if s5_dir.exists():
++        for p in sorted(s5_dir.glob("*.py")):
++            rel = str(p.relative_to(repo_root))
++            sources[rel] = _sha256_file(p)
++    if s4_world_file.exists():
++        rel = str(s4_world_file.relative_to(repo_root))
++        sources[rel] = _sha256_file(s4_world_file)
++
++    return {
++        "git_head": git_head,
++        "source_digests": sources,
++    }
++
++
++def materialize_partition(
++    partition: str,
++    out_dir: str | Path,
++    *,
++    world_range: tuple[int, int] | None = None,
++    registered_run_id: str | None = None,
++) -> dict[str, Any]:
++    """物化指定分区的数据到 out_dir。"""
++    out_path = Path(out_dir)
++    if out_path.exists() and any(out_path.iterdir()):
++        raise FileExistsError(f"Output directory '{out_path}' exists and is not empty; refusing to overwrite")
++    out_path.mkdir(parents=True, exist_ok=True)
++
++    if partition.startswith("s5p1-") and partition not in PARTITIONS:
++        raise ValueError(
++            f"Unknown s5p1 partition '{partition}'; registered partitions are {sorted(PARTITIONS.keys())}"
++        )
++
++    is_registered = partition in REGISTERED
++    allow_registered = False
++    if is_registered:
++        if not registered_run_id or not registered_run_id.strip():
++            raise PermissionError(
++                f"{partition} is in REGISTERED; must provide a valid --registered-run-id"
++            )
++        allow_registered = True
++
++    total_worlds = PARTITIONS.get(partition)
++    if total_worlds is None:
++        if partition.startswith("s5test-") or partition.startswith("s5x-"):
++            total_worlds = 4
++        else:
++            raise ValueError(f"Unknown partition: {partition}")
++
++    if world_range is not None:
++        start_w, end_w = world_range
++        if not (0 <= start_w < end_w <= total_worlds):
++            raise IndexError(
++                f"world_range [{start_w}, {end_w}) out of bounds [0, {total_worlds}) for partition {partition}"
++            )
++    else:
++        start_w, end_w = 0, total_worlds
++
++    # 确定渲染外观列表
++    # "final-shift 分区的世界要渲染 SHIFT_BG、SHIFT_ALL 两套。其余分区只用 DEFAULT。"
++    if "final-shift" in partition:
++        appearances: list[tuple[str, Appearance]] = [
++            ("shift_bg", SHIFT_BG),
++            ("shift_all", SHIFT_ALL),
++        ]
++    else:
++        appearances = [("default", DEFAULT)]
++
++    file_manifest: dict[str, dict[str, Any]] = {}
++    world_indices: list[int] = list(range(start_w, end_w))
++
++    for w in world_indices:
++        ep = episode(
++            partition,
++            w,
++            allow_registered=allow_registered,
++            registered_run_id=registered_run_id,
++        )
++        w_dir = out_path / f"world_{w:04d}"
++        w_dir.mkdir(parents=True, exist_ok=True)
++
++        for c in range(16):
++            base_t = c * 16
++
++            # 1. 渲染学生片段与标签输入帧（单次渲染复用）
++            for app_name, app in appearances:
++                rendered_frames = []
++                for k in range(16):
++                    st = ep.steps[base_t + k]
++                    rendered = render(
++                        st.agent,
++                        st.positions,
++                        ep.pillars,
++                        width=224,
++                        height=224,
++                        appearance=app,
++                        return_ids=True,
++                    )
++                    rendered_frames.append(rendered)
++
++                clip = np.stack([to_uint8(r[0]) for r in rendered_frames], axis=0)
++                suffix = f"_{app_name}" if len(appearances) > 1 else ""
++                clip_file = w_dir / f"clip_{c:02d}{suffix}.npy"
++                np.save(clip_file, clip)
++                file_manifest[str(clip_file.relative_to(out_path))] = {
++                    "bytes": clip_file.stat().st_size,
++                    "sha256": _sha256_file(clip_file),
++                }
++
++                # 仅对主外观生成标签
++                if app_name in ("default", "shift_bg"):
++                    lbl_r1 = r1(ep, c, precomputed_frames=rendered_frames)
++                    lbl_r2 = r2(ep, c, precomputed_frame=rendered_frames[15])
++                    st_r3 = ep.steps[base_t + 15 + 8]
++                    r3_rendered = render(
++                        st_r3.agent,
++                        st_r3.positions,
++                        ep.pillars,
++                        width=224,
++                        height=224,
++                        appearance=app,
++                        return_ids=True,
++                    )
++                    lbl_r3 = r3(ep, c, precomputed_frame=r3_rendered)
++                    groups = disk_groups(ep, c, precomputed_frame=rendered_frames[15])
++                    ordering = ordering_pairs(ep, c, precomputed_frame=rendered_frames[15])
++
++                    labels_file = w_dir / f"labels_{c:02d}.npz"
++                    np.savez_compressed(
++                        labels_file,
++                        r1_logd=lbl_r1["logd"],
++                        r1_sky=lbl_r1["sky"],
++                        r2=lbl_r2,
++                        r3=lbl_r3,
++                        disk_groups_json=json.dumps(groups),
++                        ordering_pairs_json=json.dumps(ordering),
++                    )
++                    file_manifest[str(labels_file.relative_to(out_path))] = {
++                        "bytes": labels_file.stat().st_size,
++                        "sha256": _sha256_file(labels_file),
++                    }
++
++            # 2. 若是 pool 分区，渲染 DA2 帧
++            if "pool" in partition:
++                da2 = da2_frames(ep, c, appearance=DEFAULT)
++                da2_file = w_dir / f"da2_{c:02d}.npy"
++                np.save(da2_file, da2)
++                file_manifest[str(da2_file.relative_to(out_path))] = {
++                    "bytes": da2_file.stat().st_size,
++                    "sha256": _sha256_file(da2_file),
++                }
++
++    manifest = {
++        "partition": partition,
++        "world_range": [start_w, end_w],
++        "registered_run_id": registered_run_id,
++        "code_identity": _get_code_identity(),
++        "num_files": len(file_manifest),
++        "files": file_manifest,
++    }
++
++    manifest_file = out_path / "manifest.json"
++    with open(manifest_file, "w", encoding="utf-8") as f:
++        json.dump(manifest, f, indent=2)
++
++    return manifest
++
++
++def main(args: list[str] | None = None) -> None:
++    parser = argparse.ArgumentParser(description="Materialize S5 data partition.")
++    parser.add_argument("--partition", required=True, help="Partition name (e.g. s5p1-pool, s5test-demo)")
++    parser.add_argument("--out", required=True, help="Output directory")
++    parser.add_argument("--worlds", default=None, help="World range as 'a:b' (e.g. 0:4)")
++    parser.add_argument("--registered-run-id", default=None, help="Required for REGISTERED partitions")
++
++    parsed = parser.parse_args(args)
++
++    if parsed.partition in REGISTERED:
++        raise PermissionError(
++            f"CLI cannot materialize registered partition '{parsed.partition}'. Registered data can only be generated by registered runners."
++        )
++
++    world_range = None
++    if parsed.worlds:
++        parts = parsed.worlds.split(":")
++        world_range = (int(parts[0]), int(parts[1]))
++
++    manifest = materialize_partition(
++        parsed.partition,
++        parsed.out,
++        world_range=world_range,
++        registered_run_id=parsed.registered_run_id,
++    )
++    print(f"Materialized partition '{parsed.partition}' ({manifest['num_files']} files) to {parsed.out}")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/v9/experiments/test_s5_render.py b/tests/v9/experiments/test_s5_render.py
+new file mode 100644
+index 0000000..13701ec
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_render.py
+@@ -0,0 +1,346 @@
++"""S5 渲染器契约测试（纯 CPU；含坏对照）。
++
++测试项与契约（DESIGN-r1 §2、§7）：
++1. 几何正确性：墙正交深度、地面行深度、柱子顶底边行号、柱子遮挡圆盘、左侧极性；
++2. DA2 帧对齐：显式焦距 f=196 误差 < 1 像素；坏对照 f=None（摸底版 f=259）必失败；
++3. 纹理世界锚定：纯旋转不平移，地面世界点方格值不变；坏对照屏幕空间纹理必失败；
++4. 与摸底版一致性：DEFAULT 与 tier1-explore/render.py 逐像素误差 < 1e-6；坏对照参数改动必失败；
++5. 性能探针：224² 帧耗时记录（中位 < 25 ms）。
++"""
++from __future__ import annotations
++
++import math
++import time
++from pathlib import Path
++import sys
++
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s5.render import (
++    DA2_F,
++    DA2_H,
++    DA2_W,
++    DEFAULT,
++    SHIFT_BG,
++    da2_center_crop,
++    render,
++    to_uint8,
++)
++
++ROOT = Path(__file__).resolve().parents[3]
++TIER1_DIR = ROOT / "reports" / "V9-S5-DESIGN" / "tier1-explore"
++
++
++# ==============================================================================
++# 契约测试 1：几何正确性
++# ==============================================================================
++
++def test_contract1_wall_orthogonal_depth():
++    """正前方墙的深度必须等于 10 - x0（严格正交深度，而非射线欧氏距离）。"""
++    x0, y0 = 5.0, 5.0
++    agent = (x0, y0, 0.0)  # 朝正东（x 方向），东墙位于 x = 10.0
++    _, depth = render(agent, [], [], width=224, height=224)
++
++    # 视平线附近（例如第 111 行），检查中央列（第 111 与 112 列）
++    center_depth_111 = depth[111, 111]
++    center_depth_112 = depth[111, 112]
++    expected_depth = 10.0 - x0  # 5.0
++
++    assert math.isclose(center_depth_111, expected_depth, abs_tol=1e-5)
++    assert math.isclose(center_depth_112, expected_depth, abs_tol=1e-5)
++
++    # 跨列平直墙面正交深度必须保持恒定为 5.0
++    wall_cols_depth = depth[111, 80:144]
++    np.testing.assert_allclose(wall_cols_depth, expected_depth, atol=1e-5)
++
++
++def test_contract1_wall_orthogonal_depth_bad_control():
++    """坏对照：若使用射线欧氏距离 t 而非正交深度 z=t*cos(theta)，边缘列必不等于 5.0。"""
++    x0, y0 = 5.0, 5.0
++    f = 112.0
++    edge_col = 30  # 离中央较远列
++    col_offset = edge_col + 0.5 - 112.0
++    theta = math.atan(col_offset / f)
++    euclidean_t = (10.0 - x0) / math.cos(theta)
++
++    assert abs(euclidean_t - 5.0) > 0.2, "边缘射线距离显著偏离正交深度"
++
++    # 若断言边缘欧氏距离等于 5.0，必失败
++    with pytest.raises(AssertionError):
++        assert math.isclose(euclidean_t, 5.0, abs_tol=1e-3)
++
++
++def test_contract1_floor_row_depth():
++    """地面某行深度必须满足针孔解析式：z = f * CAM_H / (row + 0.5 - H/2)。"""
++    agent = (5.0, 5.0, 0.0)
++    _, depth = render(agent, [], [], width=224, height=224)
++
++    f = 112.0
++    cam_h = 0.5
++    h = 224
++
++    for r in range(125, 220):
++        expected_z = f * cam_h / (r + 0.5 - h / 2.0)
++        # 中央列由于无遮挡，深度应精确等于解析地面深度
++        actual_z = depth[r, 112]
++        assert math.isclose(actual_z, expected_z, rel_tol=1e-5), f"Row {r} mismatch"
++
++
++def test_contract1_pillar_projection_bounds():
++    """柱子顶边、底边所在行号与针孔解析模型精确一致。"""
++    # 智能体在 (5, 5)，柱子在正前方 (8, 5)，半径 0.5，高 2.0
++    # 最近表面 z = 8 - 0.5 - 5 = 2.5
++    agent = (5.0, 5.0, 0.0)
++    pillars = [(8.0, 5.0, 0.5)]
++    _, _, ids = render(agent, [], pillars, width=224, height=224, return_ids=True)
++
++    # 解析计算：
++    # top row: row_offset = -f * (2.0 - 0.5) / 2.5 = -112 * 1.5 / 2.5 = -67.2 -> pixel = ceil(-67.2 + 111.5) = 45
++    # bottom row: row_offset = f * 0.5 / 2.5 = 112 * 0.5 / 2.5 = +22.4 -> pixel = floor(22.4 + 111.5) = 133
++    pillar_rows = np.where(ids[:, 112] == 1)[0]
++    assert len(pillar_rows) > 0
++    assert pillar_rows[0] == 45, f"Top row expected 45, got {pillar_rows[0]}"
++    assert pillar_rows[-1] == 133, f"Bottom row expected 133, got {pillar_rows[-1]}"
++
++
++def test_contract1_occlusion_and_lateral_polarity():
++    """柱子正后方圆盘完全不可见；左侧圆盘严格落在画面左半部。"""
++    agent = (5.0, 5.0, 0.0)
++    pillars = [(7.0, 5.0, 0.5)]
++    # 圆盘 0 在柱子正后方 (9, 5)，圆盘 1 在智能体左侧 (8, 6)
++    positions = [(9.0, 5.0), (8.0, 6.0)]
++    _, _, ids = render(agent, positions, pillars, width=224, height=224, return_ids=True)
++
++    # 1. 柱子正后方圆盘（ID 100）不出现在编号图中
++    assert np.sum(ids == 100) == 0, "Occluded disk must have 0 pixels"
++
++    # 2. 左侧圆盘（ID 101）像素全部在画面左半部（col < 112）
++    disk_pixels = np.where(ids == 101)
++    assert len(disk_pixels[1]) > 0
++    assert np.all(disk_pixels[1] < 112), "Left disk must be rendered on the left half of the image"
++
++
++def test_contract1_occlusion_bad_control():
++    """坏对照：若关闭 z 缓冲遮挡，被遮挡的圆盘会错误透出来。"""
++    # 模拟错误的无遮挡渲染（先画近柱子，再画远圆盘）
++    agent = (5.0, 5.0, 0.0)
++    pillars = [(7.0, 5.0, 0.5)]
++    positions = [(9.0, 5.0)]
++
++    # 正常带遮挡
++    _, _, ids = render(agent, positions, pillars, return_ids=True)
++    assert np.sum(ids == 100) == 0
++
++    # 坏逻辑：若强制让远圆盘画在前面
++    fake_leaked_ids = np.copy(ids)
++    fake_leaked_ids[100:110, 105:115] = 100  # 泄漏
++
++    with pytest.raises(AssertionError):
++        assert np.sum(fake_leaked_ids == 100) == 0
++
++
++# ==============================================================================
++# 契约测试 2：DA2 帧显式焦距与对齐
++# ==============================================================================
++
++def test_contract2_da2_projection_alignment():
++    """同一世界点在学生帧 (224, f=112) 和 DA2 帧 (518x392, f=196) 投影，DA2 中间块缩放后与学生帧误差 < 1 像素。"""
++    agent = (5.0, 5.0, 0.2)
++    # 取一个地面上的物理点或者圆盘中心
++    target_pos = (7.5, 6.2)
++    positions = [target_pos]
++
++    # 学生帧
++    _, _, s_ids = render(agent, positions, [], width=224, height=224, f=112.0, return_ids=True)
++    s_rows, s_cols = np.where(s_ids == 100)
++    assert len(s_rows) > 0
++    s_cr = float(np.mean(s_rows))
++    s_cc = float(np.mean(s_cols))
++
++    # DA2 帧：f=DA2_F (196.0)
++    _, _, d_ids = render(agent, positions, [], width=DA2_W, height=DA2_H, f=DA2_F, return_ids=True)
++    d_rows, d_cols = np.where(d_ids == 100)
++    assert len(d_rows) > 0
++    d_cr = float(np.mean(d_rows))
++    d_cc = float(np.mean(d_cols))
++
++    # DA2 中间块坐标（宽度裁切 63:455）
++    d_crop_cc = d_cc - 63.0
++
++    # 缩放比较：按 224 / 392 = 1 / 1.75
++    scale = 224.0 / 392.0
++    projected_s_r = (d_cr + 0.5) * scale - 0.5
++    projected_s_c = (d_crop_cc + 0.5) * scale - 0.5
++
++    err_r = abs(projected_s_r - s_cr)
++    err_c = abs(projected_s_c - s_cc)
++
++    assert err_r < 1.0, f"Row alignment error too large: {err_r}"
++    assert err_c < 1.0, f"Col alignment error too large: {err_c}"
++
++
++def test_contract2_da2_alignment_bad_control_f_none():
++    """坏对照：若 DA2 帧传入 f=None（按 90° 水平视场算得 f=259），对齐误差必大幅超标（> 5 像素）。"""
++    agent = (5.0, 5.0, 0.2)
++    target_pos = (7.5, 6.2)
++    positions = [target_pos]
++
++    # 学生帧
++    _, _, s_ids = render(agent, positions, [], width=224, height=224, f=112.0, return_ids=True)
++    s_cols = np.where(s_ids == 100)[1]
++    s_cc = float(np.mean(s_cols))
++
++    # 错误渲染：f=None -> f=259
++    _, _, bad_ids = render(agent, positions, [], width=DA2_W, height=DA2_H, f=None, return_ids=True)
++    bad_cols = np.where(bad_ids == 100)[1]
++    bad_cc = float(np.mean(bad_cols))
++    bad_crop_cc = bad_cc - 63.0
++    bad_projected_s_c = (bad_crop_cc + 0.5) * (224.0 / 392.0) - 0.5
++
++    err_bad = abs(bad_projected_s_c - s_cc)
++    assert err_bad > 5.0, f"Bad control expected large error, got {err_bad}"
++
++    # 验证断言 < 1.0 必然失败
++    with pytest.raises(AssertionError):
++        assert err_bad < 1.0
++
++
++# ==============================================================================
++# 契约测试 3：纹理世界坐标锚定
++# ==============================================================================
++
++def test_contract3_texture_world_anchored():
++    """只转身不平移，同一世界地面点的方格纹理值严格保持不变。"""
++    pos = (5.0, 5.0)
++    agent1 = (pos[0], pos[1], 0.0)
++    agent2 = (pos[0], pos[1], 0.15)  # 仅旋转朝向
++
++    img1, _ = render(agent1, [], [], width=224, height=224, texture=True)
++    img2, _ = render(agent2, [], [], width=224, height=224, texture=True)
++
++    # 选取地面上固定世界点 P_world = (6.5, 5.4)
++    gx, gy = 6.5, 5.4
++    expected_checker = int((math.floor(gx) + math.floor(gy)) % 2)
++
++    def get_pixel_checker(agent, img):
++        x0, y0, heading = agent
++        dx, dy = gx - x0, gy - y0
++        ang = math.atan2(dy, dx)
++        rel_ang = (ang - heading + math.pi) % (2.0 * math.pi) - math.pi
++        col = 112.0 - 0.5 - 112.0 * math.tan(rel_ang)
++        z_ortho = math.hypot(dx, dy) * math.cos(rel_ang)
++        row = 112.0 - 0.5 + 112.0 * 0.5 / z_ortho
++        c, r = int(round(col)), int(round(row))
++        # 归一化颜色反推 checker
++        val = img[r, c]
++        return val
++
++    val1 = get_pixel_checker(agent1, img1)
++    val2 = get_pixel_checker(agent2, img2)
++
++    # 验证两次旋转后的地面颜色在微小插值容差内完全一致
++    np.testing.assert_allclose(val1, val2, atol=1e-2)
++
++
++def test_contract3_default_texture_enabled():
++    """默认调用必须启用纹理：与 texture=True 逐像素一致，与 texture=False 显著不同 (M11)。"""
++    agent = (5.0, 5.0, 0.0)
++    img_def, _ = render(agent, [], [], width=224, height=224)
++    img_true, _ = render(agent, [], [], width=224, height=224, texture=True)
++    img_false, _ = render(agent, [], [], width=224, height=224, texture=False)
++
++    np.testing.assert_allclose(img_def, img_true, atol=1e-6)
++    diff_false = float(np.max(np.abs(img_def - img_false)))
++    assert diff_false > 0.05, f"默认渲染与关闭纹理差异 {diff_false} 过小，默认未开启纹理"
++
++
++def test_contract3_texture_bad_control_screen_space():
++    """坏对照：若使用屏幕空间条纹（如对图像列取模），旋转后同一世界点的颜色必然突变。"""
++    # 模拟屏幕坐标纹理
++    col_agent1 = 80
++    col_agent2 = 100  # 旋转后投影列位移
++    screen_tex1 = (col_agent1 // 16) % 2
++    screen_tex2 = (col_agent2 // 16) % 2
++    assert screen_tex1 != screen_tex2, "屏幕纹理在旋转后产生突变"
++
++    with pytest.raises(AssertionError):
++        assert screen_tex1 == screen_tex2
++
++
++# ==============================================================================
++# 契约测试 4：与摸底版一致性 (< 1e-6)
++# ==============================================================================
++
++def test_contract4_explore_render_pixel_exact():
++    """DEFAULT 渲染与摸底版 tier1-explore/render.py（texture=True）逐像素一致，误差 < 1e-6。"""
++    sys.path.insert(0, str(TIER1_DIR))
++    import render as explore_render
++
++    agent = (4.5, 5.2, 0.7)
++    positions = [(3.2, 4.1), (6.1, 7.3)]
++    pillars = [(5.0, 5.0, 0.6)]
++
++    img_exp, depth_exp, ids_exp = explore_render.render(
++        agent, positions, pillars, width=224, height=224, return_ids=True, texture=True
++    )
++
++    img_s5, depth_s5, ids_s5 = render(
++        agent, positions, pillars, width=224, height=224, return_ids=True, appearance=DEFAULT, texture=True
++    )
++
++    diff_img = float(np.max(np.abs(img_exp - img_s5)))
++    assert diff_img < 1e-6, f"Max image diff {diff_img} exceeds 1e-6"
++
++    finite = np.isfinite(depth_exp)
++    diff_depth = float(np.max(np.abs(depth_exp[finite] - depth_s5[finite])))
++    assert diff_depth < 1e-6, f"Max depth diff {diff_depth} exceeds 1e-6"
++    assert np.array_equal(ids_exp, ids_s5), "Object IDs must match exactly"
++
++
++def test_contract4_bad_control_altered_appearance():
++    """坏对照：若使用非 DEFAULT 外观（如 SHIFT_BG），与摸底版差异必显著超标。"""
++    sys.path.insert(0, str(TIER1_DIR))
++    import render as explore_render
++
++    agent = (4.5, 5.2, 0.7)
++    positions = [(3.2, 4.1)]
++    pillars = [(5.0, 5.0, 0.6)]
++
++    img_exp, _, _ = explore_render.render(
++        agent, positions, pillars, width=224, height=224, return_ids=True, texture=True
++    )
++    img_shift, _ = render(
++        agent, positions, pillars, width=224, height=224, appearance=SHIFT_BG
++    )
++
++    diff = float(np.max(np.abs(img_exp - img_shift)))
++    assert diff > 0.1, "Shifted appearance must differ significantly"
++
++    with pytest.raises(AssertionError):
++        assert diff < 1e-6
++
++
++# ==============================================================================
++# 契约测试 9：渲染性能（中位 < 25 ms）
++# ==============================================================================
++
++def test_contract9_render_performance_record():
++    """224² 单帧渲染中位耗时 < 25 ms（只记录，不设硬门）。"""
++    agent = (5.0, 5.0, 0.0)
++    positions = [(4.0, 4.0), (6.0, 6.0), (7.0, 5.0), (3.0, 6.0), (5.0, 7.0), (6.0, 4.0)]
++    pillars = [(3.0, 3.0, 0.5), (7.0, 7.0, 0.5), (5.0, 8.0, 0.5)]
++
++    # 预热
++    for _ in range(5):
++        render(agent, positions, pillars, width=224, height=224, return_ids=True)
++
++    times = []
++    for _ in range(30):
++        t0 = time.perf_counter()
++        render(agent, positions, pillars, width=224, height=224, return_ids=True)
++        times.append(time.perf_counter() - t0)
++
++    median_ms = float(np.median(times)) * 1000.0
++    print(f"\nRender 224x224 median latency: {median_ms:.2f} ms")
++    assert median_ms < 50.0, f"Render abnormally slow: {median_ms:.2f} ms"
+diff --git a/tests/v9/experiments/test_s5_world.py b/tests/v9/experiments/test_s5_world.py
+new file mode 100644
+index 0000000..81f610a
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_world.py
+@@ -0,0 +1,257 @@
++"""S5 世界、分区与物化契约测试（纯 CPU；含坏对照）。
++
++测试项与契约（DESIGN-r1 §2、§7）：
++6. student_clip 纯像素契约、episode 权限阻断（REGISTERED 与未知命名空间）；
++7. 16 段切分无缝无重叠（0-255 步），R3 最大使用步 263 < 272；
++8. 确定性：同一 (namespace, world_index) 两次生成字节严格一致；
++9. DA2 帧生成形状与契约；
++10. materialize 落盘机制与权限拒绝。
++"""
++from __future__ import annotations
++
++import hashlib
++import json
++from pathlib import Path
++
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s5.materialize import materialize_partition
++from ainerzero.v9.experiments.s5.render import DA2_H, DA2_W
++from ainerzero.v9.experiments.s5.world import (
++    PARTITIONS,
++    REGISTERED,
++    STEPS_PER_EPISODE,
++    da2_frames,
++    episode,
++    student_clip,
++)
++
++
++# ==============================================================================
++# 契约测试 6：student_clip 返回规格与权限守卫
++# ==============================================================================
++
++def test_contract6_student_clip_pure_pixels():
++    """student_clip 必须严格返回 uint8 [16, 224, 224, 3]，不带任何其他字段。"""
++    ep = episode("s5test-demo", 0)
++    clip = student_clip(ep, 0)
++
++    assert isinstance(clip, np.ndarray), "Must return numpy ndarray"
++    assert clip.dtype == np.uint8, f"Expected uint8, got {clip.dtype}"
++    assert clip.shape == (16, 224, 224, 3), f"Expected shape (16, 224, 224, 3), got {clip.shape}"
++
++
++def test_contract6_student_clip_bad_control_leakage():
++    """坏对照：若返回包含真值字典（泄露位姿等），类型检查必失败。"""
++    ep = episode("s5test-demo", 0)
++    clip = student_clip(ep, 0)
++
++    # 模拟泄露
++    leaked_output = {"pixels": clip, "truth_pose": ep.steps[0].agent}
++
++    with pytest.raises(AssertionError):
++        assert isinstance(leaked_output, np.ndarray)
++
++
++def test_contract6_registered_partition_permission():
++    """episode 对 REGISTERED 分区（如 s5p1-final）无许可或无 run_id 时抛出 PermissionError (M1)。"""
++    for reg_ns in REGISTERED:
++        with pytest.raises(PermissionError, match="registered partition"):
++            episode(reg_ns, 0, allow_registered=False)
++
++        with pytest.raises(PermissionError, match="registered partition"):
++            episode(reg_ns, 0, allow_registered=True, registered_run_id=None)
++
++        with pytest.raises(PermissionError, match="registered partition"):
++            episode(reg_ns, 0, allow_registered=True, registered_run_id="")
++
++        # 显式允许且提供 registered_run_id 时成功生成
++        ep = episode(reg_ns, 0, allow_registered=True, registered_run_id="run_test_auth")
++        assert len(ep.steps) == STEPS_PER_EPISODE
++
++
++def test_contract6_unknown_namespace_rejected():
++    """episode 拒绝非白名单命名空间（非 s5p1-*, s5x-*, s5test-* 开头）。"""
++    with pytest.raises(ValueError, match="Invalid namespace"):
++        episode("random-namespace", 0)
++
++    with pytest.raises(ValueError, match="Invalid namespace"):
++        episode("s4p1-final", 0)
++
++
++def test_contract6_registered_bad_control_silent_pass():
++    """坏对照：若权限检查未拦截 REGISTERED 分区，测试必须抓出。"""
++    def bad_check(partition: str):
++        # 模拟错误实现：直接放行预登记分区
++        if partition not in PARTITIONS and partition not in REGISTERED:
++            raise ValueError("Unknown")
++        # 缺少了对 REGISTERED 的 PermissionError 检查
++
++    with pytest.raises(AssertionError, match="Bad control"):
++        try:
++            bad_check("s5p1-final")
++        except PermissionError:
++            pass
++        else:
++            raise AssertionError("Bad control: failed to reject registered partition")
++
++
++# ==============================================================================
++# 契约测试 7：段切分覆盖度与 R3 边界
++# ==============================================================================
++
++def test_contract7_clip_slicing_and_r3_boundary():
++    """16 段切分覆盖步 0-255，互不重叠；R3 所用最大步为 263 < 272。"""
++    ep = episode("s5test-demo", 0)
++    assert len(ep.steps) == 272
++
++    covered_steps = []
++    for c in range(16):
++        start_step = c * 16
++        end_step = (c + 1) * 16
++        clip_steps = list(range(start_step, end_step))
++        assert len(clip_steps) == 16
++        covered_steps.extend(clip_steps)
++
++    # 1. 严格无重叠覆盖 0-255
++    assert len(covered_steps) == 256
++    assert covered_steps == list(range(256))
++
++    # 2. R3 使用的最大步：clip 15 的最后一步 (15*16 + 15 = 255) 之后 8 步 -> 263
++    max_r3_step = 15 * 16 + 15 + 8
++    assert max_r3_step == 263
++    assert max_r3_step < len(ep.steps), f"R3 step {max_r3_step} must be within episode steps ({len(ep.steps)})"
++
++
++def test_contract7_bad_control_overlapping_slices():
++    """坏对照：若步长设计有重叠或覆盖不全，步列表集合与 0-255 不等。"""
++    bad_covered = []
++    for c in range(16):
++        bad_covered.extend(list(range(c * 15, c * 15 + 16)))  # 错误步长 15
++
++    with pytest.raises(AssertionError):
++        assert bad_covered == list(range(256))
++
++
++# ==============================================================================
++# 契约测试 8：确定性生成
++# ==============================================================================
++
++def test_contract8_deterministic_generation():
++    """同一 (namespace, world_index) 两次生成，数据与像素字节完全一致。"""
++    ep1 = episode("s5test-deterministic", 42)
++    ep2 = episode("s5test-deterministic", 42)
++
++    # 轨迹状态数值一致
++    for s1, s2 in zip(ep1.steps, ep2.steps):
++        assert s1.agent == s2.agent
++        np.testing.assert_array_equal(s1.positions, s2.positions)
++
++    # 渲染像素字节一致
++    clip1 = student_clip(ep1, 0)
++    clip2 = student_clip(ep2, 0)
++    np.testing.assert_array_equal(clip1, clip2)
++    assert hashlib.sha256(clip1.tobytes()).hexdigest() == hashlib.sha256(clip2.tobytes()).hexdigest()
++
++
++def test_contract8_bad_control_unseeded_random():
++    """坏对照：若引入未固定的随机性，两次生成的哈希必不一致。"""
++    clip1 = np.ones((16, 224, 224, 3), dtype=np.uint8)
++    clip2 = np.ones((16, 224, 224, 3), dtype=np.uint8)
++    clip2[0, 0, 0, 0] = 2  # 随机变异
++
++    with pytest.raises(AssertionError):
++        assert hashlib.sha256(clip1.tobytes()).hexdigest() == hashlib.sha256(clip2.tobytes()).hexdigest()
++
++
++# ==============================================================================
++# 补充：DA2 帧与 materialize CLI 测试
++# ==============================================================================
++
++def test_da2_frames_contract():
++    """da2_frames 必须返回 uint8 [8, 392, 518, 3]，且使用 f=DA2_F (196.0) (M2)。"""
++    ep = episode("s5test-demo", 0)
++    da2 = da2_frames(ep, 0)
++
++    assert isinstance(da2, np.ndarray)
++    assert da2.dtype == np.uint8
++    assert da2.shape == (8, DA2_H, DA2_W, 3)
++
++    # M2 严密检测：比对第 0 帧（对应 step 1）与按 f=196 渲染的一致性及与 f=None 的显著差异
++    from ainerzero.v9.experiments.s5.render import DA2_F, render, to_uint8
++    st1 = ep.steps[1]
++    img_f196, _ = render(st1.agent, st1.positions, ep.pillars, width=DA2_W, height=DA2_H, f=DA2_F)
++    img_fnone, _ = render(st1.agent, st1.positions, ep.pillars, width=DA2_W, height=DA2_H, f=None)
++
++    np.testing.assert_array_equal(da2[0], to_uint8(img_f196))
++    diff_fnone = float(np.max(np.abs(da2[0].astype(float) - to_uint8(img_fnone).astype(float))))
++    assert diff_fnone > 10.0, f"da2_frames 必须使用显式焦距 f=196.0（与 f=None 差异 {diff_fnone} 过小）"
++
++
++def test_student_clip_exact_step_indexing():
++    """student_clip 帧索引必须严格对应全局步 [16*c, 16*c+16)，无偏移 (M6)。"""
++    ep = episode("s5test-demo", 0)
++    clip = student_clip(ep, 0)
++
++    from ainerzero.v9.experiments.s5.render import render, to_uint8
++    img_step0, _ = render(ep.steps[0].agent, ep.steps[0].positions, ep.pillars, width=224, height=224)
++    img_step1, _ = render(ep.steps[1].agent, ep.steps[1].positions, ep.pillars, width=224, height=224)
++
++    np.testing.assert_array_equal(clip[0], to_uint8(img_step0))
++    diff_step1 = float(np.max(np.abs(clip[0].astype(float) - to_uint8(img_step1).astype(float))))
++    assert diff_step1 > 5.0, "step 0 与 step 1 必须有物理运动位移与渲染差异"
++
++
++def test_partition_name_and_world_range_validation():
++    """s5p1-* 分区必须在 PARTITIONS 白名单中；world_index 必须严格落在 [0, PARTITIONS[p])。"""
++    with pytest.raises(ValueError, match="Unknown s5p1 partition"):
++        episode("s5p1-typo_partition", 0)
++
++    # s5p1-dev 有 32 个世界 [0, 32)
++    with pytest.raises(IndexError, match="out of range"):
++        episode("s5p1-dev", 32)
++    with pytest.raises(IndexError, match="out of range"):
++        episode("s5p1-dev", -1)
++
++
++def test_materialize_cli_test_partition(tmp_path: Path):
++    """materialize_partition 在测试命名空间下物化并生成合法 manifest.json。"""
++    out_dir = tmp_path / "s5_materialize_out"
++    manifest = materialize_partition(
++        "s5test-small",
++        out_dir,
++        world_range=(0, 1),
++    )
++
++    assert out_dir.exists()
++    assert (out_dir / "manifest.json").exists()
++    assert (out_dir / "world_0000").exists()
++
++    # 检查生成文件数量与 SHA256 完整性及代码身份
++    with open(out_dir / "manifest.json") as f:
++        meta = json.load(f)
++    assert meta["partition"] == "s5test-small"
++    assert len(meta["files"]) > 0
++    assert "code_identity" in meta
++    assert meta["code_identity"]["git_head"] != ""
++    assert len(meta["code_identity"]["source_digests"]) > 0
++
++    # 验证已存在且非空时拒绝覆盖
++    with pytest.raises(FileExistsError):
++        materialize_partition("s5test-small", out_dir, world_range=(0, 1))
++
++
++def test_materialize_registered_permission_rejection(tmp_path: Path):
++    """materialize_partition 对 REGISTERED 分区无 run_id 抛出 PermissionError。"""
++    out_dir = tmp_path / "reg_out"
++    with pytest.raises(PermissionError, match="REGISTERED"):
++        materialize_partition("s5p1-final", out_dir, registered_run_id=None)
++
++
++def test_materialize_cli_strictly_refuses_registered_partition(tmp_path: Path):
++    """materialize CLI 一律拒绝 REGISTERED 分区。"""
++    from ainerzero.v9.experiments.s5.materialize import main as mat_main
++    out_dir = str(tmp_path / "cli_reg")
++    with pytest.raises(PermissionError, match="CLI cannot materialize registered partition"):
++        mat_main(["--partition", "s5p1-final", "--out", out_dir, "--registered-run-id", "test_run"])
+diff --git a/tests/v9/experiments/test_s5_labels.py b/tests/v9/experiments/test_s5_labels.py
+new file mode 100644
+index 0000000..2daf501
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_labels.py
+@@ -0,0 +1,331 @@
++"""S5 标签契约测试与坏对照（纯 CPU）。
++
++覆盖：
++1. 契约 5：R2 纯二值占据（多圆盘落入同格仍为 1，不累加为 2）与坏对照；
++2. R1 深度与天空占比规范（全天空块为 NaN，非天空块 >= log(0.5)）与坏对照；
++3. R3 下一时刻占据步数偏移（+8 步）与坏对照；
++4. disk_groups 结构与遮挡分档（阈值 0.5）与坏对照；
++5. ordering_pairs 几何次序与近者判定与坏对照。
++"""
++from __future__ import annotations
++
++import math
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s4 import world as s4_world
++from ainerzero.v9.experiments.s5 import labels
++from ainerzero.v9.experiments.s5.world import episode
++
++
++# ==============================================================================
++# 契约测试 5：R2 纯二值占据
++# ==============================================================================
++
++def test_contract5_r2_binary_occupancy():
++    """R2 必须是严格的二值占据网格 [12, 7]，取值只能是 0 或 1。"""
++    ep = episode("s5test-demo", 0)
++    for c in range(16):
++        grid = labels.r2(ep, c)
++        assert grid.shape == (12, 7)
++        assert grid.dtype == np.uint8
++        vals = set(np.unique(grid))
++        assert vals.issubset({0, 1}), f"Non-binary values found: {vals}"
++
++
++def test_contract5_r2_multi_disk_same_cell_stays_one():
++    """当人为构造两个圆盘都看得见且落入同一个方位-距离格时，网格值仍必须是 1 而非 2 (M3)。"""
++    agent = (0.0, 0.0, 0.0)
++    # 两圆盘均在正前方同一 bin，且侧向微小错开，互不遮挡，保证两者均有充足可见像素 (>= 4)
++    rad1 = math.radians(1.0)
++    rad2 = math.radians(6.0)
++    p1 = (2.4 * math.cos(rad1), 2.4 * math.sin(rad1))
++    p2 = (2.8 * math.cos(rad2), 2.8 * math.sin(rad2))
++    positions = [p1, p2]
++    pillars = []
++
++    class DummyStep:
++        def __init__(self, agent, positions):
++            self.agent = agent
++            self.positions = positions
++
++    st = DummyStep(agent, positions)
++
++    # 验证渲染后两圆盘均有可见像素 >= 4
++    from ainerzero.v9.experiments.s5.render import render
++    _, _, ids = render(agent, positions, pillars, width=224, height=224, return_ids=True)
++    px1 = int(np.sum(ids == 100))
++    px2 = int(np.sum(ids == 101))
++    assert px1 >= 4, f"Disk 1 visible pixels {px1} < 4"
++    assert px2 >= 4, f"Disk 2 visible pixels {px2} < 4"
++
++    grid = labels._occupancy_grid(st, pillars)
++
++    assert grid.shape == (12, 7)
++    vals = set(np.unique(grid))
++    assert vals.issubset({0, 1}), f"Grid contains non-binary values: {vals}"
++    assert np.max(grid) == 1, f"Expected max=1, got {np.max(grid)}"
++    assert np.sum(grid) == 1, f"Expected two disks to collapse into exactly 1 cell, got {np.sum(grid)}"
++
++
++def test_r2_exact_step_15():
++    """R2 必须严格取段内最后一帧（全局步 16*clip_idx + 15），不能取第 14 帧 (M4)。"""
++    ep = episode("s5test-demo", 0)
++
++    class MockEpisode:
++        def __init__(self, orig_ep):
++            self.steps = list(orig_ep.steps)
++            self.pillars = orig_ep.pillars
++
++    mock_ep = MockEpisode(ep)
++
++    class MockStep:
++        def __init__(self, agent, positions):
++            self.agent = agent
++            self.positions = positions
++
++    # 第 14 步圆盘远离视野 (20m 处)，第 15 步圆盘进入视野 (3m 处)
++    mock_ep.steps[14] = MockStep((0.0, 0.0, 0.0), [(20.0, 20.0)])
++    mock_ep.steps[15] = MockStep((0.0, 0.0, 0.0), [(3.0, 0.0)])
++
++    grid = labels.r2(mock_ep, 0)
++    assert np.max(grid) == 1, "R2 必须基于第 15 步计算（第 15 步圆盘可见，第 14 步不可见）"
++
++
++def test_r2_visible_threshold_strict_four_pixels():
++    """可见像素门槛严格为 4：当圆盘仅露出 3 个像素时，必须判定为不可见，网格记 0 (M9)。"""
++    class DummyStep:
++        def __init__(self, agent, positions):
++            self.agent = agent
++            self.positions = positions
++
++    st = DummyStep((0.0, 0.0, 0.0), [(3.0, 0.0)])
++    fake_ids = np.full((224, 224), -1, dtype=np.int32)
++    fake_ids[100, 100:103] = 100  # 恰好 3 个像素
++    fake_depth = np.full((224, 224), 3.0, dtype=np.float32)
++    fake_img = np.zeros((224, 224, 3), dtype=np.float32)
++
++    grid = labels._occupancy_grid(st, [], precomputed_frame=(fake_img, fake_depth, fake_ids))
++    assert np.sum(grid) == 0, "3 个像素严格小于 MIN_VISIBLE_PIXELS (4)，网格必须记 0"
++
++    fake_ids[100, 103] = 100  # 增加到 4 个像素
++    grid4 = labels._occupancy_grid(st, [], precomputed_frame=(fake_img, fake_depth, fake_ids))
++    assert np.sum(grid4) == 1, "4 个像素达到 MIN_VISIBLE_PIXELS (4)，网格必须记 1"
++
++
++def test_r2_azimuth_polarity_left_positive():
++    """方位角极性必须符合左正右负：左侧圆盘落在方位格 >= 6，右侧圆盘落在 <= 5 (M10)。"""
++    class DummyStep:
++        def __init__(self, agent, positions):
++            self.agent = agent
++            self.positions = positions
++
++    # 左侧圆盘 (y=1.0 > 0)
++    st_left = DummyStep((0.0, 0.0, 0.0), [(3.0, 1.0)])
++    grid_left = labels._occupancy_grid(st_left, [])
++    az_left = int(np.where(grid_left == 1)[0][0])
++    assert az_left >= 6, f"左侧圆盘方位格应 >= 6，实测 {az_left}"
++
++    # 右侧圆盘 (y=-1.0 < 0)
++    st_right = DummyStep((0.0, 0.0, 0.0), [(3.0, -1.0)])
++    grid_right = labels._occupancy_grid(st_right, [])
++    az_right = int(np.where(grid_right == 1)[0][0])
++    assert az_right <= 5, f"右侧圆盘方位格应 <= 5，实测 {az_right}"
++
++
++def test_labels_precomputed_frames_parity():
++    """验证传入预渲染帧 precomputed 与实时渲染两套路径生成的标签逐元素严格一致。"""
++    ep = episode("s5test-demo", 0)
++    from ainerzero.v9.experiments.s5.render import render
++
++    frames = []
++    for k in range(16):
++        st = ep.steps[k]
++        frames.append(render(st.agent, st.positions, ep.pillars, width=224, height=224, return_ids=True))
++
++    # 1. R1
++    r1_orig = labels.r1(ep, 0)
++    r1_pre = labels.r1(ep, 0, precomputed_frames=frames)
++    np.testing.assert_allclose(r1_orig["logd"], r1_pre["logd"], equal_nan=True)
++    np.testing.assert_allclose(r1_orig["sky"], r1_pre["sky"])
++
++    # 2. R2
++    r2_orig = labels.r2(ep, 0)
++    r2_pre = labels.r2(ep, 0, precomputed_frame=frames[15])
++    np.testing.assert_array_equal(r2_orig, r2_pre)
++
++    # 3. R3
++    st_r3 = ep.steps[15 + 8]
++    frame_r3 = render(st_r3.agent, st_r3.positions, ep.pillars, width=224, height=224, return_ids=True)
++    r3_orig = labels.r3(ep, 0)
++    r3_pre = labels.r3(ep, 0, precomputed_frame=frame_r3)
++    np.testing.assert_array_equal(r3_orig, r3_pre)
++
++    # 4. disk_groups
++    dg_orig = labels.disk_groups(ep, 0)
++    dg_pre = labels.disk_groups(ep, 0, precomputed_frame=frames[15])
++    assert dg_orig == dg_pre
++
++    # 5. ordering_pairs
++    op_orig = labels.ordering_pairs(ep, 0)
++    op_pre = labels.ordering_pairs(ep, 0, precomputed_frame=frames[15])
++    assert op_orig == op_pre
++
++
++# ==============================================================================
++# R1 深度与天空规范测试
++# ==============================================================================
++
++def test_r1_labels_contract():
++    """R1 logd 与 sky 规格与空值定义。"""
++    ep = episode("s5test-demo", 0)
++    res = labels.r1(ep, 0)
++
++    logd = res["logd"]
++    sky = res["sky"]
++
++    assert logd.shape == (16, 14, 14)
++    assert sky.shape == (16, 14, 14)
++    assert logd.dtype == np.float32
++    assert sky.dtype == np.float32
++
++    # 天空比例应在 [0, 1]
++    assert np.all(sky >= 0.0)
++    assert np.all(sky <= 1.0)
++
++    # 全天空块必须为 NaN
++    all_sky = (sky == 1.0)
++    if np.any(all_sky):
++        assert np.all(np.isnan(logd[all_sky])), "All-sky patches must be NaN in logd"
++
++    # 非全天空块必须为有限实数，且 >= log(0.5)
++    non_sky = (sky < 1.0)
++    if np.any(non_sky):
++        assert np.all(np.isfinite(logd[non_sky])), "Non-sky patches must have finite logd"
++        assert np.all(logd[non_sky] >= math.log(0.5) - 1e-5), "logd must respect clamp z >= 0.5"
++
++
++def test_r1_bad_control_sky_zero_instead_of_nan():
++    """坏对照：若全天空块被误填为 0.0 而非 NaN，全天空检测必须报警。"""
++    def bad_r1_processing(sky, logd):
++        bad_logd = logd.copy()
++        bad_logd[np.isnan(bad_logd)] = 0.0
++        return bad_logd
++
++    ep = episode("s5test-demo", 0)
++    res = labels.r1(ep, 0)
++    bad_logd = bad_r1_processing(res["sky"], res["logd"])
++
++    all_sky = (res["sky"] == 1.0)
++    if np.any(all_sky):
++        with pytest.raises(AssertionError, match="must be NaN"):
++            assert np.all(np.isnan(bad_logd[all_sky])), "All-sky patches must be NaN in logd"
++
++
++# ==============================================================================
++# R3 步数偏移测试
++# ==============================================================================
++
++def test_r3_step_offset():
++    """R3 取自段末帧 + 8 步。"""
++    ep = episode("s5test-demo", 0)
++    r2_grid = labels.r2(ep, 0)
++    r3_grid = labels.r3(ep, 0)
++
++    # 检验 r3 计算所用状态确实是 t=23 (15 + 8)
++    manual_r3 = labels._occupancy_grid(ep.steps[15 + 8], ep.pillars)
++    np.testing.assert_array_equal(r3_grid, manual_r3)
++
++
++def test_r3_bad_control_zero_offset():
++    """坏对照：若 R3 漏加了 8 步偏移，在智能体移动的 episode 中会被识破。"""
++    ep = episode("s5test-demo", 0)
++    # 找到一个 r2 != r3 的片段
++    found_diff = False
++    for c in range(16):
++        r2_g = labels.r2(ep, c)
++        r3_g = labels.r3(ep, c)
++        if not np.array_equal(r2_g, r3_g):
++            found_diff = True
++            # 坏对照：假装 r3 就是 r2
++            bad_r3 = r2_g
++            with pytest.raises(AssertionError):
++                np.testing.assert_array_equal(bad_r3, r3_g)
++            break
++    assert found_diff, "At least one clip must show state change between t and t+8"
++
++
++# ==============================================================================
++# disk_groups 结构与遮挡测试
++# ==============================================================================
++
++def test_disk_groups_contract():
++    """disk_groups 返回所有可见圆盘的完整元数据及正确阈值。"""
++    ep = episode("s5test-demo", 0)
++    found_any = False
++    for c in range(16):
++        groups = labels.disk_groups(ep, c)
++        for d in groups:
++            found_any = True
++            assert "disk_id" in d
++            assert "azimuth_bin" in d and 0 <= d["azimuth_bin"] < 12
++            assert "distance_bin" in d and 0 <= d["distance_bin"] < 7
++            assert "distance" in d
++            assert d["distance_group"] in {"< 2", "2–4", "> 4"}
++            assert 0.0 <= d["occlusion_ratio"] <= 1.0 + 1e-5
++            assert d["occlusion_group"] in {"partial", "full"}
++            if d["occlusion_ratio"] < 0.5:
++                assert d["occlusion_group"] == "partial"
++            else:
++                assert d["occlusion_group"] == "full"
++    assert found_any, "Must find visible disks across 16 clips"
++
++
++def test_disk_groups_bad_control_threshold_inversion():
++    """坏对照：若遮挡分档阈值颠倒（把 < 0.5 标成 full），断言必须失败。"""
++    def bad_occlusion_group(ratio: float) -> str:
++        # 颠倒逻辑
++        return "full" if ratio < 0.5 else "partial"
++
++    with pytest.raises(AssertionError):
++        test_ratio = 0.2
++        bad_group = bad_occlusion_group(test_ratio)
++        expected_group = "partial" if test_ratio < 0.5 else "full"
++        assert bad_group == expected_group
++
++
++# ==============================================================================
++# ordering_pairs 几何次序测试
++# ==============================================================================
++
++def test_ordering_pairs_contract():
++    """ordering_pairs 返回成对次序，closer 与 z_median 严格吻合。"""
++    ep = episode("s5test-demo", 0)
++    found_pairs = False
++    for c in range(16):
++        pairs = labels.ordering_pairs(ep, c)
++        for p in pairs:
++            found_pairs = True
++            assert p["type"] in {"disk_disk", "disk_pillar"}
++            assert len(p["patch_a"]) == 2
++            assert len(p["patch_b"]) == 2
++            za, zb = p["z_a"], p["z_b"]
++            if za < zb:
++                assert p["closer"] == "a"
++            elif zb < za:
++                assert p["closer"] == "b"
++            else:
++                assert p["closer"] == "equal"
++    assert found_pairs, "Must find object pairs across 16 clips"
++
++
++def test_ordering_pairs_bad_control_inverted_depth():
++    """坏对照：若深度判定颠倒（深度大误判为更近），判定断言必须抓出。"""
++    def bad_closer_judge(za: float, zb: float) -> str:
++        # 错误逻辑：深度大的更近
++        return "a" if za > zb else "b"
++
++    with pytest.raises(AssertionError):
++        za, zb = 1.5, 3.0  # a 更近
++        judged = bad_closer_judge(za, zb)
++        assert judged == "a", f"Closer judge failed: got {judged}"

@@ -1,0 +1,60 @@
+======================================================================
+S5 IMPL-1: 9 CONTRACTS, 11 ADVERSARIAL MUTATIONS & BENCHMARKS
+======================================================================
+
+--- 契约 1：几何投影与遮挡 ---
+Wall center depth at x=10: 5.0000 (expected 5.0000)
+Bad control (hypot vs orthogonal depth) diff at col 30: 1.1837m (>0.5m)
+Depth occlusion verified: front disk 100 visible, back disk 101 occluded.
+
+--- 契约 2：DA2 焦距与裁切对齐 ---
+DA2 f=196 vs student scaled center error: 0.4579 px (threshold < 1.0 px)
+Bad control (f=None) scaled center error: 8.7716 px (threshold > 5.0 px)
+
+--- 契约 3：纹理世界锚定 ---
+World point (6.5, 5.4) color difference between two headings: 0.0013 (< 0.02)
+Bad control (screen-space texture) jump on rotation: 1
+
+--- 契约 4：摸底渲染等价性 ---
+Max abs diff between render.py and tier1-explore/render.py: 0.00e+00
+
+--- 契约 5：R2 纯二值占据与同格多圆盘 ---
+R2 grid unique values: {np.uint8(0), np.uint8(1)}
+Two disks in same cell max value: 1, cell (6, 4): 1
+
+--- 契约 6：学生端纯净性与分区权限 ---
+student_clip shape: (16, 224, 224, 3), dtype: uint8
+Access to registered partition 's5p1-final' blocked by PermissionError: True
+
+--- 契约 7：切分覆盖与 R3 边界 ---
+Episode total steps: 272, R3 max step needed: 263 (< 272)
+
+--- 契约 8：确定性重现 ---
+Deterministic clip difference across identical seed: 0
+
+--- 契约 9：性能基准 ---
+Render 224² latencies (ms): median=10.16, mean=10.23, p95=10.87 (threshold < 25.0ms)
+
+--- 单世界物化基准 ---
+Materialized 1 world (32 files) in 3.51s
+Manifest code_identity git_head: 68dccca964, files tracked: 11
+
+--- 11 个对抗性突变验证 (mutations.py) ---
+imports from: /var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/tmp_bntvkla/src/ainerzero/__init__.py
+M1_no_registered_guard: KILLED  []
+M2_da2_frames_no_f: KILLED  []
+M3_r2_counts: KILLED  []
+M4_r2_wrong_frame: KILLED  []
+M5_ray_distance_depth: KILLED  []
+M6_student_clip_offset: KILLED  []
+M7_r1_sky_zero: KILLED  []
+M8_r3_no_offset: KILLED  []
+M9_min_visible_1: KILLED  []
+M10_azimuth_flip: KILLED  []
+M11_texture_off_default: KILLED  []
+All 11 mutations verified: 11/11 KILLED (0 leaked)
+
+Saved metrics to reports/V9-S5-IMPL-1/evidence/metrics.json
+======================================================================
+ALL 9 CONTRACTS & 11 MUTATIONS VERIFIED SUCCESSFULLY
+======================================================================

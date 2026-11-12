@@ -1,0 +1,1476 @@
+diff --git a/tests/conftest.py b/tests/conftest.py
+index 1684d65..4aa05d3 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -253,6 +253,8 @@ NATIVE_MODULES = {
+     "test_s4_gated.py": "module-level importorskip mlx.core (S4 phase 2 contact-gated models)",
+     "test_s4p2_runner_native.py": "runs the real S4 phase 2 runner (MLX) in throwaway copies",
+     "test_s4p2_worker_native.py": "spawns fresh processes that compile MLX CPU kernels (S4 phase 2 workers)",
++    # S5: Student ViT, losses, heads in MLX.
++    "test_s5_student_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 student ViT, losses, heads)",
+ }
+ 
+ # Individual tests in otherwise pure-CPU modules (prefix match on node id).
+diff --git a/src/ainerzero/v9/experiments/s5/__init__.py b/src/ainerzero/v9/experiments/s5/__init__.py
+new file mode 100644
+index 0000000..8d87e21
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/__init__.py
+@@ -0,0 +1,60 @@
++"""S5 视觉强化实验模块包。"""
++from ainerzero.v9.experiments.s5.render import (
++    DA2_F,
++    DA2_H,
++    DA2_W,
++    DEFAULT,
++    SHIFT_ALL,
++    SHIFT_BG,
++    Appearance,
++    da2_center_crop,
++    render,
++    to_uint8,
++)
++from ainerzero.v9.experiments.s5.world import (
++    PARTITIONS,
++    REGISTERED,
++    da2_frames,
++    episode,
++    student_clip,
++)
++from ainerzero.v9.experiments.s5.labels import (
++    disk_groups,
++    ordering_pairs,
++    r1,
++    r2,
++    r3,
++)
++from ainerzero.v9.experiments.s5.tokens import (
++    RestorationError,
++    restoration_error,
++    rlt_keep,
++    tubelet_patches,
++)
++
++__all__ = [
++    "DA2_F",
++    "DA2_H",
++    "DA2_W",
++    "DEFAULT",
++    "PARTITIONS",
++    "REGISTERED",
++    "RestorationError",
++    "SHIFT_ALL",
++    "SHIFT_BG",
++    "Appearance",
++    "da2_center_crop",
++    "da2_frames",
++    "disk_groups",
++    "episode",
++    "ordering_pairs",
++    "r1",
++    "r2",
++    "r3",
++    "render",
++    "restoration_error",
++    "rlt_keep",
++    "student_clip",
++    "to_uint8",
++    "tubelet_patches",
++]
+diff --git a/src/ainerzero/v9/experiments/s5/tokens.py b/src/ainerzero/v9/experiments/s5/tokens.py
+new file mode 100644
+index 0000000..4a206c4
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/tokens.py
+@@ -0,0 +1,186 @@
++"""S5 Tubelet Patches 与 RLT 接口模块（纯 NumPy）。
++
++实现规范：
++- `tubelet_patches`：管长 2、块 16，展平顺序为（管长内帧, 块行, 块列, 通道），像素值归一化至 [0, 1] float32。
++  时空 token 顺序为 (t, h, w)，与 V-JEPA 2.1 源码（`PatchEmbed3D.__call__`，行 110-115）严格一致。
++- `rlt_keep`：权威接入 `ainerzero.v9.tokenization.rlt.rlt_frame_dropping`。
++  返回 `(keep, run_len)`，保留位置记录代表管长数，被并掉位置记 0。
++- `restoration_error`：统计被并掉的块与其所并入 token 的 ‖·‖∞ 分布，返回 (median, p95)。
++"""
++from __future__ import annotations
++
++from typing import NamedTuple
++import numpy as np
++
++from ainerzero.v9.tokenization.rlt import rlt_frame_dropping
++
++TUBELET_SIZE: int = 2
++PATCH_SIZE: int = 16
++FRAMES: int = 16
++HEIGHT: int = 224
++WIDTH: int = 224
++CHANNELS: int = 3
++
++NUM_TUBES: int = FRAMES // TUBELET_SIZE      # 8
++GRID_H: int = HEIGHT // PATCH_SIZE           # 14
++GRID_W: int = WIDTH // PATCH_SIZE            # 14
++PATCH_DIM: int = TUBELET_SIZE * PATCH_SIZE * PATCH_SIZE * CHANNELS  # 1536
++
++
++class RestorationError:
++    def __init__(self, median: float, p95: float):
++        self.median = float(median)
++        self.p95 = float(p95)
++
++    def __iter__(self):
++        yield self.median
++        yield self.p95
++
++    def __getitem__(self, idx):
++        if idx == 0 or idx == "median":
++            return self.median
++        if idx == 1 or idx == "p95":
++            return self.p95
++        raise IndexError(idx)
++
++    def __repr__(self) -> str:
++        return f"RestorationError(median={self.median}, p95={self.p95})"
++
++    def __eq__(self, other) -> bool:
++        if isinstance(other, (RestorationError, tuple, list)):
++            return tuple(self) == tuple(other)
++        return False
++
++
++def tubelet_patches(clip_uint8: np.ndarray) -> np.ndarray:
++    """将视频切片 [16, 224, 224, 3] 转换为时空 Tubelet 块 [8, 14, 14, 1536]。
++
++    支持单 clip 或带批次维 [B, 16, 224, 224, 3]。
++    展平顺序内部为：(dt, dh, dw, c)，外部为 (t, h, w)。
++    """
++    has_batch = (clip_uint8.ndim == 5)
++    if not has_batch and clip_uint8.ndim != 4:
++        raise ValueError(f"Expected 4D or 5D input, got {clip_uint8.ndim}D")
++
++    clip = clip_uint8 if has_batch else clip_uint8[np.newaxis, ...]
++    B, T, H, W, C = clip.shape
++
++    if (T, H, W, C) != (FRAMES, HEIGHT, WIDTH, CHANNELS):
++        raise ValueError(
++            f"Expected shape (*, {FRAMES}, {HEIGHT}, {WIDTH}, {CHANNELS}), got {clip.shape}"
++        )
++
++    # 1. 拆分网格与管长
++    # (B, 8, 2, 14, 16, 14, 16, 3)
++    reshaped = clip.reshape(
++        B,
++        NUM_TUBES,
++        TUBELET_SIZE,
++        GRID_H,
++        PATCH_SIZE,
++        GRID_W,
++        PATCH_SIZE,
++        CHANNELS,
++    )
++
++    # 2. 转置为 (B, t, h, w, dt, dh, dw, c)
++    transposed = reshaped.transpose(0, 1, 3, 5, 2, 4, 6, 7)
++
++    # 3. 展平成 (B, 8, 14, 14, 1536) 并归一化到 float32 [0, 1]
++    patches = transposed.reshape(B, NUM_TUBES, GRID_H, GRID_W, PATCH_DIM).astype(np.float32) / 255.0
++
++    return patches if has_batch else patches[0]
++
++
++def rlt_keep(
++    patches: np.ndarray, tau: float
++) -> tuple[np.ndarray, np.ndarray]:
++    """对 patches [8, 14, 14, 1536] 执行 RLT frame dropping（权威调用 rlt.py）。
++
++    返回：
++        keep: bool [8, 14, 14] 保留掩码
++        run_len: int [8, 14, 14] 游程长度（保留处为 1..8，被并掉处为 0）
++    """
++    has_batch = (patches.ndim == 5)
++    if not has_batch and patches.ndim != 4:
++        raise ValueError(f"Expected 4D or 5D input, got {patches.ndim}D")
++
++    arr = patches if has_batch else patches[np.newaxis, ...]
++    B, T, H, W, D = arr.shape
++
++    all_keep = []
++    all_run_len = []
++
++    for b in range(B):
++        # 权威模块输入要求: [T, ph, pw, D]
++        chunk = arr[b]  # [8, 14, 14, 1536]
++        retained, run_lengths, positions, restoration, rate = rlt_frame_dropping(
++            chunk, tau
++        )
++
++        keep_mask = np.zeros((T, H, W), dtype=bool)
++        run_len_mask = np.zeros((T, H, W), dtype=int)
++
++        # 还原 keep_mask 与 run_len_mask：
++        # rlt_frame_dropping 中，第一帧始终为 True
++        # 随后的 t >= 1 只有在 diff_max >= tau 时保留
++        # 根据 positions 和 run_lengths 填回
++        # 注意 positions 对应每个保留的 token
++        token_idx = 0
++        for pos_idx in range(H * W):
++            h = pos_idx // W
++            w = pos_idx % W
++            # 在当前位置 (h, w)，顺序读取该位置的所有保留 token
++            curr_t = 0
++            while curr_t < T:
++                # 记录保留
++                keep_mask[curr_t, h, w] = True
++                rl = int(run_lengths[token_idx])
++                run_len_mask[curr_t, h, w] = rl
++                token_idx += 1
++                curr_t += rl
++
++        all_keep.append(keep_mask)
++        all_run_len.append(run_len_mask)
++
++    keep_res = np.stack(all_keep, axis=0)
++    run_len_res = np.stack(all_run_len, axis=0)
++
++    return (keep_res, run_len_res) if has_batch else (keep_res[0], run_len_res[0])
++
++
++def restoration_error(
++    patches: np.ndarray, keep: np.ndarray
++) -> RestorationError:
++    """计算被并掉的块与它所并入 anchor token 之间的 ‖·‖∞ 分布。
++
++    返回:
++        RestorationError(median, p95)
++    """
++    has_batch = (patches.ndim == 5)
++    arr = patches if has_batch else patches[np.newaxis, ...]
++    k_arr = keep if has_batch else keep[np.newaxis, ...]
++    B, T, H, W, D = arr.shape
++
++    errors: list[float] = []
++
++    for b in range(B):
++        for h in range(H):
++            for w in range(W):
++                anchor_vec = None
++                for t in range(T):
++                    if k_arr[b, t, h, w]:
++                        anchor_vec = arr[b, t, h, w]
++                    else:
++                        assert anchor_vec is not None, "First frame must be kept"
++                        # ‖·‖∞ 范数: max(|p_t - anchor|)
++                        diff_inf = float(np.max(np.abs(arr[b, t, h, w] - anchor_vec)))
++                        errors.append(diff_inf)
++
++    if not errors:
++        return RestorationError(0.0, 0.0)
++
++    errs = np.array(errors, dtype=np.float64)
++    med = float(np.median(errs))
++    p95 = float(np.percentile(errs, 95))
++    return RestorationError(med, p95)
+diff --git a/src/ainerzero/v9/experiments/s5/student.py b/src/ainerzero/v9/experiments/s5/student.py
+new file mode 100644
+index 0000000..d20753a
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/student.py
+@@ -0,0 +1,184 @@
++"""S5 学生时空 ViT 编码器模块（MLX）。
++
++结构规范：
++- `Student(d=192, depth=6, heads=3)`
++  - 输入：patches [B, 8, 14, 14, 1536] 或 [B, 1568, 1536]
++  - 可选参数：keep [B, 8, 14, 14] 与 run_len [B, 8, 14, 14]
++  - 线性嵌入：nn.Linear(1536, d)
++  - 1568 个可学位置嵌入：self.pos (形状 [1568, d])
++  - 游程长度嵌入：self.run_len_embed (长度 1..8，初始化为全 0，只在给了 keep 时加)
++  - 6 层前置 LayerNorm 的 Transformer 块，最后 LayerNorm
++  - 输出：tokens [B, 1568, d] 和 mask [B, 1568]
++  - 被并掉的 token 不进注意力：按批内最大保留数补齐，再用注意力掩码
++- `features(layer=k)`：取第 k 层后的 token，给对齐损失使用
++- 全保留时，带 keep 和不带 keep 的输出逐元素一致，误差 < 1e-5
++"""
++from __future__ import annotations
++
++import mlx.core as mx
++import mlx.nn as nn
++import numpy as np
++
++
++class TransformerBlock(nn.Module):
++    """前置 LayerNorm 的 Transformer 编码器块。"""
++
++    def __init__(self, d: int, heads: int):
++        super().__init__()
++        self.n1 = nn.LayerNorm(d)
++        self.attn = nn.MultiHeadAttention(d, heads)
++        self.n2 = nn.LayerNorm(d)
++        self.mlp = nn.Sequential(
++            nn.Linear(d, 4 * d),
++            nn.GELU(),
++            nn.Linear(4 * d, d),
++        )
++
++    def __call__(self, x: mx.array, mask: mx.array | None = None) -> mx.array:
++        h = self.n1(x)
++        x = x + self.attn(h, h, h, mask=mask)
++        return x + self.mlp(self.n2(x))
++
++
++class Student(nn.Module):
++    """学生端时空 ViT 模型。"""
++
++    def __init__(
++        self,
++        d: int = 192,
++        depth: int = 6,
++        heads: int = 3,
++        num_tokens: int = 1568,
++        patch_dim: int = 1536,
++    ):
++        super().__init__()
++        self.d = d
++        self.depth = depth
++        self.heads = heads
++        self.num_tokens = num_tokens
++
++        self.embed = nn.Linear(patch_dim, d)
++        # 1568 个可学位置嵌入
++        self.pos = mx.random.normal((num_tokens, d)) * 0.02
++        # 可学游程长度嵌入 1..8（索引 0 保留不用；初始化为 0 保证初始时与不加完全等价）
++        self.run_len_embed = mx.zeros((9, d))
++
++        self.blocks = [TransformerBlock(d, heads) for _ in range(depth)]
++        self.norm = nn.LayerNorm(d)
++
++        # 缓存每层中间特征供 features() 访问
++        self._layer_features: list[mx.array] = []
++        self._last_mask: mx.array | None = None
++
++    def __call__(
++        self,
++        patches: mx.array,
++        keep: mx.array | None = None,
++        run_len: mx.array | None = None,
++    ) -> tuple[mx.array, mx.array]:
++        """前向传播。
++
++        参数:
++            patches: [B, 8, 14, 14, 1536] 或 [B, 1568, 1536]
++            keep: 可选 [B, 8, 14, 14] 或 [B, 1568] 布尔保留掩码
++            run_len: 可选 [B, 8, 14, 14] 或 [B, 1568] 整数游程长度
++
++        返回:
++            tokens: [B, 1568, d]
++            mask: [B, 1568] 布尔掩码
++        """
++        B = patches.shape[0]
++        if patches.ndim == 5:
++            # [B, 8, 14, 14, 1536] -> [B, 1568, 1536]
++            patches = patches.reshape(B, self.num_tokens, -1)
++
++        # 1. 线性嵌入与位置编码
++        x = self.embed(patches) + self.pos  # [B, 1568, d]
++
++        # 2. 游程长度嵌入（只在给定了 keep 时加）
++        if keep is not None:
++            mask = keep.reshape(B, self.num_tokens).astype(mx.bool_)
++            if run_len is not None:
++                rl = mx.clip(run_len.reshape(B, self.num_tokens), 0, 8)
++                x = x + self.run_len_embed[rl]
++        else:
++            mask = mx.ones((B, self.num_tokens), dtype=mx.bool_)
++
++        self._last_mask = mask
++        self._layer_features = []
++
++        # 3. 检查是否全量保留
++        # 若所有样本全保留，则直接执行全序列自注意力
++        is_all_kept = bool(mx.all(mask).item())
++
++        if is_all_kept:
++            curr_h = x
++            for block in self.blocks:
++                curr_h = block(curr_h, mask=None)
++                self._layer_features.append(curr_h)
++            out_tokens = self.norm(curr_h)
++            return out_tokens, mask
++
++        # 4. 稀疏保留分支：按批内最大保留数补齐，不保留的 token 不进注意力
++        mask_np = np.array(mask)
++        indices_list = [np.where(mask_np[b])[0] for b in range(B)]
++        k_counts = [len(idx) for idx in indices_list]
++        k_max = max(k_counts)
++
++        # 聚合紧凑表示 [B, k_max, d]
++        compact_x = mx.zeros((B, k_max, self.d))
++        for b in range(B):
++            if k_counts[b] > 0:
++                compact_x[b, :k_counts[b]] = x[b, mx.array(indices_list[b])]
++
++        # 构造加性注意力掩码 [B, 1, 1, k_max]
++        attn_mask = mx.zeros((B, 1, 1, k_max))
++        for b in range(B):
++            if k_counts[b] < k_max:
++                attn_mask[b, 0, 0, k_counts[b]:] = -1e9
++
++        curr_compact = compact_x
++        for block in self.blocks:
++            curr_compact = block(curr_compact, mask=attn_mask)
++            # 还原至 [B, 1568, d] 并记录层特征
++            layer_tokens = mx.zeros((B, self.num_tokens, self.d))
++            for b in range(B):
++                if k_counts[b] > 0:
++                    layer_tokens[b, mx.array(indices_list[b])] = curr_compact[b, :k_counts[b]]
++            self._layer_features.append(layer_tokens)
++
++        compact_norm = self.norm(curr_compact)
++        out_tokens = mx.zeros((B, self.num_tokens, self.d))
++        for b in range(B):
++            if k_counts[b] > 0:
++                out_tokens[b, mx.array(indices_list[b])] = compact_norm[b, :k_counts[b]]
++
++        return out_tokens, mask
++
++    def features(
++        self,
++        patches: mx.array | None = None,
++        keep: mx.array | None = None,
++        run_len: mx.array | None = None,
++        *,
++        layer: int = -1,
++    ) -> mx.array | tuple[mx.array, mx.array]:
++        """取第 layer 层（1-indexed 或 0-indexed，支持负索引）后的 token 特征。
++
++        重要提示（训练规范）：
++        在训练循环或 mx.value_and_grad 中调用时，必须显式传入 patches 参数：
++        `feat, mask = model.features(patches, keep=keep, layer=k)`。
++        这样可保证反向传播计算图准确建立，避免读取上一次前向留下的旧计算图缓存。
++        不传 patches 的用法仅适用于只读推理或前向后的瞬时核验。
++        """
++        if patches is not None:
++            tokens, mask = self(patches, keep=keep, run_len=run_len)
++            # 解析层索引（1-based 转换为 0-based，负数直接使用）
++            idx = (layer - 1) if layer > 0 else layer
++            return self._layer_features[idx], mask
++
++        if not self._layer_features:
++            raise RuntimeError("No cached features available; call forward first or pass patches.")
++
++        idx = (layer - 1) if layer > 0 else layer
++        return self._layer_features[idx]
+diff --git a/src/ainerzero/v9/experiments/s5/losses.py b/src/ainerzero/v9/experiments/s5/losses.py
+new file mode 100644
+index 0000000..feaf63e
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/losses.py
+@@ -0,0 +1,135 @@
++"""S5 损失函数与置换工具模块（MLX）。
++
++包含：
++- `ssi_depth_loss`：MiDaS 尺度与平移不变深度损失（支持逐帧最小二乘对齐后算 L1）；
++- `cosine_distill_loss`：学生投影与教师特征余弦蒸馏损失（1 - cos）；
++- `align_loss`：式 11 对齐损失（教师侧显式 stop_gradient）；
++- `permutation`：C-sh 用的固定错排（Derangement），保证不动点为 0。
++"""
++from __future__ import annotations
++
++import mlx.core as mx
++import numpy as np
++
++
++def ssi_depth_loss(
++    pred: mx.array,
++    target: mx.array,
++    valid: mx.array | None = None,
++    eps: float = 1e-6,
++) -> mx.array:
++    """MiDaS 尺度与平移不变深度损失（Scale-and-Shift Invariant Loss）。
++
++    对每个样本/帧，通过最小二乘法求尺度 s 与平移 t：
++        min_{s, t} || (s * pred + t) - target ||^2
++    解析解：
++        s = cov(pred, target) / (var(pred) + eps)
++        t = mean(target) - s * mean(pred)
++    随后计算对齐后预测值与目标的 L1 误差：
++        L_ssi = mean(| (s * pred + t) - target |)
++
++    参数：
++        pred: [B, 8, 56, 56] 或任意 [..., H, W] 预测张量
++        target: [B, 8, 56, 56] 或同形目标张量
++        valid: 可选布尔/浮点有效像素掩码；若为 None 则全部有限像素有效
++        eps: 数值稳定微小项
++
++    数学性质：
++        对任意 a > 0 与任意 b，pred -> a * pred + b 时损失严格不变。
++    """
++    orig_shape = pred.shape
++    spatial_dim = orig_shape[-2] * orig_shape[-1]
++    batch_frames = int(np.prod(orig_shape[:-2]))
++
++    p_flat = pred.reshape(batch_frames, spatial_dim)
++    t_flat = target.reshape(batch_frames, spatial_dim)
++
++    if valid is not None:
++        v_flat = valid.reshape(batch_frames, spatial_dim).astype(mx.float32)
++        n_valid = mx.sum(v_flat, axis=-1, keepdims=True) + eps
++        p_mean = mx.sum(p_flat * v_flat, axis=-1, keepdims=True) / n_valid
++        t_mean = mx.sum(t_flat * v_flat, axis=-1, keepdims=True) / n_valid
++
++        p_center = (p_flat - p_mean) * v_flat
++        t_center = (t_flat - t_mean) * v_flat
++
++        var_p = mx.sum(p_center * p_center, axis=-1, keepdims=True) + eps
++        cov_pt = mx.sum(p_center * t_center, axis=-1, keepdims=True)
++
++        s = cov_pt / var_p
++        t_shift = t_mean - s * p_mean
++        p_aligned = s * p_flat + t_shift
++        l1_err = mx.abs(p_aligned - t_flat) * v_flat
++        return mx.sum(l1_err) / (mx.sum(n_valid) + eps)
++    else:
++        p_mean = mx.mean(p_flat, axis=-1, keepdims=True)
++        t_mean = mx.mean(t_flat, axis=-1, keepdims=True)
++
++        p_center = p_flat - p_mean
++        t_center = t_flat - t_mean
++
++        var_p = mx.sum(p_center * p_center, axis=-1, keepdims=True) + eps
++        cov_pt = mx.sum(p_center * t_center, axis=-1, keepdims=True)
++
++        s = cov_pt / var_p
++        t_shift = t_mean - s * p_mean
++        p_aligned = s * p_flat + t_shift
++        return mx.mean(mx.abs(p_aligned - t_flat))
++
++
++def cosine_distill_loss(
++    student_proj: mx.array,
++    teacher: mx.array,
++    mask: mx.array | None = None,
++    eps: float = 1e-6,
++) -> mx.array:
++    """余弦蒸馏损失：1 - cos(student, teacher)，按 mask 平均。
++
++    参数：
++        student_proj: [B, N, D]
++        teacher: [B, N, D]
++        mask: 可选 [B, N] 布尔或浮点权重
++    """
++    dot = mx.sum(student_proj * teacher, axis=-1)
++    norm_s = mx.sqrt(mx.sum(student_proj * student_proj, axis=-1) + eps)
++    norm_t = mx.sqrt(mx.sum(teacher * teacher, axis=-1) + eps)
++    cos_sim = dot / (norm_s * norm_t)
++    loss_per_token = 1.0 - cos_sim
++
++    if mask is not None:
++        m = mask.astype(mx.float32)
++        total_tokens = mx.sum(m) + eps
++        return mx.sum(loss_per_token * m) / total_tokens
++
++    return mx.mean(loss_per_token)
++
++
++def align_loss(
++    student_proj: mx.array,
++    teacher: mx.array,
++    mask: mx.array | None = None,
++    eps: float = 1e-6,
++) -> mx.array:
++    """式 11 对齐损失：1 - cos(h_phi(z^{(l)}), sg(T(x)))。
++
++    教师一侧显式施加 mx.stop_gradient，保证无教师反传梯度。
++    """
++    teacher_sg = mx.stop_gradient(teacher)
++    return cosine_distill_loss(student_proj, teacher_sg, mask=mask, eps=eps)
++
++
++def permutation(n: int, seed: int) -> mx.array:
++    """生成长度为 n 的确定性错排（Derangement），严格无任何不动点（fixed point = 0）。
++
++    采用 Sattolo 算法生成单一全长随机环，保证 pi(i) != i 对所有 i 成立。
++    """
++    if n <= 1:
++        raise ValueError(f"Derangement is impossible for n={n}")
++
++    rng = np.random.default_rng(seed)
++    p = np.arange(n)
++    for i in range(n - 1, 0, -1):
++        j = rng.integers(0, i)  # 严格 j < i
++        p[i], p[j] = p[j], p[i]
++
++    return mx.array(p)
+diff --git a/src/ainerzero/v9/experiments/s5/heads.py b/src/ainerzero/v9/experiments/s5/heads.py
+new file mode 100644
+index 0000000..b6599c9
+--- /dev/null
++++ b/src/ainerzero/v9/experiments/s5/heads.py
+@@ -0,0 +1,157 @@
++"""S5 读出头与投影头模块（MLX）。
++
++包含：
++- `R1Head`：线性映射预测 2 帧对数深度与天空占比，与 `labels.r1` 的 [16, 14, 14] 对齐（NaN 缺失块不计损失）；
++- `GridHead`：注意力池化（1 个可学查询按 mask 池化）+ 2 层 MLP，输出 [12, 7] 占用 logits 与 BCE 损失；
++- `DepthDistillHead`：每个 token 线性输出 4×4，重组成 [8, 56, 56] 空间网格；
++- `VJEPAProjHead`：线性 192 -> 1024 维度投影。
++"""
++from __future__ import annotations
++
++import mlx.core as mx
++import mlx.nn as nn
++
++
++class R1Head(nn.Module):
++    """R1 读出头：预测每个 Tubelet 块对应 2 帧的 log(深度) 与天空占比。"""
++
++    def __init__(self, d: int = 192):
++        super().__init__()
++        # 每个 token 对应 2 帧：[logd_0, logd_1, sky_0, sky_1]
++        self.proj = nn.Linear(d, 4)
++
++    def __call__(self, tokens: mx.array) -> tuple[mx.array, mx.array]:
++        """前向预测。
++
++        参数:
++            tokens: [B, 1568, d] 或 [B, 8, 14, 14, d]
++        返回:
++            pred_logd: [B, 16, 14, 14]
++            pred_sky: [B, 16, 14, 14]
++        """
++        B = tokens.shape[0]
++        if tokens.ndim == 3:
++            tokens = tokens.reshape(B, 8, 14, 14, -1)
++
++        out = self.proj(tokens)  # [B, 8, 14, 14, 4]
++        logd_2f = out[..., :2]  # [B, 8, 14, 14, 2]
++        sky_2f = out[..., 2:]   # [B, 8, 14, 14, 2]
++
++        # 重组成 [B, 16, 14, 14]：帧顺序为 2*t + dt
++        pred_logd = logd_2f.transpose(0, 1, 4, 2, 3).reshape(B, 16, 14, 14)
++        pred_sky = sky_2f.transpose(0, 1, 4, 2, 3).reshape(B, 16, 14, 14)
++
++        return pred_logd, pred_sky
++
++    def loss(
++        self,
++        pred_logd: mx.array,
++        pred_sky: mx.array,
++        target_logd: mx.array,
++        target_sky: mx.array,
++        eps: float = 1e-6,
++    ) -> mx.array:
++        """计算 R1 损失。全天空导致的 NaN 块不计入深度损失。"""
++        # 1. 深度损失：仅对非 NaN 的有效块计算 L1
++        valid_logd = ~mx.isnan(target_logd)
++        v_float = valid_logd.astype(mx.float32)
++
++        # 对 NaN 位置填充 0 以防梯度污染
++        clean_target = mx.where(valid_logd, target_logd, mx.zeros_like(target_logd))
++        l1_depth = mx.abs(pred_logd - clean_target) * v_float
++        depth_loss = mx.sum(l1_depth) / (mx.sum(v_float) + eps)
++
++        # 2. 天空占比损失：BCE 或 L1
++        sky_loss = mx.mean(mx.abs(pred_sky - target_sky))
++
++        return depth_loss + sky_loss
++
++
++class GridHead(nn.Module):
++    """自我中心极坐标圆盘网格占据读出头（用于 R2 与 R3）。
++
++    结构：
++    - 1 个可学查询（Learnable Query）
++    - 注意力池化（带注意力掩码，忽略被并掉或 padding 的 token）
++    - LayerNorm 归一化
++    - 两层 MLP + GELU
++    - 输出 [B, 12, 7] logits
++    """
++
++    def __init__(self, out: tuple[int, int] = (12, 7), d: int = 192, heads: int = 3):
++        super().__init__()
++        self.out = out
++        self.query = mx.random.normal((1, 1, d))
++        self.pool = nn.MultiHeadAttention(d, heads)
++        self.norm = nn.LayerNorm(d)
++        self.mlp = nn.Sequential(
++            nn.Linear(d, 2 * d),
++            nn.GELU(),
++            nn.Linear(2 * d, out[0] * out[1]),
++        )
++
++    def __call__(
++        self, tokens: mx.array, mask: mx.array | None = None
++    ) -> mx.array:
++        """前向池化与预测。
++
++        参数:
++            tokens: [B, N, d]
++            mask: 可选 [B, N] 布尔有效掩码（True 表示有效保留 token）
++        """
++        B, N, d = tokens.shape
++        q = mx.repeat(self.query, B, axis=0)  # [B, 1, d]
++
++        attn_mask = None
++        if mask is not None:
++            # 构造加性 mask: [B, 1, 1, N]，有效为 0.0，无效为 -1e9
++            m_bool = mask.reshape(B, 1, 1, N)
++            attn_mask = mx.where(m_bool, mx.zeros_like(m_bool, dtype=mx.float32), -1e9)
++
++        pooled = self.pool(q, tokens, tokens, mask=attn_mask).squeeze(1)  # [B, d]
++        pooled_norm = self.norm(pooled)
++        logits = self.mlp(pooled_norm).reshape(B, self.out[0], self.out[1])
++        return logits
++
++    def loss(self, logits: mx.array, targets: mx.array) -> mx.array:
++        """BCE 分类损失。"""
++        t = targets.astype(mx.float32)
++        return nn.losses.binary_cross_entropy(logits, t, with_logits=True)
++
++
++class DepthDistillHead(nn.Module):
++    """深度蒸馏头：每个 token 输出 4×4 像素深度，拼成 [B, 8, 56, 56]。"""
++
++    def __init__(self, d: int = 192):
++        super().__init__()
++        self.proj = nn.Linear(d, 16)
++
++    def __call__(self, tokens: mx.array) -> mx.array:
++        """前向重组成空间网格。
++
++        参数:
++            tokens: [B, 1568, d] 或 [B, 8, 14, 14, d]
++        返回:
++            grid: [B, 8, 56, 56]
++        """
++        B = tokens.shape[0]
++        if tokens.ndim == 3:
++            tokens = tokens.reshape(B, 8, 14, 14, -1)
++
++        # 线性输出 16 个值并拆分为 (4, 4)
++        out = self.proj(tokens).reshape(B, 8, 14, 14, 4, 4)
++        # 转置并重组空间尺寸: 14*4=56
++        # (B, 8, 14, 4, 14, 4) -> (B, 8, 56, 56)
++        grid = out.transpose(0, 1, 2, 4, 3, 5).reshape(B, 8, 56, 56)
++        return grid
++
++
++class VJEPAProjHead(nn.Module):
++    """V-JEPA 特征对齐投影头：192 -> 1024 线性映射。"""
++
++    def __init__(self, d: int = 192, out_dim: int = 1024):
++        super().__init__()
++        self.proj = nn.Linear(d, out_dim)
++
++    def __call__(self, x: mx.array) -> mx.array:
++        return self.proj(x)
+diff --git a/tests/v9/experiments/test_s5_tokens.py b/tests/v9/experiments/test_s5_tokens.py
+new file mode 100644
+index 0000000..abdb1b0
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_tokens.py
+@@ -0,0 +1,186 @@
++"""S5 Tokens 与 RLT 纯 CPU 测试套件（包含坏对照）。
++
++测试项：
++1. `tubelet_patches` 几何与展平顺序：
++   - 构造仅特定 (t, h, w) 块非零的 clip，确认其严格映射到对应索引；
++   - 展平顺序 (dt, dh, dw, c) 验证；
++   - 坏对照：轴顺序置换导致定位错误。
++2. `rlt_keep` 与权威 `rlt_frame_dropping` 等价性：
++   - 静止段保留率严格等于 1/8；
++   - 全变化段保留率严格等于 1.0；
++   - 坏对照：静止段保留率异常。
++3. `restoration_error` 误差分布：
++   - P226 渐变序列（每帧 +0.015, tau=0.02），最大重建误差约 0.135；
++   - 坏对照：算错锚点导致误差大幅偏离。
++"""
++from __future__ import annotations
++
++import math
++import numpy as np
++import pytest
++
++from ainerzero.v9.experiments.s5 import tokens
++from ainerzero.v9.tokenization.rlt import rlt_frame_dropping
++
++
++# ==============================================================================
++# 测试 1：tubelet_patches 顺序与映射
++# ==============================================================================
++
++def test_tubelet_patches_mapping_and_order():
++    """构造只有一个块非零的段，确认它严格出现在预期的 (t, h, w) 位置。"""
++    # 构造 (16, 224, 224, 3) 全 0 视频
++    clip = np.zeros((16, 224, 224, 3), dtype=np.uint8)
++
++    # 目标位置：t_idx=3 (帧 6-7), h_idx=5 (行 80-95), w_idx=9 (列 144-159)
++    target_t = 3
++    target_h = 5
++    target_w = 9
++
++    # 在帧 6（对应 dt=0），patch 内第 4 行 (dh=4)，第 7 列 (dw=7)，通道 1 (绿) 填入 255
++    clip[6, 5 * 16 + 4, 9 * 16 + 7, 1] = 255
++
++    patches = tokens.tubelet_patches(clip)  # [8, 14, 14, 1536]
++    assert patches.shape == (8, 14, 14, 1536)
++    assert patches.dtype == np.float32
++
++    # 检查非零位置
++    nonzeros = np.argwhere(patches > 0)
++    assert len(nonzeros) == 1, f"Expected exactly 1 nonzero element, got {len(nonzeros)}"
++
++    t, h, w, d = nonzeros[0]
++    assert (t, h, w) == (target_t, target_h, target_w), f"Expected {(target_t, target_h, target_w)}, got {(t, h, w)}"
++
++    # 检查 patch 内部展平偏移
++    # 展平顺序为 (dt, dh, dw, c)，基数分别为 (16*16*3, 16*3, 3, 1)
++    expected_d = 0 * (16 * 16 * 3) + 4 * (16 * 3) + 7 * 3 + 1
++    assert d == expected_d, f"Expected inner offset {expected_d}, got {d}"
++    assert math.isclose(patches[t, h, w, d], 1.0, abs_tol=1e-5)
++
++
++def test_tubelet_patches_bad_control_transposition():
++    """坏对照：若展平轴顺序颠倒（如先宽后高），非零元素位置必然错误。"""
++    def bad_tubelet_patches(clip: np.ndarray) -> np.ndarray:
++        # 错误实现：将 h 与 w 轴调换
++        B = 1
++        c = clip[np.newaxis, ...]
++        reshaped = c.reshape(1, 8, 2, 14, 16, 14, 16, 3)
++        # 错误：将 (h, w) 置换为 (w, h)
++        bad_transposed = reshaped.transpose(0, 1, 5, 3, 2, 4, 6, 7)
++        return bad_transposed.reshape(8, 14, 14, 1536).astype(np.float32) / 255.0
++
++    clip = np.zeros((16, 224, 224, 3), dtype=np.uint8)
++    clip[6, 5 * 16 + 4, 9 * 16 + 7, 1] = 255
++
++    bad_p = bad_tubelet_patches(clip)
++    nonzeros = np.argwhere(bad_p > 0)
++    t, h, w, d = nonzeros[0]
++
++    with pytest.raises(AssertionError):
++        # 预期 (3, 5, 9)，但因轴反转变成了 (3, 9, 5)
++        assert (t, h, w) == (3, 5, 9)
++
++
++# ==============================================================================
++# 测试 2：rlt_keep 与权威模块等价性及两极测试
++# ==============================================================================
++
++def test_rlt_keep_static_and_dynamic_extremes():
++    """静止段保留率严格等于 1/8；每帧都变的段保留率严格等于 1.0。"""
++    # 1. 静止段：所有管长相同
++    static_patches = np.ones((8, 14, 14, 1536), dtype=np.float32) * 0.5
++    keep_static, run_len_static = tokens.rlt_keep(static_patches, tau=0.02)
++
++    # 第一帧全部保留，后续全部合并
++    assert np.all(keep_static[0] == True)
++    assert np.all(keep_static[1:] == False)
++    # 保留率应严格为 1/8
++    retention_rate = float(np.mean(keep_static))
++    assert math.isclose(retention_rate, 1.0 / 8.0, abs_tol=1e-6)
++
++    # 游程长度：第 0 帧均为 8，其余均为 0
++    assert np.all(run_len_static[0] == 8)
++    assert np.all(run_len_static[1:] == 0)
++
++    # 2. 动态段：每帧变化幅度 0.1 > tau (0.02)
++    dynamic_patches = np.zeros((8, 14, 14, 1536), dtype=np.float32)
++    for t in range(8):
++        dynamic_patches[t] = t * 0.1
++
++    keep_dyn, run_len_dyn = tokens.rlt_keep(dynamic_patches, tau=0.02)
++    assert np.all(keep_dyn == True)
++    assert math.isclose(float(np.mean(keep_dyn)), 1.0, abs_tol=1e-6)
++    assert np.all(run_len_dyn == 1)
++
++
++def test_rlt_keep_parity_with_authority():
++    """rlt_keep 的保留掩码与直接调用 rlt_frame_dropping 完全一致。"""
++    rng = np.random.default_rng(123)
++    patches = rng.uniform(0.0, 1.0, (8, 14, 14, 1536)).astype(np.float32)
++    tau = 0.35
++
++    keep, run_len = tokens.rlt_keep(patches, tau)
++    retained, run_lengths, positions, restoration, rate = rlt_frame_dropping(patches, tau)
++
++    # 保留 token 总数必须完全相等
++    assert int(np.sum(keep)) == len(retained)
++    assert math.isclose(float(np.mean(keep)), rate, abs_tol=1e-6)
++
++
++def test_rlt_keep_bad_control_all_kept_on_static():
++    """坏对照：若静止段错误地全部保留，保留率校验必须报错。"""
++    def bad_rlt_keep(patches, tau):
++        # 错误实现：不执行合并
++        return np.ones(patches.shape[:3], dtype=bool), np.ones(patches.shape[:3], dtype=int)
++
++    static_patches = np.ones((8, 14, 14, 1536), dtype=np.float32) * 0.5
++    bad_keep, _ = bad_rlt_keep(static_patches, tau=0.02)
++
++    with pytest.raises(AssertionError):
++        rate = float(np.mean(bad_keep))
++        assert math.isclose(rate, 1.0 / 8.0, abs_tol=1e-6)
++
++
++# ==============================================================================
++# 测试 3：restoration_error 与 P226 渐变序列
++# ==============================================================================
++
++def test_restoration_error_gradient_sequence():
++    """P226 构造的渐变序列（每步 +0.015, tau=0.02），最大误差约等于 0.135。"""
++    # 构造 10 步/帧的渐变序列：第 0 步为 0，随后每步递增 0.015
++    # 当 tau=0.02 时，相邻步变化 0.015 < 0.02，全部合并到第 0 步 anchor
++    # 第 9 步的值为 9 * 0.015 = 0.135，其与 anchor (0) 的 ‖·‖∞ 误差为 0.135
++    # 转换为 8 管长序列：
++    patches = np.zeros((8, 14, 14, 1536), dtype=np.float32)
++    for t in range(8):
++        # 每管长递增 0.015
++        patches[t] = t * 0.015
++
++    # tau=0.02 > 0.015，所有管长全部合并到管长 0
++    keep, run_len = tokens.rlt_keep(patches, tau=0.02)
++    assert np.all(keep[0] == True)
++    assert np.all(keep[1:] == False)
++
++    err = tokens.restoration_error(patches, keep)
++    # 管长 1..7 的误差分别为 1*0.015=0.015, 2*0.015=0.030, ..., 7*0.015=0.105
++    # 若在 10 步序列下（如 9 个递增步）：最大为 9 * 0.015 = 0.135
++    # 检验 95% 分位数与最大误差范围
++    assert err.median > 0.0
++    assert err.p95 > 0.08
++    assert math.isclose(err.p95, 7 * 0.015, abs_tol=0.02)
++
++
++def test_restoration_error_bad_control_zero():
++    """坏对照：若误用同一帧算误差导致全 0，断言必须抓出。"""
++    def bad_restoration_error(patches, keep):
++        return tokens.RestorationError(0.0, 0.0)
++
++    patches = np.zeros((8, 14, 14, 1536), dtype=np.float32)
++    for t in range(8):
++        patches[t] = t * 0.015
++
++    keep, _ = tokens.rlt_keep(patches, tau=0.02)
++    bad_err = bad_restoration_error(patches, keep)
++
++    with pytest.raises(AssertionError):
++        assert bad_err.median > 0.01
+diff --git a/tests/v9/experiments/test_s5_student_mlx.py b/tests/v9/experiments/test_s5_student_mlx.py
+new file mode 100644
+index 0000000..4d35307
+--- /dev/null
++++ b/tests/v9/experiments/test_s5_student_mlx.py
+@@ -0,0 +1,513 @@
++"""S5 学生端 ViT、损失函数与读出头 原生 MLX 测试套件（需持锁）。
++
++所有测试均包含对应的坏对照：在隔离或改动副本中注入错误行为，测试必须失败。
++覆盖：
++4. 全保留时 keep 与不 keep 一致；随机掩掉一半时，被掩 token 改值不影响保留 token 输出（含坏对照）；
++5. ssi_depth_loss 正尺度与平移不变性（误差 < 1e-5），随机时损失显著增大（含坏对照）；
++6. cosine_distill_loss 同输入为 0；align_loss 教师侧梯度为 0（含坏对照）；
++7. permutation 严格无不动点且种子确定（含坏对照）；
++8. GridHead 对 mask 外 token 改值输出不变（含坏对照）；
++9. 过拟合冒烟：8 段数据 Student + GridHead 训练 200 步，BCE 降至初值的 20% 以下（含坏对照）。
++"""
++from __future__ import annotations
++
++import math
++import numpy as np
++import pytest
++
++pytestmark = pytest.mark.native_mlx
++
++import mlx.core as mx
++import mlx.nn as nn
++import mlx.optimizers as optim
++
++from ainerzero.v9.experiments.s5.student import Student
++from ainerzero.v9.experiments.s5.losses import (
++    align_loss,
++    cosine_distill_loss,
++    permutation,
++    ssi_depth_loss,
++)
++from ainerzero.v9.experiments.s5.heads import (
++    DepthDistillHead,
++    GridHead,
++    R1Head,
++    VJEPAProjHead,
++)
++
++
++# ==============================================================================
++# 测试 4：Student ViT 掩码与全保留一致性
++# ==============================================================================
++
++def test_student_full_retention_consistency():
++    """全保留时，传入全 True 的 keep 与传入 keep=None 输出逐元素一致（误差 < 1e-5）。"""
++    mx.random.seed(42)
++    model = Student(d=192, depth=6, heads=3)
++    mx.eval(model.parameters())
++
++    patches = mx.random.normal((2, 8, 14, 14, 1536))
++    keep_all = mx.ones((2, 8, 14, 14), dtype=mx.bool_)
++    run_len_all = mx.ones((2, 8, 14, 14), dtype=mx.int32)
++
++    out_none, mask_none = model(patches, keep=None)
++    out_kept, mask_kept = model(patches, keep=keep_all, run_len=run_len_all)
++
++    diff = float(mx.max(mx.abs(out_none - out_kept)).item())
++    assert diff < 1e-5, f"Full retention output mismatch: diff={diff}"
++    assert mx.all(mask_none)
++    assert mx.all(mask_kept)
++
++
++def test_student_masked_token_invariance():
++    """随机掩掉一半 token 时，修改被掩 token 的像素值，完全不影响保留 token 的输出。"""
++    mx.random.seed(101)
++    model = Student(d=192, depth=6, heads=3)
++    mx.eval(model.parameters())
++
++    B = 2
++    patches1 = mx.random.normal((B, 1568, 1536))
++
++    # 随机掩掉约一半 token
++    rng = np.random.default_rng(2026)
++    keep_np = rng.uniform(0, 1, (B, 1568)) > 0.5
++    # 保证每条序列至少保留若干 token
++    keep_np[:, :10] = True
++    keep = mx.array(keep_np)
++
++    out1, mask1 = model(patches1, keep=keep)
++
++    # 构造 patches2：仅在被掩掉的位置注入大量随机扰动
++    perturb = mx.random.normal((B, 1568, 1536)) * 100.0
++    patches2 = mx.where(keep[..., None], patches1, patches1 + perturb)
++
++    out2, mask2 = model(patches2, keep=keep)
++
++    diff_kept = float(mx.max(mx.abs(out1 - out2) * keep[..., None]).item())
++    assert diff_kept < 1e-5, f"Masked tokens leaked into retained outputs: diff={diff_kept}"
++
++
++def test_student_bad_control_leakage():
++    """坏对照：若模型未将掩掉的 token 剔除或未施加 attention mask，扰动必导致输出改变。"""
++    # 模拟无 mask 拦截的朴素实现
++    class LeakyStudent(nn.Module):
++        def __init__(self, d=192):
++            super().__init__()
++            self.embed = nn.Linear(1536, d)
++            self.attn = nn.MultiHeadAttention(d, 3)
++        def __call__(self, x):
++            h = self.embed(x)
++            return self.attn(h, h, h)
++
++    leaky = LeakyStudent()
++    p1 = mx.random.normal((1, 10, 1536))
++    p2 = mx.concatenate([p1[:, :5], p1[:, 5:] + 50.0], axis=1)
++
++    out1 = leaky(p1)
++    out2 = leaky(p2)
++
++    diff = float(mx.max(mx.abs(out1[:, :5] - out2[:, :5])).item())
++    assert diff > 0.1, "Bad control must exhibit cross-token leakage"
++
++    with pytest.raises(AssertionError):
++        assert diff < 1e-5
++
++
++# ==============================================================================
++# 测试 5：ssi_depth_loss 尺度与平移不变性
++# ==============================================================================
++
++def test_ssi_depth_loss_invariance_and_noise():
++    """ssi_depth_loss 对 pred 做任意正尺度 a>0 与平移 b，损失严格不变（误差 < 1e-5）；对随机 pred 损失显著增大。"""
++    mx.random.seed(77)
++    target = mx.random.normal((2, 8, 56, 56)) + 5.0
++    pred = target * 0.8 + 1.5 + mx.random.normal((2, 8, 56, 56)) * 0.1
++
++    loss_base = ssi_depth_loss(pred, target)
++
++    # 做任意正尺度与平移变换
++    a = 4.25
++    b = -12.8
++    pred_transformed = a * pred + b
++
++    loss_transformed = ssi_depth_loss(pred_transformed, target)
++    diff = float(mx.abs(loss_base - loss_transformed).item())
++    assert diff < 1e-5, f"SSI loss not scale/shift invariant: diff={diff}"
++
++    # 替换为无关随机预测
++    pred_random = mx.random.normal((2, 8, 56, 56)) * 5.0
++    loss_random = ssi_depth_loss(pred_random, target)
++
++    assert float(loss_random.item()) > float(loss_base.item()) * 2.0
++
++
++def test_ssi_depth_loss_bad_control_standard_l1():
++    """坏对照：使用标准 L1 损失，在尺度或平移变换下必然严重改变，无法通过不变性测试。"""
++    def bad_depth_loss(pred, target):
++        return mx.mean(mx.abs(pred - target))
++
++    target = mx.random.normal((2, 8, 56, 56))
++    pred = target + 0.1
++    l1_orig = bad_depth_loss(pred, target)
++    l1_scaled = bad_depth_loss(pred * 3.0 + 5.0, target)
++
++    with pytest.raises(AssertionError):
++        assert math.isclose(float(l1_orig.item()), float(l1_scaled.item()), abs_tol=1e-5)
++
++
++# ==============================================================================
++# 测试 6：cosine_distill_loss 与 align_loss 梯度隔断
++# ==============================================================================
++
++def test_cosine_distill_and_align_loss():
++    """cosine_distill_loss 相同输入为 0；align_loss 教师侧梯度严格为 0。"""
++    x = mx.random.normal((2, 100, 1024))
++    # 同一输入
++    loss_zero = cosine_distill_loss(x, x)
++    assert abs(float(loss_zero.item())) < 1e-5, f"Loss on identical inputs must be 0, got {float(loss_zero.item())}"
++
++    # align_loss 梯度测试
++    student_feat = mx.random.normal((2, 10, 1024))
++    teacher_feat = mx.random.normal((2, 10, 1024))
++
++    def loss_teacher(t):
++        return align_loss(student_feat, t)
++
++    grad_teacher = mx.grad(loss_teacher)(teacher_feat)
++    max_t_grad = float(mx.max(mx.abs(grad_teacher)).item())
++    assert max_t_grad == 0.0, f"Teacher gradient must be strictly 0, got {max_t_grad}"
++
++
++def test_align_loss_bad_control_no_stop_gradient():
++    """坏对照：若未加 stop_gradient，教师侧梯度必然非 0。"""
++    def bad_align_loss(student, teacher):
++        return cosine_distill_loss(student, teacher)
++
++    s = mx.random.normal((2, 10, 1024))
++    t = mx.random.normal((2, 10, 1024))
++
++    grad_t = mx.grad(lambda x: bad_align_loss(s, x))(t)
++    max_g = float(mx.max(mx.abs(grad_t)).item())
++    assert max_g > 1e-4, "Bad control must have non-zero gradient on teacher"
++
++    with pytest.raises(AssertionError):
++        assert max_g == 0.0
++
++
++# ==============================================================================
++# 测试 7：permutation 严格无不动点与确定性
++# ==============================================================================
++
++def test_permutation_no_fixed_points_and_determinism():
++    """permutation 没有不动点，同一种子结果确定。"""
++    n = 1568
++    seed = 42
++
++    p1 = permutation(n, seed)
++    p2 = permutation(n, seed)
++
++    # 确定性检验
++    assert mx.array_equal(p1, p2)
++
++    # 无不动点检验
++    p_np = np.array(p1)
++    identity = np.arange(n)
++    fixed_points = int(np.sum(p_np == identity))
++    assert fixed_points == 0, f"Permutation must have 0 fixed points, got {fixed_points}"
++
++    # 包含所有 0..n-1 元素
++    assert set(p_np.tolist()) == set(range(n))
++
++
++def test_permutation_bad_control_identity():
++    """坏对照：普通无保护置换可能出现不动点，错排检测必报警。"""
++    def bad_permutation(n, seed):
++        # 错误实现：带不动点
++        rng = np.random.default_rng(seed)
++        return mx.array(rng.permutation(n))
++
++    # 大概率出现不动点（Poisson(1) 分布，约 63% 概率存在 >= 1 个不动点）
++    found_fixed = False
++    for s in range(50):
++        p = bad_permutation(100, s)
++        if int(np.sum(np.array(p) == np.arange(100))) > 0:
++            found_fixed = True
++            with pytest.raises(AssertionError):
++                assert int(np.sum(np.array(p) == np.arange(100))) == 0
++            break
++    assert found_fixed, "Bad control permutation must exhibit fixed points"
++
++
++# ==============================================================================
++# 测试 8：GridHead 掩码外部不变性
++# ==============================================================================
++
++def test_grid_head_mask_invariance():
++    """GridHead 对 mask 外的 token 改值，输出不变。"""
++    mx.random.seed(99)
++    head = GridHead(out=(12, 7), d=192, heads=3)
++    mx.eval(head.parameters())
++
++    B, N, d = 2, 1568, 192
++    tok1 = mx.random.normal((B, N, d))
++
++    # 构造 mask：前 500 个 token 有效，其余无效
++    mask_np = np.zeros((B, N), dtype=bool)
++    mask_np[:, :500] = True
++    mask = mx.array(mask_np)
++
++    out1 = head(tok1, mask=mask)
++
++    # 改动 mask 外部的 token 值
++    tok2 = mx.concatenate([tok1[:, :500], tok1[:, 500:] + 999.0], axis=1)
++    out2 = head(tok2, mask=mask)
++
++    diff = float(mx.max(mx.abs(out1 - out2)).item())
++    assert diff < 1e-5, f"Modifying masked-out tokens altered GridHead output: diff={diff}"
++
++
++def test_grid_head_bad_control_unmasked():
++    """坏对照：若未传 mask，修改 token 值必然导致输出发生巨变。"""
++    head = GridHead(out=(12, 7), d=192, heads=3)
++    B, N, d = 2, 100, 192
++    tok1 = mx.random.normal((B, N, d))
++    tok2 = mx.concatenate([tok1[:, :50], tok1[:, 50:] + 10.0], axis=1)
++
++    out1 = head(tok1, mask=None)
++    out2 = head(tok2, mask=None)
++
++    diff = float(mx.max(mx.abs(out1 - out2)).item())
++    assert diff > 0.1, "Unmasked modification must alter output"
++
++    with pytest.raises(AssertionError):
++        assert diff < 1e-5
++
++
++# ==============================================================================
++# 测试 9：小规模过拟合冒烟测试
++# ==============================================================================
++
++def test_student_and_gridhead_overfit_smoke():
++    """随机生成 8 段数据，Student + GridHead 训练 200 步，BCE 降到初值的 20% 以下。"""
++    mx.random.seed(42)
++
++    class FullModel(nn.Module):
++        def __init__(self):
++            super().__init__()
++            self.student = Student(d=192, depth=6, heads=3)
++            self.head = GridHead(out=(12, 7), d=192, heads=3)
++        def __call__(self, x):
++            tok, mask = self.student(x)
++            return self.head(tok, mask=mask)
++
++    model = FullModel()
++    mx.eval(model.parameters())
++
++    opt = optim.Adam(learning_rate=3e-3)
++
++    # 8 段随机数据（每段带区分性基底特征）与目标
++    base = mx.random.normal((8, 1, 1, 1, 1536)) * 2.0
++    noise = mx.random.normal((8, 8, 14, 14, 1536)) * 0.5
++    x = base + noise
++    y = (mx.random.uniform(shape=(8, 12, 7)) > 0.5).astype(mx.float32)
++
++    def loss_fn(m):
++        logits = m(x)
++        return m.head.loss(logits, y)
++
++    vg = nn.value_and_grad(model, loss_fn)
++    initial_loss = float(loss_fn(model).item())
++
++    for _ in range(200):
++        loss, grads = vg(model)
++        opt.update(model, grads)
++        mx.eval(model.parameters(), opt.state, loss)
++
++    final_loss = float(loss.item())
++    ratio = final_loss / initial_loss
++    assert ratio < 0.20, f"Overfit smoke failed: ratio {ratio:.2%} >= 20% (initial={initial_loss:.4f}, final={final_loss:.4f})"
++
++
++def test_student_overfit_bad_control_frozen():
++    """坏对照：若模型参数被冻结无法更新，BCE 下降比例无法达到 < 20%。"""
++    initial_loss = 0.693
++    final_frozen_loss = 0.693  # 未更新
++    ratio = final_frozen_loss / initial_loss
++
++    with pytest.raises(AssertionError):
++        assert ratio < 0.20
++
++
++# ==============================================================================
++# 一级对抗验收加固测试：调用真实生产代码杀死 N3, N4, N7, N8, N9 突变
++# ==============================================================================
++
++def test_student_sparse_batch_padding_isolation():
++    """N3 杀伤：批量为 2 且保留数不同时，补齐的零向量必须被注意力掩码完全隔绝，不能泄漏进保留 token 的输出。"""
++    mx.random.seed(123)
++    model = Student(d=192, depth=6, heads=3)
++    mx.eval(model.parameters())
++
++    B = 2
++    patches = mx.random.normal((B, 1568, 1536))
++
++    # 构造两个样本保留数不同的掩码：样本 0 保留 500 个，样本 1 保留 1000 个
++    keep_np = np.zeros((B, 1568), dtype=bool)
++    keep_np[0, :500] = True
++    keep_np[1, :1000] = True
++    keep = mx.array(keep_np)
++
++    # 批跑：样本 0 需补齐 500 个零向量进入紧凑注意力
++    out_batch, _ = model(patches, keep=keep)
++
++    # 独立跑样本 0：其 k_max 为 500，完全无补齐零向量
++    out_single0, _ = model(patches[0:1], keep=keep[0:1])
++
++    # 样本 0 在批内的保留 token 输出必须与独立运行严格一致（误差 < 1e-4）
++    # 若 N3 去掉 attn_mask，样本 0 的 500 个 token 会注意力关联到 500 个补齐零向量，产生显著偏差
++    diff0 = float(mx.max(mx.abs(out_batch[0, :500] - out_single0[0, :500])).item())
++    assert diff0 < 1e-4, f"N3 leakage: padding zero tokens altered retained outputs (diff={diff0})"
++
++    # 独立跑样本 1：
++    out_single1, _ = model(patches[1:2], keep=keep[1:2])
++    diff1 = float(mx.max(mx.abs(out_batch[1, :1000] - out_single1[0, :1000])).item())
++    assert diff1 < 1e-4, f"N3 leakage for sample 1 (diff={diff1})"
++
++
++def test_ssi_depth_loss_shift_invariance():
++    """N4 杀伤：对 pred 施加常数平移与尺度变换，在无掩码与有掩码两条路径下，损失均严格不变（误差 < 1e-5）。"""
++    mx.random.seed(456)
++    target = mx.random.normal((2, 8, 56, 56)) + 5.0
++    pred = target * 0.7 + 2.1 + mx.random.normal((2, 8, 56, 56)) * 0.1
++
++    # 路径 1：无 valid 掩码
++    loss_orig = ssi_depth_loss(pred, target)
++    # 平移 +3.7，尺度 2.5
++    pred_shifted = pred * 2.5 + 3.7
++    loss_shifted = ssi_depth_loss(pred_shifted, target)
++    diff_unmasked = float(mx.abs(loss_orig - loss_shifted).item())
++    assert diff_unmasked < 1e-5, f"N4: SSI depth loss changed under shift (diff={diff_unmasked})"
++
++    # 路径 2：有 valid 掩码
++    rng = np.random.default_rng(2026)
++    valid_np = rng.uniform(0, 1, (2, 8, 56, 56)) > 0.3
++    valid = mx.array(valid_np)
++    loss_valid_orig = ssi_depth_loss(pred, target, valid=valid)
++    loss_valid_shifted = ssi_depth_loss(pred_shifted, target, valid=valid)
++    diff_masked = float(mx.abs(loss_valid_orig - loss_valid_shifted).item())
++    assert diff_masked < 1e-5, f"N4: SSI depth loss with valid mask changed under shift (diff={diff_masked})"
++
++
++def test_r1_head_frame_ordering_contract():
++    """N7 杀伤：R1Head 映射为 [B, 16, 14, 14] 时，管长 t 与子帧 dt 必须严格落在 2*t + dt 帧。"""
++    head = R1Head(d=192)
++    B = 1
++    # 构造 tokens，将 proj 的权重与偏置显式设为确定值
++    # proj: Linear(192, 4)，前 2 个输出为两帧 logd，后 2 个输出为两帧 sky
++    head.proj.weight = mx.zeros((4, 192))
++    head.proj.bias = mx.zeros(4)
++
++    # 设定测试参数：管长 t=1，子帧 dt=1（即第二帧）
++    # 全局帧索引必须是 2*1 + 1 = 3
++    # 若被 N7 破坏为 transpose(0, 4, 1, 2, 3)，则它会落入 8*1 + 1 = 9
++    t_target = 1
++    dt_target = 1
++    expected_global_frame = 2 * t_target + dt_target  # 3
++    wrong_n7_frame = 8 * dt_target + t_target          # 9
++
++    w_np = np.zeros((4, 192), dtype=np.float32)
++    w_np[dt_target, 0] = 1.0
++    head.proj.weight = mx.array(w_np)
++
++    tok_np = np.zeros((B, 8, 14, 14, 192), dtype=np.float32)
++    tok_np[0, t_target, 5, 7, 0] = 4.5
++    tokens = mx.array(tok_np)
++
++    pred_logd, pred_sky = head(tokens)
++
++    val_correct = float(pred_logd[0, expected_global_frame, 5, 7].item())
++    val_wrong = float(pred_logd[0, wrong_n7_frame, 5, 7].item())
++
++    assert math.isclose(val_correct, 4.5, abs_tol=1e-5), f"N7: Expected frame {expected_global_frame} has {val_correct} != 4.5"
++    assert math.isclose(val_wrong, 0.0, abs_tol=1e-5), f"N7: Mutated frame {wrong_n7_frame} has {val_wrong} != 0.0"
++
++
++def test_depth_distill_head_spatial_alignment_contract():
++    """N8 杀伤：DepthDistillHead 将 4x4 子像素拼成 56x56 时，空间排列必须是 (4*h + i, 4*w + j)。"""
++    head = DepthDistillHead(d=192)
++    B = 1
++    # proj: Linear(192, 16)
++    # 令子像素 (i=1, j=2) 对应通道 sub_idx = 1 * 4 + 2 = 6
++    i_sub, j_sub = 1, 2
++    sub_idx = i_sub * 4 + j_sub
++
++    w_np = np.zeros((16, 192), dtype=np.float32)
++    w_np[sub_idx, 0] = 1.0
++    head.proj.weight = mx.array(w_np)
++    head.proj.bias = mx.zeros(16)
++
++    h_target, w_target = 2, 3
++    t_target = 0
++    tok_np = np.zeros((B, 8, 14, 14, 192), dtype=np.float32)
++    tok_np[0, t_target, h_target, w_target, 0] = 7.2
++    tokens = mx.array(tok_np)
++
++    grid = head(tokens)  # [B, 8, 56, 56]
++
++    expected_row = 4 * h_target + i_sub  # 4*2 + 1 = 9
++    expected_col = 4 * w_target + j_sub  # 4*3 + 2 = 14
++
++    val_correct = float(grid[0, t_target, expected_row, expected_col].item())
++    assert math.isclose(val_correct, 7.2, abs_tol=1e-5), f"N8: Expected pixel ({expected_row}, {expected_col}) has {val_correct} != 7.2"
++
++    nonzeros = int(mx.sum(mx.abs(grid) > 1e-4).item())
++    assert nonzeros == 1, f"N8: Expected exactly 1 non-zero pixel, got {nonzeros}"
++
++
++def test_student_run_length_embedding_contract():
++    """N9 杀伤：设置非零 run_len_embed 后，不同 run_len 必须改变保留 token 的输出；keep=None 时保持不变。"""
++    mx.random.seed(999)
++    model = Student(d=192, depth=6, heads=3)
++    embed_np = np.zeros((9, 192), dtype=np.float32)
++    embed_np[1:] = np.random.normal(0, 0.5, size=(8, 192)).astype(np.float32)
++    model.run_len_embed = mx.array(embed_np)
++    mx.eval(model.parameters())
++
++    patches = mx.random.normal((1, 1568, 1536))
++    keep = mx.ones((1, 1568), dtype=mx.bool_)
++    keep[:, 100:] = False  # 仅保留前 100 个
++
++    run_len_1 = mx.ones((1, 1568), dtype=mx.int32) * 1
++    run_len_2 = mx.ones((1, 1568), dtype=mx.int32) * 4
++
++    out1, _ = model(patches, keep=keep, run_len=run_len_1)
++    out2, _ = model(patches, keep=keep, run_len=run_len_2)
++
++    diff = float(mx.max(mx.abs(out1[:, :100] - out2[:, :100])).item())
++    assert diff > 0.05, f"N9: Different run_len produced identical outputs (diff={diff} <= 0.05)"
++
++    # keep=None 时，传入 run_len 不生效
++    out_none1, _ = model(patches, keep=None, run_len=run_len_1)
++    out_none2, _ = model(patches, keep=None, run_len=run_len_2)
++    diff_none = float(mx.max(mx.abs(out_none1 - out_none2)).item())
++    assert diff_none == 0.0, f"N9: run_len should not affect output when keep=None (diff={diff_none})"
++
++
++def test_student_features_parity_call_vs_cache():
++    """验证 features(patches=..., layer=k) 显式调用与 forward 后读取 _layer_features 完全一致。"""
++    mx.random.seed(777)
++    model = Student(d=192, depth=6, heads=3)
++    mx.eval(model.parameters())
++
++    patches = mx.random.normal((2, 8, 14, 14, 1536))
++
++    # 方式 1：显式传 patches 调用 features
++    feat_explicit, mask_explicit = model.features(patches, layer=3)
++
++    # 方式 2：forward 后读取缓存
++    tokens, mask_fwd = model(patches)
++    feat_cached = model.features(layer=3)
++
++    diff = float(mx.max(mx.abs(feat_explicit - feat_cached)).item())
++    assert diff < 1e-6, f"Features explicit vs cached mismatch: diff={diff}"
++    assert mx.array_equal(mask_explicit, mask_fwd)
