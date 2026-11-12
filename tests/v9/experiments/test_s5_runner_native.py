@@ -284,6 +284,7 @@ def _events(root: Path) -> list[dict]:
 def test_final_partition_cell_is_refused_before_any_cell(tmp_path: Path):
     """A planned cell on s5p1-final must stop the stage before any cell starts or any data is touched."""
     root = _make_root(tmp_path)
+    _write_inputs(root, partitioned_teachers=True)        # pass the preflight so the final refusal is reached
     _mutate_file(root, f"{HERE}/plan_s5p1.py",
                  'n_clips=pool_clips, epochs=distill_epochs, partition="s5p1-pool",',
                  'n_clips=pool_clips, epochs=distill_epochs, partition="s5p1-final",')
@@ -362,3 +363,70 @@ def test_preflight_requires_teacher_features_stored_per_partition(tmp_path: Path
     _write_inputs(right, partitioned_teachers=True)
     r = _preflight(right)
     assert r.returncode == 0 and "preflight ok" in r.stdout, r.stdout + r.stderr
+
+
+
+# ------------------------------------------------------------------------------------------------
+# P238 之后一级补测（复核者 gemini-h8q4 指出的五处缺口）
+# ------------------------------------------------------------------------------------------------
+def _runner_module(root: Path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"run_s5p1_{time.monotonic_ns()}", root / HERE / "run_s5p1.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_refuse_final_rejects_every_final_partition_name():
+    from ainerzero.v9.experiments.s3 import run_guard as GD
+    mod = _runner_module(LIVE)
+    for name in ("s5p1-final", "s5p1-final-shift"):
+        with pytest.raises(GD.GuardError, match="final partition"):
+            mod._refuse_final(name)
+    mod._refuse_final("s5p1-dev")                      # non-final names pass
+
+
+def test_output_sha_mismatch_on_a_later_file_fails_the_cell(tmp_path: Path):
+    """Only the second reported file has a wrong SHA; every file must be checked, not just the first."""
+    root = _make_root(tmp_path)
+    _mutate_file(root, f"{HERE}/run_s5p1.py",
+                 '            result = json.loads(result_path.read_text(encoding="utf-8"))\n',
+                 '            result = json.loads(result_path.read_text(encoding="utf-8"))\n'
+                 '            result["files"] = {k: (v if i == 0 else "0" * 64) '
+                 'for i, (k, v) in enumerate(result.get("files", {}).items())}\n')
+    ran = _run(root, "--stage", "smoke", "--use-id", "s-sha2", "--report", "reports/out.json")
+    assert ran.returncode == 2, ran.stdout[-2000:] + ran.stderr[-2000:]
+    fails = [e for e in _events(root) if e["event"] == "cell_fail"]
+    assert fails and "SHA mismatch" in fails[0]["error"]
+
+
+def test_child_exception_is_reported_and_not_counted(tmp_path: Path):
+    """A cell whose child process raises must fail with that exception, never be recorded as completed."""
+    root = _make_root(tmp_path)
+    _mutate_file(root, f"{HERE}/run_s5p1.py",
+                 "def _execute_cell_body(cell: dict, ctx: dict) -> dict:\n",
+                 "def _execute_cell_body(cell: dict, ctx: dict) -> dict:\n"
+                 "    raise RuntimeError(\"injected cell failure\")\n")
+    ran = _run(root, "--stage", "smoke", "--use-id", "s-raise", "--report", "reports/out.json")
+    assert ran.returncode == 2, ran.stdout[-2000:] + ran.stderr[-2000:]
+    events = _events(root)
+    fails = [e for e in events if e["event"] == "cell_fail"]
+    assert fails and "injected cell failure" in fails[0]["error"], fails
+    assert not [e for e in events if e["event"] == "cell_end"]
+
+
+def test_preflight_requires_the_lab_teacher_directory(tmp_path: Path):
+    import shutil
+    root = _make_root(tmp_path)
+    _write_inputs(root, partitioned_teachers=True)
+    shutil.rmtree(root / "artifacts/v9/s5/teachers/vjepa/s5p1-lab")
+    r = _preflight(root)
+    assert r.returncode != 0 and "preflight" in r.stderr and "s5p1-lab" in r.stderr, r.stdout + r.stderr
+
+
+def test_preflight_requires_clip_files_not_only_a_manifest(tmp_path: Path):
+    root = _make_root(tmp_path)
+    _write_inputs(root, partitioned_teachers=True)
+    (root / "artifacts/v9/s5/data/s5p1-dev/world_0000/clip_00.npy").unlink()
+    r = _preflight(root)
+    assert r.returncode != 0 and "preflight" in r.stderr and "s5p1-dev" in r.stderr, r.stdout + r.stderr

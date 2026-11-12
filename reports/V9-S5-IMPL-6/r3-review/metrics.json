@@ -1,0 +1,51 @@
+{
+  "task_id": "ainerzero.V9.P238",
+  "reviewer": "gemini-h8q4",
+  "tier": 2,
+  "kind": "review",
+  "target_verified": "ainerzero.V9.P236",
+  "conclusion": "需补",
+  "adversarial_mutations": {
+    "total": 5,
+    "survived": 5,
+    "killed": 0,
+    "mutants": [
+      {
+        "id": "M1_refuse_final_exact_only",
+        "desc": "只拦 s5p1-final 不拦 s5p1-final-shift",
+        "status": "SURVIVED",
+        "note": "现存测试仅注入 s5p1-final，未覆盖命名变体；且该测试因预检直接抛 FileNotFoundError 崩溃"
+      },
+      {
+        "id": "M2_sha_only_checks_first_file",
+        "desc": "SHA 核对只核对第一个文件 ([:1])",
+        "status": "SURVIVED",
+        "note": "现存测试将所有文件 SHA 置 0，只核第一个文件仍能命中报错，无法证明后续文件被核验"
+      },
+      {
+        "id": "M3_ignore_child_exit_code",
+        "desc": "子进程非 0 退出处理绕过",
+        "status": "SURVIVED",
+        "note": "现存测试仅覆盖 timeout 退出，未测试工作进程非 0 崩溃退出"
+      },
+      {
+        "id": "M4_preflight_skips_lab_teacher",
+        "desc": "预检只遍历 pool 教师，跳过 lab 教师",
+        "status": "SURVIVED",
+        "note": "现有预检单测 pool 均未分区，跳过 lab 不影响测试通过"
+      },
+      {
+        "id": "M5_preflight_skips_data_clip_check",
+        "desc": "预检只检查 manifest.json，不检查 clip 文件",
+        "status": "SURVIVED",
+        "note": "空分区只要有 manifest.json 即可绕过预检"
+      }
+    ]
+  },
+  "defects_found": [
+    "test_final_partition_cell_is_refused_before_any_cell 因缺少预检数据物化，在运行 probe 时抛出 FileNotFoundError 中断",
+    "run_s5p1.py 在 cells_override 分支遗漏 _refuse_final(cell['partition']) 检查",
+    "run_s5p1.py 在 consume_dev_use 之后才执行 _refuse_final，非法分区会导致先扣减 dev 使用预算",
+    "路径断言 assert tmp_path.resolve() not in (LIVE, REAL_REPO) 存在被仓库内相对临时目录绕过的缺口"
+  ]
+}
