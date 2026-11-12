@@ -1,0 +1,59 @@
+{
+  "task_id": "ainerzero.V9.P237",
+  "review_type": "tier2_non_author_review",
+  "verified_task": "ainerzero.V9.P235",
+  "verified_commit": "e4d374d",
+  "verified_target": "tests/v9/experiments/test_s5_train_mlx.py L600-L675",
+  "conclusion": "需补",
+  "review_results": {
+    "fill_dropped_mechanism_sound": true,
+    "fill_dropped_isolation_verified": true,
+    "calls_counter_strictness_verified": true,
+    "tolerances_appropriate": true,
+    "r1_restoration_covered": true,
+    "gridhead_r2_r3_mask_under_rlt_covered": false,
+    "gridhead_r2_r3_unrestored_tokens_constraint_covered": false
+  },
+  "mutants_tested": 4,
+  "mutants_killed": 2,
+  "mutants_survived": 2,
+  "mutants": [
+    {
+      "id": "J1",
+      "desc": "restore_runs reverse fill direction (from future to past)",
+      "target_file": "src/ainerzero/v9/experiments/s5/train.py",
+      "status": "KILLED",
+      "killed_by": [
+        "test_predict_restores_dropped_positions_from_run_start",
+        "test_restore_runs_properties"
+      ]
+    },
+    {
+      "id": "J2",
+      "desc": "predict drops mask when calling r2/r3 GridHead",
+      "target_file": "src/ainerzero/v9/experiments/s5/train.py",
+      "status": "SURVIVED",
+      "note": "Critical blind spot: no test asserts that predict passes valid grid_mask to R2/R3 under RLT"
+    },
+    {
+      "id": "J3",
+      "desc": "train_heads passes keep=None to restore_runs during feature caching",
+      "target_file": "src/ainerzero/v9/experiments/s5/train.py",
+      "status": "KILLED",
+      "killed_by": [
+        "test_train_heads_r1_ignores_dropped_token_values"
+      ]
+    },
+    {
+      "id": "J4",
+      "desc": "predict passes restored r1_tokens to r2/r3 GridHead instead of unrestored tokens",
+      "target_file": "src/ainerzero/v9/experiments/s5/train.py",
+      "status": "SURVIVED",
+      "note": "Critical blind spot: DESIGN-r1.md specifies GridHead must use unrestored tokens with holes"
+    }
+  ],
+  "required_additions": [
+    "Assert that predict passes grid_mask (mx.bool_) to R2/R3 GridHead when keep is not None",
+    "Assert that predict passes raw unrestored tokens to R2/R3 GridHead and never r1_tokens"
+  ]
+}

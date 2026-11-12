@@ -673,3 +673,18 @@ def test_a0r_r1_loss_ignores_dropped_token_values(train_fixture, monkeypatch):
         losses.append([s["loss"] for s in log["step_logs"][:2]])
     assert calls and all(calls), "A0-R must call restore_runs with a keep mask"
     np.testing.assert_allclose(losses[0], losses[1], rtol=1e-5)
+
+
+def test_predict_grid_logits_ignore_dropped_token_values(train_fixture, monkeypatch):
+    """P237 J2: under RLT, predict must mask dropped tokens for the R2/R3 grid heads."""
+    idx = D.ClipIndex(train_fixture / "part")
+    outs = []
+    for fill in (0.0, 1.0e3):
+        monkeypatch.setattr(Student, "__call__", _fill_dropped(fill))
+        mx.random.seed(21)
+        student = _make_small_student()
+        heads = T.HeadsContainer(r1=R1Head(d=32), r2=GridHead(out=(12, 7), d=32, heads=2),
+                                 r3=GridHead(out=(12, 7), d=32, heads=2))
+        outs.append(T.predict(student, heads, idx, tau=0.02))
+    for key in ("r2_logit", "r3_logit", "r1_logd"):
+        np.testing.assert_allclose(outs[0][key], outs[1][key], rtol=1e-5, atol=1e-5, err_msg=key)
