@@ -51,6 +51,15 @@ STAGE_LIMIT_S = {
     # (design r1 implementation-stage addendum 6).
     "dev-tune": 3 * 3600,
     "dev-distill": 8 * 3600,
+    # dev-tune measured 0.27-0.40 s/step and stops at its 3 h limit before finishing the eta cells; the user
+    # approved about one more hour on 2026-11-12 ("追加 1 小时调 η"). dev-tune-b reads out the two distill-lr
+    # candidates on dev (dev-tune trained them but never evaluated them) and re-runs the missing eta cells.
+    "dev-tune-b": 1 * 3600,
+}
+# Stages that read the dev-tune result, and the tune keys each one needs.
+TUNE_KEYS = {
+    "dev-distill": ("distill_lr", "supervised_lr"),
+    "dev-tune-b": ("supervised_lr",),
 }
 SMOKE_PARTITIONS = {
     "pool": "s5test-smoke-pool",
@@ -163,7 +172,88 @@ def smoke_cells() -> list[dict]:
     return cells
 
 
-def dry_run_plan(stage: str) -> dict:
+def _parse_etas(text) -> tuple[float, ...]:
+    """``--etas 0.5,1.0`` -> 设计网格内、无重复的 η 元组；不合法时抛 GuardError。"""
+    if text is None or not str(text).strip():
+        raise GD.GuardError("dev-tune-b needs --etas (comma-separated values from the design grid)")
+    try:
+        values = [float(part) for part in str(text).split(",") if part.strip()]
+        return plan.eta_values(values)
+    except ValueError as exc:
+        raise GD.GuardError(f"invalid --etas {text!r}: {exc}") from None
+
+
+def _require_tune_keys(stage: str, tune: dict) -> None:
+    missing = [key for key in TUNE_KEYS[stage] if key not in tune]
+    if missing:
+        raise GD.GuardError(f"dev-tune result lacks {missing} needed by {stage}")
+    for key in TUNE_KEYS[stage]:
+        value = tune[key]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not float(value) > 0.0:
+            raise GD.GuardError(f"dev-tune result {key}={value!r} is not a positive number")
+
+
+def resolve_tune_students(run_dir, cells: list[dict], *, runs_root: Path) -> list[dict]:
+    """给 ``student_cell`` 格补上 dev-tune 运行里该学生权重的路径与 SHA；登记、文件或 SHA 不符就抛 GuardError。
+
+    只读：要求 ``run_dir`` 在 ``runs_root`` 之下、是一次 dev-tune 运行，且学生文件的 SHA 与该运行 cell_end 的登记一致。
+    """
+    needed = [cell for cell in cells if cell.get("student_cell")]
+    if not needed:
+        return cells
+    if run_dir is None:
+        raise GD.GuardError("dev-tune-b needs --tune-run (the dev-tune run directory)")
+    run = Path(run_dir).resolve()
+    root = Path(runs_root).resolve()
+    if root not in run.parents:
+        raise GD.GuardError(f"--tune-run must be a run directory under {root}: {run}")
+    events_path = run / "events.jsonl"
+    if not events_path.is_file():
+        raise GD.GuardError(f"--tune-run has no events.jsonl: {run}")
+    events = [json.loads(line) for line in events_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    starts = [e for e in events if e.get("event") == "stage_start"]
+    if len(starts) != 1 or starts[0].get("stage") != "dev-tune":
+        raise GD.GuardError(f"--tune-run is not a dev-tune run: {run}")
+    registered: dict[str, str] = {}
+    for event in events:
+        if event.get("event") == "cell_end":
+            for name, sha in (event.get("files") or {}).items():
+                registered[name] = sha
+    out = []
+    for cell in cells:
+        if not cell.get("student_cell"):
+            out.append(cell)
+            continue
+        name = f"{cell['student_cell']}-student.npz"
+        if name not in registered:
+            raise GD.GuardError(f"dev-tune run did not finish {cell['student_cell']} (no {name} in cell_end)")
+        path = run / "weights" / name
+        if not path.is_file():
+            raise GD.GuardError(f"student weights missing: {path}")
+        got = sha256_file(path)
+        if got != registered[name]:
+            raise GD.GuardError(f"student weights SHA mismatch for {name}: got {got} != {registered[name]}")
+        out.append(dict(cell, student_file=str(path), student_sha=got))
+    return out
+
+
+def stage_cells_with_tune(stage: str, tune: dict | None, etas=None) -> list[dict]:
+    """真实阶段的格清单；带 tune 时，蒸馏格用 distill_lr，其余格用 supervised_lr。"""
+    kwargs = {"etas": etas} if stage == "dev-tune-b" else {}
+    cells = plan.stage_cells(
+        stage,
+        pool_worlds=int(PARTITIONS["s5p1-pool"]),
+        lab_worlds=int(PARTITIONS["s5p1-lab"]),
+        **kwargs,
+    )
+    if tune is not None:
+        for cell in cells:
+            key = "distill_lr" if cell["kind"] == "distill" else "supervised_lr"
+            cell["lr"] = float(tune[key])
+    return cells
+
+
+def dry_run_plan(stage: str, etas=None) -> dict:
     if stage == "smoke":
         cells = smoke_cells()
         return {
@@ -178,11 +268,7 @@ def dry_run_plan(stage: str) -> dict:
             "limit_s": STAGE_LIMIT_S["smoke"],
             "cells": cells,
         }
-    cells = plan.stage_cells(
-        stage,
-        pool_worlds=int(PARTITIONS["s5p1-pool"]),
-        lab_worlds=int(PARTITIONS["s5p1-lab"]),
-    )
+    cells = stage_cells_with_tune(stage, None, etas)
     for cell in cells:
         _refuse_final(cell["partition"])
     summary = plan.summarize_stage(stage, cells)
@@ -302,7 +388,11 @@ def _execute_cell_body(cell: dict, ctx: dict) -> dict:
     elif kind == "heads":
         arm = cell["arm"]
         stage = ctx["stage"]
-        if stage == "smoke":
+        if cell.get("student_file"):
+            student_file = Path(cell["student_file"])
+            if not student_file.is_file() or sha256_file(student_file) != cell.get("student_sha"):
+                raise GD.GuardError(f"student weights changed since the stage started: {student_file}")
+        elif stage == "smoke":
             student_file = weights_dir / f"smoke-distill-{arm}-student.npz"
         elif stage == "probe":
             student_file = weights_dir / f"probe-distill-{arm}-s0-student.npz"
@@ -336,7 +426,7 @@ def _execute_cell_body(cell: dict, ctx: dict) -> dict:
                 "r2_ap": ev["metrics"]["r2_ap"], "keep_rate": keep_rate,
                 "lr": cell.get("lr"), "role": cell.get("role"), "arm": cell.get("arm"),
                 "distill_seed": cell.get("distill_seed"), "readout_seed": cell.get("readout_seed"),
-                "label_n": cell.get("label_n"),
+                "label_n": cell.get("label_n"), "distill_lr": cell.get("distill_lr"),
             }, default=_json_default),
             encoding="utf-8",
         )
@@ -508,12 +598,27 @@ def run_locked(
     if dirty:
         raise GD.GuardError("frozen files are not committed: " + "; ".join(dirty[:6]))
     ledger_before = LEDGER.read_bytes() if LEDGER.is_file() else None
+    etas = None
+    etas_arg = getattr(args, "etas", None)
+    if args.stage == "dev-tune-b":
+        etas = _parse_etas(etas_arg)
+    elif etas_arg:
+        raise GD.GuardError("--etas is only valid with --stage dev-tune-b")
     tune = None
-    if args.stage == "dev-distill":
+    if args.stage in TUNE_KEYS:
         if not args.tune_file or not args.tune_sha:
-            raise GD.GuardError("dev-distill needs --tune-file and --tune-sha")
+            raise GD.GuardError(f"{args.stage} needs --tune-file and --tune-sha")
         _verify_tune(Path(args.tune_file), args.tune_sha)
         tune = json.loads(Path(args.tune_file).read_text(encoding="utf-8"))
+        if not isinstance(tune, dict):
+            raise GD.GuardError("dev-tune result must be a JSON object")
+        _require_tune_keys(args.stage, tune)
+    tune_run_arg = getattr(args, "tune_run", None)
+    if tune_run_arg and args.stage != "dev-tune-b":
+        raise GD.GuardError("--tune-run is only valid with --stage dev-tune-b")
+    planned = None
+    if args.stage == "dev-tune-b":
+        planned = resolve_tune_students(tune_run_arg, stage_cells_with_tune(args.stage, tune, etas), runs_root=RUNS)
     if args.stage != "smoke":
         _preflight_real_inputs()
         GD.consume_dev_use(
@@ -571,15 +676,7 @@ def run_locked(
             ctx["lab_teachers"] = _write_fake_teachers(lab, out / "teachers" / "lab")
             cells = smoke_cells()
         else:
-            cells = plan.stage_cells(
-                args.stage,
-                pool_worlds=int(PARTITIONS["s5p1-pool"]),
-                lab_worlds=int(PARTITIONS["s5p1-lab"]),
-            )
-            if tune is not None:
-                for cell in cells:
-                    key = "distill_lr" if cell["kind"] == "distill" else "supervised_lr"
-                    cell["lr"] = float(tune[key])
+            cells = planned if planned is not None else stage_cells_with_tune(args.stage, tune, etas)
             ctx["dirs"][REAL_PARTITIONS["dev"]] = DATA_ROOT / REAL_PARTITIONS["dev"]
             for cell in cells:
                 _refuse_final(cell["partition"])
@@ -739,10 +836,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--report")
     parser.add_argument("--tune-file")
     parser.add_argument("--tune-sha")
+    parser.add_argument("--etas", help="dev-tune-b only: comma-separated eta values from the design grid")
+    parser.add_argument("--tune-run", help="dev-tune-b only: the dev-tune run directory holding the distill-lr students")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    if args.etas and args.stage != "dev-tune-b":
+        print("--etas is only valid with --stage dev-tune-b", file=sys.stderr)
+        return 1
     if args.dry_run:
-        json.dump(dry_run_plan(args.stage), sys.stdout, ensure_ascii=False, indent=1, default=_json_default)
+        try:
+            etas = _parse_etas(args.etas) if args.etas else None
+        except GD.GuardError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        json.dump(dry_run_plan(args.stage, etas), sys.stdout, ensure_ascii=False, indent=1, default=_json_default)
         sys.stdout.write("\n")
         return 0
     if args.use_id is not None and not GD.valid_use_id(args.use_id):

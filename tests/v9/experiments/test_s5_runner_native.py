@@ -448,7 +448,9 @@ def _setup_single_l64_cell_in_copy(root: Path) -> None:
     _mutate_file(
         root,
         f"{HERE}/run_s5p1.py",
-        "    return cells\n",
+        # 锚定 smoke_cells() 的 return（运行器里另有 return cells，tier-1 2026-11-12）
+        "smoke cell left the smoke namespace: {cell['partition']}\")\n    return cells\n",
+        "smoke cell left the smoke namespace: {cell['partition']}\")\n"
         "    return [{\n"
         "        'cell_id': 'smoke-A0-L64', 'kind': 'supervised', 'arm': 'A0', 'seed': 0,\n"
         "        'lr': 1e-3, 'label_n': 64, 'epochs': 2, 'batch_size': 8, 'n_clips': 16,\n"
@@ -579,3 +581,111 @@ def test_code_change_during_a_stage_stops_the_next_cell(tmp_path: Path):
     assert [e["cell_id"] for e in events if e["event"] == "cell_end"] == ["smoke-distill-A1"], events
     fails = [e for e in events if e["event"] == "cell_fail"]
     assert fails and "code changed during stage" in fails[0]["error"] and "train.py" in fails[0]["error"], fails
+
+
+# ------------------------------------------------------------------------------------------------
+# dev-tune-b（用户 2026-11-12 批准追加约 1 h）：评两个蒸馏学习率候选的读出头，补跑没跑完的 η 格
+# ------------------------------------------------------------------------------------------------
+def _write_tune(root: Path, text: str, name: str = "tune.json") -> tuple[Path, str]:
+    import hashlib
+
+    tune = root / "reports" / name
+    tune.write_text(text, encoding="utf-8")
+    return tune, hashlib.sha256(tune.read_bytes()).hexdigest()
+
+
+def _fake_dev_tune_run(root: Path) -> Path:
+    import hashlib
+
+    run = root / RUNS / "dev-tune-t-20261112T000000Z"
+    (run / "weights").mkdir(parents=True)
+    events = [{"event": "stage_start", "stage": "dev-tune", "use_id": "t"}]
+    for i, lr in enumerate(("0.0003", "0.001")):
+        path = run / "weights" / f"tune-distill-A2-lr{lr}-student.npz"
+        path.write_bytes(f"student-{i}".encode())
+        events.append({"event": "cell_end", "cell_id": f"tune-distill-A2-lr{lr}",
+                       "files": {path.name: hashlib.sha256(path.read_bytes()).hexdigest()}})
+    (run / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events), encoding="utf-8")
+    return run
+
+
+def _new_runs(root: Path, before: set[str]) -> list[Path]:
+    runs = root / RUNS
+    return [p for p in runs.iterdir() if p.name not in before] if runs.exists() else []
+
+
+def test_dev_tune_b_refuses_bad_arguments_before_any_output(tmp_path: Path):
+    root = _make_root(tmp_path)
+    _write_inputs(root, partitioned_teachers=True)
+    run = _fake_dev_tune_run(root)
+    before = {p.name for p in (root / RUNS).iterdir()}
+    tune, digest = _write_tune(root, '{"distill_lr": 0.0003, "supervised_lr": 0.0003}\n')
+    lacking, lacking_sha = _write_tune(root, '{"distill_lr": 0.0003}\n', "tune-lacking.json")
+    base = ["--stage", "dev-tune-b", "--report", "reports/out.json"]
+    ok_tune = ["--tune-file", str(tune), "--tune-sha", digest]
+    cases = [
+        (base + ["--use-id", "e1", "--etas", "0.5", "--tune-run", str(run)], "needs --tune-file"),
+        (base + ["--use-id", "e2", *ok_tune, "--tune-run", str(run)], "needs --etas"),
+        (base + ["--use-id", "e3", *ok_tune, "--etas", "0.3", "--tune-run", str(run)], "invalid --etas"),
+        (base + ["--use-id", "e4", "--tune-file", str(lacking), "--tune-sha", lacking_sha, "--etas", "0.5",
+                 "--tune-run", str(run)], "lacks"),
+        (base + ["--use-id", "e5", *ok_tune, "--etas", "0.5"], "needs --tune-run"),
+        (["--stage", "dev-distill", "--report", "reports/out.json", "--use-id", "e6", *ok_tune, "--etas", "0.5"],
+         "only valid"),
+        (["--stage", "dev-distill", "--report", "reports/out.json", "--use-id", "e7", *ok_tune,
+          "--tune-run", str(run)], "only valid"),
+    ]
+    for args, message in cases:
+        ran = _run(root, *args, timeout=120)
+        assert ran.returncode != 0, (args, ran.stdout[-800:])
+        assert message in ran.stderr, (args, ran.stderr[-800:])
+        assert not _new_runs(root, before), args
+        assert not (root / LEDGER).exists(), args
+        assert not (root / "reports/out.json").exists(), args
+    # 学生权重被改过：在花 dev 使用之前就拒绝
+    (run / "weights" / "tune-distill-A2-lr0.001-student.npz").write_bytes(b"changed")
+    ran = _run(root, *base, "--use-id", "e8", *ok_tune, "--etas", "0.5", "--tune-run", str(run), timeout=120)
+    assert ran.returncode != 0 and "SHA mismatch" in ran.stderr, ran.stderr[-800:]
+    assert not _new_runs(root, before) and not (root / LEDGER).exists()
+
+
+def test_dev_tune_b_runs_the_readouts_and_eta_cells_with_the_tuned_lr(tmp_path: Path):
+    root = _make_root(tmp_path)
+    _write_inputs(root, partitioned_teachers=True)
+    run = _fake_dev_tune_run(root)
+    # 假输入只有 1 个 lab 世界，把 L=512 的子集改成 1 个世界；格子主体换成只回报收到的参数，不训练
+    _mutate_file(root, f"{HERE}/plan_s5p1.py",
+                 "L_WORLDS = {64: 4, 512: 32, 2048: 128}",
+                 "L_WORLDS = {64: 1, 512: 1, 2048: 1}")
+    _mutate_file(root, f"{HERE}/run_s5p1.py",
+                 "def _execute_cell_body(cell: dict, ctx: dict) -> dict:\n",
+                 "def _execute_cell_body(cell: dict, ctx: dict) -> dict:\n"
+                 "    if ctx['stage'] == 'dev-tune-b':\n"
+                 "        return {'cell_id': cell['cell_id'], 'kind': cell['kind'], 'lr': cell['lr'], 'eta': cell.get('eta'),\n"
+                 "                'distill_lr': cell.get('distill_lr'), 'student_file': cell.get('student_file'),\n"
+                 "                'student_sha': cell.get('student_sha'), 'arm': cell['arm'], 'epochs': cell['epochs'],\n"
+                 "                'teachers': ctx['teachers'], 'files': {}}\n")
+    tune, digest = _write_tune(root, '{"distill_lr": 0.001, "supervised_lr": 0.0003}\n')
+    ran = _run(root, "--stage", "dev-tune-b", "--use-id", "b-1", "--report", "reports/out.json",
+               "--tune-file", str(tune), "--tune-sha", digest, "--etas", "1.0,0.5", "--tune-run", str(run), timeout=300)
+    assert ran.returncode == 0, ran.stderr[-2000:] + ran.stdout[-2000:]
+    out = next(p for p in (root / RUNS).iterdir() if p.name.startswith("dev-tune-b-"))
+    events = [json.loads(line) for line in (out / "events.jsonl").read_text(encoding="utf-8").splitlines()]
+    ends = [e for e in events if e["event"] == "cell_end"]
+    assert [(e["cell_id"], e["kind"], e["lr"], e["eta"], e["distill_lr"], e["arm"], e["epochs"]) for e in ends] == [
+        ("tune-heads-A2-dlr0.0003", "heads", 0.0003, None, 0.0003, "A2", 60),
+        ("tune-heads-A2-dlr0.001", "heads", 0.0003, None, 0.001, "A2", 60),
+        ("tune-A4-eta0.5", "supervised", 0.0003, 0.5, None, "A4", 60),
+        ("tune-A4-eta1.0", "supervised", 0.0003, 1.0, None, "A4", 60),
+    ]
+    import hashlib
+    for e, lr in zip(ends[:2], ("0.0003", "0.001")):
+        path = Path(e["student_file"])
+        assert path == (run / "weights" / f"tune-distill-A2-lr{lr}-student.npz").resolve()
+        assert e["student_sha"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    # A4 的对齐特征取 lab 分区的 V-JEPA 教师
+    lab_vjepa = {"vjepa": str(root.resolve() / "artifacts/v9/s5/teachers/vjepa/s5p1-lab")}
+    assert all(e["teachers"] == lab_vjepa for e in ends[2:]), ends
+    assert "b-1" in (root / LEDGER).read_text(encoding="utf-8")
+    stage = json.loads((out / "stage.json").read_text(encoding="utf-8"))
+    assert stage["failed"] is None and stage["n_completed"] == 4

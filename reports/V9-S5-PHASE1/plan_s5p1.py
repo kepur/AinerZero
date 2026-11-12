@@ -216,8 +216,63 @@ def _cell(cell_id: str, kind: str, **fields) -> dict:
     return fields
 
 
-def stage_cells(stage: str, *, pool_worlds: int = POOL_WORLDS, lab_worlds: int = LAB_WORLDS) -> list[dict]:
-    """该阶段要跑的训练格。smoke 的格由运行器另列（固定 2 步）。"""
+def eta_values(etas) -> tuple[float, ...]:
+    """校验 η 取值：非空、无重复、都在设计网格 ``ETAS`` 里，按网格顺序返回。"""
+    values = [float(v) for v in etas]
+    if not values:
+        raise ValueError("etas must not be empty")
+    if len(set(values)) != len(values):
+        raise ValueError(f"duplicate etas: {values}")
+    unknown = [v for v in values if v not in ETAS]
+    if unknown:
+        raise ValueError(f"etas outside the design grid {ETAS}: {unknown}")
+    return tuple(v for v in ETAS if v in values)
+
+
+def _eta_cells(etas) -> list[dict]:
+    """η 格：A4、L=512、设计轮数、种子 0。dev-tune 与 dev-tune-b 共用，补跑格与原格逐字段相同（学习率由运行器填）。"""
+    return [
+        _cell(
+            f"tune-A4-eta{eta}", "supervised", arm="A4", seed=0, lr=None, eta=eta,
+            label_n=512, n_clips=L_WORLDS[512] * CLIPS_PER_WORLD,
+            epochs=SUPER_EPOCHS[512], partition="s5p1-lab", role="eta",
+        )
+        for eta in eta_values(etas)
+    ]
+
+
+def distill_lr_readout_cells() -> list[dict]:
+    """dev-tune 的蒸馏学习率格只训练、不评测。每个候选学生各训一组 L=512 读出头（读出种子 0），在 dev 上比 R2 AP。
+
+    读出头的学习率与 dev-distill 的读出头相同（运行器填 supervised_lr）；``student_cell`` 指向 dev-tune 里训出该学生的格。
+    """
+    return [
+        _cell(
+            f"tune-heads-A2-dlr{lr}", "heads", arm="A2", seed=0, readout_seed=0, distill_seed=None,
+            distill_lr=lr, lr=None, label_n=512, n_clips=L_WORLDS[512] * CLIPS_PER_WORLD,
+            epochs=SUPER_EPOCHS[512], partition="s5p1-lab", role="distill_lr",
+            student_cell=f"tune-distill-A2-lr{lr}",
+        )
+        for lr in DISTILL_LRS
+    ]
+
+
+def stage_cells(
+    stage: str,
+    *,
+    pool_worlds: int = POOL_WORLDS,
+    lab_worlds: int = LAB_WORLDS,
+    etas=None,
+) -> list[dict]:
+    """该阶段要跑的训练格。smoke 的格由运行器另列（固定 2 步）。
+
+    ``dev-tune-b``（用户 2026-11-12 批准追加约 1 h）是 dev-tune 的第二段：先给两个蒸馏学习率候选在 dev 上评读出头，
+    再补跑 dev-tune 没跑完的 η 格。``etas`` 只对它有效。
+    """
+    if etas is not None and stage != "dev-tune-b":
+        raise ValueError("etas is only valid for stage 'dev-tune-b'")
+    if stage == "dev-tune-b":
+        return distill_lr_readout_cells() + _eta_cells(ETAS if etas is None else etas)
     if stage == "smoke":
         return []
     pool_clips = pool_worlds * CLIPS_PER_WORLD
@@ -271,12 +326,7 @@ def stage_cells(stage: str, *, pool_worlds: int = POOL_WORLDS, lab_worlds: int =
                     label_n=label_n, n_clips=worlds * CLIPS_PER_WORLD,
                     epochs=SUPER_EPOCHS[label_n], partition="s5p1-lab", role="supervised_lr",
                 ))
-        for eta in ETAS:
-            cells.append(_cell(
-                f"tune-A4-eta{eta}", "supervised", arm="A4", seed=0, lr=None, eta=eta,
-                label_n=512, n_clips=L_WORLDS[512] * CLIPS_PER_WORLD,
-                epochs=SUPER_EPOCHS[512], partition="s5p1-lab", role="eta",
-            ))
+        cells.extend(_eta_cells(ETAS))
         return cells
     if stage == "dev-distill":
         cells = []
