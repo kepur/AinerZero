@@ -311,3 +311,54 @@ def test_cell_output_sha_mismatch_fails_the_cell(tmp_path: Path):
     assert not [e for e in events if e["event"] == "cell_end"]
     stage = json.loads(next((root / RUNS).iterdir()).joinpath("stage.json").read_text(encoding="utf-8"))
     assert stage["n_completed"] == 0
+
+
+# ------------------------------------------------------------------------------------------------
+# 一级 11-12：真实阶段的输入预检（教师特征按分区存放），在消耗 dev 使用之前做
+# ------------------------------------------------------------------------------------------------
+def _write_inputs(root: Path, *, partitioned_teachers: bool) -> None:
+    data = root / "artifacts/v9/s5/data"
+    for name in ("s5p1-pool", "s5p1-lab", "s5p1-dev"):
+        (data / name / "world_0000").mkdir(parents=True)
+        (data / name / "manifest.json").write_text("{}", encoding="utf-8")
+        (data / name / "world_0000" / "clip_00.npy").write_bytes(b"x")
+    teachers = root / "artifacts/v9/s5/teachers"
+    groups = {("vjepa", "s5p1-pool"): "clip_00.vjepa.npy", ("da2", "s5p1-pool"): "da2_00.da2.npy",
+              ("vjepa", "s5p1-lab"): "clip_00.vjepa.npy"}
+    for (teacher, part), fname in groups.items():
+        d = teachers / teacher / part if partitioned_teachers else teachers / teacher
+        (d / "world_0000").mkdir(parents=True, exist_ok=True)
+        (d / "manifest.json").write_text("{}", encoding="utf-8")
+        (d / "world_0000" / fname).write_bytes(b"x")
+
+
+def _preflight(root: Path) -> subprocess.CompletedProcess:
+    code = (
+        "import importlib.util, sys\n"
+        f"sys.path.insert(0, {str(root / 'src')!r})\n"
+        f"spec = importlib.util.spec_from_file_location('r', {str(root / HERE / 'run_s5p1.py')!r})\n"
+        "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+        "m._preflight_real_inputs(); print('preflight ok')\n"
+    )
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+    return subprocess.run([sys.executable, "-I", "-c", code], cwd=root, env=env, capture_output=True, text=True, timeout=120)
+
+
+def test_probe_without_real_inputs_fails_before_spending_a_dev_use(tmp_path: Path):
+    root = _make_root(tmp_path)
+    ran = _run(root, "--stage", "probe", "--use-id", "p-pre", "--report", "reports/out.json")
+    assert ran.returncode != 0
+    assert "preflight" in (ran.stdout + ran.stderr)
+    assert not (root / LEDGER).exists(), "no dev use may be spent when inputs are missing"
+    assert not (root / RUNS).exists() or not any((root / RUNS).iterdir())
+
+
+def test_preflight_requires_teacher_features_stored_per_partition(tmp_path: Path):
+    wrong = _make_root(tmp_path / "wrong")
+    _write_inputs(wrong, partitioned_teachers=False)
+    r = _preflight(wrong)
+    assert r.returncode != 0 and "preflight" in r.stderr, r.stdout + r.stderr
+    right = _make_root(tmp_path / "right")
+    _write_inputs(right, partitioned_teachers=True)
+    r = _preflight(right)
+    assert r.returncode == 0 and "preflight ok" in r.stdout, r.stdout + r.stderr

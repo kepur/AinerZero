@@ -58,6 +58,28 @@ SMOKE_WORLDS = {"pool": 2, "lab": 2, "dev": 1}
 SMOKE_CLIPS = (0, 1)
 SMOKE_STUDENT = {"d": 16, "depth": 1, "heads": 1}
 REAL_PARTITIONS = {"pool": "s5p1-pool", "lab": "s5p1-lab", "dev": "s5p1-dev"}
+# Teacher features are extracted per partition: teachers/<teacher>/<partition>/world_XXXX/...
+# (extract_teachers.py --out artifacts/v9/s5/teachers/<teacher>/<partition>; tier-1 fix 11-12).
+REAL_TEACHERS = {
+    "pool": {"vjepa": TEACHERS / "vjepa" / "s5p1-pool", "da2": TEACHERS / "da2" / "s5p1-pool"},
+    "lab": {"vjepa": TEACHERS / "vjepa" / "s5p1-lab"},
+}
+
+
+def _preflight_real_inputs() -> None:
+    """Every real data partition and teacher directory must exist with a manifest before a dev use is spent."""
+    missing = []
+    for name in REAL_PARTITIONS.values():
+        d = DATA_ROOT / name
+        if not (d / "manifest.json").is_file() or not any(d.glob("world_*/clip_*.npy")):
+            missing.append(str(d))
+    for group in REAL_TEACHERS.values():
+        for teacher, d in group.items():
+            pattern = "world_*/clip_*.vjepa.npy" if teacher == "vjepa" else "world_*/da2_*.da2.npy"
+            if not (d / "manifest.json").is_file() or not any(d.glob(pattern)):
+                missing.append(str(d))
+    if missing:
+        raise GD.GuardError("preflight: missing real inputs: " + "; ".join(missing))
 FORBIDDEN = tuple(sorted(REGISTERED))
 THIRD_PARTY = ("numpy", "mlx")
 
@@ -479,6 +501,7 @@ def run_locked(
         _verify_tune(Path(args.tune_file), args.tune_sha)
         tune = json.loads(Path(args.tune_file).read_text(encoding="utf-8"))
     if args.stage != "smoke":
+        _preflight_real_inputs()
         GD.consume_dev_use(
             lock, LEDGER, args.use_id, f"s5 {args.stage}",
             max_uses=DEV_MAX_USES, expected_lock=LOCK,
@@ -547,11 +570,8 @@ def run_locked(
             for cell in cells:
                 _refuse_final(cell["partition"])
                 ctx["dirs"][cell["partition"]] = DATA_ROOT / cell["partition"]
-            ctx["teachers"] = {
-                "vjepa": str(TEACHERS / "vjepa"),
-                "da2": str(TEACHERS / "da2"),
-            }
-            ctx["lab_teachers"] = ctx["teachers"]
+            ctx["teachers"] = {k: str(v) for k, v in REAL_TEACHERS["pool"].items()}
+            ctx["lab_teachers"] = {k: str(v) for k, v in REAL_TEACHERS["lab"].items()}
 
         for index, cell in enumerate(cells):
             cell_limit = cell_limit_seconds(index)
