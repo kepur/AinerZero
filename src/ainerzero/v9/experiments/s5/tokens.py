@@ -149,6 +149,43 @@ def rlt_keep(
     return (keep_res, run_len_res) if has_batch else (keep_res[0], run_len_res[0])
 
 
+def rlt_keep_fast(
+    patches: np.ndarray, tau: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """对 patches [8, 14, 14, 1536] 执行纯 NumPy 向量化 RLT 保留掩码与游程长度计算。
+
+    与 `rlt_keep`（调用权威 `rlt_frame_dropping`）逐元素严格一致：
+    - 算法照式 10：`keep[0] = True`；`keep[t] = max|p_t - p_{t-1}| >= tau`。
+    - `run_len` 为保留位置到下一个保留位置的距离（或到序列末尾 T 的距离），被并掉位置为 0。
+
+    返回：
+        keep: bool [8, 14, 14]（或 [B, 8, 14, 14]）保留掩码
+        run_len: int [8, 14, 14]（或 [B, 8, 14, 14]）游程长度
+    """
+    has_batch = (patches.ndim == 5)
+    if not has_batch and patches.ndim != 4:
+        raise ValueError(f"Expected 4D or 5D input, got {patches.ndim}D")
+    assert tau >= 0, f"tau must be >= 0, got {tau}"
+
+    arr = patches if has_batch else patches[np.newaxis, ...]
+    B, T, H, W, _ = arr.shape
+
+    keep = np.zeros((B, T, H, W), dtype=bool)
+    keep[:, 0] = True
+    if T > 1:
+        diff_max = np.max(np.abs(arr[:, 1:] - arr[:, :-1]), axis=-1)
+        keep[:, 1:] = diff_max >= tau
+
+    t_idx = np.arange(T, dtype=int)[None, :, None, None]
+    kept_t = np.where(keep, t_idx, T)
+    next_kept = np.full((B, T, H, W), T, dtype=int)
+    if T > 1:
+        next_kept[:, :-1] = np.minimum.accumulate(kept_t[:, :0:-1], axis=1)[:, ::-1]
+
+    run_len = np.where(keep, next_kept - t_idx, 0)
+    return (keep, run_len) if has_batch else (keep[0], run_len[0])
+
+
 def restoration_error(
     patches: np.ndarray, keep: np.ndarray
 ) -> RestorationError:

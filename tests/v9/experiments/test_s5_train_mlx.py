@@ -847,3 +847,48 @@ def test_flat_head_train_ap_above_positive_rate(train_fixture):
     ap = grid_ap(preds["r2_logit"], targets)
     print(f"P240_AP ap={ap:.6f} pos_rate={pos_rate:.6f} margin={ap - pos_rate:.6f}")
     assert ap > pos_rate + 0.05, f"train R2 AP {ap} vs positive rate {pos_rate}"
+
+
+# ------------------------------------------------------------------------------------------------
+# P241：distill / train_supervised / train_heads / predict 复用 ItemCache 中的 RLT (keep, run_len)
+# ------------------------------------------------------------------------------------------------
+def test_train_and_predict_cache_rlt_keep_by_tau(train_fixture, monkeypatch):
+    """P241 测试 4：在 distill、train_supervised、train_heads、predict 中，同一段同一 tau 只算一次 keep，不同 tau 重新计算。"""
+    from ainerzero.v9.experiments.s5 import tokens as tok_mod
+
+    idx = D.ClipIndex(train_fixture / "part")  # 4 段
+    teachers = train_fixture / "teachers"
+
+    calls: list[float] = []
+    real_fast = tok_mod.rlt_keep_fast
+
+    def counting_fast(patches, tau):
+        calls.append(float(tau))
+        return real_fast(patches, tau)
+
+    monkeypatch.setattr(tok_mod, "rlt_keep_fast", counting_fast)
+    monkeypatch.setattr(D, "rlt_keep_fast", counting_fast)
+    if hasattr(T, "rlt_keep_fast"):
+        monkeypatch.setattr(T, "rlt_keep_fast", counting_fast)
+    if hasattr(T, "rlt_keep"):
+        monkeypatch.setattr(T, "rlt_keep", counting_fast)
+
+    shared_cache = D.ItemCache()
+    cfg_002 = T.TrainConfig(lr=1e-3, batch_size=2, epochs=3, seed=1, tau=0.02)
+
+    # 1. distill 跑 3 轮（共 6 步，每轮读 4 段）：只在第 1 轮对 4 段各算 1 次，共 4 次
+    s, _, _ = T.distill("A3", idx, teachers, cfg_002, student=_make_small_student(), cache=shared_cache)
+    assert len(calls) == len(idx) == 4
+
+    # 2. 同一 shared_cache 下跑 train_supervised、train_heads、predict (tau=0.02)：完全命中缓存，0 次新增计算
+    _, h, _ = T.train_supervised(idx, cfg_002, student=_make_small_student(), cache=shared_cache)
+    assert len(calls) == 4
+    T.train_heads(s, idx, cfg_002, cache=shared_cache)
+    assert len(calls) == 4
+    T.predict(s, h, idx, tau=0.02, cache=shared_cache)
+    assert len(calls) == 4
+
+    # 3. 换成不同 tau=0.1：对 4 段重新计算一次，共新增 4 次 -> 总计 8 次
+    T.predict(s, h, idx, tau=0.1, cache=shared_cache)
+    assert len(calls) == 8 and all(t == 0.1 for t in calls[4:])
+

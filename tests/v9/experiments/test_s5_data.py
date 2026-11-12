@@ -439,3 +439,60 @@ def test_teacher_sha_skip_verification_mutation_is_rejected(fixture_partition, t
         "sys.exit(1)\n",
     )
 
+
+# ------------------------------------------------------------------------------------------------
+# P241：RLT keep/run_len 随 ItemCache 缓存（键含 tau）
+# ------------------------------------------------------------------------------------------------
+def test_rlt_keep_cached_by_clip_and_tau(fixture_partition, monkeypatch):
+    """同一段同一 tau 第二次读取不再重算 keep；tau 不同或段不同则重新计算。"""
+    from ainerzero.v9.experiments.s5 import tokens as tok_mod
+
+    idx = D.ClipIndex(fixture_partition / "part")
+    cache = D.ItemCache()
+
+    calls: list[float] = []
+    real_fast = tok_mod.rlt_keep_fast
+
+    def counting_rlt_keep_fast(patches, tau):
+        calls.append(float(tau))
+        return real_fast(patches, tau)
+
+    monkeypatch.setattr(tok_mod, "rlt_keep_fast", counting_rlt_keep_fast)
+    monkeypatch.setattr(D, "rlt_keep_fast", counting_rlt_keep_fast)
+
+    # 1. 不传 tau 时不计算 keep
+    item_no_tau = D.load_item(idx, 0, cache=cache)
+    assert "keep" not in item_no_tau and "run_len" not in item_no_tau
+    assert len(calls) == 0
+
+    # 2. 首次读取段 0, tau=0.02 -> 计算 1 次
+    item_0_a = D.load_item(idx, 0, tau=0.02, cache=cache)
+    assert len(calls) == 1 and calls[-1] == 0.02
+    k_ref_002, rl_ref_002 = tok_mod.rlt_keep(item_0_a["patches"], 0.02)
+    np.testing.assert_array_equal(item_0_a["keep"], k_ref_002)
+    np.testing.assert_array_equal(item_0_a["run_len"], rl_ref_002)
+
+    # 3. 再次读取同一段 0, 同一 tau=0.02 -> 命中缓存，不再计算
+    item_0_b = D.load_item(idx, 0, tau=0.02, cache=cache)
+    assert len(calls) == 1, f"Same clip and same tau should not recompute keep, got {len(calls)} calls"
+    np.testing.assert_array_equal(item_0_b["keep"], item_0_a["keep"])
+    np.testing.assert_array_equal(item_0_b["run_len"], item_0_a["run_len"])
+
+    # 4. 同一段 0, 不同 tau=0.1 -> 必须重新计算
+    item_0_tau01 = D.load_item(idx, 0, tau=0.1, cache=cache)
+    assert len(calls) == 2 and calls[-1] == 0.1
+    k_ref_01, rl_ref_01 = tok_mod.rlt_keep(item_0_tau01["patches"], 0.1)
+    np.testing.assert_array_equal(item_0_tau01["keep"], k_ref_01)
+    np.testing.assert_array_equal(item_0_tau01["run_len"], rl_ref_01)
+    assert not np.array_equal(item_0_tau01["keep"], item_0_a["keep"])
+
+    # 5. 再次读取同一段 0, tau=0.1 或 tau=0.02 -> 两者都已在缓存中，不再计算
+    D.load_item(idx, 0, tau=0.1, cache=cache)
+    D.load_item(idx, 0, tau=0.02, cache=cache)
+    assert len(calls) == 2
+
+    # 6. 不同段 1, tau=0.02 -> 重新计算
+    D.load_item(idx, 1, tau=0.02, cache=cache)
+    assert len(calls) == 3 and calls[-1] == 0.02
+
+

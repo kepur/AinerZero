@@ -184,3 +184,64 @@ def test_restoration_error_bad_control_zero():
 
     with pytest.raises(AssertionError):
         assert bad_err.median > 0.01
+
+
+# ==============================================================================
+# P241：rlt_keep_fast 与权威 rlt_keep 逐元素一致（随机段、全静止、全变化、真实 s5test 段；tau=0, 0.02, 0.1）
+# ==============================================================================
+
+def test_rlt_keep_fast_matches_rlt_keep_elementwise():
+    """验证 rlt_keep_fast 与权威 rlt_keep 在随机段、全静止、全变化、真实 s5test 段及 tau in (0, 0.02, 0.1) 逐元素完全一致。"""
+    from ainerzero.v9.experiments.s5.world import episode, student_clip
+
+    rng = np.random.default_rng(20261112)
+
+    # 1. 全静止段
+    static_clip = np.full((8, 14, 14, 1536), 0.42, dtype=np.float32)
+
+    # 2. 全变化段
+    changing_clip = np.zeros((8, 14, 14, 1536), dtype=np.float32)
+    for t in range(8):
+        changing_clip[t] = t * 0.15
+
+    # 3. 随机段（含部分变化、边界阈值附近变化）
+    rand_clip_1 = rng.uniform(0.0, 0.08, size=(8, 14, 14, 1536)).astype(np.float32)
+    rand_clip_2 = np.cumsum(
+        rng.choice([0.0, 0.01, 0.025, 0.12], size=(8, 14, 14, 1)).astype(np.float32),
+        axis=0,
+    ) + rng.uniform(-0.002, 0.002, size=(8, 14, 14, 1536)).astype(np.float32)
+
+    # 4. 真实 s5test 段
+    ep = episode("s5test-tokens", 0)
+    real_clip_0 = tokens.tubelet_patches(student_clip(ep, 0))
+    real_clip_1 = tokens.tubelet_patches(student_clip(ep, 1))
+
+    test_clips = [
+        ("static", static_clip),
+        ("changing", changing_clip),
+        ("rand_1", rand_clip_1),
+        ("rand_2", rand_clip_2),
+        ("s5test_0", real_clip_0),
+        ("s5test_1", real_clip_1),
+    ]
+
+    for tau in (0.0, 0.02, 0.1):
+        for name, patches in test_clips:
+            k_ref, rl_ref = tokens.rlt_keep(patches, tau)
+            k_fast, rl_fast = tokens.rlt_keep_fast(patches, tau)
+            assert k_fast.dtype == k_ref.dtype == np.bool_
+            assert rl_fast.shape == rl_ref.shape == (8, 14, 14)
+            np.testing.assert_array_equal(
+                k_fast, k_ref, err_msg=f"keep mismatch on {name} at tau={tau}"
+            )
+            np.testing.assert_array_equal(
+                rl_fast, rl_ref, err_msg=f"run_len mismatch on {name} at tau={tau}"
+            )
+
+        # 同时验证 5D 批输入 [B, 8, 14, 14, 1536]
+        batched = np.stack([c for _, c in test_clips], axis=0)
+        kb_ref, rlb_ref = tokens.rlt_keep(batched, tau)
+        kb_fast, rlb_fast = tokens.rlt_keep_fast(batched, tau)
+        np.testing.assert_array_equal(kb_fast, kb_ref, err_msg=f"batched keep mismatch at tau={tau}")
+        np.testing.assert_array_equal(rlb_fast, rlb_ref, err_msg=f"batched run_len mismatch at tau={tau}")
+

@@ -45,7 +45,7 @@ from ainerzero.v9.experiments.s5.losses import (
     ssi_depth_loss,
 )
 from ainerzero.v9.experiments.s5.student import Student
-from ainerzero.v9.experiments.s5.tokens import rlt_keep
+from ainerzero.v9.experiments.s5.tokens import rlt_keep, rlt_keep_fast
 
 
 def _sha256_file(path: Path) -> str:
@@ -262,7 +262,13 @@ def distill(
             run_len_list = []
 
             for b_idx in b_indices:
-                s_item = load_item(index, b_idx, appearance_suffix="", cache=active_cache)
+                s_item = load_item(
+                    index,
+                    b_idx,
+                    appearance_suffix="",
+                    tau=cfg.tau,
+                    cache=active_cache,
+                )
                 patches_list.append(s_item["patches"])
 
                 # 教师特征来源：普通情况来自 b_idx，C-sh 来自 perm_map[b_idx]
@@ -274,9 +280,8 @@ def distill(
                     vjepa_list.append(t_item["vjepa"])
 
                 if cfg.tau is not None:
-                    k, rl = rlt_keep(s_item["patches"], cfg.tau)
-                    keep_list.append(k)
-                    run_len_list.append(rl)
+                    keep_list.append(s_item["keep"])
+                    run_len_list.append(s_item["run_len"])
 
             patches_mx = mx.array(np.stack(patches_list, axis=0))  # [B, 8, 14, 14, 1536]
             da2_mx = mx.array(np.stack(da2_list, axis=0)) if da2_list else None  # [B, 8, 56, 56]
@@ -428,6 +433,7 @@ def train_supervised(
                     index,
                     b_idx,
                     teachers=teachers if cfg.eta is not None else None,
+                    tau=cfg.tau,
                     cache=active_cache,
                 )
                 patches_list.append(item["patches"])
@@ -440,9 +446,8 @@ def train_supervised(
                     vjepa_list.append(item["vjepa"])
 
                 if cfg.tau is not None:
-                    k, rl = rlt_keep(item["patches"], cfg.tau)
-                    keep_list.append(k)
-                    run_len_list.append(rl)
+                    keep_list.append(item["keep"])
+                    run_len_list.append(item["run_len"])
 
             patches_mx = mx.array(np.stack(patches_list, axis=0))
             r1_logd_mx = mx.array(np.stack(r1_logd_list, axis=0))
@@ -562,10 +567,10 @@ def train_heads(
     t_cache_0 = time.perf_counter()
 
     for i in range(len(index)):
-        item = load_item(index, i, cache=active_cache)
+        item = load_item(index, i, tau=cfg.tau, cache=active_cache)
         patches_mx = mx.array(item["patches"][None, ...])
         if cfg.tau is not None:
-            k, rl = rlt_keep(item["patches"], cfg.tau)
+            k, rl = item["keep"], item["run_len"]
             k_mx = mx.array(k[None, ...])
             rl_mx = mx.array(rl[None, ...])
             t_out, m_out = student(patches_mx, keep=k_mx, run_len=rl_mx)
@@ -696,11 +701,11 @@ def predict(
     keep_rates = []
 
     for i in range(len(index)):
-        item = load_item(index, i, cache=active_cache)
+        item = load_item(index, i, tau=tau, cache=active_cache)
         patches_mx = mx.array(item["patches"][None, ...])
 
         if tau is not None:
-            k, rl = rlt_keep(item["patches"], tau)
+            k, rl = item["keep"], item["run_len"]
             keep_rates.append(float(np.mean(k)))
             k_mx = mx.array(k[None, ...])
             rl_mx = mx.array(rl[None, ...])

@@ -15,7 +15,10 @@ from typing import Any, Iterator, Sequence
 
 import numpy as np
 
-from ainerzero.v9.experiments.s5.tokens import tubelet_patches
+from ainerzero.v9.experiments.s5 import tokens as _tokens
+from ainerzero.v9.experiments.s5.tokens import rlt_keep_fast, tubelet_patches
+
+_ORIG_RLT_KEEP_FAST = rlt_keep_fast
 
 
 DEFAULT_CACHE_MAX_BYTES = 48 * (1024 ** 3)  # 48 GiB 默认上限
@@ -40,6 +43,7 @@ class ItemCache:
     - uint8 原始段数组 (clip_raw)
     - 标签数组与元数据字典 (r1_logd, r1_sky, r1_obj, r2, r3, disk_groups, ordering_pairs)
     - 教师特征数组 (vjepa, da2, fp16)
+    - RLT 保留掩码与游程长度 (keep, run_len)，键中包含段路径与 tau
     tubelet_patches 每次从 uint8 原始段现算，不入缓存。
     超过 max_bytes 上限时不再缓存新条目，但照常读取返回，不报错。
     """
@@ -203,6 +207,7 @@ def load_item(
     *,
     teachers: str | Path | dict[str, str | Path] | None = None,
     appearance_suffix: str = "",
+    tau: float | None = None,
     cache: ItemCache | None = None,
 ) -> dict[str, Any]:
     """读取指定索引 i 处的切片数据与标签。
@@ -215,6 +220,7 @@ def load_item(
     - ordering_pairs: 前后次序对字典列表
     - vjepa (若提供了 teachers): fp16 [1568, 1024]
     - da2 (若提供了 teachers): fp16 [8, 56, 56]
+    - keep, run_len (若提供了 tau): 随 ItemCache 缓存的 RLT 保留掩码与游程长度
     """
     w, c = index[i]
     wdir = index.world_dirs[w]
@@ -283,6 +289,23 @@ def load_item(
     # 3. 若指定了 teachers，加载教师特征并校验 progress 账本 SHA
     if teachers is not None:
         item.update(load_teacher(index, i, teachers, cache=cache))
+
+    # 4. 若指定了 tau，按 (clip_file, tau) 缓存并计算 keep 与 run_len
+    if tau is not None:
+        tau_val = float(tau)
+        rlt_key = f"rlt:{clip_file.resolve()}:tau={tau_val!r}"
+        cached_rlt = cache.get(rlt_key) if cache is not None else None
+        if cached_rlt is None:
+            keep_fn = (
+                rlt_keep_fast
+                if rlt_keep_fast is not _ORIG_RLT_KEEP_FAST
+                else _tokens.rlt_keep_fast
+            )
+            keep, run_len = keep_fn(patches, tau_val)
+            cached_rlt = (keep, run_len)
+            if cache is not None:
+                cache.put(rlt_key, cached_rlt, int(keep.nbytes + run_len.nbytes))
+        item["keep"], item["run_len"] = cached_rlt
 
     return item
 

@@ -1,0 +1,712 @@
+diff --git a/src/ainerzero/v9/experiments/s5/data.py b/src/ainerzero/v9/experiments/s5/data.py
+index 5afa646..e1b43dd 100644
+--- a/src/ainerzero/v9/experiments/s5/data.py
++++ b/src/ainerzero/v9/experiments/s5/data.py
+@@ -15,7 +15,10 @@ from typing import Any, Iterator, Sequence
+ 
+ import numpy as np
+ 
+-from ainerzero.v9.experiments.s5.tokens import tubelet_patches
++from ainerzero.v9.experiments.s5 import tokens as _tokens
++from ainerzero.v9.experiments.s5.tokens import rlt_keep_fast, tubelet_patches
++
++_ORIG_RLT_KEEP_FAST = rlt_keep_fast
+ 
+ 
+ DEFAULT_CACHE_MAX_BYTES = 48 * (1024 ** 3)  # 48 GiB 默认上限
+@@ -40,6 +43,7 @@ class ItemCache:
+     - uint8 原始段数组 (clip_raw)
+     - 标签数组与元数据字典 (r1_logd, r1_sky, r1_obj, r2, r3, disk_groups, ordering_pairs)
+     - 教师特征数组 (vjepa, da2, fp16)
++    - RLT 保留掩码与游程长度 (keep, run_len)，键中包含段路径与 tau
+     tubelet_patches 每次从 uint8 原始段现算，不入缓存。
+     超过 max_bytes 上限时不再缓存新条目，但照常读取返回，不报错。
+     """
+@@ -203,6 +207,7 @@ def load_item(
+     *,
+     teachers: str | Path | dict[str, str | Path] | None = None,
+     appearance_suffix: str = "",
++    tau: float | None = None,
+     cache: ItemCache | None = None,
+ ) -> dict[str, Any]:
+     """读取指定索引 i 处的切片数据与标签。
+@@ -215,6 +220,7 @@ def load_item(
+     - ordering_pairs: 前后次序对字典列表
+     - vjepa (若提供了 teachers): fp16 [1568, 1024]
+     - da2 (若提供了 teachers): fp16 [8, 56, 56]
++    - keep, run_len (若提供了 tau): 随 ItemCache 缓存的 RLT 保留掩码与游程长度
+     """
+     w, c = index[i]
+     wdir = index.world_dirs[w]
+@@ -284,6 +290,23 @@ def load_item(
+     if teachers is not None:
+         item.update(load_teacher(index, i, teachers, cache=cache))
+ 
++    # 4. 若指定了 tau，按 (clip_file, tau) 缓存并计算 keep 与 run_len
++    if tau is not None:
++        tau_val = float(tau)
++        rlt_key = f"rlt:{clip_file.resolve()}:tau={tau_val!r}"
++        cached_rlt = cache.get(rlt_key) if cache is not None else None
++        if cached_rlt is None:
++            keep_fn = (
++                rlt_keep_fast
++                if rlt_keep_fast is not _ORIG_RLT_KEEP_FAST
++                else _tokens.rlt_keep_fast
++            )
++            keep, run_len = keep_fn(patches, tau_val)
++            cached_rlt = (keep, run_len)
++            if cache is not None:
++                cache.put(rlt_key, cached_rlt, int(keep.nbytes + run_len.nbytes))
++        item["keep"], item["run_len"] = cached_rlt
++
+     return item
+ 
+ 
+diff --git a/src/ainerzero/v9/experiments/s5/student.py b/src/ainerzero/v9/experiments/s5/student.py
+index d20753a..93328c6 100644
+--- a/src/ainerzero/v9/experiments/s5/student.py
++++ b/src/ainerzero/v9/experiments/s5/student.py
+@@ -17,7 +17,6 @@ from __future__ import annotations
+ 
+ import mlx.core as mx
+ import mlx.nn as nn
+-import numpy as np
+ 
+ 
+ class TransformerBlock(nn.Module):
+@@ -101,16 +100,16 @@ class Student(nn.Module):
+             if run_len is not None:
+                 rl = mx.clip(run_len.reshape(B, self.num_tokens), 0, 8)
+                 x = x + self.run_len_embed[rl]
++            is_all_kept = bool(mx.all(mask).item())
+         else:
+             mask = mx.ones((B, self.num_tokens), dtype=mx.bool_)
++            is_all_kept = True
+ 
+         self._last_mask = mask
+         self._layer_features = []
+ 
+         # 3. 检查是否全量保留
+         # 若所有样本全保留，则直接执行全序列自注意力
+-        is_all_kept = bool(mx.all(mask).item())
+-
+         if is_all_kept:
+             curr_h = x
+             for block in self.blocks:
+@@ -119,39 +118,47 @@ class Student(nn.Module):
+             out_tokens = self.norm(curr_h)
+             return out_tokens, mask
+ 
+-        # 4. 稀疏保留分支：按批内最大保留数补齐，不保留的 token 不进注意力
+-        mask_np = np.array(mask)
+-        indices_list = [np.where(mask_np[b])[0] for b in range(B)]
+-        k_counts = [len(idx) for idx in indices_list]
+-        k_max = max(k_counts)
+-
+-        # 聚合紧凑表示 [B, k_max, d]
+-        compact_x = mx.zeros((B, k_max, self.d))
+-        for b in range(B):
+-            if k_counts[b] > 0:
+-                compact_x[b, :k_counts[b]] = x[b, mx.array(indices_list[b])]
++        # 4. 稀疏保留分支（向量化，无按样本 Python 循环）：
++        # 每个样本把保留位置排在前面（稳定 argsort），用 mx.take_along_axis 一次 gather 出紧凑序列 [B, k_max, d]
++        mask_int = mask.astype(mx.int32)
++        counts = mx.sum(mask_int, axis=1)  # [B]
++        k_max = max(1, int(mx.max(counts).item()))
++
++        idx_range = mx.arange(self.num_tokens, dtype=mx.int32)[None, :]
++        sort_key = (1 - mask_int) * self.num_tokens + idx_range
++        order = mx.argsort(sort_key, axis=1)  # [B, 1568]
++        gather_idx = order[:, :k_max, None]   # [B, k_max, 1]
++
++        valid_compact = mx.arange(k_max, dtype=mx.int32)[None, :] < counts[:, None]  # [B, k_max]
++        compact_x = mx.take_along_axis(x, gather_idx, axis=1)
++        compact_x = mx.where(valid_compact[:, :, None], compact_x, mx.array(0.0, dtype=x.dtype))
++
++        # 按 arange(k_max) < count 构造加性注意力掩码 [B, 1, 1, k_max]
++        attn_mask = mx.where(
++            valid_compact[:, None, None, :],
++            mx.array(0.0, dtype=x.dtype),
++            mx.array(-1e9, dtype=x.dtype),
++        )
+ 
+-        # 构造加性注意力掩码 [B, 1, 1, k_max]
+-        attn_mask = mx.zeros((B, 1, 1, k_max))
+-        for b in range(B):
+-            if k_counts[b] < k_max:
+-                attn_mask[b, 0, 0, k_counts[b]:] = -1e9
++        # 还原下标：在紧凑序列末尾补一个零向量（索引 k_max），被并掉的位置都映射到它
++        ungather_idx = mx.where(
++            mask,
++            mx.cumsum(mask_int, axis=1) - 1,
++            k_max,
++        )[:, :, None]  # [B, 1568, 1]
++        zero_pad = mx.zeros((B, 1, self.d), dtype=x.dtype)
+ 
+         curr_compact = compact_x
+         for block in self.blocks:
+             curr_compact = block(curr_compact, mask=attn_mask)
+-            # 还原至 [B, 1568, d] 并记录层特征
+-            layer_tokens = mx.zeros((B, self.num_tokens, self.d))
+-            for b in range(B):
+-                if k_counts[b] > 0:
+-                    layer_tokens[b, mx.array(indices_list[b])] = curr_compact[b, :k_counts[b]]
+-            self._layer_features.append(layer_tokens)
++            padded_layer = mx.concatenate([curr_compact, zero_pad], axis=1)
++            self._layer_features.append(
++                mx.take_along_axis(padded_layer, ungather_idx, axis=1)
++            )
+ 
+         compact_norm = self.norm(curr_compact)
+-        out_tokens = mx.zeros((B, self.num_tokens, self.d))
+-        for b in range(B):
+-            if k_counts[b] > 0:
+-                out_tokens[b, mx.array(indices_list[b])] = compact_norm[b, :k_counts[b]]
++        padded_out = mx.concatenate([compact_norm, zero_pad], axis=1)
++        out_tokens = mx.take_along_axis(padded_out, ungather_idx, axis=1)
+ 
+         return out_tokens, mask
+ 
+diff --git a/src/ainerzero/v9/experiments/s5/tokens.py b/src/ainerzero/v9/experiments/s5/tokens.py
+index 4a206c4..378b368 100644
+--- a/src/ainerzero/v9/experiments/s5/tokens.py
++++ b/src/ainerzero/v9/experiments/s5/tokens.py
+@@ -149,6 +149,43 @@ def rlt_keep(
+     return (keep_res, run_len_res) if has_batch else (keep_res[0], run_len_res[0])
+ 
+ 
++def rlt_keep_fast(
++    patches: np.ndarray, tau: float
++) -> tuple[np.ndarray, np.ndarray]:
++    """对 patches [8, 14, 14, 1536] 执行纯 NumPy 向量化 RLT 保留掩码与游程长度计算。
++
++    与 `rlt_keep`（调用权威 `rlt_frame_dropping`）逐元素严格一致：
++    - 算法照式 10：`keep[0] = True`；`keep[t] = max|p_t - p_{t-1}| >= tau`。
++    - `run_len` 为保留位置到下一个保留位置的距离（或到序列末尾 T 的距离），被并掉位置为 0。
++
++    返回：
++        keep: bool [8, 14, 14]（或 [B, 8, 14, 14]）保留掩码
++        run_len: int [8, 14, 14]（或 [B, 8, 14, 14]）游程长度
++    """
++    has_batch = (patches.ndim == 5)
++    if not has_batch and patches.ndim != 4:
++        raise ValueError(f"Expected 4D or 5D input, got {patches.ndim}D")
++    assert tau >= 0, f"tau must be >= 0, got {tau}"
++
++    arr = patches if has_batch else patches[np.newaxis, ...]
++    B, T, H, W, _ = arr.shape
++
++    keep = np.zeros((B, T, H, W), dtype=bool)
++    keep[:, 0] = True
++    if T > 1:
++        diff_max = np.max(np.abs(arr[:, 1:] - arr[:, :-1]), axis=-1)
++        keep[:, 1:] = diff_max >= tau
++
++    t_idx = np.arange(T, dtype=int)[None, :, None, None]
++    kept_t = np.where(keep, t_idx, T)
++    next_kept = np.full((B, T, H, W), T, dtype=int)
++    if T > 1:
++        next_kept[:, :-1] = np.minimum.accumulate(kept_t[:, :0:-1], axis=1)[:, ::-1]
++
++    run_len = np.where(keep, next_kept - t_idx, 0)
++    return (keep, run_len) if has_batch else (keep[0], run_len[0])
++
++
+ def restoration_error(
+     patches: np.ndarray, keep: np.ndarray
+ ) -> RestorationError:
+diff --git a/src/ainerzero/v9/experiments/s5/train.py b/src/ainerzero/v9/experiments/s5/train.py
+index acf4170..f03c4d0 100644
+--- a/src/ainerzero/v9/experiments/s5/train.py
++++ b/src/ainerzero/v9/experiments/s5/train.py
+@@ -45,7 +45,7 @@ from ainerzero.v9.experiments.s5.losses import (
+     ssi_depth_loss,
+ )
+ from ainerzero.v9.experiments.s5.student import Student
+-from ainerzero.v9.experiments.s5.tokens import rlt_keep
++from ainerzero.v9.experiments.s5.tokens import rlt_keep, rlt_keep_fast
+ 
+ 
+ def _sha256_file(path: Path) -> str:
+@@ -262,7 +262,13 @@ def distill(
+             run_len_list = []
+ 
+             for b_idx in b_indices:
+-                s_item = load_item(index, b_idx, appearance_suffix="", cache=active_cache)
++                s_item = load_item(
++                    index,
++                    b_idx,
++                    appearance_suffix="",
++                    tau=cfg.tau,
++                    cache=active_cache,
++                )
+                 patches_list.append(s_item["patches"])
+ 
+                 # 教师特征来源：普通情况来自 b_idx，C-sh 来自 perm_map[b_idx]
+@@ -274,9 +280,8 @@ def distill(
+                     vjepa_list.append(t_item["vjepa"])
+ 
+                 if cfg.tau is not None:
+-                    k, rl = rlt_keep(s_item["patches"], cfg.tau)
+-                    keep_list.append(k)
+-                    run_len_list.append(rl)
++                    keep_list.append(s_item["keep"])
++                    run_len_list.append(s_item["run_len"])
+ 
+             patches_mx = mx.array(np.stack(patches_list, axis=0))  # [B, 8, 14, 14, 1536]
+             da2_mx = mx.array(np.stack(da2_list, axis=0)) if da2_list else None  # [B, 8, 56, 56]
+@@ -428,6 +433,7 @@ def train_supervised(
+                     index,
+                     b_idx,
+                     teachers=teachers if cfg.eta is not None else None,
++                    tau=cfg.tau,
+                     cache=active_cache,
+                 )
+                 patches_list.append(item["patches"])
+@@ -440,9 +446,8 @@ def train_supervised(
+                     vjepa_list.append(item["vjepa"])
+ 
+                 if cfg.tau is not None:
+-                    k, rl = rlt_keep(item["patches"], cfg.tau)
+-                    keep_list.append(k)
+-                    run_len_list.append(rl)
++                    keep_list.append(item["keep"])
++                    run_len_list.append(item["run_len"])
+ 
+             patches_mx = mx.array(np.stack(patches_list, axis=0))
+             r1_logd_mx = mx.array(np.stack(r1_logd_list, axis=0))
+@@ -562,10 +567,10 @@ def train_heads(
+     t_cache_0 = time.perf_counter()
+ 
+     for i in range(len(index)):
+-        item = load_item(index, i, cache=active_cache)
++        item = load_item(index, i, tau=cfg.tau, cache=active_cache)
+         patches_mx = mx.array(item["patches"][None, ...])
+         if cfg.tau is not None:
+-            k, rl = rlt_keep(item["patches"], cfg.tau)
++            k, rl = item["keep"], item["run_len"]
+             k_mx = mx.array(k[None, ...])
+             rl_mx = mx.array(rl[None, ...])
+             t_out, m_out = student(patches_mx, keep=k_mx, run_len=rl_mx)
+@@ -696,11 +701,11 @@ def predict(
+     keep_rates = []
+ 
+     for i in range(len(index)):
+-        item = load_item(index, i, cache=active_cache)
++        item = load_item(index, i, tau=tau, cache=active_cache)
+         patches_mx = mx.array(item["patches"][None, ...])
+ 
+         if tau is not None:
+-            k, rl = rlt_keep(item["patches"], tau)
++            k, rl = item["keep"], item["run_len"]
+             keep_rates.append(float(np.mean(k)))
+             k_mx = mx.array(k[None, ...])
+             rl_mx = mx.array(rl[None, ...])
+diff --git a/tests/v9/experiments/test_s5_data.py b/tests/v9/experiments/test_s5_data.py
+index b0e0bb4..c4a1443 100644
+--- a/tests/v9/experiments/test_s5_data.py
++++ b/tests/v9/experiments/test_s5_data.py
+@@ -439,3 +439,60 @@ def test_teacher_sha_skip_verification_mutation_is_rejected(fixture_partition, t
+         "sys.exit(1)\n",
+     )
+ 
++
++# ------------------------------------------------------------------------------------------------
++# P241：RLT keep/run_len 随 ItemCache 缓存（键含 tau）
++# ------------------------------------------------------------------------------------------------
++def test_rlt_keep_cached_by_clip_and_tau(fixture_partition, monkeypatch):
++    """同一段同一 tau 第二次读取不再重算 keep；tau 不同或段不同则重新计算。"""
++    from ainerzero.v9.experiments.s5 import tokens as tok_mod
++
++    idx = D.ClipIndex(fixture_partition / "part")
++    cache = D.ItemCache()
++
++    calls: list[float] = []
++    real_fast = tok_mod.rlt_keep_fast
++
++    def counting_rlt_keep_fast(patches, tau):
++        calls.append(float(tau))
++        return real_fast(patches, tau)
++
++    monkeypatch.setattr(tok_mod, "rlt_keep_fast", counting_rlt_keep_fast)
++    monkeypatch.setattr(D, "rlt_keep_fast", counting_rlt_keep_fast)
++
++    # 1. 不传 tau 时不计算 keep
++    item_no_tau = D.load_item(idx, 0, cache=cache)
++    assert "keep" not in item_no_tau and "run_len" not in item_no_tau
++    assert len(calls) == 0
++
++    # 2. 首次读取段 0, tau=0.02 -> 计算 1 次
++    item_0_a = D.load_item(idx, 0, tau=0.02, cache=cache)
++    assert len(calls) == 1 and calls[-1] == 0.02
++    k_ref_002, rl_ref_002 = tok_mod.rlt_keep(item_0_a["patches"], 0.02)
++    np.testing.assert_array_equal(item_0_a["keep"], k_ref_002)
++    np.testing.assert_array_equal(item_0_a["run_len"], rl_ref_002)
++
++    # 3. 再次读取同一段 0, 同一 tau=0.02 -> 命中缓存，不再计算
++    item_0_b = D.load_item(idx, 0, tau=0.02, cache=cache)
++    assert len(calls) == 1, f"Same clip and same tau should not recompute keep, got {len(calls)} calls"
++    np.testing.assert_array_equal(item_0_b["keep"], item_0_a["keep"])
++    np.testing.assert_array_equal(item_0_b["run_len"], item_0_a["run_len"])
++
++    # 4. 同一段 0, 不同 tau=0.1 -> 必须重新计算
++    item_0_tau01 = D.load_item(idx, 0, tau=0.1, cache=cache)
++    assert len(calls) == 2 and calls[-1] == 0.1
++    k_ref_01, rl_ref_01 = tok_mod.rlt_keep(item_0_tau01["patches"], 0.1)
++    np.testing.assert_array_equal(item_0_tau01["keep"], k_ref_01)
++    np.testing.assert_array_equal(item_0_tau01["run_len"], rl_ref_01)
++    assert not np.array_equal(item_0_tau01["keep"], item_0_a["keep"])
++
++    # 5. 再次读取同一段 0, tau=0.1 或 tau=0.02 -> 两者都已在缓存中，不再计算
++    D.load_item(idx, 0, tau=0.1, cache=cache)
++    D.load_item(idx, 0, tau=0.02, cache=cache)
++    assert len(calls) == 2
++
++    # 6. 不同段 1, tau=0.02 -> 重新计算
++    D.load_item(idx, 1, tau=0.02, cache=cache)
++    assert len(calls) == 3 and calls[-1] == 0.02
++
++
+diff --git a/tests/v9/experiments/test_s5_student_mlx.py b/tests/v9/experiments/test_s5_student_mlx.py
+index d4fc4c0..2cb3699 100644
+--- a/tests/v9/experiments/test_s5_student_mlx.py
++++ b/tests/v9/experiments/test_s5_student_mlx.py
+@@ -577,3 +577,216 @@ def test_distill_losses_average_only_inside_the_mask():
+         without = float(fn(student, teacher).item())
+         assert abs(with_mask) < 1e-5, f"{fn.__name__}: masked-out tokens leaked into the loss ({with_mask})"
+         assert without > 0.5, f"{fn.__name__}: control without mask should be large ({without})"
++
++
++# ==============================================================================
++# P241：向量化稀疏分支与旧实现逐元素一致（误差 < 1e-4）及单步前向+反向计时对比
++# ==============================================================================
++
++def _legacy_student_forward(
++    model: Student,
++    patches: mx.array,
++    keep: mx.array | None = None,
++    run_len: mx.array | None = None,
++) -> tuple[mx.array, mx.array, list[mx.array]]:
++    """旧版按样本循环稀疏分支实现拷贝（仅在测试中作参照对比）。"""
++    B = patches.shape[0]
++    if patches.ndim == 5:
++        patches = patches.reshape(B, model.num_tokens, -1)
++
++    x = model.embed(patches) + model.pos
++
++    if keep is not None:
++        mask = keep.reshape(B, model.num_tokens).astype(mx.bool_)
++        if run_len is not None:
++            rl = mx.clip(run_len.reshape(B, model.num_tokens), 0, 8)
++            x = x + model.run_len_embed[rl]
++    else:
++        mask = mx.ones((B, model.num_tokens), dtype=mx.bool_)
++
++    layer_features: list[mx.array] = []
++    is_all_kept = bool(mx.all(mask).item())
++
++    if is_all_kept:
++        curr_h = x
++        for block in model.blocks:
++            curr_h = block(curr_h, mask=None)
++            layer_features.append(curr_h)
++        out_tokens = model.norm(curr_h)
++        return out_tokens, mask, layer_features
++
++    mask_np = np.array(mask)
++    indices_list = [np.where(mask_np[b])[0] for b in range(B)]
++    k_counts = [len(idx) for idx in indices_list]
++    k_max = max(k_counts)
++
++    compact_x = mx.zeros((B, k_max, model.d))
++    for b in range(B):
++        if k_counts[b] > 0:
++            compact_x[b, : k_counts[b]] = x[b, mx.array(indices_list[b])]
++
++    attn_mask = mx.zeros((B, 1, 1, k_max))
++    for b in range(B):
++        if k_counts[b] < k_max:
++            attn_mask[b, 0, 0, k_counts[b] :] = -1e9
++
++    curr_compact = compact_x
++    for block in model.blocks:
++        curr_compact = block(curr_compact, mask=attn_mask)
++        layer_tokens = mx.zeros((B, model.num_tokens, model.d))
++        for b in range(B):
++            if k_counts[b] > 0:
++                layer_tokens[b, mx.array(indices_list[b])] = curr_compact[b, : k_counts[b]]
++        layer_features.append(layer_tokens)
++
++    compact_norm = model.norm(curr_compact)
++    out_tokens = mx.zeros((B, model.num_tokens, model.d))
++    for b in range(B):
++        if k_counts[b] > 0:
++            out_tokens[b, mx.array(indices_list[b])] = compact_norm[b, : k_counts[b]]
++
++    return out_tokens, mask, layer_features
++
++
++def test_vectorized_sparse_branch_matches_legacy_reference_elementwise():
++    """P241 测试 2：新向量化稀疏分支与旧行为在（批内保留数不同、全保留、只保留第1管长）下逐元素一致（误差 < 1e-4），且无按样本 Python 循环。"""
++    import ast
++    from pathlib import Path
++    import ainerzero.v9.experiments.s5.student as student_mod
++
++    # 静态检查 Student.__call__ 中不含 range(B) 等按样本循环，仅允许遍历 self.blocks
++    src = Path(student_mod.__file__).read_text(encoding="utf-8")
++    tree = ast.parse(src)
++    for node in ast.walk(tree):
++        if isinstance(node, ast.ClassDef) and node.name == "Student":
++            for item in node.body:
++                if isinstance(item, ast.FunctionDef) and item.name == "__call__":
++                    for_loops = [n for n in ast.walk(item) if isinstance(n, (ast.For, ast.ListComp))]
++                    assert len(for_loops) == 2, (
++                        f"Expected only 2 loops over self.blocks in Student.__call__, found {len(for_loops)}"
++                    )
++
++    mx.random.seed(20261112)
++    model = Student(d=192, depth=6, heads=3)
++    # 赋予非零 run_len_embed 以同时验证游程嵌入路径
++    rng = np.random.default_rng(20261112)
++    rl_embed = np.zeros((9, 192), dtype=np.float32)
++    rl_embed[1:] = rng.normal(0.0, 0.2, size=(8, 192)).astype(np.float32)
++    model.run_len_embed = mx.array(rl_embed)
++    mx.eval(model.parameters())
++
++    B = 4
++    patches = mx.random.normal((B, 8, 14, 14, 1536))
++
++    # 场景 1：批内各样本保留数不同（含首管长必留 + 后续不同比例保留）
++    keep_var = np.zeros((B, 8, 14, 14), dtype=bool)
++    keep_var[:, 0] = True
++    probs = [0.15, 0.45, 0.70, 0.90]
++    for b, p in enumerate(probs):
++        keep_var[b, 1:] = rng.uniform(0.0, 1.0, size=(7, 14, 14)) < p
++    rl_var = np.where(keep_var, rng.integers(1, 9, size=(B, 8, 14, 14)), 0)
++
++    # 场景 2：全保留
++    keep_all = np.ones((B, 8, 14, 14), dtype=bool)
++    rl_all = np.ones((B, 8, 14, 14), dtype=int)
++
++    # 场景 3：只保留第一个管长（其余 7 个管长全并掉）
++    keep_first = np.zeros((B, 8, 14, 14), dtype=bool)
++    keep_first[:, 0] = True
++    rl_first = np.zeros((B, 8, 14, 14), dtype=int)
++    rl_first[:, 0] = 8
++
++    for case_name, k_np, rl_np in [
++        ("varying_counts", keep_var, rl_var),
++        ("all_kept", keep_all, rl_all),
++        ("only_first_tube", keep_first, rl_first),
++    ]:
++        k_mx = mx.array(k_np)
++        rl_mx = mx.array(rl_np)
++
++        out_new, mask_new = model(patches, keep=k_mx, run_len=rl_mx)
++        feats_new = [model.features(layer=k) for k in range(1, model.depth + 1)]
++        mx.eval(out_new, mask_new, *feats_new)
++
++        out_ref, mask_ref, feats_ref = _legacy_student_forward(model, patches, keep=k_mx, run_len=rl_mx)
++        mx.eval(out_ref, mask_ref, *feats_ref)
++
++        assert bool(mx.array_equal(mask_new, mask_ref).item()), f"{case_name}: mask mismatch"
++        diff_out = float(mx.max(mx.abs(out_new - out_ref)).item())
++        assert diff_out < 1e-4, f"{case_name}: out_tokens max diff {diff_out} >= 1e-4"
++
++        for layer_idx in range(model.depth):
++            diff_l = float(mx.max(mx.abs(feats_new[layer_idx] - feats_ref[layer_idx])).item())
++            assert diff_l < 1e-4, (
++                f"{case_name} layer={layer_idx + 1}: feature max diff {diff_l} >= 1e-4"
++            )
++
++
++def test_student_rlt_keep073_step_wall_time_faster_than_full_keep():
++    """P241 测试 5：真实大小学生 (d=192, depth=6)、批量 8、keep 率约 0.73 时，一步前向+反向的中位墙钟 < 全保留的 0.9 倍。"""
++    import time
++
++    mx.random.seed(77)
++    model = Student(d=192, depth=6, heads=3)
++    mx.eval(model.parameters())
++
++    B = 8
++    patches = mx.random.normal((B, 8, 14, 14, 1536))
++
++    # 构造 keep 率约 0.73 的掩码（首管长全保留，整体保留率约 0.73）
++    rng = np.random.default_rng(20261112)
++    keep_np = np.zeros((B, 8, 14, 14), dtype=bool)
++    keep_np[:, 0] = True
++    # 首管长占 1/8 = 0.125；后 7 管长以 (0.73 - 0.125) / 0.875 = 0.6914 的概率保留 -> 总保留率 ~0.73
++    keep_np[:, 1:] = rng.uniform(0.0, 1.0, size=(B, 7, 14, 14)) < 0.6914
++    rl_np = np.where(keep_np, 1, 0)
++
++    keep_mx = mx.array(keep_np)
++    rl_mx = mx.array(rl_np)
++    mx.eval(patches, keep_mx, rl_mx)
++
++    actual_keep_rate = float(np.mean(keep_np))
++    assert 0.70 <= actual_keep_rate <= 0.76, f"Expected keep rate ~0.73, got {actual_keep_rate:.4f}"
++
++    def loss_full(m: Student) -> mx.array:
++        tok, _ = m(patches)
++        return mx.mean(tok * tok)
++
++    def loss_rlt(m: Student) -> mx.array:
++        tok, _ = m(patches, keep=keep_mx, run_len=rl_mx)
++        return mx.mean(tok * tok)
++
++    vg_full = nn.value_and_grad(model, loss_full)
++    vg_rlt = nn.value_and_grad(model, loss_rlt)
++
++    # 预热 3 步
++    for _ in range(3):
++        l_f, g_f = vg_full(model)
++        mx.eval(l_f, g_f)
++        l_r, g_r = vg_rlt(model)
++        mx.eval(l_r, g_r)
++
++    full_times = []
++    rlt_times = []
++    for _ in range(9):
++        t0 = time.perf_counter()
++        l_f, g_f = vg_full(model)
++        mx.eval(l_f, g_f)
++        full_times.append(time.perf_counter() - t0)
++
++        t1 = time.perf_counter()
++        l_r, g_r = vg_rlt(model)
++        mx.eval(l_r, g_r)
++        rlt_times.append(time.perf_counter() - t1)
++
++    med_full = float(np.median(full_times))
++    med_rlt = float(np.median(rlt_times))
++    ratio = med_rlt / med_full
++    print(
++        f"P241_TIMING keep_rate={actual_keep_rate:.4f} "
++        f"med_full_s={med_full:.6f} med_rlt_s={med_rlt:.6f} ratio={ratio:.4f}"
++    )
++    assert med_rlt < 0.9 * med_full, (
++        f"Expected RLT median step time ({med_rlt:.4f}s) < 0.9 * full-keep ({med_full:.4f}s), ratio={ratio:.4f}"
++    )
++
+diff --git a/tests/v9/experiments/test_s5_tokens.py b/tests/v9/experiments/test_s5_tokens.py
+index abdb1b0..e27840c 100644
+--- a/tests/v9/experiments/test_s5_tokens.py
++++ b/tests/v9/experiments/test_s5_tokens.py
+@@ -184,3 +184,64 @@ def test_restoration_error_bad_control_zero():
+ 
+     with pytest.raises(AssertionError):
+         assert bad_err.median > 0.01
++
++
++# ==============================================================================
++# P241：rlt_keep_fast 与权威 rlt_keep 逐元素一致（随机段、全静止、全变化、真实 s5test 段；tau=0, 0.02, 0.1）
++# ==============================================================================
++
++def test_rlt_keep_fast_matches_rlt_keep_elementwise():
++    """验证 rlt_keep_fast 与权威 rlt_keep 在随机段、全静止、全变化、真实 s5test 段及 tau in (0, 0.02, 0.1) 逐元素完全一致。"""
++    from ainerzero.v9.experiments.s5.world import episode, student_clip
++
++    rng = np.random.default_rng(20261112)
++
++    # 1. 全静止段
++    static_clip = np.full((8, 14, 14, 1536), 0.42, dtype=np.float32)
++
++    # 2. 全变化段
++    changing_clip = np.zeros((8, 14, 14, 1536), dtype=np.float32)
++    for t in range(8):
++        changing_clip[t] = t * 0.15
++
++    # 3. 随机段（含部分变化、边界阈值附近变化）
++    rand_clip_1 = rng.uniform(0.0, 0.08, size=(8, 14, 14, 1536)).astype(np.float32)
++    rand_clip_2 = np.cumsum(
++        rng.choice([0.0, 0.01, 0.025, 0.12], size=(8, 14, 14, 1)).astype(np.float32),
++        axis=0,
++    ) + rng.uniform(-0.002, 0.002, size=(8, 14, 14, 1536)).astype(np.float32)
++
++    # 4. 真实 s5test 段
++    ep = episode("s5test-tokens", 0)
++    real_clip_0 = tokens.tubelet_patches(student_clip(ep, 0))
++    real_clip_1 = tokens.tubelet_patches(student_clip(ep, 1))
++
++    test_clips = [
++        ("static", static_clip),
++        ("changing", changing_clip),
++        ("rand_1", rand_clip_1),
++        ("rand_2", rand_clip_2),
++        ("s5test_0", real_clip_0),
++        ("s5test_1", real_clip_1),
++    ]
++
++    for tau in (0.0, 0.02, 0.1):
++        for name, patches in test_clips:
++            k_ref, rl_ref = tokens.rlt_keep(patches, tau)
++            k_fast, rl_fast = tokens.rlt_keep_fast(patches, tau)
++            assert k_fast.dtype == k_ref.dtype == np.bool_
++            assert rl_fast.shape == rl_ref.shape == (8, 14, 14)
++            np.testing.assert_array_equal(
++                k_fast, k_ref, err_msg=f"keep mismatch on {name} at tau={tau}"
++            )
++            np.testing.assert_array_equal(
++                rl_fast, rl_ref, err_msg=f"run_len mismatch on {name} at tau={tau}"
++            )
++
++        # 同时验证 5D 批输入 [B, 8, 14, 14, 1536]
++        batched = np.stack([c for _, c in test_clips], axis=0)
++        kb_ref, rlb_ref = tokens.rlt_keep(batched, tau)
++        kb_fast, rlb_fast = tokens.rlt_keep_fast(batched, tau)
++        np.testing.assert_array_equal(kb_fast, kb_ref, err_msg=f"batched keep mismatch at tau={tau}")
++        np.testing.assert_array_equal(rlb_fast, rlb_ref, err_msg=f"batched run_len mismatch at tau={tau}")
++
+diff --git a/tests/v9/experiments/test_s5_train_mlx.py b/tests/v9/experiments/test_s5_train_mlx.py
+index e54779c..c303929 100644
+--- a/tests/v9/experiments/test_s5_train_mlx.py
++++ b/tests/v9/experiments/test_s5_train_mlx.py
+@@ -847,3 +847,48 @@ def test_flat_head_train_ap_above_positive_rate(train_fixture):
+     ap = grid_ap(preds["r2_logit"], targets)
+     print(f"P240_AP ap={ap:.6f} pos_rate={pos_rate:.6f} margin={ap - pos_rate:.6f}")
+     assert ap > pos_rate + 0.05, f"train R2 AP {ap} vs positive rate {pos_rate}"
++
++
++# ------------------------------------------------------------------------------------------------
++# P241：distill / train_supervised / train_heads / predict 复用 ItemCache 中的 RLT (keep, run_len)
++# ------------------------------------------------------------------------------------------------
++def test_train_and_predict_cache_rlt_keep_by_tau(train_fixture, monkeypatch):
++    """P241 测试 4：在 distill、train_supervised、train_heads、predict 中，同一段同一 tau 只算一次 keep，不同 tau 重新计算。"""
++    from ainerzero.v9.experiments.s5 import tokens as tok_mod
++
++    idx = D.ClipIndex(train_fixture / "part")  # 4 段
++    teachers = train_fixture / "teachers"
++
++    calls: list[float] = []
++    real_fast = tok_mod.rlt_keep_fast
++
++    def counting_fast(patches, tau):
++        calls.append(float(tau))
++        return real_fast(patches, tau)
++
++    monkeypatch.setattr(tok_mod, "rlt_keep_fast", counting_fast)
++    monkeypatch.setattr(D, "rlt_keep_fast", counting_fast)
++    if hasattr(T, "rlt_keep_fast"):
++        monkeypatch.setattr(T, "rlt_keep_fast", counting_fast)
++    if hasattr(T, "rlt_keep"):
++        monkeypatch.setattr(T, "rlt_keep", counting_fast)
++
++    shared_cache = D.ItemCache()
++    cfg_002 = T.TrainConfig(lr=1e-3, batch_size=2, epochs=3, seed=1, tau=0.02)
++
++    # 1. distill 跑 3 轮（共 6 步，每轮读 4 段）：只在第 1 轮对 4 段各算 1 次，共 4 次
++    s, _, _ = T.distill("A3", idx, teachers, cfg_002, student=_make_small_student(), cache=shared_cache)
++    assert len(calls) == len(idx) == 4
++
++    # 2. 同一 shared_cache 下跑 train_supervised、train_heads、predict (tau=0.02)：完全命中缓存，0 次新增计算
++    _, h, _ = T.train_supervised(idx, cfg_002, student=_make_small_student(), cache=shared_cache)
++    assert len(calls) == 4
++    T.train_heads(s, idx, cfg_002, cache=shared_cache)
++    assert len(calls) == 4
++    T.predict(s, h, idx, tau=0.02, cache=shared_cache)
++    assert len(calls) == 4
++
++    # 3. 换成不同 tau=0.1：对 4 段重新计算一次，共新增 4 次 -> 总计 8 次
++    T.predict(s, h, idx, tau=0.1, cache=shared_cache)
++    assert len(calls) == 8 and all(t == 0.1 for t in calls[4:])
++

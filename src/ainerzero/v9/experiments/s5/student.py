@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import mlx.core as mx
 import mlx.nn as nn
-import numpy as np
 
 
 class TransformerBlock(nn.Module):
@@ -101,16 +100,16 @@ class Student(nn.Module):
             if run_len is not None:
                 rl = mx.clip(run_len.reshape(B, self.num_tokens), 0, 8)
                 x = x + self.run_len_embed[rl]
+            is_all_kept = bool(mx.all(mask).item())
         else:
             mask = mx.ones((B, self.num_tokens), dtype=mx.bool_)
+            is_all_kept = True
 
         self._last_mask = mask
         self._layer_features = []
 
         # 3. 检查是否全量保留
         # 若所有样本全保留，则直接执行全序列自注意力
-        is_all_kept = bool(mx.all(mask).item())
-
         if is_all_kept:
             curr_h = x
             for block in self.blocks:
@@ -119,39 +118,47 @@ class Student(nn.Module):
             out_tokens = self.norm(curr_h)
             return out_tokens, mask
 
-        # 4. 稀疏保留分支：按批内最大保留数补齐，不保留的 token 不进注意力
-        mask_np = np.array(mask)
-        indices_list = [np.where(mask_np[b])[0] for b in range(B)]
-        k_counts = [len(idx) for idx in indices_list]
-        k_max = max(k_counts)
+        # 4. 稀疏保留分支（向量化，无按样本 Python 循环）：
+        # 每个样本把保留位置排在前面（稳定 argsort），用 mx.take_along_axis 一次 gather 出紧凑序列 [B, k_max, d]
+        mask_int = mask.astype(mx.int32)
+        counts = mx.sum(mask_int, axis=1)  # [B]
+        k_max = max(1, int(mx.max(counts).item()))
 
-        # 聚合紧凑表示 [B, k_max, d]
-        compact_x = mx.zeros((B, k_max, self.d))
-        for b in range(B):
-            if k_counts[b] > 0:
-                compact_x[b, :k_counts[b]] = x[b, mx.array(indices_list[b])]
+        idx_range = mx.arange(self.num_tokens, dtype=mx.int32)[None, :]
+        sort_key = (1 - mask_int) * self.num_tokens + idx_range
+        order = mx.argsort(sort_key, axis=1)  # [B, 1568]
+        gather_idx = order[:, :k_max, None]   # [B, k_max, 1]
 
-        # 构造加性注意力掩码 [B, 1, 1, k_max]
-        attn_mask = mx.zeros((B, 1, 1, k_max))
-        for b in range(B):
-            if k_counts[b] < k_max:
-                attn_mask[b, 0, 0, k_counts[b]:] = -1e9
+        valid_compact = mx.arange(k_max, dtype=mx.int32)[None, :] < counts[:, None]  # [B, k_max]
+        compact_x = mx.take_along_axis(x, gather_idx, axis=1)
+        compact_x = mx.where(valid_compact[:, :, None], compact_x, mx.array(0.0, dtype=x.dtype))
+
+        # 按 arange(k_max) < count 构造加性注意力掩码 [B, 1, 1, k_max]
+        attn_mask = mx.where(
+            valid_compact[:, None, None, :],
+            mx.array(0.0, dtype=x.dtype),
+            mx.array(-1e9, dtype=x.dtype),
+        )
+
+        # 还原下标：在紧凑序列末尾补一个零向量（索引 k_max），被并掉的位置都映射到它
+        ungather_idx = mx.where(
+            mask,
+            mx.cumsum(mask_int, axis=1) - 1,
+            k_max,
+        )[:, :, None]  # [B, 1568, 1]
+        zero_pad = mx.zeros((B, 1, self.d), dtype=x.dtype)
 
         curr_compact = compact_x
         for block in self.blocks:
             curr_compact = block(curr_compact, mask=attn_mask)
-            # 还原至 [B, 1568, d] 并记录层特征
-            layer_tokens = mx.zeros((B, self.num_tokens, self.d))
-            for b in range(B):
-                if k_counts[b] > 0:
-                    layer_tokens[b, mx.array(indices_list[b])] = curr_compact[b, :k_counts[b]]
-            self._layer_features.append(layer_tokens)
+            padded_layer = mx.concatenate([curr_compact, zero_pad], axis=1)
+            self._layer_features.append(
+                mx.take_along_axis(padded_layer, ungather_idx, axis=1)
+            )
 
         compact_norm = self.norm(curr_compact)
-        out_tokens = mx.zeros((B, self.num_tokens, self.d))
-        for b in range(B):
-            if k_counts[b] > 0:
-                out_tokens[b, mx.array(indices_list[b])] = compact_norm[b, :k_counts[b]]
+        padded_out = mx.concatenate([compact_norm, zero_pad], axis=1)
+        out_tokens = mx.take_along_axis(padded_out, ungather_idx, axis=1)
 
         return out_tokens, mask
 
