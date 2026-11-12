@@ -255,6 +255,7 @@ NATIVE_MODULES = {
     "test_s4p2_worker_native.py": "spawns fresh processes that compile MLX CPU kernels (S4 phase 2 workers)",
     # S5: Student ViT, losses, heads in MLX.
     "test_s5_student_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 student ViT, losses, heads)",
+    "test_s5_train_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 data reading and training loops in MLX)",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).
