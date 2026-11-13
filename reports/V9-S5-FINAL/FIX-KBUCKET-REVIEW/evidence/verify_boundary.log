@@ -1,0 +1,18 @@
+=== BOUNDARY AND EDGE CASE CHECK LOG ===
+1. bucket_k bounds:
+   - bucket_k(-10, 1568) = 64
+   - bucket_k(0, 1568) = 64
+   - bucket_k(1, 1568) = 64
+   - bucket_k(64, 1568) = 64
+   - bucket_k(65, 1568) = 128
+   - bucket_k(1536, 1568) = 1536
+   - bucket_k(1537, 1568) = 1568
+   - bucket_k(1568, 1568) = 1568
+   - bucket_k(2000, 1568) = 1568
+   - Range [-10, 2000] tested exhaustively: all in [1, 1568], all divisible by 64 or equal to 1568.
+
+2. Student edge cases:
+   - Case A: All kept (keep is all True) -> dense path executed, output shape (2, 1568, 64), verified.
+   - Case B: First tube only (keep[:, :196] True, keep[:, 196:] False) -> sparse path, unkept positions [196:] are strictly 0.0, verified.
+   - Case C: Batch with extreme count variation (sample 0: 1 token kept, sample 1: 1567 tokens kept) -> sparse path, sample 0 [1:] strictly 0.0, sample 1 [1567:] strictly 0.0, verified.
+Result: ALL BOUNDARY CHECKS PASSED.
