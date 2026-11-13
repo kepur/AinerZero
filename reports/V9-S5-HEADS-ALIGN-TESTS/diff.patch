@@ -1,0 +1,191 @@
+diff --git a/tests/v9/experiments/test_s5_train_mlx.py b/tests/v9/experiments/test_s5_train_mlx.py
+index ddade21..8c49b11 100644
+--- a/tests/v9/experiments/test_s5_train_mlx.py
++++ b/tests/v9/experiments/test_s5_train_mlx.py
+@@ -13,9 +13,11 @@
+ 
+ from __future__ import annotations
+ 
++import itertools
+ import json
+ from pathlib import Path
+ import shutil
++import time
+ 
+ import mlx.core as mx
+ import mlx.nn as nn
+@@ -907,3 +909,174 @@ def test_train_heads_assembles_labels_once_per_call(train_fixture, monkeypatch):
+     steps = len(log["step_logs"])
+     assert steps >= 2 * len(idx) // 2
+     assert len(calls) <= 2 * len(idx), f"load_item called {len(calls)} times for {len(idx)} items over {steps} steps"
++
++
++# ------------------------------------------------------------------------------------------------
++# P247：train_heads 批内标签对齐（坏对照 R4）与 R3 槽位（坏对照 R5）
++# 每段 R2/R3 由该段 token 唯一决定；只调用生产 train_heads / predict。
++# ------------------------------------------------------------------------------------------------
++_ALIGN_MARKS = (32, 160)
++_ALIGN_MARGIN = 0.20
++_ALIGN_EPOCHS = 60
++_ALIGN_LR = 3e-2
++
++
++def _label_grid(clip_id: int, kind: str) -> np.ndarray:
++    """两段互为补集，每个格子的正例率是 0.5。位置偏置分不开段。
++
++    R2 是 (u+v) 棋盘，R3 是 (u+2v) 棋盘，同一段上两者不同。
++    批内逆序（R4）稳定地学到另一段的标签，真标签 AP 低于打乱对照。
++    R5 把 R2 喂给 R3 头时，R3 头对 R2 的 AP 高于对 R3。
++    """
++    u = np.arange(12, dtype=np.int64)[:, None]
++    v = np.arange(7, dtype=np.int64)[None, :]
++    if kind == "r2":
++        base = ((u + v) % 2 == 0).astype(np.float32)
++    else:
++        base = ((u + 2 * v) % 2 == 0).astype(np.float32)
++    if int(clip_id) == 1:
++        base = 1.0 - base
++    return base
++
++
++class _MarkedTokenStudent:
++    """不跑 ViT。像素常量标记唯一对应一段，最后一管 token 只编码这段身份。"""
++
++    def __init__(self, d: int = 32) -> None:
++        self.d = d
++
++    def __call__(self, patches, keep=None, run_len=None):
++        pix = np.array(patches[:, 0, 0, 0, 0], dtype=np.float64)
++        marks = np.asarray(_ALIGN_MARKS, dtype=np.float64)
++        ids = np.argmin(np.abs(pix * 255.0 - marks[:, None]), axis=0)
++        batch = int(patches.shape[0])
++        tokens = np.zeros((batch, 1568, self.d), dtype=np.float32)
++        spatial = np.linspace(-1.0, 1.0, 196, dtype=np.float32)
++        for b, cid in enumerate(ids.tolist()):
++            last = np.zeros((196, self.d), dtype=np.float32)
++            last[:, 0] = 1.0
++            last[:, 1] = spatial
++            last[:, 2 + int(cid)] = 1.0
++            tokens[b, 7 * 196 : 8 * 196] = last
++        mask = np.ones((batch, 1568), dtype=np.bool_)
++        return mx.array(tokens), mx.array(mask)
++
++
++def _write_aligned_partition(root: Path) -> Path:
++    """2 个世界各 1 段。标签与像素标记共用同一段号，所以标签由 token 唯一决定。"""
++    part = root / "part"
++    spec = ((0, 0, 0), (1, 0, 1))
++    r1 = np.zeros((16, 14, 14), dtype=np.float32)
++    for world, clip, cid in spec:
++        wdir = part / f"world_{world:04d}"
++        wdir.mkdir(parents=True, exist_ok=True)
++        clip_u8 = np.full((16, 224, 224, 3), _ALIGN_MARKS[cid], dtype=np.uint8)
++        np.save(wdir / f"clip_{clip:02d}.npy", clip_u8)
++        np.savez_compressed(
++            wdir / f"labels_{clip:02d}.npz",
++            r1_logd=r1,
++            r1_sky=r1,
++            r1_obj=r1,
++            r2=_label_grid(cid, "r2"),
++            r3=_label_grid(cid, "r3"),
++            disk_groups_json="[]",
++            ordering_pairs_json="[]",
++        )
++    return part
++
++
++def _max_shuffled_ap(scores: np.ndarray, targets: np.ndarray) -> float:
++    """样本轴上除恒等以外的全部置换，取最高 AP，作为标签打乱对照。"""
++    n = int(targets.shape[0])
++    best = -1.0
++    for perm in itertools.permutations(range(n)):
++        if perm == tuple(range(n)):
++            continue
++        best = max(best, grid_ap(scores, targets[list(perm)]))
++    return float(best)
++
++
++def _fit_aligned_heads(tmp_path: Path):
++    """构造可分小数据并调用生产 ``train_heads``。batch_size=2，R4 的批内逆序才会错位。"""
++    part = _write_aligned_partition(tmp_path)
++    idx = D.ClipIndex(part)
++    assert len(idx) == 2
++    student = _MarkedTokenStudent(d=32)
++    lasts = []
++    for i in range(len(idx)):
++        tok, _mask = student(mx.array(D.load_item(idx, i)["patches"][None, ...]))
++        lasts.append(np.array(tok[0, 7 * 196 : 8 * 196]))
++    r2 = np.stack([D.load_item(idx, i)["r2"] for i in range(len(idx))], axis=0)
++    r3 = np.stack([D.load_item(idx, i)["r3"] for i in range(len(idx))], axis=0)
++    for i in range(len(idx)):
++        assert not np.array_equal(r2[i], r3[i])
++        assert 0.2 < float(r2[i].mean()) < 0.8
++        assert 0.2 < float(r3[i].mean()) < 0.8
++        for j in range(i + 1, len(idx)):
++            assert not np.array_equal(r2[i], r2[j])
++            assert not np.array_equal(r3[i], r3[j])
++            assert not np.array_equal(lasts[i], lasts[j])
++    cfg = T.TrainConfig(
++        lr=_ALIGN_LR,
++        weight_decay=0.0,
++        batch_size=2,
++        epochs=_ALIGN_EPOCHS,
++        seed=11,
++    )
++    heads, log = T.train_heads(student, idx, cfg)
++    assert log["total_steps"] == _ALIGN_EPOCHS * (len(idx) // cfg.batch_size)
++    preds = T.predict(student, heads, idx)
++    return preds, r2, r3
++
++
++def test_train_heads_batch_alignment_beats_shuffled_labels(tmp_path):
++    """批内对齐：训练集 R2、R3 AP 必须明显高于标签打乱对照。
++
++    坏对照 R4（``bi = b_indices[::-1]``）把特征配到同批另一段的标签上，
++    真标签 AP 不再高于打乱对照，本测试失败。
++    """
++    t0 = time.perf_counter()
++    preds, r2, r3 = _fit_aligned_heads(tmp_path)
++    for name, scores, targets in (
++        ("r2", preds["r2_logit"], r2),
++        ("r3", preds["r3_logit"], r3),
++    ):
++        ap = grid_ap(scores, targets)
++        shuffled = _max_shuffled_ap(scores, targets)
++        print(
++            f"P247_ALIGN {name} ap={ap:.4f} shuffled={shuffled:.4f} "
++            f"gap={ap - shuffled:.4f}"
++        )
++        assert np.isfinite(ap) and np.isfinite(shuffled)
++        assert ap > shuffled + _ALIGN_MARGIN, (
++            f"{name} AP {ap:.4f} not above shuffled {shuffled:.4f} by {_ALIGN_MARGIN}"
++        )
++    elapsed = time.perf_counter() - t0
++    print(f"P247_ALIGN elapsed_s={elapsed:.2f}")
++    assert elapsed < 60.0, f"alignment test took {elapsed:.1f}s"
++
++
++def test_train_heads_r3_slot_learns_r3_not_r2(tmp_path):
++    """R3 槽位：R3 头学到的是 R3 标签，不是 R2 标签。两套标签都可学且彼此不同。
++
++    坏对照 R5（``r3_mx = all_r2[bi]``）让 R3 头去拟合 R2，
++    ``AP(r3_logit, r3) > AP(r3_logit, r2)`` 不成立，本测试失败。
++    """
++    t0 = time.perf_counter()
++    preds, r2, r3 = _fit_aligned_heads(tmp_path)
++    ap_r2 = grid_ap(preds["r2_logit"], r2)
++    ap_r3 = grid_ap(preds["r3_logit"], r3)
++    ap_r3_on_r2 = grid_ap(preds["r3_logit"], r2)
++    print(
++        f"P247_SLOT r2_ap={ap_r2:.4f} r3_ap={ap_r3:.4f} "
++        f"r3_on_r2={ap_r3_on_r2:.4f} gap={ap_r3 - ap_r3_on_r2:.4f}"
++    )
++    assert np.isfinite(ap_r2) and np.isfinite(ap_r3) and np.isfinite(ap_r3_on_r2)
++    assert ap_r3 > ap_r3_on_r2 + _ALIGN_MARGIN, (
++        f"R3 head matches R2 (AP {ap_r3_on_r2:.4f}) at least as well as R3 (AP {ap_r3:.4f})"
++    )
++    assert ap_r2 > 0.75, f"R2 not learned: AP {ap_r2:.4f}"
++    assert ap_r3 > 0.75, f"R3 not learned: AP {ap_r3:.4f}"
++    elapsed = time.perf_counter() - t0
++    print(f"P247_SLOT elapsed_s={elapsed:.2f}")
++    assert elapsed < 60.0, f"slot test took {elapsed:.1f}s"
