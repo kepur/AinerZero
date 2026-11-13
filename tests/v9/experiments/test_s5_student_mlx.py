@@ -790,3 +790,75 @@ def test_student_rlt_keep073_step_wall_time_faster_than_full_keep():
         f"Expected RLT median step time ({med_rlt:.4f}s) < 0.9 * full-keep ({med_full:.4f}s), ratio={ratio:.4f}"
     )
 
+
+
+# ------------------------------------------------------------------------------------------------
+# k_max 分档（tier-1, 11-13）：登记运行里 RLT 蒸馏因 k_max 形状抖动越跑越慢，撞上单格上限
+# ------------------------------------------------------------------------------------------------
+def test_bucket_k_rounds_up_to_multiples_of_64_within_bounds():
+    from ainerzero.v9.experiments.s5 import student as S
+
+    assert S.K_BUCKET == 64
+    cases = {0: 64, 1: 64, 63: 64, 64: 64, 65: 128, 500: 512, 1500: 1536, 1536: 1536, 1537: 1568, 1568: 1568}
+    for k, want in cases.items():
+        assert S.bucket_k(k, 1568) == want, (k, S.bucket_k(k, 1568), want)
+    assert S.bucket_k(500, 1568, bucket=1) == 500
+    assert S.bucket_k(3000, 1568) == 1568
+
+
+def _random_keep(rng: np.random.Generator, batch: int) -> mx.array:
+    keep = np.zeros((batch, 1568), dtype=bool)
+    for b in range(batch):
+        n = int(rng.integers(150, 1569))
+        keep[b, np.sort(rng.choice(1568, size=n, replace=False))] = True
+        keep[b, :196] = True  # 首个管长总是保留，与 rlt_keep 一致
+    return mx.array(keep)
+
+
+def test_bucketed_sparse_path_matches_the_unbucketed_path(monkeypatch):
+    """补齐位置被掩码：分档前后（K_BUCKET=64 对 1），输出 token 与逐层特征逐元素一致。"""
+    from ainerzero.v9.experiments.s5 import student as S
+
+    mx.random.seed(7)
+    model = Student(d=192, depth=6, heads=3)
+    mx.eval(model.parameters())
+    rng = np.random.default_rng(11)
+    for _ in range(3):
+        patches = mx.random.normal((4, 1568, 1536))
+        keep = _random_keep(rng, 4)
+        out64, mask64 = model(patches, keep=keep)
+        feats64 = [mx.array(f) for f in model._layer_features]
+        monkeypatch.setattr(S, "K_BUCKET", 1)
+        out1, mask1 = model(patches, keep=keep)
+        feats1 = [mx.array(f) for f in model._layer_features]
+        monkeypatch.setattr(S, "K_BUCKET", 64)
+        assert bool(mx.all(mask64 == mask1).item())
+        diff = float(mx.max(mx.abs(out64 - out1)).item())
+        assert diff < 1e-4, diff
+        assert len(feats64) == len(feats1) == 6
+        for a, b in zip(feats64, feats1):
+            assert float(mx.max(mx.abs(a - b)).item()) < 1e-4
+
+
+def test_sparse_path_sees_at_most_25_shapes(monkeypatch):
+    """很多批次、保留数各不相同时，紧凑序列长度只落在 64 的倍数（或 1568）上。坏对照：去掉分档会出现几十种长度。"""
+    from ainerzero.v9.experiments.s5 import student as S
+
+    seen: list[int] = []
+    real = S.bucket_k
+
+    def recording(k, num_tokens, bucket=None):
+        out = real(k, num_tokens, bucket)
+        seen.append(out)
+        return out
+
+    monkeypatch.setattr(S, "bucket_k", recording)
+    model = Student(d=16, depth=1, heads=1)
+    mx.eval(model.parameters())
+    rng = np.random.default_rng(5)
+    for _ in range(60):
+        out, _ = model(mx.zeros((2, 1568, 1536)), keep=_random_keep(rng, 2))
+        mx.eval(out)
+    assert len(seen) == 60
+    assert all(k % 64 == 0 or k == 1568 for k in seen), sorted(set(seen))
+    assert len(set(seen)) <= math.ceil(1568 / 64)

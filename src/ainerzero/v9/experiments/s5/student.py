@@ -18,6 +18,21 @@ from __future__ import annotations
 import mlx.core as mx
 import mlx.nn as nn
 
+# The sparse (RLT) branch pads each batch's compact length k_max up to a multiple of K_BUCKET. Padded slots are
+# masked out of attention and map back to nothing, so outputs are unchanged; what changes is that MLX sees at
+# most ceil(1568 / K_BUCKET) shapes instead of one per distinct k_max. Without it a full-pool RLT distillation
+# slowed from 0.38 to 0.63 s/step within one epoch (shape churn) and hit the 45 min cell cap (tier-1, 11-13).
+K_BUCKET = 64
+
+
+def bucket_k(k: int, num_tokens: int, bucket: int | None = None) -> int:
+    """Round ``k`` up to a multiple of ``bucket`` (default: module ``K_BUCKET`` at call time), within [1, num_tokens]."""
+    bucket = K_BUCKET if bucket is None else int(bucket)
+    k = max(1, int(k))
+    if bucket <= 1:
+        return min(k, int(num_tokens))
+    return min(int(num_tokens), ((k + bucket - 1) // bucket) * bucket)
+
 
 class TransformerBlock(nn.Module):
     """前置 LayerNorm 的 Transformer 编码器块。"""
@@ -122,7 +137,7 @@ class Student(nn.Module):
         # 每个样本把保留位置排在前面（稳定 argsort），用 mx.take_along_axis 一次 gather 出紧凑序列 [B, k_max, d]
         mask_int = mask.astype(mx.int32)
         counts = mx.sum(mask_int, axis=1)  # [B]
-        k_max = max(1, int(mx.max(counts).item()))
+        k_max = bucket_k(int(mx.max(counts).item()), self.num_tokens)
 
         idx_range = mx.arange(self.num_tokens, dtype=mx.int32)[None, :]
         sort_key = (1 - mask_int) * self.num_tokens + idx_range
