@@ -3,9 +3,15 @@
 覆盖：
 - 独立 R2 AP / R1 RMSE 与生产 metrics 逐值一致；
 - 合成逐段预测下门必过 / 必不过 / 恰在阈值；
+- 每个门的子条件单独翻转；
 - 自助法同种子可复现；
 - 种子平均顺序：先读出后蒸馏；
-- 坏对照（副本改源码）：平均顺序反转、Bonferroni→95%、GA 不插值，相关断言失败。
+- Bonferroni 区间是 1-0.05/3，不是 95%；
+- 分区名从 PREREG frozen.partitions 读取，换域含 shift_bg / shift_all；
+- PREREG 阈值与设计 r1 不一致时标红并以非 0 退出。
+坏对照不在本文件里自写必然失败的断言：见
+``reports/V9-S5-FINAL/RECOMPUTE-IMPL/evidence/mutation_controls.py``，
+它在 git archive 副本里改源码后跑本文件，正式测试必须失败。
 """
 
 from __future__ import annotations
@@ -149,6 +155,9 @@ def _build_run(
     ga_a0=None,
     ga_a4=None,
     include_l512: bool = True,
+    part: str = "s5p1-final",
+    shift_part: str | None = None,
+    n_boot: int | None = None,
 ) -> Path:
     """构造最小登记运行目录（只含复算需要的文件）。"""
     assert root.resolve() not in (LIVE, REAL_REPO)
@@ -157,8 +166,8 @@ def _build_run(
     timing = run / "timing"
     metrics.mkdir(parents=True)
     timing.mkdir(parents=True)
-
-    part = "s5p1-final"
+    if shift_part is None:
+        shift_part = part + "-shift"
     star = _eval_with_pos_rank(N_WORLD, CPW, star_rank, rmse=star_rmse, keep=1.0)
     a0 = _eval_with_pos_rank(N_WORLD, CPW, a0_rank, rmse=a0_rmse, keep=1.0)
     csh = _eval_with_pos_rank(N_WORLD, CPW, csh_rank, rmse=a0_rmse, keep=1.0)
@@ -216,7 +225,14 @@ def _build_run(
         _write_npz(metrics / f"{stem}.npz", a0)
         (metrics / f"{stem}.json").write_text(json.dumps(_ga_curve_json(steps, ap)), encoding="utf-8")
 
-    (run / "PREREG.json").write_text(json.dumps(_prereg_doc()), encoding="utf-8")
+    doc = _prereg_doc()
+    if n_boot is not None:
+        doc["n_boot"] = int(n_boot)
+    doc["frozen"] = {
+        "a_star": doc["a_star"],
+        "partitions": {"final": part, "final_shift": shift_part},
+    }
+    (run / "PREREG.json").write_text(json.dumps(doc), encoding="utf-8")
     return run
 
 
@@ -299,6 +315,7 @@ def test_gates_must_pass(tmp_path: Path):
     assert out["gates"]["GT3"]["passed"] is True
     assert out["gates"]["GA"]["passed"] is True
     assert out["gates"]["GR"]["passed"] is True
+    assert out["threshold_audit"]["status"] == "ok"
     # 写出并与自身比对应无差异
     gates_path = run / "gates.json"
     gates_path.write_text(json.dumps({"gates": out["gates"]}, allow_nan=True), encoding="utf-8")
@@ -402,144 +419,266 @@ def test_bootstrap_reproducible_with_same_seed(tmp_path: Path):
         assert a["gates"][g]["ci_upper"] == b["gates"][g]["ci_upper"]
 
 
-# ------------------------------------------------------------------------------------------------
-# 坏对照突变
-# ------------------------------------------------------------------------------------------------
-
-
-def _mutate_copy(tmp_path: Path, old: str, new: str) -> Path:
-    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
-    dest = tmp_path / "recompute_s5p1_final.py"
-    text = RECOMPUTE_PATH.read_text(encoding="utf-8")
-    assert text.count(old) == 1, old
-    dest.write_text(text.replace(old, new, 1), encoding="utf-8")
-    return dest
-
-
-def test_mutation_seed_order_reversed_is_caught(tmp_path: Path):
-    """把 SEED_MEAN 绑到反向平均后，顺序测试必须失败。"""
-    bad = _mutate_copy(
-        tmp_path,
-        "SEED_MEAN = mean_over_readouts_then_distills",
-        "SEED_MEAN = mean_over_distills_then_readouts",
-    )
-    R = _load_recompute(bad)
-    values = {
-        0: {0: 1.0, 1: 2.0, 2: 3.0},
-        1: {0: 10.0, 1: 10.0},
+def _eval_ks(ks, *, cpw: int = 1, rmse: float = 0.5, keep: float = 1.0, rmse_by_world=None) -> dict:
+    """每个世界固定 k 个高分负例。重抽世界会改变微平均 AP；RMSE 可按世界给定。"""
+    n_worlds = len(ks)
+    n = n_worlds * cpw
+    scores = np.zeros((n, 12, 7), dtype=np.float64)
+    targets = np.zeros((n, 12, 7), dtype=np.int64)
+    pred = np.zeros((n, 16, 14, 14), dtype=np.float64)
+    for w, k in enumerate(ks):
+        err = float(rmse if rmse_by_world is None else rmse_by_world[w])
+        for c in range(cpw):
+            i = w * cpw + c
+            flat = np.full(12 * 7, -1000.0 - w, dtype=np.float64)
+            flat[0] = 0.0
+            for j in range(1, 1 + int(k)):
+                flat[j] = 1.0
+            scores[i] = flat.reshape(12, 7)
+            targets[i, 0, 0] = 1
+            pred[i] = err
+    return {
+        "r2_logit": scores,
+        "r3_logit": scores.copy(),
+        "r2": targets,
+        "r3": targets.copy(),
+        "r1_logd": pred,
+        "r1_target": np.zeros_like(pred),
+        "r1_sky": np.zeros_like(pred),
+        "r1_obj": np.ones_like(pred),
+        "world_ids": np.arange(n_worlds, dtype=np.int64),
+        "clips_per_world": cpw,
+        "keep_rate_per_clip": np.full(n, keep, dtype=np.float64),
     }
-    # 生产断言：SEED_MEAN 必须是正确函数，且正确均值=6
-    with pytest.raises(AssertionError):
-        assert R.SEED_MEAN is R.mean_over_readouts_then_distills
-        assert R.SEED_MEAN(values) == pytest.approx(6.0)
 
 
-def _heterogeneous_run(root: Path) -> Path:
-    """世界间 AP 差不同，使自助区间有宽度（才能区分 98.3% 与 95%）。"""
-    run = _build_run(
-        root,
-        star_rank=1,
-        a0_rank=8,
-        csh_rank=4,
-        star_rmse=0.1,
-        a0_rmse=0.5,
-    )
-    part = "s5p1-final"
+def _final_part(run: Path) -> str:
+    doc = json.loads((run / "PREREG.json").read_text(encoding="utf-8"))
+    return str(doc["frozen"]["partitions"]["final"])
+
+
+def _overwrite_heads(run: Path, arm: str, label: int, ev: dict, part: str) -> None:
     metrics = run / "metrics"
-    # 覆写 A2 / A0：世界 0 差距大，世界 3 差距小
-    star = _eval_with_pos_rank(N_WORLD, CPW, 1, rmse=0.1)
-    a0 = _eval_with_pos_rank(N_WORLD, CPW, 8, rmse=0.5)
-    for w in range(N_WORLD):
-        # 把世界 w 的正例分数调成随 w 变差，制造异质差
-        for c in range(CPW):
-            i = w * CPW + c
-            star["r2_logit"][i, 0, 0] = 10.0 - 0.5 * w
-            a0["r2_logit"][i, 0, 0] = 1.0 - 0.2 * w
-            # 给每个世界不同数量的高分负例
-            flat = a0["r2_logit"][i].ravel()
-            flat[1 : 2 + w * 3] = 5.0 + w
-            a0["r2_logit"][i] = flat.reshape(12, 7)
     for d in (0, 1):
         for r in (0, 1, 2):
-            _write_npz(metrics / f"heads-A2-d{d}-L64-r{r}.{part}.npz", star)
+            _write_npz(metrics / f"heads-{arm}-d{d}-L{label}-r{r}.{part}.npz", ev)
+
+
+def _overwrite_sup(run: Path, arm: str, label: int, ev: dict, part: str) -> None:
+    metrics = run / "metrics"
     for s in (0, 1, 2):
-        _write_npz(metrics / f"A0-L64-s{s}.{part}.npz", a0)
-    return run
+        _write_npz(metrics / f"{arm}-L{label}-s{s}.{part}.npz", ev)
 
 
-def test_mutation_bonferroni_to_95_is_caught(tmp_path: Path):
-    """把 Bonferroni 水平换成 95% 后，与冻结 98.3% 区间不再一致。"""
-    bad = _mutate_copy(
-        tmp_path,
-        "GT_LEVEL = 1.0 - 0.05 / BONFERRONI_M  # ≈ 0.983333...",
-        "GT_LEVEL = 0.95  # mutated away from Bonferroni",
+def _base_run(root: Path, **kwargs) -> Path:
+    params = dict(
+        star_rank=1, a0_rank=20, csh_rank=10, star_rmse=0.1, a0_rmse=0.5,
     )
-    R_good = _load_recompute()
-    R_bad = _load_recompute(bad)
+    params.update(kwargs)
+    return _build_run(root, **params)
 
-    run = _heterogeneous_run(tmp_path / "data")
+
+# ------------------------------------------------------------------------------------------------
+# 子条件翻转：点估计与区间各自单独不达标
+# ------------------------------------------------------------------------------------------------
+
+
+def test_gt1_gt2_point_ok_but_ci_lower_not_positive(tmp_path: Path):
+    """点估计过阈值，但下界 ≤ 0：GT1、GT2 都不过。"""
+    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
+    R = _load_recompute()
+    run = _base_run(tmp_path)
+    part = _final_part(run)
+    star = _eval_ks([0, 0, 0, 10], rmse=0.1)
+    base = _eval_ks([4, 4, 4, 4], rmse=0.5)
+    _overwrite_heads(run, "A2", 64, star, part)
+    _overwrite_heads(run, "C-sh", 64, base, part)
+    _overwrite_sup(run, "A0", 64, base, part)
+    out = R.recompute_all(run)
+    for name, effect in (("GT1", 0.05), ("GT2", 0.03)):
+        gate = out["gates"][name]
+        assert gate["point_estimate"] + 1e-12 >= effect
+        assert gate["ci_lower"] <= 0.0
+        assert gate["passed"] is False
+
+
+def test_gt1_gt2_ci_lower_positive_but_point_below_effect(tmp_path: Path):
+    """下界 > 0，但点估计低于效应阈值：GT1、GT2 都不过。"""
+    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
+    R = _load_recompute()
+    run = _base_run(tmp_path)
+    part = _final_part(run)
+    star = _eval_ks([4, 4, 4, 4], rmse=0.1)
+    base = _eval_ks([5, 5, 5, 5], rmse=0.5)
+    _overwrite_heads(run, "A2", 64, star, part)
+    _overwrite_heads(run, "C-sh", 64, base, part)
+    _overwrite_sup(run, "A0", 64, base, part)
+    out = R.recompute_all(run)
+    gt1, gt2 = out["gates"]["GT1"], out["gates"]["GT2"]
+    assert 0.0 < gt1["ci_lower"] <= gt1["point_estimate"] < 0.05
+    assert 0.0 < gt2["ci_lower"] <= gt2["point_estimate"] < 0.03
+    assert gt1["passed"] is False
+    assert gt2["passed"] is False
+
+
+def test_gt3_margin_strictly_inside_interval_fails(tmp_path: Path):
+    """下界 ≤ 边际 < 上界：GT3 不过。用下界代替上界会误判为过。"""
+    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
+    R = _load_recompute()
+    run = _base_run(tmp_path)
+    part = _final_part(run)
+    errs = [0.8, 0.8, 0.8, 1.5, 1.5, 1.5]
+    star = _eval_ks([0] * 6, rmse_by_world=errs)
+    a0 = _eval_ks([0] * 6, rmse=1.0)
+    _overwrite_heads(run, "A2", 64, star, part)
+    _overwrite_heads(run, "C-sh", 64, a0, part)
+    _overwrite_sup(run, "A0", 64, a0, part)
+    gate = R.recompute_all(run)["gates"]["GT3"]
+    assert gate["ci_lower"] <= gate["margin"] < gate["ci_upper"]
+    assert gate["passed"] is False
+
+
+def test_gr_subconditions_fail_independently(tmp_path: Path):
+    """保留率、墙钟、AP 下降各自单独不达标时 GR 不过。"""
+    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
+    R = _load_recompute()
+    cases = [
+        dict(keep=0.95, wall_r=0.20, wall_csh=0.30, r_rank=1, bad="keep_ok"),
+        dict(keep=0.70, wall_r=0.30, wall_csh=0.30, r_rank=1, bad="wall_ok"),
+        dict(keep=0.70, wall_r=0.20, wall_csh=0.30, r_rank=20, bad="ap_ok"),
+    ]
+    for i, case in enumerate(cases):
+        bad = case["bad"]
+        run = _base_run(
+            tmp_path / f"c{i}",
+            star_rank=1,
+            r_rank=case["r_rank"],
+            keep=case["keep"],
+            wall_r=case["wall_r"],
+            wall_csh=case["wall_csh"],
+        )
+        gate = R.recompute_all(run)["gates"]["GR"]
+        assert gate["keep_ok"] is (bad != "keep_ok")
+        assert gate["wall_ok"] is (bad != "wall_ok")
+        assert gate["ap_ok"] is (bad != "ap_ok")
+        assert gate["passed"] is False
+
+
+def test_ga_interpolation_and_stair_disagree(tmp_path: Path):
+    """线性插值判定通过，阶梯判定不通过。不插值会把本测试打失败。"""
+    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
+    R = _load_recompute()
+    a0 = [([100.0, 200.0, 1000.0], [0.40, 0.50, 0.70])] * 3
+    a4 = [([100.0, 150.0, 900.0], [0.40, 0.66, 0.80])] * 3
+    run = _base_run(tmp_path, ga_a0=a0, ga_a4=a4)
+    gate = R.recompute_all(run)["gates"]["GA"]
+    assert gate["median_a0"] == pytest.approx(860.0, abs=1e-6)
+    assert gate["median_a4"] == pytest.approx(176.7857142857, abs=1e-6)
+    assert gate["passed"] is True
+    assert gate["stair"]["median_a0"] == pytest.approx(1000.0)
+    assert gate["stair"]["passed"] is False
+
+
+def test_ga_censor_uses_budget_cap(tmp_path: Path):
+    """没有检查点达标时，删失步数是总步数（ga_cap），不是最后一次检查点。"""
+    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
+    R = _load_recompute()
+    a0 = [
+        ([100.0, 400.0], [0.20, 0.30]),
+        ([100.0, 800.0], [0.20, 0.90]),
+        ([100.0, 900.0], [0.20, 0.90]),
+    ]
+    a4 = [([100.0, 200.0], [0.20, 0.90])] * 3
+    run = _base_run(tmp_path, ga_a0=a0, ga_a4=a4)
+    gate = R.recompute_all(run)["gates"]["GA"]
+    censored = [step for step, flag in zip(gate["a0_steps"], gate["a0_censored"]) if flag]
+    assert censored == pytest.approx([1600.0])
+    assert 400.0 not in censored
+
+
+def test_bonferroni_interval_is_not_95(tmp_path: Path):
+    """PREREG 不写水平时，区间用 1-0.05/3，并且和下界的 95% 区间不同。"""
+    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
+    R = _load_recompute()
+    run = _base_run(tmp_path, n_boot=400)
+    part = _final_part(run)
+    star = _eval_ks(list(range(12)), rmse=0.2)
+    base = _eval_ks([6] * 12, rmse=0.5)
+    _overwrite_heads(run, "A2", 64, star, part)
+    _overwrite_heads(run, "C-sh", 64, base, part)
+    _overwrite_sup(run, "A0", 64, base, part)
     preg = json.loads((run / "PREREG.json").read_text(encoding="utf-8"))
     for g in ("GT1", "GT2", "GT3"):
         preg["gates"][g].pop("level", None)
     preg.pop("gt_level", None)
     (run / "PREREG.json").write_text(json.dumps(preg), encoding="utf-8")
 
-    good = R_good.recompute_all(run)
-    bad_out = R_bad.recompute_all(run)
-    assert good["gates"]["GT1"]["level"] == pytest.approx(1.0 - 0.05 / 3.0)
-    assert bad_out["gates"]["GT1"]["level"] == pytest.approx(0.95)
-    # 水平被换成 95% 后，要求仍等于 Bonferroni 98.3% 的断言必须失败
-    with pytest.raises(AssertionError):
-        assert bad_out["gates"]["GT1"]["level"] == pytest.approx(1.0 - 0.05 / 3.0)
-
-
-def test_mutation_ga_no_interpolation_is_caught(tmp_path: Path):
-    """GA 改成阶梯步数（不插值）后，阈值插值断言失败。"""
-    old = "decision = M.ga_decision(a0_curves, a4_curves, cap=cap)"
-    # 保持与源文件相同缩进（4 空格 × 嵌套）
-    new = (
-        "    _d = M.ga_decision(a0_curves, a4_curves, cap=cap)\n"
-        "    decision = {\n"
-        "        **_d,\n"
-        "        \"a0_steps\": _d[\"stair\"][\"a0_steps\"],\n"
-        "        \"a4_steps\": _d[\"stair\"][\"a4_steps\"],\n"
-        "        \"a0_censored\": _d[\"stair\"][\"a0_censored\"],\n"
-        "        \"a4_censored\": _d[\"stair\"][\"a4_censored\"],\n"
-        "        \"median_a0\": _d[\"stair\"][\"median_a0\"],\n"
-        "        \"median_a4\": _d[\"stair\"][\"median_a4\"],\n"
-        "        \"ratio\": _d[\"stair\"][\"ratio\"],\n"
-        "        \"passed\": _d[\"stair\"][\"passed\"],\n"
-        "    }"
+    out = R.recompute_all(run)
+    level = 1.0 - 0.05 / 3.0
+    assert out["gates"]["GT1"]["level"] == pytest.approx(level)
+    pr = R.load_prereg(run / "PREREG.json")
+    catalog = R.load_run_catalog(run)
+    nested = R._heads_nested(
+        catalog, arm="A2", label_n=64, partition=part,
+        distill_seeds=pr["distill_seeds"], readout_seeds=pr["readout_seeds"],
     )
-    text = RECOMPUTE_PATH.read_text(encoding="utf-8")
-    assert text.count(old) == 1
-    # old 行本身带缩进
-    old_line = "    " + old
-    assert old_line in text
-    bad = tmp_path / "recompute_s5p1_final.py"
+    a0 = R._supervised_list(
+        catalog, arm="A0", label_n=64, partition=part, seeds=pr["supervised_seeds"],
+    )
+    stat = R.nested_group_stat(nested, a0, "r2_ap")
+    n_worlds = R._n_worlds(a0[0])
+    b98 = R.bootstrap_gate(n_worlds, stat, n_boot=pr["n_boot"], seed=pr["boot_seed"], level=level)
+    b95 = R.bootstrap_gate(n_worlds, stat, n_boot=pr["n_boot"], seed=pr["boot_seed"], level=0.95)
+    assert b98["ci_lower"] != pytest.approx(b95["ci_lower"])
+    assert out["gates"]["GT1"]["ci_lower"] == pytest.approx(b98["ci_lower"])
+    assert out["gates"]["GT1"]["ci_lower"] != pytest.approx(b95["ci_lower"])
+
+
+def test_partitions_come_from_prereg_including_shift_files(tmp_path: Path):
+    """替身分区名来自 frozen.partitions；shift_bg / shift_all 进入只报告项。"""
     assert tmp_path.resolve() not in (LIVE, REAL_REPO)
-    bad.write_text(text.replace(old_line, new, 1), encoding="utf-8")
-    R_bad = _load_recompute(bad)
+    R = _load_recompute()
+    final, shift = "s5test-regfinal", "s5test-regfinal-shift"
+    run = _base_run(tmp_path, part=final, shift_part=shift, star_rank=1, a0_rank=20, csh_rank=10)
+    bg = _eval_with_pos_rank(N_WORLD, CPW, 1, rmse=0.1)
+    both = _eval_with_pos_rank(N_WORLD, CPW, 2, rmse=0.1)
+    _overwrite_heads(run, "A2", 64, bg, f"{shift}.shift_bg")
+    _overwrite_heads(run, "A2", 64, both, f"{shift}.shift_all")
+    out = R.recompute_all(run)
+    assert out["partitions"]["final"] == final
+    assert out["partitions"]["shift_bg"] == f"{shift}.shift_bg"
+    assert out["gates"]["GT1"]["passed"] is True
+    shift_report = out["report_only"]["domain_shift"]
+    assert shift_report["shift_bg"]["L64"]["a_star_r2_ap"] == pytest.approx(M.grid_ap(bg["r2_logit"], bg["r2"]))
+    assert shift_report["shift_all"]["L64"]["a_star_r2_ap"] == pytest.approx(M.grid_ap(both["r2_logit"], both["r2"]))
+    assert shift_report["shift_bg"]["L64"]["a_star_r2_ap"] > shift_report["shift_all"]["L64"]["a_star_r2_ap"]
+    assert shift_report["shift_bg"]["L64"]["partition"] == f"{shift}.shift_bg"
 
-    # 曲线：末次 0.62 → target=0.589；0.50@200 与 0.70@300 之间插值=244.5，阶梯=300
-    steps = [100.0, 200.0, 300.0, 1600.0]
-    a0 = [(steps, [0.40, 0.50, 0.70, 0.62])] * 3
-    a4 = [(steps, [0.40, 0.55, 0.70, 0.62])] * 3
-    run = _build_run(
-        tmp_path / "ga",
-        star_rank=1,
-        a0_rank=20,
-        csh_rank=10,
-        star_rmse=0.1,
-        a0_rmse=0.5,
-        ga_a0=a0,
-        ga_a4=a4,
-    )
-    out = R_bad.recompute_all(run)
-    expected_interp = 200.0 + (0.589 - 0.50) / (0.70 - 0.50) * 100.0
-    assert out["gates"]["GA"]["median_a0"] == pytest.approx(300.0, abs=1e-9)  # 阶梯
-    with pytest.raises(AssertionError):
-        assert out["gates"]["GA"]["median_a0"] == pytest.approx(expected_interp, abs=1e-6)
+
+def test_prereg_threshold_mismatch_is_red(tmp_path: Path):
+    """PREREG 效应与设计 r1 不一致时，recompute.json 标红，进程非 0 退出。"""
+    assert tmp_path.resolve() not in (LIVE, REAL_REPO)
+    R = _load_recompute()
+    run = _base_run(tmp_path)
+    preg = json.loads((run / "PREREG.json").read_text(encoding="utf-8"))
+    preg["gates"]["GT1"]["effect"] = 0.0
+    (run / "PREREG.json").write_text(json.dumps(preg), encoding="utf-8")
+    probe = R.recompute_all(run)
+    (run / "gates.json").write_text(json.dumps({"gates": probe["gates"]}, allow_nan=True), encoding="utf-8")
+    rc = R.main(["--run-dir", str(run), "--out", str(run / "recompute.json")])
+    assert rc != 0
+    doc = json.loads((run / "recompute.json").read_text(encoding="utf-8"))
+    assert doc["threshold_audit"]["status"] == "red"
+    assert doc["threshold_audit"]["ok"] is False
+    assert any(row["key"] == "gates.GT1.effect" for row in doc["threshold_audit"]["mismatches"])
+
+
+def test_registered_prereg_matches_design_constants():
+    R = _load_recompute()
+    doc = json.loads((REAL_REPO / "reports/V9-S5-FINAL/PREREG.json").read_text(encoding="utf-8"))
+    audit = R.audit_prereg_thresholds(doc)
+    assert audit["status"] == "ok"
+    assert audit["mismatches"] == []
 
 
 def test_cli_writes_recompute_and_compares(tmp_path: Path):
@@ -559,4 +698,5 @@ def test_cli_writes_recompute_and_compares(tmp_path: Path):
     assert rc == 0
     doc = json.loads((run / "recompute.json").read_text(encoding="utf-8"))
     assert doc["compare"]["n_diffs"] == 0
+    assert doc["threshold_audit"]["status"] == "ok"
     assert "GT1" in doc["gates"]

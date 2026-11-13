@@ -1,0 +1,38 @@
+{
+  "task": "ainerzero.V9.P246",
+  "agent": "grok-q8n4",
+  "pytest": {
+    "python": ".venv/bin/python",
+    "file": "tests/v9/experiments/test_s5_recompute.py",
+    "passed": 18,
+    "failed": 0
+  },
+  "mutation_controls": {
+    "script": "reports/V9-S5-FINAL/RECOMPUTE-IMPL/evidence/mutation_controls.py",
+    "baseline_passed": 18,
+    "killed": [
+      "M1-seed-order",
+      "M2-gt1-drop-ci-lower",
+      "M3-gt3-ci-lower",
+      "M4-gr-skip-keep",
+      "M5-gr-skip-ap",
+      "M6-gt1-effect-zero",
+      "M7-bonferroni-95",
+      "M8-ga-no-interpolation"
+    ],
+    "survived": []
+  },
+  "deliverables": {
+    "recompute_script": "reports/V9-S5-PHASE1/recompute_s5p1_final.py",
+    "tests": "tests/v9/experiments/test_s5_recompute.py",
+    "report_dir": "reports/V9-S5-FINAL/RECOMPUTE-IMPL/"
+  },
+  "gates_implemented": ["GT1", "GT2", "GT3", "GA", "GR", "report_only"],
+  "threshold_audit_exit_code": 2,
+  "independent_metrics": ["independent_grid_ap", "independent_logd_rmse"],
+  "partitions_from": "PREREG.frozen.partitions",
+  "domain_shift_extra": ["shift_bg", "shift_all"],
+  "touched_src": false,
+  "touched_final_partitions": false,
+  "previous_agent": "composer-m7k2"
+}

@@ -9,7 +9,11 @@
 指标可调用 ``ainerzero.v9.experiments.s5.metrics``；另附 R2 AP / R1 RMSE
 的最小独立实现，供合成数据逐值核对。
 
-契约（相对 SPEC §2.2；若 P245 落盘不符，以本契约为准并在报告列出）：
+契约（相对 SPEC §2.2 与补记 1；若 P245 落盘不符，以本契约为准并在报告列出）：
+
+分区名从 PREREG ``frozen.partitions`` 读取（``final`` / ``final_shift``），
+不把登记分区写死成 ``s5p1-final``。换域只报告项另读
+``{final_shift}.shift_bg`` 与 ``{final_shift}.shift_all``。
 
 metrics 文件名：``{model_id}.{partition}.npz``
   数组键：r1_logd, r2_logit, r3_logit, r1_target, r1_sky, r1_obj, r2, r3,
@@ -95,14 +99,31 @@ GR_KEEP_MAX = 0.8
 GR_WALL_DROP_MIN = 0.15
 GR_AP_DROP_CI_MAX = 0.03
 COMPARE_TOL = 1e-9
-PARTITIONS = ("s5p1-final", "s5p1-final-shift")
+THRESHOLD_TOL = 1e-12
+# 设计 r1 常量。审核用字面量，不跟可被改写的 GT_* 默认值走。
+DESIGN_GT_LEVEL = 1.0 - 0.05 / 3.0
+DESIGN_GT1_EFFECT = 0.05
+DESIGN_GT2_EFFECT = 0.03
+DESIGN_GT3_MARGIN_FRAC = 0.05
+DESIGN_GA_TARGET_FRAC = 0.95
+DESIGN_GA_RATIO_MAX = 0.7
+DESIGN_GR_KEEP_MAX = 0.8
+DESIGN_GR_WALL_DROP_MIN = 0.15
+DESIGN_GR_AP_DROP_CI_MAX = 0.03
+DESIGN_GR_AP_LEVEL = 0.95
+DEFAULT_FINAL_PARTITION = "s5p1-final"
+DEFAULT_SHIFT_PARTITION = "s5p1-final-shift"
 
 HEADS_RE = re.compile(
     r"^heads-(?P<arm>A1|A2|A3|C-sh|R|A\*)-d(?P<d>\d+)-L(?P<L>\d+)-r(?P<r>\d+)$"
 )
 SUP_RE = re.compile(r"^(?P<arm>A0|A4|A0-R|FT)-L(?P<L>\d+)-s(?P<s>\d+)$")
 CKPT_RE = re.compile(r"^ckpt-(?P<arm>A0|A4)-L(?P<L>\d+)-s(?P<s>\d+)$")
-FILE_RE = re.compile(r"^(?P<model>.+)\.(?P<part>s5p1-final(?:-shift)?)\.npz$")
+_MODEL_PREFIXES = (
+    re.compile(r"heads-(?:A1|A2|A3|C-sh|R|A\*)-d\d+-L\d+-r\d+"),
+    re.compile(r"(?:A0-R|A0|A4|FT)-L\d+-s\d+"),
+    re.compile(r"ckpt-(?:A0|A4)-L\d+-s\d+"),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -323,17 +344,122 @@ def _parse_model(model_id: str) -> dict[str, Any]:
     return {"kind": "unknown", "model_id": model_id}
 
 
+def split_metrics_filename(filename: str) -> tuple[str, str] | None:
+    """``{model_id}.{partition}.npz``。partition 可含点（``.shift_bg`` / ``.shift_all``）。"""
+    if not filename.endswith(".npz"):
+        return None
+    stem = filename[: -len(".npz")]
+    for rx in _MODEL_PREFIXES:
+        m = rx.match(stem)
+        if m and m.end() < len(stem) and stem[m.end()] == ".":
+            return stem[: m.end()], stem[m.end() + 1 :]
+    return None
+
+
+def resolve_partitions(prereg: Mapping[str, Any]) -> dict[str, str]:
+    """从 PREREG ``frozen.partitions`` 读分区名。缺省才用设计稿里的 final 名。"""
+    raw = prereg.get("raw") if isinstance(prereg.get("raw"), Mapping) else prereg
+    frozen = raw.get("frozen") if isinstance(raw.get("frozen"), Mapping) else {}
+    parts = frozen.get("partitions") if isinstance(frozen.get("partitions"), Mapping) else None
+    if parts is None and isinstance(raw.get("partitions"), Mapping):
+        parts = raw.get("partitions")
+    parts = parts or {}
+    final = str(parts.get("final") or DEFAULT_FINAL_PARTITION)
+    shift = str(parts.get("final_shift") or DEFAULT_SHIFT_PARTITION)
+    return {
+        "final": final,
+        "final_shift": shift,
+        "shift_bg": f"{shift}.shift_bg",
+        "shift_all": f"{shift}.shift_all",
+    }
+
+
+def _dig(doc: Mapping[str, Any], path: tuple[str, ...]) -> Any:
+    cur: Any = doc
+    for key in path:
+        if not isinstance(cur, Mapping) or key not in cur:
+            return None
+        cur = cur[key]
+    return cur
+
+
+def audit_prereg_thresholds(doc: Mapping[str, Any]) -> dict[str, Any]:
+    """把 PREREG 里出现的阈值与设计 r1 常量逐项核对。
+
+    缺字段不算不一致（运行器可以只写它用到的键）。写了但和设计不符则标红。
+    """
+    checks: tuple[tuple[str, tuple[str, ...], Any], ...] = (
+        ("gates.GT1.effect", ("gates", "GT1", "effect"), DESIGN_GT1_EFFECT),
+        ("gates.GT1.min_diff", ("gates", "GT1", "min_diff"), DESIGN_GT1_EFFECT),
+        ("gates.GT1.level", ("gates", "GT1", "level"), DESIGN_GT_LEVEL),
+        ("gates.GT1.ci_level", ("gates", "GT1", "ci_level"), DESIGN_GT_LEVEL),
+        ("gates.GT2.effect", ("gates", "GT2", "effect"), DESIGN_GT2_EFFECT),
+        ("gates.GT2.min_diff", ("gates", "GT2", "min_diff"), DESIGN_GT2_EFFECT),
+        ("gates.GT2.level", ("gates", "GT2", "level"), DESIGN_GT_LEVEL),
+        ("gates.GT2.ci_level", ("gates", "GT2", "ci_level"), DESIGN_GT_LEVEL),
+        ("gates.GT3.margin_frac", ("gates", "GT3", "margin_frac"), DESIGN_GT3_MARGIN_FRAC),
+        ("gates.GT3.non_inferiority_frac", ("gates", "GT3", "non_inferiority_frac"), DESIGN_GT3_MARGIN_FRAC),
+        ("gates.GT3.level", ("gates", "GT3", "level"), DESIGN_GT_LEVEL),
+        ("gates.GT3.ci_level", ("gates", "GT3", "ci_level"), DESIGN_GT_LEVEL),
+        ("gates.GA.target_frac", ("gates", "GA", "target_frac"), DESIGN_GA_TARGET_FRAC),
+        ("gates.GA.target_frac_of_a0_final_median", ("gates", "GA", "target_frac_of_a0_final_median"), DESIGN_GA_TARGET_FRAC),
+        ("gates.GA.ratio_max", ("gates", "GA", "ratio_max"), DESIGN_GA_RATIO_MAX),
+        ("gates.GA.max_median_step_ratio", ("gates", "GA", "max_median_step_ratio"), DESIGN_GA_RATIO_MAX),
+        ("gates.GR.keep_max", ("gates", "GR", "keep_max"), DESIGN_GR_KEEP_MAX),
+        ("gates.GR.max_keep_rate", ("gates", "GR", "max_keep_rate"), DESIGN_GR_KEEP_MAX),
+        ("gates.GR.wall_drop_min", ("gates", "GR", "wall_drop_min"), DESIGN_GR_WALL_DROP_MIN),
+        ("gates.GR.min_distill_step_wall_reduction", ("gates", "GR", "min_distill_step_wall_reduction"), DESIGN_GR_WALL_DROP_MIN),
+        ("gates.GR.ap_drop_ci_max", ("gates", "GR", "ap_drop_ci_max"), DESIGN_GR_AP_DROP_CI_MAX),
+        ("gates.GR.max_r2_ap_drop_ci95_upper", ("gates", "GR", "max_r2_ap_drop_ci95_upper"), DESIGN_GR_AP_DROP_CI_MAX),
+        ("gates.GR.ap_level", ("gates", "GR", "ap_level"), DESIGN_GR_AP_LEVEL),
+        ("gates.GR.ci_level", ("gates", "GR", "ci_level"), DESIGN_GR_AP_LEVEL),
+        ("gates.family_gt.alpha", ("gates", "family_gt", "alpha"), 0.05),
+        ("gates.family_gt.bonferroni_m", ("gates", "family_gt", "bonferroni_m"), 3),
+        ("gates.family_gt.ci_level", ("gates", "family_gt", "ci_level"), DESIGN_GT_LEVEL),
+        ("gt_level", ("gt_level",), DESIGN_GT_LEVEL),
+    )
+    mismatches: list[dict[str, Any]] = []
+    for name, path, want in checks:
+        got = _dig(doc, path)
+        if got is None:
+            continue
+        try:
+            same = abs(float(got) - float(want)) <= THRESHOLD_TOL
+        except (TypeError, ValueError):
+            same = got == want
+        if not same:
+            mismatches.append({"key": name, "prereg": got, "design": want})
+    ok = not mismatches
+    return {
+        "ok": ok,
+        "status": "ok" if ok else "red",
+        "n_mismatches": len(mismatches),
+        "mismatches": mismatches,
+        "design": {
+            "GT1_effect": DESIGN_GT1_EFFECT,
+            "GT2_effect": DESIGN_GT2_EFFECT,
+            "GT3_margin_frac": DESIGN_GT3_MARGIN_FRAC,
+            "gt_level": DESIGN_GT_LEVEL,
+            "GA_target_frac": DESIGN_GA_TARGET_FRAC,
+            "GA_ratio_max": DESIGN_GA_RATIO_MAX,
+            "GR_keep_max": DESIGN_GR_KEEP_MAX,
+            "GR_wall_drop_min": DESIGN_GR_WALL_DROP_MIN,
+            "GR_ap_drop_ci_max": DESIGN_GR_AP_DROP_CI_MAX,
+            "GR_ap_level": DESIGN_GR_AP_LEVEL,
+        },
+    }
+
+
 def load_run_catalog(run_dir: Path) -> dict[str, Any]:
     metrics_dir = run_dir / "metrics"
     if not metrics_dir.is_dir():
         raise FileNotFoundError(f"missing metrics dir: {metrics_dir}")
     catalog: dict[str, Any] = {"by_key": {}, "files": []}
     for path in sorted(metrics_dir.glob("*.npz")):
-        m = FILE_RE.match(path.name)
-        if not m:
+        split = split_metrics_filename(path.name)
+        if split is None:
             continue
-        model_id = m.group("model")
-        part = m.group("part")
+        model_id, part = split
         meta = _parse_model(model_id)
         meta["partition"] = part
         meta["path"] = path
@@ -342,21 +468,23 @@ def load_run_catalog(run_dir: Path) -> dict[str, Any]:
                meta.get("distill_seed"), meta.get("readout_seed"), meta.get("seed"))
         catalog["by_key"][key] = meta
         catalog["files"].append(meta)
-        # ckpt curve sidecar
+        # ckpt curve sidecar：同 stem（含分区）或 SPEC 的无分区 json
         if meta["kind"] == "ckpt":
-            side = path.with_suffix(".json")
-            if side.is_file():
-                meta["curve"] = json.loads(side.read_text(encoding="utf-8"))
+            for side in (path.with_suffix(".json"), path.parent / f"{model_id}.json"):
+                if side.is_file():
+                    meta["curve"] = json.loads(side.read_text(encoding="utf-8"))
+                    break
     return catalog
 
 
 def load_prereg(path: Path) -> dict[str, Any]:
     doc = json.loads(path.read_text(encoding="utf-8"))
-    a_star = doc.get("a_star")
+    frozen = doc.get("frozen") if isinstance(doc.get("frozen"), dict) else {}
+    a_star = doc.get("a_star", frozen.get("a_star"))
     if isinstance(a_star, dict):
         a_star = a_star.get("arm", a_star)
     gates = doc.get("gates") or doc.get("gate_thresholds") or {}
-    return {
+    loaded = {
         "raw": doc,
         "a_star": str(a_star),
         "boot_seed": int(doc.get("boot_seed", 20261114)),
@@ -376,6 +504,8 @@ def load_prereg(path: Path) -> dict[str, Any]:
         "supervised_seeds": list(doc.get("supervised_seeds", [0, 1, 2])),
         "ga_cap": doc.get("ga_cap"),
     }
+    loaded["partitions"] = resolve_partitions(loaded)
+    return loaded
 
 
 def load_timing(run_dir: Path) -> dict[str, float]:
@@ -480,7 +610,14 @@ def _gate_record(
     return rec
 
 
-def compute_gt1(catalog, prereg, partition: str = "s5p1-final") -> dict[str, Any]:
+def _partition(prereg, partition: str | None) -> str:
+    if partition is not None:
+        return partition
+    return prereg["partitions"]["final"]
+
+
+def compute_gt1(catalog, prereg, partition: str | None = None) -> dict[str, Any]:
+    partition = _partition(prereg, partition)
     arm = prereg["a_star"]
     nested = _heads_nested(
         catalog, arm=arm, label_n=64, partition=partition,
@@ -519,7 +656,8 @@ def compute_gt1(catalog, prereg, partition: str = "s5p1-final") -> dict[str, Any
     )
 
 
-def compute_gt2(catalog, prereg, partition: str = "s5p1-final") -> dict[str, Any]:
+def compute_gt2(catalog, prereg, partition: str | None = None) -> dict[str, Any]:
+    partition = _partition(prereg, partition)
     arm = prereg["a_star"]
     nested = _heads_nested(
         catalog, arm=arm, label_n=64, partition=partition,
@@ -556,7 +694,8 @@ def compute_gt2(catalog, prereg, partition: str = "s5p1-final") -> dict[str, Any
     )
 
 
-def compute_gt3(catalog, prereg, partition: str = "s5p1-final") -> dict[str, Any]:
+def compute_gt3(catalog, prereg, partition: str | None = None) -> dict[str, Any]:
+    partition = _partition(prereg, partition)
     arm = prereg["a_star"]
     nested = _heads_nested(
         catalog, arm=arm, label_n=64, partition=partition,
@@ -594,7 +733,7 @@ def compute_gt3(catalog, prereg, partition: str = "s5p1-final") -> dict[str, Any
     )
 
 
-def _load_ga_curves(catalog, arm: str, seeds: Sequence[int], partition: str = "s5p1-final"):
+def _load_ga_curves(catalog, arm: str, seeds: Sequence[int], partition: str):
     curves = []
     cap = None
     for s in seeds:
@@ -615,7 +754,8 @@ def _load_ga_curves(catalog, arm: str, seeds: Sequence[int], partition: str = "s
     return curves, cap
 
 
-def compute_ga(catalog, prereg, partition: str = "s5p1-final") -> dict[str, Any]:
+def compute_ga(catalog, prereg, partition: str | None = None) -> dict[str, Any]:
+    partition = _partition(prereg, partition)
     M = _prod_metrics()
     seeds = prereg["supervised_seeds"]
     a0_curves, cap = _load_ga_curves(catalog, "A0", seeds, partition)
@@ -672,7 +812,8 @@ def compute_ga(catalog, prereg, partition: str = "s5p1-final") -> dict[str, Any]
     )
 
 
-def compute_gr(catalog, prereg, timing: Mapping[str, float], partition: str = "s5p1-final") -> dict[str, Any]:
+def compute_gr(catalog, prereg, timing: Mapping[str, float], partition: str | None = None) -> dict[str, Any]:
+    partition = _partition(prereg, partition)
     arm = prereg["a_star"]
     # RLT 臂读出：arm R；对照 A* 同 L=512
     nested_star = _heads_nested(
@@ -755,20 +896,34 @@ def compute_gr(catalog, prereg, timing: Mapping[str, float], partition: str = "s
 
 
 def compute_report_only(catalog, prereg) -> dict[str, Any]:
-    """只报告项：L=512/2048 教师价值、换域、R3、距离分组等点估计。"""
+    """只报告项：L=512/2048 教师价值、换域（含 shift_bg / shift_all）、R3、距离分组。"""
     out: dict[str, Any] = {}
     arm = prereg["a_star"]
+    parts = prereg["partitions"]
+    final = parts["final"]
+
+    def _nested_or_none(label_n: int, part: str):
+        try:
+            return _heads_nested(
+                catalog, arm=arm, label_n=label_n, partition=part,
+                distill_seeds=prereg["distill_seeds"], readout_seeds=prereg["readout_seeds"],
+            )
+        except KeyError:
+            return None
+
+    def _a0_or_none(label_n: int, part: str):
+        try:
+            return _supervised_list(
+                catalog, arm="A0", label_n=label_n, partition=part, seeds=prereg["supervised_seeds"],
+            )
+        except KeyError:
+            return None
+
     for L in (512, 2048):
-        for part in PARTITIONS:
-            try:
-                nested = _heads_nested(
-                    catalog, arm=arm, label_n=L, partition=part,
-                    distill_seeds=prereg["distill_seeds"], readout_seeds=prereg["readout_seeds"],
-                )
-                a0 = _supervised_list(
-                    catalog, arm="A0", label_n=L, partition=part, seeds=prereg["supervised_seeds"],
-                )
-            except KeyError:
+        for part in (final, parts["final_shift"]):
+            nested = _nested_or_none(L, part)
+            a0 = _a0_or_none(L, part)
+            if nested is None or a0 is None:
                 continue
             clips = np.arange(a0[0]["r2"].shape[0], dtype=np.int64)
             a_vals = {d: {r: metric_on_clips(ev, clips, "r2_ap") for r, ev in rmap.items()} for d, rmap in nested.items()}
@@ -778,23 +933,40 @@ def compute_report_only(catalog, prereg) -> dict[str, Any]:
                 "a_star_r2_ap": float(SEED_MEAN(a_vals)),
                 "a0_r2_ap": a0_mean,
             }
-            # R3
             a_r3 = {d: {r: metric_on_clips(ev, clips, "r3_ap") for r, ev in rmap.items()} for d, rmap in nested.items()}
             out[f"r3_L{L}_{part}"] = {"a_star_r3_ap": float(SEED_MEAN(a_r3))}
-            # distance groups on A*
             for grp in ("near", "mid", "far"):
                 a_g = {
                     d: {r: metric_on_clips(ev, clips, f"r2_ap_{grp}") for r, ev in rmap.items()}
                     for d, rmap in nested.items()
                 }
                 out.setdefault(f"r2_by_distance_L{L}_{part}", {})[grp] = float(SEED_MEAN(a_g))
-    # FT vs A0 at L=64 if present
+
+    for tag, part in (("shift_bg", parts["shift_bg"]), ("shift_all", parts["shift_all"])):
+        for L in (64, 512, 2048):
+            nested = _nested_or_none(L, part)
+            if nested is None:
+                continue
+            sample = next(iter(next(iter(nested.values())).values()))
+            clips = np.arange(sample["r2"].shape[0], dtype=np.int64)
+            a_vals = {d: {r: metric_on_clips(ev, clips, "r2_ap") for r, ev in rmap.items()} for d, rmap in nested.items()}
+            slot: dict[str, Any] = {
+                "partition": part,
+                "a_star_r2_ap": float(SEED_MEAN(a_vals)),
+            }
+            a0 = _a0_or_none(L, part)
+            if a0 is not None:
+                a0_mean = float(np.mean([metric_on_clips(ev, clips, "r2_ap") for ev in a0]))
+                slot["a0_r2_ap"] = a0_mean
+                slot["r2_ap_diff"] = slot["a_star_r2_ap"] - a0_mean
+            out.setdefault("domain_shift", {}).setdefault(tag, {})[f"L{L}"] = slot
+
     try:
         ft = _supervised_list(
-            catalog, arm="FT", label_n=64, partition="s5p1-final", seeds=prereg["supervised_seeds"],
+            catalog, arm="FT", label_n=64, partition=final, seeds=prereg["supervised_seeds"],
         )
         a0 = _supervised_list(
-            catalog, arm="A0", label_n=64, partition="s5p1-final", seeds=prereg["supervised_seeds"],
+            catalog, arm="A0", label_n=64, partition=final, seeds=prereg["supervised_seeds"],
         )
         clips = np.arange(a0[0]["r2"].shape[0], dtype=np.int64)
         out["ft_vs_a0_L64"] = {
@@ -825,13 +997,14 @@ def recompute_all(run_dir: Path, prereg_path: Path | None = None) -> dict[str, A
     prereg = load_prereg(Path(prereg_path))
     catalog = load_run_catalog(run_dir)
     timing = load_timing(run_dir)
+    final = prereg["partitions"]["final"]
 
     gates = {
-        "GT1": compute_gt1(catalog, prereg),
-        "GT2": compute_gt2(catalog, prereg),
-        "GT3": compute_gt3(catalog, prereg),
-        "GA": compute_ga(catalog, prereg),
-        "GR": compute_gr(catalog, prereg, timing),
+        "GT1": compute_gt1(catalog, prereg, final),
+        "GT2": compute_gt2(catalog, prereg, final),
+        "GT3": compute_gt3(catalog, prereg, final),
+        "GA": compute_ga(catalog, prereg, final),
+        "GR": compute_gr(catalog, prereg, timing, final),
     }
     report_only = compute_report_only(catalog, prereg)
     return {
@@ -841,6 +1014,8 @@ def recompute_all(run_dir: Path, prereg_path: Path | None = None) -> dict[str, A
         "boot_seed": prereg["boot_seed"],
         "n_boot": prereg["n_boot"],
         "gt_level": prereg["gt_level"],
+        "partitions": prereg["partitions"],
+        "threshold_audit": audit_prereg_thresholds(prereg["raw"]),
         "gates": gates,
         "report_only": report_only,
         "seed_mean_order": "readouts_then_distills",
@@ -920,8 +1095,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2, allow_nan=True) + "\n", encoding="utf-8")
-    print(f"wrote {out} (gate diffs={result['compare'].get('n_diffs')})")
-    return 0
+    audit = result.get("threshold_audit") or {}
+    rc = 0 if audit.get("ok", True) else 2
+    flag = "RED" if rc else "ok"
+    print(
+        f"wrote {out} (gate diffs={result['compare'].get('n_diffs')}; "
+        f"threshold_audit={flag})"
+    )
+    return rc
 
 
 if __name__ == "__main__":

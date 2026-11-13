@@ -1,0 +1,21 @@
+SPEC §2.2 filename contract used by recompute_s5p1_final.py
+(independent of P245; mismatches must be listed, not adapted)
+
+metrics/{model_id}.{partition}.npz
+  partition ∈ {s5p1-final, s5p1-final-shift}
+  arrays: r1_logd, r2_logit, r3_logit, r1_target, r1_sky, r1_obj, r2, r3,
+          world_ids, clips_per_world; optional keep_rate_per_clip
+optional sidecars:
+  metrics/{model_id}.{partition}.disk_groups.json
+  metrics/{model_id}.{partition}.ordering_pairs.json
+
+model_id patterns:
+  heads-{arm}-d{d}-L{L}-r{r}   arm ∈ A1|A2|A3|C-sh|R|A*
+  {arm}-L{L}-s{s}              arm ∈ A0|A4|A0-R|FT
+  ckpt-{arm}-L{L}-s{s}         + same-stem .json with steps/r2_ap[/cap]
+
+timing/{cell_id}.json with seconds_per_step
+  distill-R-s{d}, distill-C-sh-s{d}
+
+PREREG.json keys used: a_star, boot_seed, n_boot, distill_seeds,
+  readout_seeds, supervised_seeds, gates.{GT1,GT2,GT3,GA,GR}, ga_cap
