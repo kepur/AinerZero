@@ -668,6 +668,39 @@ def _final_cell_worker_target(
         sys.exit(1)
 
 
+# Test-only knobs of the stand-in smoke path; a production PREREG must not carry any of them (tier-1, 11-13).
+STANDIN_ONLY_KEYS = (
+    "data_root", "teachers_root", "student_kwargs", "clips", "l_worlds_map",
+    "pool_n_clips", "effective_l_clips",
+)
+
+
+def check_production_frozen(frozen: dict[str, Any]) -> None:
+    """非 stand-in 的 PREREG：分区必须是真实名字，测试专用字段一个都不许有，设计常量必须与设计稿一致。"""
+    if bool(frozen.get("standin_test", False)):
+        return
+    present = [key for key in STANDIN_ONLY_KEYS if key in frozen]
+    if present:
+        raise GD.GuardError(f"production PREREG carries stand-in only fields: {present}")
+    partitions = frozen.get("partitions")
+    if partitions is not None and dict(partitions) != REAL_FINAL_PARTITIONS:
+        raise GD.GuardError(f"production PREREG partitions must be {REAL_FINAL_PARTITIONS}, got {partitions}")
+    design = {
+        "distill_epochs": plan.DISTILL_EPOCHS,
+        "batch_size": plan.BATCH,
+        "tau": RLT_TAU,
+        "ckpt_every_frac": CKPT_EVERY_FRAC,
+    }
+    for key, want in design.items():
+        if key in frozen and float(frozen[key]) != float(want):
+            raise GD.GuardError(f"production PREREG {key}={frozen[key]!r} differs from the design value {want!r}")
+    for key in ("super_epochs", "readout_epochs"):
+        if key in frozen:
+            got = {int(k): int(v) for k, v in dict(frozen[key]).items()}
+            if got != {int(k): int(v) for k, v in plan.SUPER_EPOCHS.items()}:
+                raise GD.GuardError(f"production PREREG {key}={got} differs from the design value {plan.SUPER_EPOCHS}")
+
+
 def verify_prereg_and_Save_Check(
     prereg_path: Path,
     expected_prereg_sha: str,
@@ -691,6 +724,7 @@ def verify_prereg_and_Save_Check(
     for key in ("frozen", "gates", "pinned_artifacts", "manifest", "budget"):
         if key not in prereg or not isinstance(prereg[key], dict):
             raise GD.GuardError(f"PREREG missing required section: {key}")
+    check_production_frozen(prereg["frozen"])
 
     manifest = prereg["manifest"]
     changed = GD.check_manifest(repo, manifest)

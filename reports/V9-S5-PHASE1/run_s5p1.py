@@ -58,7 +58,9 @@ STAGE_LIMIT_S = {
 }
 # A Metal command buffer discarded because another process made the GPU restart (seen twice on 2026-11-12,
 # both caused by Preview) is an environment fault, not a property of the cell: re-run that cell once.
-GPU_RESET_MARKERS = ("kIOGPUCommandBufferCallbackError", "GPU error/recovery")
+# Only the "innocent victim" form: a restart some other process caused. Our own IOGPU errors (timeouts,
+# page faults) are not retried (P244 review, 11-13).
+GPU_RESET_MARKERS = ("kIOGPUCommandBufferCallbackErrorInnocentVictim", "GPU error/recovery")
 MAX_GPU_RETRIES_PER_CELL = 1
 MAX_GPU_RETRIES_PER_STAGE = 3
 # Stages that read the dev-tune result, and the tune keys each one needs.

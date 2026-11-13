@@ -523,3 +523,27 @@ def test_compute_gates_matches_independent_recompute_and_seed_order(tmp_path: Pa
     diffs = recompute.compare_gates(recomp_doc, gates_doc)
     assert diffs == [], f"Expected 0 gate diffs between runner and independent recompute, got: {diffs}"
     assert all(gates_doc["gates"][g]["passed"] is True for g in ("GT1", "GT2", "GT3", "GA", "GR"))
+
+
+def test_production_prereg_refuses_stand_in_fields_and_off_design_constants():
+    """非 stand-in 的 PREREG 出现测试专用字段、改了分区名或设计常量，都必须在任何输出之前被拒（tier-1, 11-13）。"""
+    good = {"partitions": dict(final_runner.REAL_FINAL_PARTITIONS), "distill_epochs": 15, "batch_size": 8,
+            "tau": 0.02, "ckpt_every_frac": 1.0 / 16.0,
+            "super_epochs": {"64": 300, "512": 60, "2048": 20}, "readout_epochs": {"64": 300, "512": 60, "2048": 20}}
+    final_runner.check_production_frozen(good)
+    bad_cases = [
+        dict(good, student_kwargs={"d": 16}),
+        dict(good, data_root="/tmp/x"),
+        dict(good, clips=[0, 1]),
+        dict(good, partitions=dict(final_runner.REAL_FINAL_PARTITIONS, final="s5test-x")),
+        dict(good, distill_epochs=1),
+        dict(good, batch_size=2),
+        dict(good, super_epochs={"64": 300, "512": 16, "2048": 20}),
+        dict(good, readout_epochs={"64": 1, "512": 60, "2048": 20}),
+        dict(good, tau=0.05),
+    ]
+    for frozen in bad_cases:
+        with pytest.raises(GD.GuardError):
+            final_runner.check_production_frozen(frozen)
+    # stand-in 模式照常放行（替身冒烟要用这些字段）
+    final_runner.check_production_frozen(dict(good, standin_test=True, student_kwargs={"d": 16}, batch_size=2))

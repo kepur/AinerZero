@@ -336,3 +336,14 @@ def test_dry_run_dev_tune_b_lists_only_the_requested_cells(tmp_path: Path):
         bad = subprocess.run([sys.executable, "-I", str(RUNNER), *args], cwd=tmp_path, capture_output=True, text=True)
         assert bad.returncode == 1, (args, bad.stdout[-400:])
         assert "etas" in bad.stderr
+
+
+def test_gpu_reset_marker_only_matches_the_innocent_victim_form():
+    mod = _runner_in_process()
+    victim = ("[METAL] Command buffer execution failed: Discarded (victim of GPU error/recovery) "
+              "(00000005:kIOGPUCommandBufferCallbackErrorInnocentVictim).")
+    assert mod.is_gpu_reset(victim)
+    for own in ("[METAL] Command buffer execution failed: Caused GPU Timeout Error (00000002:kIOGPUCommandBufferCallbackErrorTimeout)",
+                "[METAL] Command buffer execution failed: Caused GPU Address Fault Error (0000000b:kIOGPUCommandBufferCallbackErrorPageFault)",
+                "[METAL] out of memory while allocating a buffer", "", None):
+        assert not mod.is_gpu_reset(own), own
