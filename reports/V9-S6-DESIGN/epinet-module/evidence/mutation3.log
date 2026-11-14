@@ -1,0 +1,27 @@
+....F...                                                                 [100%]
+=================================== FAILURES ===================================
+____ test_spread_reproducible_with_same_seed_and_varies_with_different_seed ____
+
+    def test_spread_reproducible_with_same_seed_and_varies_with_different_seed():
+        """spread 在同一 index_seed 下完全可重复，不同种子产生不同离散度。"""
+        pool = _make_synthetic_pool(S=16, n=3, seed=9)
+        model = E.EpiDynamics()
+        mx.eval(model.parameters())
+    
+        # Call with pool object (by_n dict)
+        sp1 = E.spread(model, pool, kz=8, index_seed=1000)
+        sp2 = E.spread(model, pool, kz=8, index_seed=1000)
+        sp3 = E.spread(model, pool, kz=8, index_seed=2000)
+    
+        assert isinstance(sp1, dict)
+        for n in sp1:
+>           assert np.array_equal(sp1[n], sp2[n]), f"Spread not reproducible for n={n} with same index_seed"
+E           AssertionError: Spread not reproducible for n=3 with same index_seed
+E           assert False
+E            +  where False = <function array_equal at 0x102e07f30>(array([[0.61534548, 0.6193484 , 0.62014071],\n       [0.65426927, 0.65396077, 0.65629296],\n       [0.56437949, 0.567330...43, 0.74687319, 0.74766989],\n       [0.5704692 , 0.57061655, 0.57075417],\n       [0.4520405 , 0.44886792, 0.45436079]]), array([[0.60602942, 0.60002422, 0.59815747],\n       [0.49799269, 0.49891561, 0.49860321],\n       [0.35896456, 0.366471...87, 0.85130659, 0.84990645],\n       [0.60998412, 0.60929524, 0.61332469],\n       [0.34005372, 0.33926188, 0.33999665]]))
+E            +    where <function array_equal at 0x102e07f30> = np.array_equal
+
+tests/v9/experiments/test_s6_epinet_mlx.py:173: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s6_epinet_mlx.py::test_spread_reproducible_with_same_seed_and_varies_with_different_seed
+1 failed, 7 passed in 0.81s

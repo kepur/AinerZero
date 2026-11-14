@@ -1,0 +1,97 @@
+.F.F....                                                                 [100%]
+=================================== FAILURES ===================================
+_ test_decoupled_training_base_parameters_bitwise_identical_to_plain_rollout_loss _
+
+    def test_decoupled_training_base_parameters_bitwise_identical_to_plain_rollout_loss():
+        """同种子下，基础参数与只用 rollout_loss 训练的结果逐位相同。"""
+        pool = _make_synthetic_pool(S=64, n=3, seed=55)
+    
+        # 1. Plain base network trained with rollout_loss
+        mx.random.seed(88)
+        base = L.Dynamics("L-int")
+        mx.eval(base.parameters())
+    
+        opt_base = optim.Adam(learning_rate=1e-3)
+        vg_base = nn.value_and_grad(base, L.rollout_loss)
+        rng_base = np.random.default_rng(1234)
+    
+        for n, idx in L.batches(pool, steps=5, batch=8, rng=rng_base, coll_share=0.0):
+            b = {k: mx.array(v[idx]) for k, v in pool.by_n[n].items()}
+            _, grads = vg_base(base, b)
+            grads, _ = optim.clip_grad_norm(grads, max_norm=L.CLIP)
+            opt_base.update(base, grads)
+            mx.eval(base.parameters(), opt_base.state)
+    
+        # 2. EpiDynamics decoupled training
+        mx.random.seed(88)
+        init_base = L.Dynamics("L-int")
+        epi_model = E.EpiDynamics()
+        epi_model.update(init_base.parameters())
+        mx.eval(epi_model.parameters())
+    
+        E.train(epi_model, pool, steps=5, batch=8, seed=1234)
+    
+        base_trained = dict(tree_flatten(base.parameters()))
+        epi_trained = dict(tree_flatten(epi_model.parameters()))
+    
+        for k in base_trained:
+            assert k in epi_trained, f"Missing base parameter {k} in epi_model"
+            v_base = base_trained[k]
+            v_epi = epi_trained[k]
+>           assert mx.array_equal(v_base, v_epi), (
+                f"Parameter {k} not bitwise identical after training! max diff: "
+                f"{float(mx.max(mx.abs(v_base - v_epi)).item())}"
+            )
+E           AssertionError: Parameter msg1.weight not bitwise identical after training! max diff: 0.005815356969833374
+E           assert array(False, dtype=bool)
+E            +  where array(False, dtype=bool) = <nanobind.nb_func object at 0x10517eb00>(array([[0.243352, -0.130404, -0.367196, -0.0862134, 0.35199, -0.205781],\n       [-0.0306756, -0.25542, 0.316959, -0.35...-0.26453, 0.194291, -0.0336403],\n       [-0.152688, 0.191702, 0.343027, 0.228698, -0.32426, -0.331754]], dtype=float32), array([[0.243333, -0.130501, -0.367191, -0.0861858, 0.352058, -0.205686],\n       [-0.0310702, -0.25549, 0.316497, -0.3....264527, 0.194152, -0.0335857],\n       [-0.152402, 0.191933, 0.343591, 0.228677, -0.324236, -0.331632]], dtype=float32))
+E            +    where <nanobind.nb_func object at 0x10517eb00> = mx.array_equal
+
+tests/v9/experiments/test_s6_epinet_mlx.py:109: AssertionError
+____________ test_stop_gradient_blocks_gradients_into_base_network _____________
+
+    def test_stop_gradient_blocks_gradients_into_base_network():
+        """只训 epinet 时，基础参数的梯度严格为零（stop_gradient 有效）。"""
+        model = E.EpiDynamics()
+        mx.eval(model.parameters())
+    
+        rng = np.random.default_rng(21)
+        p = mx.array(rng.uniform(0.1, 0.9, size=(4, 3, 2)).astype(np.float32))
+        v = mx.array(rng.uniform(-0.1, 0.1, size=(4, 3, 2)).astype(np.float32))
+        pil = mx.array(rng.uniform(0.2, 0.8, size=(4, 3, 3)).astype(np.float32))
+        b = {
+            "p": p, "v": v, "pil": pil,
+            "p1": p + 0.01 * v, "v1": v,
+        }
+        z = mx.array(rng.normal(size=(4, E.DZ)).astype(np.float32))
+    
+        vg_epi = nn.value_and_grad(model, E.epinet_step_loss)
+        loss, grads = vg_epi(model, b, z)
+        mx.eval(loss, grads)
+    
+        flat_grads = dict(tree_flatten(grads))
+        for k, g in flat_grads.items():
+            if not k.startswith("epi."):
+                # All non-epinet parameters (base parameters and prior) must have strictly zero gradient
+>               assert float(mx.max(mx.abs(g)).item()) == 0.0, f"Gradient leaked into base/prior param {k}: {g}"
+E               AssertionError: Gradient leaked into base/prior param msg1.weight: array([[-0.000241585, -0.000108971, -5.26639e-05, -1.13273e-05, 0.00029193, 1.1938e-06],
+E                        [-0.000468471, -0.000653456, -3.54431e-05, 1.25939e-05, -0.00108122, 7.46867e-06],
+E                        [-4.07461e-05, 0.000116564, -4.18208e-05, 1.04998e-05, 0.000354002, 9.80199e-06],
+E                        ...,
+E                        [1.55418e-05, -0.000194776, 2.1628e-05, -1.23534e-05, 0.000427323, -0.000123903],
+E                        [0.000931912, 0.000687155, 6.70897e-05, 5.70372e-06, -0.000672252, 0.000157215],
+E                        [-8.51337e-05, -0.000451668, 3.35965e-05, 5.98807e-05, 0.00142475, -0.000393621]], dtype=float32)
+E               assert 0.0016384006012231112 == 0.0
+E                +  where 0.0016384006012231112 = float(0.0016384006012231112)
+E                +    where 0.0016384006012231112 = <nanobind.nb_bound_method object at 0x1051e4ac0>()
+E                +      where <nanobind.nb_bound_method object at 0x1051e4ac0> = array(0.0016384, dtype=float32).item
+E                +        where array(0.0016384, dtype=float32) = <nanobind.nb_func object at 0x105178820>(array([[0.000241585, 0.000108971, 5.26639e-05, 1.13273e-05, 0.00029193, 1.1938e-06],\n       [0.000468471, 0.000653456,...52, 0.000157215],\n       [8.51337e-05, 0.000451668, 3.35965e-05, 5.98807e-05, 0.00142475, 0.000393621]], dtype=float32))
+E                +          where <nanobind.nb_func object at 0x105178820> = mx.max
+E                +          and   array([[0.000241585, 0.000108971, 5.26639e-05, 1.13273e-05, 0.00029193, 1.1938e-06],\n       [0.000468471, 0.000653456,...52, 0.000157215],\n       [8.51337e-05, 0.000451668, 3.35965e-05, 5.98807e-05, 0.00142475, 0.000393621]], dtype=float32) = <nanobind.nb_func object at 0x10517d7e0>(array([[-0.000241585, -0.000108971, -5.26639e-05, -1.13273e-05, 0.00029193, 1.1938e-06],\n       [-0.000468471, -0.0006... 0.000157215],\n       [-8.51337e-05, -0.000451668, 3.35965e-05, 5.98807e-05, 0.00142475, -0.000393621]], dtype=float32))
+E                +            where <nanobind.nb_func object at 0x10517d7e0> = mx.abs
+
+tests/v9/experiments/test_s6_epinet_mlx.py:157: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s6_epinet_mlx.py::test_decoupled_training_base_parameters_bitwise_identical_to_plain_rollout_loss
+FAILED tests/v9/experiments/test_s6_epinet_mlx.py::test_stop_gradient_blocks_gradients_into_base_network
+2 failed, 6 passed in 0.87s

@@ -258,6 +258,8 @@ NATIVE_MODULES = {
     "test_s5_train_mlx.py": "module-level importorskip mlx.core/mlx.nn (S5 data reading and training loops in MLX)",
     "test_s5_runner_native.py": "runs the S5 pre-freeze runner smoke path (MLX) in a throwaway copy",
     "test_s5_final_native.py": "runs the S5 registered runner end to end on stand-in partitions (MLX) in a throwaway copy",
+    # S6: epinet module (MLX).
+    "test_s6_epinet_mlx.py": "module-level importorskip mlx.core/mlx.nn (S6 epinet MLX module)",
 }
 
 # Individual tests in otherwise pure-CPU modules (prefix match on node id).

@@ -1,0 +1,24 @@
+..F.....                                                                 [100%]
+=================================== FAILURES ===================================
+_______________ test_prior_network_remains_frozen_after_training _______________
+
+    def test_prior_network_remains_frozen_after_training():
+        """先验网络权重在训练后保持完全不变，且处于 freeze 状态。"""
+        pool = _make_synthetic_pool(S=32, n=3, seed=12)
+        model = E.EpiDynamics()
+        mx.eval(model.parameters())
+    
+        # Check prior has 0 trainable parameters
+>       assert len(tree_flatten(model.prior.trainable_parameters())) == 0, "Prior network is not frozen!"
+E       AssertionError: Prior network is not frozen!
+E       assert 4 == 0
+E        +  where 4 = len([('l1.weight', array([[0.0769067, 0.0809038, -0.0767544, ..., -0.0332922, 0.0767731, -0.0332392],\n       [-0.0443554, ...e=float32)), ('l2.bias', array([-0.135336, 0.137069, -0.0585877, ..., -0.137174, 0.108002, -0.176566], dtype=float32))])
+E        +    where [('l1.weight', array([[0.0769067, 0.0809038, -0.0767544, ..., -0.0332922, 0.0767731, -0.0332392],\n       [-0.0443554, ...e=float32)), ('l2.bias', array([-0.135336, 0.137069, -0.0585877, ..., -0.137174, 0.108002, -0.176566], dtype=float32))] = tree_flatten({'l1': {'weight': array([[0.0769067, 0.0809038, -0.0767544, ..., -0.0332922, 0.0767731, -0.0332392],\n       [-0.044355... dtype=float32), 'bias': array([-0.135336, 0.137069, -0.0585877, ..., -0.137174, 0.108002, -0.176566], dtype=float32)}})
+E        +      where {'l1': {'weight': array([[0.0769067, 0.0809038, -0.0767544, ..., -0.0332922, 0.0767731, -0.0332392],\n       [-0.044355... dtype=float32), 'bias': array([-0.135336, 0.137069, -0.0585877, ..., -0.137174, 0.108002, -0.176566], dtype=float32)}} = trainable_parameters()
+E        +        where trainable_parameters = Epi(\n  (l1): Linear(input_dims=136, output_dims=32, bias=True)\n  (l2): Linear(input_dims=32, output_dims=32, bias=True)\n).trainable_parameters
+E        +          where Epi(\n  (l1): Linear(input_dims=136, output_dims=32, bias=True)\n  (l2): Linear(input_dims=32, output_dims=32, bias=True)\n) = EpiDynamics(\n  (msg1): Linear(input_dims=6, output_dims=64, bias=True)\n  (msg2): Linear(input_dims=64, output_dims=64,...l1): Linear(input_dims=136, output_dims=32, bias=True)\n    (l2): Linear(input_dims=32, output_dims=32, bias=True)\n  )\n).prior
+
+tests/v9/experiments/test_s6_epinet_mlx.py:122: AssertionError
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s6_epinet_mlx.py::test_prior_network_remains_frozen_after_training
+1 failed, 7 passed in 0.91s
