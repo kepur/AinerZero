@@ -15,7 +15,8 @@ uniform batches), then the next round is selected. Arms:
              contact at step 1 (reads labels)
 Evaluation after every round on the s6x-test worlds (as explore_s6a.evaluate): error per step kind and D.
 
-Usage (MLX; under the shared lock): <this> PER ROUNDS STEPS_PER_ROUND OUT.json
+Usage (MLX; under the shared lock): <this> PER ROUNDS STEPS_PER_ROUND OUT.json [CAND_NS TEST_NS ARMS]
+(defaults s6x-cand, s6x-test, random,disagree,oracle,truthcur; round D replicates on other namespaces)
 """
 import json
 import sys
@@ -56,14 +57,18 @@ class Learner:
 
 def main():
     per, rounds, spr, out = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+    cand_ns = sys.argv[5] if len(sys.argv) > 5 else "s6x-cand"
+    test_ns = sys.argv[6] if len(sys.argv) > 6 else "s6x-test"
+    arms = sys.argv[7].split(",") if len(sys.argv) > 7 else ["random", "disagree", "oracle", "truthcur"]
     t0 = time.time()
-    cand = L.make_pool(A.train_worlds("s6x-cand", 120), 60_000, np.random.default_rng(11), W.physics, exact_frac=1.0)
-    test_eps = [W.generate_episode("s6x-test", w, 6) for w in range(20)] + [W.generate_episode("s6x-test", 1000 + w, 10) for w in range(10)]
+    cand = L.make_pool(A.train_worlds(cand_ns, 120), 60_000, np.random.default_rng(11), W.physics, exact_frac=1.0)
+    test_eps = [W.generate_episode(test_ns, w, 6) for w in range(20)] + [W.generate_episode(test_ns, 1000 + w, 10) for w in range(10)]
     allp = XA.flat_pool(cand)
     coll = np.array([cand.by_n[n]["contact"][i].sum() > 0 for n, i in allp])
     print(f"pool {time.time() - t0:.0f}s, disk-contact share {coll.mean():.3f}", flush=True)
     res = {"per": per, "rounds": rounds, "steps_per_round": spr, "curves": {}, "selection": {}}
-    for arm in ("random", "disagree", "oracle", "truthcur"):
+    res["namespaces"] = {"candidates": cand_ns, "test": test_ns}
+    for arm in arms:
         mx.set_default_device(mx.gpu)
         learners = [Learner(s) for s in XA.SEEDS]
         rng = np.random.default_rng(100)
