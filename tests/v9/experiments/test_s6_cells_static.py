@@ -58,12 +58,25 @@ MODULE_LEVEL_CHECKED = ("cells.py", "sandbox.py", "epinet_mlx.py")
 
 
 def _module_level_names(tree):
-    """Every name and attribute in code that runs at import time: module statements, including those nested in
-    if/try/with/for blocks, but not function or class bodies (nor lambdas). The ``_SEALED`` table is skipped."""
+    """Every name and attribute in code that runs at import time: module statements (also nested in if/try/with/for
+    blocks), class bodies, decorators, base classes and the default values of function and lambda arguments; not
+    function or lambda bodies. Assignment targets in class bodies (dataclass field names) are not counted, their
+    values are. The ``_SEALED`` table is skipped."""
     out, stack = set(), list(tree.body)
     while stack:
         node = stack.pop()
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            args = node.args
+            stack.extend(list(args.defaults) + [d for d in args.kw_defaults if d is not None])
+            stack.extend(getattr(node, "decorator_list", []))
+            continue
+        if isinstance(node, ast.ClassDef):
+            stack.extend(node.decorator_list + node.bases + [k.value for k in node.keywords])
+            for stmt in node.body:
+                if isinstance(stmt, (ast.Assign, ast.AnnAssign)) and stmt.value is not None:
+                    stack.append(stmt.value)
+                elif not isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+                    stack.append(stmt)
             continue
         if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "_SEALED" for t in node.targets):
             continue
@@ -90,6 +103,11 @@ def test_module_level_scan_reaches_nested_blocks():
     tree = ast.parse("try:\n    _phys = W.physics\nexcept Exception:\n    pass\ndef f():\n    return W.physics\n")
     assert "physics" in _module_level_names(tree)
     assert "physics" not in _module_level_names(ast.parse("def f():\n    return W.physics\n"))
+    assert "physics" in _module_level_names(ast.parse("class C:\n    def __init__(self, _p=W.physics):\n        pass\n"))
+    assert "physics" in _module_level_names(ast.parse("class C:\n    step = W.physics\n"))
+    assert "physics" in _module_level_names(ast.parse("@deco(W.physics)\ndef f():\n    pass\n"))
+    assert "physics" in _module_level_names(ast.parse("f = lambda p=W.physics: p\n"))
+    assert "steps" not in _module_level_names(ast.parse("class Sizes:\n    steps: int = 2500\n"))
 
 
 def test_select_never_aliases_the_pool():

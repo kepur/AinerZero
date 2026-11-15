@@ -1,0 +1,14 @@
+$ grep -n 'def _module_level_names' -A3 tests/v9/experiments/test_s6_cells_static.py
+60:def _module_level_names(tree):
+61-    """Every name and attribute in code that runs at import time: module statements, including those nested in
+62-    if/try/with/for blocks, but not function or class bodies (nor lambdas). The ``_SEALED`` table is skipped."""
+63-    out, stack = set(), list(tree.body)
+$ grep -n 'FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda' tests/v9/experiments/test_s6_cells_static.py
+66:        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+$ grep -n 'POOL_ATTRS' tests/v9/experiments/test_s6_sandbox.py
+118:POOL_ATTRS = {"_labeller", "_pool_type", "_states", "_first_id", "_index", "_revealed", "_revealed_set", "_outcomes", "_log"}
+140:    assert set(vars(cp)) == POOL_ATTRS and cp._outcomes == {}       # nothing extra kept (e.g. a precomputed cache)
+143:    assert set(vars(cp)) == POOL_ATTRS and set(cp._outcomes) == {0, 8, 13}
+$ grep -n 'NEAR_MISS =\|decisions\["GZ-W"\] ==' tests/v9/experiments/test_s6_analysis.py
+323:NEAR_MISS = {**FACT, "E": [0.75, 1.10, 0.97 * 1.00, 1.30], "P": [0.97, 1.10, 0.92, 1.30]}   # E/Z wall 0.97, D(P)-D(R) 0.02
+368:        assert decisions["GZ-W"] == (False, True, False) and decisions["GP"] == (False, True, False)

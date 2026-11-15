@@ -1,0 +1,14 @@
+copy sandbox.py == working tree
+== F1 default-argument alias of W.physics in CandidatePool.__init__, outcomes kept in a module-level dict
+   | 27a28
+   | > _SEEN: dict = {}
+   | 70c71
+   | <                  pool_type: Callable = LabelledPool):
+   | ---
+   | >                  pool_type: Callable = LabelledPool, _p: Callable = W.physics):
+   | 95a97,98
+   | >         _SEEN[id(self)] = {n: [_p(e["p"][i:i + 1], e["v"][i:i + 1], tuple(map(tuple, e["pil"][i]))) for i in range(len(e["p"]))]
+   | >                            for n, e in self._states.items()}
+FAILED tests/v9/experiments/test_s6_cells_static.py::test_no_module_level_alias_of_an_outcome_source[sandbox.py]
+1 failed, 71 passed in 4.05s
+restored == working tree
