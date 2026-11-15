@@ -1,0 +1,35 @@
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python reports/V9-S6-DESIGN/pure-modules-review/evidence/tquant_check.py
+analysis from /Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/analysis.py
+t( 1, 0.975000) analysis 12.706205  table 12.706  |diff| 2.05e-04
+t( 2, 0.975000) analysis 4.302653  table 4.303  |diff| 3.47e-04
+t( 3, 0.975000) analysis 3.182446  table 3.182  |diff| 4.46e-04
+t( 4, 0.975000) analysis 2.776445  table 2.776  |diff| 4.45e-04
+t( 5, 0.975000) analysis 2.570582  table 2.571  |diff| 4.18e-04
+t( 7, 0.975000) analysis 2.364624  table 2.365  |diff| 3.76e-04
+t( 9, 0.975000) analysis 2.262157  table 2.262  |diff| 1.57e-04
+t(20, 0.975000) analysis 2.085963  table 2.086  |diff| 3.66e-05
+t(15, 0.950000) analysis 1.753050  table 1.753  |diff| 5.04e-05
+t( 9, 0.990000) analysis 2.821438  table 2.821  |diff| 4.38e-04
+t( 1, 0.995000) analysis 63.656741  table 63.657  |diff| 2.59e-04
+t( 3, 0.995000) analysis 5.840909  table 5.841  |diff| 9.07e-05
+t( 4, 0.995000) analysis 4.604095  table 4.604  |diff| 9.49e-05
+t( 5, 0.995000) analysis 4.032143  table 4.032  |diff| 1.43e-04
+t(10, 0.995000) analysis 3.169273  table 3.169  |diff| 2.73e-04
+t( 4, 0.999000) analysis 7.173182  table 7.173  |diff| 1.82e-04
+t( 4, 0.999500) analysis 8.610302  table 8.610  |diff| 3.02e-04
+t( 5, 0.999500) analysis 6.868827  table 6.869  |diff| 1.73e-04
+t( 4, 0.996875) analysis 5.261058  table 5.261  |diff| 5.76e-05
+textbook: 19 values, worst |diff| 4.46e-04 (tables round to 5e-4)
+mpmath, df 1..60 x 10 levels: worst relative error of t_ppf 6.01e-12 at (df, p) = (1, 0.99999)
+mpmath, df 1..60 x 12 points (negative x included): worst |error| of t_cdf 4.44e-16 at (df, x) = (56, 2.5)
+odd df >= 5 (the odd-series loop body runs only from df = 5): [(5, 2.570581836, 2.570581836), (7, 2.364624252, 2.364624252), (9, 2.262157163, 2.262157163), (11, 2.20098516, 2.20098516)]
+norm_ppf(0.975000) analysis 1.959963984540  mpmath 1.959963984540
+norm_ppf(0.996875) analysis 2.734368786533  mpmath 2.734368786533
+norm_ppf(0.999000) analysis 3.090232306168  mpmath 3.090232306168
+levels used by decide(): Bonferroni p = 0.996875 | t(4, that p) = 5.261057575065765 | t(4, 0.975) = 2.7764451051977934
+t_ppf (0.5, 4) ValueError: p must lie in (0.5, 1)
+t_ppf (1.0, 4) ValueError: p must lie in (0.5, 1)
+t_cdf df 0 ValueError: df must be a positive integer
+t_cdf df 2.5 ValueError: df must be a positive integer
+t_cdf df -1 ValueError: df must be a positive integer
+t_cdf(1e300, 4) = 1.0 | t_cdf(-1e300, 3) = 0.0 | isfinite True

@@ -1,0 +1,36 @@
+HEAD 4cdbee9f21e213fd47434b43c34b6e8a9523efc3 (fixes uncommitted in the working tree)
+
+===== D1
+$ grep -n 'monkeypatch.setattr(W, "physics", counting)\|assert calls == \[\]\|assert len(calls) == 3 \* max(S.ROLLOUT)' tests/v9/experiments/test_s6_sandbox.py
+128:    monkeypatch.setattr(W, "physics", counting)
+136:    assert calls == []
+138:    assert len(calls) == 3 * max(S.ROLLOUT)
+140:    assert len(calls) == 3 * max(S.ROLLOUT)
+
+===== D2
+$ grep -n 'point_ok\|passed\|interval_ok' tests/v9/experiments/test_s6_analysis.py
+176:        assert not res["gates"][g]["passed"]
+177:    assert res["gates"]["GX"]["passed"] in (True, False) and not res["all_pass"]
+208:    assert g["GS"]["passed"] and g["GP"]["passed"] and g["GX"]["passed"] and g["GT"]["passed"]
+209:    assert g["GZ-W"]["point"] == pytest.approx(0.90, abs=0.02) and g["GZ-W"]["passed"]
+227:    assert g["point_ok"] and min(g["per_replicate"]) < 0.03 and not g["per_replicate_ok"] and not g["passed"]
+235:    assert after["GX"]["point"] == pytest.approx(0.0) and not after["GX"]["passed"]
+347:        assert row["interval_ok"] == {">": bound > v, "<": bound < v, "<=": bound <= v, ">=": bound >= v}[op]
+
+===== D3
+$ sed -n '57,58p' tests/v9/experiments/test_s6_cells_static.py | nl -ba -v57
+    57	    for node in tree.body:
+    58	        if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+
+===== D4
+$ grep -n 'point_ok = ' src/ainerzero/v9/experiments/s6/analysis.py
+265:        point_ok = math.isfinite(x) and (spec["point"] is None or _holds(spec["point"][0], x, spec["point"][1]))
+
+===== D5
+$ grep -n 'CELLS = ' tests/v9/experiments/test_s6_cells_static.py
+7:CELLS = Path(__file__).resolve().parents[3] / "src/ainerzero/v9/experiments/s6/cells.py"
+
+===== D6
+$ grep -n 'revealed_pool"),\|"_assemble")\]' src/ainerzero/v9/experiments/s6/cells.py
+136:           (S.CandidatePool, "_simulate"), (S.CandidatePool, "reveal"), (S.CandidatePool, "revealed_pool"),
+137:           (S.CandidatePool, "_assemble")]

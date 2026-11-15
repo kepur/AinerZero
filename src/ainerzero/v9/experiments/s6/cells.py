@@ -133,7 +133,8 @@ def pool_digest(source: dict) -> str:
 # --- the seal --------------------------------------------------------------------------------------------
 _SEALED = [(W, "physics"), (W, "generate_episode"), (L, "make_pool"), (L, "make_sigma_pool"),
            (A, "train_worlds"), (Mo, "true_physics"), (Mo, "bounce"), (S, "sim_labels"),
-           (S.CandidatePool, "_simulate"), (S.CandidatePool, "reveal")]
+           (S.CandidatePool, "_simulate"), (S.CandidatePool, "reveal"), (S.CandidatePool, "revealed_pool"),
+           (S.CandidatePool, "_assemble")]
 
 
 @contextmanager

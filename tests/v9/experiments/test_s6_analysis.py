@@ -32,7 +32,8 @@ def make_data(K=5, N=3, W=(20, 10), KG=3, seed=0, fact=FACT, noise=0.03):
 
 # --- distributions ------------------------------------------------------------------------------------------
 @pytest.mark.parametrize("p,df,want", [(0.975, 1, 12.7062), (0.975, 2, 4.30265), (0.975, 3, 3.18245),
-                                       (0.975, 4, 2.77645), (1 - 0.025 / 8, 4, 5.26106), (0.975, 10, 2.22814),
+                                       (0.975, 4, 2.77645), (1 - 0.025 / 8, 4, 5.26106), (0.975, 5, 2.57058),
+                                       (0.975, 7, 2.36462), (0.975, 9, 2.26216), (0.975, 10, 2.22814),
                                        (0.975, 30, 2.04227)])
 def test_t_quantiles(p, df, want):
     assert AN.t_ppf(p, df) == pytest.approx(want, abs=2e-5)
@@ -278,3 +279,103 @@ def test_module_is_pure_numpy():
         elif isinstance(node, ast.ImportFrom):
             mods.add(node.module or "")
     assert not any("mlx" in m or "scipy" in m for m in mods)
+
+
+# --- end to end, against an independent formula (DESIGN-r2 §4; the r1 review's must-fix 1) -------------------------
+def paired_data(K=5, N=3, W=(20, 10), seed=3, rep_sd=0.03):
+    """Like make_data, plus a per-replicate effect shared by every arm of that replicate (a common candidate
+    pool), so pairing by replicate matters."""
+    d = make_data(K=K, N=N, W=W, seed=seed)
+    rng = np.random.default_rng(seed + 100)
+    shared = rng.lognormal(0, rep_sd, (K, 4))                    # replicate k's pool effect, all arms
+    for t in AN.TEST_SETS:
+        for arm in AN.ARMS:
+            R = d[t]["sums"][arm].shape[0]
+            d[t]["sums"][arm] = d[t]["sums"][arm] * shared[:R, None, None, :]
+    return d
+
+
+def _pooled(d, arm, reps, worlds):
+    """Ratio of sums pooled over the given replicates (with multiplicity), all networks and the given worlds."""
+    S = sum(d["sums"][arm][k][:, worlds].sum((0, 1)) for k in reps)
+    nrn = len(reps) * d["sums"][arm].shape[1]
+    C = d["counts"][worlds].sum(0) * nrn
+    out = {"D": 1 - S[0] / (d["eb"][worlds].sum() * nrn), "all": S.sum() / C.sum()}
+    out.update({k: S[c] / C[c] for c, k in enumerate(AN.KINDS)})
+    return out
+
+
+def _value(g, A):
+    st = {"GS": "D", "GT": "D", "GZ-D": "D", "GP": "D", "GX": "D", "GZ-W": "wall_pillar", "GK-A": "all", "GK-F": "free"}[g]
+    a, b = {"GS": ("E", "R"), "GT": ("E", "R"), "GZ-D": ("E", "Z"), "GZ-W": ("E", "Z"), "GK-A": ("E", "R"),
+            "GK-F": ("E", "Z"), "GP": ("P", "R"), "GX": ("E", "R")}[g]
+    if g == "GT":
+        return (A["E"][st] - A["R"][st]) - 0.5 * (A["T"][st] - A["R"][st])
+    return A[a][st] / A[b][st] if g in ("GZ-W", "GK-A", "GK-F") else A[a][st] - A[b][st]
+
+
+# DESIGN-r2 §4, typed out here rather than read from AN.GATES
+POINT = {"GS": (">=", 0.03), "GT": None, "GZ-D": (">=", -0.02), "GZ-W": ("<=", 0.95), "GK-A": ("<=", 1.10),
+         "GK-F": ("<=", 1.10), "GP": (">=", 0.03), "GX": (">=", 0.02)}
+INTERVAL = {"GS": ("lower", ">", 0.0), "GT": ("lower", ">", 0.0), "GZ-D": ("lower", ">", -0.04), "GZ-W": ("upper", "<", 1.0),
+            "GK-A": ("upper", "<=", 1.20), "GK-F": ("upper", "<=", 1.20), "GP": ("lower", ">", 0.0), "GX": ("lower", ">", 0.0)}
+_CMP = {">": lambda a, b: a > b, "<": lambda a, b: a < b, ">=": lambda a, b: a >= b, "<=": lambda a, b: a <= b}
+NEAR_MISS = {**FACT, "E": [0.75, 1.10, 0.97 * 1.00, 1.30], "P": [0.97, 1.10, 0.92, 1.30]}   # E/Z wall 0.97, D(P)-D(R) 0.02
+
+
+@pytest.mark.parametrize("case", ["healthy3", "healthy8", "near_miss"])
+def test_decide_matches_an_independent_computation(case):
+    if case == "near_miss":
+        d = make_data(seed=5, fact=NEAR_MISS, noise=0.004)
+    else:
+        d = paired_data(seed=int(case[-1]))
+    n = 300
+    res = AN.decide(d, n=n, seed=11)["gates"]
+    K = 5
+    nw = {t: d[t]["counts"].shape[0] for t in AN.TEST_SETS}
+    draws = AN.world_draws(nw, n, 11)
+    Q = {"bonf": 5.261057575066, "95": 2.776445105198}            # t(4, 1 - 0.025/8), t(4, 0.975)
+    ratio = {"GZ-W", "GK-A", "GK-F"}
+    decisions = {}
+    for g in AN.GATES:
+        t = "extrap10" if g == "GX" else "main6"
+        allw = np.arange(nw[t])
+        f = (lambda x: math.log(x)) if g in ratio else (lambda x: x)
+        point = _value(g, {arm: _pooled(d[t], arm, range(K), allw) for arm in AN.GATE_ARMS})
+        tk = [_value(g, {arm: _pooled(d[t], arm, [k], allw) for arm in AN.GATE_ARMS}) for k in range(K)]
+        boot = [_value(g, {arm: _pooled(d[t], arm, range(K), draws[t][b]) for arm in AN.GATE_ARMS}) for b in range(n)]
+        s_rep = np.std([f(x) for x in tk], ddof=1)
+        se_w = np.std([f(x) for x in boot], ddof=1)
+        se = math.sqrt(s_rep ** 2 / K + se_w ** 2)
+        back = (lambda x: math.exp(x)) if g in ratio else (lambda x: x)
+        row = res[g]
+        assert row["point"] == pytest.approx(point, abs=1e-12)
+        assert row["per_replicate"] == pytest.approx(tk, abs=1e-12)
+        assert row["s_rep"] == pytest.approx(s_rep, abs=1e-12) and row["se_w"] == pytest.approx(se_w, abs=1e-12)
+        assert row["q"] == pytest.approx(Q["bonf"], abs=1e-9)
+        assert row["bonferroni"] == pytest.approx([back(f(point) - Q["bonf"] * se), back(f(point) + Q["bonf"] * se)], abs=1e-9)
+        assert row["ci95"] == pytest.approx([back(f(point) - Q["95"] * se), back(f(point) + Q["95"] * se)], abs=1e-9)
+        end, op, v = INTERVAL[g]
+        bound = row["bonferroni"][0] if end == "lower" else row["bonferroni"][1]
+        interval_ok = _CMP[op](bound, v)
+        point_ok = POINT[g] is None or _CMP[POINT[g][0]](point, POINT[g][1])
+        per_rep_ok = all(x >= 0.03 for x in tk) if g == "GS" else True
+        assert row["interval_ok"] == interval_ok and row["point_ok"] == point_ok
+        assert row.get("per_replicate_ok", True) == per_rep_ok
+        assert row["passed"] == (interval_ok and point_ok and per_rep_ok)
+        decisions[g] = (point_ok, interval_ok, row["passed"])
+    if case == "near_miss":                     # the check bites: point thresholds decide here, intervals do not
+        assert decisions["GZ-W"] == (False, True, False) and decisions["GP"] == (False, True, False)
+    else:
+        assert all(v[2] for v in decisions.values())
+
+
+def test_pairing_by_replicate_changes_the_answer():
+    """With a strong shared replicate effect, pairing removes it from s_rep: the paired s_rep of a diff gate
+    is far below what unpaired replicates would give."""
+    d = paired_data(seed=3, rep_sd=0.15)
+    row = AN.decide(d, n=200, seed=11)["gates"]["GZ-W"]
+    allw = np.arange(20)
+    unpaired = [_pooled(d["main6"], "E", [k], allw)["wall_pillar"] / _pooled(d["main6"], "Z", [(k + 1) % 5], allw)["wall_pillar"]
+                for k in range(5)]
+    assert row["s_rep"] < 0.5 * np.std(np.log(unpaired), ddof=1)

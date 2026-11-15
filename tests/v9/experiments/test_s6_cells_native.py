@@ -54,7 +54,7 @@ def test_candidate_states_distinct_deterministic_and_sorted(source):
 
 
 @pytest.mark.parametrize("call", ["physics", "generate_episode", "train_worlds", "bounce", "true_physics", "make_pool",
-                                  "sim_labels", "reveal"])
+                                  "sim_labels", "reveal", "revealed_pool"])
 def test_the_seal_blocks_every_route_to_an_outcome(call, source):
     cp = C.make_candidate_pool(source)
     ep = W.generate_episode(NS, 0, 4, steps=5)
@@ -66,7 +66,8 @@ def test_the_seal_blocks_every_route_to_an_outcome(call, source):
               "true_physics": lambda: Mo.true_physics(P, V, ep.pillars),
               "make_pool": lambda: L.make_pool([ep], 2, np.random.default_rng(0), W.physics),
               "sim_labels": lambda: S.sim_labels(P, V, np.asarray(ep.pillars, float)[None]),
-              "reveal": lambda: cp.reveal([0])}
+              "reveal": lambda: cp.reveal([0]),
+              "revealed_pool": lambda: cp.revealed_pool()}
     with C.sealed():
         with pytest.raises(C.SealBreach):
             routes[call]()

@@ -1,0 +1,153 @@
+HEAD 4cdbee9f21e213fd47434b43c34b6e8a9523efc3
+copy: /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/recheck-copy
+copy == working tree: src/ainerzero/v9/experiments/s6/sandbox.py identical
+copy == working tree: src/ainerzero/v9/experiments/s6/analysis.py identical
+copy == working tree: src/ainerzero/v9/experiments/s6/cells.py identical
+copy == working tree: tests/v9/experiments/test_s6_sandbox.py identical
+copy == working tree: tests/v9/experiments/test_s6_analysis.py identical
+copy == working tree: tests/v9/experiments/test_s6_cells_static.py identical
+modules from /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/recheck-copy/src/ainerzero/v9/experiments/s6/sandbox.py /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/recheck-copy/src/ainerzero/v9/experiments/s6/analysis.py
+== baseline:
+68 passed in 2.51s
+== R1 a reveal spanning two disk counts that fails in the second leaves the first group's outcomes stored
+   | 183c183
+   | <                 out[g] = {k: np.array(lab[k][j], dtype=np.float32, copy=True) for k in LABEL_KEYS}
+   | ---
+   | >                 out[g] = self._outcomes[g] = {k: np.array(lab[k][j], dtype=np.float32, copy=True) for k in LABEL_KEYS}
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_a_failure_in_a_later_disk_count_group_registers_nothing
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_only_reveal_reaches_the_labeller
+2 failed, 66 passed in 2.61s
+== R1b reveal stores each disk-count group's outcomes as it simulates it (a later failing group leaves the earlier ones)
+   | 135c135,136
+   | <         outcomes = self._simulate(ids)
+   | ---
+   | >         for n, (gs, rows) in self._groups(ids).items():
+   | >             self._outcomes.update(self._simulate(gs))
+   | 138d138
+   | <         self._outcomes.update(outcomes)
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_a_failure_in_a_later_disk_count_group_registers_nothing
+1 failed, 67 passed in 2.56s
+== R2 _simulate labels the whole disk-count bucket and keeps the chosen rows
+   | 178c178,179
+   | <             lab = self._labeller(e["p"][rows], e["v"][rows], e["pil"][rows])
+   | ---
+   | >             full = self._labeller(e["p"], e["v"], e["pil"])
+   | >             lab = {k: v[rows] for k, v in full.items()}
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_reveal_simulates_exactly_the_chosen_states
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_the_simulator_runs_only_on_reveal
+2 failed, 66 passed in 2.60s
+== R3 states stored at float32 precision (the simulator gets rounded states)
+   | 87c87
+   | <             self._states[n] = {k: np.array(e[k], dtype=np.float64, copy=True) for k in STATE_KEYS}
+   | ---
+   | >             self._states[n] = {k: np.array(e[k], dtype=np.float32).astype(np.float64) for k in STATE_KEYS}
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_reveal_simulates_exactly_the_chosen_states
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_reveal_returns_exactly_this_calls_samples_with_their_labels
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_default_labeller_is_the_simulator
+3 failed, 65 passed in 2.57s
+== R4 sim_labels marks every contact kind (wall, pillar) in the disk-contact matrix
+   | 52c52
+   | <             if kind == "disk":
+   | ---
+   | >             if True:
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_sim_labels_is_the_simulator_rollout
+1 failed, 67 passed in 2.66s
+== R5 the constructor simulates every candidate straight through sim_labels and keeps the result (not via the labeller)
+   | 95a96
+   | >         self._cache = {n: sim_labels(e["p"], e["v"], e["pil"]) for n, e in self._states.items()}
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_the_simulator_runs_only_on_reveal
+1 failed, 67 passed in 3.15s
+== Q1 gate intervals at the 95% level (levels dict unchanged)
+   | 264c264
+   | <         lo, hi, parts = interval(spec, x, tk, boot[g], p_bonf)
+   | ---
+   | >         lo, hi, parts = interval(spec, x, tk, boot[g], p_95)
+E             comparison failed
+E             comparison failed
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[3]
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[8]
+2 failed, 66 passed in 2.18s
+== Q2 theta_k not paired by replicate: R and Z use replicate k+1 (point value unchanged)
+   | 191c191
+   | <     return {arm: stats(d["sums"][arm], d["counts"], d["eb"], reps, np.arange(W_)) for arm in GATE_ARMS}
+   | ---
+   | >     return {arm: stats(d["sums"][arm], d["counts"], d["eb"], (reps + (arm in ("R", "Z"))) % K, np.arange(W_)) for arm in GATE_ARMS}
+E             comparison failed. Mismatched elements: 5 / 5:
+E             comparison failed. Mismatched elements: 5 / 5:
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[3]
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[8]
+FAILED tests/v9/experiments/test_s6_analysis.py::test_pairing_by_replicate_changes_the_answer
+3 failed, 65 passed in 2.15s
+== Q3 ratio-gate point value = geometric mean of the per-replicate ratios
+   | 262a263,264
+   | >         if spec["form"] == "ratio":
+   | >             x = float(np.exp(np.mean(np.log(tk))))
+E             comparison failed
+E             comparison failed
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[3]
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[8]
+2 failed, 66 passed in 2.36s
+== Q4 world bootstrap nested: replicate k gets its own draw (shared across arms only)
+   | 226,227c226,229
+   | <             S = np.einsum("bw,knwc->bknc", Mw, np.asarray(d["sums"][arm], float))   # [n, K, N, 4]
+   | <             per = _per_rep_net(S, C[:, None, None, :], B[:, None, None])           # [n, K, N]
+   | ---
+   | >             s_ = np.asarray(d["sums"][arm], float)
+   | >             Mk = np.stack([np.roll(Mw, k, 0) for k in range(s_.shape[0])], 1)
+   | >             S = np.einsum("bkw,knwc->bknc", Mk, s_)
+   | >             per = _per_rep_net(S, (Mk @ np.asarray(d["counts"], float))[:, :, None, :], (Mk @ np.asarray(d["eb"], float))[:, :, None])
+E             comparison failed
+E             comparison failed
+E             comparison failed
+E             comparison failed
+E             comparison failed
+FAILED tests/v9/experiments/test_s6_analysis.py::test_bootstrap_draws_equal_stats_on_the_drawn_worlds
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[3]
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[8]
+3 failed, 65 passed in 2.17s
+== Q5 t_cdf odd-df series uses the even-df factor (matters from df = 5, i.e. K = 6)
+   | 83c83
+   | <                 term *= c2 * (2 * j) / (2 * j + 1)
+   | ---
+   | >                 term *= c2 * (2 * j - 1) / (2 * j)
+E         comparison failed
+E         comparison failed
+E         comparison failed
+FAILED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-5-2.57058]
+FAILED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-7-2.36462]
+FAILED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-9-2.26216]
+3 failed, 65 passed in 2.58s
+== Q6 s_rep with ddof 0
+   | 245c245
+   | <     s_rep = float(np.std(tk, ddof=1)) if K > 1 else 0.0
+   | ---
+   | >     s_rep = float(np.std(tk)) if K > 1 else 0.0
+E         comparison failed
+E         comparison failed
+E             comparison failed
+E             comparison failed
+FAILED tests/v9/experiments/test_s6_analysis.py::test_interval_t_on_replicates_plus_world_bootstrap
+FAILED tests/v9/experiments/test_s6_analysis.py::test_ratio_intervals_on_the_log_scale
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[3]
+FAILED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[8]
+4 failed, 64 passed in 2.17s
+== X1 select reads revealed labels through an alias of the pool (pool = track.cp; pool._assemble(...))
+   | 288a289,290
+   | >             pool = track.cp
+   | >             seen = pool._assemble(pool.revealed_ids().tolist())
+FAILED tests/v9/experiments/test_s6_cells_static.py::test_selection_path_names_no_outcome_source
+FAILED tests/v9/experiments/test_s6_cells_static.py::test_select_never_aliases_the_pool
+2 failed, 66 passed in 2.58s
+== X2 a module-level alias of W.physics, called inside closest_pair (bypasses the name check and the seal)
+   | 39a40,41
+   | > _step = W.physics
+   | > 
+   | 261a264
+   | >         _peek = _step(p[:1], np.asarray(e["v"][:1], dtype=np.float64), tuple(map(tuple, np.asarray(e["pil"][0], dtype=np.float64))))
+FAILED tests/v9/experiments/test_s6_cells_static.py::test_no_module_level_alias_of_an_outcome_source
+1 failed, 67 passed in 2.52s
+== restored:
+68 passed in 2.53s
+restored == working tree: src/ainerzero/v9/experiments/s6/sandbox.py
+restored == working tree: src/ainerzero/v9/experiments/s6/analysis.py
+restored == working tree: src/ainerzero/v9/experiments/s6/cells.py

@@ -115,6 +115,52 @@ def test_a_failed_simulation_registers_nothing():
     assert len(cp.reveal([0, 1]).by_n[4]["p"]) == 2 and cp.log() == [{"call": 0, "ids": [0, 1]}]
 
 
+POOL_ATTRS = {"_labeller", "_pool_type", "_states", "_first_id", "_index", "_revealed", "_revealed_set", "_outcomes", "_log"}
+
+
+def test_the_simulator_runs_only_on_reveal(monkeypatch):
+    """Trap the simulator itself (the module attribute sim_labels reaches): building the pool, every outcome-free
+    member and every pick rule call it zero times; a reveal calls it exactly 10 times per revealed sample."""
+    real, calls = W.physics, []
+
+    def counting(*a, **k):
+        calls.append(1)
+        return real(*a, **k)
+
+    states = _states()                                           # world generation itself runs the simulator
+    monkeypatch.setattr(W, "physics", counting)
+    cp = S.CandidatePool(states)                                 # default labeller: sim_labels
+    st = cp.states()
+    rem = cp.remaining()
+    cp.log(); cp.revealed_ids(); cp.revealed_pool(); len(cp)
+    flags = S.geo_flags(st)
+    score = np.concatenate([np.linalg.norm(st[n]["v"], axis=-1).max(-1) for n in sorted(st)])
+    S.pick_random(rem, 3, np.random.default_rng(0)); S.pick_top(score, rem, 3); S.pick_geo(flags, rem, 3, np.random.default_rng(0))
+    assert calls == []
+    assert set(vars(cp)) == POOL_ATTRS and cp._outcomes == {}       # nothing extra kept (e.g. a precomputed cache)
+    cp.reveal([0, 8, 13])
+    assert len(calls) == 3 * max(S.ROLLOUT)
+    assert set(vars(cp)) == POOL_ATTRS and set(cp._outcomes) == {0, 8, 13}
+    cp.revealed_pool()
+    assert len(calls) == 3 * max(S.ROLLOUT)
+
+
+def test_a_failure_in_a_later_disk_count_group_registers_nothing():
+    """A reveal spanning two disk counts whose second group fails leaves no outcome of the first group behind."""
+    good = Spy()
+
+    def fail_on_six(P, V, PIL):
+        if P.shape[1] == 6:
+            raise RuntimeError("second group fails")
+        return good(P, V, PIL)
+
+    cp = S.CandidatePool(_states(), labeller=fail_on_six)
+    with pytest.raises(RuntimeError, match="second group"):
+        cp.reveal([0, 1, 8])
+    assert len(good.calls) == 1                                  # the first group was simulated ...
+    assert cp._outcomes == {} and cp.revealed_ids().tolist() == [] and cp.log() == []   # ... and dropped
+
+
 def test_labeller_missing_keys_is_an_error_and_registers_nothing():
     cp = S.CandidatePool(_states(), labeller=lambda P, V, PIL: {"contact": np.zeros((len(P), P.shape[1], P.shape[1]))})
     with pytest.raises(ValueError, match="did not return"):
@@ -199,6 +245,11 @@ def test_sim_labels_is_the_simulator_rollout():
     hit = [t for t in range(len(ep.steps)) if any(k == "disk" for k, i, j in ep.steps[t].contacts)][:2]
     ts = hit + [t for t in range(len(ep.steps)) if t not in hit][:1]
     assert len(hit) == 2                                     # the sample includes disk contacts
+    wall = [t for t in range(len(ep.steps)) if any(k in ("wall", "pillar") for k, i, j in ep.steps[t].contacts)
+            and not any(k == "disk" for k, i, j in ep.steps[t].contacts)]
+    assert wall
+    lw = S.sim_labels(ep.steps[wall[0]].positions[None], ep.steps[wall[0]].velocities[None], np.asarray(ep.pillars, float)[None])
+    assert lw["contact"].sum() == 0                          # walls and pillars are not disk contacts
     P = np.stack([ep.steps[t].positions for t in ts]); V = np.stack([ep.steps[t].velocities for t in ts])
     PIL = np.broadcast_to(np.asarray(ep.pillars, float), (3, 3, 3)).copy()
     lab = S.sim_labels(P, V, PIL)

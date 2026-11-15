@@ -1,0 +1,94 @@
+$ git status --short (tracked)
+ M reports/V9-S6-PHASE1/impl-evidence/mutate_pure.log
+ M reports/V9-S6-PHASE1/impl-evidence/mutate_pure.sh
+ M reports/V9-S6-PHASE1/impl-evidence/native-tests.log
+ M src/ainerzero/v9/experiments/s6/cells.py
+ M tests/v9/experiments/test_s6_analysis.py
+ M tests/v9/experiments/test_s6_cells_native.py
+ M tests/v9/experiments/test_s6_cells_static.py
+ M tests/v9/experiments/test_s6_sandbox.py
+$ shasum -a 256 (working tree)
+efeabd084eedd16f4eab291c9716966a496ddce69357b7e0876c88214a67c10e  src/ainerzero/v9/experiments/s6/sandbox.py
+baf00ede726791984f3b67df9e6cb71ad345131d8871ad9d847925a37ae03b6e  src/ainerzero/v9/experiments/s6/analysis.py
+fdbab359254485c037aa701b12e1aec9eef40311f2ab22f2d59c688a4142b27c  src/ainerzero/v9/experiments/s6/cells.py
+924c34eda72e7c057bfdf3d2cec24e6a8672ac4bd64cfd9a19061dab72541e60  tests/v9/experiments/test_s6_sandbox.py
+dea7756f303de714af4adf20cde47584415cbdd373a74e0b99efe5167c2b10b4  tests/v9/experiments/test_s6_analysis.py
+9f0892a29cdde430d1bda1fcdf8d6298cb62c098bbf4ddfceb0118b4da6f42db  tests/v9/experiments/test_s6_cells_static.py
+$ git diff --stat HEAD -- sandbox.py analysis.py epinet_mlx.py
+(empty = unchanged since HEAD)
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -q -p no:cacheprovider -rA (three pure test files)
+.......................................................................  [100%]
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_states_fields_ids_dtype_and_copies
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_pick_loop_never_simulates
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_reveal_simulates_exactly_the_chosen_states
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_a_failed_simulation_registers_nothing
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_the_simulator_runs_only_on_reveal
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_a_failure_in_a_later_disk_count_group_registers_nothing
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_labeller_missing_keys_is_an_error_and_registers_nothing
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_only_reveal_reaches_the_labeller
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_class_members_are_the_documented_ones
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_reveal_returns_exactly_this_calls_samples_with_their_labels
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_reveal_errors_are_atomic
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_log_remaining_and_revealed_pool
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_sim_labels_is_the_simulator_rollout
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_default_labeller_is_the_simulator
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_pool_validation
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_picks_are_deterministic_unique_and_within_remaining[random]
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_picks_are_deterministic_unique_and_within_remaining[top]
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_picks_are_deterministic_unique_and_within_remaining[geo]
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_pick_random_matches_prototype_round_zero
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_pick_top_order_and_ties_by_id_ascending
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_pick_top_ties_at_scale
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_pick_geo_takes_flagged_first_then_fills
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_pick_geo_matches_prototype_stream
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_geo_flags_hand_cases
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_geo_flags_needs_all_ids
+PASSED tests/v9/experiments/test_s6_sandbox.py::test_module_is_pure_numpy
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-1-12.7062]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-2-4.30265]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-3-3.18245]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-4-2.77645]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.996875-4-5.26106]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-5-2.57058]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-7-2.36462]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-9-2.26216]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-10-2.22814]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_t_quantiles[0.975-30-2.04227]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_normal_quantile_and_t_limit
+PASSED tests/v9/experiments/test_s6_analysis.py::test_stats_by_hand
+PASSED tests/v9/experiments/test_s6_analysis.py::test_replicates_weighted_by_multiplicity_and_pooled_equivalence
+PASSED tests/v9/experiments/test_s6_analysis.py::test_stats_matches_the_exploration_arithmetic
+PASSED tests/v9/experiments/test_s6_analysis.py::test_zero_denominators_give_nan
+PASSED tests/v9/experiments/test_s6_analysis.py::test_world_draws_order_and_reproducibility
+PASSED tests/v9/experiments/test_s6_analysis.py::test_bootstrap_is_paired_across_arms
+PASSED tests/v9/experiments/test_s6_analysis.py::test_bootstrap_draws_equal_stats_on_the_drawn_worlds
+PASSED tests/v9/experiments/test_s6_analysis.py::test_interval_t_on_replicates_plus_world_bootstrap
+PASSED tests/v9/experiments/test_s6_analysis.py::test_ratio_intervals_on_the_log_scale
+PASSED tests/v9/experiments/test_s6_analysis.py::test_single_replicate_uses_the_normal_quantile
+PASSED tests/v9/experiments/test_s6_analysis.py::test_nan_anywhere_fails
+PASSED tests/v9/experiments/test_s6_analysis.py::test_gate_table_is_the_design
+PASSED tests/v9/experiments/test_s6_analysis.py::test_strict_and_non_strict_boundaries
+PASSED tests/v9/experiments/test_s6_analysis.py::test_decide_on_synthetic_effects
+PASSED tests/v9/experiments/test_s6_analysis.py::test_gt_formula
+PASSED tests/v9/experiments/test_s6_analysis.py::test_gs_needs_every_replicate_at_least_003
+PASSED tests/v9/experiments/test_s6_analysis.py::test_gx_reads_the_extrapolation_set_only
+PASSED tests/v9/experiments/test_s6_analysis.py::test_g_is_descriptive_and_paired_on_its_replicates
+PASSED tests/v9/experiments/test_s6_analysis.py::test_shape_and_replicate_checks
+PASSED tests/v9/experiments/test_s6_analysis.py::test_works_with_one_and_two_replicates
+PASSED tests/v9/experiments/test_s6_analysis.py::test_module_is_pure_numpy
+PASSED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[healthy3]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[healthy8]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_decide_matches_an_independent_computation[near_miss]
+PASSED tests/v9/experiments/test_s6_analysis.py::test_pairing_by_replicate_changes_the_answer
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_selection_functions_exist
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_selection_path_names_no_outcome_source
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_no_module_level_alias_of_an_outcome_source[cells.py]
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_no_module_level_alias_of_an_outcome_source[sandbox.py]
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_no_module_level_alias_of_an_outcome_source[epinet_mlx.py]
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_module_level_scan_reaches_nested_blocks
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_select_never_aliases_the_pool
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_select_reads_only_states_and_remaining_from_the_pool_and_runs_sealed
+PASSED tests/v9/experiments/test_s6_cells_static.py::test_the_seal_covers_the_outcome_sources
+71 passed in 2.94s

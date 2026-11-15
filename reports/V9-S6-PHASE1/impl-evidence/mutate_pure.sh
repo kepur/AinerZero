@@ -86,11 +86,19 @@ mutate $AN "A7 t with K degrees of freedom" '    q = t_ppf(p, K - 1) if K > 1 el
 mutate $AN "A8 per-replicate GS check dropped" '            row["per_replicate_ok"] = all(' '            row["per_replicate_ok"] = True or all('
 mutate $AN "A9 GX on the main set" '    "GX":   {"set": "extrap10",' '    "GX":   {"set": "main6",'
 mutate $AN "A10 NaN passes" '    return bool(math.isfinite(x) and _OPS[op](x, v))' '    return bool(not math.isfinite(x) or _OPS[op](x, v))'
-mutate $AN "A11 world draws not shared: extrap drawn first" '        for t in TEST_SETS:
+mutate $AN "A1b Bonferroni with m = 6 in the bound only (levels unchanged)" '        lo, hi, parts = interval(spec, x, tk, boot[g], p_bonf)' '        lo, hi, parts = interval(spec, x, tk, boot[g], 1 - ALPHA / 12)'
+mutate $AN "A12 theta_k not paired: Z uses the next replicate" '        tk = [float(_gate_value(spec, per_rep[spec["set"]][k])) for k in range(K)]' '        tk = [float(_gate_value(spec, {**per_rep[spec["set"]][k], "Z": per_rep[spec["set"]][(k + 1) % K]["Z"]})) for k in range(K)]'
+mutate $AN "A11 world draw order changed (extrap drawn before main; still shared)" '        for t in TEST_SETS:
             out[t][b] = rng.integers' '        for t in reversed(TEST_SETS):
             out[t][b] = rng.integers'
 # cells (static test)
-mutate $CE "C1 the seal forgets reveal" '           (S.CandidatePool, "_simulate"), (S.CandidatePool, "reveal")]' '           (S.CandidatePool, "_simulate")]'
+mutate $CE "C1 the seal forgets reveal" '(S.CandidatePool, "_simulate"), (S.CandidatePool, "reveal"), (S.CandidatePool, "revealed_pool"),' '(S.CandidatePool, "_simulate"), (S.CandidatePool, "revealed_pool"),'
+mutate $CE "C3 the seal forgets revealed_pool and _assemble" '(S.CandidatePool, "reveal"), (S.CandidatePool, "revealed_pool"),
+           (S.CandidatePool, "_assemble")]' '(S.CandidatePool, "reveal")]'
+mutate $CE "C4 a module-level alias of the simulator" 'class SealBreach(RuntimeError):' '_step = W.physics
+
+
+class SealBreach(RuntimeError):'
 mutate $CE "C2 select reveals to score" '            rem = track.cp.remaining()' '            rem = track.cp.remaining(); track.cp.revealed_pool()'
 
 for f in $SB $AN $CE; do cp $f.orig $f; done

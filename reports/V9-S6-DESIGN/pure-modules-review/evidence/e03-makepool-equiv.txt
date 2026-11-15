@@ -1,0 +1,14 @@
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python reports/V9-S6-DESIGN/pure-modules-review/evidence/makepool_equiv.py
+extracted from src/ainerzero/v9/experiments/s4/learned_mlx.py : ['ARENA', 'RADIUS', 'N_PILLARS', 'ROLLOUT', 'P_HIDDEN', 'VISIBLE_SIGMA', 'HIDDEN_SIGMA', 'P_DROP', 'GHOSTS', 'GHOST_SIGMA', 'EXACT_FRAC', 'Pool', 'perturb', 'make_pool']
+mlx imported: False
+ROLLOUT (1, 5, 10) == sandbox.ROLLOUT (1, 5, 10) True
+states: 1259 from 10 worlds; disk counts [4, 5, 6, 7, 8, 10]
+samples per disk count: {4: 242, 5: 124, 6: 253, 7: 247, 8: 254, 10: 139} | (disk count, world) groups per n: {4: 2, 5: 1, 6: 2, 7: 2, 8: 2, 10: 1}
+samples with a disk contact at step 1 (make_pool labels): 104
+fields compared: ['p', 'v', 'pil', 'contact', 'p1', 'v1', 'p5', 'v5', 'p10', 'v10']
+dtypes make_pool: {'p': 'float32', 'v': 'float32', 'pil': 'float32', 'contact': 'float32', 'p1': 'float32', 'v1': 'float32', 'p5': 'float32', 'v5': 'float32', 'p10': 'float32', 'v10': 'float32'}
+dtypes reveal   : {'p': 'float32', 'v': 'float32', 'pil': 'float32', 'contact': 'float32', 'p1': 'float32', 'v1': 'float32', 'p5': 'float32', 'v5': 'float32', 'p10': 'float32', 'v10': 'float32'}
+bit-for-bit mismatches (make_pool vs sim_labels, make_pool vs CandidatePool.reveal): none
+batched (126 samples) vs one-at-a-time, 10 steps, float64: identical p True, v True
+control: states rounded to float32 before simulating -> fields differing from make_pool: ['p1', 'v1', 'p5', 'v5', 'p10', 'v10']
+control: make_pool p5 vs sim_labels p10 equal: False

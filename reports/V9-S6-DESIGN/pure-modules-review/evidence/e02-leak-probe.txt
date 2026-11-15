@@ -1,0 +1,38 @@
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python reports/V9-S6-DESIGN/pure-modules-review/evidence/leak_probe.py
+sandbox from /Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/sandbox.py
+mlx imported: False
+L1 zero-arg callables invoked before any reveal: ['__dir__', '__hash__', '__len__', '__repr__', '__sizeof__', '__str__', 'log', 'remaining', 'revealed_ids', 'revealed_pool', 'states']
+L1 simulator calls: 0 | labeller calls: 0 | _outcomes keys: []
+L1 states() fields: {4: ['id', 'p', 'pil', 'v'], 6: ['id', 'p', 'pil', 'v'], 8: ['id', 'p', 'pil', 'v']} | any label key: False
+L1 instance __dict__ keys: ['_first_id', '_index', '_labeller', '_log', '_outcomes', '_pool_type', '_revealed', '_revealed_set', '_states']
+L2 after reveal([13,2,8]), reveal([0]): _outcomes keys [0, 2, 8, 13] | revealed [13, 2, 8, 0] | labeller calls (rows per call) [1, 1, 1, 1] | simulator calls 40
+L3 _assemble([5]) on an unrevealed id: KeyError 5
+L4 reveal([0,1,8,9]) with n=6 failing: simulator down for n=6
+L4 labeller calls (n per call): [4, 6] | revealed [] | log [] | _outcomes keys [] | remaining has 0,1,8,9: True
+L5 reveal([3]) with a failing pool_type: pool type rejected
+L5 afterwards: revealed [3] | log [{'call': 0, 'ids': [3]}] | _outcomes keys [3]
+L6 repeat across calls: ValueError: ids already revealed: [2]
+L6 repeat within call: ValueError: duplicate id within one reveal
+L6 past the end: IndexError: id out of range
+L6 negative: IndexError: id out of range
+L6 empty: ValueError: reveal needs at least one id
+L6 2-D: ValueError: ids must be one-dimensional
+L6 float: TypeError: ids must be integers
+L6 bool: TypeError: ids must be integers
+L6 object: TypeError: ids must be integers
+L6 uint64 huge: IndexError: id out of range
+L6 valid then out of range: IndexError: id out of range
+L6 labeller calls caused by the bad inputs: 0 | revealed [1, 2] | log calls 1 | _outcomes keys [1, 2]
+L7 after writing into the returned arrays: revealed_pool v1 max 0.8846113085746765 | p min 0.8207568526268005 | writeable returned: True
+L8 stored states unchanged after a scribbling labeller: True
+L9 deepcopy(pool).reveal([9]) works: True | simulator calls for it: 10 | original log [{'call': 0, 'ids': [0]}]
+L9 pickle carries outcomes only for revealed ids: [0] | bytes 5328
+L10 W.physics on the float32 public state vs revealed p1, v1: max |diff| 9.5367431640625e-07 0.0
+L11 log after the caller changes its id array: [{'call': 0, 'ids': [4, 5]}] | revealed [4, 5]
+L12 methods referring to _simulate (attribute or bare name): ['reveal']
+L12 methods referring to _labeller (attribute or bare name): ['__init__', '_simulate']
+L12 methods referring to _outcomes (attribute or bare name): ['__init__', '_assemble', 'reveal']
+L12 methods referring to sim_labels (attribute or bare name): ['__init__']
+L12 methods referring to physics (attribute or bare name): []
+L12 methods referring to _assemble (attribute or bare name): ['reveal', 'revealed_pool']
+L12 class dict: ['__dict__', '__doc__', '__init__', '__len__', '__module__', '__slotnames__', '__weakref__', '_assemble', '_check_new', '_groups', '_simulate', 'log', 'remaining', 'reveal', 'revealed_ids', 'revealed_pool', 'states']

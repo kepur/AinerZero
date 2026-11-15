@@ -1,0 +1,548 @@
+HEAD 4cdbee9f21e213fd47434b43c34b6e8a9523efc3
+
+===== C1
+$ sed -n '41,59p' src/ainerzero/v9/experiments/s6/sandbox.py | nl -ba -v41
+    41	def sim_labels(P: np.ndarray, V: np.ndarray, PIL: np.ndarray) -> dict[str, np.ndarray]:
+    42	    """Simulator outcome of each state, labelled as ``learned_mlx.make_pool`` does: step 1 with the
+    43	    disk-contact log, then steps 2..10; positions and velocities after 1, 5 and 10 steps. P, V
+    44	    [S, n, 2] and PIL [S, 3, 3] in float64. Returns float32 arrays."""
+    45	    S_, n = P.shape[0], P.shape[1]
+    46	    out = {k: np.empty((S_, n, 2)) for k in LABEL_KEYS if k != "contact"}
+    47	    contact = np.zeros((S_, n, n), dtype=np.float32)
+    48	    for b in range(S_):
+    49	        pillars = tuple(map(tuple, PIL[b]))
+    50	        p, v, c = W.physics(P[b:b + 1], V[b:b + 1], pillars, log=True)
+    51	        for kind, i, j in c:
+    52	            if kind == "disk":
+    53	                contact[b, i, j] = contact[b, j, i] = 1.0
+    54	        for k in range(1, max(ROLLOUT) + 1):
+    55	            if k > 1:
+    56	                p, v, _ = W.physics(p, v, pillars)
+    57	            if k in ROLLOUT:
+    58	                out[f"p{k}"][b], out[f"v{k}"][b] = p[0], v[0]
+    59	    return {"contact": contact, **{k: a.astype(np.float32) for k, a in out.items()}}
+
+===== C2
+$ grep -n 'def reveal' -A 11 src/ainerzero/v9/experiments/s6/sandbox.py
+120:    def revealed_ids(self) -> np.ndarray:
+121-        """Global ids revealed so far, in reveal order."""
+122-        return np.array(self._revealed, dtype=np.int64)
+123-
+124-    def log(self) -> list[dict[str, Any]]:
+125-        """One entry per ``reveal`` call: {"call": k (from 0), "ids": [...]}. A copy."""
+126-        return [{"call": r["call"], "ids": list(r["ids"])} for r in self._log]
+127-
+128-    # --- the sandbox ----------------------------------------------------------------------------------------
+129:    def reveal(self, ids) -> Any:
+130-        """Run the sandbox on these candidates (at least one): simulate their outcomes and return exactly
+131-        these samples with labels, grouped by disk count (ascending), in the given order within a group.
+132-        Each id may be revealed once; a repeat (within the call or across calls) raises before anything is
+133-        simulated. If simulating fails, nothing is registered."""
+134-        ids = self._check_new(ids)
+135-        outcomes = self._simulate(ids)
+136-        self._revealed.extend(ids)
+137-        self._revealed_set.update(ids)
+138-        self._outcomes.update(outcomes)
+139-        self._log.append({"call": len(self._log), "ids": list(ids)})
+140-        return self._assemble(ids)
+--
+142:    def revealed_pool(self) -> Any:
+143-        """Every revealed sample so far, in reveal order within each disk count: the training pool."""
+144-        return self._assemble(list(self._revealed))
+145-
+146-    # --- private ----------------------------------------------------------------------------------------------
+147-    def _check_new(self, ids) -> list[int]:
+148-        arr = np.asarray(ids)
+149-        if arr.ndim != 1:
+150-            raise ValueError("ids must be one-dimensional")
+151-        if arr.size == 0:
+152-            raise ValueError("reveal needs at least one id")
+153-        if not np.issubdtype(arr.dtype, np.integer):
+
+===== C3
+$ sed -n '173,193p' src/ainerzero/v9/experiments/s6/sandbox.py | nl -ba -v173
+   173	    def _simulate(self, ids: list[int]) -> dict[int, dict[str, np.ndarray]]:
+   174	        """The only call of the labeller; ``reveal`` is its only caller (checked by a test)."""
+   175	        out = {}
+   176	        for n, (gs, rows) in self._groups(ids).items():
+   177	            e = self._states[n]
+   178	            lab = self._labeller(e["p"][rows], e["v"][rows], e["pil"][rows])
+   179	            missing = set(LABEL_KEYS) - set(lab)
+   180	            if missing:
+   181	                raise ValueError(f"labeller did not return {sorted(missing)}")
+   182	            for j, g in enumerate(gs):
+   183	                out[g] = {k: np.array(lab[k][j], dtype=np.float32, copy=True) for k in LABEL_KEYS}
+   184	        return out
+   185	
+   186	    def _assemble(self, ids: list[int]) -> Any:
+   187	        """Revealed ids only (raises KeyError otherwise)."""
+   188	        by_n = {}
+   189	        for n, (gs, rows) in sorted(self._groups(ids).items()):
+   190	            e = self._states[n]
+   191	            by_n[n] = {**{k: e[k][rows].astype(np.float32) for k in STATE_KEYS},
+   192	                       **{k: np.stack([self._outcomes[g][k] for g in gs]) for k in LABEL_KEYS}}
+   193	        return self._pool_type(by_n)
+
+===== C4
+$ sed -n '101,111p' src/ainerzero/v9/experiments/s6/sandbox.py | nl -ba -v101
+   101	    def states(self) -> dict[int, dict[str, np.ndarray]]:
+   102	        """Per disk count n: ``id`` [S] (global ids) and p, v [S, n, 2], pil [S, 3, 3] in float32.
+   103	        Fresh read-only copies; no outcome."""
+   104	        out = {}
+   105	        for n, e in self._states.items():
+   106	            ids = np.arange(self._first_id[n], self._first_id[n] + len(e["p"]), dtype=np.int64)
+   107	            row = {"id": ids, **{k: v.astype(np.float32) for k, v in e.items()}}
+   108	            for a in row.values():
+   109	                a.flags.writeable = False
+   110	            out[n] = row
+   111	        return out
+
+===== C5
+$ sed -n '191,226p' src/ainerzero/v9/experiments/s4/learned_mlx.py | nl -ba -v191
+   191	def make_pool(episodes: Sequence, n_samples: int, rng: np.random.Generator, physics, *, exact_frac: float = EXACT_FRAC) -> Pool:
+   192	    """Draw states from the episodes, perturb them, label with ``physics`` rolled out 1, 5 and 10 steps.
+   193	
+   194	    Step 1 runs per sample (the simulator logs contacts of its first copy only); steps 2-10 run
+   195	    batched over the samples of one episode with one disk count."""
+   196	    draws = []
+   197	    for _ in range(n_samples):
+   198	        e = int(rng.integers(len(episodes)))
+   199	        s = episodes[e].steps[int(rng.integers(len(episodes[e].steps)))]
+   200	        pos, vel = perturb(s.positions, s.velocities, rng, exact=rng.random() < exact_frac)
+   201	        draws.append((e, pos, vel))
+   202	    groups: dict[tuple[int, int], list[int]] = {}
+   203	    for i, (e, pos, _) in enumerate(draws):
+   204	        groups.setdefault((len(pos), e), []).append(i)
+   205	    rows: dict[int, dict[str, list]] = {}
+   206	    for (n, e), idx in sorted(groups.items()):
+   207	        pillars = tuple(map(tuple, episodes[e].pillars))
+   208	        P = np.stack([draws[i][1] for i in idx]); V = np.stack([draws[i][2] for i in idx])
+   209	        contact = np.zeros((len(idx), n, n), dtype=np.float32)
+   210	        p1, v1 = np.empty_like(P), np.empty_like(V)
+   211	        for b in range(len(idx)):
+   212	            pb, vb, c = physics(P[b:b + 1], V[b:b + 1], pillars, log=True)
+   213	            p1[b], v1[b] = pb[0], vb[0]
+   214	            for kind, i, j in c:
+   215	                if kind == "disk":
+   216	                    contact[b, i, j] = contact[b, j, i] = 1.0
+   217	        out = rows.setdefault(n, {"p": [], "v": [], "pil": [], "contact": [], **{f"{x}{k}": [] for k in ROLLOUT for x in "pv"}})
+   218	        out["p"].append(P); out["v"].append(V); out["contact"].append(contact)
+   219	        out["pil"].append(np.broadcast_to(np.array(pillars, dtype=np.float64), (len(idx), N_PILLARS, 3)))
+   220	        p, v = p1, v1
+   221	        for k in range(1, max(ROLLOUT) + 1):
+   222	            if k > 1:
+   223	                p, v, _ = physics(p, v, pillars)
+   224	            if k in ROLLOUT:
+   225	                out[f"p{k}"].append(p); out[f"v{k}"].append(v)
+   226	    return Pool({n: {key: np.concatenate(val).astype(np.float32) for key, val in d.items()} for n, d in sorted(rows.items())})
+
+===== C6
+$ sed -n '77,94p' tests/v9/experiments/test_s6_sandbox.py | nl -ba -v77
+    77	def test_pick_loop_never_simulates():
+    78	    spy = Spy()
+    79	    cp = _pool(spy)
+    80	    rng = np.random.default_rng(5)
+    81	    st = cp.states()
+    82	    flags = S.geo_flags(st)
+    83	    score = np.concatenate([np.linalg.norm(st[n]["v"], axis=-1).max(-1) for n in sorted(st)])
+    84	    rem = cp.remaining()
+    85	    S.pick_random(rem, 4, rng); S.pick_top(score, rem, 4); S.pick_geo(flags, rem, 4, rng)
+    86	    len(cp); cp.revealed_ids(); cp.log(); cp.revealed_pool()
+    87	    for name in dir(cp):
+    88	        if name.startswith("_") or name == "reveal":
+    89	            continue
+    90	        attr = getattr(cp, name)
+    91	        if callable(attr) and all(p.default is not p.empty for p in inspect.signature(attr).parameters.values()):
+    92	            attr()
+    93	    assert spy.calls == []
+    94	    assert cp._outcomes == {}
+
+===== C7
+$ sed -n '108,115p' tests/v9/experiments/test_s6_sandbox.py | nl -ba -v108
+   108	def test_a_failed_simulation_registers_nothing():
+   109	    cp = S.CandidatePool(_states(), labeller=Spy(fail=True))
+   110	    with pytest.raises(RuntimeError, match="sandbox unavailable"):
+   111	        cp.reveal([0, 1])
+   112	    assert cp.revealed_ids().tolist() == [] and cp.log() == [] and cp.remaining().tolist() == list(range(15))
+   113	    assert cp._outcomes == {}
+   114	    cp._labeller = Spy()
+   115	    assert len(cp.reveal([0, 1]).by_n[4]["p"]) == 2 and cp.log() == [{"call": 0, "ids": [0, 1]}]
+
+===== C8
+$ sed -n '136,147p' tests/v9/experiments/test_s6_sandbox.py | nl -ba -v136
+   136	def test_only_reveal_reaches_the_labeller():
+   137	    src = inspect.getsource(S.CandidatePool)
+   138	    assert _references(src, "_simulate") == {"reveal"}
+   139	    assert _references(src, "_labeller") == {"__init__", "_simulate"}
+   140	    assert _references(src, "_outcomes") == {"__init__", "reveal", "_assemble"}
+   141	
+   142	
+   143	def test_class_members_are_the_documented_ones():
+   144	    public = {n for n in vars(S.CandidatePool) if not n.startswith("_")}
+   145	    assert public == {"states", "remaining", "revealed_ids", "log", "reveal", "revealed_pool"}
+   146	    dunders = {n for n, v in vars(S.CandidatePool).items() if n.startswith("__") and callable(v)}
+   147	    assert dunders == {"__init__", "__len__"}
+
+===== C9
+$ sed -n '197,213p' tests/v9/experiments/test_s6_sandbox.py | nl -ba -v197
+   197	def test_sim_labels_is_the_simulator_rollout():
+   198	    ep = W.generate_episode("s6t-sandbox-contacts", 0, 8, steps=300)
+   199	    hit = [t for t in range(len(ep.steps)) if any(k == "disk" for k, i, j in ep.steps[t].contacts)][:2]
+   200	    ts = hit + [t for t in range(len(ep.steps)) if t not in hit][:1]
+   201	    assert len(hit) == 2                                     # the sample includes disk contacts
+   202	    P = np.stack([ep.steps[t].positions for t in ts]); V = np.stack([ep.steps[t].velocities for t in ts])
+   203	    PIL = np.broadcast_to(np.asarray(ep.pillars, float), (3, 3, 3)).copy()
+   204	    lab = S.sim_labels(P, V, PIL)
+   205	    assert lab["contact"][:2].sum() > 0
+   206	    for b in range(3):
+   207	        pillars = tuple(map(tuple, PIL[b]))
+   208	        p, v, c = W.physics(P[b:b + 1], V[b:b + 1], pillars, log=True)
+   209	        np.testing.assert_array_equal(lab["p1"][b], p[0].astype(np.float32))
+   210	        np.testing.assert_array_equal(lab["v1"][b], v[0].astype(np.float32))
+   211	        pairs = {(min(i, j), max(i, j)) for kind, i, j in c if kind == "disk"}
+   212	        got = {(i, j) for i in range(8) for j in range(i + 1, 8) if lab["contact"][b, i, j]}
+   213	        assert got == pairs and np.array_equal(lab["contact"][b], lab["contact"][b].T)
+
+===== C10
+$ sed -n '48,65p' src/ainerzero/v9/experiments/s6/analysis.py | nl -ba -v48
+    48	GATES: dict[str, dict[str, Any]] = {
+    49	    "GS":   {"set": "main6", "stat": "D", "form": "diff", "a": "E", "b": "R",
+    50	             "point": (">=", 0.03), "interval": ("lower", ">", 0.0), "per_replicate": 0.03},
+    51	    "GT":   {"set": "main6", "stat": "D", "form": "half_gain", "a": "E", "b": "R", "c": "T",
+    52	             "point": None, "interval": ("lower", ">", 0.0)},
+    53	    "GZ-D": {"set": "main6", "stat": "D", "form": "diff", "a": "E", "b": "Z",
+    54	             "point": (">=", -0.02), "interval": ("lower", ">", -0.04)},
+    55	    "GZ-W": {"set": "main6", "stat": "wall_pillar", "form": "ratio", "a": "E", "b": "Z",
+    56	             "point": ("<=", 0.95), "interval": ("upper", "<", 1.0)},
+    57	    "GK-A": {"set": "main6", "stat": "all", "form": "ratio", "a": "E", "b": "R",
+    58	             "point": ("<=", 1.10), "interval": ("upper", "<=", 1.20)},
+    59	    "GK-F": {"set": "main6", "stat": "free", "form": "ratio", "a": "E", "b": "Z",
+    60	             "point": ("<=", 1.10), "interval": ("upper", "<=", 1.20)},
+    61	    "GP":   {"set": "main6", "stat": "D", "form": "diff", "a": "P", "b": "R",
+    62	             "point": (">=", 0.03), "interval": ("lower", ">", 0.0)},
+    63	    "GX":   {"set": "extrap10", "stat": "D", "form": "diff", "a": "E", "b": "R",
+    64	             "point": (">=", 0.02), "interval": ("lower", ">", 0.0)},
+    65	}
+
+===== C11
+$ sed -n '72,90p' src/ainerzero/v9/experiments/s6/analysis.py | nl -ba -v72
+    72	def t_cdf(x: float, df: int) -> float:
+    73	    """Student t CDF for a positive integer number of degrees of freedom (closed-form series)."""
+    74	    if df < 1 or int(df) != df:
+    75	        raise ValueError("df must be a positive integer")
+    76	    th = math.atan(x / math.sqrt(df))
+    77	    c2, s = math.cos(th) ** 2, math.sin(th)
+    78	    if df % 2 == 1:
+    79	        acc, term = 0.0, math.cos(th)
+    80	        if df > 1:
+    81	            acc = term
+    82	            for j in range(1, (df - 3) // 2 + 1):
+    83	                term *= c2 * (2 * j) / (2 * j + 1)
+    84	                acc += term
+    85	        return 0.5 + (th + s * acc) / math.pi if df > 1 else 0.5 + th / math.pi
+    86	    acc, term = 1.0, 1.0
+    87	    for j in range(1, (df - 2) // 2 + 1):
+    88	        term *= c2 * (2 * j - 1) / (2 * j)
+    89	        acc += term
+    90	    return 0.5 + 0.5 * s * acc
+
+===== C12
+$ sed -n '195,229p' src/ainerzero/v9/experiments/s6/analysis.py | nl -ba -v195
+   195	def world_draws(n_worlds: dict[str, int], n: int, seed: int) -> dict[str, np.ndarray]:
+   196	    """Per draw, in this order: the main6 world ids, then the extrap10 world ids, with replacement from one
+   197	    generator. Shared by every arm and replicate."""
+   198	    rng = np.random.default_rng(seed)
+   199	    out = {t: np.empty((n, n_worlds[t]), dtype=np.int64) for t in TEST_SETS}
+   200	    for b in range(n):
+   201	        for t in TEST_SETS:
+   202	            out[t][b] = rng.integers(0, n_worlds[t], n_worlds[t])
+   203	    return out
+   204	
+   205	
+   206	def _multiplicity(idx: np.ndarray, size: int) -> np.ndarray:
+   207	    out = np.zeros((idx.shape[0], size))
+   208	    for b in range(idx.shape[0]):
+   209	        out[b] = np.bincount(idx[b], minlength=size)
+   210	    return out
+   211	
+   212	
+   213	def world_bootstrap(data: dict, n: int = N_BOOT, seed: int = SEED) -> dict[str, np.ndarray]:
+   214	    """Per gate, n draws of its statistic with all replicates kept and the test worlds resampled (paired)."""
+   215	    _replicate_count(data)
+   216	    n_worlds = {t: data[t]["counts"].shape[0] for t in TEST_SETS}
+   217	    draws = world_draws(n_worlds, n, seed)
+   218	    arm_stats = {}
+   219	    for t in TEST_SETS:
+   220	        d = data[t]
+   221	        Mw = _multiplicity(draws[t], n_worlds[t])                         # [n, W]
+   222	        C = Mw @ np.asarray(d["counts"], float)                           # [n, 4]
+   223	        B = Mw @ np.asarray(d["eb"], float)                               # [n]
+   224	        arm_stats[t] = {}
+   225	        for arm in GATE_ARMS:
+   226	            S = np.einsum("bw,knwc->bknc", Mw, np.asarray(d["sums"][arm], float))   # [n, K, N, 4]
+   227	            per = _per_rep_net(S, C[:, None, None, :], B[:, None, None])           # [n, K, N]
+   228	            arm_stats[t][arm] = {k: v.mean((1, 2)) for k, v in per.items()}
+   229	    return {g: _gate_value(spec, arm_stats[spec["set"]]) for g, spec in GATES.items()}
+
+===== C13
+$ sed -n '237,275p' src/ainerzero/v9/experiments/s6/analysis.py | nl -ba -v237
+   237	def interval(spec: dict, theta_hat: float, theta_k: list[float], boot: np.ndarray, p: float) -> tuple[float, float, dict]:
+   238	    """Two-sided interval at level p per side (p = 1 - alpha/2 or 1 - alpha/(2m)) on the gate's scale."""
+   239	    th = float(_to_scale(spec, theta_hat))
+   240	    tk = np.asarray(_to_scale(spec, np.asarray(theta_k, float)), float)
+   241	    bs = np.asarray(_to_scale(spec, boot), float)
+   242	    K = len(tk)
+   243	    if not (math.isfinite(th) and np.all(np.isfinite(tk)) and np.all(np.isfinite(bs))):
+   244	        return float("nan"), float("nan"), {"se": float("nan")}
+   245	    s_rep = float(np.std(tk, ddof=1)) if K > 1 else 0.0
+   246	    se_w = float(np.std(bs, ddof=1))
+   247	    se = math.sqrt(s_rep ** 2 / K + se_w ** 2)
+   248	    q = t_ppf(p, K - 1) if K > 1 else norm_ppf(p)
+   249	    lo, hi = _from_scale(spec, th - q * se), _from_scale(spec, th + q * se)
+   250	    return lo, hi, {"s_rep": s_rep, "se_w": se_w, "se": se, "q": q, "df": K - 1 if K > 1 else None}
+   251	
+   252	
+   253	def decide(data: dict, n: int = N_BOOT, seed: int = SEED) -> dict[str, Any]:
+   254	    K = _replicate_count(data)
+   255	    boot = world_bootstrap(data, n, seed)
+   256	    points = {t: point_stats(data, t) for t in TEST_SETS}
+   257	    per_rep = {t: [point_stats(data, t, [k]) for k in range(K)] for t in TEST_SETS}
+   258	    p_bonf, p_95 = 1 - ALPHA / (2 * M), 1 - ALPHA / 2
+   259	    out = {}
+   260	    for g, spec in GATES.items():
+   261	        x = float(_gate_value(spec, points[spec["set"]]))
+   262	        tk = [float(_gate_value(spec, per_rep[spec["set"]][k])) for k in range(K)]
+   263	        lo95, hi95, _ = interval(spec, x, tk, boot[g], p_95)
+   264	        lo, hi, parts = interval(spec, x, tk, boot[g], p_bonf)
+   265	        point_ok = math.isfinite(x) and (spec["point"] is None or _holds(spec["point"][0], x, spec["point"][1]))
+   266	        end, op, v = spec["interval"]
+   267	        interval_ok = _holds(op, lo if end == "lower" else hi, v)
+   268	        row = {"point": x, "per_replicate": tk, "ci95": [lo95, hi95], "bonferroni": [lo, hi], **parts,
+   269	               "point_ok": bool(point_ok), "interval_ok": interval_ok}
+   270	        if "per_replicate" in spec:
+   271	            row["per_replicate_ok"] = all(_holds(">=", p, spec["per_replicate"]) for p in tk)
+   272	        row["passed"] = bool(row["point_ok"] and row["interval_ok"] and row.get("per_replicate_ok", True))
+   273	        out[g] = row
+   274	    return {"gates": out, "all_pass": all(r["passed"] for r in out.values()), "m": M, "alpha": ALPHA,
+   275	            "n_boot": n, "seed": seed, "replicates": K, "levels": {"bonferroni": p_bonf, "ci95": p_95}}
+
+===== C14
+$ sed -n '18,38p' tests/v9/experiments/test_s6_analysis.py | nl -ba -v18
+    18	def make_data(K=5, N=3, W=(20, 10), KG=3, seed=0, fact=FACT, noise=0.03):
+    19	    rng = np.random.default_rng(seed)
+    20	    data = {}
+    21	    for t, Wt in zip(AN.TEST_SETS, W):
+    22	        counts = rng.integers(5, 40, (Wt, 4)) * np.array([1, 4, 2, 60])
+    23	        eb = counts[:, 0] * 0.45 * rng.uniform(0.9, 1.1, Wt)
+    24	        sums = {}
+    25	        for arm in AN.ARMS:
+    26	            R = KG if arm == "G" else K
+    27	            f = np.asarray(fact[arm])
+    28	            sums[arm] = counts[None, None] * ERR * f * rng.lognormal(0, noise, (R, N, Wt, 4))
+    29	        data[t] = {"sums": sums, "counts": counts, "eb": eb}
+    30	    return data
+    31	
+    32	
+    33	# --- distributions ------------------------------------------------------------------------------------------
+    34	@pytest.mark.parametrize("p,df,want", [(0.975, 1, 12.7062), (0.975, 2, 4.30265), (0.975, 3, 3.18245),
+    35	                                       (0.975, 4, 2.77645), (1 - 0.025 / 8, 4, 5.26106), (0.975, 10, 2.22814),
+    36	                                       (0.975, 30, 2.04227)])
+    37	def test_t_quantiles(p, df, want):
+    38	    assert AN.t_ppf(p, df) == pytest.approx(want, abs=2e-5)
+
+===== C15
+$ sed -n '203,212p' tests/v9/experiments/test_s6_analysis.py | nl -ba -v203
+   203	def test_decide_on_synthetic_effects():
+   204	    res = AN.decide(make_data(), n=400)
+   205	    g = res["gates"]
+   206	    assert res["m"] == 8 and res["replicates"] == 5 and res["levels"]["bonferroni"] == pytest.approx(1 - 0.025 / 8)
+   207	    assert g["GS"]["passed"] and g["GP"]["passed"] and g["GX"]["passed"] and g["GT"]["passed"]
+   208	    assert g["GZ-W"]["point"] == pytest.approx(0.90, abs=0.02) and g["GZ-W"]["passed"]
+   209	    assert g["GK-F"]["point"] == pytest.approx(1.30 / 1.28, abs=0.02)
+   210	    for row in g.values():
+   211	        assert row["bonferroni"][0] <= row["ci95"][0] <= row["point"] <= row["ci95"][1] <= row["bonferroni"][1]
+   212	        assert len(row["per_replicate"]) == 5
+
+===== C16
+$ sed -n '139,147p' tests/v9/experiments/test_s6_analysis.py | nl -ba -v139
+   139	def test_interval_t_on_replicates_plus_world_bootstrap():
+   140	    spec = AN.GATES["GS"]
+   141	    tk = [0.05, 0.07, 0.06, 0.09, 0.08]
+   142	    boot = np.array([0.069, 0.071] * 50)
+   143	    se_w = np.std(boot, ddof=1)
+   144	    lo, hi, parts = AN.interval(spec, 0.07, tk, boot, 0.975)
+   145	    se = math.sqrt(np.std(tk, ddof=1) ** 2 / 5 + se_w ** 2)
+   146	    assert parts["se"] == pytest.approx(se) and parts["df"] == 4
+   147	    assert lo == pytest.approx(0.07 - 2.77645 * se, abs=1e-6) and hi == pytest.approx(0.07 + 2.77645 * se, abs=1e-6)
+
+===== C17
+$ sed -n '218,227p' reports/V9-S6-DESIGN/DESIGN-r2.md | nl -ba -v218
+   218	| 门 | 判据 | 摸底值 |
+   219	|---|---|---|
+   220	| **GS 自选胜随机** | D(E) − D(R) ≥ +0.03，下界 > 0；且每个重复各自 ≥ +0.03 | +0.068 到 +0.083（四次合并测试）；6 盘 +0.072 |
+   221	| **GT 接近手工课程** | [D(E) − D(R)] − 0.5 × [D(T) − D(R)] 的下界 > 0，即至少拿到手工课程增益的一半 | C 世界 6 盘 +0.027（只按世界 bootstrap、m=8 时下界 +0.013）；四次合并测试均值 +0.046 |
+   222	| **GZ-D 碰撞不输代用规则** | D(E) − D(Z) ≥ −0.02，下界 > −0.04 | −0.008 [−0.022, +0.005]（C，6 盘）；−0.009（D） |
+   223	| **GZ-W 墙柱胜代用规则** | 墙柱误差 E / Z ≤ 0.95，上界 < 1.0 | 0.902 [0.883, 0.922]（C）；0.927（D） |
+   224	| **GK-A 全部盘步** | 全部盘步误差 E / R ≤ 1.10，上界 ≤ 1.20 | 1.00–1.04 |
+   225	| **GK-F 自由运动代价不大于代用规则** | 自由误差 E / Z ≤ 1.10，上界 ≤ 1.20 | 1.015（C，6 盘）；1.002（D） |
+   226	| **GP epinet 也胜随机** | D(P) − D(R) ≥ +0.03，下界 > 0 | +0.069（E2） |
+   227	| **GX 外推到 10 盘** | D(E) − D(R) ≥ +0.02，下界 > 0 | +0.065（F） |
+
+===== C18
+$ sed -n '237,252p' reports/V9-S6-DESIGN/DESIGN-r2.md | nl -ba -v237
+   237	**统计**（r1 复核必修 1 原样采用；实现在 `s6/analysis.py`）：
+   238	- **点值 θ̂**：全部重复、全部网络、全部测试世界。
+   239	  - D 是 1 − Σ碰撞误差 / ΣE-B 误差；
+   240	  - 各类误差是 Σ误差 / Σ盘步数；
+   241	  - 分子分母对重复、网络、世界一起求和。因为盘步数与 E-B 误差不随网络和重复变化，这等于先对每个（重复, 网络）算值再平均。
+   242	- **θ_k**：只用重复 k、全部测试世界，同一公式。s_rep = SD(θ_k)，ddof = 1。
+   243	- **se_w**：保留全部重复，只对测试世界做配对 bootstrap，10000 次。每次抽中的世界各臂、各重复共用。取统计量的标准差。
+   244	- **se** = √(s_rep²/K + se_w²)，K = 5。
+   245	- **区间** = θ̂ ∓ q·se：
+   246	  - Bonferroni 用 q = t(K−1, 1 − 0.05/(2·8)) = 5.261；95% 用 q = t(4, 0.975) = 2.776；
+   247	  - 比值类门（GZ-W、GK-A、GK-F）在 log 尺度上算，再取指数。
+   248	- **m = 8**：GS、GT、GZ-D、GZ-W、GK-A、GK-F、GP、GX 各一个区间判据。
+   249	- 每个门的点值与区间判据都要过；无定义（NaN）按不过算。
+   250	- GS 另要求「每个重复各自 ≥ +0.03」：用 θ_k。
+   251	- G 只有 3 个重复，只出点值描述量。
+   252	- K = 1（只用于探针）时没有重复层：s_rep 取 0，q 用正态分位数。探针的区间只用来检查流程，不作结论。
+
+===== C19
+$ sed -n '280p' reports/V9-S6-DESIGN/DESIGN-r2.md | nl -ba -v280
+   280	| **标签隔离** | 四层，都要过：<br>① **未选中样本的结果不存在。** 候选池（`sandbox.CandidatePool`）只存状态，`reveal` 时才调模拟器生成标签。每个样本只能揭示一次；揭示日志逐轮核对：揭示的正是当轮选中的样本。没有可偷读的标签，也就不需要「偷读」的负对照。<br>② **候选的来源丢弃。** 候选池构造完后，丢弃轨迹 `Episode` 对象（它的 `Step` 里有接触记录）。<br>③ **封印。** 挑选在封印上下文里运行，期间以下调用一律抛错：`world.physics`、`world.generate_episode`、`learned_mlx.make_pool`、`make_sigma_pool`、`analysis.train_worlds`、`models.true_physics`、`models.bounce`、`sandbox.sim_labels`、候选池的 `reveal` 和 `_simulate`。负对照逐条测试（`test_s6_cells_native.py`）。另加静态检查：挑选路径的函数里不出现这些名字，挑选只调用候选池的 `states()` 和 `remaining()`（`test_s6_cells_static.py`）。<br>④ **T 只读已揭示样本的标签。** T 只在训练批里读已揭示样本的接触标签，挑选与 R 相同（同一随机流）。 |
+
+===== C20
+$ sed -n '20,27p' reports/V9-S6-DESIGN/r1-review-sub/REPORT.md | nl -ba -v20
+    20	1. **把重复层的 bootstrap 换成 t 区间，并把统计写到实现者不会读出歧义。**
+    21	   - 问题：5 个重复有放回抽取，在 Bonferroni 水平（单侧 0.3125%）上，下界盖住真值的概率只有 0.957，名义是 0.9969；而且这个下界永远不会低于最差的那个重复（`evidence/bootstrap_5rep.out`）。写法如下：
+    22	     - 点值 θ̂：用全部 5 个重复 × 全部测试世界的「世界和之比」计算。各臂先对网络取平均；D 与各种比值的分子、分母都对重复和世界一起求和。
+    23	     - θ_k：只用重复 k、全部测试世界，按同一公式算出的值；s_rep = SD(θ_k)，ddof = 1。
+    24	     - se_w：5 个重复全部保留，只对测试世界做配对 bootstrap，10000 次。各臂、各重复共用同一组抽中的世界，取 θ* 的标准差。
+    25	     - se = √(s_rep²/5 + se_w²)。
+    26	     - Bonferroni 界 = θ̂ ∓ t₍₄, 1−0.025/8₎ · se，t₍₄, 0.996875₎ = 5.261。
+    27	     - 比值类门（GZ-W、GK-A、GK-F）在 log 尺度上做，再取指数。
+
+===== C21
+$ awk '(NR>=23 && NR<=34) || (NR>=43 && NR<=55) {print NR": "$0}' reports/V9-S6-DESIGN/sandbox-module-review/REPORT.md
+23: 1. **堵住「双下划线方法绕过 `reveal`」的测试缺口**（变异 N1 存活）。
+24:    - 变异：给类加 `__getitem__`，直接调 `self._take([g])`。这样可以拿到任意未揭示样本的标签，不查重、不记日志。现有 25 项全过。
+25:    - 原因有三：
+26:      - 白名单测试只看不以 `_` 开头的名字（`test_s6_sandbox.py:105`）；
+27:      - Poison 测试跳过以 `_` 开头的名字（`:92-94`）；
+28:      - AST 测试只查谁读 `_sealed_labels`（`:115`），不查谁调 `_take`。
+29:    - 建议补两条，补完后复跑 N1 应被杀死：
+30:      - AST 断言 `_take` 只被 `reveal`、`revealed_pool` 引用；
+31:      - 类自身定义的 dunder 只有 `__init__`、`__len__`。
+32: 2. **同分规则的测试分辨不出原型写法**（变异 N3 存活）。
+33:    - 把 `np.lexsort((rem, -sr))` 换回原型的 `np.argsort(-sr)`，测试全过。原因是现有用例只有 7 个元素。NumPy 2.5.3 在 16 个元素以内的结果恰好与「按编号升序」相同，17 个起就不同（`e09`）。
+34:    - 建议：用例规模大于 16（例如 200 个、三档分数），断言结果等于按 `(−分数, 编号)` 排序的前 k 个。
+43: 4. **N2 存活**：`reveal` 返回「迄今全部已揭示」而不只是本次的 id，测试不报错。
+44:    - 所有测试都只检查第一次 `reveal` 的返回值；第二次的返回值只被丢弃（`test_s6_sandbox_native.py:67`）。
+45:    - 这不算泄漏（返回的都是已揭示样本），但调用方若累积 `reveal` 的返回值，训练样本会重复。
+46:    - 建议断言第二次 `reveal` 只返回本次的 id。
+47: 5. **N5 存活**：`states()` 改成返回内部数组的只读视图，测试不报错。
+48:    - 调用方可以把视图的 `writeable` 改回 True，改写内部状态；之后揭示出来的是被改过的状态配上真标签。
+49:    - 现有「拷贝不是视图」测试只改了源池（`:69-75`），没改返回的数组。
+50:    - 建议断言返回数组 `owndata`，或者改写返回数组后检查内部不变。
+51: 6. `SHA256SUMS.txt` 的路径基准混用：前 6 行相对交付目录，后 6 行相对仓库根。在任一目录下 `shasum -c` 都有 6 项打不开（`e01`）。
+52: 7. 小问题，不影响正确性，只需写明或顺手改：
+53:    - `reveal([])` 也会占一个 call 编号并写进日志（`e04` P5）；
+54:    - `_canon` 不查编号范围，负编号会在 `score[rem]`、`f[rem]` 里回绕（P8）。之后 `reveal` 会报 IndexError，不会静默；
+55:    - 揭示出来的池按字母序排字段，与 `make_pool` 的字段顺序不同（`e14`）。现在没有东西依赖这个顺序。
+
+===== C22
+$ sed -n '134,155p' src/ainerzero/v9/experiments/s6/cells.py | nl -ba -v134
+   134	_SEALED = [(W, "physics"), (W, "generate_episode"), (L, "make_pool"), (L, "make_sigma_pool"),
+   135	           (A, "train_worlds"), (Mo, "true_physics"), (Mo, "bounce"), (S, "sim_labels"),
+   136	           (S.CandidatePool, "_simulate"), (S.CandidatePool, "reveal")]
+   137	
+   138	
+   139	@contextmanager
+   140	def sealed():
+   141	    """While open, the simulator, world generation, pool building and the pool's label door raise."""
+   142	    saved = [(obj, name, getattr(obj, name)) for obj, name in _SEALED if hasattr(obj, name)]
+   143	
+   144	    def trap(name):
+   145	        def _raise(*a, **k):
+   146	            raise SealBreach(f"a pick rule reached {name} while selection was sealed")
+   147	        return _raise
+   148	
+   149	    for obj, name, _ in saved:
+   150	        setattr(obj, name, trap(f"{getattr(obj, '__name__', obj)}.{name}"))
+   151	    try:
+   152	        yield
+   153	    finally:
+   154	        for obj, name, f in saved:
+   155	            setattr(obj, name, f)
+
+===== C23
+$ sed -n '280,300p' src/ainerzero/v9/experiments/s6/cells.py | nl -ba -v280
+   280	def select(arm: str, track: Track, k: int, per: int, cand_ns: str, rng: np.random.Generator | None) -> tuple[np.ndarray, str | None]:
+   281	    """The next ``per`` picks of one track. Runs sealed, on the CPU; returns (ids, score digest or None)."""
+   282	    prev = mx.default_device()
+   283	    mx.set_default_device(mx.cpu)
+   284	    try:
+   285	        with sealed():
+   286	            st = track.cp.states()
+   287	            rem = track.cp.remaining()
+   288	            if arm in ("R", "T"):
+   289	                return S.pick_random(rem, per, rng), None
+   290	            if arm == "G":
+   291	                return S.pick_geo(S.geo_flags(st), rem, per, rng), None
+   292	            if arm == "E":
+   293	                score = disagreement(st, [l.model for l in track.learners])
+   294	            elif arm == "Z":
+   295	                score = closest_pair(st)
+   296	            elif arm == "P":
+   297	                score = epinet_spread(st, track.learners[0].model)
+   298	            else:
+   299	                raise ValueError(f"unknown arm {arm!r}")
+   300	            return S.pick_top(score, rem, per), score_digest(score)
+
+===== C24
+$ awk '(NR>=8 && NR<=11) || (NR>=40 && NR<=47) {print NR": "$0}' tests/v9/experiments/test_s6_cells_static.py
+8: SELECTION = ("select", "disagreement", "epinet_spread", "closest_pair", "_per_id", "score_digest")
+9: FORBIDDEN = {"physics", "generate_episode", "make_pool", "make_sigma_pool", "train_worlds", "true_physics", "bounce",
+10:              "sim_labels", "reveal", "revealed_pool", "_simulate", "_outcomes", "_labeller", "candidate_source",
+11:              "candidate_worlds", "make_candidate_pool", "Episode", "steps", "contacts"}
+40: def test_select_reads_only_states_and_remaining_from_the_pool_and_runs_sealed():
+41:     fn = _functions()["select"]
+42:     pool_calls = {n.func.attr for n in ast.walk(fn) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+43:                   and isinstance(n.func.value, ast.Attribute) and n.func.value.attr == "cp"}
+44:     assert pool_calls == {"states", "remaining"}
+45:     withs = [n for n in ast.walk(fn) if isinstance(n, ast.With)]
+46:     assert any(isinstance(i.context_expr, ast.Call) and getattr(i.context_expr.func, "id", "") == "sealed"
+47:                for w in withs for i in w.items)
+
+===== C25
+$ grep -n 'A1 \|A11 \|baseline' reports/V9-S6-PHASE1/impl-evidence/mutate_pure.log
+3:== baseline: 57 passed in 1.92s
+16:== A1 Bonferroni with m = 6: 1 failed, 56 passed in 1.85s
+26:== A11 world draws not shared: extrap drawn first: 1 failed, 56 passed in 1.94s
+
+===== C26
+$ grep -n '11 个全部被杀死\|本模块的 11 个变异' reports/V9-S6-DESIGN/analysis-module/REPORT.md reports/V9-S6-DESIGN/DESIGN-r2.md
+reports/V9-S6-DESIGN/analysis-module/REPORT.md:81:本模块的 11 个变异全部被杀死：
+reports/V9-S6-DESIGN/DESIGN-r2.md:347:| 必修 1：5 个重复的 bootstrap 覆盖不足，写法有歧义 | 原样采用复核给的公式：重复层用 t 区间，世界层用配对 bootstrap，比值在 log 尺度上算；点值的定义写明（§4）。实现在 `s6/analysis.py`，用合成数据测试，变异 11 个全部被杀死 |
+
+===== C27
+$ grep -n 'If simulating fails, nothing is registered' src/ainerzero/v9/experiments/s6/sandbox.py
+133:        simulated. If simulating fails, nothing is registered."""
+
+===== C28
+$ grep -n 'K = 1 there is no' -A1 src/ainerzero/v9/experiments/s6/analysis.py
+26:             (Bonferroni, m = 8) or 0.975 (95%); ratio bounds are exponentiated. With K = 1 there is no
+27-             replicate layer: s_rep = 0 and q is the normal quantile (used only by the probe).
+
+===== C29
+$ grep -n 'cp = C.make_candidate_pool\|tracks = \[Track(make_candidate_pool' src/ainerzero/v9/experiments/s6/cells.py tests/v9/experiments/test_s6_cells_native.py
+src/ainerzero/v9/experiments/s6/cells.py:318:        tracks = [Track(make_candidate_pool(source), [make_learner(arm, s)]) for s in seeds]
+src/ainerzero/v9/experiments/s6/cells.py:320:        tracks = [Track(make_candidate_pool(source), [make_learner(arm, s) for s in seeds])]
+tests/v9/experiments/test_s6_cells_native.py:59:    cp = C.make_candidate_pool(source)
+tests/v9/experiments/test_s6_cells_native.py:103:    cp = C.make_candidate_pool(source)
+tests/v9/experiments/test_s6_cells_native.py:134:        cp = C.make_candidate_pool(source)
+
+===== C30
+$ grep -n '冒烟运行' reports/V9-S6-DESIGN/DESIGN-r2.md
+299:   - 1 个重复跑不到重复层的统计。这部分由合成数据的单元测试（`test_s6_analysis.py`）和冒烟运行（每臂 2 个重复）覆盖。
+354:| 应修 4：探针只有 1 个重复 | 重复层的统计由合成数据测试和每臂 2 个重复的冒烟运行覆盖（§7） |
