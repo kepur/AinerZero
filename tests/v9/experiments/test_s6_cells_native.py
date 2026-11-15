@@ -32,7 +32,7 @@ def cells(source, tmp_path_factory):
     return root, recs
 
 
-def test_candidate_states_distinct_deterministic_and_sorted(source):
+def test_candidate_states_distinct_deterministic_and_exact(source):
     assert C.n_states(source) == TINY.pool
     assert C.pool_digest(source) == C.pool_digest(C.candidate_source(NS, 0, TINY))
     assert C.pool_digest(source) != C.pool_digest(C.candidate_source(NS, 1, TINY))
@@ -99,12 +99,43 @@ def test_every_arm_runs_and_records(cells):
         assert all(d is None for d in recs[arm]["tracks"][0]["score_sha256"])
 
 
+def test_t_differs_from_r_only_by_its_curriculum(cells):
+    """T picks exactly what R picks with the same seeds, so its weights differ from R's only through the
+    collision curriculum in its batches; without the curriculum they would be bit-identical."""
+    root, recs = cells
+    assert recs["T"]["tracks"][0]["picks"] == recs["R"]["tracks"][0]["picks"]
+    t0 = mx.load(str(root / "T" / "r0-n0.safetensors"))
+    r0 = mx.load(str(root / "R" / "r0-n0.safetensors"))
+    assert set(t0) == set(r0)
+    assert any(not np.array_equal(np.array(t0[k]), np.array(r0[k])) for k in t0)
+    assert C.T_COLL_SHARE == 0.5
+
+
 def test_z_picks_the_closest_pairs(cells, source):
+    """Against an independent oracle (pairwise loop), not the module's own closest_pair."""
+    import math
     _, recs = cells
-    cp = C.make_candidate_pool(source)
-    score = C.closest_pair(cp.states())
+    st = C.make_candidate_pool(source).states()
+    score = np.empty(C.n_states(source))
+    for n, e in st.items():
+        for b, g in enumerate(e["id"]):
+            P = e["p"][b].astype(np.float64)
+            score[g] = -min(math.sqrt((P[i, 0] - P[j, 0]) ** 2 + (P[i, 1] - P[j, 1]) ** 2) for i in range(n) for j in range(i + 1, n))
     rem = np.setdiff1d(np.arange(C.n_states(source)), recs["Z"]["tracks"][0]["picks"][0])
-    assert recs["Z"]["tracks"][0]["picks"][1] == S.pick_top(score, rem, TINY.per).tolist()
+    order = sorted(rem.tolist(), key=lambda g: (-score[g], g))
+    assert set(recs["Z"]["tracks"][0]["picks"][1]) == set(order[:TINY.per])
+    np.testing.assert_allclose(C.closest_pair(st), score, rtol=0, atol=1e-12)
+
+
+def test_neighbouring_ids_are_not_neighbouring_steps(source):
+    """Ids follow the draw order within a disk count, so id g and g+1 are rarely consecutive steps of one world."""
+    eps = C.candidate_worlds(NS, 0, TINY)
+    where = {(ep.n_disks, ep.steps[t].positions.tobytes()): (ep.world_index, t) for ep in eps for t in range(len(ep.steps))}
+    pos = []
+    for n, e in sorted(source.items()):
+        pos += [where[(n, e["p"][b].tobytes())] for b in range(len(e["p"]))]
+    adjacent = np.mean([a[0] == b[0] and abs(a[1] - b[1]) == 1 for a, b in zip(pos, pos[1:])])
+    assert adjacent < 0.05, adjacent
 
 
 def test_tampering_is_detected(cells, tmp_path):

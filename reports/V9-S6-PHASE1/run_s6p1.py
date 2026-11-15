@@ -43,7 +43,7 @@ SETS = {
     "probe": {"cand_ns": "s6p1-pcand", "test_ns": "s6p1-probe", "sizes": C.FULL,
               "reps": {a: 1 for a in C.ARMS}, "worlds": (50, 25), "train_cap_s": 2.5 * 3600, "eval_limit_s": 3600},
     "final": {"cand_ns": "s6p1-cand", "test_ns": "s6p1-final", "sizes": C.FULL,
-              "reps": dict(C.REPLICATES), "worlds": (200, 100), "train_cap_s": 5.0 * 3600, "eval_limit_s": 3600},
+              "reps": dict(C.REPLICATES), "worlds": (200, 100), "train_cap_s": 6.0 * 3600, "eval_limit_s": 3600},
 }
 REGISTERED_SETS = ("final",)
 DANGLING_CHARGE_S = 900          # an invocation that died after its last heartbeat is charged this much more
@@ -181,7 +181,7 @@ def train(a, say):
                 me["cells"].append({"arm": arm, "replicate": k, "seconds": rec["seconds"]})
                 me["last_beat"] = time.time()
                 ledger_write(ledger, rows)
-                say(f"cell {arm}-r{k} done in {rec['seconds']:.0f}s; used {ledger_used(ledger)[0]:.0f}s of {cfg['train_cap_s']:.0f}s")
+                say(f"cell {arm}-r{k} done in {rec['seconds']:.0f}s; used {used + time.time() - me['start']:.0f}s of {cfg['train_cap_s']:.0f}s")
         me["last_beat"], me["closed"] = time.time(), True
         ledger_write(ledger, rows)
         missing = [f"{x}-r{k}" for x, k in all_cells(cfg) if not (cell_dir(set_root, x, k) / "cell.json").is_file()]
@@ -267,7 +267,8 @@ def run_eval(a, say):
         out.mkdir(parents=True)
         code = code_manifest()
         code_head, code_dirty = GD.check_git_clean(REPO, list(code))
-        R = {"schema": "s6.phase1.eval.v1", "set": a.set, "config": set_summary(a.set), "prereg_sha256": pre_sha,
+        R = {"schema": "s6.phase1.eval.v1", "set": a.set, "config": set_summary(a.set),
+             "sets": {name: set_summary(name) for name in SETS}, "prereg_sha256": pre_sha,
              "git_head": head or code_head, "code_manifest_sha256": manifest_sha(code), "code_dirty": code_dirty,
              "third_party": versions, "cells_sha256": {f"{x}-r{k}": sha(cell_dir(set_root, x, k) / "cell.json") for x, k in cells},
              "train_seconds": {f"{x}-r{k}": r["seconds"] for (x, k), r in recs.items()}}

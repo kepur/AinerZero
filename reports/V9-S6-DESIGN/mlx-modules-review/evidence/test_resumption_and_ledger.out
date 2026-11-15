@@ -1,0 +1,27 @@
+lock held by 18750
+Step 1: Setting up isolated repo...
+
+--- Test 3.1: Aborted cell renaming and resumption ---
+Train completed after resumption.
+Stdout excerpt: ['[     0.2s] kept unfinished cell as E-r0.aborted-1', '[     7.8s] cell E-r0 done in 3s; used 1908s of 1800s']
+OK: Half-completed cell was successfully moved to E-r0.aborted-1 and cleanly redone.
+
+--- Test 3.2: Wall clock limit refusal ---
+Ledger entries: 2, first entry closed=False
+Exit code when cap exceeded: 1
+Stderr excerpt: Traceback (most recent call last):
+  File "/tmp/s6_resumption_test/base/fake/reports/V9-S6-PHASE1/run_s6p1.py", line 358, in <module>
+    main()
+  File "/tmp/s6_resumption_test/base/fake/reports/V9-S6-PHASE1/run_s6p1.py", line 350, in main
+    train(a, say)
+  File "/tmp/s6_resumption_test/base/fake/reports/V9-S6-PHASE1/run_s6p1.py", line 146, in train
+    raise GD.GuardError(f"training wall clock used up: {used:.0f} s of {cfg['train_cap_s']:.0f} s")
+ainerzero.v9.experiments.s3.run_guard.GuardError: training wall clock used up: 3039 s of 1800 s
+OK: Training refused when accumulated wall clock exceeds cap.
+
+--- Test 3.3: Final preregistration and ledger verification in eval ---
+final without prereg exit code: 1
+OK: final set refuses without preregistration.
+OK: Verified run_s6p1.py lines 257-261 enforce prereg_sha256 and code_manifest_sha256 matching across all ledger rows.
+
+ALL RESUMPTION AND LEDGER TESTS PASSED!

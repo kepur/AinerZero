@@ -1,0 +1,40 @@
+=== 1. Layer 1 & 2: CandidatePool and candidate_source ===
+n_states: 20
+Bucket 4: keys=['p', 'pil', 'v'], p shape=(9, 4, 2), dtype=float64
+Bucket 5: keys=['p', 'pil', 'v'], p shape=(11, 5, 2), dtype=float64
+cp._outcomes initially: 0
+cp._revealed initially: 0
+cp.remaining() count: 20
+states()[4]: keys=['id', 'p', 'pil', 'v'], p.flags.writeable=False
+states()[5]: keys=['id', 'p', 'pil', 'v'], p.flags.writeable=False
+
+=== 2. Layer 3: Sealed context manager & Trapping ===
+_SEALED list length: 10
+  SEALED target: ainerzero.v9.experiments.s4.world.physics
+  SEALED target: ainerzero.v9.experiments.s4.world.generate_episode
+  SEALED target: ainerzero.v9.experiments.s4.learned_mlx.make_pool
+  SEALED target: ainerzero.v9.experiments.s4.learned_mlx.make_sigma_pool
+  SEALED target: ainerzero.v9.experiments.s4.analysis.train_worlds
+  SEALED target: ainerzero.v9.experiments.s4.models.true_physics
+  SEALED target: ainerzero.v9.experiments.s4.models.bounce
+  SEALED target: ainerzero.v9.experiments.s6.sandbox.sim_labels
+  SEALED target: CandidatePool._simulate
+  SEALED target: CandidatePool.reveal
+OK: W.physics trapped: a pick rule reached ainerzero.v9.experiments.s4.world.physics while selection was sealed
+OK: W.generate_episode trapped: a pick rule reached ainerzero.v9.experiments.s4.world.generate_episode while selection was sealed
+OK: L.make_pool trapped: a pick rule reached ainerzero.v9.experiments.s4.learned_mlx.make_pool while selection was sealed
+OK: S.sim_labels trapped: a pick rule reached ainerzero.v9.experiments.s6.sandbox.sim_labels while selection was sealed
+OK: cp.reveal trapped: a pick rule reached CandidatePool.reveal while selection was sealed
+OK: cp._simulate trapped: a pick rule reached CandidatePool._simulate while selection was sealed
+
+=== 3. Module attribute vs Pre-saved function reference probe ===
+Direct call on saved_physics_ref inside sealed():
+  Outcome calculated via saved reference? YES, returned p shape: (1, 4, 2)
+Call cp._labeller inside sealed():
+  OK: cp._labeller trapped via internal W.physics lookup: a pick rule reached ainerzero.v9.experiments.s4.world.physics while selection was sealed
+
+=== 4. Layer 4: Arm T vs Arm R parity ===
+R pick seed: 1824915033, T pick seed: 1824915033
+Picks parity: True
+
+Probe complete.

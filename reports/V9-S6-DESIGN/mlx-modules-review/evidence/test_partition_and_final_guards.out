@@ -1,0 +1,21 @@
+=== 1. Check partition definitions ===
+SETS in run_s6p1.py:
+  smoke: cand_ns=s6t-smoke-cand, test_ns=s6t-smoke-test
+  probe: cand_ns=s6p1-pcand, test_ns=s6p1-probe
+  final: cand_ns=s6p1-cand, test_ns=s6p1-final
+RUN.check_partitions() passed.
+W.REGISTERED: ['s4p1-final', 's4p2-final', 's6p1-final']
+Smoke namespace isolation verified: smoke touches only s6t-* stand-in namespaces.
+
+=== 2. Guard against accessing registered partition directly ===
+OK: direct access to s6p1-final raised error as expected: s6p1-final is a registered partition; only a registered run may generate it
+
+=== 3. Static verification of sequence in run_s6p1.py eval ===
+Sequence of critical operations in run_eval:
+  Line 282: independent_verify
+  Line 291: GD.consume_final_read
+  Line 296: W.generate_episode
+  Line 297: W.generate_episode
+OK: Verification strictly precedes consume_final_read, which strictly precedes test episode generation.
+
+ALL PARTITION AND FINAL GUARD CHECKS PASSED!

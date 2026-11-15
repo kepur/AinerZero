@@ -87,18 +87,19 @@ def candidate_worlds(cand_ns: str, k: int, sizes: Sizes = FULL) -> list[W.Episod
 
 
 def candidate_source(cand_ns: str, k: int, sizes: Sizes = FULL) -> dict[int, dict[str, np.ndarray]]:
-    """The candidate states of replicate k (DESIGN-r2 §2): ``sizes.pool`` distinct (world, step) pairs drawn
+    """The candidate states of replicate k (DESIGN-r2 §2, §6): ``sizes.pool`` distinct (world, step) pairs drawn
     without replacement from the replicate's candidate worlds, as exact float64 states with their pillars,
-    grouped by disk count and sorted by (world, step). No outcome is computed here; the episodes (whose
-    steps carry contact logs) are dropped before returning."""
+    grouped by disk count and, within a disk count, in draw order (not by world and step, so that neighbouring
+    ids are not neighbouring steps of a trajectory). No outcome is computed here; the episodes (whose steps
+    carry contact logs) are dropped before returning."""
     eps = candidate_worlds(cand_ns, k, sizes)
     pairs = [(e, t) for e, ep in enumerate(eps) for t in range(len(ep.steps))]
     if sizes.pool > len(pairs):
         raise ValueError(f"only {len(pairs)} states in {len(eps)} worlds, {sizes.pool} wanted")
     pick = np.random.default_rng(pool_seed(cand_ns, k)).choice(len(pairs), sizes.pool, replace=False)
-    chosen = sorted((eps[pairs[i][0]].n_disks, pairs[i][0], pairs[i][1]) for i in pick)
+    chosen = sorted((eps[pairs[i][0]].n_disks, rank, pairs[i][0], pairs[i][1]) for rank, i in enumerate(pick))
     by_n: dict[int, dict[str, list]] = {}
-    for n, e, t in chosen:
+    for n, _, e, t in chosen:
         s = eps[e].steps[t]
         row = by_n.setdefault(n, {"p": [], "v": [], "pil": []})
         row["p"].append(np.asarray(s.positions, dtype=np.float64))

@@ -1,0 +1,24 @@
+lock held by 18139
+Step 1: Setting up isolated repo and running baseline smoke train...
+Baseline smoke training completed.
+
+--- Test 2.1: Weight tampering ---
+Eval exit code: 1
+Eval output stderr/stdout excerpt: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/s6_tamper_test/tamper_wt/src/ainerzero/v9/experiments/s6/cells.py", line 388, in verify_cell_dir
+    raise AssertionError(f"{out.name}/{f} changed after the cell finished")
+AssertionError: E-r0/r0-n1.safetensors changed after the cell finished
+OK: Weight tampering stopped evaluation before test partition was touched.
+
+--- Test 2.2: Selection tampering ---
+Eval exit code: 0
+Verification result: False
+E-r0 replay result: False
+OK: Selection tampering caught by replay; eval halted before test partition.
+
+--- Test 2.3: Candidate pool tampering ---
+Eval exit code: 0
+Pools verification result: {'0': False, '1': True}
+OK: Pool digest tampering caught; eval halted before test partition.
+
+ALL TAMPER DETECTION TESTS PASSED!

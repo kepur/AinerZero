@@ -1,0 +1,71 @@
+lock held by 22145
+Testing 6 mutants on isolated archive of 34a1753...
+
+--- Testing mutant_1_unsealed_selection ---
+Description: Remove sealed() context manager during selection in select()
+Exit code: 1, Mutant killed? True
+Killed with output excerpt:
+  ../../../../tmp/s6_mutants_work/mutant_1_unsealed_selection/tests/v9/experiments/test_s6_cells_static.py::test_select_reads_only_states_and_remaining_from_the_pool_and_runs_sealed FAILED [100%]
+          assert pool_calls == {"states", "remaining"}
+  >       assert any(isinstance(i.context_expr, ast.Call) and getattr(i.context_expr.func, "id", "") == "sealed"
+  E       assert False
+  /tmp/s6_mutants_work/mutant_1_unsealed_selection/tests/v9/experiments/test_s6_cells_static.py:46: AssertionError
+
+--- Testing mutant_2_arm_t_pick_seed ---
+Description: Decouple Arm T pick seed from Arm R (pick_seed uses arm instead of R)
+Exit code: 1, Mutant killed? True
+Killed with output excerpt:
+  ../../../../tmp/s6_mutants_work/mutant_2_arm_t_pick_seed/tests/v9/experiments/test_s6_cells_native.py::test_every_arm_runs_and_records FAILED [100%]
+              assert rec["arm"] == arm and len(rec["tracks"]) == (3 if arm == "P" else 1)
+              assert json.loads((root / arm / "cell.json").read_text()) == json.loads(json.dumps(rec, sort_keys=True))
+          assert all(tr["picks"][0] == first for rec in recs.values() for tr in rec["tracks"])
+  >       assert recs["T"]["tracks"][0]["picks"] == recs["R"]["tracks"][0]["picks"]       # T picks what R picks
+
+--- Testing mutant_3_z_arm_selection_divergence ---
+Description: Z arm selection in select() deviates from closest_pair (inverted score assigned)
+Exit code: 1, Mutant killed? True
+Killed with output excerpt:
+  ../../../../tmp/s6_mutants_work/mutant_3_z_arm_selection_divergence/tests/v9/experiments/test_s6_cells_native.py::test_z_picks_the_closest_pairs FAILED [100%]
+  >       assert recs["Z"]["tracks"][0]["picks"][1] == S.pick_top(score, rem, TINY.per).tolist()
+  E       AssertionError: assert [98, 99, 100,...102, 103, ...] == [350, 272, 26...326, 319, ...]
+  /tmp/s6_mutants_work/mutant_3_z_arm_selection_divergence/tests/v9/experiments/test_s6_cells_native.py:106: AssertionError
+  FAILED ../../../../tmp/s6_mutants_work/mutant_3_z_arm_selection_divergence/tests/v9/experiments/test_s6_cells_native.py::test_z_picks_the_closest_pairs
+
+--- Testing mutant_4_eval_arm_p_perturbed ---
+Description: Arm P evaluated with non-None z (perturbation vector set) instead of base output
+Exit code: 1, Mutant killed? True
+Killed with output excerpt:
+  ../../../../tmp/s6_mutants_work/mutant_4_eval_arm_p_perturbed/tests/v9/experiments/test_s6_cells_native.py::test_evaluation_arithmetic FAILED [100%]
+          assert counts.sum() == (len(ep.steps) - 1) * 6
+          np.testing.assert_allclose(s, [e[tw.kinds == c].sum() for c in range(4)])
+  >       assert pm.z is None                                  # P is evaluated on its base output
+  E       assert array([[0, 0, 0, ..., 0, 0, 0]], dtype=float32) is None
+
+--- Testing mutant_5_candidate_replacement ---
+Description: Candidate states drawn with replacement (allows duplicate states in candidate pool)
+Exit code: 1, Mutant killed? True
+Killed with output excerpt:
+              raise ValueError(f"only {len(pairs)} states in {len(eps)} worlds, {sizes.pool} wanted")
+  >               raise AssertionError(f"duplicate candidate states with {n} disks")
+  E               AssertionError: duplicate candidate states with 4 disks
+  /tmp/s6_mutants_work/mutant_5_candidate_replacement/src/ainerzero/v9/experiments/s6/cells.py:112: AssertionError
+
+--- Testing mutant_6_replay_verification_bypass ---
+Description: Bypass replay verification in verify_s6p1.py (always return passed=True in replay_cell)
+Exit code: 1, Mutant killed? True
+Killed with output excerpt:
+  ../../../../tmp/s6_mutants_work/mutant_6_replay_verification_bypass/tests/v9/experiments/test_s6p1_runner_native.py::test_a_tampered_cell_stops_evaluation_before_any_test_world FAILED [100%]
+  >       assert not R["verify"]["passed"] and not R["verify"]["replay"]["E-r1"]["passed"]
+  E       assert (not True)
+  /tmp/s6_mutants_work/mutant_6_replay_verification_bypass/tests/v9/experiments/test_s6p1_runner_native.py:114: AssertionError
+  FAILED ../../../../tmp/s6_mutants_work/mutant_6_replay_verification_bypass/tests/v9/experiments/test_s6p1_runner_native.py::test_a_tampered_cell_stops_evaluation_before_any_test_world
+
+================ MUTATION TESTING SUMMARY ================
+[KILLED] mutant_1_unsealed_selection: Remove sealed() context manager during selection in select()
+[KILLED] mutant_2_arm_t_pick_seed: Decouple Arm T pick seed from Arm R (pick_seed uses arm instead of R)
+[KILLED] mutant_3_z_arm_selection_divergence: Z arm selection in select() deviates from closest_pair (inverted score assigned)
+[KILLED] mutant_4_eval_arm_p_perturbed: Arm P evaluated with non-None z (perturbation vector set) instead of base output
+[KILLED] mutant_5_candidate_replacement: Candidate states drawn with replacement (allows duplicate states in candidate pool)
+[KILLED] mutant_6_replay_verification_bypass: Bypass replay verification in verify_s6p1.py (always return passed=True in replay_cell)
+Total: 6/6 mutants killed.
+ALL MUTANTS KILLED!
