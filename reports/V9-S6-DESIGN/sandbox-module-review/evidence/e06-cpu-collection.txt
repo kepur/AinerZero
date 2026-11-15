@@ -1,0 +1,33 @@
+# Copies: git archive HEAD src tests pyproject.toml examples reports/V9-S5-PHASE1 (the last two are needed only so that whole-tree collection does not error on test_spacetime_s03 / test_s5_final_plan).
+# cp-head = HEAD 15c676b as is; cp-patch-min = HEAD + sandbox.py + the 2 new tests + conftest.py (in-card changes only); cp-patch-full = cp-patch-min + test_s6_epinet_mlx.py + test_s5_final_native.py (the two out-of-card lines).
+===== copy cp-head (/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-head)
+ainerzero from /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-head/src/ainerzero/__init__.py
+$ PYTHONPATH=/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-head/src .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_cpu_collection.py
+E       AssertionError: {'unregistered': [], 'registered_but_cpu': ['v9/experiments/test_s5_final_native.py']}
+E       assert {'test_dynami...etry.py', ...} == {'test_dynami...etry.py', ...}
+E           AssertionError: test_s6_epinet_mlx.py
+E           assert 'pytestmark = pytest.mark.native_mlx' in '"""Tests for S6 epinet MLX module (s6/epinet_mlx.py).\n\nVerifies:\n  - Bitwise parity with base network when z is No...nstance(node, ast.Attribute):\n            assert node.attr != "physics", f"Forbidden attribute access: {node.attr}"\n'
+FAILED tests/test_cpu_collection.py::test_native_module_inventory_is_complete
+FAILED tests/test_cpu_collection.py::test_native_modules_carry_native_mark - ...
+2 failed, 1 passed in 14.53s
+===== copy cp-patch-min (/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-patch-min)
+ainerzero from /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-patch-min/src/ainerzero/__init__.py
+$ PYTHONPATH=/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-patch-min/src .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_cpu_collection.py
+E       AssertionError: {'unregistered': [], 'registered_but_cpu': ['v9/experiments/test_s5_final_native.py']}
+E       assert {'test_dynami...etry.py', ...} == {'test_dynami...etry.py', ...}
+E           AssertionError: test_s6_epinet_mlx.py
+E           assert 'pytestmark = pytest.mark.native_mlx' in '"""Tests for S6 epinet MLX module (s6/epinet_mlx.py).\n\nVerifies:\n  - Bitwise parity with base network when z is No...nstance(node, ast.Attribute):\n            assert node.attr != "physics", f"Forbidden attribute access: {node.attr}"\n'
+FAILED tests/test_cpu_collection.py::test_native_module_inventory_is_complete
+FAILED tests/test_cpu_collection.py::test_native_modules_carry_native_mark - ...
+2 failed, 1 passed in 13.57s
+===== copy cp-patch-full (/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-patch-full)
+ainerzero from /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-patch-full/src/ainerzero/__init__.py
+$ PYTHONPATH=/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-patch-full/src .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_cpu_collection.py
+3 passed in 13.68s
+$ .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_cpu_collection.py   # live working tree
+...                                                                      [100%]
+3 passed in 9.42s
+===== cp-patch-full re-synced to the final sandbox.py / test_s6_sandbox.py
+3 passed in 14.52s
+$ .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_cpu_collection.py   # live working tree, final version
+3 passed in 9.06s

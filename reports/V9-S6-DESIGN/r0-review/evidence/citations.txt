@@ -1,0 +1,447 @@
+
+$ sed -n '12,27p' reports/V9-S6-DESIGN/DESIGN-r0.md
+一期 S4 学交互动力学时，要靠一个读真值的手工课程才学得会碰撞：每批一半样本取自「模拟器标签显示这一步有盘间接触」的样本。不这样做，D 只有 0.44（S4 摸底第五轮）。这个课程用到了标签，等于由人告诉学习者「你缺的是碰撞」。
+
+> **S6 一期问：** 在 S4 的圆盘世界沙盒里，学习者从零开始学交互动力学，实验预算有限。每次实验是它挑一个初始状态，看模拟器给出的结果。它只用自己的不确定性挑实验，不读任何标签：
+> (1) 是否比随机挑实验学得更快：同样预算下，碰撞预测更准（D）；
+> (2) 是否追平一期读真值的手工课程；
+> (3) 是否不以别的能力为代价：自由运动、撞墙柱、全部盘步的误差不比随机挑更差；
+> (4) epinet（一个网络的成本）挑实验，是否接近三个网络的小集成。
+
+- (1)(2) 回答「学习缺口」和「信息增益」：用集合分歧近似式 7 的 `I(S; O_next | a)`，即参数后验下预测的不一致。
+- (3) 是「旧技能保留」在这一版里的弱形式：没有先学后学的两个任务，只要求不是靠牺牲没被挑中的能力换来的。完整的保留与技能晋升、撤销留给二期（§8）。
+- 测试世界从不参与挑样本、训练和调参，标签来自模拟器（`sim_truth`），不用任何教师：这就是「无教师独立测试」。
+
+**结论能说到哪里（摸底 F 轮已经知道的）：** 手写的几何规则（「两盘按直线运动一步内会相接」）挑实验，学碰撞比按分歧挑更好（D 0.795 对 0.733）。它等于直接知道「碰撞在哪」。所以本阶段不主张「自己挑最好」，只主张：
+- 不读标签、不用手写知识，学习者能自己找到缺口，追平读真值的手工课程，胜过随机；
+- 它补的不止一个缺口：按分歧挑同时改善碰撞和撞墙柱。手写规则和手工课程只补它们针对的那一个，撞墙柱还略变差。
+
+
+$ sed -n '51,73p' reports/V9-S6-DESIGN/DESIGN-r0.md
+**C、D 轮（从零开始，候选是精确状态，四轮各加 3000 个，第一轮随机）：12000 个标签时**
+
+| 臂 | C：D | C：自由误差 | C：总误差 | D：D | D：自由误差 | D：总误差 |
+|---|---|---|---|---|---|---|
+| 随机 | 0.676 | 0.0107 | 0.0338 | 0.707 | 0.0125 | 0.0348 |
+| 按分歧（不读标签） | 0.744 | 0.0144 | 0.0352 | 0.775 | 0.0149 | 0.0347 |
+| 先知（读标签） | 0.723 | 0.0151 | 0.0366 | — | — | — |
+| 一期手工课程（读标签） | 0.749 | 0.0151 | 0.0406 | 0.758 | 0.0206 | 0.0454 |
+
+- 按分歧挑时，选中样本里的碰撞比例自己从 2.8% 升到 12–15%。
+- 按分歧 − 随机：D 两次都是 +0.068；墙柱误差也更低（0.704 对 0.775，0.722 对 0.785）；自由误差略高（+0.0037，+0.0024）；总误差持平。
+- 按分歧 − 手工课程：D −0.005、+0.017。
+
+**四次运行汇总（C、D、P251 的 r3、r4），12000 个标签时：**
+
+| 运行 | 按分歧 − 随机 ΔD | 自由误差变化 | 总误差之比（按分歧 / 随机） | 墙柱误差之比 | 按分歧 − 手工课程 ΔD |
+|---|---|---|---|---|---|
+| C | +0.068 | +0.0036 | 1.04 | 0.91 | −0.006 |
+| D | +0.068 | +0.0023 | 1.00 | 0.92 | +0.017 |
+| r3 | +0.077 | +0.0036 | 1.01 | 0.87 | +0.047 |
+| r4 | +0.083 | +0.0027 | 1.02 | 0.94 | +0.014 |
+
+四次里，按分歧 − 随机的 D 都在 +0.068 到 +0.083 之间；按分歧 − 手工课程的 D 三次为正、一次 −0.006。
+
+$ sed -n '80,91p' reports/V9-S6-DESIGN/DESIGN-r0.md
+**F 轮：几何启发式**（同 C 的池与测试世界，6 盘、10 盘分开）：
+- 几何规则在精确状态上几乎就是碰撞探测器：标出的样本 100% 真有盘间接触，真接触的 98.5% 被标出；池里被标出的只占 2.67%。
+- 12000 个标签时：
+
+| 臂 | D（6 盘） | 三个网络各自的 D | 自由误差 | 墙柱误差 | 总误差 | D（10 盘） |
+|---|---|---|---|---|---|---|
+| 随机 | 0.661 | 0.673、0.639、0.672 | 0.0105 | 0.756 | 0.0311 | 0.686 |
+| 按分歧 | 0.733 | 0.746、0.706、0.746 | 0.0134 | 0.691 | 0.0321 | 0.751 |
+| 几何规则 | 0.795 | 0.809、0.766、0.810 | 0.0095 | 0.795 | 0.0300 | 0.807 |
+
+- 几何规则第二轮就把池里的碰撞样本全挑走了（选中样本的碰撞比例 27%），之后只能随机补。
+- 按分歧在每个网络上都胜过随机（同种子配对：+0.073、+0.067、+0.074）。
+
+$ sed -n '96,110p' reports/V9-S6-DESIGN/DESIGN-r0.md
+- **沙盒实验**：
+  - 一个实验 = 一个初始状态（各盘位置、速度，及所在世界的柱子）；
+  - 模拟器在它上面走 1、5、10 步，给出结果作训练标签（与一期 `make_pool` 相同，只是全部是精确状态）；
+  - 候选状态来自候选世界里的真实配置；
+  - 标签在选中之前对学习者不可见。
+
+| 命名空间 | 用途 |
+|---|---|
+| `s6p1-cand` | 候选池：120 个世界（4–8 盘，同一期训练分区的盘数规则），60000 个精确状态 |
+| `s6p1-probe` | 探针的测试世界：主评测 50 个 6 盘，外推 25 个 10 盘 |
+| `s6p1-final` | final 的测试世界：主评测 200 个 6 盘，外推 100 个 10 盘；登记分区 |
+
+- 与 `s6x-*`、S1–S5 的命名空间都不相交。
+- 不用 dev。
+- 测试一律用替身。
+
+$ sed -n '119,137p' reports/V9-S6-DESIGN/DESIGN-r0.md
+**挑选流程：**
+- 共 4 轮，每轮加 3000 个实验，总预算 12000 个标签；
+- 第一轮所有臂相同：随机；
+- 每轮结束后，学习者在「已选中的全部样本」上接着训练 2500 步，然后挑下一轮。
+
+| 代号 | 怎么挑 | 读标签吗 | 角色 |
+|---|---|---|---|
+| R | 随机 | 否 | 基线 |
+| **E** | **三个网络一组，共享所选样本；挑三者下一步速度预测分歧最大的样本（每个样本取各盘分歧的最大值）** | **否** | **主臂** |
+| P | 单网络加 epinet（解耦训练：基础网络只用滚动损失，epinet 只在冻结的基础输出上学一步残差），挑 epinet 指数离散度最大的样本；三个学习者各挑各的 | 否 | epinet 对照 |
+| T | 随机挑，但批内一半取自「第一步有盘间接触」的样本（一期手工课程） | **是** | 读真值的参照 |
+| G | 几何启发式：挑「按直线运动一步内会有两盘相接」的样本，不够时随机补 | 否（用手写的几何知识） | 描述：手写知识能做到多少 |
+| O | 挑三网络均值的真实误差最大的样本 | **是** | 描述：先知上界 |
+
+- 每个臂 3 个重复。每个重复里：
+  - E、R、T、G、O 是三个网络；
+  - P 是三个单网络学习者。
+- 共 6 × 3 × 3 = 54 个网络。
+- 评测按网络算，再取平均：比较的是挑出来的数据，不是集成预测。
+
+$ sed -n '141,172p' reports/V9-S6-DESIGN/DESIGN-r0.md
+**测试：** 在测试世界的每一步精确状态上，预测下一步速度，与模拟器比较。每一步的每个盘按这一步的类型分四类：盘间碰撞、擦边、撞墙或柱、自由。
+
+- `D = 1 − err(碰撞) / err_E-B(碰撞)`，与一期 HD 的定义相同；
+- 自由、墙柱、全部盘步的平均速度误差。
+
+**门**（主评测；「下界」「上界」一律用 Bonferroni 区间）：
+
+| 门 | 判据 | 摸底值 |
+|---|---|---|
+| **GS 自选胜随机** | D(E) − D(R) ≥ +0.03，下界 > 0；且三个重复各自为正 | +0.068 到 +0.083（四次） |
+| **GT 追平手工课程** | D(E) − D(T) ≥ −0.02，下界 > −0.05 | −0.006 到 +0.047（四次） |
+| **GK 不伤别的能力** | 全部盘步误差 E / R ≤ 1.10，上界 ≤ 1.20；墙柱误差 E / R ≤ 1.0，上界 ≤ 1.10 | 1.00–1.04；0.87–0.94 |
+| **GP epinet 也胜随机** | D(P) − D(R) ≥ +0.03，下界 > 0 | +0.070（E2） |
+| **GX 外推到 10 盘** | D(E) − D(R) ≥ +0.02，下界 > 0 | +0.065（F） |
+
+**登记的描述量（不设门）：** 各臂的学习曲线（每轮的 D 与各类误差）；D(E) − D(G)、D(E) − D(T)、D(P) − D(E)；墙柱误差 E、G、T 对 R 的比；选中样本里的碰撞比例与墙柱比例；每个臂挑选与训练的耗时。
+
+**统计：**
+- 每个测试世界上先把同一个臂的全部网络取平均，再按世界配对 bootstrap，10000 次，95%；
+- 比值和差值的分子分母一起重采样；
+- 另报 Bonferroni 区间，m = 6：GS、GT、GK 两项、GP、GX；
+- 无定义按不过算。
+
+**合法性门：**
+
+| 门 | 判据 |
+|---|---|
+| 标签隔离 | R、E、P、G 的挑选函数只拿到状态，拿不到标签。实现上用「选中才揭示」的池对象，运行时记录每次揭示，核对揭示的只有已选中的样本 |
+| 重放 | 另一个进程从每轮落盘的权重重算挑选分数，挑出的样本与落盘的逐个相同 |
+| 训练可复现 | 至少一个格在另一进程重训，与落盘的权重逐位相同 |
+| 分区 | 候选、探针、final 的世界互不相交；final 只读一次 |
+| 完整 | 54 个网络、每个臂每轮的评测都落盘 |
+
+$ sed -n '192,207p' reports/V9-S6-DESIGN/DESIGN-r0.md
+## 7. 风险
+
+- **场景是简化的。** 实验是「挑初始状态」，不是智能体在世界里移动、推盘。「沙盒行动」在这一版里只是选实验。
+- **墙柱缺口不在本阶段的问题里。** 它看起来是表示问题，用挑数据解决不了。
+- **几何启发式在碰撞上比按分歧挑更好**（F 轮 +0.062）。这一点已写进 §0 的结论范围。「自驱」的价值在于不需要标签和手写知识、并且同时补多个缺口，不在于在某个缺口上最优。
+- **训练从零开始，只有 3 个重复。** 学习者的随机性很大：摸底 C 与 D 两次的随机臂 D 差了 0.03。
+- **复核者与作者可能同模型。**
+
+## 8. 这一版不回答
+
+| 不回答的问题 | 说明 |
+|---|---|
+| 先学后学的旧技能保留（式 6） | 二期：先学一个世界，再在新机制上自驱学习，检验旧世界不退化 |
+| 技能晋升与撤销 | 二期：新模型只有过了独立测试才替换旧模型；用一个故意变坏的更新检验撤销 |
+| 智能体在世界里的主动行动 | 本阶段的「行动」是挑实验 |
+| 视觉、教师 | 不在本阶段 |
+
+$ sed -n '53,66p' reports/V9-S6-DESIGN/tier1-explore/explore_s6a.py
+def score_pool(pool, nets):
+    """Per sample: (disagreement, true error of the ensemble mean), each the max over disks."""
+    dis, err = {}, {}
+    for n, e in pool.by_n.items():
+        p, v, pil = mx.array(e["p"]), mx.array(e["v"]), mx.array(e["pil"])
+        preds = []
+        for net in nets:
+            _, vv, _, _ = net(p, v, pil)
+            preds.append(np.array(vv, dtype=np.float64))
+        st = np.stack(preds)
+        mean = st.mean(0)
+        dis[n] = np.linalg.norm(st - mean[None], axis=-1).mean(0).max(-1)
+        err[n] = np.linalg.norm(mean - e["v1"], axis=-1).max(-1)
+    return dis, err
+
+$ sed -n '97,121p' reports/V9-S6-DESIGN/tier1-explore/explore_s6a.py
+def evaluate(models, test_eps):
+    """Per model: mean velocity error per kind, and D on collision disk-steps."""
+    out = {}
+    pre = []
+    for ep in test_eps:
+        T = len(ep.steps) - 1
+        P = np.stack([s.positions for s in ep.steps[:T]]).astype(np.float32)
+        V = np.stack([s.velocities for s in ep.steps[:T]]).astype(np.float32)
+        tgt = np.stack([s.velocities for s in ep.steps[1:T + 1]])
+        kinds = np.stack([classify(ep, t) for t in range(T)])
+        _, vb = Mo.bounce(P.astype(np.float64), V.astype(np.float64), ep.pillars)
+        pil = mx.array(np.broadcast_to(np.array(ep.pillars, dtype=np.float32), (T, L.N_PILLARS, 3)))
+        pre.append((P, V, tgt, kinds, np.linalg.norm(vb - tgt, axis=-1), pil))
+    for name, m in models.items():
+        sums = np.zeros(4); cnt = np.zeros(4); eb_coll = 0.0
+        for P, V, tgt, kinds, eb_err, pil in pre:
+            _, v, _, _ = m(mx.array(P), mx.array(V), pil)
+            e = np.linalg.norm(np.array(v, dtype=np.float64) - tgt, axis=-1)
+            for k in range(4):
+                sums[k] += e[kinds == k].sum(); cnt[k] += (kinds == k).sum()
+            eb_coll += eb_err[kinds == 0].sum()
+        mean = sums / cnt
+        out[name] = {"collision": mean[0], "graze": mean[1], "wall_pillar": mean[2], "free": mean[3],
+                     "all": sums.sum() / cnt.sum(), "D": 1 - sums[0] / eb_coll}
+    return out
+
+$ sed -n '64,95p' reports/V9-S6-DESIGN/tier1-explore/explore_s6c.py
+    cand = L.make_pool(A.train_worlds(cand_ns, 120), 60_000, np.random.default_rng(11), W.physics, exact_frac=1.0)
+    test_eps = [W.generate_episode(test_ns, w, 6) for w in range(20)] + [W.generate_episode(test_ns, 1000 + w, 10) for w in range(10)]
+    allp = XA.flat_pool(cand)
+    coll = np.array([cand.by_n[n]["contact"][i].sum() > 0 for n, i in allp])
+    print(f"pool {time.time() - t0:.0f}s, disk-contact share {coll.mean():.3f}", flush=True)
+    res = {"per": per, "rounds": rounds, "steps_per_round": spr, "curves": {}, "selection": {}}
+    res["namespaces"] = {"candidates": cand_ns, "test": test_ns}
+    for arm in arms:
+        mx.set_default_device(mx.gpu)
+        learners = [Learner(s) for s in XA.SEEDS]
+        rng = np.random.default_rng(100)
+        chosen = list(rng.choice(len(allp), per, replace=False))
+        res["curves"][arm], res["selection"][arm] = [], []
+        for r in range(rounds):
+            pool = XA.subset(cand, [allp[i] for i in chosen])
+            for lr_ in learners:
+                lr_.train(pool, spr, 0.5 if arm == "truthcur" else 0.0)
+            mx.set_default_device(mx.cpu)
+            ev = XA.evaluate({f"{arm}#{s}": l.model for s, l in zip(XA.SEEDS, learners)}, test_eps)
+            summ = {k: float(np.mean([ev[f"{arm}#{s}"][k] for s in XA.SEEDS])) for k in ("collision", "graze", "wall_pillar", "free", "all", "D")}
+            summ["n_labels"] = len(chosen); summ["disk_contact_share"] = float(coll[chosen].mean())
+            res["curves"][arm].append(summ)
+            print(f"{arm:9} round {r} n={len(chosen):6d} contact={summ['disk_contact_share']:.3f} D={summ['D']:.3f} coll={summ['collision']:.4f} wall={summ['wall_pillar']:.4f} free={summ['free']:.4f} all={summ['all']:.4f}  {time.time() - t0:.0f}s", flush=True)
+            if r == rounds - 1:
+                break
+            rest = np.setdiff1d(np.arange(len(allp)), chosen)
+            if arm in ("random", "truthcur"):
+                new = rng.choice(rest, per, replace=False)
+            else:
+                dis, err = XA.score_pool(cand, [l.model for l in learners])
+                score = np.array([(dis if arm == "disagree" else err)[n][i] for n, i in allp])
+                new = rest[np.argsort(-score[rest])[:per]]
+
+$ sed -n '28,29p' reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py
+def geo_flags(pool):
+    return {n: G.geo_gate(e["p"].astype(np.float64), e["v"].astype(np.float64)).any(-1) for n, e in pool.by_n.items()}
+
+$ sed -n '68,79p' reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py
+            rest = np.setdiff1d(np.arange(len(allp)), chosen)
+            if arm == "random":
+                new = rng.choice(rest, per, replace=False)
+            elif arm == "geo":
+                flagged = rest[gvec[rest]]
+                take = rng.choice(flagged, min(per, len(flagged)), replace=False)
+                fill = rng.choice(np.setdiff1d(rest, take), per - len(take), replace=False) if len(take) < per else np.array([], int)
+                new = np.concatenate([take, fill]).astype(int)
+            else:
+                dis, _ = XA.score_pool(cand, [l.model for l in learners])
+                score = np.array([dis[n][i] for n, i in allp])
+                new = rest[np.argsort(-score[rest])[:per]]
+
+$ sed -n '40,53p' src/ainerzero/v9/experiments/s4/gated.py
+def geo_gate(P: np.ndarray, V: np.ndarray) -> np.ndarray:
+    """[M, n] bool for member states P, V [M, n, 2]: the disk is in a pair that the phase-1 contact
+    baseline flags (approaching and touching within DT on straight lines, or overlapping and approaching)."""
+    d = P[:, None, :, :] - P[:, :, None, :]                  # d[m, i, j] = p_j - p_i
+    u = V[:, None, :, :] - V[:, :, None, :]
+    a = (u * u).sum(-1)
+    b = 2 * (d * u).sum(-1)
+    c = (d * d).sum(-1) - (2 * W.RADIUS) ** 2
+    disc = b * b - 4 * a * c
+    with np.errstate(invalid="ignore", divide="ignore"):
+        tau = (-b - np.sqrt(np.maximum(disc, 0.0))) / (2 * np.where(a > 0, a, 1.0))
+    hit = ((c <= 0) & (b < 0)) | ((a > 0) & (disc >= 0) & (b < 0) & (tau >= 0) & (tau < W.DT))
+    hit &= ~np.eye(P.shape[1], dtype=bool)[None]
+    return hit.any(-1)
+
+$ sed -n '191,216p' src/ainerzero/v9/experiments/s4/learned_mlx.py
+def make_pool(episodes: Sequence, n_samples: int, rng: np.random.Generator, physics, *, exact_frac: float = EXACT_FRAC) -> Pool:
+    """Draw states from the episodes, perturb them, label with ``physics`` rolled out 1, 5 and 10 steps.
+
+    Step 1 runs per sample (the simulator logs contacts of its first copy only); steps 2-10 run
+    batched over the samples of one episode with one disk count."""
+    draws = []
+    for _ in range(n_samples):
+        e = int(rng.integers(len(episodes)))
+        s = episodes[e].steps[int(rng.integers(len(episodes[e].steps)))]
+        pos, vel = perturb(s.positions, s.velocities, rng, exact=rng.random() < exact_frac)
+        draws.append((e, pos, vel))
+    groups: dict[tuple[int, int], list[int]] = {}
+    for i, (e, pos, _) in enumerate(draws):
+        groups.setdefault((len(pos), e), []).append(i)
+    rows: dict[int, dict[str, list]] = {}
+    for (n, e), idx in sorted(groups.items()):
+        pillars = tuple(map(tuple, episodes[e].pillars))
+        P = np.stack([draws[i][1] for i in idx]); V = np.stack([draws[i][2] for i in idx])
+        contact = np.zeros((len(idx), n, n), dtype=np.float32)
+        p1, v1 = np.empty_like(P), np.empty_like(V)
+        for b in range(len(idx)):
+            pb, vb, c = physics(P[b:b + 1], V[b:b + 1], pillars, log=True)
+            p1[b], v1[b] = pb[0], vb[0]
+            for kind, i, j in c:
+                if kind == "disk":
+                    contact[b, i, j] = contact[b, j, i] = 1.0
+
+$ sed -n '245,259p' src/ainerzero/v9/experiments/s4/learned_mlx.py
+def rollout_loss(model: Dynamics, batch: dict[str, mx.array]) -> mx.array:
+    """MSE of the model's own rollout against the simulator at 1, 5 and 10 steps, plus the contact loss."""
+    p, v, pil = batch["p"], batch["v"], batch["pil"]
+    loss = mx.array(0.0)
+    for k in range(1, max(ROLLOUT) + 1):
+        p, v, logits, _ = model(p, v, pil)
+        if k == 1 and logits is not None:
+            n = p.shape[1]
+            off = 1 - mx.eye(n)[None]
+            bce = nn.losses.binary_cross_entropy(logits, batch["contact"], with_logits=True, reduction="none")
+            loss = loss + CONTACT_WEIGHT * (bce * off).sum() / mx.maximum(off.sum() * p.shape[0], 1)
+        if k in ROLLOUT:
+            w = ROLLOUT_WEIGHTS[ROLLOUT.index(k)]
+            loss = loss + w * ((((p - batch[f"p{k}"]) / P_SCALE) ** 2).mean() + ((v - batch[f"v{k}"]) ** 2).mean())
+    return loss
+
+$ sed -n '270,305p' src/ainerzero/v9/experiments/s4/learned_mlx.py
+def sample_kinds(e: dict[str, np.ndarray]) -> tuple[np.ndarray, np.ndarray]:
+    """Indices of a mean bucket's samples (contact, near miss): a disk contact at step 1, or none
+    and some pair of disks ending step 1 with centres closer than NEAR_GAP. Read from the
+    simulator's labels only."""
+    if "contact" not in e:
+        return np.zeros(0, np.int64), np.zeros(0, np.int64)
+    hit = e["contact"].sum((1, 2)) > 0
+    p1 = e["p1"]
+    d = np.linalg.norm(p1[:, :, None] - p1[:, None], axis=-1) + np.eye(p1.shape[1])[None] * 99.0
+    near = (d.min((1, 2)) < NEAR_GAP) & ~hit
+    return np.flatnonzero(hit), np.flatnonzero(near)
+
+
+def batches(pool: Pool, steps: int, batch: int, rng: np.random.Generator, *, coll_share: float = 0.0,
+            near_share: float = 0.0) -> Iterator[tuple[int, np.ndarray]]:
+    """Bucket chosen in proportion to its size, then ``batch`` indices drawn with replacement. With
+    ``coll_share`` > 0 that share of the batch comes from the bucket's contact samples, with
+    ``near_share`` > 0 that share from its near misses (see ``sample_kinds``); a kind the bucket
+    does not have is drawn from the whole bucket instead. Order in the batch: contact, near, rest."""
+    ns = sorted(pool.by_n)
+    sizes = np.array([len(pool.by_n[n]["p"]) for n in ns], dtype=np.float64)
+    w = sizes / sizes.sum()
+    kinds = {n: sample_kinds(pool.by_n[n]) for n in ns}
+    k, q = int(round(batch * coll_share)), int(round(batch * near_share))
+    if k + q > batch:
+        raise ValueError("the contact and near-miss shares exceed the batch")
+    for _ in range(steps):
+        j = int(rng.choice(len(ns), p=w))
+        h, nr = kinds[ns[j]]
+        parts = []
+        if k and len(h):
+            parts.append(h[rng.integers(0, len(h), k)])
+        if q and len(nr):
+            parts.append(nr[rng.integers(0, len(nr), q)])
+        parts.append(rng.integers(0, int(sizes[j]), batch - sum(len(x) for x in parts)))
+        yield ns[j], np.concatenate(parts)
+
+$ sed -n '69,112p' src/ainerzero/v9/experiments/s4/metrics.py
+# --- bootstrap over worlds --------------------------------------------------------------------
+def bootstrap(stat: Callable[..., float], sums: dict[str, np.ndarray], *, n_boot: int = BOOT_N, seed: int = BOOT_SEED,
+              m: int = 1) -> dict[str, Any]:
+    """``sums`` maps names to per-world arrays (same length); ``stat`` takes their totals as keywords.
+
+    Worlds are resampled with replacement; returns the point value, the 95% interval and a
+    Bonferroni interval over ``m`` comparisons."""
+    names = list(sums)
+    arr = np.stack([np.asarray(sums[k], dtype=np.float64) for k in names])  # [K, W]
+    n_w = arr.shape[1]
+    if n_w == 0:
+        return {"value": None, "ci_low": None, "ci_high": None, "bonf_low": None, "bonf_high": None, "n_worlds": 0}
+    with np.errstate(divide="ignore", invalid="ignore"):
+        point = float(stat(**dict(zip(names, arr.sum(1)))))
+    rng = np.random.default_rng(seed)
+    draws = rng.integers(0, n_w, size=(n_boot, n_w))
+    tot = arr[:, draws].sum(-1)                                              # [K, n_boot]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        boot = np.array(stat(**dict(zip(names, tot))), dtype=np.float64)
+    boot = boot[np.isfinite(boot)]
+    if not np.isfinite(point) or len(boot) < n_boot:
+        # An undefined ratio (e.g. E-P no better than E-B) in the point value or in any resample:
+        # dropping those resamples would narrow the interval, so no interval is given and every
+        # gate that needs one fails. The point value is kept when it is defined.
+        return {"value": float(point) if np.isfinite(point) else None, "ci_low": None, "ci_high": None,
+                "bonf_low": None, "bonf_high": None, "n_worlds": int(n_w), "n_boot_finite": int(len(boot))}
+    tail = (1 - LEVEL) / 2
+    lo, hi = np.quantile(boot, [tail, 1 - tail])
+    blo, bhi = np.quantile(boot, [tail / m, 1 - tail / m])
+    return {"value": float(point), "ci_low": float(lo), "ci_high": float(hi), "bonf_low": float(blo), "bonf_high": float(bhi),
+            "n_worlds": int(n_w), "n_boot_finite": int(len(boot))}
+
+
+def _ratio(num, den):
+    """num / den, undefined (NaN) wherever den is not positive: a resample in which a denominator
+    vanishes or changes sign gives no ratio, so the bootstrap gives no interval."""
+    num, den = np.asarray(num, dtype=np.float64), np.asarray(den, dtype=np.float64)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(den > 0, num / np.where(den > 0, den, 1.0), np.nan)
+
+
+def stat_D(x_coll, b_coll, **_):
+    """D(X) = 1 - err(X) / err(E-B) on collision disk-steps (same disk-steps for both)."""
+    return 1 - _ratio(x_coll, b_coll)
+
+$ sed -n '142,142p' ARCHITECTURE_V9.md
+7. 信息增益：`a* = argmax_a I(S; O_next | a)`（近似）。
+
+$ sed -n '183,183p' ARCHITECTURE_V9.md
+| S6 自驱 | 学习缺口、信息增益、沙盒行动、技能晋升与撤销；epinet 对照小集成 | 需批准 | 无教师独立测试、旧技能保留 |
+
+$ sed -n '2,2p' reports/V9-S6-DESIGN/inventory/uncertainty.txt
+L-int {'n_disk_steps': 65780, 'spearman_spread_err': 0.725, 'auc_spread_collision': 0.932, 'auc_spread_top5_error': 0.965, 'share_sq_error_in_top5_spread': 0.568, 'share_sq_error_on_collision_steps': 0.015}
+
+$ sed -n '3,10p' reports/V9-S6-DESIGN/tier1-explore/run-s6c.log
+random    round 0 n=  3000 contact=0.028 D=0.496 coll=0.6309 wall=0.9976 free=0.0225 all=0.0536  145s
+random    round 1 n=  6000 contact=0.029 D=0.571 coll=0.5377 wall=0.8609 free=0.0158 all=0.0424  242s
+random    round 2 n=  9000 contact=0.029 D=0.645 coll=0.4443 wall=0.8181 free=0.0120 all=0.0369  340s
+random    round 3 n= 12000 contact=0.028 D=0.676 coll=0.4059 wall=0.7754 free=0.0107 all=0.0338  438s
+disagree  round 0 n=  3000 contact=0.028 D=0.496 coll=0.6309 wall=0.9976 free=0.0225 all=0.0536  537s
+disagree  round 1 n=  6000 contact=0.135 D=0.673 coll=0.4094 wall=0.8250 free=0.0190 all=0.0437  639s
+disagree  round 2 n=  9000 contact=0.113 D=0.726 coll=0.3427 wall=0.7586 free=0.0163 all=0.0388  738s
+disagree  round 3 n= 12000 contact=0.097 D=0.744 coll=0.3212 wall=0.7044 free=0.0144 all=0.0352  837s
+
+$ sed -n '2,2p' reports/V9-S6-DESIGN/tier1-explore/run-s6f.log
+pool 51s; geo-flagged share 0.0267; of them with a disk contact 1.000; contacts flagged 0.985
+
+$ sed -n '6,14p' reports/V9-S6-DESIGN/tier1-explore/run-s6f.log
+random    round 3 n= 12000 contact=0.028 | main6 D=0.661 ['0.673', '0.639', '0.672'] free=0.0105 wall=0.7559 all=0.0311 | extrap10 D=0.686 all=0.0371  514s
+disagree  round 0 n=  3000 contact=0.028 | main6 D=0.502 ['0.511', '0.484', '0.510'] free=0.0219 wall=0.9483 all=0.0484 | extrap10 D=0.493 all=0.0599  607s
+disagree  round 1 n=  6000 contact=0.135 | main6 D=0.655 ['0.673', '0.634', '0.659'] free=0.0183 wall=0.7954 all=0.0401 | extrap10 D=0.685 all=0.0481  707s
+disagree  round 2 n=  9000 contact=0.113 | main6 D=0.714 ['0.734', '0.685', '0.722'] free=0.0156 wall=0.7391 all=0.0356 | extrap10 D=0.735 all=0.0426  806s
+disagree  round 3 n= 12000 contact=0.097 | main6 D=0.733 ['0.746', '0.706', '0.746'] free=0.0134 wall=0.6914 all=0.0321 | extrap10 D=0.751 all=0.0389  903s
+geo       round 0 n=  3000 contact=0.028 | main6 D=0.502 ['0.511', '0.484', '0.510'] free=0.0219 wall=0.9483 all=0.0484 | extrap10 D=0.493 all=0.0599  992s
+geo       round 1 n=  6000 contact=0.267 | main6 D=0.758 ['0.766', '0.745', '0.764'] free=0.0159 wall=0.8339 all=0.0381 | extrap10 D=0.773 all=0.0465  1087s
+geo       round 2 n=  9000 contact=0.178 | main6 D=0.787 ['0.796', '0.773', '0.792'] free=0.0124 wall=0.7765 all=0.0329 | extrap10 D=0.797 all=0.0401  1208s
+geo       round 3 n= 12000 contact=0.134 | main6 D=0.795 ['0.809', '0.766', '0.810'] free=0.0095 wall=0.7954 all=0.0300 | extrap10 D=0.807 all=0.0369  1329s
+
+$ grep -n 'namespaces' reports/V9-S6-DESIGN/tier1-explore/results-s6d.json reports/V9-S6-DESIGN/replication/results-s6r3.json reports/V9-S6-DESIGN/replication/results-s6r4.json
+reports/V9-S6-DESIGN/tier1-explore/results-s6d.json:138: "namespaces": {
+reports/V9-S6-DESIGN/replication/results-s6r3.json:138: "namespaces": {
+reports/V9-S6-DESIGN/replication/results-s6r4.json:138: "namespaces": {
+
+$ grep -n 'R20261113-S6-start' RESEARCH_LOG.md
+4060:## R20261113-S6-start：S6 自驱开题（2026-11-13）
+
+$ sed -n '4150,4157p' RESEARCH_LOG.md
+  - 几何规则在精确状态上几乎就是碰撞探测器：标出的 100% 有盘间接触，接触的 98.5% 被标出。它学碰撞比按分歧挑更好（+0.062），但墙柱比随机略差。
+  - **设计稿据此收窄结论**：不主张「自己挑最好」，只主张不读标签、不用手写知识也能找到缺口，追平读真值的手工课程、胜过随机，并且同时补碰撞和墙柱两个缺口。
+  - 按分歧在三个网络上各自胜过随机（同种子配对 +0.073、+0.067、+0.074）。
+- **S6 一期设计稿 r0 定稿送复核**（`reports/V9-S6-DESIGN/DESIGN-r0.md`）：
+  - 主臂按三网络分歧挑实验；对照有随机、epinet、手工课程、几何规则、先知；
+  - 门：GS、GT、GK、GP、GX，m = 6；
+  - 分区：`s6p1-cand`、`s6p1-probe`、`s6p1-final`；
+  - 预算约 2.5 小时。
+
+$ git rev-parse HEAD; git rev-parse cab2218; shasum -a 256 reports/V9-S6-DESIGN/DESIGN-r0.md
+15c676bdb0eaa96f14992113bc5a02eec90d8d40
+cab2218d60f7d509a9e6b41fab44f95689a4482b
+8128849da7c2cc586758feaa0b0252d7ababebdcdebef17d64edae4bc266ce66  reports/V9-S6-DESIGN/DESIGN-r0.md
+
+$ .venv/bin/python -c 'import mlx,sys; print(sys.version); print("mlx", getattr(mlx, "__version__", "unknown"))'
+3.12.2 (v3.12.2:6abddd9f6a, Feb  6 2024, 17:02:06) [Clang 13.0.0 (clang-1300.0.29.30)]
+mlx unknown

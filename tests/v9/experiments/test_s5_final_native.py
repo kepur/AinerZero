@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+pytest.importorskip("mlx.core")
 pytestmark = pytest.mark.native_mlx
 
 LIVE = Path(__file__).resolve().parents[3]

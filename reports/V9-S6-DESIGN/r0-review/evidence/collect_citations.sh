@@ -1,0 +1,38 @@
+#!/bin/zsh
+# Raw grep -n / sed -n excerpts cited by the r0 review. Run from the repo root.
+set -u
+ROOT=/Users/mac/AinerWorkFlow/AinerZero
+cd "$ROOT"
+run() {
+  echo ""
+  echo "\$ $*"
+  eval "$@"
+}
+run "sed -n '12,27p' reports/V9-S6-DESIGN/DESIGN-r0.md"
+run "sed -n '51,73p' reports/V9-S6-DESIGN/DESIGN-r0.md"
+run "sed -n '80,91p' reports/V9-S6-DESIGN/DESIGN-r0.md"
+run "sed -n '96,110p' reports/V9-S6-DESIGN/DESIGN-r0.md"
+run "sed -n '119,137p' reports/V9-S6-DESIGN/DESIGN-r0.md"
+run "sed -n '141,172p' reports/V9-S6-DESIGN/DESIGN-r0.md"
+run "sed -n '192,207p' reports/V9-S6-DESIGN/DESIGN-r0.md"
+run "sed -n '53,66p' reports/V9-S6-DESIGN/tier1-explore/explore_s6a.py"
+run "sed -n '97,121p' reports/V9-S6-DESIGN/tier1-explore/explore_s6a.py"
+run "sed -n '64,95p' reports/V9-S6-DESIGN/tier1-explore/explore_s6c.py"
+run "sed -n '28,29p' reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py"
+run "sed -n '68,79p' reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py"
+run "sed -n '40,53p' src/ainerzero/v9/experiments/s4/gated.py"
+run "sed -n '191,216p' src/ainerzero/v9/experiments/s4/learned_mlx.py"
+run "sed -n '245,259p' src/ainerzero/v9/experiments/s4/learned_mlx.py"
+run "sed -n '270,305p' src/ainerzero/v9/experiments/s4/learned_mlx.py"
+run "sed -n '69,112p' src/ainerzero/v9/experiments/s4/metrics.py"
+run "sed -n '142,142p' ARCHITECTURE_V9.md"
+run "sed -n '183,183p' ARCHITECTURE_V9.md"
+run "sed -n '2,2p' reports/V9-S6-DESIGN/inventory/uncertainty.txt"
+run "sed -n '3,10p' reports/V9-S6-DESIGN/tier1-explore/run-s6c.log"
+run "sed -n '2,2p' reports/V9-S6-DESIGN/tier1-explore/run-s6f.log"
+run "sed -n '6,14p' reports/V9-S6-DESIGN/tier1-explore/run-s6f.log"
+run "grep -n 'namespaces' reports/V9-S6-DESIGN/tier1-explore/results-s6d.json reports/V9-S6-DESIGN/replication/results-s6r3.json reports/V9-S6-DESIGN/replication/results-s6r4.json"
+run "grep -n 'R20261113-S6-start' RESEARCH_LOG.md"
+run "sed -n '4150,4157p' RESEARCH_LOG.md"
+run "git rev-parse HEAD; git rev-parse cab2218; shasum -a 256 reports/V9-S6-DESIGN/DESIGN-r0.md"
+run ".venv/bin/python -c 'import mlx,sys; print(sys.version); print(\"mlx\", getattr(mlx, \"__version__\", \"unknown\"))'"

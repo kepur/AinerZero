@@ -43,7 +43,7 @@ SIGMA = 0.05
 P_MISS = 0.05
 
 # Registered partitions that only a registered run may generate (phase 1 and phase 2 finals; no dev).
-REGISTERED = frozenset({"s4p1-final", "s4p2-final"})
+REGISTERED = frozenset({"s4p1-final", "s4p2-final", "s6p1-final"})
 
 Pillar = tuple[float, float, float]
 

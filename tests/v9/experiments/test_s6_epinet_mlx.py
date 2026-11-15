@@ -25,6 +25,8 @@ from mlx.utils import tree_flatten
 from ainerzero.v9.experiments.s4 import learned_mlx as L
 from ainerzero.v9.experiments.s6 import epinet_mlx as E
 
+pytestmark = pytest.mark.native_mlx
+
 
 def _make_synthetic_pool(S: int = 48, n: int = 3, seed: int = 42) -> L.Pool:
     rng = np.random.default_rng(seed)

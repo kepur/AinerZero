@@ -1,0 +1,16 @@
+$ diff <(sed -n 205,214p sandbox.py | sed "s/^ *//; s/ *#.*$//") <(sed -n 43,52p gated.py | sed "s/^ *//; s/ *#.*$//") && echo IDENTICAL
+IDENTICAL
+
+$ grep -n "^from\|^import" sandbox.py gated.py   # both take RADIUS, DT from the same s4.world
+src/ainerzero/v9/experiments/s4/gated.py:25:from __future__ import annotations
+src/ainerzero/v9/experiments/s4/gated.py:27:import math
+src/ainerzero/v9/experiments/s4/gated.py:28:from typing import Sequence
+src/ainerzero/v9/experiments/s4/gated.py:30:import mlx.core as mx
+src/ainerzero/v9/experiments/s4/gated.py:31:import numpy as np
+src/ainerzero/v9/experiments/s4/gated.py:33:from ainerzero.v9.experiments.s4 import learned_mlx as L
+src/ainerzero/v9/experiments/s4/gated.py:34:from ainerzero.v9.experiments.s4 import models as Mo
+src/ainerzero/v9/experiments/s4/gated.py:35:from ainerzero.v9.experiments.s4 import world as W
+src/ainerzero/v9/experiments/s6/sandbox.py:16:from __future__ import annotations
+src/ainerzero/v9/experiments/s6/sandbox.py:18:from typing import Any
+src/ainerzero/v9/experiments/s6/sandbox.py:20:import numpy as np
+src/ainerzero/v9/experiments/s6/sandbox.py:22:from ainerzero.v9.experiments.s4 import world as W

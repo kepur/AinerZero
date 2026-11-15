@@ -1,0 +1,44 @@
+FF.                                                                      [100%]
+=================================== FAILURES ===================================
+___________________ test_native_module_inventory_is_complete ___________________
+
+tmp_path = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-644/test_native_module_inventory_i0')
+
+    def test_native_module_inventory_is_complete(tmp_path):
+        # Static: every test module with a direct module-level MLX import is registered.
+        direct = {p.name for p in _test_modules() if _module_level_mlx(p)}
+        assert direct <= set(conftest.NATIVE_MODULES), sorted(direct - set(conftest.NATIVE_MODULES))
+        paths = _native_paths()
+        # Dynamic, both directions: with the opt-in, exactly the registered modules reach a
+        # real MLX import during collection (direct or transitive), and nothing else does.
+        result, log = _collect(tmp_path, SENTINEL_ATTRIBUTING, conftest.NATIVE_OPTION)
+        assert log.exists(), result.stdout[-3000:] + result.stderr[-3000:]
+        records = [json.loads(line) for line in log.read_text().splitlines()]
+        assert all(r["test"] for r in records), [r for r in records if not r["test"]]
+        blocked = {r["test"] for r in records}
+        registered = {str(p.relative_to(TESTS)) for p in paths.values()}
+>       assert blocked == registered, {"unregistered": sorted(blocked - registered),
+                                       "registered_but_cpu": sorted(registered - blocked)}
+E       AssertionError: {'unregistered': [], 'registered_but_cpu': ['v9/experiments/test_s5_final_native.py']}
+E       assert {'test_dynami...etry.py', ...} == {'test_dynami...etry.py', ...}
+E         
+E         Extra items in the right set:
+E         'v9/experiments/test_s5_final_native.py'
+E         Use -v to get more diff
+
+tests/test_cpu_collection.py:109: AssertionError
+____________________ test_native_modules_carry_native_mark _____________________
+
+    def test_native_modules_carry_native_mark():
+        for name, path in _native_paths().items():
+>           assert 'pytestmark = pytest.mark.native_mlx' in path.read_text(), name
+E           AssertionError: test_s6_epinet_mlx.py
+E           assert 'pytestmark = pytest.mark.native_mlx' in '"""Tests for S6 epinet MLX module (s6/epinet_mlx.py).\n\nVerifies:\n  - Bitwise parity with base network when z is No...nstance(node, ast.Attribute):\n            assert node.attr != "physics", f"Forbidden attribute access: {node.attr}"\n'
+E            +  where '"""Tests for S6 epinet MLX module (s6/epinet_mlx.py).\n\nVerifies:\n  - Bitwise parity with base network when z is No...nstance(node, ast.Attribute):\n            assert node.attr != "physics", f"Forbidden attribute access: {node.attr}"\n' = read_text()
+E            +    where read_text = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-patch-min/tests/v9/experiments/test_s6_epinet_mlx.py').read_text
+
+tests/test_cpu_collection.py:117: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_cpu_collection.py::test_native_module_inventory_is_complete
+FAILED tests/test_cpu_collection.py::test_native_modules_carry_native_mark - ...
+2 failed, 1 passed in 13.57s

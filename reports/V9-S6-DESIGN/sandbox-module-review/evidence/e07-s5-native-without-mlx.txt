@@ -1,0 +1,20 @@
+# MLX blocked by evidence/nomlx_sitecustomize.py (ModuleNotFoundError on any mlx import); collection only, so MLX is never loaded.
+===== cp-head, pytest --collect-only -q -rs  tests/v9/experiments/test_s5_final_native.py
+
+no tests collected (3 deselected) in 0.59s
+===== cp-head, pytest --collect-only -q -rs --native-mlx tests/v9/experiments/test_s5_final_native.py
+tests/v9/experiments/test_s5_final_native.py::test_standin_names_are_not_registered
+tests/v9/experiments/test_s5_final_native.py::test_registered_runner_end_to_end_on_standin_partitions
+tests/v9/experiments/test_s5_final_native.py::test_tampered_pinned_weight_is_refused_before_any_output
+
+3 tests collected in 0.07s
+===== cp-patch-full, pytest --collect-only -q -rs  tests/v9/experiments/test_s5_final_native.py
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/v9/experiments/test_s5_final_native.py:22: could not import 'mlx.core': No module named 'mlx' (simulated: MLX not installed)
+no tests collected in 0.60s
+===== cp-patch-full, pytest --collect-only -q -rs --native-mlx tests/v9/experiments/test_s5_final_native.py
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/v9/experiments/test_s5_final_native.py:22: could not import 'mlx.core': No module named 'mlx' (simulated: MLX not installed)
+no tests collected in 0.04s

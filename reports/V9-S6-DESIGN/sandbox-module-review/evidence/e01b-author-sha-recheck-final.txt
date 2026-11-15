@@ -1,0 +1,27 @@
+# re-check after the late fix (final version)
+$ (cd reports/V9-S6-DESIGN/sandbox-module && head -6 SHA256SUMS.txt | shasum -a 256 -c); tail -6 reports/V9-S6-DESIGN/sandbox-module/SHA256SUMS.txt | shasum -a 256 -c
+REPORT.md: OK
+mutate.sh: OK
+mutate.log: OK
+numpy-tests.log: OK
+native-tests.log: OK
+cpu-collection.log: OK
+src/ainerzero/v9/experiments/s6/sandbox.py: FAILED
+tests/v9/experiments/test_s6_sandbox.py: FAILED
+tests/v9/experiments/test_s6_sandbox_native.py: OK
+tests/conftest.py: OK
+tests/v9/experiments/test_s6_epinet_mlx.py: OK
+tests/v9/experiments/test_s5_final_native.py: OK
+shasum: WARNING: 2 computed checksums did NOT match
+total 72
+drwxr-xr-x   9 mac  staff   288 Nov 14 05:47:38 2026 .
+drwxr-xr-x  15 mac  staff   480 Nov 14 06:01:37 2026 ..
+-rw-r--r--   1 mac  staff  9053 Nov 14 05:47:38 2026 REPORT.md
+-rw-r--r--   1 mac  staff  1111 Nov 14 05:47:38 2026 SHA256SUMS.txt
+-rw-r--r--   1 mac  staff    98 Nov 14 05:40:07 2026 cpu-collection.log
+-rw-r--r--   1 mac  staff  1192 Nov 14 05:47:30 2026 mutate.log
+-rwxr-xr-x   1 mac  staff  3260 Nov 14 05:00:17 2026 mutate.sh
+-rw-r--r--   1 mac  staff    99 Nov 14 05:47:10 2026 native-tests.log
+-rw-r--r--   1 mac  staff    99 Nov 14 05:39:57 2026 numpy-tests.log
+-rw-r--r--  1 mac  staff  10111 Nov 14 06:00:08 2026 src/ainerzero/v9/experiments/s6/sandbox.py
+-rw-r--r--  1 mac  staff  13100 Nov 14 06:00:20 2026 tests/v9/experiments/test_s6_sandbox.py

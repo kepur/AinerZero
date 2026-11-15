@@ -1,0 +1,301 @@
+# Raw grep -n / sed -n output for every quotation in REPORT.md. Working tree at review time; HEAD 15c676b.
+# sandbox.py sha256 200e212ea05949da09c0e81f06a540cdfbb8d53a0ca3e6af9d80ebe5473eed6a; test_s6_sandbox.py sha256 9e0a1ca7d5b64b4714caa53f3aa0cc8f698dceb00b271e9f4e646f6b3e383a7d
+
+## C1 $ sed -n 34,37p src/ainerzero/v9/experiments/s6/sandbox.py
+        self._pool_type = type(pool)
+        self._states: dict[int, dict[str, np.ndarray]] = {}
+        # The only place labels are kept. Only ``reveal`` (via ``_take``) reads it.
+        self._sealed_labels: dict[int, dict[str, np.ndarray]] = {}
+
+## C2 $ sed -n 46,54p src/ainerzero/v9/experiments/s6/sandbox.py
+            labels = sorted(k for k in e if k not in STATE_KEYS)
+            if not labels:
+                raise ValueError(f"bucket n={n} has no label fields")
+            size = len(e["p"])
+            for k in e:
+                if len(e[k]) != size:
+                    raise ValueError(f"bucket n={n}: field {k!r} has {len(e[k])} rows, expected {size}")
+            self._states[n] = {k: np.array(e[k], copy=True) for k in STATE_KEYS}
+            self._sealed_labels[n] = {k: np.array(e[k], copy=True) for k in labels}
+
+## C3 $ sed -n 67,77p src/ainerzero/v9/experiments/s6/sandbox.py
+    def states(self) -> dict[int, dict[str, np.ndarray]]:
+        """Per disk count n: ``id`` [S] (global ids) and the state fields p, v [S, n, 2], pil [S, 3, 3].
+        Read-only copies; no label field."""
+        out = {}
+        for n, e in self._states.items():
+            ids = np.arange(self._first_id[n], self._first_id[n] + len(e["p"]), dtype=np.int64)
+            row = {"id": ids, **{k: np.array(v, copy=True) for k, v in e.items()}}
+            for a in row.values():
+                a.flags.writeable = False
+            out[n] = row
+        return out
+
+## C4 $ sed -n 95,109p src/ainerzero/v9/experiments/s6/sandbox.py
+    def reveal(self, ids) -> Any:
+        """Run the sandbox on these candidates: return them with labels as a pool of the source type,
+        grouped by disk count (ascending), in the given order within a group. Each id may be revealed
+        once; a repeat (within the call or across calls) raises before anything is revealed."""
+        ids = self._check_new(ids)
+        out = self._take(ids)              # read first: if this fails, nothing is registered
+        self._revealed.extend(ids)
+        self._revealed_set.update(ids)
+        self._log.append({"call": len(self._log), "ids": list(ids)})
+        return out
+
+    def revealed_pool(self) -> Any:
+        """Every revealed sample so far, in reveal order within each disk count; the training pool.
+        Empty reveal history returns an empty pool without touching labels."""
+        return self._take(list(self._revealed))
+
+## C5 $ sed -n 112,126p src/ainerzero/v9/experiments/s6/sandbox.py
+    def _check_new(self, ids) -> list[int]:
+        arr = np.asarray(ids)
+        if arr.ndim != 1:
+            raise ValueError("ids must be one-dimensional")
+        if arr.size and not np.issubdtype(arr.dtype, np.integer):
+            raise TypeError("ids must be integers")
+        out = [int(x) for x in arr]
+        if any(x < 0 or x >= len(self._index) for x in out):
+            raise IndexError("id out of range")
+        if len(set(out)) != len(out):
+            raise ValueError("duplicate id within one reveal")
+        again = sorted(set(out) & self._revealed_set)
+        if again:
+            raise ValueError(f"ids already revealed: {again[:10]}")
+        return out
+
+## C6 $ sed -n 128,139p src/ainerzero/v9/experiments/s6/sandbox.py
+    def _take(self, ids: list[int]) -> Any:
+        groups: dict[int, list[int]] = {}
+        for g in ids:
+            n, i = (int(x) for x in self._index[g])
+            groups.setdefault(n, []).append(i)
+        by_n = {}
+        for n in sorted(groups):
+            rows = np.array(groups[n], dtype=np.int64)
+            sealed = self._sealed_labels[n]
+            by_n[n] = {**{k: v[rows] for k, v in self._states[n].items()},
+                       **{k: v[rows] for k, v in sealed.items()}}
+        return self._pool_type(by_n)
+
+## C7 $ sed -n 143,155p src/ainerzero/v9/experiments/s6/sandbox.py
+def _canon(remaining, k: int) -> np.ndarray:
+    rem = np.asarray(remaining)
+    if rem.ndim != 1:
+        raise ValueError("remaining must be one-dimensional")
+    if rem.size and not np.issubdtype(rem.dtype, np.integer):
+        raise TypeError("remaining must hold integer ids")
+    rem = rem.astype(np.int64)
+    srt = np.unique(rem)
+    if len(srt) != len(rem):
+        raise ValueError("remaining has duplicate ids")
+    if not 0 <= k <= len(srt):
+        raise ValueError(f"cannot pick {k} from {len(srt)} remaining")
+    return srt
+
+## C8 $ grep -n 'rng.choice\|np.lexsort\|flagged = \|setdiff1d' src/ainerzero/v9/experiments/s6/sandbox.py
+162:    return rng.choice(rem, k, replace=False).astype(np.int64)
+175:    order = np.lexsort((rem, -sr))
+186:    flagged = rem[f[rem]]
+187:    take = rng.choice(flagged, min(k, len(flagged)), replace=False).astype(np.int64)
+189:        fill = rng.choice(np.setdiff1d(rem, take), k - len(take), replace=False).astype(np.int64)
+
+## C9 $ sed -n 203,220p src/ainerzero/v9/experiments/s6/sandbox.py
+        P = np.asarray(e["p"], dtype=np.float64)
+        V = np.asarray(e["v"], dtype=np.float64)
+        d = P[:, None, :, :] - P[:, :, None, :]
+        u = V[:, None, :, :] - V[:, :, None, :]
+        a = (u * u).sum(-1)
+        b = 2 * (d * u).sum(-1)
+        c = (d * d).sum(-1) - (2 * W.RADIUS) ** 2
+        disc = b * b - 4 * a * c
+        with np.errstate(invalid="ignore", divide="ignore"):
+            tau = (-b - np.sqrt(np.maximum(disc, 0.0))) / (2 * np.where(a > 0, a, 1.0))
+        hit = ((c <= 0) & (b < 0)) | ((a > 0) & (disc >= 0) & (b < 0) & (tau >= 0) & (tau < W.DT))
+        hit &= ~np.eye(P.shape[1], dtype=bool)[None]
+        ids = np.asarray(e["id"], dtype=np.int64)
+        out[ids] = hit.any(-1).any(-1)
+        seen[ids] = True
+    if not seen.all():
+        raise ValueError("states do not cover ids 0..N-1")
+    return out
+
+## C10 $ sed -n 40,53p src/ainerzero/v9/experiments/s4/gated.py
+def geo_gate(P: np.ndarray, V: np.ndarray) -> np.ndarray:
+    """[M, n] bool for member states P, V [M, n, 2]: the disk is in a pair that the phase-1 contact
+    baseline flags (approaching and touching within DT on straight lines, or overlapping and approaching)."""
+    d = P[:, None, :, :] - P[:, :, None, :]                  # d[m, i, j] = p_j - p_i
+    u = V[:, None, :, :] - V[:, :, None, :]
+    a = (u * u).sum(-1)
+    b = 2 * (d * u).sum(-1)
+    c = (d * d).sum(-1) - (2 * W.RADIUS) ** 2
+    disc = b * b - 4 * a * c
+    with np.errstate(invalid="ignore", divide="ignore"):
+        tau = (-b - np.sqrt(np.maximum(disc, 0.0))) / (2 * np.where(a > 0, a, 1.0))
+    hit = ((c <= 0) & (b < 0)) | ((a > 0) & (disc >= 0) & (b < 0) & (tau >= 0) & (tau < W.DT))
+    hit &= ~np.eye(P.shape[1], dtype=bool)[None]
+    return hit.any(-1)
+
+## C11 $ sed -n 41,50p reports/V9-S6-DESIGN/tier1-explore/explore_s6a.py
+def flat_pool(pool):
+    """List of (n, index) for every sample, and the per-bucket arrays."""
+    return [(n, i) for n, e in sorted(pool.by_n.items()) for i in range(len(e["p"]))]
+
+
+def subset(pool, picks):
+    by = {}
+    for n, i in picks:
+        by.setdefault(n, []).append(i)
+    return L.Pool({n: {k: v[np.array(idx)] for k, v in pool.by_n[n].items()} for n, idx in sorted(by.items())})
+
+## C12 $ grep -n 'chosen = \|rest = \|new = \|chosen +=' reports/V9-S6-DESIGN/tier1-explore/explore_s6c.py reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py
+reports/V9-S6-DESIGN/tier1-explore/explore_s6c.py:75:        chosen = list(rng.choice(len(allp), per, replace=False))
+reports/V9-S6-DESIGN/tier1-explore/explore_s6c.py:89:            rest = np.setdiff1d(np.arange(len(allp)), chosen)
+reports/V9-S6-DESIGN/tier1-explore/explore_s6c.py:91:                new = rng.choice(rest, per, replace=False)
+reports/V9-S6-DESIGN/tier1-explore/explore_s6c.py:95:                new = rest[np.argsort(-score[rest])[:per]]
+reports/V9-S6-DESIGN/tier1-explore/explore_s6c.py:96:            chosen += list(new)
+reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py:50:        chosen = list(rng.choice(len(allp), per, replace=False))
+reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py:68:            rest = np.setdiff1d(np.arange(len(allp)), chosen)
+reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py:70:                new = rng.choice(rest, per, replace=False)
+reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py:75:                new = np.concatenate([take, fill]).astype(int)
+reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py:79:                new = rest[np.argsort(-score[rest])[:per]]
+reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py:80:            chosen += list(new)
+
+## C13 $ sed -n 28,29p reports/V9-S6-DESIGN/tier1-explore/explore_s6f.py; sed -n 71,75p (same file)
+def geo_flags(pool):
+    return {n: G.geo_gate(e["p"].astype(np.float64), e["v"].astype(np.float64)).any(-1) for n, e in pool.by_n.items()}
+            elif arm == "geo":
+                flagged = rest[gvec[rest]]
+                take = rng.choice(flagged, min(per, len(flagged)), replace=False)
+                fill = rng.choice(np.setdiff1d(rest, take), per - len(take), replace=False) if len(take) < per else np.array([], int)
+                new = np.concatenate([take, fill]).astype(int)
+
+## C14 $ sed -n 197,201p src/ainerzero/v9/experiments/s4/learned_mlx.py; grep -n 'return Pool({n: {key' src/ainerzero/v9/experiments/s4/learned_mlx.py
+    for _ in range(n_samples):
+        e = int(rng.integers(len(episodes)))
+        s = episodes[e].steps[int(rng.integers(len(episodes[e].steps)))]
+        pos, vel = perturb(s.positions, s.velocities, rng, exact=rng.random() < exact_frac)
+        draws.append((e, pos, vel))
+226:    return Pool({n: {key: np.concatenate(val).astype(np.float32) for key, val in d.items()} for n, d in sorted(rows.items())})
+
+## C15 $ grep -n 'rng.integers(0, int(sizes\[j\])' src/ainerzero/v9/experiments/s4/learned_mlx.py
+304:        parts.append(rng.integers(0, int(sizes[j]), batch - sum(len(x) for x in parts)))
+
+## C16 $ grep -n 'def test_pick_top_order_and_ties_by_id_ascending' -A5 tests/v9/experiments/test_s6_sandbox.py
+213:def test_pick_top_order_and_ties_by_id_ascending():
+214-    score = np.array([0.5, 0.9, 0.9, 0.1, 0.9, 0.7, 0.9])
+215-    rem = np.array([6, 4, 3, 2, 1, 5])                      # id 0 not remaining
+216-    assert S.pick_top(score, rem, 3).tolist() == [1, 2, 4]
+217-    assert S.pick_top(score, rem, 5).tolist() == [1, 2, 4, 6, 5]
+218-    assert S.pick_top(score, rem, 0).tolist() == []
+
+## C17 $ grep -n 'for name in dir(cp)' -A3 tests/v9/experiments/test_s6_sandbox.py; grep -n 'public = {n for n in dir' tests/v9/experiments/test_s6_sandbox.py; grep -n 'node.attr == "_sealed_labels"' tests/v9/experiments/test_s6_sandbox.py
+92:    for name in dir(cp):
+93-        if name.startswith("_") or name in ("reveal",):
+94-            continue
+95-        attr = getattr(cp, name)
+105:    public = {n for n in dir(S.CandidatePool) if not n.startswith("_")}
+115:                if isinstance(node, ast.Attribute) and node.attr == "_sealed_labels":
+
+## C18 $ grep -n 'def test_reveal_twice_raises_and_is_atomic' -A13 tests/v9/experiments/test_s6_sandbox.py
+134:def test_reveal_twice_raises_and_is_atomic():
+135-    cp = S.CandidatePool(_fake())
+136-    cp.reveal([1, 2])
+137-    with pytest.raises(ValueError, match="already revealed"):
+138-        cp.reveal([3, 2])
+139-    assert cp.revealed_ids().tolist() == [1, 2]            # 3 was not revealed by the failed call
+140-    with pytest.raises(ValueError, match="duplicate"):
+141-        cp.reveal([4, 4])
+142-    with pytest.raises(IndexError):
+143-        cp.reveal([15])
+144-    with pytest.raises(IndexError):
+145-        cp.reveal([-1])
+146-    assert cp.revealed_ids().tolist() == [1, 2] and len(cp.log()) == 1
+147-
+
+## C19 $ grep -n 'def test_failed_label_read_registers_nothing' -A10 tests/v9/experiments/test_s6_sandbox.py
+149:def test_failed_label_read_registers_nothing():
+150-    """If the label read itself fails (e.g. sealed during selection), the ids stay unrevealed."""
+151-    cp = S.CandidatePool(_fake())
+152-    real = cp._sealed_labels
+153-    cp._sealed_labels = Poison()
+154-    with pytest.raises(AssertionError, match="label store was read"):
+155-        cp.reveal([0, 1])
+156-    assert cp.revealed_ids().tolist() == [] and cp.log() == [] and cp.remaining().tolist() == list(range(15))
+157-    cp._sealed_labels = real
+158-    assert len(cp.reveal([0, 1]).by_n[4]["p"]) == 2 and cp.log() == [{"call": 0, "ids": [0, 1]}]
+159-
+
+## C20 $ grep -n 'def test_states_are_copies_not_views' -A7 tests/v9/experiments/test_s6_sandbox.py
+69:def test_states_are_copies_not_views():
+70-    src = _fake()
+71-    cp = S.CandidatePool(src)
+72-    src.by_n[4]["p"][0, 0, 0] = 99.0
+73-    src.by_n[4]["p1"][0, 0, 0] = 99.0
+74-    assert cp.states()[4]["p"][0, 0, 0] != 99.0
+75-    assert cp.reveal([0]).by_n[4]["p1"][0, 0, 0] != 99.0
+76-
+
+## C21 $ grep -n 'cp.reveal(second)\|rp.size() == 350\|share(a) > 0.5' tests/v9/experiments/test_s6_sandbox_native.py
+67:    cp.reveal(second)
+69:    assert rp.size() == 350
+75:    assert share(a) > 0.5 > 0.05 > share(b)
+
+## C22 $ git diff -U0 tests/conftest.py tests/v9/experiments/test_s5_final_native.py tests/v9/experiments/test_s6_epinet_mlx.py
+diff --git a/tests/conftest.py b/tests/conftest.py
+index ea6bdad..b3fe051 100644
+--- a/tests/conftest.py
++++ b/tests/conftest.py
+@@ -262,0 +263 @@ NATIVE_MODULES = {
++    "test_s6_sandbox_native.py": "module-level importorskip mlx.core (S6 sandbox vs make_pool and gated.geo_gate)",
+diff --git a/tests/v9/experiments/test_s5_final_native.py b/tests/v9/experiments/test_s5_final_native.py
+index 207f815..bfa8c81 100644
+--- a/tests/v9/experiments/test_s5_final_native.py
++++ b/tests/v9/experiments/test_s5_final_native.py
+@@ -21,0 +22 @@ import pytest
++pytest.importorskip("mlx.core")
+diff --git a/tests/v9/experiments/test_s6_epinet_mlx.py b/tests/v9/experiments/test_s6_epinet_mlx.py
+index 1ae06d1..e25323d 100644
+--- a/tests/v9/experiments/test_s6_epinet_mlx.py
++++ b/tests/v9/experiments/test_s6_epinet_mlx.py
+@@ -27,0 +28,2 @@ from ainerzero.v9.experiments.s6 import epinet_mlx as E
++pytestmark = pytest.mark.native_mlx
++
+
+## C23 $ sed -n 115,117p tests/test_cpu_collection.py; sed -n 107,110p tests/test_cpu_collection.py
+def test_native_modules_carry_native_mark():
+    for name, path in _native_paths().items():
+        assert 'pytestmark = pytest.mark.native_mlx' in path.read_text(), name
+    blocked = {r["test"] for r in records}
+    registered = {str(p.relative_to(TESTS)) for p in paths.values()}
+    assert blocked == registered, {"unregistered": sorted(blocked - registered),
+                                   "registered_but_cpu": sorted(registered - blocked)}
+
+## C24 $ grep -n 'def pytest_ignore_collect' -A4 tests/conftest.py
+348:def pytest_ignore_collect(collection_path, config):
+349-    if collection_path.name in NATIVE_MODULES and not _native_enabled(config):
+350-        return True
+351-    return None
+352-
+
+## C25 $ grep -n '纯 NumPy，19 项\|加 1 行\|先全部检查再登记\|19 passed\|baseline: 23\|M5 首轮存活' reports/V9-S6-DESIGN/sandbox-module/REPORT.md
+12:| `tests/v9/experiments/test_s6_sandbox.py`（新） | 纯 NumPy，19 项 |
+14:| `tests/conftest.py` | `NATIVE_MODULES` 加 1 行 |
+15:| `tests/v9/experiments/test_s6_epinet_mlx.py` | 加 1 行 `pytestmark = pytest.mark.native_mlx`（P252 漏了；一级在本卡顺手补） |
+16:| `tests/v9/experiments/test_s5_final_native.py` | 加 1 行模块级 `pytest.importorskip("mlx.core")`（P245 遗留：只在子进程里导入 MLX，登记清单检查判它「登记了却是 CPU」） |
+39:    - 先全部检查再登记，失败时不留半截状态。
+56:19 passed in 1.50s
+108:== baseline: 23 passed in 1.36s
+134:- **M5 首轮存活：** 去掉相接分支里的 `b < 0`。
+
+## C26 $ grep -n '60000 个精确状态\|标签隔离' reports/V9-S6-DESIGN/DESIGN-r0.md
+104:| `s6p1-cand` | 候选池：120 个世界（4–8 盘，同一期训练分区的盘数规则），60000 个精确状态 |
+168:| 标签隔离 | R、E、P、G 的挑选函数只拿到状态，拿不到标签。实现上用「选中才揭示」的池对象，运行时记录每次揭示，核对揭示的只有已选中的样本 |
+
+## C27 $ grep -n '^STEPS = ' src/ainerzero/v9/experiments/s4/world.py
+37:STEPS = 300
+
+## C28 $ grep -n '_SEALED = \|(S.CandidatePool, "_take")' src/ainerzero/v9/experiments/s6/cells.py   # untracked, out of P253 scope
+106:_SEALED = [(W, "physics"), (W, "generate_episode"), (L, "make_pool"), (L, "make_sigma_pool"),
+107:           (A, "train_worlds"), (Mo, "true_physics"), (S.CandidatePool, "_take")]

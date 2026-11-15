@@ -1,0 +1,46 @@
+copy: /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-mut
+copy sandbox.py sha256 vs live: 200e212ea05949da09c0e81f06a540cdfbb8d53a0ca3e6af9d80ebe5473eed6a / 200e212ea05949da09c0e81f06a540cdfbb8d53a0ca3e6af9d80ebe5473eed6a
+== baseline:
+25 passed in 1.53s
+anchor found 1x
+== N1 a dunder (__getitem__) hands out any sample through _take, bypassing reveal's check and log:
+25 passed in 1.49s
+anchor found 1x
+== N2 reveal returns every sample revealed so far, not just these ids:
+25 passed in 1.48s
+anchor found 1x
+== N3 pick_top uses the prototype argsort (unstable, ties not by id):
+25 passed in 1.69s
+anchor found 1x
+== N4 geo_flags evaluates on the float32 state (no float64 cast):
+25 passed in 1.75s
+anchor found 1x
+== N5 states() returns read-only views of the internal arrays, not copies:
+25 passed in 1.67s
+anchor found 1x
+== N6 a failed reveal (repeat) still marks its new ids as revealed in the lookup set:
+___________________ test_failed_label_read_registers_nothing ___________________
+    def test_failed_label_read_registers_nothing():
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_failed_label_read_registers_nothing
+1 failed, 24 passed in 1.49s
+anchor found 1x
+== N7 revealed_pool smuggles in the last unrevealed sample once anything was revealed:
+25 passed in 1.49s
+anchor found 1x
+== N7b revealed_pool smuggles in the smallest unrevealed sample once anything was revealed:
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_log_remaining_and_revealed_pool
+FAILED tests/v9/experiments/test_s6_sandbox_native.py::test_reveal_matches_make_pool_and_prototype_subset
+2 failed, 23 passed in 1.52s
+anchor found 1x
+== N9 the late fix reverted: reveal registers ids and log before reading labels:
+___________________ test_failed_label_read_registers_nothing ___________________
+    def test_failed_label_read_registers_nothing():
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_failed_label_read_registers_nothing
+1 failed, 24 passed in 1.52s
+anchor found 1x
+== N8 revealed_pool lists samples in id order instead of reveal order:
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_log_remaining_and_revealed_pool
+1 failed, 24 passed in 1.63s
+== restored:
+25 passed in 1.50s
+copy sandbox.py sha256 after restore: 200e212ea05949da09c0e81f06a540cdfbb8d53a0ca3e6af9d80ebe5473eed6a

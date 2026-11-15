@@ -1,0 +1,33 @@
+lock held by 21944
+copy: /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/cp-mut
+copy sandbox.py sha256 vs live: 6565f2c2fb457e493b4bebbba9f75256aecfa66bc374c3f655f60e276d63aaaa / 6565f2c2fb457e493b4bebbba9f75256aecfa66bc374c3f655f60e276d63aaaa
+== baseline:
+24 passed in 1.94s
+anchor found 1x
+== N1 a dunder (__getitem__) hands out any sample through _take, bypassing reveal's check and log:
+24 passed in 1.46s
+anchor found 1x
+== N2 reveal returns every sample revealed so far, not just these ids:
+24 passed in 1.46s
+anchor found 1x
+== N3 pick_top uses the prototype argsort (unstable, ties not by id):
+24 passed in 1.47s
+anchor found 1x
+== N4 geo_flags evaluates on the float32 state (no float64 cast):
+24 passed in 1.43s
+anchor found 1x
+== N5 states() returns read-only views of the internal arrays, not copies:
+24 passed in 1.52s
+anchor found 1x
+== N6 a failed reveal (repeat) still marks its new ids as revealed in the lookup set:
+24 passed in 1.41s
+anchor found 1x
+== N7 revealed_pool smuggles in the last unrevealed sample once anything was revealed:
+24 passed in 1.45s
+anchor found 1x
+== N8 revealed_pool lists samples in id order instead of reveal order:
+FAILED tests/v9/experiments/test_s6_sandbox.py::test_log_remaining_and_revealed_pool
+1 failed, 23 passed in 1.43s
+== restored:
+24 passed in 1.45s
+copy sandbox.py sha256 after restore: 6565f2c2fb457e493b4bebbba9f75256aecfa66bc374c3f655f60e276d63aaaa

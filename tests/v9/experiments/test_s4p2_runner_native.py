@@ -69,7 +69,7 @@ def _make_root(tmp_path, extra=()):
     shutil.copytree(REPO / "src/ainerzero", r / "src/ainerzero", ignore=shutil.ignore_patterns("__pycache__"))
     s4 = r / "src/ainerzero/v9/experiments/s4"
     _sub(s4 / "analysis_p2.py", [('NAMESPACES = {"probe": "s4p2-probe", "final": "s4p2-final"}', "NAMESPACES = " + json.dumps(STAND_IN))])
-    _sub(s4 / "world.py", [('REGISTERED = frozenset({"s4p1-final", "s4p2-final"})', f'REGISTERED = frozenset({{"{STAND_IN["final"]}"}})'),
+    _sub(s4 / "world.py", [('REGISTERED = frozenset({"s4p1-final", "s4p2-final", "s6p1-final"})', f'REGISTERED = frozenset({{"{STAND_IN["final"]}"}})'),
                            ("STEPS = 300\n", "STEPS = 60\n")])
     (r / HERE).mkdir(parents=True)
     for f in (RUNNER, MAKE, *VERIFY):

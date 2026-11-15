@@ -1,0 +1,31 @@
+sandbox module: /Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/sandbox.py
+pool size 15
+P1 states fields {4: ['id', 'p', 'pil', 'v'], 6: ['id', 'p', 'pil', 'v'], 8: ['id', 'p', 'pil', 'v']} | shares memory with internal stores: False | own data: True | internal p after caller write: 7.517390727996826
+P2 dunders the class itself defines: ['__dict__', '__doc__', '__init__', '__len__', '__module__', '__weakref__']
+P2 __len__(): label reads 0
+P2 log(): label reads 0
+P2 remaining(): label reads 0
+P2 revealed_ids(): label reads 0
+P2 revealed_pool(): label reads 0
+P2 states(): label reads 0
+P3 reveal([10, 1]) buckets {4: 1, 6: 1} | revealed_pool rows {4: 1, 6: 1} | shares memory with label store: False
+P4 reveal(dup across calls): ValueError: ids already revealed: [3] | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(dup within): ValueError: duplicate id within one reveal | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(out of range): IndexError: id out of range | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(negative): IndexError: id out of range | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(bool): TypeError: ids must be integers | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(float): TypeError: ids must be integers | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(2-D): ValueError: ids must be one-dimensional | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(object dtype): TypeError: ids must be integers | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(uint64 huge): IndexError: id out of range | label reads 0 | revealed [2, 3] | log calls 1
+P4 reveal(valid then bad): IndexError: id out of range | label reads 0 | revealed [2, 3] | log calls 1
+P5 reveal([]): None | returned buckets {} | log [{'call': 0, 'ids': []}] | label reads 0
+P6 deepcopy(pool).reveal([9]) -> labels of id 9 obtained: ['contact', 'p', 'p1', 'p10', 'p5', 'pil', 'v', 'v1', 'v10', 'v5'] | original pool revealed ids [0] | original log [{'call': 0, 'ids': [0]}] -> LEAK relative to the original's log
+P6 copy.copy(pool).reveal([8]) -> original revealed ids [0, 8] (shallow copy shares the reveal history)
+P6 pickle round-trip carries the sealed store: True | bytes 9995
+P7 source pool still holds labels after CandidatePool(src): ['contact', 'p1', 'p10', 'p5', 'v1', 'v10', 'v5']
+P8 pick_top(score, [-1, 0, 1], 1) -> [-1] None | then reveal: IndexError: id out of range
+P8 pick_geo(flags with last id set, remaining [-1, 0, 1], 1) -> [-1]
+P9 functions referencing _take: ['reveal', 'revealed_pool']
+P10 reveal with a failing label read: label door blocked | revealed [] | log [] | remaining has 3 and 4: True
+P10 after unblocking, reveal([3, 4]) works: [4] | log [{'call': 0, 'ids': [3, 4]}]
