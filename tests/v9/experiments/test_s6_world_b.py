@@ -158,3 +158,19 @@ def test_module_is_pure_numpy_and_leaves_world_a_alone():
             mods.add(node.module or "")
     assert not any("mlx" in m for m in mods)
     assert W.REGISTERED == {"s4p1-final", "s4p2-final", "s6p1-final"}
+
+
+def test_decoy_worlds_look_new_and_follow_the_old_law():
+    ep = B.generate_episode_b(NS, 0, 6, steps=40, kind="tiny")
+    radii = sorted(r for _, _, r in ep.pillars)
+    assert B.TINY_RADIUS[0] <= radii[0] <= B.TINY_RADIUS[1] and radii[1] >= W.PILLAR_RADIUS[0]
+    for t in (0, 9, 30):
+        s = ep.steps[t]
+        assert not B.in_halo(s.positions, ep.pillars).any()
+        a = W.physics(s.positions[None], s.velocities[None], ep.pillars)
+        assert np.array_equal(a[0][0], ep.steps[t + 1].positions) and np.array_equal(a[1][0], ep.steps[t + 1].velocities)
+    big = B.generate_episode_b(NS, 0, 6, steps=5)                       # the default kind is unchanged by the decoy option
+    assert max(r for _, _, r in big.pillars) >= B.BIG_MIN
+    assert not np.array_equal(big.steps[0].positions, ep.steps[0].positions)
+    with pytest.raises(ValueError):
+        B.generate_episode_b(NS, 0, 6, steps=2, kind="other")
