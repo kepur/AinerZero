@@ -13,6 +13,8 @@ Arms (all with replay):
   Q  input novelty: flag candidates with an input outside the range the old experience covered (pillar radius,
      speed), pick among them at random. No learning, no outcome.
   R  random; W the rule that knows the answer (a disk in a ring).
+  O  (round H) N with an exploration floor: a fifth of every round's experiments are drawn at random, so that
+     layouts not yet tried keep being sampled.
 
 Usage (MLX; under the shared lock): explore_p2f.py <out.json> <arms,comma> [per] [rounds] [steps] [lr]
 Namespaces: s6x-p2f-cand, s6x-p2a-testB, s6x-p2a-testA. Exploration only.
@@ -162,13 +164,17 @@ def main():
                     picks = S.pick_geo(ring, rem, per, rng)
                 elif pick == "Q":
                     picks = S.pick_geo(novel, rem, per, rng)
-                elif pick == "N":
+                elif pick in ("N", "O"):
                     flagged, mean, med, mad = XD.surprising_layouts(XD.sample_surprise(new_pool, base_models, base_head))
                     flags = np.array([k in flagged for k in cand_key])
                     kb = {k for k, b in zip(cand_key, big) if b}; kt = {k for k, b in zip(cand_key, tiny) if b}
                     row["layouts"] = {"seen": len(mean), "flagged": len(flagged), "big": len(flagged & kb), "tiny": len(flagged & kt),
                                       "big_seen": len(set(mean) & kb)}
-                    picks = S.pick_geo(flags, rem, per, rng)
+                    if pick == "N":
+                        picks = S.pick_geo(flags, rem, per, rng)
+                    else:            # O (round H): a fifth of every round is drawn at random first (an exploration floor)
+                        floor = S.pick_random(rem, per // 5, rng)
+                        picks = np.concatenate([floor, S.pick_geo(flags, np.setdiff1d(rem, floor), per - per // 5, rng)])
                 else:
                     raise ValueError(arm)
             curve.append(row)
