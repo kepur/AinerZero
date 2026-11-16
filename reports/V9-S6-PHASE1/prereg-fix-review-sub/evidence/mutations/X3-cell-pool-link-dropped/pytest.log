@@ -1,0 +1,36 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review-sub/evidence/run_tests_sub.py", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped-bt"]
+PYTEST_ARGS ["/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped/tests/v9/experiments/test_s6_prereg.py", "--rootdir", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped", "-p", "no:cacheprovider", "--basetemp", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped-bt", "-q"]
+............................................F........................... [ 70%]
+..............................                                           [100%]
+=================================== FAILURES ===================================
+_________________ test_raw_damage_even_rehashed_refuses[pool] __________________
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped-bt/test_raw_damage_even_rehashed_8/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106a7ef60>
+damage = 'pool'
+
+    @pytest.mark.parametrize('damage', RAW_CASES)
+    def test_raw_damage_even_rehashed_refuses(case, monkeypatch, damage):
+        rel, change = RAW_CASES[damage]
+        rewrite(case, rel, change)
+        if '/cells/' in rel:
+            bind_cell(case)
+        if 'eval-s6p1-probe/' in rel:
+            name = Path(rel).name
+            bind_eval(case, name)
+            if name == 'verify.json':
+                update_report(case, lambda p: p.__setitem__('verify', json.loads((case / rel).read_text())))
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+tests/v9/experiments/test_s6_prereg.py:280: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped-bt/test_raw_damage_even_rehashed_8/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s6_prereg.py::test_raw_damage_even_rehashed_refuses[pool]
+1 failed, 101 passed in 64.74s (0:01:04)
+MODULE_ORIGINS {"ainerzero": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped/src/ainerzero/__init__.py", "ainerzero.v9.experiments.s3.run_guard": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped/src/ainerzero/v9/experiments/s3/run_guard.py", "ainerzero.v9.experiments.s6.analysis": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped/src/ainerzero/v9/experiments/s6/analysis.py", "prereg_evidence": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X3-cell-pool-link-dropped/reports/V9-S6-PHASE1/prereg_evidence.py"}
+ALL_FROM_COPY True
+MLX_IN_SYS_MODULES False
+PYTEST_RC 1

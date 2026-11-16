@@ -1,0 +1,15 @@
+probe train_seconds {'R-r0': 539.2, 'E-r0': 551.3, 'Z-r0': 550.3, 'T-r0': 530.6, 'P-r0': 590.6, 'G-r0': 485.0}
+verify_seconds 616.0 eval_seconds 19.6
+probe worlds [50, 25] final worlds [200, 100] final reps {'R': 5, 'E': 5, 'Z': 5, 'T': 5, 'P': 5, 'G': 3}
+final caps in EVAL-probe.json (r2): 21600.0 3600
+n_final cells 28; sum train_seconds x reps = 15265.00
+est_train = 1.15 x (15265.00 + 450) = 18072.250000
+est_eval  = 1.30 x (616.0 x 28/6 + 19.6 x 28/6 x 300/75) = 4212.693333
+  of which verify 3737.07 s (88.7%), eval 475.63 s
+r2: train 18072.25 <= 21600: True (margin 3527.75 s, 19.5%); eval 4212.69 <= 3600: False (margin -612.69 s, -14.5%)
+r3: train 18072.25 <= 19800: True (margin 1727.75 s, 9.6%); eval 4212.69 <= 5400: True (margin 1187.31 s, 28.2%)
+raw train (no 1.15) 15715.0 s -> r3 cap / raw = 1.260; raw train without the 450 s = 15265.0 -> 1.297
+raw eval (no 1.30) 3240.5 s -> r3 cap / raw = 1.666
+prereg_evidence imported; mlx in sys.modules: False
+estimate_budget with r2 caps refuses: EvidenceError: 预计超出上限：训练 18072.250000 秒（上限 21600），评测 4212.693333 秒（上限 3600）
+estimate_budget with r3 caps -> (18072.25, 4212.693333333334)

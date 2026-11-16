@@ -1,5 +1,21 @@
 # AinerZero 统筹与执行分工
 
+## 2026-11-16 S6 主责交回 claude
+
+用户 2026-11-16 指示「Claude takes it back」，S6 唯一主责改回 **claude**。
+
+- codex 在 2026-11-15 接手期间完成了 probe 评测、P259/P260 复核、P261 构建器修复，全部记录与证据保留在 `reports/coordination/codex-s6-20261115/`，原样不动。
+- 已在 P258 通知 codex：
+  - 停止为 S6 派卡、提交作业；
+  - 自行 bootout 其专属 runner：唯一作业已结束，队列为空。
+- P262（P261 的非作者复核）照常完成，claude 据其结论验收 P261。
+- 预算阻断由 claude 写 DESIGN-r3 处理：评测外推 4213 秒超过 1 小时上限。r3 送非作者复核后再冻结。
+- final 未启动，没有 PREREG，也没有 FINAL_READ_ONCE。
+
+## 2026-11-15 S6 当前统筹接手
+
+用户要求 Codex 全权跟进。S6 这一轮唯一主责改为 **codex**（Relay `ainerzero.V9.P258`）；原作者 claude 的既有 probe 训练 PID 26667 原样继续，不重复启动。P259：冻结前最后增量/预登记构建器只读非作者复核；P260：probe 产物 CPU 独立复算。范围、进程与后续交接见 `reports/coordination/codex-s6-20261115/LEAD.md`。S4/S5 已收口，不恢复旧草稿。
+
 ## 2026-10-17 当前入口：r5 + 角色优先兼容扩展
 
 用户已同意“工作台和方案落地”，工作台明确为现有 AinerRelay。**CF-r1-20261017** 为角色优先兼容扩展设计正文；最终采用状态与精确SHA见本轮[DECISION](reports/character-first-landing-20261017/DECISION.md)、[publication.json](reports/character-first-landing-20261017/publication.json)及工作台awz.CF.A3发布记录（登记中）；现行 **V9-r5-20261016 + v10 工程验证层** 与原冻结 JSON 继续有效。

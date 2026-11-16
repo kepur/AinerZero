@@ -1,0 +1,73 @@
+=== make_prereg.py:34-41 ===
+    out, probe, design = Path(a.out), Path(a.probe).resolve(), Path(a.design).resolve()
+    if out.exists():
+        raise SystemExit(f"预登记已存在，不覆盖：{out}")
+    code = GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[VERIFY])
+    versions = PE.cpu_versions(REPO)
+    pr, evidence = PE.validate_probe(REPO, probe, code, versions)
+    code_sha = PE.manifest_sha(code)
+    est_train, est_eval = PE.estimate_budget(pr)
+
+=== make_prereg.py:68-71 ===
+    PE.require(not GD.check_manifest(REPO, evidence["files_sha256"]), "evidence changed before output")
+    PE.require(not GD.check_manifest(REPO, doc["manifest"]), "source changed before output")
+    with out.open("x", encoding="utf-8") as fh:
+        fh.write(serialized)
+
+=== prereg_evidence.py:40-42 ===
+def number(value, label, *, zero=False):
+    require(type(value) in (int, float) and math.isfinite(value)
+            and (value >= 0 if zero else value > 0), f"{label}: expected finite {'nonnegative' if zero else 'positive'} number")
+    return value
+
+=== prereg_evidence.py:67-82 ===
+def cpu_versions(repo):
+    """Match the runner's version semantics without importing MLX.
+
+    MLX is a namespace package on the supported installation: its top-level
+    module has no __version__, and the runner records 'unknown'. Refuse other
+    layouts instead of guessing. NumPy is already loaded for CPU analysis.
+    """
+    spec = importlib.machinery.PathFinder.find_spec("mlx", sys.path)
+    require(spec is not None and spec.origin is None and spec.submodule_search_locations,
+            "MLX must be the installed namespace package (no import performed)")
+    prefix = Path(sys.prefix).resolve()
+    for p in [Path(np.__file__), *(Path(p) for p in spec.submodule_search_locations)]:
+        p = p.resolve()
+        require(not p.is_relative_to(repo.resolve()) or p.is_relative_to(prefix), "third-party library shadowed by repository")
+    return {"numpy": str(np.__version__), "mlx": "unknown"}
+
+=== prereg_evidence.py:127-147 ===
+def committed_identity(repo, code, report_head):
+    # --no-optional-locks keeps read-only status from refreshing .git/index.
+    def git(*args):
+        r = subprocess.run(['git', '--no-optional-locks', *args], cwd=repo, capture_output=True, text=True)
+        require(r.returncode == 0, 'cannot read committed source identity')
+        return r.stdout.strip()
+    head = git('rev-parse', 'HEAD')
+    require(not git('status', '--porcelain', '--', *code), 'numerical source files are not committed')
+    require(type(report_head) is str and len(report_head) == 40
+            and all(c in '0123456789abcdef' for c in report_head), 'invalid report git_head')
+    for commit in {head, report_head}:
+        run = subprocess.run(['git', 'archive', commit, *code], cwd=repo, capture_output=True)
+        require(run.returncode == 0, f'cannot read committed source tree {commit}')
+        with tarfile.open(fileobj=io.BytesIO(run.stdout), mode='r:') as archive:
+            files = {m.name: m for m in archive.getmembers() if m.isfile()}
+            keys(files, code, 'committed code files')
+            for rel, digest in code.items():
+                require(hashlib.sha256(archive.extractfile(files[rel]).read()).hexdigest() == digest,
+                        f'code differs at committed identity {commit}: {rel}')
+    return head
+
+=== prereg_evidence.py:361-371 ===
+def estimate_budget(pr):
+    # validate_probe is mandatory before this calculation at the public entry.
+    final = pr['sets']['final']
+    n_final = sum(final['reps'].values())
+    est_train = 1.15 * (sum(pr['train_seconds'][a + '-r0'] * k for a, k in final['reps'].items()) + 5 * 90)
+    est_eval = 1.30 * (pr['verify_seconds'] * n_final / 6
+                       + pr['eval_seconds'] * n_final / 6 * sum(final['worlds']) / sum(pr['config']['worlds']))
+    require(math.isfinite(est_train) and math.isfinite(est_eval)
+            and est_train <= final['train_cap_s'] and est_eval <= final['eval_limit_s'],
+            f'预计超出上限：训练 {est_train:.6f} 秒（上限 {final["train_cap_s"]}），评测 {est_eval:.6f} 秒（上限 {final["eval_limit_s"]}）')
+    return est_train, est_eval

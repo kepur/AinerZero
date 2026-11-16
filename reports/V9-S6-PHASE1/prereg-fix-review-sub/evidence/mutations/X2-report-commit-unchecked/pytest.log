@@ -1,0 +1,31 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review-sub/evidence/run_tests_sub.py", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked-bt"]
+PYTEST_ARGS ["/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked/tests/v9/experiments/test_s6_prereg.py", "--rootdir", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked", "-p", "no:cacheprovider", "--basetemp", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked-bt", "-q"]
+..........F............................................................. [ 70%]
+..............................                                           [100%]
+=================================== FAILURES ===================================
+_____________ test_report_damage_refuses_without_writes[git-head] ______________
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked-bt/test_report_damage_refuses_wit9/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1082735c0>
+damage = 'git-head'
+
+    @pytest.mark.parametrize('damage', REPORT_CASES)
+    def test_report_damage_refuses_without_writes(case, monkeypatch, damage):
+        if damage == 'train-over-budget':
+            change_training_time(case, 700.)
+        else:
+            update_report(case, REPORT_CASES[damage])
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+tests/v9/experiments/test_s6_prereg.py:230: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked-bt/test_report_damage_refuses_wit9/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[git-head]
+1 failed, 101 passed in 64.44s (0:01:04)
+MODULE_ORIGINS {"ainerzero": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked/src/ainerzero/__init__.py", "ainerzero.v9.experiments.s3.run_guard": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked/src/ainerzero/v9/experiments/s3/run_guard.py", "ainerzero.v9.experiments.s6.analysis": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked/src/ainerzero/v9/experiments/s6/analysis.py", "prereg_evidence": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X2-report-commit-unchecked/reports/V9-S6-PHASE1/prereg_evidence.py"}
+ALL_FROM_COPY True
+MLX_IN_SYS_MODULES False
+PYTEST_RC 1

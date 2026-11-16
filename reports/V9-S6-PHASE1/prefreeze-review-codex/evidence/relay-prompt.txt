@@ -1,0 +1,37 @@
+# 任务 ainerzero.V9.P259：【L2·非作者复核】S6 a33d34b 最后增量与预登记构建器（纯CPU）
+
+- 需要：code, math → 建议执行者：任意（缺 math 的模型不要领）
+- 项目：AinerZero · V9 v9 落地：NeuroGeometry × H-JEPA 世界脑（P0 无训练） → 轨道 P S1–S2 实验（需用户批准训练） → 第 259 步
+- 主工作目录：`/Users/mac/AinerWorkFlow/AinerZero`（先 cd 到这里）
+- 关联目录（只读）：`/Users/mac/AinerWorkFlow/AnimeWorldZero`——AWZ 评测包（E-0/E-1 起使用，只读）
+- 层级：二级（执行层） · 类型：review · 需要 GPU：否
+- 前置：ainerzero.V9.P257（accepted）
+- 先读：`/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md`、`/Users/mac/AinerWorkFlow/AinerZero/README.md`
+- 文件范围（只改这些）：见任务说明
+- 排除执行者（参数指定）：claude。这些 agent 不能领取本任务。
+
+## 任务说明
+非作者只读审查，当前提交 a33d34b5cb8d06800f584a0abcfd788d16f80fcb。先读 AGENTS.md、CLAUDE.md、DESIGN-r2 与r2复核报告、P257报告。重点审查 a33d34b 最后新增 make_prereg.py、候选编号抽样顺序、最终6h/1h与注册配置。make_prereg是否验证探针真实完整、校验通过、训练/评测身份一致、源码已提交、预算外推正确、缺失失败fail-closed；有无未覆盖临界分支。只写 reports/V9-S6-PHASE1/prefreeze-review-codex/。当前MLX训练在跑，禁止MLX导入/推理/测试；纯CPU代码可审查与最小反例，但先核对写行为，隔离复制用git archive，不触碰实盘artifacts，不生成s6p1任何世界。不要改源码、测试、设计、已交付报告、git状态，不提交推送。报告建议通过/打回，逐字行号引文及原始命令输出、SHA256SUMS。注册唯一tier2 agent后领取本卡，每3分钟心跳。若已被别人领取立即停止写入。完成relay report，勿领下张。独立审查不是本卡对运行的授权。
+
+## 参数 v0（统筹登记，照用不改；觉得不对就在报告里提）
+```json
+{
+  "excluded_agents": [
+    "claude"
+  ],
+  "single_writer": "claimed reviewer only",
+  "reviewed_commit": "a33d34b",
+  "run_authorized": false
+}
+```
+
+## 验收标准
+（见任务说明）
+
+## 怎么交回
+1. 心跳（每 10 分钟）：`relay heartbeat ainerzero.V9.P259 --agent <你的ID> --msg "做到哪了"`
+2. 完成：`relay report ainerzero.V9.P259 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next`
+3. 失败也要交：加 `--failed`；环境或资源问题再加 `--retryable`
+4. 中途要停：`relay release ainerzero.V9.P259 --agent <你的ID> --reason "做到哪了"`；还要接着领就加 `--next`
+5. 交完或释放后：立刻回到 `relay next --agent <你的ID> --wait 3600` 继续领下一个（也可选 `--wait-forever`）；exit 3 表示 1 小时超时/暂时没活，立刻重跑同一条命令继续等，不结束会话；exit 4 表示你已持有任务（busy），先推进或 report/release，不要当成没活忙等。任务说明或报告里的“交完本任务就停/只做这一个”只约束该任务本身，交完仍回到 relay next，除非用户叫停或额度/上下文快用完。
+续领命令：`relay report ainerzero.V9.P259 --agent <你的ID> --result-file 报告.md --data-file 指标.json --next` 或 `relay release ainerzero.V9.P259 --agent <你的ID> --next`。先用不超过 5 行说明进度，再在同一进程进入 next 长轮询，不要只写提醒就结束。容量不够则 `relay release ainerzero.V9.P259 --agent <你的ID> --capacity-exhausted`，不要加 `--next`，也不要 `--failed`。

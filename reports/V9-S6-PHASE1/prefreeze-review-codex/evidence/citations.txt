@@ -1,0 +1,654 @@
+
+### a33d34b:reports/V9-S6-PHASE1/make_prereg.py
+1: """生成 S6 一期预登记（reports/V9-S6-DESIGN/DESIGN-r2.md）。探针跑完、代码提交后运行一次，生成后提交，再启动 final 的训练。
+2: 
+3: 用法：python make_prereg.py --design <定稿设计稿> --probe <探针评测报告> --out PREREG-r1.json
+4: 
+5: - 探针报告必须是正式运行器 eval --set probe 的输出：重放与复训校验通过、门算完，且用的是要冻结的已提交代码。
+6: - 按探针每格的训练耗时与评测耗时外推 final：训练要在登记上限内（留 15% 余量），评测加校验要在评测上限内（留 30% 余量），否则拒绝。
+7: """
+8: import argparse, hashlib, json, sys  # noqa: E401
+9: from pathlib import Path
+10: 
+11: REPO = Path(__file__).resolve().parents[2]
+12: sys.path.insert(0, str(REPO / "src"))
+13: from ainerzero.v9.experiments.s3 import run_guard as GD  # noqa: E402
+14: from ainerzero.v9.experiments.s6 import analysis as AN  # noqa: E402
+15: 
+16: HERE = REPO / "reports/V9-S6-PHASE1"
+17: RUNNER = HERE / "run_s6p1.py"
+18: VERIFY = HERE / "verify_s6p1.py"
+19: APPROVAL = "S6-P1-FINAL-READ-APPROVED-TIER1-20261115"
+20: 
+21: 
+22: def main():
+23:     ap = argparse.ArgumentParser()
+24:     ap.add_argument("--design", required=True)
+25:     ap.add_argument("--probe", required=True)
+26:     ap.add_argument("--out", required=True)
+27:     a = ap.parse_args()
+28:     out, probe, design = Path(a.out), Path(a.probe).resolve(), Path(a.design).resolve()
+29:     if out.exists():
+30:         raise SystemExit(f"预登记已存在，不覆盖：{out}")
+31:     pr = json.loads(probe.read_text(encoding="utf-8"))
+32:     if pr.get("set") != "probe" or not pr.get("verify", {}).get("passed") or "gates" not in pr.get("result", {}):
+33:         raise SystemExit("探针报告不是一次校验通过、门已算完的 probe 运行")
+34:     code = GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[VERIFY])
+35:     code_sha = hashlib.sha256(json.dumps(code, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+36:     if pr.get("code_manifest_sha256") != code_sha or pr.get("code_dirty") != []:
+37:         raise SystemExit("探针不是用要冻结的、已提交的代码跑出来的")
+38:     if pr.get("config") != pr.get("sets", {}).get("probe"):
+39:         raise SystemExit("探针报告的配置与它记录的 probe 集不一致")
+40:     final = pr["sets"]["final"]                 # set_summary("final") of the very runner that ran the probe
+41:     reps_final = final["reps"]
+42:     worlds_final, worlds_probe = tuple(final["worlds"]), tuple(pr["config"]["worlds"])
+43:     train_cap_s, eval_limit_s = float(final["train_cap_s"]), float(final["eval_limit_s"])
+44:     if final["test_ns"] != "s6p1-final" or final["cand_ns"] != "s6p1-cand":
+45:         raise SystemExit(f"final 集的命名空间不对：{final['cand_ns']}, {final['test_ns']}")
+46:     # Wall clock extrapolated from the probe (one replicate per arm).
+47:     per_arm = {}
+48:     for cell, sec in pr["train_seconds"].items():
+49:         per_arm.setdefault(cell.split("-r")[0], []).append(sec)
+50:     est_train = 1.15 * (sum(max(per_arm[arm]) * k for arm, k in reps_final.items()) + 5 * 90)
+51:     n_cells_probe, n_cells_final = len(pr["train_seconds"]), sum(reps_final.values())
+52:     est_eval = 1.30 * (pr["verify_seconds"] * n_cells_final / n_cells_probe
+53:                        + pr["eval_seconds"] * n_cells_final / n_cells_probe * sum(worlds_final) / sum(worlds_probe))
+54:     if est_train > train_cap_s or est_eval > eval_limit_s:
+55:         raise SystemExit(f"预计超出上限：训练 {est_train:.0f} 秒（上限 {train_cap_s:.0f}），评测 {est_eval:.0f} 秒（上限 {eval_limit_s:.0f}）")
+56:     doc = {
+57:         "schema": "s6.phase1.prereg.v1",
+58:         "design": str(design.relative_to(REPO)),
+59:         "design_sha256": hashlib.sha256(design.read_bytes()).hexdigest(),
+60:         "manifest": GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[design, VERIFY]),
+61:         "third_party": GD.third_party_versions(REPO, ("numpy", "mlx")),
+62:         "probe_report": str(probe.relative_to(REPO)),
+63:         "probe_report_sha256": hashlib.sha256(probe.read_bytes()).hexdigest(),
+64:         "code_manifest_sha256": code_sha,
+65:         "sets": {"final": final},
+66:         "arms": {"replicates": reps_final, "learners_per_cell": 3, "pick_seed_T_equals_R": True},
+67:         "gates": {g: {k: (list(v) if isinstance(v, tuple) else v) for k, v in spec.items()} for g, spec in AN.GATES.items()},
+68:         "statistics": {"alpha": AN.ALPHA, "bonferroni_m": AN.M, "world_bootstrap": {"n": AN.N_BOOT, "seed": AN.SEED},
+69:                        "interval": "theta_hat -/+ t(K-1, 1-alpha/(2m)) * sqrt(s_rep^2/K + se_w^2); ratio gates on the log scale"},
+70:         "expectations_from_exploration": {"GK-F": "expected to fail (round G E/Z free 1.177)", "GZ-D": "borderline (round G -0.014)"},
+71:         "final_approval_line": APPROVAL,
+72:         "budget": {"train_cap_s": train_cap_s, "eval_limit_s": eval_limit_s, "estimated_train_s": round(est_train),
+73:                    "estimated_eval_s": round(est_eval), "device": "local MLX (GPU training, CPU scoring and evaluation)",
+74:                    "cloud": False, "paid": False},
+75:     }
+76:     with out.open("x", encoding="utf-8") as fh:
+77:         json.dump(doc, fh, ensure_ascii=False, indent=1)
+78:     print("written", out, "files frozen:", len(doc["manifest"]), "est train", round(est_train), "est eval", round(est_eval))
+79: 
+80: 
+81: if __name__ == "__main__":
+82:     main()
+
+### a33d34b:reports/V9-S6-PHASE1/run_s6p1.py
+33: HERE = REPO / "reports/V9-S6-PHASE1"
+34: ROOT = REPO / "artifacts/v9/s6/phase1"
+35: PREREG = HERE / "PREREG-r1.json"
+36: VERIFY = HERE / "verify_s6p1.py"
+37: LOCK = REPO / "artifacts/locks/m0-worker.lock"
+38: THIRD_PARTY = ("numpy", "mlx")
+39: SMOKE_SIZES = C.Sizes(per=60, rounds=2, steps=30, pool=1500, cand_worlds=8)
+40: SETS = {
+41:     "smoke": {"cand_ns": "s6t-smoke-cand", "test_ns": "s6t-smoke-test", "sizes": SMOKE_SIZES,
+42:               "reps": {**{a: 2 for a in C.ARMS}, "G": 1}, "worlds": (3, 2), "train_cap_s": 1800, "eval_limit_s": 1800},
+43:     "probe": {"cand_ns": "s6p1-pcand", "test_ns": "s6p1-probe", "sizes": C.FULL,
+44:               "reps": {a: 1 for a in C.ARMS}, "worlds": (50, 25), "train_cap_s": 2.5 * 3600, "eval_limit_s": 3600},
+45:     "final": {"cand_ns": "s6p1-cand", "test_ns": "s6p1-final", "sizes": C.FULL,
+46:               "reps": dict(C.REPLICATES), "worlds": (200, 100), "train_cap_s": 6.0 * 3600, "eval_limit_s": 3600},
+47: }
+48: REGISTERED_SETS = ("final",)
+49: DANGLING_CHARGE_S = 900          # an invocation that died after its last heartbeat is charged this much more
+84:     versions = GD.third_party_versions(REPO, THIRD_PARTY)
+85:     check_partitions()
+86:     if set_name not in REGISTERED_SETS:
+87:         return None, None, None, versions
+88:     if not sys.flags.isolated:
+89:         raise GD.GuardError("final must run with python -I")
+90:     GD.require_fresh_pycache(STARTED)
+91:     pre = json.loads(PREREG.read_text(encoding="utf-8"))
+92:     bad = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])
+93:     if bad:
+94:         raise GD.GuardError("frozen manifest does not hold: " + "; ".join(bad[:6]))
+95:     if versions != pre["third_party"]:
+96:         raise GD.GuardError(f"library versions differ from the preregistration: {versions}")
+97:     if pre.get("sets", {}).get("final") != set_summary("final"):
+98:         raise GD.GuardError("the final set in the preregistration differs from the runner's")
+99:     head, dirty = GD.check_git_clean(REPO, list(pre["manifest"]) + [str(PREREG.relative_to(REPO))])
+100:     if dirty:
+101:         raise GD.GuardError("frozen files are not committed: " + "; ".join(dirty[:6]))
+102:     return pre, sha(PREREG), head, versions
+103: 
+104: 
+105: def set_summary(set_name):
+106:     cfg = SETS[set_name]
+107:     return {"cand_ns": cfg["cand_ns"], "test_ns": cfg["test_ns"], "sizes": cfg["sizes"].__dict__, "reps": cfg["reps"],
+108:             "worlds": list(cfg["worlds"]), "train_cap_s": cfg["train_cap_s"], "eval_limit_s": cfg["eval_limit_s"]}
+109: 
+110: 
+111: def cell_dir(set_root, arm, k):
+112:     return set_root / "cells" / f"{arm}-r{k}"
+113: 
+140:         pre, pre_sha, head, versions = startup_checks(a.set)
+141:         set_root.mkdir(parents=True, exist_ok=True)
+142:         ledger = set_root / "train-ledger.json"
+143:         used, rows = ledger_used(ledger)
+144:         left = cfg["train_cap_s"] - used
+145:         if left <= 0:
+146:             raise GD.GuardError(f"training wall clock used up: {used:.0f} s of {cfg['train_cap_s']:.0f} s")
+147:         deadline = GD.Deadline(left)
+148:         me = {"start": time.time(), "last_beat": time.time(), "closed": False, "cells": [], "prereg_sha256": pre_sha,
+149:               "code_manifest_sha256": manifest_sha(code_manifest()), "git_head": head, "third_party": versions}
+150:         rows.append(me)
+151:         ledger_write(ledger, rows)
+152:         pools = set_root / "pools.json"
+153:         pool_sha = json.loads(pools.read_text()) if pools.is_file() else {}
+154:         mx.set_default_device(mx.gpu)
+155:         todo_by_k = {}
+156:         for arm, k in all_cells(cfg):
+157:             d = cell_dir(set_root, arm, k)
+158:             if (d / "cell.json").is_file():
+159:                 C.verify_cell_dir(d, cfg["sizes"])
+160:                 continue
+161:             if d.exists():
+162:                 n = 1
+163:                 while d.with_name(f"{d.name}.aborted-{n}").exists():
+164:                     n += 1
+165:                 d.rename(d.with_name(f"{d.name}.aborted-{n}"))
+166:                 say("kept unfinished cell as", d.with_name(f"{d.name}.aborted-{n}").name)
+167:             todo_by_k.setdefault(k, []).append(arm)
+168:         for k, arms in sorted(todo_by_k.items()):
+169:             deadline.check()
+170:             t = time.time()
+171:             source = C.candidate_source(cfg["cand_ns"], k, cfg["sizes"])
+172:             dig = C.pool_digest(source)
+173:             if pool_sha.setdefault(str(k), dig) != dig:
+174:                 raise GD.GuardError(f"candidate pool of replicate {k} differs from the one recorded earlier")
+175:             pools.write_text(json.dumps(pool_sha, indent=1), encoding="utf-8")
+176:             say(f"replicate {k}: pool {C.n_states(source)} in {time.time() - t:.0f}s; cells {arms}")
+177:             for arm in arms:
+178:                 deadline.check()
+179:                 rec = C.run_cell(arm, k, source, cell_dir(set_root, arm, k), cand_ns=cfg["cand_ns"], sizes=cfg["sizes"],
+180:                                  say=say, check_time=deadline.check)
+181:                 me["cells"].append({"arm": arm, "replicate": k, "seconds": rec["seconds"]})
+182:                 me["last_beat"] = time.time()
+183:                 ledger_write(ledger, rows)
+184:                 say(f"cell {arm}-r{k} done in {rec['seconds']:.0f}s; used {used + time.time() - me['start']:.0f}s of {cfg['train_cap_s']:.0f}s")
+185:         me["last_beat"], me["closed"] = time.time(), True
+186:         ledger_write(ledger, rows)
+187:         missing = [f"{x}-r{k}" for x, k in all_cells(cfg) if not (cell_dir(set_root, x, k) / "cell.json").is_file()]
+188:         say("training complete" if not missing else f"still missing: {missing}")
+242:     with GD.RunLock(LOCK) as lock:
+243:         pre, pre_sha, head, versions = startup_checks(a.set)
+244:         registered = a.set in REGISTERED_SETS
+245:         if registered and (a.approval or "").strip() != pre["final_approval_line"]:
+246:             raise GD.GuardError("missing the unique approval line")
+247:         if not registered and a.approval:
+248:             raise GD.GuardError("only final takes an approval line")
+249:         marker = set_root / "FINAL_READ_ONCE.json"
+250:         if registered and marker.exists():
+251:             raise GD.GuardError("final has already been read")
+252:         cells = all_cells(cfg)
+253:         missing = [f"{x}-r{k}" for x, k in cells if not (cell_dir(set_root, x, k) / "cell.json").is_file()]
+254:         if missing:
+255:             raise GD.GuardError(f"training is not complete: {missing}")
+256:         recs = {(x, k): C.verify_cell_dir(cell_dir(set_root, x, k), cfg["sizes"]) for x, k in cells}
+257:         if registered:     # every training invocation ran the frozen code under this preregistration
+258:             _, rows = ledger_used(set_root / "train-ledger.json")
+259:             code_now = manifest_sha(code_manifest())
+260:             if not rows or any(r["prereg_sha256"] != pre_sha or r["code_manifest_sha256"] != code_now for r in rows):
+261:                 raise GD.GuardError("some training ran under a different preregistration or code")
+262:         out = set_root / f"eval-{cfg['test_ns']}"
+263:         if out.exists():
+264:             raise GD.GuardError(f"evaluation directory already exists: {out}")
+265:         report = Path(a.report)
+266:         GD.claim_report(report)
+267:         out.mkdir(parents=True)
+268:         code = code_manifest()
+269:         code_head, code_dirty = GD.check_git_clean(REPO, list(code))
+270:         R = {"schema": "s6.phase1.eval.v1", "set": a.set, "config": set_summary(a.set),
+271:              "sets": {name: set_summary(name) for name in SETS}, "prereg_sha256": pre_sha,
+272:              "git_head": head or code_head, "code_manifest_sha256": manifest_sha(code), "code_dirty": code_dirty,
+273:              "third_party": versions, "cells_sha256": {f"{x}-r{k}": sha(cell_dir(set_root, x, k) / "cell.json") for x, k in cells},
+274:              "train_seconds": {f"{x}-r{k}": r["seconds"] for (x, k), r in recs.items()}}
+275: 
+276:         def save():
+277:             R["elapsed_s"] = round(time.monotonic() - t0, 1)
+278:             R["peak_rss_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+279:             report.write_text(json.dumps(R, ensure_ascii=False, indent=1), encoding="utf-8")
+280: 
+281:         save()
+282:         t = time.monotonic()
+283:         R["verify"] = independent_verify(a.set, out / "verify.json", deadline)
+284:         R["verify_seconds"] = round(time.monotonic() - t, 1)
+285:         save()
+286:         if not R["verify"].get("passed"):
+287:             R["result"] = {"valid": False, "reason": "replay or retraining check failed; the test partition was not read"}
+288:             save()
+289:             say("verification failed; stopping before the test partition")
+290:             return
+291:         if registered:
+292:             GD.consume_final_read(lock, marker, a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
+293:             R["final_read_marker_sha256"] = sha(marker)
+294:             save()
+295:         n_main, n_ext = cfg["worlds"]
+296:         ids = A.eval_world_ids((n_main, n_ext))
+297:         test_eps = {"main6": [W.generate_episode(cfg["test_ns"], w, n, allow_registered=registered) for kind, w, n in ids if kind == "main"],
+298:                     "extrap10": [W.generate_episode(cfg["test_ns"], w, n, allow_registered=registered) for kind, w, n in ids if kind == "extrap"]}
+299:         say("test worlds", {k: len(v) for k, v in test_eps.items()})
+300:         t = time.monotonic()
+301:         arrays = evaluate(cfg, set_root, cells, test_eps, say, deadline)
+302:         R["eval_seconds"] = round(time.monotonic() - t, 1)
+303:         npz = out / "errors.npz"
+304:         with npz.open("xb") as fh:
+305:             np.savez(fh, **arrays)
+306:         (out / "worlds.json").write_text(json.dumps({t: [[ep.world_index, ep.n_disks] for ep in eps] for t, eps in test_eps.items()}), encoding="utf-8")
+307:         R["files_sha256"] = {f.name: sha(f) for f in sorted(out.iterdir())}
+308:         save()
+309:         from ainerzero.v9.experiments.s6 import analysis as AN   # P255; imported here so training never needs it
+310:         last = cfg["sizes"].rounds - 1
+311:         R["result"] = AN.decide(analysis_input(arrays, last))
+312:         R["descriptive"] = {f"round{r}": AN.describe(analysis_input(arrays, r)) for r in range(cfg["sizes"].rounds)}
+313:         R["selection"] = selection_summary(recs, cfg)
+314:         if pre:
+315:             late = GD.check_manifest(REPO, pre["manifest"]) + GD.check_loaded_modules(REPO, pre["manifest"])
+316:             R["late_violations"] = late
+317:             if late:
+318:                 R["result"]["valid"] = False
+319:         save()
+
+### a33d34b:reports/V9-S6-PHASE1/verify_s6p1.py
+86:         source = C.candidate_source(cand_ns, k, sizes)
+87:         R["pools_ok"][str(k)] = C.pool_digest(source) == pool_sha.get(str(k))
+88:         for arm in [x for x, kk in cells if kk == k]:
+89:             rec = C.verify_cell_dir(RUN.cell_dir(set_root, arm, k), sizes)
+90:             R["replay"][f"{arm}-r{k}"] = replay_cell(arm, k, rec, source, set_root, sizes, cand_ns)
+91:             print(f"replay {arm}-r{k}", R["replay"][f"{arm}-r{k}"]["passed"], flush=True)
+92:         for arm, kk, j in RETRAIN:
+93:             if kk == k and (arm, k) in cells:
+94:                 rec = C.verify_cell_dir(RUN.cell_dir(set_root, arm, k), sizes)
+95:                 R["retrain"][f"{arm}-r{k}-n{j}"] = retrain(arm, k, j, rec, source, set_root, sizes)
+96:                 print(f"retrain {arm}-r{k}-n{j}", R["retrain"][f"{arm}-r{k}-n{j}"]["passed"], flush=True)
+97:     R["passed"] = bool(all(R["pools_ok"].values()) and all(v["passed"] for v in R["replay"].values())
+98:                        and len(R["retrain"]) == len(RETRAIN) and all(v["passed"] for v in R["retrain"].values()))
+99:     with out_json.open("x", encoding="utf-8") as fh:
+100:         json.dump(R, fh, indent=1)
+101: 
+102: 
+103: if __name__ == "__main__":
+104:     main()
+
+### a33d34b:src/ainerzero/v9/experiments/s6/cells.py
+92:     grouped by disk count and, within a disk count, in draw order (not by world and step, so that neighbouring
+93:     ids are not neighbouring steps of a trajectory). No outcome is computed here; the episodes (whose steps
+94:     carry contact logs) are dropped before returning."""
+95:     eps = candidate_worlds(cand_ns, k, sizes)
+96:     pairs = [(e, t) for e, ep in enumerate(eps) for t in range(len(ep.steps))]
+97:     if sizes.pool > len(pairs):
+98:         raise ValueError(f"only {len(pairs)} states in {len(eps)} worlds, {sizes.pool} wanted")
+99:     pick = np.random.default_rng(pool_seed(cand_ns, k)).choice(len(pairs), sizes.pool, replace=False)
+100:     chosen = sorted((eps[pairs[i][0]].n_disks, rank, pairs[i][0], pairs[i][1]) for rank, i in enumerate(pick))
+101:     by_n: dict[int, dict[str, list]] = {}
+102:     for n, _, e, t in chosen:
+103:         s = eps[e].steps[t]
+104:         row = by_n.setdefault(n, {"p": [], "v": [], "pil": []})
+105:         row["p"].append(np.asarray(s.positions, dtype=np.float64))
+106:         row["v"].append(np.asarray(s.velocities, dtype=np.float64))
+107:         row["pil"].append(np.asarray(eps[e].pillars, dtype=np.float64))
+108:     del eps
+109:     out = {n: {k_: np.stack(v) for k_, v in d.items()} for n, d in sorted(by_n.items())}
+110:     for n, d in out.items():
+111:         flat = np.concatenate([d["p"].reshape(len(d["p"]), -1), d["v"].reshape(len(d["v"]), -1), d["pil"].reshape(len(d["pil"]), -1)], 1)
+112:         if len(np.unique(flat, axis=0)) != len(flat):
+113:             raise AssertionError(f"duplicate candidate states with {n} disks")
+114:     return out
+115: 
+116: 
+117: def n_states(source: dict) -> int:
+118:     return sum(len(e["p"]) for e in source.values())
+119: 
+343:                 tr.picks.append(ids.tolist()); tr.digests.append(dig)
+344:         timings.append({"round": r, "train_s": round(train_s, 2), "select_s": round(time.time() - sel_t, 2)})
+345:         say(f"{arm} r{k} round {r} train {train_s:.0f}s")
+346:     files = sorted(p.name for p in out.iterdir())
+347:     rec = {
+348:         "schema": "s6.phase1.cell.v1", "arm": arm, "replicate": k, "cand_ns": cand_ns, "sizes": sizes.__dict__,
+349:         "net_seeds": list(seeds), "first_seed": first_seed(cand_ns, k), "pick_seed": pick_seed(cand_ns, arm, k),
+350:         "pool_seed": pool_seed(cand_ns, k), "pool_sha256": pool_digest(source),
+351:         "tracks": [{"picks": tr.picks, "score_sha256": tr.digests, "reveal_log": tr.cp.log(),
+352:                     "revealed": tr.cp.revealed_ids().tolist()} for tr in tracks],
+353:         "timings": timings, "seconds": round(time.time() - t0, 1),
+354:         "files_sha256": {f: hashlib.sha256((out / f).read_bytes()).hexdigest() for f in files},
+355:     }
+356:     check_cell_record(rec, sizes)
+357:     tmp = out / "cell.json.tmp"
+358:     tmp.write_text(json.dumps(rec, sort_keys=True), encoding="utf-8")
+359:     tmp.rename(out / "cell.json")
+360:     return rec
+361: 
+362: 
+363: def check_cell_record(rec: dict, sizes: Sizes = FULL) -> None:
+364:     """The label-isolation and completeness checks a finished cell must pass (DESIGN-r1 §6 ①, completeness)."""
+365:     arm = rec["arm"]
+366:     want_tracks = N_LEARNERS if arm == "P" else 1
+367:     if len(rec["tracks"]) != want_tracks:
+368:         raise AssertionError(f"{arm}: {len(rec['tracks'])} tracks")
+369:     for tr in rec["tracks"]:
+370:         picks, log = tr["picks"], tr["reveal_log"]
+371:         if len(picks) != sizes.rounds or any(len(p) != sizes.per for p in picks):
+372:             raise AssertionError("picks per round do not match the budget")
+373:         if [e["ids"] for e in log] != picks or [e["call"] for e in log] != list(range(sizes.rounds)):
+374:             raise AssertionError("the reveal log differs from the picks: something other than the picks was revealed")
+375:         flat = [i for p in picks for i in p]
+376:         if len(set(flat)) != len(flat) or tr["revealed"] != flat:
+377:             raise AssertionError("a sample was picked twice or the revealed set differs from the picks")
+378:     names = {f"r{r}-n{j}.safetensors" for r in range(sizes.rounds) for j in range(N_LEARNERS)}
+379:     if set(rec["files_sha256"]) != names:
+380:         raise AssertionError(f"weights on disk differ from the expected {len(names)} files")
+381: 
+382: 
+383: def verify_cell_dir(out: Path, sizes: Sizes = FULL) -> dict:
+384:     """Read a finished cell: record present, checks pass, every file has its recorded SHA."""
+385:     rec = json.loads((out / "cell.json").read_text(encoding="utf-8"))
+386:     check_cell_record(rec, sizes)
+387:     for f, want in rec["files_sha256"].items():
+388:         if hashlib.sha256((out / f).read_bytes()).hexdigest() != want:
+389:             raise AssertionError(f"{out.name}/{f} changed after the cell finished")
+390:     return rec
+391: 
+392: 
+393: # --- evaluation (separate from training) ----------------------------------------------------------------
+
+### a33d34b:src/ainerzero/v9/experiments/s3/run_guard.py
+114: def build_manifest(repo: Path, entries: Iterable[Path], *, src_root: Path, extra: Iterable[Path] = ()) -> dict[str, str]:
+115:     """``{repo-relative path: sha256}`` for the import closure plus ``extra`` files."""
+116:     repo = Path(repo).resolve()
+117:     paths = set(import_closure(src_root, entries)) | {Path(p).resolve() for p in extra}
+118:     return {str(p.relative_to(repo)): sha256_file(p) for p in sorted(paths)}
+119: 
+163: def third_party_versions(repo: Path, names: Iterable[str]) -> dict[str, str]:
+164:     """Versions of third-party libraries, refusing a copy that shadows one from the repository."""
+165:     repo = Path(repo).resolve()
+166:     prefix = Path(sys.prefix).resolve()
+167:     out = {}
+168:     for name in names:
+169:         mod = importlib.import_module(name)
+170:         file = getattr(mod, "__file__", None)
+171:         if file is not None:
+172:             path = Path(file).resolve()
+173:             if path.is_relative_to(repo) and not path.is_relative_to(prefix):
+174:                 raise GuardError(f"{name} is shadowed by a repository file: {file}")
+175:         out[name] = str(getattr(mod, "__version__", "unknown"))
+176:     return out
+177: 
+178: 
+179: def require_fresh_pycache(started: float, *, tolerance: float = 10.0) -> None:
+192: def check_git_clean(repo: Path, paths: Iterable[str]) -> tuple[str, list[str]]:
+193:     """Return ``(HEAD, dirty lines)`` so a run can require committed frozen files."""
+194:     run = lambda *a: subprocess.run(["git", *a], cwd=repo, capture_output=True, text=True, check=False)
+195:     head = run("rev-parse", "HEAD")
+196:     if head.returncode != 0:
+197:         raise GuardError(f"not a git checkout: {head.stderr.strip()}")
+198:     status = run("status", "--porcelain", "--", *paths)
+199:     if status.returncode != 0:
+200:         raise GuardError(f"git status failed: {status.stderr.strip()}")
+201:     return head.stdout.strip(), [line for line in status.stdout.splitlines() if line]
+202: 
+203: 
+204: class RunLock:
+205:     """Exclusive non-blocking hold on the shared worker lock."""
+
+### a33d34b:reports/V9-S6-DESIGN/DESIGN-r2.md
+45: - **学习者带着接触先验。** L-int 的消息只在 1.5 以内的盘对之间传递，输入里有距离和「距离 − 2R」，还有接触头（`learned_mlx.py:34`、`:84`、`:123`、`:254-255`）。按分歧挑之所以集中到碰撞上，很可能继承了这个结构先验，不是凭空发现的。所以不说「不用手写知识」，只说「挑选规则不含手写判据」。
+46: - **本阶段问：不确定性挑出的数据相对 Z 是否不差。各门分别回答，不设总体的过或不过。**
+47:   - 按去重池 G 轮的预期，相对 Z 是一种取舍：
+48:     - 墙柱更好（GZ-W，E/Z 0.877）；
+49:     - 自由运动付出 Z 没有的代价（GK-F，E/Z 1.177，预计不过）；
+50:     - 碰撞持平或略差（GZ-D，−0.014，处在边缘）。
+51:   - 只试过 Z 和「挑速度最大的」两条零知识规则，不说「不输给任何零知识规则」。
+52:   - 擦边：重复池上比 Z 差（C 世界 6 盘 E/Z 1.16 [1.06, 1.28]，D 世界 1.12），去重池上相当（G 轮 1.03）。
+53:   - 不说「不需要事先知道该用哪条规则」：学习者的结构本来就带着接触先验（上一条）。
+54: - **代价写明（按摸底数据）：**
+55:   - 重复池（C–F 轮）：E 与 Z 自由误差比随机升高 19–34%，T 升高 40–77%，G 反而略低（G/R 0.90）。
+56:   - 去重池（G 轮）：E 升 18%，Z 不升（1.00），T 升 49%，G 略低（0.94）。
+57:   - GK-F 拿 Z 作参照，回答的是「E 付出的自由运动代价不比 Z 多」。G 轮的 E/Z 是 1.18，GK-F 预计不过（§1）。
+58: - **「沙盒行动」只是从固定候选池里挑。** 候选是轨迹里的真实状态，盘间接触占 2.7%；随机摆放只有 0.05%。所以候选的分布是由人选定的。
+59: 
+60: ## 1. 摸底（`reports/V9-S6-DESIGN/`，不作结论）
+61: 
+62: | 轮次 | 脚本、结果 | 内容 |
+223: 
+224: | 代号 | 怎么挑 | 读标签吗 | 重复数 | 角色 |
+225: |---|---|---|---|---|
+226: | R | 随机 | 否 | 5 | 基线 |
+227: | **E** | **三个网络一组，共享所选样本；挑三者下一步速度预测分歧最大的样本（每个样本取各盘分歧的最大值）** | **否** | **5** | **主臂** |
+228: | Z | 挑最近两盘中心距最小的样本 | 否（一行几何，不判断相向） | 5 | 零知识代用规则 |
+229: | T | 随机挑，但批内一半取自「第一步有盘间接触」的已选中样本（一期手工课程） | 是（只读已揭示的） | 5 | 读真值的参照 |
+230: | P | 单网络加 epinet（解耦训练），挑 epinet 指数离散度最大的样本；三个学习者各挑各的 | 否 | 5 | epinet 对照 |
+231: | G | 挑「按直线运动一步内会有两盘相接」的样本，不够时随机补 | 否（手写的几何判据） | 3（重复 0–2） | 描述：手写判据能做到多少；D(E)−D(G) 在重复 0–2 上配对计算 |
+232: 
+233: - r0 的先知臂 O 删去：它要读全部候选的标签，摸底中又不如 E，没有门用到它。
+234: - **重复的含义**：重复 k 换候选池（`s6p1-cand` 的第 k 组世界）、第一轮随机样本和网络种子（`3k+1`、`3k+2`、`3k+3`）。同一重复里，各臂共用候选池和第一轮样本，所以按重复配对。
+235: - 每个重复里，R、E、Z、T、G 是三个网络，P 是三个单网络学习者。共 (4 × 5 + 5 + 3) × 3 = 84 个网络。
+236: - 评测按网络算，再取平均：比较的是挑出来的数据，不是集成预测。
+237: - **权威实现**：
+238:   - 候选池与挑选函数：`s6/sandbox.py`（P253 r2：揭示时才模拟）；
+239:   - 格的训练、挑选、落盘与评测算术：`s6/cells.py`；
+240:   - 指标、门与区间：`s6/analysis.py`（P255）；
+241:   - epinet：`s6/epinet_mlx.py`（P252）；
+242:   - 摸底脚本（`explore_s6*.py`）里的同类代码退役，不再作为实现依据。
+243: - Z 的打分：`-min_{i≠j} |p_i − p_j|`，只读 `p`；同分按编号升序（`pick_top`）。
+244: 
+245: ## 4. 指标、门与统计
+246: 
+247: **测试：** 在测试世界的每一步精确状态上，预测下一步速度，与模拟器比较。每一步的每个盘按这一步的类型分四类：盘间碰撞、擦边、撞墙或柱、自由。
+296: 
+297: | 项 | 时间 |
+298: |---|---|
+299: | R、E、Z、T 各 5 个重复 | 4 × 5 × 10 = 200 分钟 |
+300: | P 5 个重复 | 约 65 分钟 |
+301: | G 3 个重复 | 约 30 分钟 |
+302: | 候选池 5 组 × 约 30 秒、重放、复训、评测 | 约 40 分钟 |
+303: | **合计** | **约 5.6 小时；训练硬上限 6 小时，评测另限 1 小时** |
+304: 
+305: - 本机 MLX GPU 训练，CPU 评测。不付费，不用云，不下载。
+306: - 每个「臂 × 重复」格单独落盘，可以从断点续跑；训练墙钟按账本跨次累计。
+307: - 长运行前查：
+308:   - 开盖；
+309:   - `caffeinate -i`；
+310:   - 「预览」没有打开（会触发 GPU 复位）。
+311: 
+312: ## 6. 合法性门
+313: 
+314: | 门 | 判据 |
+315: |---|---|
+316: | **标签隔离** | 四层，都要过：<br>① **未选中样本的结果不存在。** 候选池（`sandbox.CandidatePool`）只存状态，`reveal` 时才调模拟器生成标签。每个样本只能揭示一次；揭示日志逐轮核对：揭示的正是当轮选中的样本。没有可偷读的标签，也就不需要「偷读」的负对照。<br>② **候选的来源丢弃。** 候选池构造完后，丢弃轨迹 `Episode` 对象（它的 `Step` 里有接触记录）。<br>③ **封印。** 挑选在封印上下文里运行，期间以下调用一律抛错：`world.physics`、`world.generate_episode`、`learned_mlx.make_pool`、`make_sigma_pool`、`analysis.train_worlds`、`models.true_physics`、`models.bounce`、`sandbox.sim_labels`、候选池的 `reveal` 和 `_simulate`。负对照逐条测试（`test_s6_cells_native.py`）。另加静态检查：挑选路径的函数里不出现这些名字，挑选只调用候选池的 `states()` 和 `remaining()`（`test_s6_cells_static.py`）。<br>④ **T 只读已揭示样本的标签。** T 只在训练批里读已揭示样本的接触标签，挑选与 R 相同（同一随机流）。 |
+317: | **状态之间的信息** | 候选是轨迹上的真实状态。约 81% 的候选，其一步后的结果本身也是另一个候选（重复池）；去重池是 83.2%，有盘间接触的候选里是 83.4%（1482/1776，`r2-review-sub/evidence/pool_check_g.out`）。所以「只给状态」不是信息意义上的完全隔离。本阶段各臂都是逐样本的固定公式：分歧、epinet 离散度、最近距离、几何判据、随机，都不跨候选比对状态，因而没有实际泄漏。<br>规定：**挑选规则不得跨候选比对状态，也不得用编号推断哪些候选相邻。**<br>候选编号按抽样次序排，不按（世界, 步）排：r2 复核发现，原先按（盘数, 世界, 步）排序时，相邻编号有 83.2% 是同一世界的相邻两步，所以改为按抽样次序。native 测试断言相邻编号是同一世界相邻两步的比例很低。 |
+318: | **重放** | 另一个进程从每轮落盘的权重重算挑选分数，挑出的样本与落盘的逐个相同，分数摘要也相同；同时核对揭示日志与候选池摘要。R、T、G 的随机生成器按同样的种子与次序重放。 |
+319: | **训练可复现** | 预先指定两格，在另一个进程按落盘的挑选从头重训：E 重复 0 的种子 1 网络、P 重复 0 的学习者 1。4 轮落盘的权重逐位相同。<br>已有旁证：G 轮的 E 格在重启前中断（`E.aborted-1`），重启后从头重跑。中断前已写出的 7 个权重文件与重跑结果逐位相同，包括依赖 E 自己挑选的 `r2-n0`（`r2-review-sub/evidence/aborted_vs_rerun.out`）。 |
+320: | **分区** | 候选、探针候选、探针测试、final 的世界互不相交。`s6p1-final` 经 `world.REGISTERED` 守卫，只在登记运行里生成；一次性读取标记，读过就不能再读。final 的训练也要求预登记与冻结代码，账本逐次记下预登记与代码摘要，评测前核对。 |
+321: | **完整** | 落盘清单如下，缺一项就不过：<br>· 84 个网络各 4 轮的权重；<br>· 每个「臂 × 重复」每轮选中的编号、分数摘要和揭示日志；<br>· 每个网络在每个测试世界上、每类盘步的误差和与计数，覆盖 4 轮 × 2 种测试；<br>· 每格的耗时；<br>· 运行时的代码 SHA 与预登记 SHA。 |
+322: 
+323: ## 7. 次序与探针的用途
+324: 
+325: 1. 设计稿复核：r0、r1 打回；r2 复核打回的两项必修都是文字，按复核意见由一级改后自查，不再送审（`r2-review-sub/REPORT.md`）。
+326: 2. 实现与复核：
+327:    - P253 候选池（沙盒 r2）、P255 指标与区间：已验收，复核为 P256，三轮；
+328:    - P252 epinet：已验收；
+329:    - `s6/cells.py`、运行器与校验：复核为 P257。
+330: 3. **探针**：
+331:    - 在 `s6p1-pcand` 与 `s6p1-probe` 上，每个臂跑 1 个重复、完整 4 轮。
+332:    - 1 个重复跑不到重复层的统计。这部分由合成数据的单元测试（`test_s6_analysis.py`）和冒烟运行覆盖。冒烟运行每臂 2 个重复，只用替身命名空间 `s6t-smoke-cand`、`s6t-smoke-test`，不碰任何 `s6p1-*`。
+333:    - 只用来查流程错误、计时，以及门的计算能否跑通。
+334:    - 本稿的臂、配方、门槛、预算在探针前冻结。探针结果只允许修实现错误。任何别的改动都要写成 r3 送复核，并在研究日志里写明「看过探针」。
+335: 4. 冻结 → final → 非作者独立复算。
+336: 
+337: ## 8. 风险与这一版不回答
+338: 
+339: **风险：**
+340: - **场景是简化的。** 「行动」是从固定候选池里挑初始状态，不是智能体在世界里推盘。
+341: - **GZ-W 依赖墙柱。** 墙柱缺口像是表示问题，挑数据只能补一部分（摸底 E/R 0.87–0.94）。GZ-W 过了，只说明分歧比 Z 多补了一点墙柱，不说明墙柱学会了。
+342: - **擦边会变差。** C 世界 6 盘 E/Z 擦边 1.16 [1.06, 1.28]，D 世界 1.12；只作描述量，在结论里与墙柱一并写出。
+343: - **去重改变了部分结论的方向。** 去重后（G 轮）：
+344:   - 按分歧对随机的增益仍在，+0.093；
+345:   - Z 的自由运动代价消失，E 的代价还在，所以 GK-F 预计不过；
+346:   - 擦边的劣势基本消失。
+347: 
+407: | 应修 1：T 墙柱 0.771 | 改为 0.770 |
+408: | 应修 2：去重前后应 6 盘对 6 盘比较 | 改为 C/F +0.072 对 G +0.093 |
+409: | 应修 3：§7 过时 | 已更新 |
+410: | 应修 4：冒烟运行的命名空间 | 写明 `s6t-smoke-cand`、`s6t-smoke-test` |
+411: | 应修 5：编号按（盘数, 世界, 步）排序，相邻编号泄露相邻步 | 编号改按抽样次序（`cells.candidate_source`）；§6 规则扩到「不得用编号推断相邻」；加 native 测试；§6 写入实数 83.2% / 83.4% |
+412: | 应修 6：中断格与重跑格逐位相同 | 写入 §6「训练可复现」与研究日志 |
+
+### a33d34b:reports/V9-S6-DESIGN/r2-review-sub/REPORT.md
+10: ## 结论：打回（必修 2 项，均为文字，改后一级自查即可，不必再送复核）
+11: 
+12: r1 的 4 项必修都已实质解决。GK-F、GZ-D 维持不变是对的；§1 第 174–177 行对「预计不过」的写法也诚实。但 §0 标题和 §4 门表两处与之矛盾。
+13: 
+14: ### 必修
+15: 
+16: 1. **§0 第 46 行的主张改写。**
+17:    - 原文「本阶段只主张：不确定性挑出的数据与 Z 不同，且不比 Z 差」，与本稿自己的 G 轮预期矛盾：
+18:      - GK-F：E/Z 自由误差 1.177，预计不过；
+19:      - GZ-D：−0.014，边缘。
+20:    - 建议改为：「本阶段问 E 相对 Z 是不是不差，各门分别回答。按 G 轮的预期，相对 Z 是取舍：墙柱更好（GZ-W），自由运动付出 Z 没有的代价（GK-F 预计不过），碰撞持平或略差（GZ-D 边缘）。不设总体通过或不通过。」
+21: 2. **§4 门表的「摸底值」列补上 G 轮值。** 第 252–259 行只列了重复池的值（如 GK-F 1.015、1.002；GZ-D −0.008），而冻结的是去重池设计。应在同一格并列 G 轮值：
+22: 
+23:    | 门 | G 轮值 |
+24:    |---|---|
+25:    | GS | +0.093 |
+26:    | GT | +0.068 |
+27:    | GZ-D | −0.014 |
+28:    | GZ-W | 0.877 |
+29:    | GK-A | 0.966 |
+30:    | GK-F | 1.177，预计不过 |
+31:    | GP | +0.106 |
+32:    | GX | +0.086 |
+33: 
+34: ### 应修
+35: 
+36: 1. 第 151 行 T 的墙柱误差 0.771 应为 0.770（JSON 值 0.770452）。
+37: 2. 第 169 行应 6 盘对 6 盘比较：C/F 的 6 盘是 +0.072，G 轮是 +0.093。现在拿 G 轮的 6 盘值去比 C–F 的合并测试值 +0.068–0.083。
+38: 3. §7 第 321 行「r1 送非作者复核」、第 323 行 P253 的状态都过时了。
+39: 4. 第 331 行「每臂 2 个重复的冒烟运行」写明用 `s6t-*` 或 `s6x-*` 命名空间，不碰 `s6p1-*`。
+40: 5. **候选编号按（盘数, 世界, 步）排序，相邻编号有 83.2% 是同一世界的相邻两步**（`evidence/pool_check_g.out` 末行）。不比对状态、只看编号就能找到后继。
+41:    - 建议用候选池种子打乱编号，或者把 §6「不得跨候选比对状态」扩到「不得用编号推断相邻」，并加进静态检查。
+42:    - §6 第 313 行的「相近」写成实数：去重池 83.2%，碰撞候选 83.4%（1482/1776）。
+43: 6. 建议把下面这个正面证据记进研究日志或 §6「训练可复现」：重启前中断的 E 格（`E.aborted-1`）与重跑结果的 7 个权重文件逐位相同，含依赖 E 自身挑选的 r2-n0。
+44: 
+45: ---
+46: 
+47: ## 1. 必修是否实质解决
+48: 
+49: | r1 必修 | r2 的处理 | 核对 | 判断 |
+50: |---|---|---|---|
+51: | 1 统计 | §4 第 269–284 行 | 点值、θ_k、s_rep（ddof 1）、se_w（世界配对 bootstrap，各臂各重复共用）、se = √(s_rep²/K + se_w²)、q = 5.261、比值用 log，都写明了。第 273 行「等于先对每个（重复, 网络）算值再平均」：盘步数与 E-B 误差不随重复和网络变化，所以成立。`analysis.py:237-250` 与此一致；全面的实现复核由 P256 负责。 | 解决 |
+52: | 2 重复状态 | 240 个世界、不放回、60000 个（第 199 行；`cells.py:89-113` 带唯一性断言） | 独立重建 G 轮候选池：60000/72000，互不相同，摘要与六个格 `cell.json` 的 `pool_sha256` 全部相等（`pool_check_g.out`）。G 轮已在去重池上重跑全部六个臂。 | 解决 |
+53: | 3 偷读标签 | 揭示时才模拟（`sandbox.py:1-8`、`:116-128`）；封印覆盖 `sim_labels`、`_simulate`、`reveal`、`revealed_pool`、`_assemble`（`cells.py:134-136`）；挑选只调 `states()` 和 `remaining()`（`:281-303`） | 进程里不存在未选中样本的结果。直接调用池保存的 `_labeller` 也会走到被封的 `W.physics`，同样被拦。 | 解决 |
+54: | 4 代价说法 | §0 第 50–53 行 | 重复池：E 和 Z 升 19–34%，T 升 40–77%，G/R 0.90。去重池：E/R 1.180，Z/R 1.003，T/R 1.490，G/R 0.937（`recompute_g.out`）。 | 解决 |
+55: 
+56: ## 2. GK-F、GZ-D 维持不变：对；写法基本诚实，但有两处矛盾
+
+### a33d34b:reports/V9-S6-DESIGN/mlx-modules-review/REPORT.md
+1: # S6 MLX 部分非作者复核报告：cells、运行器、重放与复训校验（34a1753）
+2: 
+3: **结论：建议通过**
+4: 
+5: 复核代理：`gemini-e7a2`（二级执行层，独立非作者环境，与一级主责作者隔离）。
+6: 复核对象：提交 `34a1753` 中 MLX 相关核心模块：
+7: - `src/ainerzero/v9/experiments/s6/cells.py`
+8: - `reports/V9-S6-PHASE1/run_s6p1.py`
+9: - `reports/V9-S6-PHASE1/verify_s6p1.py`
+10: - 对应测试：`tests/v9/experiments/test_s6_cells_native.py`、`test_s6_cells_static.py`、`test_s6p1_runner_native.py`、`test_s6_sandbox_native.py`。
+11: 设计依据：`reports/V9-S6-DESIGN/DESIGN-r2.md` §2、§3、§5、§6、§7。
+12: 
+13: ---
+14: 
+15: ## 1. 标签隔离（§6 四层）
+355: 
+356: ## 6. 测试能否抓错（变异测试）
+357: 
+358: 在隔离副本（从 `git archive 34a1753` 导出）中设计并执行了 6 个关键变异实验（见 `evidence/test_mutations.py`），全量变异均被对应测试准确拦截击杀：
+359: 
+360: | 变异编号 | 变异对象及改动 | 目标测试 | 拦截结果 | 错误类型 / 截获表现 |
+361: |---|---|---|---|---|
+362: | **Mutant 1** | `cells.py:select`: 移除 `with sealed():` 上下文 | `test_s6_cells_static.py` | **KILLED** | `AssertionError: assert any(...)`（静态语法树检测未发现 sealed 上下文） |
+363: | **Mutant 2** | `cells.py:pick_seed`: T 臂种子解绑（改用 `arm` 产生不同种子） | `test_s6_cells_native.py` | **KILLED** | `AssertionError: assert recs["T"]... == recs["R"]...`（T 臂挑选与 R 产生分歧） |
+364: | **Mutant 3** | `cells.py:select`: Z 臂在 `select()` 中被赋予反向打分（偏离 `closest_pair`） | `test_s6_cells_native.py` | **KILLED** | `AssertionError: assert recs["Z"]... == S.pick_top(...)`（Z 臂挑选与最近盘不符） |
+365: | **Mutant 4** | `cells.py:load_model`: P 臂评测未将 `m.z` 设为 None | `test_s6_cells_native.py` | **KILLED** | `AssertionError: assert pm.z is None` |
+366: | **Mutant 5** | `cells.py:candidate_source`: 候选池抽样改为有放回抽样 | `test_s6_cells_native.py` | **KILLED** | `AssertionError: duplicate candidate states with 4 disks`（查出重复状态） |
+367: | **Mutant 6** | `verify_s6p1.py:replay_cell`: 绕过重放检查直接返回 `passed=True` | `test_s6p1_runner_native.py` | **KILLED** | `AssertionError: assert not R["verify"]["passed"]`（篡改格逃逸被拒） |
+368: 
+369: 变异测试表明，现有测试套件对标签隔离、各臂挑选一致性、打分度量、模型加载状态以及重放校验机制具备高度敏感的防御能力。
+370: 
+371: ### 6.1 测试设计发现与应修建议（非阻碍项）
+372: 
+373: 在变异测试探索中发现，`tests/v9/experiments/test_s6_cells_native.py::test_z_picks_the_closest_pairs` 的断言结构为：
+374: ```python
+375: score = C.closest_pair(cp.states())
+376: ...
+377: assert recs["Z"]["tracks"][0]["picks"][1] == S.pick_top(score, rem, TINY.per).tolist()
+378: ```
+379: **现象分析**：由于测试里的预期得分 `score` 直接调用了被测模块自身的 `C.closest_pair`，当且仅当 `closest_pair` 函数内部本身的算法发生变异（例如将 `-d.min` 改为 `d.min`）时，单元测试与被测运行时使用了同一套变异函数，导致两者计算出的挑样列表依然相同而逃逸单测检测；而一旦在 `select()` 中使 Z 臂挑选偏离 `closest_pair`（如变异 3），测试即可立即抓获。
+380: **应修建议**：建议后续在 `test_z_picks_the_closest_pairs` 中引入独立的几何真值算法（直接使用双重循环遍历两两欧氏距离取最小值的独立实现作为断言参考），以实现完全正交的测试 Oracle，消除同源自证漏洞。
+381: 
+382: ---
+383: 
+384: ## 7. 汇总与建议
+385: 
+386: 本次非作者复核覆盖了提交 `34a1753` 中关于 S6 MLX 模块的全部 6 项复核点。
+387: 经代码静态结构审计、独立探针构造、异常/篡改拦截实测以及全量变异测试，证实：
+388: 1. 候选池去重与揭示时模拟机制彻底排除了未选中标签泄露通道；
+389: 2. 静态 AST 与动态封印双重防御确保挑选路径无物理仿真入口；
+390: 3. 断点续跑与墙钟惩罚账本健全，残缺格安全重命名；
+391: 4. 分区与 final 守卫严密，只读一次标记在测试世界生成前被强制执行；
+392: 5. 评测算术与原型严格一致，P 臂基础输出评测落实到位；
+393: 6. 测试套件能有效捕获逻辑与数据篡改。
+394: 
+395: 结论：**建议通过**。
+
+### a33d34b:tests/v9/experiments/test_s6_cells_native.py
+112: 
+113: 
+114: def test_z_picks_the_closest_pairs(cells, source):
+115:     """Against an independent oracle (pairwise loop), not the module's own closest_pair."""
+116:     import math
+117:     _, recs = cells
+118:     st = C.make_candidate_pool(source).states()
+119:     score = np.empty(C.n_states(source))
+120:     for n, e in st.items():
+121:         for b, g in enumerate(e["id"]):
+122:             P = e["p"][b].astype(np.float64)
+123:             score[g] = -min(math.sqrt((P[i, 0] - P[j, 0]) ** 2 + (P[i, 1] - P[j, 1]) ** 2) for i in range(n) for j in range(i + 1, n))
+124:     rem = np.setdiff1d(np.arange(C.n_states(source)), recs["Z"]["tracks"][0]["picks"][0])
+125:     order = sorted(rem.tolist(), key=lambda g: (-score[g], g))
+126:     assert set(recs["Z"]["tracks"][0]["picks"][1]) == set(order[:TINY.per])
+127:     np.testing.assert_allclose(C.closest_pair(st), score, rtol=0, atol=1e-12)
+128: 
+129: 
+130: def test_neighbouring_ids_are_not_neighbouring_steps(source):
+131:     """Ids follow the draw order within a disk count, so id g and g+1 are rarely consecutive steps of one world."""
+132:     eps = C.candidate_worlds(NS, 0, TINY)
+133:     where = {(ep.n_disks, ep.steps[t].positions.tobytes()): (ep.world_index, t) for ep in eps for t in range(len(ep.steps))}
+134:     pos = []
+135:     for n, e in sorted(source.items()):
+136:         pos += [where[(n, e["p"][b].tobytes())] for b in range(len(e["p"]))]
+137:     adjacent = np.mean([a[0] == b[0] and abs(a[1] - b[1]) == 1 for a, b in zip(pos, pos[1:])])
+138:     assert adjacent < 0.05, adjacent
+139: 
+140: 
+141: def test_tampering_is_detected(cells, tmp_path):
+142:     import shutil
+143:     root, recs = cells
+144:     d = tmp_path / "E"
+145:     shutil.copytree(root / "E", d)
+146:     f = d / "r0-n1.safetensors"
+147:     f.write_bytes(f.read_bytes()[:-1] + bytes([f.read_bytes()[-1] ^ 1]))
+148:     with pytest.raises(AssertionError, match="changed"):
+149:         C.verify_cell_dir(d, TINY)
+150:     rec = json.loads((root / "E" / "cell.json").read_text())
+151:     rec["tracks"][0]["reveal_log"][1]["ids"] = rec["tracks"][0]["reveal_log"][1]["ids"][::-1]
+152:     with pytest.raises(AssertionError, match="reveal log"):

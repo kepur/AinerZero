@@ -1,0 +1,31 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review-sub/evidence/run_tests_sub.py", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen-bt"]
+PYTEST_ARGS ["/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen/tests/v9/experiments/test_s6_prereg.py", "--rootdir", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen", "-p", "no:cacheprovider", "--basetemp", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen-bt", "-q"]
+F....................................................................... [ 70%]
+..............................                                           [100%]
+=================================== FAILURES ===================================
+_______________ test_complete_probe_with_failed_science_accepted _______________
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen-bt/test_complete_probe_with_faile0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1054ae4b0>
+
+    def test_complete_probe_with_failed_science_accepted(case, monkeypatch):
+        doc = invoke(case, monkeypatch)
+        assert doc['probe_evidence']['science_all_pass'] is False
+        assert doc['budget']['estimated_train_s'] == 16618
+        assert doc['budget']['estimated_eval_s'] == 3033
+        assert sum(doc['sets']['final']['reps'].values()) == 28
+        assert doc['budget']['train_cap_s'] == 21600 and doc['budget']['eval_limit_s'] == 3600
+        assert 'reports/V9-S6-PHASE1/make_prereg.py' in doc['manifest']
+>       assert 'reports/V9-S6-PHASE1/prereg_evidence.py' in doc['manifest']
+E       AssertionError: assert 'reports/V9-S6-PHASE1/prereg_evidence.py' in {'reports/V9-S6-DESIGN/DESIGN-r2.md': 'ef0ea63f7efafe38310b09240786c3288a517442a331dbf385e87721265748c4', 'reports/V9-...0de0c', 'reports/V9-S6-PHASE1/verify_s6p1.py': '116f45ef23bcbf5e91cf64bb800db15eba9ff52da5a49a3dbcb3c5de4e1d0885', ...}
+
+tests/v9/experiments/test_s6_prereg.py:166: AssertionError
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen-bt/test_complete_probe_with_faile0/repo/candidate.json files frozen: 44 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s6_prereg.py::test_complete_probe_with_failed_science_accepted
+1 failed, 101 passed in 66.44s (0:01:06)
+MODULE_ORIGINS {"ainerzero": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen/src/ainerzero/__init__.py", "ainerzero.v9.experiments.s3.run_guard": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen/src/ainerzero/v9/experiments/s3/run_guard.py", "ainerzero.v9.experiments.s6.analysis": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen/src/ainerzero/v9/experiments/s6/analysis.py", "prereg_evidence": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X12-helper-not-frozen/reports/V9-S6-PHASE1/prereg_evidence.py"}
+ALL_FROM_COPY True
+MLX_IN_SYS_MODULES False
+PYTEST_RC 1

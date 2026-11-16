@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -352,7 +352,7 @@
+     verify_s = number(pr['verify_seconds'], 'verification seconds')
+     eval_s = number(pr['eval_seconds'], 'evaluation seconds')
+     elapsed = number(pr['elapsed_s'], 'report elapsed seconds')
+-    require(verify_s + eval_s <= elapsed + .15 and elapsed <= cfg['eval_limit_s'], 'inconsistent/excessive eval wall clock')
++    require(elapsed <= cfg['eval_limit_s'], 'inconsistent/excessive eval wall clock')
+     closure.unchanged()
+     return pr, {'files_sha256': closure.files, 'current_git_head': head,
+                 'training_ledger_seconds': ledger_seconds, 'science_all_pass': pr['result']['all_pass']}

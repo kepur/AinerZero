@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/make_prereg.py
++++ b/reports/V9-S6-PHASE1/make_prereg.py
+@@ -65,7 +65,7 @@
+     }
+     # Serialize and recheck before the only write. Refusals leave no output file.
+     serialized = json.dumps(doc, ensure_ascii=False, indent=1, allow_nan=False)
+-    PE.require(not GD.check_manifest(REPO, evidence["files_sha256"]), "evidence changed before output")
++    pass  # MUTANT X8
+     PE.require(not GD.check_manifest(REPO, doc["manifest"]), "source changed before output")
+     with out.open("x", encoding="utf-8") as fh:
+         fh.write(serialized)

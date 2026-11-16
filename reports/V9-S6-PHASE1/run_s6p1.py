@@ -35,7 +35,7 @@ ROOT = REPO / "artifacts/v9/s6/phase1"
 PREREG = HERE / "PREREG-r1.json"
 VERIFY = HERE / "verify_s6p1.py"
 LOCK = REPO / "artifacts/locks/m0-worker.lock"
-THIRD_PARTY = ("numpy", "mlx")
+THIRD_PARTY = ("numpy", "mlx.core")
 SMOKE_SIZES = C.Sizes(per=60, rounds=2, steps=30, pool=1500, cand_worlds=8)
 SETS = {
     "smoke": {"cand_ns": "s6t-smoke-cand", "test_ns": "s6t-smoke-test", "sizes": SMOKE_SIZES,
@@ -43,7 +43,7 @@ SETS = {
     "probe": {"cand_ns": "s6p1-pcand", "test_ns": "s6p1-probe", "sizes": C.FULL,
               "reps": {a: 1 for a in C.ARMS}, "worlds": (50, 25), "train_cap_s": 2.5 * 3600, "eval_limit_s": 3600},
     "final": {"cand_ns": "s6p1-cand", "test_ns": "s6p1-final", "sizes": C.FULL,
-              "reps": dict(C.REPLICATES), "worlds": (200, 100), "train_cap_s": 6.0 * 3600, "eval_limit_s": 3600},
+              "reps": dict(C.REPLICATES), "worlds": (200, 100), "train_cap_s": 19800, "eval_limit_s": 5400},
 }
 REGISTERED_SETS = ("final",)
 DANGLING_CHARGE_S = 900          # an invocation that died after its last heartbeat is charged this much more

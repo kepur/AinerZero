@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -324,7 +324,7 @@
+             row_seconds += item['seconds']
+         require(row_seconds <= elapsed + .1 * len(row['cells']), 'cell timings exceed ledger interval')
+     keys(recorded, cells, 'ledger completed cells')
+-    require(ledger_seconds <= cfg['train_cap_s'], 'actual probe training exceeded cap')
++    pass  # MUTANT X6
+     require({p.name for p in out.iterdir()} == {'verify.json', 'errors.npz', 'worlds.json'}, 'eval directory file set')
+     closure.hashed(out, pr['files_sha256'], ('verify.json', 'errors.npz', 'worlds.json'))
+     v = closure.json(out / 'verify.json')

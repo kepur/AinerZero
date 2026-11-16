@@ -1,0 +1,54 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review-sub/evidence/run_tests_sub.py", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped-bt2", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped/tests/v9/experiments/test_p262_sub_review.py", "-k", "r12_"]
+PYTEST_ARGS ["/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped/tests/v9/experiments/test_s6_prereg.py", "--rootdir", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped", "-p", "no:cacheprovider", "--basetemp", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped-bt2", "-q", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped/tests/v9/experiments/test_p262_sub_review.py", "-k", "r12_"]
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________ test_r12_committed_runner_with_12h_final_cap_refused _____________
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped-bt2/test_r12_committed_runner_with0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11065a720>
+
+    def test_r12_committed_runner_with_12h_final_cap_refused(case, monkeypatch):
+        """Consistent world where the RUNNER itself (committed) raises the final cap and the probe evidence was
+        produced by that runner: only the builder's literal 6h/1h pins can refuse it."""
+        here = case / 'reports/V9-S6-PHASE1'
+        runner = here / 'run_s6p1.py'
+        src = runner.read_text()
+        old = '"train_cap_s": 6.0 * 3600'
+        assert src.count(old) == 1
+        runner.write_text(src.replace(old, '"train_cap_s": 12.0 * 3600'))
+        git(case, 'add', '-A', 'reports/V9-S6-PHASE1/run_s6p1.py')
+        git(case, '-c', 'user.name=SYNTHETIC', '-c', 'user.email=s@example.invalid', 'commit', '-qm', '12h')
+        head = git(case, 'rev-parse', 'HEAD')
+        code = B.GD.build_manifest(case, [runner], src_root=case / 'src', extra=[here / 'verify_s6p1.py'])
+        sha = PE.manifest_sha(code)
+        rewrite(case, RAW + 'train-ledger.json', lambda v: v[0].__setitem__('code_manifest_sha256', sha))
+        # the forged runner's sets, as the runner itself would report them (pins bypassed for this read only)
+        monkeypatch.setattr(PE, 'same', lambda a, e, label: None if label in ('final training cap',) else ORIG_SAME(a, e, label))
+        sets = PE.source_sets(case)
+        monkeypatch.setattr(PE, 'same', ORIG_SAME)
+        assert sets['final']['train_cap_s'] == 43200.0
+        update_report(case, lambda p: p.update(sets=sets, code_manifest_sha256=sha, git_head=head))
+>       refuse(case, monkeypatch, 'final training cap')
+
+tests/v9/experiments/test_p262_sub_review.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped-bt2/test_r12_committed_runner_with0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11065a720>
+match = 'final training cap'
+
+    def refuse(root, monkeypatch, match):
+        before = tree_hashes(root)
+>       with pytest.raises(PE.EvidenceError, match=match):
+E       Failed: DID NOT RAISE EvidenceError
+
+tests/v9/experiments/test_p262_sub_review.py:27: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped-bt2/test_r12_committed_runner_with0/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_p262_sub_review.py::test_r12_committed_runner_with_12h_final_cap_refused
+1 failed, 119 deselected in 3.64s
+MODULE_ORIGINS {"ainerzero": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped/src/ainerzero/__init__.py", "ainerzero.v9.experiments.s3.run_guard": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped/src/ainerzero/v9/experiments/s3/run_guard.py", "ainerzero.v9.experiments.s6.analysis": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped/src/ainerzero/v9/experiments/s6/analysis.py", "prereg_evidence": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X5-final-6h-1h-pins-dropped/reports/V9-S6-PHASE1/prereg_evidence.py"}
+ALL_FROM_COPY True
+MLX_IN_SYS_MODULES False
+PYTEST_RC 1

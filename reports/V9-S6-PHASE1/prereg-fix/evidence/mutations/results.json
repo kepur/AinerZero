@@ -1,0 +1,98 @@
+[
+  {
+    "mutation": "M1-replay-summary-only",
+    "old": "    check_verify(v, recs)",
+    "new": "    # MUTANT accepts summary only",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/run_cpu.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M1-replay-summary-only/snapshot",
+      "-k",
+      "replay-false or replay-truthy or retrain-false"
+    ],
+    "returncode": 1,
+    "killed": true,
+    "mutant_sha256": "06cf4ccb70f2b63f768ec507e04245c7471785bc83b32b0f421a83dcef7b251b"
+  },
+  {
+    "mutation": "M2-training-code-unchecked",
+    "old": "        same(row['code_manifest_sha256'], code_sha, 'training/evaluation/current code identity')",
+    "new": "        # MUTANT omits training code identity",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/run_cpu.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M2-training-code-unchecked/snapshot",
+      "-k",
+      "training-code"
+    ],
+    "returncode": 1,
+    "killed": true,
+    "mutant_sha256": "0d6abc3e5b2ed98dfab274ad2036e07bcd1a906554833ea2d8c1cfa9c49403da"
+  },
+  {
+    "mutation": "M3-gates-not-recomputed",
+    "old": "    same(pr['result'], AN.decide(analysis_input(arrays, 3)), 'recomputed gates')",
+    "new": "    # MUTANT trusts reported gates",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/run_cpu.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot",
+      "-k",
+      "empty-gates or gate-value or gate-bool"
+    ],
+    "returncode": 1,
+    "killed": true,
+    "mutant_sha256": "e94e882e7524628130abd45e3ccf0c76b28938640a6e9b5c16c7fcbb41b279f8"
+  },
+  {
+    "mutation": "M4-budget-guard-removed",
+    "old": "and est_train <= final['train_cap_s'] and est_eval <= final['eval_limit_s']",
+    "new": "and True",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/run_cpu.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot",
+      "-k",
+      "budget_boundaries or over-budget"
+    ],
+    "returncode": 1,
+    "killed": true,
+    "mutant_sha256": "db69a0daadee98aca62fbd5f3e362820fadf9be5404cdf0845cbd9bccc418ea4"
+  },
+  {
+    "mutation": "M5-file-hash-unchecked",
+    "old": "            require(actual == want, f'hash differs: {directory / name}')",
+    "new": "            # MUTANT trusts file hashes",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/run_cpu.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M5-file-hash-unchecked/snapshot",
+      "-k",
+      "weights or eval-hash"
+    ],
+    "returncode": 1,
+    "killed": true,
+    "mutant_sha256": "078bbdd9d548c49687d1d7e7a7b985e3eb86c052c666643f802c60a9ee20c4ae"
+  },
+  {
+    "mutation": "M6-rounds-unchecked",
+    "old": "        same(row['rounds_ok'], [True] * (3 * len(rec['tracks'])), 'replayed selection rounds')",
+    "new": "        # MUTANT omits per-round verification",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/run_cpu.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M6-rounds-unchecked/snapshot",
+      "-k",
+      "replay-truthy"
+    ],
+    "returncode": 1,
+    "killed": true,
+    "mutant_sha256": "98408051683fdacdebb4aeca9b955efb8eb47b2c0e5527bebeec21b1fdf39d5b"
+  }
+]

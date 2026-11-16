@@ -1,0 +1,10 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -366,6 +366,6 @@
+     est_eval = 1.30 * (pr['verify_seconds'] * n_final / 6
+                        + pr['eval_seconds'] * n_final / 6 * sum(final['worlds']) / sum(pr['config']['worlds']))
+     require(math.isfinite(est_train) and math.isfinite(est_eval)
+-            and est_train <= final['train_cap_s'] and est_eval <= final['eval_limit_s'],
++            and est_train <= final['train_cap_s'] and est_eval < final['eval_limit_s'],
+             f'预计超出上限：训练 {est_train:.6f} 秒（上限 {final["train_cap_s"]}），评测 {est_eval:.6f} 秒（上限 {final["eval_limit_s"]}）')
+     return est_train, est_eval

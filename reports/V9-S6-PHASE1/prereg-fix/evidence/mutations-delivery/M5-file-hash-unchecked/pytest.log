@@ -1,0 +1,61 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M5-file-hash-unchecked/snapshot/tests/v9/experiments/test_s6_prereg.py", "-c", "/dev/null", "--rootdir", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M5-file-hash-unchecked/snapshot", "--confcutdir", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M5-file-hash-unchecked/snapshot/tests/v9/experiments", "-p", "no:cacheprovider", "-v", "-k", "weights or eval-hash"]
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python
+rootdir: /Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M5-file-hash-unchecked/snapshot
+configfile: ../../../../../../../../../../../dev/null
+collecting ... collected 102 items / 100 deselected / 2 selected
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M5-file-hash-unchecked/snapshot/tests/v9/experiments/test_s6_prereg.py::test_file_corruption[weights] FAILED [ 50%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M5-file-hash-unchecked/snapshot/tests/v9/experiments/test_s6_prereg.py::test_file_corruption[eval-hash] PASSED [100%]
+
+=================================== FAILURES ===================================
+________________________ test_file_corruption[weights] _________________________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-46/test_file_corruption_weights_0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1088758b0>
+kind = 'weights'
+
+    @pytest.mark.parametrize('kind', ['weights', 'cell-hash', 'eval-hash', 'missing-file', 'extra-cell-dir', 'dirty-source', 'duplicate-json', 'errors-shape', 'errors-nan', 'errors-extra', 'errors-values'])
+    def test_file_corruption(case, monkeypatch, kind):
+        raw = case / RAW
+        if kind == 'weights':
+            (raw / 'cells/R-r0/r0-n0.safetensors').write_bytes(b'changed')
+        elif kind == 'cell-hash':
+            rewrite(case, RAW + 'cells/R-r0/cell.json', lambda v: v.__setitem__('seconds', 501))
+        elif kind == 'eval-hash':
+            (raw / 'eval-s6p1-probe/worlds.json').write_text('{}')
+        elif kind == 'missing-file':
+            (raw / 'eval-s6p1-probe/errors.npz').unlink()
+        elif kind == 'extra-cell-dir':
+            (raw / 'cells/R-r999').mkdir()
+        elif kind == 'dirty-source':
+            with (case / 'reports/V9-S6-PHASE1/run_s6p1.py').open('a') as fh:
+                fh.write('\n# SYNTHETIC source tamper\n')
+        elif kind == 'duplicate-json':
+            p = report_path(case)
+            p.write_text(p.read_text()[:-1] + ', "schema": "s6.phase1.eval.v1"}')
+        else:
+            p = raw / 'eval-s6p1-probe/errors.npz'
+            with np.load(p) as data:
+                arr = {k: data[k] for k in data.files}
+            if kind == 'errors-shape':
+                arr['main6/sums/R'] = arr['main6/sums/R'][:, :, :3]
+            elif kind == 'errors-nan':
+                arr['main6/sums/R'][0, 0, 0, 0, 0] = np.nan
+            elif kind == 'errors-extra':
+                arr['forged'] = np.zeros(1)
+            else:
+                arr['main6/sums/E'][0, 0, 3, 0, 0] += 1
+            np.savez(p, **arr)
+            bind_eval(case, 'errors.npz')
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M5-file-hash-unchecked/snapshot/tests/v9/experiments/test_s6_prereg.py:323: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-46/test_file_corruption_weights_0/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M5-file-hash-unchecked/snapshot/tests/v9/experiments/test_s6_prereg.py::test_file_corruption[weights]
+================= 1 failed, 1 passed, 100 deselected in 1.91s ==================
+MLX_IN_SYS_MODULES False

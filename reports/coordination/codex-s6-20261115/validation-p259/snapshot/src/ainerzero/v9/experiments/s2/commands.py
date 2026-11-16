@@ -1,0 +1,878 @@
+"""Supervisor commands and lifecycle entry for S2 Phase 1.
+
+Supported modes:
+- verify: Read-only verification of identity, preregistration, and coordinator approval line. Zero writes.
+- smoke: 20 min sanity run under hard budget.
+- generate-data: Deterministic GridLab-S2 data generation under hard budget.
+- train: Preflight-guarded training for models A, B, C, D, E under hard budget.
+- plan-select: Planning hyperparameter selection on train partition.
+- dev-eval: Evaluation on dev partition.
+- final-eval: Evaluation on sealed final partition.
+
+All compute modes enforce:
+1. Approval preflight scanning RESEARCH_LOG.md for the qualified S2 approval line.
+2. Anti-duplicate execution check on (mode, arm, seed).
+3. 10 h total phase wall-clock ceiling across ledger experiment lineage.
+4. 72 h calendar window separation via RunStore experiment budget.
+5. Shared worker lock acquisition (fcntl flock).
+"""
+
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import sqlite3
+import time
+from typing import Any, Callable, Mapping
+
+from ainerzero.cli import WorkerLockBusy, worker_lock
+from ainerzero.runtime.lifecycle import BudgetExceeded
+from ainerzero.v9.experiments.s2 import spec, worker
+
+EXIT_COMPLETED = 0
+EXIT_FAILED = 1
+EXIT_REFUSED_RESOURCE = 2
+EXIT_REFUSED_APPROVAL = 3
+EXIT_LOCK_BUSY = 4
+
+APPROVAL_SECTION = "R20261106-S2-approval"
+_SECTION_HEADING_RE = re.compile(
+    r"^##\s+(?:R20261106-S2-approval|S2-approval|[A-Za-z0-9_-]*S2[A-Za-z0-9_-]*approval[A-Za-z0-9_-]*)\b",
+    re.IGNORECASE,
+)
+_APPROVAL_LINE_PREFIX = "APPROVED s2-phase1 prereg document_sha256="
+_APPROVAL_RE = re.compile(
+    r"^APPROVED\s+s2-phase1\s+prereg\s+document_sha256=([0-9a-f]{64})$"
+)
+_FENCE_RE = re.compile(r"^(?:```|~~~)")
+_ANY_H2_RE = re.compile(r"^##\s+")
+
+
+def _resolve_paths(args: Any) -> dict[str, Path]:
+    repo_root = getattr(args, "repo_root", None)
+    if repo_root is not None:
+        repo_root = Path(repo_root).resolve()
+    else:
+        repo_root = Path(__file__).resolve().parents[5]
+    expected_self = (repo_root / "src/ainerzero/v9/experiments/s2/commands.py").resolve()
+    if not expected_self.is_file() or expected_self != Path(__file__).resolve():
+        raise RuntimeError(
+            f"Code identity mismatch: repo_root {repo_root} does not contain currently executing {Path(__file__).resolve()}"
+        )
+    output_root = Path(getattr(args, "output_root", None) or (repo_root / "artifacts/v9/s2/phase1")).resolve()
+    ledger_path = Path(getattr(args, "ledger", None) or (output_root / "control.sqlite3")).resolve()
+    lock_path = Path(getattr(args, "lock_file", None) or (repo_root / "artifacts/locks/m0-worker.lock")).resolve()
+    research_log = Path(getattr(args, "research_log", None) or (repo_root / "RESEARCH_LOG.md")).resolve()
+    prereg_path = Path(getattr(args, "prereg", None) or (output_root / "prereg.json")).resolve()
+
+    return {
+        "repo_root": repo_root,
+        "output_root": output_root,
+        "ledger": ledger_path,
+        "lock": lock_path,
+        "research_log": research_log,
+        "prereg": prereg_path,
+    }
+
+
+def scan_approval_log(
+    log_path: Path | str,
+    *,
+    line_re: re.Pattern[str] = _APPROVAL_RE,
+) -> dict[str, Any]:
+    """Read the research log and scan for candidate approval lines in S2 approval section.
+
+    Rules (strictly mirroring E1):
+    - Must be within a level-2 heading matching S2 approval.
+    - If multiple sections with matching heading exist, refuses (ambiguous).
+    - Lines inside fenced code (``` or ~~~) are ignored.
+    - Lines inside blockquotes ('>') are ignored.
+    - Lines indented by 4 spaces or tabs (indented code) are ignored.
+    - Candidate lines must strictly match the regex: APPROVED s2-phase1 prereg document_sha256=<64hex>.
+    """
+    path = Path(log_path)
+    if not path.is_file():
+        return {
+            "found": False,
+            "reasons": [f"research log is missing: {path}"],
+            "rows": [],
+        }
+
+    text = path.read_text(encoding="utf-8")
+    log_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    rows: list[dict[str, Any]] = []
+    spans: list[list[int | None]] = []
+    skipped: dict[str, list[int]] = {"fenced_code": [], "blockquote": [], "indented_code": []}
+    in_fence = False
+    in_section = False
+
+    for number, raw in enumerate(text.splitlines(), start=1):
+        stripped = raw.strip()
+        if _FENCE_RE.match(raw):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            if in_section:
+                skipped["fenced_code"].append(number)
+            continue
+
+        if _ANY_H2_RE.match(stripped):
+            if _SECTION_HEADING_RE.match(stripped):
+                if in_section and spans:
+                    spans[-1][1] = number - 1
+                spans.append([number, None])
+                in_section = True
+            else:
+                if in_section and spans:
+                    spans[-1][1] = number - 1
+                in_section = False
+            continue
+
+        if not in_section:
+            continue
+
+        if stripped.startswith(">"):
+            skipped["blockquote"].append(number)
+            continue
+        if raw.startswith("    ") or raw.startswith("\t"):
+            skipped["indented_code"].append(number)
+            continue
+
+        match = line_re.match(stripped)
+        if not match:
+            continue
+
+        rows.append(
+            {
+                "line": stripped,
+                "line_number": number,
+                "document_sha256": match.group(1),
+            }
+        )
+
+    if in_section and spans and spans[-1][1] is None:
+        spans[-1][1] = len(text.splitlines())
+
+    if len(spans) == 0:
+        return {
+            "found": False,
+            "reasons": [f"approval section matching '{APPROVAL_SECTION}' not found in {path}"],
+            "rows": [],
+            "skipped": skipped,
+        }
+    if len(spans) > 1:
+        return {
+            "found": False,
+            "reasons": [f"multiple approval sections matching '{APPROVAL_SECTION}' found in {path}"],
+            "rows": [],
+            "skipped": skipped,
+        }
+    if len(rows) == 0:
+        return {
+            "found": False,
+            "reasons": [f"no qualifying approval line found in S2 approval section in {path}"],
+            "rows": [],
+            "skipped": skipped,
+        }
+    if len(rows) > 1:
+        return {
+            "found": False,
+            "reasons": [f"multiple ({len(rows)}) qualifying approval lines found in S2 approval section"],
+            "rows": rows,
+            "skipped": skipped,
+        }
+
+    return {
+        "found": True,
+        "line": rows[0]["line"],
+        "line_number": rows[0]["line_number"],
+        "document_sha256": rows[0]["document_sha256"],
+        "log_path": str(path),
+        "log_sha256": log_sha256,
+        "skipped": skipped,
+    }
+
+
+def _check_approval_preflight(
+    research_log: Path,
+    expected_sha256: str | None = None,
+) -> tuple[bool, dict[str, Any]]:
+    scan = scan_approval_log(research_log)
+    if not scan.get("found"):
+        return False, scan
+    if expected_sha256 is not None and scan.get("document_sha256") != expected_sha256:
+        return False, {
+            "reasons": [
+                f"document SHA256 mismatch in approval line: expected {expected_sha256}, "
+                f"got {scan.get('document_sha256')}"
+            ],
+            "detail": scan,
+        }
+    return True, scan
+
+
+def _get_cell_budget(
+    mode: str,
+    arm: str | None,
+    requested_budget: float | None = None,
+) -> float:
+    if mode == "smoke":
+        default_budget = float(spec.BUDGET_SMOKE_MAX_SECONDS)
+    elif mode == "generate-data":
+        default_budget = float(spec.BUDGET_DATA_MAX_SECONDS)
+    elif mode == "train":
+        norm_arm = (arm or "").lower()
+        if norm_arm in ("arm_d", "d"):
+            default_budget = float(spec.BUDGET_ARM_D_SECONDS) / 3.0  # 1200s per slot
+        elif norm_arm in ("arm_e", "e"):
+            default_budget = float(spec.BUDGET_BASELINE_E_SECONDS)   # 300s
+        else:
+            default_budget = float(spec.BUDGET_TRAIN_PER_SLOT_SECONDS)  # 1200s
+    elif mode == "plan-select":
+        default_budget = float(spec.BUDGET_HYPERPARAM_SELECTION_SECONDS)
+    elif mode == "dev-eval":
+        default_budget = float(spec.BUDGET_DEV_EVAL_SECONDS)
+    elif mode == "final-eval":
+        default_budget = float(spec.BUDGET_FINAL_EVAL_SECONDS)
+    else:
+        default_budget = 300.0
+
+    if requested_budget is not None:
+        req = float(requested_budget)
+        if req > default_budget:
+            raise ValueError(
+                f"Requested budget {req} s exceeds registered ceiling {default_budget} s"
+            )
+        return req
+    return default_budget
+
+
+def _check_phase_budget_ceiling(
+    ledger_path: Path,
+    new_cell_budget: float,
+    experiment_ids: tuple[str, ...] = worker.LEDGER_EXPERIMENT_IDS,
+) -> tuple[bool, float, float]:
+    """Check whether adding this cell exceeds the total phase wall clock ceiling (10 h)."""
+    total_ceiling = float(spec.TOTAL_ACTUAL_WALLCLOCK_SECONDS)
+    consumed = 0.0
+
+    with worker.ledger_read_snapshot(ledger_path) as store:
+        if store is not None:
+            placeholders = ", ".join("?" for _ in experiment_ids)
+            cursor = store._conn.execute(
+                f"SELECT active_seconds, config_json FROM runs WHERE experiment_id IN ({placeholders})",
+                list(experiment_ids),
+            )
+            for row in cursor.fetchall():
+                val = row["active_seconds"]
+                if val is not None and float(val) > 0:
+                    consumed += float(val)
+                else:
+                    try:
+                        cfg = json.loads(row["config_json"])
+                        consumed += float(cfg.get("cell_wall_budget_seconds", 0.0))
+                    except Exception:
+                        pass
+
+    if consumed + new_cell_budget > total_ceiling:
+        return False, consumed, total_ceiling
+    return True, consumed, total_ceiling
+
+
+def _resolve_smoke_train_steps(ledger_path: Path | str) -> int | None:
+    """Resolve shared_train_steps from the most recent completed passed smoke run in SQLite ledger.
+
+    F1:
+    - Reads via worker.ledger_read_snapshot.
+    - Pass criterion: smoke result passed must be True (deleted 'or status == completed').
+    - Reads steps from the run completion record (metrics/result), not from config_json.
+    """
+    p = Path(ledger_path)
+    if not p.is_file():
+        return None
+    try:
+        with worker.ledger_read_snapshot(p) as store:
+            if store is None:
+                return None
+            runs = store.list_runs()
+            runs_sorted = sorted(runs, key=lambda r: (r.updated_at, r.created_at), reverse=True)
+            for r in runs_sorted:
+                cfg = r.config_snapshot or {}
+                if cfg.get("mode") != "smoke":
+                    continue
+                # Most recent smoke run: must be in completed state
+                if r.state != "completed":
+                    return None
+                metrics = worker.get_run_metrics(store, r.run_id)
+                if not metrics:
+                    return None
+                # Sole criterion: passed must be True
+                if metrics.get("passed") is not True:
+                    return None
+                timing = metrics.get("timing_and_steps") or {}
+                shared_steps = timing.get("shared_train_steps") or metrics.get("shared_train_steps")
+                if shared_steps is not None and int(shared_steps) > 0:
+                    return int(shared_steps)
+                return None
+            return None
+    except Exception:
+        return None
+
+
+def _resolve_default_runner(mode: str, paths: Mapping[str, Path], args: Any = None) -> Callable[..., dict[str, Any]]:
+    """Resolve the true runner for the given mode (lazy imports)."""
+    if mode == "generate-data":
+        from ainerzero.v9.experiments.s2 import data_runner
+
+        def _data_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            partition = kwargs.get("partition") or getattr(args, "partition", None)
+            if not partition:
+                raise ValueError("generate-data requires explicit partition")
+            n_w = kwargs.get("n_worlds") or getattr(args, "n_worlds", None)
+            ep_w = kwargs.get("episodes_per_world") or getattr(args, "episodes_per_world", None)
+            if partition == "train":
+                n_w = n_w if n_w is not None else int(spec.TRAIN_N_WORLDS)
+                ep_w = ep_w if ep_w is not None else int(spec.TRAIN_EPISODES_PER_WORLD)
+            return data_runner.run_generate_data(
+                partition=partition,
+                output_root=output_root,
+                ledger=ledger,
+                run_id=run_id,
+                n_worlds=n_w,
+                episodes_per_world=ep_w,
+                **kwargs,
+            )
+        return _data_runner
+
+    elif mode == "train":
+        from ainerzero.v9.experiments.s2 import train_runner
+
+        def _train_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            if not arm:
+                raise ValueError("train requires explicit arm")
+            if seed is None:
+                raise ValueError("train requires explicit seed")
+            arm_id = str(arm)
+            arm_seed = int(seed)
+            def _default_arm_factory():
+                from ainerzero.v9.experiments.s2 import adapters_mlx
+                return adapters_mlx.make_mlx_arm(arm_id)
+            arm_factory = kwargs.get("arm_factory") or getattr(args, "arm_factory", None) or _default_arm_factory
+            data_dir = kwargs.get("data_dir") or getattr(args, "data_dir", None) or (Path(output_root) / "datasets" / "train")
+            raw_steps = kwargs.get("steps")
+            if raw_steps is None:
+                ledger_path = getattr(ledger, "db_path", None) or paths["ledger"]
+                raw_steps = _resolve_smoke_train_steps(ledger_path)
+            if raw_steps is None:
+                raise ValueError("smoke shared_train_steps missing from ledger")
+            steps = int(raw_steps)
+            wall_budget = kwargs.pop("cell_wall_budget", None)
+            return train_runner.run_train_cell(
+                arm_factory=arm_factory,
+                arm_id=arm_id,
+                seed=arm_seed,
+                data_dir=data_dir,
+                output_root=output_root,
+                steps=steps,
+                ledger=ledger,
+                run_id=run_id,
+                wall_budget_seconds=wall_budget,
+                **kwargs,
+            )
+        return _train_runner
+
+    elif mode == "plan-select":
+        from ainerzero.v9.experiments.s2 import eval_runner
+
+        def _plan_select_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            out_root = Path(output_root)
+            model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
+            if model_by_arm is None:
+                from ainerzero.v9.experiments.s2 import adapters_mlx
+                model_by_arm = {}
+                for a in ("arm_a", "arm_b", "arm_c"):
+                    try:
+                        model_by_arm[a] = adapters_mlx.load_trained_model(out_root, a, 42, ledger=ledger)
+                    except Exception as exc:
+                        raise RuntimeError(f"plan-select missing seed 42 checkpoint for {a}: {exc}") from exc
+
+            specs = kwargs.get("train_episode_specs") or getattr(args, "train_episode_specs", None)
+            train_dir = out_root / "datasets" / "train"
+            if specs is None:
+                holdout_path = train_dir / "HOLDOUT_WORLDS.json"
+                if not holdout_path.is_file():
+                    raise RuntimeError("plan-select missing train holdout specs: HOLDOUT_WORLDS.json not found")
+                holdout_info = json.loads(holdout_path.read_text(encoding="utf-8"))
+                holdout_worlds = holdout_info.get("holdout_worlds", [])
+                loaded_specs: list[dict[str, Any]] = []
+                for w in holdout_worlds:
+                    w_dir = train_dir / f"world_{int(w):04d}"
+                    w_specs_path = w_dir / "goal_episode_specs.json"
+                    if w_specs_path.is_file():
+                        sp_list = json.loads(w_specs_path.read_text(encoding="utf-8"))
+                        layout_file = w_dir / "layout.json"
+                        for s in sp_list:
+                            s["partition"] = "train"
+                            if layout_file.is_file() and "layout" not in s:
+                                s["layout_path"] = str(layout_file)
+                            loaded_specs.append(s)
+                if len(loaded_specs) < min(50, len(holdout_worlds) * 6):
+                    raise RuntimeError(f"plan-select found insufficient train holdout specs: {len(loaded_specs)} < 50")
+                specs = loaded_specs[:50]
+
+            plan_out = out_root / "plan_config.json"
+            plan_res = eval_runner.run_plan_select(
+                model_by_arm=model_by_arm,
+                train_episode_specs=specs,
+                output_path=plan_out,
+                dataset_dir=train_dir,
+                **{
+                    "n_fwd": int(spec.N_FWD),
+                    "max_episodes": int(spec.HYPERPARAM_SELECTION_MAX_EPISODES),
+                    **kwargs,
+                },
+            )
+            # Record plan_config sha in sqlite ledger if supported
+            plan_sha = hashlib.sha256(plan_out.read_bytes()).hexdigest()
+            if hasattr(ledger, "record_plan_config"):
+                ledger.record_plan_config(plan_out, plan_sha)
+
+            # Post-train gates: load all 9 models (3 arms x 3 seeds)
+            models_9 = kwargs.get("models_all_9") or getattr(args, "models_all_9", None)
+            if models_9 is None:
+                passed_mba = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
+                if passed_mba is not None:
+                    if any("/" in str(k) for k in passed_mba.keys()):
+                        models_9 = passed_mba
+                    else:
+                        models_9 = {f"{a}/{s}": m for a, m in passed_mba.items() for s in (42, 43, 44)}
+            if models_9 is None:
+                from ainerzero.v9.experiments.s2 import adapters_mlx
+                models_9 = {}
+                for a in ("arm_a", "arm_b", "arm_c"):
+                    for s in (42, 43, 44):
+                        key = f"{a}/{s}"
+                        try:
+                            models_9[key] = adapters_mlx.load_trained_model(out_root, a, s, ledger=ledger)
+                        except Exception as exc:
+                            raise RuntimeError(f"plan-select missing checkpoint for {key}: {exc}") from exc
+
+            gates_out = out_root / "post_train_gates.json"
+            dev_ledger_path = out_root / "dev_ledger.json"
+            gates_res = eval_runner.run_post_train_gates(
+                model_by_arm=models_9,
+                train_episode_specs=specs,
+                output_path=gates_out,
+                ledger_path=dev_ledger_path,
+                plan_config=plan_res,
+                dataset_dir=train_dir,
+                n_fwd=int(spec.N_FWD),
+                sensitivity_threshold=float(spec.ACTION_SENSITIVITY_FLOOR),
+                subgoal_drop_threshold=float(spec.SUBGOAL_DROP_FLOOR),
+                baseline_success_range=tuple(spec.BASELINE_SUCCESS_PLAUSIBLE_RANGE),
+            )
+
+            return {
+                "status": "completed",
+                "plan_select": plan_res,
+                "plan_config_sha256": plan_sha,
+                "post_train_gates": gates_res,
+            }
+        return _plan_select_runner
+
+    elif mode == "dev-eval":
+        from ainerzero.v9.experiments.s2 import eval_runner
+
+        def _dev_eval_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            out_root = Path(output_root)
+            dev_ledger_path = out_root / "dev_ledger.json"
+            if not dev_ledger_path.is_file():
+                raise RuntimeError("dev-eval refused: dev_ledger.json not found (must run plan-select and pass post_train_gates first)")
+
+            plan_cfg = kwargs.get("frozen_plan_config") or getattr(args, "frozen_plan_config", None)
+            if plan_cfg is None:
+                plan_cfg_path = out_root / "plan_config.json"
+                if not plan_cfg_path.is_file():
+                    raise RuntimeError("dev-eval missing plan_config.json: must run plan-select first")
+                plan_cfg = json.loads(plan_cfg_path.read_text(encoding="utf-8"))
+
+            dev_dir = out_root / "datasets" / "dev"
+            long_specs = kwargs.get("long_specs") or getattr(args, "long_specs", None)
+            if long_specs is None:
+                if not dev_dir.is_dir():
+                    raise RuntimeError("dev-eval missing datasets/dev directory")
+                dev_specs: list[dict[str, Any]] = []
+                for spec_file in sorted(dev_dir.glob("world_*/goal_episode_specs.json")):
+                    sp_list = json.loads(spec_file.read_text(encoding="utf-8"))
+                    layout_file = spec_file.parent / "layout.json"
+                    for s in sp_list:
+                        s["partition"] = "dev"
+                        if layout_file.is_file() and "layout" not in s:
+                            s["layout_path"] = str(layout_file)
+                        dev_specs.append(s)
+                if not dev_specs:
+                    raise RuntimeError("dev-eval found no goal_episode_specs in datasets/dev")
+                long_specs = dev_specs
+
+            model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
+            if model_by_arm is None:
+                from ainerzero.v9.experiments.s2 import adapters_mlx
+                model_by_arm = {}
+                for a in ("arm_a", "arm_b", "arm_c"):
+                    for s in (42, 43, 44):
+                        key = f"{a}/{s}"
+                        try:
+                            model_by_arm[key] = adapters_mlx.load_trained_model(out_root, a, s, ledger=ledger)
+                        except Exception as exc:
+                            raise RuntimeError(f"dev-eval missing checkpoint for {key}: {exc}") from exc
+
+            res = eval_runner.run_dev_eval(
+                model_by_arm=model_by_arm,
+                frozen_plan_config=plan_cfg,
+                long_specs=long_specs,
+                ledger_path=dev_ledger_path,
+                dataset_dir=dev_dir,
+                **{
+                    "n_fwd_curve": tuple(spec.N_FWD_DEV_LEVELS),
+                    "n_boot": int(spec.BOOTSTRAP_RESAMPLES),
+                    **kwargs,
+                },
+            )
+            res["status"] = "completed"
+            return res
+        return _dev_eval_runner
+
+    elif mode == "final-eval":
+        from ainerzero.v9.experiments.s2 import eval_runner
+
+        def _final_eval_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            out_root = Path(output_root)
+            plan_cfg = kwargs.get("frozen_plan_config") or getattr(args, "frozen_plan_config", None)
+            if plan_cfg is None:
+                plan_cfg_path = out_root / "plan_config.json"
+                if not plan_cfg_path.is_file():
+                    raise RuntimeError("final-eval missing plan_config.json: must run plan-select first")
+                plan_cfg = json.loads(plan_cfg_path.read_text(encoding="utf-8"))
+
+            sealed_dir = kwargs.get("sealed_final_dir") or getattr(args, "sealed_final_dir", None)
+            if sealed_dir is None:
+                sealed_dir = out_root / "datasets" / "sealed_final"
+            sealed_dir = Path(sealed_dir)
+            if not sealed_dir.is_dir():
+                raise RuntimeError(f"final-eval missing sealed_final directory: {sealed_dir}")
+
+            long_specs = kwargs.get("long_specs") or getattr(args, "long_specs", None)
+            if long_specs is None:
+                final_specs: list[dict[str, Any]] = []
+                for spec_file in sorted(sealed_dir.glob("world_*/goal_episode_specs.json")):
+                    sp_list = json.loads(spec_file.read_text(encoding="utf-8"))
+                    layout_file = spec_file.parent / "layout.json"
+                    for s in sp_list:
+                        s["partition"] = "final"
+                        if layout_file.is_file() and "layout" not in s:
+                            s["layout_path"] = str(layout_file)
+                        final_specs.append(s)
+                if not final_specs:
+                    raise RuntimeError("final-eval found no goal_episode_specs in sealed_final")
+                long_specs = final_specs
+
+            model_by_arm = kwargs.get("model_by_arm") or getattr(args, "model_by_arm", None)
+            if model_by_arm is None:
+                from ainerzero.v9.experiments.s2 import adapters_mlx
+                model_by_arm = {}
+                for a in ("arm_a", "arm_b", "arm_c"):
+                    for s in (42, 43, 44):
+                        key = f"{a}/{s}"
+                        try:
+                            model_by_arm[key] = adapters_mlx.load_trained_model(out_root, a, s, ledger=ledger)
+                        except Exception as exc:
+                            raise RuntimeError(f"final-eval missing checkpoint for {key}: {exc}") from exc
+
+            res_log = kwargs.get("research_log") or getattr(args, "research_log", None) or paths["research_log"]
+            res = eval_runner.run_final_eval(
+                model_by_arm=model_by_arm,
+                frozen_plan_config=plan_cfg,
+                sealed_final_dir=sealed_dir,
+                research_log=res_log,
+                long_specs=long_specs,
+                **kwargs,
+            )
+            res["status"] = "completed"
+            return res
+        return _final_eval_runner
+
+    elif mode == "smoke":
+        from ainerzero.v9.experiments.s2 import smoke
+
+        def _smoke_runner(ledger: Any, run_id: str, mode: str, arm: str | None, seed: int | None, output_root: Any, **kwargs: Any) -> dict[str, Any]:
+            res = smoke.run_smoke(
+                output_root=output_root,
+                ledger=ledger,
+                run_id=run_id,
+                execute_real=True,
+                repo_root=paths["repo_root"],
+                **kwargs,
+            )
+            return res
+        return _smoke_runner
+
+    else:
+        raise ValueError(f"Unknown mode: {mode!r}")
+
+
+def s2_phase1_command(args: Any) -> tuple[dict[str, Any], int]:
+    """Execute s2-phase1 lifecycle entry."""
+    paths = _resolve_paths(args)
+    mode = getattr(args, "mode", "verify")
+    arm = getattr(args, "arm", None)
+    seed = getattr(args, "seed", None)
+    experiment_id = getattr(args, "experiment_id", worker.EXPERIMENT_ID)
+
+    # Argument validations prior to preflights
+    if mode == "generate-data":
+        partition = getattr(args, "partition", None)
+        if arm is not None:
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": "generate-data does not accept --arm; use --partition instead",
+            }, EXIT_FAILED
+        if not partition or partition not in ("train", "dev", "final"):
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": "generate-data requires --partition {train,dev,final}",
+            }, EXIT_FAILED
+        arm = partition
+
+    if mode == "train":
+        allowed_arms = ("arm_a", "arm_b", "arm_c", "a", "b", "c")
+        if not arm or str(arm).lower() not in allowed_arms:
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": f"train requires explicit --arm in {('arm_a', 'arm_b', 'arm_c', 'A', 'B', 'C')}; got {arm!r}",
+            }, EXIT_FAILED
+        if seed not in tuple(spec.TRAINING_SEEDS):
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": f"train requires explicit --seed in (42, 43, 44); got {seed!r}",
+            }, EXIT_FAILED
+        # Canonical arm id everywhere downstream (ledger config, checkpoint dir, loaders).
+        from ainerzero.v9.experiments.s2.adapters_mlx import canonical_arm
+
+        arm = canonical_arm(arm)
+
+        runner_arg = getattr(args, "runner", None)
+        steps_arg = getattr(args, "steps", None)
+        if steps_arg is not None:
+            return {
+                "status": "refused",
+                "mode": mode,
+                "stage": "argument_validation",
+                "message": "Explicit steps override in train args is prohibited; steps must resolve from smoke ledger",
+            }, EXIT_FAILED
+        if runner_arg is None:
+            smoke_steps = _resolve_smoke_train_steps(paths["ledger"])
+            if smoke_steps is None or smoke_steps <= 0:
+                return {
+                    "status": "refused",
+                    "mode": mode,
+                    "stage": "smoke_steps_missing",
+                    "message": "Missing or non-passed smoke run in ledger providing shared_train_steps",
+                }, EXIT_FAILED
+
+    # 1. Mode: verify (strictly read-only, zero writes)
+    if mode == "verify":
+        approved, approval_info = _check_approval_preflight(paths["research_log"])
+        prereg_file = paths["prereg"]
+        if not prereg_file.is_file():
+            return {
+                "status": "verified",
+                "mode": mode,
+                "approved": approved,
+                "approval_info": approval_info,
+                "prereg_status": "unfrozen",
+                "message": "未冻结：prereg.json 不存在",
+                "prereg_exists": False,
+                "paths": {k: str(v) for k, v in paths.items()},
+            }, EXIT_COMPLETED
+
+        from ainerzero.v9.experiments.s2 import identity
+        try:
+            verif_res = identity.verify_frozen_identity(prereg_file, repo_root=paths["repo_root"])
+            return {
+                "status": "verified",
+                "mode": mode,
+                "approved": approved,
+                "approval_info": approval_info,
+                "prereg_exists": True,
+                "identity_verification": verif_res,
+                "paths": {k: str(v) for k, v in paths.items()},
+            }, EXIT_COMPLETED
+        except identity.FrozenIdentityMismatchError as exc:
+            return {
+                "status": "failed",
+                "mode": mode,
+                "stage": "identity_mismatch",
+                "message": str(exc),
+                "mismatches": exc.mismatches,
+                "paths": {k: str(v) for k, v in paths.items()},
+            }, EXIT_FAILED
+        except Exception as exc:
+            return {
+                "status": "failed",
+                "mode": mode,
+                "stage": "identity_verification",
+                "message": str(exc),
+                "paths": {k: str(v) for k, v in paths.items()},
+            }, EXIT_FAILED
+
+    # 2. Non-verify modes: Preflight 0 (frozen prereg + frozen source identity).
+    # Every run mode must execute exactly the frozen code: the prereg must exist, the current
+    # sources must match its source_digests, and the approval line must name its document SHA.
+    from ainerzero.v9.experiments.s2 import identity
+
+    prereg_file = paths["prereg"]
+    if not prereg_file.is_file():
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "unfrozen",
+            "message": f"未冻结：运行模式需要冻结的 prereg.json（{prereg_file}）",
+        }, EXIT_REFUSED_APPROVAL
+    try:
+        frozen = identity.verify_frozen_identity(prereg_file, repo_root=paths["repo_root"])
+    except identity.FrozenIdentityMismatchError as exc:
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "identity_mismatch",
+            "message": str(exc),
+            "mismatches": exc.mismatches,
+        }, EXIT_FAILED
+    except Exception as exc:  # unreadable prereg / sha file: fail closed
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "identity_verification",
+            "message": f"{type(exc).__name__}: {exc}",
+        }, EXIT_FAILED
+    frozen_sha = frozen.get("document_sha256") if isinstance(frozen, Mapping) else None
+    if not isinstance(frozen_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", frozen_sha):
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "identity_verification",
+            "message": f"frozen document_sha256 unavailable or malformed: {frozen_sha!r}",
+        }, EXIT_FAILED
+
+    # Preflight A (Approval check), bound to the frozen document SHA.
+    approved, approval_info = _check_approval_preflight(paths["research_log"], expected_sha256=frozen_sha)
+    if not approved:
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "approval",
+            "reasons": approval_info.get("reasons", ["Approval line missing"]),
+            "detail": approval_info,
+        }, EXIT_REFUSED_APPROVAL
+
+    # 3. Preflight B: Anti-duplicate check
+    if mode != "dev-eval" and worker.check_cell_already_completed(paths["ledger"], mode, arm, seed):
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "duplicate_execution",
+            "message": f"Cell ({mode}, arm={arm}, seed={seed}) has already completed in ledger",
+        }, EXIT_FAILED
+
+    # 4. Preflight C: Per-cell budget & Phase ceiling check (10 h = 36,000 s)
+    try:
+        requested_budget = getattr(args, "budget", None)
+        cell_budget = _get_cell_budget(mode, arm, requested_budget)
+    except ValueError as exc:
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "budget_validation",
+            "message": str(exc),
+        }, EXIT_REFUSED_RESOURCE
+
+    budget_ok, consumed, ceiling = _check_phase_budget_ceiling(paths["ledger"], cell_budget)
+    if not budget_ok:
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "phase_budget_exceeded",
+            "consumed_seconds": consumed,
+            "cell_budget_seconds": cell_budget,
+            "ceiling_seconds": ceiling,
+            "message": f"Adding cell budget ({cell_budget} s) to consumed ({consumed} s) exceeds ceiling ({ceiling} s)",
+        }, EXIT_REFUSED_RESOURCE
+
+    # 5. Preflights passed: Acquire worker lock and execute via ledger
+    clock = getattr(args, "fake_clock", None)
+    clock_fn = clock.time if hasattr(clock, "time") else (clock if callable(clock) else time.time)
+    runner = getattr(args, "runner", None)
+    if runner is None:
+        runner = _resolve_default_runner(mode, paths, args=args)
+
+    try:
+        with worker_lock(paths["lock"]):
+            ledger = worker.S2Ledger(paths["ledger"], clock=clock_fn)
+            try:
+                result = worker.execute_work_cell(
+                    ledger=ledger,
+                    mode=mode,
+                    arm=arm,
+                    seed=seed,
+                    cell_wall_budget=cell_budget,
+                    experiment_id=experiment_id,
+                    clock=clock_fn,
+                    runner=runner,
+                    output_root=paths["output_root"],
+                )
+                r_status = result.get("status", "completed") if isinstance(result, dict) else "completed"
+                return {
+                    "status": r_status,
+                    "mode": mode,
+                    "arm": arm,
+                    "seed": seed,
+                    "result": result,
+                }, (EXIT_COMPLETED if r_status == "completed" else EXIT_FAILED)
+            finally:
+                ledger.close()
+
+    except WorkerLockBusy:
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "lock_busy",
+            "message": f"Worker lock {paths['lock']} is busy",
+        }, EXIT_LOCK_BUSY
+    except BudgetExceeded as exc:
+        return {
+            "status": "refused",
+            "mode": mode,
+            "stage": "experiment_budget_exceeded",
+            "message": str(exc),
+        }, EXIT_REFUSED_RESOURCE
+    except Exception as exc:
+        return {
+            "status": "failed",
+            "mode": mode,
+            "stage": "execution",
+            "message": str(exc),
+        }, EXIT_FAILED

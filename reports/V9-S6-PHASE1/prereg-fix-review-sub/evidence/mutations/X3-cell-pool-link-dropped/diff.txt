@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -194,7 +194,7 @@
+     for key, parts in {'first_seed': ('s6-first', 0), 'pool_seed': ('s6-pool', 0),
+                        'pick_seed': ('s6-pick', 'R' if arm == 'T' else arm, 0)}.items():
+         same(rec[key], seed(cfg['cand_ns'], *parts), key)
+-    same(rec['pool_sha256'], pools['0'], 'cell pool SHA')
++    pass  # MUTANT X3
+     per, rounds, pool = (cfg['sizes'][k] for k in ('per', 'rounds', 'pool'))
+     require(type(rec['tracks']) is list and len(rec['tracks']) == (3 if arm == 'P' else 1), 'track count')
+     for track in rec['tracks']:

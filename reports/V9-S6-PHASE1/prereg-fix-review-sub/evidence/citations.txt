@@ -1,0 +1,270 @@
+=== reports/V9-S6-PHASE1/prereg_evidence.py:1-5 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:1: """Read-only CPU evidence closure for the S6 preregistration builder.
+reports/V9-S6-PHASE1/prereg_evidence.py:2: 
+reports/V9-S6-PHASE1/prereg_evidence.py:3: Never imports the runner, cells or MLX. This verifies integrity and internal
+reports/V9-S6-PHASE1/prereg_evidence.py:4: consistency, not cryptographic provenance against a malicious evidence author.
+reports/V9-S6-PHASE1/prereg_evidence.py:5: """
+=== reports/V9-S6-PHASE1/prereg_evidence.py:39-42 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:39: def number(value, label, *, zero=False):
+reports/V9-S6-PHASE1/prereg_evidence.py:40:     require(type(value) in (int, float) and math.isfinite(value)
+reports/V9-S6-PHASE1/prereg_evidence.py:41:             and (value >= 0 if zero else value > 0), f"{label}: expected finite {'nonnegative' if zero else 'positive'} number")
+reports/V9-S6-PHASE1/prereg_evidence.py:42:     return value
+=== reports/V9-S6-PHASE1/prereg_evidence.py:95-111 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:95:     require(values['N_LEARNERS'] == 3 and tuple(values['ARMS']) == AN.ARMS, 'learner/arm definitions changed')
+reports/V9-S6-PHASE1/prereg_evidence.py:96:     # Only these literal configuration expressions are evaluated, in an import-free
+reports/V9-S6-PHASE1/prereg_evidence.py:97:     # namespace. Unexpected syntax fails before evaluation.
+reports/V9-S6-PHASE1/prereg_evidence.py:98:     C = SimpleNamespace(**values, Sizes=lambda **kw: {**values['FULL'], **kw})
+reports/V9-S6-PHASE1/prereg_evidence.py:99:     env = {'__builtins__': {}, 'dict': dict, 'C': C}
+reports/V9-S6-PHASE1/prereg_evidence.py:100:     allowed = (ast.Expression, ast.Dict, ast.Constant, ast.Name, ast.Load, ast.Attribute,
+reports/V9-S6-PHASE1/prereg_evidence.py:101:                ast.Call, ast.keyword, ast.Tuple, ast.List, ast.BinOp, ast.Mult,
+reports/V9-S6-PHASE1/prereg_evidence.py:102:                ast.DictComp, ast.comprehension, ast.Store)
+reports/V9-S6-PHASE1/prereg_evidence.py:103:     tree = ast.parse((repo / 'reports/V9-S6-PHASE1/run_s6p1.py').read_text())
+reports/V9-S6-PHASE1/prereg_evidence.py:104:     for node in tree.body:
+reports/V9-S6-PHASE1/prereg_evidence.py:105:         if not isinstance(node, ast.Assign) or not isinstance(node.targets[0], ast.Name):
+reports/V9-S6-PHASE1/prereg_evidence.py:106:             continue
+reports/V9-S6-PHASE1/prereg_evidence.py:107:         name = node.targets[0].id
+reports/V9-S6-PHASE1/prereg_evidence.py:108:         if name in ('SMOKE_SIZES', 'SETS'):
+reports/V9-S6-PHASE1/prereg_evidence.py:109:             expression = ast.Expression(node.value)
+reports/V9-S6-PHASE1/prereg_evidence.py:110:             require(all(isinstance(n, allowed) for n in ast.walk(expression)), 'unsupported configuration expression')
+reports/V9-S6-PHASE1/prereg_evidence.py:111:             env[name] = eval(compile(expression, '<S6 config only>', 'eval'), env)
+=== reports/V9-S6-PHASE1/prereg_evidence.py:117-121 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:117:     same(sets['final']['reps'], {**{a: 5 for a in AN.GATE_ARMS}, 'G': 3}, 'final replicates')
+reports/V9-S6-PHASE1/prereg_evidence.py:118:     same(sets['probe']['worlds'], [50, 25], 'probe worlds')
+reports/V9-S6-PHASE1/prereg_evidence.py:119:     same(sets['final']['worlds'], [200, 100], 'final worlds')
+reports/V9-S6-PHASE1/prereg_evidence.py:120:     same(sets['final']['train_cap_s'], 21600.0, 'final training cap')
+reports/V9-S6-PHASE1/prereg_evidence.py:121:     same(sets['final']['eval_limit_s'], 3600, 'final eval cap')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:133-145 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:133:     head = git('rev-parse', 'HEAD')
+reports/V9-S6-PHASE1/prereg_evidence.py:134:     require(not git('status', '--porcelain', '--', *code), 'numerical source files are not committed')
+reports/V9-S6-PHASE1/prereg_evidence.py:135:     require(type(report_head) is str and len(report_head) == 40
+reports/V9-S6-PHASE1/prereg_evidence.py:136:             and all(c in '0123456789abcdef' for c in report_head), 'invalid report git_head')
+reports/V9-S6-PHASE1/prereg_evidence.py:137:     for commit in {head, report_head}:
+reports/V9-S6-PHASE1/prereg_evidence.py:138:         run = subprocess.run(['git', 'archive', commit, *code], cwd=repo, capture_output=True)
+reports/V9-S6-PHASE1/prereg_evidence.py:139:         require(run.returncode == 0, f'cannot read committed source tree {commit}')
+reports/V9-S6-PHASE1/prereg_evidence.py:140:         with tarfile.open(fileobj=io.BytesIO(run.stdout), mode='r:') as archive:
+reports/V9-S6-PHASE1/prereg_evidence.py:141:             files = {m.name: m for m in archive.getmembers() if m.isfile()}
+reports/V9-S6-PHASE1/prereg_evidence.py:142:             keys(files, code, 'committed code files')
+reports/V9-S6-PHASE1/prereg_evidence.py:143:             for rel, digest in code.items():
+reports/V9-S6-PHASE1/prereg_evidence.py:144:                 require(hashlib.sha256(archive.extractfile(files[rel]).read()).hexdigest() == digest,
+reports/V9-S6-PHASE1/prereg_evidence.py:145:                         f'code differs at committed identity {commit}: {rel}')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:197-198 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:197:     same(rec['pool_sha256'], pools['0'], 'cell pool SHA')
+reports/V9-S6-PHASE1/prereg_evidence.py:198:     per, rounds, pool = (cfg['sizes'][k] for k in ('per', 'rounds', 'pool'))
+=== reports/V9-S6-PHASE1/prereg_evidence.py:204-205 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:204:         for ids in picks:
+reports/V9-S6-PHASE1/prereg_evidence.py:205:             require(type(ids) is list and len(ids) == per and all(type(i) is int and 0 <= i < pool for i in ids), 'pick IDs')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:215-224 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:215:     seconds = number(rec['seconds'], 'cell seconds')
+reports/V9-S6-PHASE1/prereg_evidence.py:216:     require(type(rec['timings']) is list and len(rec['timings']) == rounds, 'timing rounds')
+reports/V9-S6-PHASE1/prereg_evidence.py:217:     total = 0
+reports/V9-S6-PHASE1/prereg_evidence.py:218:     for r, timing in enumerate(rec['timings']):
+reports/V9-S6-PHASE1/prereg_evidence.py:219:         keys(timing, ('round', 'train_s', 'select_s'), 'round timing')
+reports/V9-S6-PHASE1/prereg_evidence.py:220:         same(timing['round'], r, 'timing round index')
+reports/V9-S6-PHASE1/prereg_evidence.py:221:         total += number(timing['train_s'], 'round training') + number(timing['select_s'], 'round selection', zero=True)
+reports/V9-S6-PHASE1/prereg_evidence.py:222:     require(total <= seconds + .15, 'round timings exceed cell seconds (rounding allowance .15s)')
+reports/V9-S6-PHASE1/prereg_evidence.py:223:     names = {f'r{r}-n{j}.safetensors' for r in range(rounds) for j in range(3)}
+reports/V9-S6-PHASE1/prereg_evidence.py:224:     require({p.name for p in directory.iterdir()} == names | {'cell.json'}, 'cell directory file set')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:258-262 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:258:     required = {'schema', 'set', 'sets', 'config', 'third_party', 'prereg_sha256', 'code_dirty',
+reports/V9-S6-PHASE1/prereg_evidence.py:259:                 'code_manifest_sha256', 'git_head', 'cells_sha256', 'train_seconds',
+reports/V9-S6-PHASE1/prereg_evidence.py:260:                 'files_sha256', 'verify', 'result', 'descriptive', 'selection',
+reports/V9-S6-PHASE1/prereg_evidence.py:261:                 'verify_seconds', 'eval_seconds', 'elapsed_s'}
+reports/V9-S6-PHASE1/prereg_evidence.py:262:     require(type(pr) is dict and required <= set(pr), 'probe eval report is incomplete')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:272-274 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:272:     code_sha = manifest_sha(code)
+reports/V9-S6-PHASE1/prereg_evidence.py:273:     same(pr['code_manifest_sha256'], code_sha, 'report code SHA')
+reports/V9-S6-PHASE1/prereg_evidence.py:274:     head = committed_identity(repo, code, pr['git_head'])
+=== reports/V9-S6-PHASE1/prereg_evidence.py:280-280 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:280:     require({p.name for p in (root / 'cells').iterdir()} == cells, 'raw cell directory set')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:298-298 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:298:     same(recs['T-r0']['tracks'][0]['picks'], recs['R-r0']['tracks'][0]['picks'], 'T/R selections')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:302-327 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:302:     for row in ledger:
+reports/V9-S6-PHASE1/prereg_evidence.py:303:         keys(row, ('start', 'last_beat', 'closed', 'cells', 'prereg_sha256', 'code_manifest_sha256', 'git_head', 'third_party'), 'ledger row')
+reports/V9-S6-PHASE1/prereg_evidence.py:304:         same(row['closed'], True, 'training ledger must be closed')
+reports/V9-S6-PHASE1/prereg_evidence.py:305:         same(row['prereg_sha256'], None, 'ledger prereg identity')
+reports/V9-S6-PHASE1/prereg_evidence.py:306:         same(row['code_manifest_sha256'], code_sha, 'training/evaluation/current code identity')
+reports/V9-S6-PHASE1/prereg_evidence.py:307:         same(row['third_party'], versions, 'training versions')
+reports/V9-S6-PHASE1/prereg_evidence.py:308:         # The original probe startup returns head=None. Never invent that evidence.
+reports/V9-S6-PHASE1/prereg_evidence.py:309:         if row['git_head'] is not None:
+reports/V9-S6-PHASE1/prereg_evidence.py:310:             committed_identity(repo, code, row['git_head'])
+reports/V9-S6-PHASE1/prereg_evidence.py:311:         start = number(row['start'], 'ledger start')
+reports/V9-S6-PHASE1/prereg_evidence.py:312:         elapsed = number(row['last_beat'], 'ledger last heartbeat') - start
+reports/V9-S6-PHASE1/prereg_evidence.py:313:         require(elapsed > 0, 'nonpositive ledger duration')
+reports/V9-S6-PHASE1/prereg_evidence.py:314:         ledger_seconds += elapsed
+reports/V9-S6-PHASE1/prereg_evidence.py:315:         require(type(row['cells']) is list, 'ledger cells type')
+reports/V9-S6-PHASE1/prereg_evidence.py:316:         row_seconds = 0
+reports/V9-S6-PHASE1/prereg_evidence.py:317:         for item in row['cells']:
+reports/V9-S6-PHASE1/prereg_evidence.py:318:             keys(item, ('arm', 'replicate', 'seconds'), 'ledger cell')
+reports/V9-S6-PHASE1/prereg_evidence.py:319:             same(item['replicate'], 0, 'ledger replicate')
+reports/V9-S6-PHASE1/prereg_evidence.py:320:             cell = str(item['arm']) + '-r0'
+reports/V9-S6-PHASE1/prereg_evidence.py:321:             require(cell in cells and cell not in recorded, 'extra/duplicate ledger cell')
+reports/V9-S6-PHASE1/prereg_evidence.py:322:             same(number(item['seconds'], 'ledger cell seconds'), recs[cell]['seconds'], 'ledger/cell time')
+reports/V9-S6-PHASE1/prereg_evidence.py:323:             recorded[cell] = item['seconds']
+reports/V9-S6-PHASE1/prereg_evidence.py:324:             row_seconds += item['seconds']
+reports/V9-S6-PHASE1/prereg_evidence.py:325:         require(row_seconds <= elapsed + .1 * len(row['cells']), 'cell timings exceed ledger interval')
+reports/V9-S6-PHASE1/prereg_evidence.py:326:     keys(recorded, cells, 'ledger completed cells')
+reports/V9-S6-PHASE1/prereg_evidence.py:327:     require(ledger_seconds <= cfg['train_cap_s'], 'actual probe training exceeded cap')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:328-335 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:328:     require({p.name for p in out.iterdir()} == {'verify.json', 'errors.npz', 'worlds.json'}, 'eval directory file set')
+reports/V9-S6-PHASE1/prereg_evidence.py:329:     closure.hashed(out, pr['files_sha256'], ('verify.json', 'errors.npz', 'worlds.json'))
+reports/V9-S6-PHASE1/prereg_evidence.py:330:     v = closure.json(out / 'verify.json')
+reports/V9-S6-PHASE1/prereg_evidence.py:331:     same(pr['verify'], v, 'report/raw verification')
+reports/V9-S6-PHASE1/prereg_evidence.py:332:     check_verify(v, recs)
+reports/V9-S6-PHASE1/prereg_evidence.py:333:     worlds = closure.json(out / 'worlds.json')
+reports/V9-S6-PHASE1/prereg_evidence.py:334:     same(worlds, {'main6': [[w, 6] for w in range(50)], 'extrap10': [[1000 + w, 10] for w in range(25)]}, 'test world identities')
+reports/V9-S6-PHASE1/prereg_evidence.py:335:     with np.load(out / 'errors.npz', allow_pickle=False) as data:
+=== reports/V9-S6-PHASE1/prereg_evidence.py:346-347 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:346:     same(pr['result'], AN.decide(analysis_input(arrays, 3)), 'recomputed gates')
+reports/V9-S6-PHASE1/prereg_evidence.py:347:     same(pr['descriptive'], {f'round{r}': AN.describe(analysis_input(arrays, r)) for r in range(4)}, 'round descriptions')
+=== reports/V9-S6-PHASE1/prereg_evidence.py:352-358 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:352:     verify_s = number(pr['verify_seconds'], 'verification seconds')
+reports/V9-S6-PHASE1/prereg_evidence.py:353:     eval_s = number(pr['eval_seconds'], 'evaluation seconds')
+reports/V9-S6-PHASE1/prereg_evidence.py:354:     elapsed = number(pr['elapsed_s'], 'report elapsed seconds')
+reports/V9-S6-PHASE1/prereg_evidence.py:355:     require(verify_s + eval_s <= elapsed + .15 and elapsed <= cfg['eval_limit_s'], 'inconsistent/excessive eval wall clock')
+reports/V9-S6-PHASE1/prereg_evidence.py:356:     closure.unchanged()
+reports/V9-S6-PHASE1/prereg_evidence.py:357:     return pr, {'files_sha256': closure.files, 'current_git_head': head,
+reports/V9-S6-PHASE1/prereg_evidence.py:358:                 'training_ledger_seconds': ledger_seconds, 'science_all_pass': pr['result']['all_pass']}
+=== reports/V9-S6-PHASE1/prereg_evidence.py:361-371 (sha256 208f6c4b5361f420…)
+reports/V9-S6-PHASE1/prereg_evidence.py:361: def estimate_budget(pr):
+reports/V9-S6-PHASE1/prereg_evidence.py:362:     # validate_probe is mandatory before this calculation at the public entry.
+reports/V9-S6-PHASE1/prereg_evidence.py:363:     final = pr['sets']['final']
+reports/V9-S6-PHASE1/prereg_evidence.py:364:     n_final = sum(final['reps'].values())
+reports/V9-S6-PHASE1/prereg_evidence.py:365:     est_train = 1.15 * (sum(pr['train_seconds'][a + '-r0'] * k for a, k in final['reps'].items()) + 5 * 90)
+reports/V9-S6-PHASE1/prereg_evidence.py:366:     est_eval = 1.30 * (pr['verify_seconds'] * n_final / 6
+reports/V9-S6-PHASE1/prereg_evidence.py:367:                        + pr['eval_seconds'] * n_final / 6 * sum(final['worlds']) / sum(pr['config']['worlds']))
+reports/V9-S6-PHASE1/prereg_evidence.py:368:     require(math.isfinite(est_train) and math.isfinite(est_eval)
+reports/V9-S6-PHASE1/prereg_evidence.py:369:             and est_train <= final['train_cap_s'] and est_eval <= final['eval_limit_s'],
+reports/V9-S6-PHASE1/prereg_evidence.py:370:             f'预计超出上限：训练 {est_train:.6f} 秒（上限 {final["train_cap_s"]}），评测 {est_eval:.6f} 秒（上限 {final["eval_limit_s"]}）')
+reports/V9-S6-PHASE1/prereg_evidence.py:371:     return est_train, est_eval
+=== reports/V9-S6-PHASE1/make_prereg.py:35-41 (sha256 0dd9d3be32fd4903…)
+reports/V9-S6-PHASE1/make_prereg.py:35:     if out.exists():
+reports/V9-S6-PHASE1/make_prereg.py:36:         raise SystemExit(f"预登记已存在，不覆盖：{out}")
+reports/V9-S6-PHASE1/make_prereg.py:37:     code = GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[VERIFY])
+reports/V9-S6-PHASE1/make_prereg.py:38:     versions = PE.cpu_versions(REPO)
+reports/V9-S6-PHASE1/make_prereg.py:39:     pr, evidence = PE.validate_probe(REPO, probe, code, versions)
+reports/V9-S6-PHASE1/make_prereg.py:40:     code_sha = PE.manifest_sha(code)
+reports/V9-S6-PHASE1/make_prereg.py:41:     est_train, est_eval = PE.estimate_budget(pr)
+=== reports/V9-S6-PHASE1/make_prereg.py:49-49 (sha256 0dd9d3be32fd4903…)
+reports/V9-S6-PHASE1/make_prereg.py:49:         "manifest": GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[design, VERIFY, Path(__file__).resolve(), Path(PE.__file__).resolve()]),
+=== reports/V9-S6-PHASE1/make_prereg.py:52-54 (sha256 0dd9d3be32fd4903…)
+reports/V9-S6-PHASE1/make_prereg.py:52:         "probe_report": str(probe.relative_to(REPO)),
+reports/V9-S6-PHASE1/make_prereg.py:53:         "probe_report_sha256": hashlib.sha256(probe.read_bytes()).hexdigest(),
+reports/V9-S6-PHASE1/make_prereg.py:54:         "code_manifest_sha256": code_sha,
+=== reports/V9-S6-PHASE1/make_prereg.py:66-71 (sha256 0dd9d3be32fd4903…)
+reports/V9-S6-PHASE1/make_prereg.py:66:     # Serialize and recheck before the only write. Refusals leave no output file.
+reports/V9-S6-PHASE1/make_prereg.py:67:     serialized = json.dumps(doc, ensure_ascii=False, indent=1, allow_nan=False)
+reports/V9-S6-PHASE1/make_prereg.py:68:     PE.require(not GD.check_manifest(REPO, evidence["files_sha256"]), "evidence changed before output")
+reports/V9-S6-PHASE1/make_prereg.py:69:     PE.require(not GD.check_manifest(REPO, doc["manifest"]), "source changed before output")
+reports/V9-S6-PHASE1/make_prereg.py:70:     with out.open("x", encoding="utf-8") as fh:
+reports/V9-S6-PHASE1/make_prereg.py:71:         fh.write(serialized)
+=== reports/V9-S6-PHASE1/run_s6p1.py:48-48 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:48: REGISTERED_SETS = ("final",)
+=== reports/V9-S6-PHASE1/run_s6p1.py:56-57 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:56: def code_manifest():
+reports/V9-S6-PHASE1/run_s6p1.py:57:     return GD.build_manifest(REPO, [Path(__file__).resolve()], src_root=REPO / "src", extra=[VERIFY])
+=== reports/V9-S6-PHASE1/run_s6p1.py:84-87 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:84:     versions = GD.third_party_versions(REPO, THIRD_PARTY)
+reports/V9-S6-PHASE1/run_s6p1.py:85:     check_partitions()
+reports/V9-S6-PHASE1/run_s6p1.py:86:     if set_name not in REGISTERED_SETS:
+reports/V9-S6-PHASE1/run_s6p1.py:87:         return None, None, None, versions
+=== reports/V9-S6-PHASE1/run_s6p1.py:148-149 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:148:         me = {"start": time.time(), "last_beat": time.time(), "closed": False, "cells": [], "prereg_sha256": pre_sha,
+reports/V9-S6-PHASE1/run_s6p1.py:149:               "code_manifest_sha256": manifest_sha(code_manifest()), "git_head": head, "third_party": versions}
+=== reports/V9-S6-PHASE1/run_s6p1.py:257-261 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:257:         if registered:     # every training invocation ran the frozen code under this preregistration
+reports/V9-S6-PHASE1/run_s6p1.py:258:             _, rows = ledger_used(set_root / "train-ledger.json")
+reports/V9-S6-PHASE1/run_s6p1.py:259:             code_now = manifest_sha(code_manifest())
+reports/V9-S6-PHASE1/run_s6p1.py:260:             if not rows or any(r["prereg_sha256"] != pre_sha or r["code_manifest_sha256"] != code_now for r in rows):
+reports/V9-S6-PHASE1/run_s6p1.py:261:                 raise GD.GuardError("some training ran under a different preregistration or code")
+=== reports/V9-S6-PHASE1/run_s6p1.py:270-274 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:270:         R = {"schema": "s6.phase1.eval.v1", "set": a.set, "config": set_summary(a.set),
+reports/V9-S6-PHASE1/run_s6p1.py:271:              "sets": {name: set_summary(name) for name in SETS}, "prereg_sha256": pre_sha,
+reports/V9-S6-PHASE1/run_s6p1.py:272:              "git_head": head or code_head, "code_manifest_sha256": manifest_sha(code), "code_dirty": code_dirty,
+reports/V9-S6-PHASE1/run_s6p1.py:273:              "third_party": versions, "cells_sha256": {f"{x}-r{k}": sha(cell_dir(set_root, x, k) / "cell.json") for x, k in cells},
+reports/V9-S6-PHASE1/run_s6p1.py:274:              "train_seconds": {f"{x}-r{k}": r["seconds"] for (x, k), r in recs.items()}}
+=== reports/V9-S6-PHASE1/run_s6p1.py:276-285 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:276:         def save():
+reports/V9-S6-PHASE1/run_s6p1.py:277:             R["elapsed_s"] = round(time.monotonic() - t0, 1)
+reports/V9-S6-PHASE1/run_s6p1.py:278:             R["peak_rss_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+reports/V9-S6-PHASE1/run_s6p1.py:279:             report.write_text(json.dumps(R, ensure_ascii=False, indent=1), encoding="utf-8")
+reports/V9-S6-PHASE1/run_s6p1.py:280: 
+reports/V9-S6-PHASE1/run_s6p1.py:281:         save()
+reports/V9-S6-PHASE1/run_s6p1.py:282:         t = time.monotonic()
+reports/V9-S6-PHASE1/run_s6p1.py:283:         R["verify"] = independent_verify(a.set, out / "verify.json", deadline)
+reports/V9-S6-PHASE1/run_s6p1.py:284:         R["verify_seconds"] = round(time.monotonic() - t, 1)
+reports/V9-S6-PHASE1/run_s6p1.py:285:         save()
+=== reports/V9-S6-PHASE1/run_s6p1.py:300-302 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:300:         t = time.monotonic()
+reports/V9-S6-PHASE1/run_s6p1.py:301:         arrays = evaluate(cfg, set_root, cells, test_eps, say, deadline)
+reports/V9-S6-PHASE1/run_s6p1.py:302:         R["eval_seconds"] = round(time.monotonic() - t, 1)
+=== reports/V9-S6-PHASE1/run_s6p1.py:95-102 (sha256 10998013257f8c78…)
+reports/V9-S6-PHASE1/run_s6p1.py:95:     if versions != pre["third_party"]:
+reports/V9-S6-PHASE1/run_s6p1.py:96:         raise GD.GuardError(f"library versions differ from the preregistration: {versions}")
+reports/V9-S6-PHASE1/run_s6p1.py:97:     if pre.get("sets", {}).get("final") != set_summary("final"):
+reports/V9-S6-PHASE1/run_s6p1.py:98:         raise GD.GuardError("the final set in the preregistration differs from the runner's")
+reports/V9-S6-PHASE1/run_s6p1.py:99:     head, dirty = GD.check_git_clean(REPO, list(pre["manifest"]) + [str(PREREG.relative_to(REPO))])
+reports/V9-S6-PHASE1/run_s6p1.py:100:     if dirty:
+reports/V9-S6-PHASE1/run_s6p1.py:101:         raise GD.GuardError("frozen files are not committed: " + "; ".join(dirty[:6]))
+reports/V9-S6-PHASE1/run_s6p1.py:102:     return pre, sha(PREREG), head, versions
+=== src/ainerzero/v9/experiments/s3/run_guard.py:163-176 (sha256 29b3093e2d1d4252…)
+src/ainerzero/v9/experiments/s3/run_guard.py:163: def third_party_versions(repo: Path, names: Iterable[str]) -> dict[str, str]:
+src/ainerzero/v9/experiments/s3/run_guard.py:164:     """Versions of third-party libraries, refusing a copy that shadows one from the repository."""
+src/ainerzero/v9/experiments/s3/run_guard.py:165:     repo = Path(repo).resolve()
+src/ainerzero/v9/experiments/s3/run_guard.py:166:     prefix = Path(sys.prefix).resolve()
+src/ainerzero/v9/experiments/s3/run_guard.py:167:     out = {}
+src/ainerzero/v9/experiments/s3/run_guard.py:168:     for name in names:
+src/ainerzero/v9/experiments/s3/run_guard.py:169:         mod = importlib.import_module(name)
+src/ainerzero/v9/experiments/s3/run_guard.py:170:         file = getattr(mod, "__file__", None)
+src/ainerzero/v9/experiments/s3/run_guard.py:171:         if file is not None:
+src/ainerzero/v9/experiments/s3/run_guard.py:172:             path = Path(file).resolve()
+src/ainerzero/v9/experiments/s3/run_guard.py:173:             if path.is_relative_to(repo) and not path.is_relative_to(prefix):
+src/ainerzero/v9/experiments/s3/run_guard.py:174:                 raise GuardError(f"{name} is shadowed by a repository file: {file}")
+src/ainerzero/v9/experiments/s3/run_guard.py:175:         out[name] = str(getattr(mod, "__version__", "unknown"))
+src/ainerzero/v9/experiments/s3/run_guard.py:176:     return out
+=== tests/v9/experiments/test_s6_prereg.py:229-233 (sha256 795dc4c50bdf0406…)
+tests/v9/experiments/test_s6_prereg.py:229:     before = tree_hashes(case)
+tests/v9/experiments/test_s6_prereg.py:230:     with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+tests/v9/experiments/test_s6_prereg.py:231:         invoke(case, monkeypatch)
+tests/v9/experiments/test_s6_prereg.py:232:     assert not (case / 'candidate.json').exists()
+tests/v9/experiments/test_s6_prereg.py:233:     assert tree_hashes(case) == before
+
+=== Additional single-line citations used in REPORT.md
+reports/V9-S6-PHASE1/prereg_evidence.py:3: Never imports the runner, cells or MLX. This verifies integrity and internal
+reports/V9-S6-PHASE1/prereg_evidence.py:4: consistency, not cryptographic provenance against a malicious evidence author.
+reports/V9-S6-PHASE1/prereg_evidence.py:99:     env = {'__builtins__': {}, 'dict': dict, 'C': C}
+reports/V9-S6-PHASE1/prereg_evidence.py:100:     allowed = (ast.Expression, ast.Dict, ast.Constant, ast.Name, ast.Load, ast.Attribute,
+reports/V9-S6-PHASE1/prereg_evidence.py:101:                ast.Call, ast.keyword, ast.Tuple, ast.List, ast.BinOp, ast.Mult,
+reports/V9-S6-PHASE1/prereg_evidence.py:111:             env[name] = eval(compile(expression, '<S6 config only>', 'eval'), env)
+reports/V9-S6-PHASE1/prereg_evidence.py:120:     same(sets['final']['train_cap_s'], 21600.0, 'final training cap')
+reports/V9-S6-PHASE1/prereg_evidence.py:121:     same(sets['final']['eval_limit_s'], 3600, 'final eval cap')
+reports/V9-S6-PHASE1/prereg_evidence.py:205:             require(type(ids) is list and len(ids) == per and all(type(i) is int and 0 <= i < pool for i in ids), 'pick IDs')
+reports/V9-S6-PHASE1/prereg_evidence.py:236:         same(row['first_ok'], True, 'first picks replay')
+reports/V9-S6-PHASE1/prereg_evidence.py:265:     sets = source_sets(repo)
+reports/V9-S6-PHASE1/prereg_evidence.py:274:     head = committed_identity(repo, code, pr['git_head'])
+reports/V9-S6-PHASE1/prereg_evidence.py:298:     same(recs['T-r0']['tracks'][0]['picks'], recs['R-r0']['tracks'][0]['picks'], 'T/R selections')
+reports/V9-S6-PHASE1/prereg_evidence.py:327:     require(ledger_seconds <= cfg['train_cap_s'], 'actual probe training exceeded cap')
+reports/V9-S6-PHASE1/prereg_evidence.py:352:     verify_s = number(pr['verify_seconds'], 'verification seconds')
+reports/V9-S6-PHASE1/prereg_evidence.py:353:     eval_s = number(pr['eval_seconds'], 'evaluation seconds')
+reports/V9-S6-PHASE1/prereg_evidence.py:354:     elapsed = number(pr['elapsed_s'], 'report elapsed seconds')
+reports/V9-S6-PHASE1/prereg_evidence.py:355:     require(verify_s + eval_s <= elapsed + .15 and elapsed <= cfg['eval_limit_s'], 'inconsistent/excessive eval wall clock')
+reports/V9-S6-PHASE1/prereg_evidence.py:366:     est_eval = 1.30 * (pr['verify_seconds'] * n_final / 6
+reports/V9-S6-PHASE1/prereg_evidence.py:367:                        + pr['eval_seconds'] * n_final / 6 * sum(final['worlds']) / sum(pr['config']['worlds']))
+reports/V9-S6-PHASE1/prereg_evidence.py:369:             and est_train <= final['train_cap_s'] and est_eval <= final['eval_limit_s'],
+reports/V9-S6-PHASE1/make_prereg.py:49:         "manifest": GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[design, VERIFY, Path(__file__).resolve(), Path(PE.__file__).resolve()]),
+reports/V9-S6-PHASE1/make_prereg.py:67:     serialized = json.dumps(doc, ensure_ascii=False, indent=1, allow_nan=False)
+reports/V9-S6-PHASE1/make_prereg.py:68:     PE.require(not GD.check_manifest(REPO, evidence["files_sha256"]), "evidence changed before output")
+reports/V9-S6-PHASE1/make_prereg.py:69:     PE.require(not GD.check_manifest(REPO, doc["manifest"]), "source changed before output")
+reports/V9-S6-PHASE1/make_prereg.py:70:     with out.open("x", encoding="utf-8") as fh:
+reports/V9-S6-PHASE1/make_prereg.py:71:         fh.write(serialized)
+reports/V9-S6-PHASE1/run_s6p1.py:282:         t = time.monotonic()
+reports/V9-S6-PHASE1/run_s6p1.py:283:         R["verify"] = independent_verify(a.set, out / "verify.json", deadline)
+reports/V9-S6-PHASE1/run_s6p1.py:284:         R["verify_seconds"] = round(time.monotonic() - t, 1)
+tests/v9/experiments/test_s6_prereg.py:331:         sec = (21600 / 1.15 - 450) / 28
+tests/v9/experiments/test_s6_prereg.py:332:         change_training_time(case, sec + (1e-6 if which.endswith('over') else 0))
+tests/v9/experiments/test_s6_prereg.py:333:     else:
+tests/v9/experiments/test_s6_prereg.py:334:         verify = 3600 / (1.30 * (28 / 6)) - 4 * 100
+tests/v9/experiments/test_s6_prereg.py:335:         if which.endswith('over'):
+tests/v9/experiments/test_s6_prereg.py:336:             verify += 1e-6
+tests/v9/experiments/test_s6_prereg.py:344:         assert doc['budget']['estimated_' + ('train_s' if which.startswith('train') else 'eval_s')] == (21600 if which.startswith('train') else 3600)
+reports/V9-S6-PHASE1/verify_s6p1.py:29: RETRAIN = (("E", 0, 0), ("P", 0, 0))      # (arm, replicate, learner): seed 1 of replicate 0

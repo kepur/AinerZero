@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -202,7 +202,7 @@
+         picks = track['picks']
+         require(type(picks) is list and len(picks) == rounds, 'pick rounds')
+         for ids in picks:
+-            require(type(ids) is list and len(ids) == per and all(type(i) is int and 0 <= i < pool for i in ids), 'pick IDs')
++            require(type(ids) is list and len(ids) == per and all(type(i) is int for i in ids), 'pick IDs')
+         flat = [i for ids in picks for i in ids]
+         require(len(set(flat)) == len(flat), 'duplicate picks')
+         same(track['revealed'], flat, 'revealed IDs')

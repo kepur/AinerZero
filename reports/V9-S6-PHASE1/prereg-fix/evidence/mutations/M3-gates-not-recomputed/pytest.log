@@ -1,0 +1,75 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py", "-c", "/dev/null", "--rootdir", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot", "--confcutdir", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments", "-p", "no:cacheprovider", "-v", "-k", "empty-gates or gate-value or gate-bool"]
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python
+rootdir: /Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot
+configfile: ../../../../../../../../../../../dev/null
+collecting ... collected 80 items / 77 deselected / 3 selected
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[empty-gates] FAILED [ 33%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[gate-value] FAILED [ 66%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[gate-bool] FAILED [100%]
+
+=================================== FAILURES ===================================
+____________ test_report_damage_refuses_without_writes[empty-gates] ____________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-37/test_report_damage_refuses_wit0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1052bea20>
+damage = 'empty-gates'
+
+    @pytest.mark.parametrize('damage', REPORT_CASES)
+    def test_report_damage_refuses_without_writes(case, monkeypatch, damage):
+        if damage == 'train-over-budget':
+            change_training_time(case, 700.)
+        else:
+            update_report(case, REPORT_CASES[damage])
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py:230: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-37/test_report_damage_refuses_wit0/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+____________ test_report_damage_refuses_without_writes[gate-value] _____________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-37/test_report_damage_refuses_wit1/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x105f5b6e0>
+damage = 'gate-value'
+
+    @pytest.mark.parametrize('damage', REPORT_CASES)
+    def test_report_damage_refuses_without_writes(case, monkeypatch, damage):
+        if damage == 'train-over-budget':
+            change_training_time(case, 700.)
+        else:
+            update_report(case, REPORT_CASES[damage])
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py:230: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-37/test_report_damage_refuses_wit1/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+_____________ test_report_damage_refuses_without_writes[gate-bool] _____________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-37/test_report_damage_refuses_wit2/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x105fd1f70>
+damage = 'gate-bool'
+
+    @pytest.mark.parametrize('damage', REPORT_CASES)
+    def test_report_damage_refuses_without_writes(case, monkeypatch, damage):
+        if damage == 'train-over-budget':
+            change_training_time(case, 700.)
+        else:
+            update_report(case, REPORT_CASES[damage])
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py:230: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-37/test_report_damage_refuses_wit2/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[empty-gates]
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[gate-value]
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M3-gates-not-recomputed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[gate-bool]
+======================= 3 failed, 77 deselected in 2.52s =======================
+MLX_IN_SYS_MODULES False

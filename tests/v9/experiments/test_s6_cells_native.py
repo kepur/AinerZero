@@ -189,3 +189,11 @@ def test_evaluation_arithmetic(cells):
     np.testing.assert_allclose(s, [e[tw.kinds == c].sum() for c in range(4)])
     pm = C.load_model("P", root / "P" / "r1-n0.safetensors")
     assert pm.z is None                                  # P is evaluated on its base output
+
+
+def test_mlx_core_version_matches_the_installed_distribution():
+    """DESIGN-r3 §7.5: the freeze entry records metadata.version("mlx") without importing MLX; the frozen runner records
+    mlx.core.__version__ at start. They must be the same string."""
+    import importlib.metadata
+    assert mx.__version__ == importlib.metadata.version("mlx")
+    assert mx.__version__ not in ("", "unknown")

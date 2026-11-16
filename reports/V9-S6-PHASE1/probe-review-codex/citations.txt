@@ -1,0 +1,371 @@
+FILE reports/V9-S6-DESIGN/DESIGN-r2.md
+SHA256 ef0ea63f7efafe38310b09240786c3288a517442a331dbf385e87721265748c4
+253: 
+254: | 门 | 判据 | 摸底值：重复池（C–F 轮） | 摸底值：去重池（G 轮，1 个重复） |
+255: |---|---|---|---|
+256: | **GS 自选胜随机** | D(E) − D(R) ≥ +0.03，下界 > 0；且每个重复各自 ≥ +0.03 | +0.068 到 +0.083（四次合并测试）；6 盘 +0.072 | +0.093 |
+257: | **GT 接近手工课程** | [D(E) − D(R)] − 0.5 × [D(T) − D(R)] 的下界 > 0，即至少拿到手工课程增益的一半 | C 世界 6 盘 +0.027（只按世界 bootstrap、m=8 时下界 +0.013）；四次合并测试均值 +0.046 | +0.068 |
+258: | **GZ-D 碰撞不输代用规则** | D(E) − D(Z) ≥ −0.02，下界 > −0.04 | −0.008 [−0.022, +0.005]（C，6 盘）；−0.009（D） | −0.014（边缘） |
+259: | **GZ-W 墙柱胜代用规则** | 墙柱误差 E / Z ≤ 0.95，上界 < 1.0 | 0.902 [0.883, 0.922]（C）；0.927（D） | 0.877 |
+260: | **GK-A 全部盘步** | 全部盘步误差 E / R ≤ 1.10，上界 ≤ 1.20 | 1.00–1.04 | 0.966 |
+261: | **GK-F 自由运动代价不大于代用规则** | 自由误差 E / Z ≤ 1.10，上界 ≤ 1.20 | 1.015（C，6 盘）；1.002（D） | **1.177，预计不过** |
+262: | **GP epinet 也胜随机** | D(P) − D(R) ≥ +0.03，下界 > 0 | +0.069（E2） | +0.106 |
+263: | **GX 外推到 10 盘** | D(E) − D(R) ≥ +0.02，下界 > 0 | +0.065（F） | +0.086 |
+264: 
+265: **登记的描述量（不设门）：**
+266: - 各臂的学习曲线（每轮的 D 与各类误差）；
+267: - D(E) − D(T)、D(E) − D(G)、D(P) − D(E)；
+277:   - 分子分母对重复、网络、世界一起求和。因为盘步数与 E-B 误差不随网络和重复变化，这等于先对每个（重复, 网络）算值再平均。
+278: - **θ_k**：只用重复 k、全部测试世界，同一公式。s_rep = SD(θ_k)，ddof = 1。
+279: - **se_w**：保留全部重复，只对测试世界做配对 bootstrap，10000 次。每次抽中的世界各臂、各重复共用。取统计量的标准差。
+280: - **se** = √(s_rep²/K + se_w²)，K = 5。
+281: - **区间** = θ̂ ∓ q·se：
+282:   - Bonferroni 用 q = t(K−1, 1 − 0.05/(2·8)) = 5.261；95% 用 q = t(4, 0.975) = 2.776；
+283:   - 比值类门（GZ-W、GK-A、GK-F）在 log 尺度上算，再取指数。
+284: - **m = 8**：GS、GT、GZ-D、GZ-W、GK-A、GK-F、GP、GX 各一个区间判据。
+285: - 每个门的点值与区间判据都要过；无定义（NaN）按不过算。
+286: - GS 另要求「每个重复各自 ≥ +0.03」：用 θ_k。
+287: - G 只有 3 个重复，只出点值描述量。
+288: - K = 1（只用于探针）时没有重复层：s_rep 取 0，q 用正态分位数。探针的区间只用来检查流程，不作结论。
+289: 
+290: ## 5. 预算
+291: 
+292: 实测（G 轮，正式模块，本机 MLX；`run-s6g.log`）：
+293: - 每个网络每轮 2500 步约 35–47 秒；3 个网络一轮约 100–140 秒；
+294: - 每个臂每个重复（4 轮，含挑选和 45 个测试世界的评测）约 9–10 分钟；E、Z、T、P、G 五个臂共 2754 秒；
+295: - 评测在 final 规模（84 个网络 × 4 轮 × 300 个世界）约 0.2 小时。
+319: | **训练可复现** | 预先指定两格，在另一个进程按落盘的挑选从头重训：E 重复 0 的种子 1 网络、P 重复 0 的学习者 1。4 轮落盘的权重逐位相同。<br>已有旁证：G 轮的 E 格在重启前中断（`E.aborted-1`），重启后从头重跑。中断前已写出的 7 个权重文件与重跑结果逐位相同，包括依赖 E 自己挑选的 `r2-n0`（`r2-review-sub/evidence/aborted_vs_rerun.out`）。 |
+320: | **分区** | 候选、探针候选、探针测试、final 的世界互不相交。`s6p1-final` 经 `world.REGISTERED` 守卫，只在登记运行里生成；一次性读取标记，读过就不能再读。final 的训练也要求预登记与冻结代码，账本逐次记下预登记与代码摘要，评测前核对。 |
+321: | **完整** | 落盘清单如下，缺一项就不过：<br>· 84 个网络各 4 轮的权重；<br>· 每个「臂 × 重复」每轮选中的编号、分数摘要和揭示日志；<br>· 每个网络在每个测试世界上、每类盘步的误差和与计数，覆盖 4 轮 × 2 种测试；<br>· 每格的耗时；<br>· 运行时的代码 SHA 与预登记 SHA。 |
+322: 
+323: ## 7. 次序与探针的用途
+324: 
+325: 1. 设计稿复核：r0、r1 打回；r2 复核打回的两项必修都是文字，按复核意见由一级改后自查，不再送审（`r2-review-sub/REPORT.md`）。
+326: 2. 实现与复核：
+327:    - P253 候选池（沙盒 r2）、P255 指标与区间：已验收，复核为 P256，三轮；
+328:    - P252 epinet：已验收；
+329:    - `s6/cells.py`、运行器与校验：复核为 P257。
+330: 3. **探针**：
+331:    - 在 `s6p1-pcand` 与 `s6p1-probe` 上，每个臂跑 1 个重复、完整 4 轮。
+332:    - 1 个重复跑不到重复层的统计。这部分由合成数据的单元测试（`test_s6_analysis.py`）和冒烟运行覆盖。冒烟运行每臂 2 个重复，只用替身命名空间 `s6t-smoke-cand`、`s6t-smoke-test`，不碰任何 `s6p1-*`。
+333:    - 只用来查流程错误、计时，以及门的计算能否跑通。
+334:    - 本稿的臂、配方、门槛、预算在探针前冻结。探针结果只允许修实现错误。任何别的改动都要写成 r3 送复核，并在研究日志里写明「看过探针」。
+335: 4. 冻结 → final → 非作者独立复算。
+336: 
+337: ## 8. 风险与这一版不回答
+338: 
+339: **风险：**
+340: - **场景是简化的。** 「行动」是从固定候选池里挑初始状态，不是智能体在世界里推盘。
+341: - **GZ-W 依赖墙柱。** 墙柱缺口像是表示问题，挑数据只能补一部分（摸底 E/R 0.87–0.94）。GZ-W 过了，只说明分歧比 Z 多补了一点墙柱，不说明墙柱学会了。
+342: - **擦边会变差。** C 世界 6 盘 E/Z 擦边 1.16 [1.06, 1.28]，D 世界 1.12；只作描述量，在结论里与墙柱一并写出。
+343: - **去重改变了部分结论的方向。** 去重后（G 轮）：
+
+FILE reports/V9-S6-PHASE1/run_s6p1.py
+SHA256 10998013257f8c781f265b3a150cddc3a838f7fc565aa362d46fdf36fa10de0c
+43:     "probe": {"cand_ns": "s6p1-pcand", "test_ns": "s6p1-probe", "sizes": C.FULL,
+44:               "reps": {a: 1 for a in C.ARMS}, "worlds": (50, 25), "train_cap_s": 2.5 * 3600, "eval_limit_s": 3600},
+45:     "final": {"cand_ns": "s6p1-cand", "test_ns": "s6p1-final", "sizes": C.FULL,
+46:               "reps": dict(C.REPLICATES), "worlds": (200, 100), "train_cap_s": 6.0 * 3600, "eval_limit_s": 3600},
+47: }
+48: REGISTERED_SETS = ("final",)
+49: DANGLING_CHARGE_S = 900          # an invocation that died after its last heartbeat is charged this much more
+50: 
+121:     if not ledger.is_file():
+122:         return 0.0, []
+123:     rows = json.loads(ledger.read_text(encoding="utf-8"))
+124:     used = 0.0
+125:     for r in rows:
+126:         used += r["last_beat"] - r["start"] + (0 if r.get("closed") else DANGLING_CHARGE_S)
+127:     return used, rows
+128: 
+129: 
+130: def ledger_write(ledger, rows):
+244:         registered = a.set in REGISTERED_SETS
+245:         if registered and (a.approval or "").strip() != pre["final_approval_line"]:
+246:             raise GD.GuardError("missing the unique approval line")
+247:         if not registered and a.approval:
+248:             raise GD.GuardError("only final takes an approval line")
+249:         marker = set_root / "FINAL_READ_ONCE.json"
+250:         if registered and marker.exists():
+251:             raise GD.GuardError("final has already been read")
+252:         cells = all_cells(cfg)
+253:         missing = [f"{x}-r{k}" for x, k in cells if not (cell_dir(set_root, x, k) / "cell.json").is_file()]
+254:         if missing:
+271:              "sets": {name: set_summary(name) for name in SETS}, "prereg_sha256": pre_sha,
+272:              "git_head": head or code_head, "code_manifest_sha256": manifest_sha(code), "code_dirty": code_dirty,
+273:              "third_party": versions, "cells_sha256": {f"{x}-r{k}": sha(cell_dir(set_root, x, k) / "cell.json") for x, k in cells},
+274:              "train_seconds": {f"{x}-r{k}": r["seconds"] for (x, k), r in recs.items()}}
+275: 
+276:         def save():
+277:             R["elapsed_s"] = round(time.monotonic() - t0, 1)
+278:             R["peak_rss_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+279:             report.write_text(json.dumps(R, ensure_ascii=False, indent=1), encoding="utf-8")
+280: 
+281:         save()
+282:         t = time.monotonic()
+283:         R["verify"] = independent_verify(a.set, out / "verify.json", deadline)
+284:         R["verify_seconds"] = round(time.monotonic() - t, 1)
+285:         save()
+286:         if not R["verify"].get("passed"):
+287:             R["result"] = {"valid": False, "reason": "replay or retraining check failed; the test partition was not read"}
+288:             save()
+289:             say("verification failed; stopping before the test partition")
+290:             return
+291:         if registered:
+292:             GD.consume_final_read(lock, marker, a.approval, pre["final_approval_line"], prereg_sha256=pre_sha, expected_lock=LOCK)
+293:             R["final_read_marker_sha256"] = sha(marker)
+294:             save()
+295:         n_main, n_ext = cfg["worlds"]
+296:         ids = A.eval_world_ids((n_main, n_ext))
+297:         test_eps = {"main6": [W.generate_episode(cfg["test_ns"], w, n, allow_registered=registered) for kind, w, n in ids if kind == "main"],
+298:                     "extrap10": [W.generate_episode(cfg["test_ns"], w, n, allow_registered=registered) for kind, w, n in ids if kind == "extrap"]}
+299:         say("test worlds", {k: len(v) for k, v in test_eps.items()})
+300:         t = time.monotonic()
+301:         arrays = evaluate(cfg, set_root, cells, test_eps, say, deadline)
+302:         R["eval_seconds"] = round(time.monotonic() - t, 1)
+303:         npz = out / "errors.npz"
+304:         with npz.open("xb") as fh:
+305:             np.savez(fh, **arrays)
+306:         (out / "worlds.json").write_text(json.dumps({t: [[ep.world_index, ep.n_disks] for ep in eps] for t, eps in test_eps.items()}), encoding="utf-8")
+307:         R["files_sha256"] = {f.name: sha(f) for f in sorted(out.iterdir())}
+308:         save()
+309:         from ainerzero.v9.experiments.s6 import analysis as AN   # P255; imported here so training never needs it
+310:         last = cfg["sizes"].rounds - 1
+311:         R["result"] = AN.decide(analysis_input(arrays, last))
+312:         R["descriptive"] = {f"round{r}": AN.describe(analysis_input(arrays, r)) for r in range(cfg["sizes"].rounds)}
+313:         R["selection"] = selection_summary(recs, cfg)
+
+FILE reports/V9-S6-PHASE1/verify_s6p1.py
+SHA256 116f45ef23bcbf5e91cf64bb800db15eba9ff52da5a49a3dbcb3c5de4e1d0885
+20: sys.path.insert(0, str(REPO / "reports/V9-S6-PHASE1"))
+21: sys.path.insert(0, str(REPO / "src"))
+22: import mlx.core as mx  # noqa: E402
+51:             js = [ti] if arm == "P" else list(range(C.N_LEARNERS))
+52:             learners = [_Held(C.load_model(arm, d / f"r{r}-n{j}.safetensors")) for j in js]
+53:             ids, dig = C.select(arm, C.Track(cp, learners), k, sizes.per, cand_ns, rng)
+54:             out["rounds_ok"].append(ids.tolist() == tr["picks"][r + 1] and dig == tr["score_sha256"][r + 1])
+55:         out["contact_share"].append(shares)
+56:     out["passed"] = bool(out["first_ok"] and all(out["rounds_ok"]))
+57:     return out
+58: 
+59: 
+60: def retrain(arm, k, j, rec, source, set_root, sizes):
+61:     mx.set_default_device(mx.gpu)
+62:     seed = C.net_seeds(k)[j]
+63:     learner = C.make_learner(arm, seed)
+64:     tr = rec["tracks"][j if arm == "P" else 0]
+65:     cp = C.make_candidate_pool(source)
+66:     rounds = []
+67:     for r in range(sizes.rounds):
+68:         cp.reveal(np.array(tr["picks"][r], dtype=np.int64))
+69:         learner.train(cp.revealed_pool(), sizes.steps, C.T_COLL_SHARE if arm == "T" else 0.0)
+70:         saved = mx.load(str(RUN.cell_dir(set_root, arm, k) / f"r{r}-n{j}.safetensors"))
+71:         mine = dict(tree_flatten(learner.model.parameters()))
+72:         same = set(saved) == set(mine) and all(np.array_equal(np.array(saved[n]), np.array(mine[n])) for n in mine)
+76: 
+77: def main():
+78:     set_name, out_json = sys.argv[1], Path(sys.argv[2])
+79:     cfg = RUN.SETS[set_name]
+80:     sizes, cand_ns = cfg["sizes"], cfg["cand_ns"]
+81:     set_root = RUN.ROOT / set_name
+82:     pool_sha = json.loads((set_root / "pools.json").read_text(encoding="utf-8"))
+83:     cells = RUN.all_cells(cfg)
+84:     R = {"replay": {}, "retrain": {}, "pools_ok": {}}
+85:     for k in sorted({k for _, k in cells}):
+86:         source = C.candidate_source(cand_ns, k, sizes)
+87:         R["pools_ok"][str(k)] = C.pool_digest(source) == pool_sha.get(str(k))
+88:         for arm in [x for x, kk in cells if kk == k]:
+89:             rec = C.verify_cell_dir(RUN.cell_dir(set_root, arm, k), sizes)
+90:             R["replay"][f"{arm}-r{k}"] = replay_cell(arm, k, rec, source, set_root, sizes, cand_ns)
+91:             print(f"replay {arm}-r{k}", R["replay"][f"{arm}-r{k}"]["passed"], flush=True)
+92:         for arm, kk, j in RETRAIN:
+93:             if kk == k and (arm, k) in cells:
+94:                 rec = C.verify_cell_dir(RUN.cell_dir(set_root, arm, k), sizes)
+95:                 R["retrain"][f"{arm}-r{k}-n{j}"] = retrain(arm, k, j, rec, source, set_root, sizes)
+96:                 print(f"retrain {arm}-r{k}-n{j}", R["retrain"][f"{arm}-r{k}-n{j}"]["passed"], flush=True)
+97:     R["passed"] = bool(all(R["pools_ok"].values()) and all(v["passed"] for v in R["replay"].values())
+98:                        and len(R["retrain"]) == len(RETRAIN) and all(v["passed"] for v in R["retrain"].values()))
+
+FILE reports/V9-S6-PHASE1/make_prereg.py
+SHA256 f2bd464f3a7e188c89cda7661d5fd61313f043baff5cb8c81ba59b20e3295a73
+50:     est_train = 1.15 * (sum(max(per_arm[arm]) * k for arm, k in reps_final.items()) + 5 * 90)
+51:     n_cells_probe, n_cells_final = len(pr["train_seconds"]), sum(reps_final.values())
+52:     est_eval = 1.30 * (pr["verify_seconds"] * n_cells_final / n_cells_probe
+53:                        + pr["eval_seconds"] * n_cells_final / n_cells_probe * sum(worlds_final) / sum(worlds_probe))
+54:     if est_train > train_cap_s or est_eval > eval_limit_s:
+55:         raise SystemExit(f"预计超出上限：训练 {est_train:.0f} 秒（上限 {train_cap_s:.0f}），评测 {est_eval:.0f} 秒（上限 {eval_limit_s:.0f}）")
+56:     doc = {
+57:         "schema": "s6.phase1.prereg.v1",
+58:         "design": str(design.relative_to(REPO)),
+59:         "design_sha256": hashlib.sha256(design.read_bytes()).hexdigest(),
+60:         "manifest": GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[design, VERIFY]),
+
+FILE src/ainerzero/v9/experiments/s6/cells.py
+SHA256 08cc78493c865981583924a1bf217ae0be890ffc6478b446284f72e2ce1baa2e
+40: ARMS = ("R", "E", "Z", "T", "P", "G")
+41: REPLICATES = {"R": 5, "E": 5, "Z": 5, "T": 5, "P": 5, "G": 3}
+42: N_LEARNERS = 3
+330:         tr_t = time.time()
+331:         for ti, tr in enumerate(tracks):
+332:             tr.cp.reveal(np.array(tr.picks[r], dtype=np.int64))
+333:             pool = tr.cp.revealed_pool()
+334:             for li, lr in enumerate(tr.learners):
+335:                 lr.train(pool, sizes.steps, T_COLL_SHARE if arm == "T" else 0.0)
+336:                 j = ti if arm == "P" else li
+337:                 lr.model.save_weights(str(out / f"r{r}-n{j}.safetensors"))
+338:         train_s = time.time() - tr_t
+339:         sel_t = time.time()
+340:         if r < sizes.rounds - 1:
+341:             for ti, tr in enumerate(tracks):
+342:                 ids, dig = select(arm, tr, k, sizes.per, cand_ns, pick_rngs[ti])
+343:                 tr.picks.append(ids.tolist()); tr.digests.append(dig)
+344:         timings.append({"round": r, "train_s": round(train_s, 2), "select_s": round(time.time() - sel_t, 2)})
+345:         say(f"{arm} r{k} round {r} train {train_s:.0f}s")
+346:     files = sorted(p.name for p in out.iterdir())
+347:     rec = {
+348:         "schema": "s6.phase1.cell.v1", "arm": arm, "replicate": k, "cand_ns": cand_ns, "sizes": sizes.__dict__,
+349:         "net_seeds": list(seeds), "first_seed": first_seed(cand_ns, k), "pick_seed": pick_seed(cand_ns, arm, k),
+350:         "pool_seed": pool_seed(cand_ns, k), "pool_sha256": pool_digest(source),
+351:         "tracks": [{"picks": tr.picks, "score_sha256": tr.digests, "reveal_log": tr.cp.log(),
+352:                     "revealed": tr.cp.revealed_ids().tolist()} for tr in tracks],
+353:         "timings": timings, "seconds": round(time.time() - t0, 1),
+354:         "files_sha256": {f: hashlib.sha256((out / f).read_bytes()).hexdigest() for f in files},
+355:     }
+356:     check_cell_record(rec, sizes)
+357:     tmp = out / "cell.json.tmp"
+358:     tmp.write_text(json.dumps(rec, sort_keys=True), encoding="utf-8")
+359:     tmp.rename(out / "cell.json")
+360:     return rec
+363: def check_cell_record(rec: dict, sizes: Sizes = FULL) -> None:
+364:     """The label-isolation and completeness checks a finished cell must pass (DESIGN-r1 §6 ①, completeness)."""
+365:     arm = rec["arm"]
+366:     want_tracks = N_LEARNERS if arm == "P" else 1
+367:     if len(rec["tracks"]) != want_tracks:
+368:         raise AssertionError(f"{arm}: {len(rec['tracks'])} tracks")
+369:     for tr in rec["tracks"]:
+370:         picks, log = tr["picks"], tr["reveal_log"]
+371:         if len(picks) != sizes.rounds or any(len(p) != sizes.per for p in picks):
+372:             raise AssertionError("picks per round do not match the budget")
+373:         if [e["ids"] for e in log] != picks or [e["call"] for e in log] != list(range(sizes.rounds)):
+374:             raise AssertionError("the reveal log differs from the picks: something other than the picks was revealed")
+375:         flat = [i for p in picks for i in p]
+376:         if len(set(flat)) != len(flat) or tr["revealed"] != flat:
+377:             raise AssertionError("a sample was picked twice or the revealed set differs from the picks")
+378:     names = {f"r{r}-n{j}.safetensors" for r in range(sizes.rounds) for j in range(N_LEARNERS)}
+379:     if set(rec["files_sha256"]) != names:
+380:         raise AssertionError(f"weights on disk differ from the expected {len(names)} files")
+381: 
+382: 
+383: def verify_cell_dir(out: Path, sizes: Sizes = FULL) -> dict:
+384:     """Read a finished cell: record present, checks pass, every file has its recorded SHA."""
+385:     rec = json.loads((out / "cell.json").read_text(encoding="utf-8"))
+386:     check_cell_record(rec, sizes)
+387:     for f, want in rec["files_sha256"].items():
+388:         if hashlib.sha256((out / f).read_bytes()).hexdigest() != want:
+389:             raise AssertionError(f"{out.name}/{f} changed after the cell finished")
+390:     return rec
+415: def prepare_world(ep: W.Episode) -> TestWorld:
+416:     T = len(ep.steps) - 1
+417:     P = np.stack([s.positions for s in ep.steps[:T]]).astype(np.float32)
+418:     V = np.stack([s.velocities for s in ep.steps[:T]]).astype(np.float32)
+419:     tgt = np.stack([s.velocities for s in ep.steps[1:T + 1]])
+420:     kinds = np.stack([classify(ep, t) for t in range(T)])
+421:     _, vb = Mo.bounce(P.astype(np.float64), V.astype(np.float64), ep.pillars)
+422:     pil = np.broadcast_to(np.array(ep.pillars, dtype=np.float32), (T, L.N_PILLARS, 3)).copy()
+423:     return TestWorld(P, V, tgt, kinds, np.linalg.norm(vb - tgt, axis=-1), pil)
+424: 
+425: 
+426: def world_counts(tw: TestWorld) -> tuple[np.ndarray, float]:
+427:     """(counts [4] of disk-steps per kind, E-B error sum on collision disk-steps)."""
+428:     return np.array([(tw.kinds == c).sum() for c in range(4)], dtype=np.int64), float(tw.eb_err[tw.kinds == 0].sum())
+429: 
+
+FILE src/ainerzero/v9/experiments/s6/analysis.py
+SHA256 baf00ede726791984f3b67df9e6cb71ad345131d8871ad9d847925a37ae03b6e
+45: SEED = 20261114
+46: 
+47: # DESIGN-r2 §4. point: (op, value) or None; interval: (end, op, value).
+48: GATES: dict[str, dict[str, Any]] = {
+49:     "GS":   {"set": "main6", "stat": "D", "form": "diff", "a": "E", "b": "R",
+50:              "point": (">=", 0.03), "interval": ("lower", ">", 0.0), "per_replicate": 0.03},
+51:     "GT":   {"set": "main6", "stat": "D", "form": "half_gain", "a": "E", "b": "R", "c": "T",
+52:              "point": None, "interval": ("lower", ">", 0.0)},
+53:     "GZ-D": {"set": "main6", "stat": "D", "form": "diff", "a": "E", "b": "Z",
+54:              "point": (">=", -0.02), "interval": ("lower", ">", -0.04)},
+55:     "GZ-W": {"set": "main6", "stat": "wall_pillar", "form": "ratio", "a": "E", "b": "Z",
+56:              "point": ("<=", 0.95), "interval": ("upper", "<", 1.0)},
+57:     "GK-A": {"set": "main6", "stat": "all", "form": "ratio", "a": "E", "b": "R",
+58:              "point": ("<=", 1.10), "interval": ("upper", "<=", 1.20)},
+59:     "GK-F": {"set": "main6", "stat": "free", "form": "ratio", "a": "E", "b": "Z",
+60:              "point": ("<=", 1.10), "interval": ("upper", "<=", 1.20)},
+61:     "GP":   {"set": "main6", "stat": "D", "form": "diff", "a": "P", "b": "R",
+62:              "point": (">=", 0.03), "interval": ("lower", ">", 0.0)},
+63:     "GX":   {"set": "extrap10", "stat": "D", "form": "diff", "a": "E", "b": "R",
+64:              "point": (">=", 0.02), "interval": ("lower", ">", 0.0)},
+65: }
+66: M = len(GATES)
+67: 
+68: _OPS = {">=": np.greater_equal, ">": np.greater, "<=": np.less_equal, "<": np.less}
+69: 
+268:         row = {"point": x, "per_replicate": tk, "ci95": [lo95, hi95], "bonferroni": [lo, hi], **parts,
+269:                "point_ok": bool(point_ok), "interval_ok": interval_ok}
+270:         if "per_replicate" in spec:
+271:             row["per_replicate_ok"] = all(_holds(">=", p, spec["per_replicate"]) for p in tk)
+272:         row["passed"] = bool(row["point_ok"] and row["interval_ok"] and row.get("per_replicate_ok", True))
+273:         out[g] = row
+274:     return {"gates": out, "all_pass": all(r["passed"] for r in out.values()), "m": M, "alpha": ALPHA,
+275:             "n_boot": n, "seed": seed, "replicates": K, "levels": {"bonferroni": p_bonf, "ci95": p_95}}
+276: 
+277: 
+278: def describe(data: dict) -> dict[str, Any]:
+279:     """Point values only (all replicates, all worlds); D(E)-D(G) on G's replicates (0..K_G-1) only."""
+280:     K = _replicate_count(data)
+281:     out = {}
+282:     for t in TEST_SETS:
+283:         d = data[t]
+284:         allw = np.arange(d["counts"].shape[0])
+285:         arms = {arm: stats(d["sums"][arm], d["counts"], d["eb"], np.arange(d["sums"][arm].shape[0]), allw)
+286:                 for arm in d["sums"]}
+287:         row = {"arms": arms, "D(E)-D(T)": arms["E"]["D"] - arms["T"]["D"], "D(P)-D(E)": arms["P"]["D"] - arms["E"]["D"]}
+288:         if "G" in d["sums"]:
+289:             kg = d["sums"]["G"].shape[0]
+290:             e_on_g = stats(d["sums"]["E"], d["counts"], d["eb"], np.arange(kg), allw)
+291:             row["D(E)-D(G)"] = e_on_g["D"] - arms["G"]["D"]
+292:             row["G_replicates"] = kg
+293:         with np.errstate(invalid="ignore", divide="ignore"):
+294:             for base in ("R", "Z"):
+295:                 row[f"E/{base}"] = {k: arms["E"][k] / arms[base][k] for k in STATS if k != "D"}
+296:         out[t] = row
+297:     out["replicates"] = K
+
+FILE src/ainerzero/v9/experiments/s4/world.py
+SHA256 ef104a2e592c7229e2a0617ad9c974d7c6f2d98875393e891a5d81048be9ae11
+189:     pos, head, goal = ar.uniform(1, ARENA - 1, 2), float(ar.uniform(0, 2 * math.pi)), ar.uniform(1, ARENA - 1, 2)
+190:     out = []
+191:     for t in range(steps):
+192:         to = goal - pos
+193:         if np.linalg.norm(to) < 0.5:
+194:             goal = ar.uniform(1, ARENA - 1, 2)
+195:             to = goal - pos
+196:         dh = (math.atan2(to[1], to[0]) - head + math.pi) % (2 * math.pi) - math.pi
+197:         head += max(-AGENT_TURN, min(AGENT_TURN, dh))
+198:         pos = np.clip(pos + AGENT_STEP * np.array([math.cos(head), math.sin(head)]), 0.5, ARENA - 0.5)
+199:         agent = (float(pos[0]), float(pos[1]), float(head))
+200:         visible = np.array([in_view(agent, p[i], pillars) for i in range(n_disks)], dtype=bool)
+201:         # Same draw order as tier1-explore/explore2.py, so the exploration worlds rebuild exactly.
+202:         pairs = [(i, p[i] + ar.normal(0, SIGMA, 2)) for i in range(n_disks) if visible[i] and ar.random() > P_MISS]
+203:         ar.shuffle(pairs)
+204:         det = np.array([q for _, q in pairs]).reshape(-1, 2)
+205:         truth_ids = np.array([i for i, _ in pairs], dtype=np.int64)
+206:         pn, vn, cont = physics(p[None], v[None], pillars, log=True)
+207:         out.append(Step(t, agent, det, truth_ids, p.copy(), v.copy(), visible, tuple(cont)))
+208:         p, v = pn[0], vn[0]
+209:     return Episode(namespace, world_index, n_disks, pillars, tuple(out))
+210: 
+211: 
+212: def student_view(step: Step) -> dict[str, Any]:
+213:     """What a tracker may read at a step: the agent pose and anonymous detection positions."""
+214:     return {"t": step.t, "agent": step.agent, "detections": step.detections.copy()}
+
+ADDITIONAL VERBATIM CITATION @a33d34b reports/V9-S6-PHASE1/verify_s6p1.py
+29: RETRAIN = (("E", 0, 0), ("P", 0, 0))      # (arm, replicate, learner): seed 1 of replicate 0

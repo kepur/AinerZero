@@ -1,0 +1,232 @@
+$ git show --format=fuller a33d34b -- reports/V9-S6-PHASE1/make_prereg.py reports/V9-S6-PHASE1/run_s6p1.py src/ainerzero/v9/experiments/s6/cells.py tests/v9/experiments/test_s6_cells_native.py
+commit a33d34b5cb8d06800f584a0abcfd788d16f80fcb
+Author:     mac <mac@Hz.local>
+AuthorDate: Sun Nov 15 21:14:41 2026 +0000
+Commit:     mac <mac@Hz.local>
+CommitDate: Sun Nov 15 21:14:41 2026 +0000
+
+    S6 phase 1: r2 review fixes, P257 accepted, candidate ids in draw order, prereg builder
+    
+    - r2 review (two text must-fixes, self-check allowed): §0 reads as a trade-off
+      against Z with each gate answering separately; the gate table carries round G
+      values (GK-F 1.177 expected to fail, GZ-D -0.014 borderline). Gates unchanged.
+    - Candidate ids follow the draw order within a disk count (sorted ids put
+      consecutive trajectory steps next to each other 83% of the time).
+    - P257 (gemini-e7a2, recommend pass) accepted after verification; Z test uses an
+      independent pairwise oracle; new test that T differs from R only by its
+      curriculum. MLX mutants: 6 of 6 non-equivalent killed.
+    - Runner: final training cap 6 h as in DESIGN-r2 §5; eval reports record every
+      set's configuration. make_prereg.py extrapolates the final from the probe.
+    - Native tests 36 pass, pure tests 71 pass.
+    
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+
+diff --git a/reports/V9-S6-PHASE1/make_prereg.py b/reports/V9-S6-PHASE1/make_prereg.py
+new file mode 100644
+index 0000000..703d0c3
+--- /dev/null
++++ b/reports/V9-S6-PHASE1/make_prereg.py
+@@ -0,0 +1,82 @@
++"""生成 S6 一期预登记（reports/V9-S6-DESIGN/DESIGN-r2.md）。探针跑完、代码提交后运行一次，生成后提交，再启动 final 的训练。
++
++用法：python make_prereg.py --design <定稿设计稿> --probe <探针评测报告> --out PREREG-r1.json
++
++- 探针报告必须是正式运行器 eval --set probe 的输出：重放与复训校验通过、门算完，且用的是要冻结的已提交代码。
++- 按探针每格的训练耗时与评测耗时外推 final：训练要在登记上限内（留 15% 余量），评测加校验要在评测上限内（留 30% 余量），否则拒绝。
++"""
++import argparse, hashlib, json, sys  # noqa: E401
++from pathlib import Path
++
++REPO = Path(__file__).resolve().parents[2]
++sys.path.insert(0, str(REPO / "src"))
++from ainerzero.v9.experiments.s3 import run_guard as GD  # noqa: E402
++from ainerzero.v9.experiments.s6 import analysis as AN  # noqa: E402
++
++HERE = REPO / "reports/V9-S6-PHASE1"
++RUNNER = HERE / "run_s6p1.py"
++VERIFY = HERE / "verify_s6p1.py"
++APPROVAL = "S6-P1-FINAL-READ-APPROVED-TIER1-20261115"
++
++
++def main():
++    ap = argparse.ArgumentParser()
++    ap.add_argument("--design", required=True)
++    ap.add_argument("--probe", required=True)
++    ap.add_argument("--out", required=True)
++    a = ap.parse_args()
++    out, probe, design = Path(a.out), Path(a.probe).resolve(), Path(a.design).resolve()
++    if out.exists():
++        raise SystemExit(f"预登记已存在，不覆盖：{out}")
++    pr = json.loads(probe.read_text(encoding="utf-8"))
++    if pr.get("set") != "probe" or not pr.get("verify", {}).get("passed") or "gates" not in pr.get("result", {}):
++        raise SystemExit("探针报告不是一次校验通过、门已算完的 probe 运行")
++    code = GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[VERIFY])
++    code_sha = hashlib.sha256(json.dumps(code, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
++    if pr.get("code_manifest_sha256") != code_sha or pr.get("code_dirty") != []:
++        raise SystemExit("探针不是用要冻结的、已提交的代码跑出来的")
++    if pr.get("config") != pr.get("sets", {}).get("probe"):
++        raise SystemExit("探针报告的配置与它记录的 probe 集不一致")
++    final = pr["sets"]["final"]                 # set_summary("final") of the very runner that ran the probe
++    reps_final = final["reps"]
++    worlds_final, worlds_probe = tuple(final["worlds"]), tuple(pr["config"]["worlds"])
++    train_cap_s, eval_limit_s = float(final["train_cap_s"]), float(final["eval_limit_s"])
++    if final["test_ns"] != "s6p1-final" or final["cand_ns"] != "s6p1-cand":
++        raise SystemExit(f"final 集的命名空间不对：{final['cand_ns']}, {final['test_ns']}")
++    # Wall clock extrapolated from the probe (one replicate per arm).
++    per_arm = {}
++    for cell, sec in pr["train_seconds"].items():
++        per_arm.setdefault(cell.split("-r")[0], []).append(sec)
++    est_train = 1.15 * (sum(max(per_arm[arm]) * k for arm, k in reps_final.items()) + 5 * 90)
++    n_cells_probe, n_cells_final = len(pr["train_seconds"]), sum(reps_final.values())
++    est_eval = 1.30 * (pr["verify_seconds"] * n_cells_final / n_cells_probe
++                       + pr["eval_seconds"] * n_cells_final / n_cells_probe * sum(worlds_final) / sum(worlds_probe))
++    if est_train > train_cap_s or est_eval > eval_limit_s:
++        raise SystemExit(f"预计超出上限：训练 {est_train:.0f} 秒（上限 {train_cap_s:.0f}），评测 {est_eval:.0f} 秒（上限 {eval_limit_s:.0f}）")
++    doc = {
++        "schema": "s6.phase1.prereg.v1",
++        "design": str(design.relative_to(REPO)),
++        "design_sha256": hashlib.sha256(design.read_bytes()).hexdigest(),
++        "manifest": GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src", extra=[design, VERIFY]),
++        "third_party": GD.third_party_versions(REPO, ("numpy", "mlx")),
++        "probe_report": str(probe.relative_to(REPO)),
++        "probe_report_sha256": hashlib.sha256(probe.read_bytes()).hexdigest(),
++        "code_manifest_sha256": code_sha,
++        "sets": {"final": final},
++        "arms": {"replicates": reps_final, "learners_per_cell": 3, "pick_seed_T_equals_R": True},
++        "gates": {g: {k: (list(v) if isinstance(v, tuple) else v) for k, v in spec.items()} for g, spec in AN.GATES.items()},
++        "statistics": {"alpha": AN.ALPHA, "bonferroni_m": AN.M, "world_bootstrap": {"n": AN.N_BOOT, "seed": AN.SEED},
++                       "interval": "theta_hat -/+ t(K-1, 1-alpha/(2m)) * sqrt(s_rep^2/K + se_w^2); ratio gates on the log scale"},
++        "expectations_from_exploration": {"GK-F": "expected to fail (round G E/Z free 1.177)", "GZ-D": "borderline (round G -0.014)"},
++        "final_approval_line": APPROVAL,
++        "budget": {"train_cap_s": train_cap_s, "eval_limit_s": eval_limit_s, "estimated_train_s": round(est_train),
++                   "estimated_eval_s": round(est_eval), "device": "local MLX (GPU training, CPU scoring and evaluation)",
++                   "cloud": False, "paid": False},
++    }
++    with out.open("x", encoding="utf-8") as fh:
++        json.dump(doc, fh, ensure_ascii=False, indent=1)
++    print("written", out, "files frozen:", len(doc["manifest"]), "est train", round(est_train), "est eval", round(est_eval))
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/reports/V9-S6-PHASE1/run_s6p1.py b/reports/V9-S6-PHASE1/run_s6p1.py
+index c7a965f..acc3e63 100644
+--- a/reports/V9-S6-PHASE1/run_s6p1.py
++++ b/reports/V9-S6-PHASE1/run_s6p1.py
+@@ -43,7 +43,7 @@ SETS = {
+     "probe": {"cand_ns": "s6p1-pcand", "test_ns": "s6p1-probe", "sizes": C.FULL,
+               "reps": {a: 1 for a in C.ARMS}, "worlds": (50, 25), "train_cap_s": 2.5 * 3600, "eval_limit_s": 3600},
+     "final": {"cand_ns": "s6p1-cand", "test_ns": "s6p1-final", "sizes": C.FULL,
+-              "reps": dict(C.REPLICATES), "worlds": (200, 100), "train_cap_s": 5.0 * 3600, "eval_limit_s": 3600},
++              "reps": dict(C.REPLICATES), "worlds": (200, 100), "train_cap_s": 6.0 * 3600, "eval_limit_s": 3600},
+ }
+ REGISTERED_SETS = ("final",)
+ DANGLING_CHARGE_S = 900          # an invocation that died after its last heartbeat is charged this much more
+@@ -181,7 +181,7 @@ def train(a, say):
+                 me["cells"].append({"arm": arm, "replicate": k, "seconds": rec["seconds"]})
+                 me["last_beat"] = time.time()
+                 ledger_write(ledger, rows)
+-                say(f"cell {arm}-r{k} done in {rec['seconds']:.0f}s; used {ledger_used(ledger)[0]:.0f}s of {cfg['train_cap_s']:.0f}s")
++                say(f"cell {arm}-r{k} done in {rec['seconds']:.0f}s; used {used + time.time() - me['start']:.0f}s of {cfg['train_cap_s']:.0f}s")
+         me["last_beat"], me["closed"] = time.time(), True
+         ledger_write(ledger, rows)
+         missing = [f"{x}-r{k}" for x, k in all_cells(cfg) if not (cell_dir(set_root, x, k) / "cell.json").is_file()]
+@@ -267,7 +267,8 @@ def run_eval(a, say):
+         out.mkdir(parents=True)
+         code = code_manifest()
+         code_head, code_dirty = GD.check_git_clean(REPO, list(code))
+-        R = {"schema": "s6.phase1.eval.v1", "set": a.set, "config": set_summary(a.set), "prereg_sha256": pre_sha,
++        R = {"schema": "s6.phase1.eval.v1", "set": a.set, "config": set_summary(a.set),
++             "sets": {name: set_summary(name) for name in SETS}, "prereg_sha256": pre_sha,
+              "git_head": head or code_head, "code_manifest_sha256": manifest_sha(code), "code_dirty": code_dirty,
+              "third_party": versions, "cells_sha256": {f"{x}-r{k}": sha(cell_dir(set_root, x, k) / "cell.json") for x, k in cells},
+              "train_seconds": {f"{x}-r{k}": r["seconds"] for (x, k), r in recs.items()}}
+diff --git a/src/ainerzero/v9/experiments/s6/cells.py b/src/ainerzero/v9/experiments/s6/cells.py
+index 4722470..72b1871 100644
+--- a/src/ainerzero/v9/experiments/s6/cells.py
++++ b/src/ainerzero/v9/experiments/s6/cells.py
+@@ -87,18 +87,19 @@ def candidate_worlds(cand_ns: str, k: int, sizes: Sizes = FULL) -> list[W.Episod
+ 
+ 
+ def candidate_source(cand_ns: str, k: int, sizes: Sizes = FULL) -> dict[int, dict[str, np.ndarray]]:
+-    """The candidate states of replicate k (DESIGN-r2 §2): ``sizes.pool`` distinct (world, step) pairs drawn
++    """The candidate states of replicate k (DESIGN-r2 §2, §6): ``sizes.pool`` distinct (world, step) pairs drawn
+     without replacement from the replicate's candidate worlds, as exact float64 states with their pillars,
+-    grouped by disk count and sorted by (world, step). No outcome is computed here; the episodes (whose
+-    steps carry contact logs) are dropped before returning."""
++    grouped by disk count and, within a disk count, in draw order (not by world and step, so that neighbouring
++    ids are not neighbouring steps of a trajectory). No outcome is computed here; the episodes (whose steps
++    carry contact logs) are dropped before returning."""
+     eps = candidate_worlds(cand_ns, k, sizes)
+     pairs = [(e, t) for e, ep in enumerate(eps) for t in range(len(ep.steps))]
+     if sizes.pool > len(pairs):
+         raise ValueError(f"only {len(pairs)} states in {len(eps)} worlds, {sizes.pool} wanted")
+     pick = np.random.default_rng(pool_seed(cand_ns, k)).choice(len(pairs), sizes.pool, replace=False)
+-    chosen = sorted((eps[pairs[i][0]].n_disks, pairs[i][0], pairs[i][1]) for i in pick)
++    chosen = sorted((eps[pairs[i][0]].n_disks, rank, pairs[i][0], pairs[i][1]) for rank, i in enumerate(pick))
+     by_n: dict[int, dict[str, list]] = {}
+-    for n, e, t in chosen:
++    for n, _, e, t in chosen:
+         s = eps[e].steps[t]
+         row = by_n.setdefault(n, {"p": [], "v": [], "pil": []})
+         row["p"].append(np.asarray(s.positions, dtype=np.float64))
+diff --git a/tests/v9/experiments/test_s6_cells_native.py b/tests/v9/experiments/test_s6_cells_native.py
+index ccae160..63aadfb 100644
+--- a/tests/v9/experiments/test_s6_cells_native.py
++++ b/tests/v9/experiments/test_s6_cells_native.py
+@@ -32,7 +32,7 @@ def cells(source, tmp_path_factory):
+     return root, recs
+ 
+ 
+-def test_candidate_states_distinct_deterministic_and_sorted(source):
++def test_candidate_states_distinct_deterministic_and_exact(source):
+     assert C.n_states(source) == TINY.pool
+     assert C.pool_digest(source) == C.pool_digest(C.candidate_source(NS, 0, TINY))
+     assert C.pool_digest(source) != C.pool_digest(C.candidate_source(NS, 1, TINY))
+@@ -99,12 +99,43 @@ def test_every_arm_runs_and_records(cells):
+         assert all(d is None for d in recs[arm]["tracks"][0]["score_sha256"])
+ 
+ 
++def test_t_differs_from_r_only_by_its_curriculum(cells):
++    """T picks exactly what R picks with the same seeds, so its weights differ from R's only through the
++    collision curriculum in its batches; without the curriculum they would be bit-identical."""
++    root, recs = cells
++    assert recs["T"]["tracks"][0]["picks"] == recs["R"]["tracks"][0]["picks"]
++    t0 = mx.load(str(root / "T" / "r0-n0.safetensors"))
++    r0 = mx.load(str(root / "R" / "r0-n0.safetensors"))
++    assert set(t0) == set(r0)
++    assert any(not np.array_equal(np.array(t0[k]), np.array(r0[k])) for k in t0)
++    assert C.T_COLL_SHARE == 0.5
++
++
+ def test_z_picks_the_closest_pairs(cells, source):
++    """Against an independent oracle (pairwise loop), not the module's own closest_pair."""
++    import math
+     _, recs = cells
+-    cp = C.make_candidate_pool(source)
+-    score = C.closest_pair(cp.states())
++    st = C.make_candidate_pool(source).states()
++    score = np.empty(C.n_states(source))
++    for n, e in st.items():
++        for b, g in enumerate(e["id"]):
++            P = e["p"][b].astype(np.float64)
++            score[g] = -min(math.sqrt((P[i, 0] - P[j, 0]) ** 2 + (P[i, 1] - P[j, 1]) ** 2) for i in range(n) for j in range(i + 1, n))
+     rem = np.setdiff1d(np.arange(C.n_states(source)), recs["Z"]["tracks"][0]["picks"][0])
+-    assert recs["Z"]["tracks"][0]["picks"][1] == S.pick_top(score, rem, TINY.per).tolist()
++    order = sorted(rem.tolist(), key=lambda g: (-score[g], g))
++    assert set(recs["Z"]["tracks"][0]["picks"][1]) == set(order[:TINY.per])
++    np.testing.assert_allclose(C.closest_pair(st), score, rtol=0, atol=1e-12)
++
++
++def test_neighbouring_ids_are_not_neighbouring_steps(source):
++    """Ids follow the draw order within a disk count, so id g and g+1 are rarely consecutive steps of one world."""
++    eps = C.candidate_worlds(NS, 0, TINY)
++    where = {(ep.n_disks, ep.steps[t].positions.tobytes()): (ep.world_index, t) for ep in eps for t in range(len(ep.steps))}
++    pos = []
++    for n, e in sorted(source.items()):
++        pos += [where[(n, e["p"][b].tobytes())] for b in range(len(e["p"]))]
++    adjacent = np.mean([a[0] == b[0] and abs(a[1] - b[1]) == 1 for a, b in zip(pos, pos[1:])])
++    assert adjacent < 0.05, adjacent
+ 
+ 
+ def test_tampering_is_detected(cells, tmp_path):

@@ -1,0 +1,106 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py", "-c", "/dev/null", "--rootdir", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot", "--confcutdir", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments", "-p", "no:cacheprovider", "-v", "-k", "budget_boundaries or over-budget"]
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python
+rootdir: /Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot
+configfile: ../../../../../../../../../../../dev/null
+collecting ... collected 80 items / 74 deselected / 6 selected
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[train-over-budget] FAILED [ 16%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[eval-over-budget] FAILED [ 33%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_budget_boundaries_real_builder[train-equal] PASSED [ 50%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_budget_boundaries_real_builder[train-over] FAILED [ 66%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_budget_boundaries_real_builder[eval-equal] PASSED [ 83%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_budget_boundaries_real_builder[eval-over] FAILED [100%]
+
+=================================== FAILURES ===================================
+_________ test_report_damage_refuses_without_writes[train-over-budget] _________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-38/test_report_damage_refuses_wit0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x105bbfc20>
+damage = 'train-over-budget'
+
+    @pytest.mark.parametrize('damage', REPORT_CASES)
+    def test_report_damage_refuses_without_writes(case, monkeypatch, damage):
+        if damage == 'train-over-budget':
+            change_training_time(case, 700.)
+        else:
+            update_report(case, REPORT_CASES[damage])
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py:230: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-38/test_report_damage_refuses_wit0/repo/candidate.json files frozen: 45 est train 23058 est eval 3033
+_________ test_report_damage_refuses_without_writes[eval-over-budget] __________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-38/test_report_damage_refuses_wit1/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10601a720>
+damage = 'eval-over-budget'
+
+    @pytest.mark.parametrize('damage', REPORT_CASES)
+    def test_report_damage_refuses_without_writes(case, monkeypatch, damage):
+        if damage == 'train-over-budget':
+            change_training_time(case, 700.)
+        else:
+            update_report(case, REPORT_CASES[damage])
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py:230: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-38/test_report_damage_refuses_wit1/repo/candidate.json files frozen: 45 est train 16618 est eval 8493
+_______________ test_budget_boundaries_real_builder[train-over] ________________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-38/test_budget_boundaries_real_bu1/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10528f8f0>
+which = 'train-over'
+
+    @pytest.mark.parametrize('which', ['train-equal', 'train-over', 'eval-equal', 'eval-over'])
+    def test_budget_boundaries_real_builder(case, monkeypatch, which):
+        if which.startswith('train'):
+            sec = (21600 / 1.15 - 450) / 28
+            change_training_time(case, sec + (1e-6 if which.endswith('over') else 0))
+        else:
+            verify = 3600 / (1.30 * (28 / 6)) - 4 * 100
+            if which.endswith('over'):
+                verify += 1e-6
+            update_report(case, lambda p: p.update(verify_seconds=verify, elapsed_s=verify + 101))
+        if which.endswith('over'):
+>           with pytest.raises(ValueError, match='预计超出上限'):
+E           Failed: DID NOT RAISE ValueError
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py:339: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-38/test_budget_boundaries_real_bu1/repo/candidate.json files frozen: 45 est train 21600 est eval 3033
+________________ test_budget_boundaries_real_builder[eval-over] ________________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-38/test_budget_boundaries_real_bu3/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10601b4d0>
+which = 'eval-over'
+
+    @pytest.mark.parametrize('which', ['train-equal', 'train-over', 'eval-equal', 'eval-over'])
+    def test_budget_boundaries_real_builder(case, monkeypatch, which):
+        if which.startswith('train'):
+            sec = (21600 / 1.15 - 450) / 28
+            change_training_time(case, sec + (1e-6 if which.endswith('over') else 0))
+        else:
+            verify = 3600 / (1.30 * (28 / 6)) - 4 * 100
+            if which.endswith('over'):
+                verify += 1e-6
+            update_report(case, lambda p: p.update(verify_seconds=verify, elapsed_s=verify + 101))
+        if which.endswith('over'):
+>           with pytest.raises(ValueError, match='预计超出上限'):
+E           Failed: DID NOT RAISE ValueError
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py:339: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-38/test_budget_boundaries_real_bu3/repo/candidate.json files frozen: 45 est train 16618 est eval 3600
+=========================== short test summary info ============================
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[train-over-budget]
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[eval-over-budget]
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_budget_boundaries_real_builder[train-over]
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations/M4-budget-guard-removed/snapshot/tests/v9/experiments/test_s6_prereg.py::test_budget_boundaries_real_builder[eval-over]
+================== 4 failed, 2 passed, 74 deselected in 5.59s ==================
+MLX_IN_SYS_MODULES False

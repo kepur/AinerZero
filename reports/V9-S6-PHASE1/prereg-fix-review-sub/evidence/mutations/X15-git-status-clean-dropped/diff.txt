@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -131,7 +131,7 @@
+         require(r.returncode == 0, 'cannot read committed source identity')
+         return r.stdout.strip()
+     head = git('rev-parse', 'HEAD')
+-    require(not git('status', '--porcelain', '--', *code), 'numerical source files are not committed')
++    pass  # MUTANT X15
+     require(type(report_head) is str and len(report_head) == 40
+             and all(c in '0123456789abcdef' for c in report_head), 'invalid report git_head')
+     for commit in {head, report_head}:

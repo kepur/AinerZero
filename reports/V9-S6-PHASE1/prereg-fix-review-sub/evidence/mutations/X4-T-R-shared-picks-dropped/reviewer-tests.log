@@ -1,0 +1,42 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review-sub/evidence/run_tests_sub.py", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped-bt2", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped/tests/v9/experiments/test_p262_sub_review.py", "-k", "r4_"]
+PYTEST_ARGS ["/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped/tests/v9/experiments/test_s6_prereg.py", "--rootdir", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped", "-p", "no:cacheprovider", "--basetemp", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped-bt2", "-q", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped/tests/v9/experiments/test_p262_sub_review.py", "-k", "r4_"]
+F                                                                        [100%]
+=================================== FAILURES ===================================
+________________________ test_r4_t_picks_differ_from_r _________________________
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped-bt2/test_r4_t_picks_differ_from_r0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10420b0b0>
+
+    def test_r4_t_picks_differ_from_r(case, monkeypatch):
+        def change(rec):
+            tr = rec['tracks'][0]
+            tr['picks'][3] = list(range(20000, 23000))
+            tr['revealed'] = [i for ids in tr['picks'] for i in ids]
+            tr['reveal_log'] = [{'call': r, 'ids': ids} for r, ids in enumerate(tr['picks'])]
+        rewrite(case, RAW + 'cells/T-r0/cell.json', change)
+        rebind_cell(case, 'T-r0')
+        rebind_selection(case)
+>       refuse(case, monkeypatch, 'T/R selections')
+
+tests/v9/experiments/test_p262_sub_review.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped-bt2/test_r4_t_picks_differ_from_r0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10420b0b0>
+match = 'T/R selections'
+
+    def refuse(root, monkeypatch, match):
+        before = tree_hashes(root)
+>       with pytest.raises(PE.EvidenceError, match=match):
+E       Failed: DID NOT RAISE EvidenceError
+
+tests/v9/experiments/test_p262_sub_review.py:27: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped-bt2/test_r4_t_picks_differ_from_r0/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_p262_sub_review.py::test_r4_t_picks_differ_from_r
+1 failed, 119 deselected in 3.31s
+MODULE_ORIGINS {"ainerzero": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped/src/ainerzero/__init__.py", "ainerzero.v9.experiments.s3.run_guard": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped/src/ainerzero/v9/experiments/s3/run_guard.py", "ainerzero.v9.experiments.s6.analysis": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped/src/ainerzero/v9/experiments/s6/analysis.py", "prereg_evidence": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X4-T-R-shared-picks-dropped/reports/V9-S6-PHASE1/prereg_evidence.py"}
+ALL_FROM_COPY True
+MLX_IN_SYS_MODULES False
+PYTEST_RC 1

@@ -1,0 +1,35 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review-sub/evidence/run_tests_sub.py", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped-bt2", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped/tests/v9/experiments/test_p262_sub_review.py", "-k", "r3_"]
+PYTEST_ARGS ["/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped/tests/v9/experiments/test_s6_prereg.py", "--rootdir", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped", "-p", "no:cacheprovider", "--basetemp", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped-bt2", "-q", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped/tests/v9/experiments/test_p262_sub_review.py", "-k", "r3_"]
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_____________________ test_r3_ledger_total_over_probe_cap ______________________
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped-bt2/test_r3_ledger_total_over_prob0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x102aae960>
+
+    def test_r3_ledger_total_over_probe_cap(case, monkeypatch):
+        rewrite(case, RAW + 'train-ledger.json', lambda v: v.append({**v[0], 'start': 10000., 'last_beat': 16000., 'cells': []}))
+>       refuse(case, monkeypatch, 'actual probe training exceeded cap')
+
+tests/v9/experiments/test_p262_sub_review.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+root = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped-bt2/test_r3_ledger_total_over_prob0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x102aae960>
+match = 'actual probe training exceeded cap'
+
+    def refuse(root, monkeypatch, match):
+        before = tree_hashes(root)
+>       with pytest.raises(PE.EvidenceError, match=match):
+E       Failed: DID NOT RAISE EvidenceError
+
+tests/v9/experiments/test_p262_sub_review.py:27: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped-bt2/test_r3_ledger_total_over_prob0/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_p262_sub_review.py::test_r3_ledger_total_over_probe_cap
+1 failed, 119 deselected in 3.29s
+MODULE_ORIGINS {"ainerzero": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped/src/ainerzero/__init__.py", "ainerzero.v9.experiments.s3.run_guard": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped/src/ainerzero/v9/experiments/s3/run_guard.py", "ainerzero.v9.experiments.s6.analysis": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped/src/ainerzero/v9/experiments/s6/analysis.py", "prereg_evidence": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X6-probe-ledger-cap-dropped/reports/V9-S6-PHASE1/prereg_evidence.py"}
+ALL_FROM_COPY True
+MLX_IN_SYS_MODULES False
+PYTEST_RC 1

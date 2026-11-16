@@ -1,0 +1,90 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py", "-c", "/dev/null", "--rootdir", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot", "--confcutdir", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments", "-p", "no:cacheprovider", "-v", "-k", "replay-false or replay-truthy or retrain-false"]
+============================= test session starts ==============================
+platform darwin -- Python 3.12.2, pytest-9.1.1, pluggy-1.6.0 -- /Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python
+rootdir: /Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot
+configfile: ../../../../../../../../../../../dev/null
+collecting ... collected 102 items / 99 deselected / 3 selected
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py::test_raw_damage_even_rehashed_refuses[replay-false] FAILED [ 33%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py::test_raw_damage_even_rehashed_refuses[replay-truthy] FAILED [ 66%]
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py::test_raw_damage_even_rehashed_refuses[retrain-false] FAILED [100%]
+
+=================================== FAILURES ===================================
+_____________ test_raw_damage_even_rehashed_refuses[replay-false] ______________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-42/test_raw_damage_even_rehashed_0/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x10745e870>
+damage = 'replay-false'
+
+    @pytest.mark.parametrize('damage', RAW_CASES)
+    def test_raw_damage_even_rehashed_refuses(case, monkeypatch, damage):
+        rel, change = RAW_CASES[damage]
+        rewrite(case, rel, change)
+        if '/cells/' in rel:
+            bind_cell(case)
+        if 'eval-s6p1-probe/' in rel:
+            name = Path(rel).name
+            bind_eval(case, name)
+            if name == 'verify.json':
+                update_report(case, lambda p: p.__setitem__('verify', json.loads((case / rel).read_text())))
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py:280: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-42/test_raw_damage_even_rehashed_0/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+_____________ test_raw_damage_even_rehashed_refuses[replay-truthy] _____________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-42/test_raw_damage_even_rehashed_1/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x106e671a0>
+damage = 'replay-truthy'
+
+    @pytest.mark.parametrize('damage', RAW_CASES)
+    def test_raw_damage_even_rehashed_refuses(case, monkeypatch, damage):
+        rel, change = RAW_CASES[damage]
+        rewrite(case, rel, change)
+        if '/cells/' in rel:
+            bind_cell(case)
+        if 'eval-s6p1-probe/' in rel:
+            name = Path(rel).name
+            bind_eval(case, name)
+            if name == 'verify.json':
+                update_report(case, lambda p: p.__setitem__('verify', json.loads((case / rel).read_text())))
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py:280: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-42/test_raw_damage_even_rehashed_1/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+_____________ test_raw_damage_even_rehashed_refuses[retrain-false] _____________
+
+case = PosixPath('/private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-42/test_raw_damage_even_rehashed_2/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1075085c0>
+damage = 'retrain-false'
+
+    @pytest.mark.parametrize('damage', RAW_CASES)
+    def test_raw_damage_even_rehashed_refuses(case, monkeypatch, damage):
+        rel, change = RAW_CASES[damage]
+        rewrite(case, rel, change)
+        if '/cells/' in rel:
+            bind_cell(case)
+        if 'eval-s6p1-probe/' in rel:
+            name = Path(rel).name
+            bind_eval(case, name)
+            if name == 'verify.json':
+                update_report(case, lambda p: p.__setitem__('verify', json.loads((case / rel).read_text())))
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py:280: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/var/folders/zv/vypfm1y977x338zzyccqx3br0000gn/T/pytest-of-mac/pytest-42/test_raw_damage_even_rehashed_2/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+=========================== short test summary info ============================
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py::test_raw_damage_even_rehashed_refuses[replay-false]
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py::test_raw_damage_even_rehashed_refuses[replay-truthy]
+FAILED reports/V9-S6-PHASE1/prereg-fix/evidence/mutations-delivery/M1-replay-summary-only/snapshot/tests/v9/experiments/test_s6_prereg.py::test_raw_damage_even_rehashed_refuses[retrain-false]
+======================= 3 failed, 99 deselected in 4.87s =======================
+MLX_IN_SYS_MODULES False

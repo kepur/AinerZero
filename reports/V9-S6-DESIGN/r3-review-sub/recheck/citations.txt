@@ -1,0 +1,54 @@
+# r3 recheck citations; DESIGN-r3.md sha256 e9fde0204b324efbe84a8337d95bcda650a27ef3cc5d7beae7a8b39d8ed42cbb; git HEAD a33d34b5cb8d06800f584a0abcfd788d16f80fcb
+
+$ grep -n '' reports/V9-S6-DESIGN/DESIGN-r3.md | sed -n '11,15p'
+11:  - 一条零知识规则 Z（挑最近两盘中心距最小的样本）就能拿到同样的碰撞增益；
+12:  - GK 漏了自由运动。
+13:- r1 加了 Z 臂和 GZ 门。r1 的复核（`r1-review-sub/`）仍打回，必修 4 项：
+14:  1. 5 个重复的 bootstrap 覆盖不足；
+15:  2. **候选池一半是重复状态**：E、Z 的 12000 个标签只有约 7000 个不同实验，被选中的状态在训练里权重翻倍；
+
+$ grep -n '' reports/V9-S6-DESIGN/DESIGN-r3.md | sed -n '347,368p'
+347:5. **探针与冻结代码的身份（r3）。** 探针跑在提交 `a33d34b` 的代码上，即 42 个文件的数值代码清单。r3 改了运行器里三处与数值无关的常数，所以冻结的代码不再与探针逐字节相同。冻结入口（`make_prereg.py` 与 `prereg_evidence.py`）必须全部满足以下各条，否则拒绝：
+348:   1. **探针身份。**
+349:      - 用 `git archive a33d34b` 导出的目录重算 42 个文件的清单，不拿当前目录的清单套用，也不信报告自报。
+350:      - 探针报告、探针每次训练的账本行、探针的格记录，都必须指向这份清单。
+351:   2. **当前身份。** 要冻结的代码已提交。当前清单与探针清单的差别只能是 `reports/V9-S6-PHASE1/run_s6p1.py` 一个文件；其余文件逐字节相同，文件集合也相同。
+352:   3. **运行器差异只限三处。** 解析两版运行器的语法树，把下面三个节点换成占位符后，两棵树必须完全相同：
+353:      - `SETS["final"]["train_cap_s"]`：旧值 21600。源码写作 `6.0 * 3600`，只允许对数字常量做乘法折叠。新值必须是数字字面量 19800。
+354:      - `SETS["final"]["eval_limit_s"]`：旧值 3600，新值 5400，都必须是数字字面量。
+355:      - `THIRD_PARTY`：旧值 `("numpy", "mlx")`，新值 `("numpy", "mlx.core")`。
+356:      - 新值不允许任意表达式求值：占位处若是带副作用的表达式，也可能「数值相等」。
+357:      - 任何别的改动都拒绝，包括语句、导入、默认值、函数体、注释以外的字符串、其他集的上限。
+358:   4. **预算。** 新上限取自当前运行器，不取探针记录。探针记录里的上限必须等于旧值 21600 与 3600，与第 3 条的旧值对应。用探针实测按原公式外推，必须在新上限之内。
+359:   5. **第三方库身份**（r3 复核必修 1）。
+360:      - 问题：`mlx` 是命名空间包，没有 `__version__`，所以探针和 r2 的运行器都把 MLX 版本记成 `"unknown"`，final 启动时的版本核对形同虚设。
+361:      - 运行器：`THIRD_PARTY` 改为 `("numpy", "mlx.core")`，运行时记录并核对 `mlx.core.__version__`。
+362:      - 冻结入口：不导入 MLX，用 `importlib.metadata` 记下 `mlx`、`mlx-metal`、`numpy` 的版本，以及 mlx 安装记录（dist-info 的 RECORD）的 SHA。值为 `unknown` 就拒绝。
+363:      - 冻结入口写出的 `third_party` 必须与 final 运行器运行时记录的一致：`{"numpy": …, "mlx.core": …}`。native 测试断言 `mlx.core.__version__` 等于 `importlib.metadata.version("mlx")`。
+364:      - 探针当时的 MLX 版本只能推定：三个包的 dist-info 都在 2026-10-14 安装，早于 11-15 的探针，所以是 0.32.2。这条推定连同 dist-info 的修改时间写进预登记。
+365:   6. **环境。** 冻结入口记下 `MLX_*` 环境变量，出现任何一个就拒绝（目前一个也没有）。
+366:   7. **记录。** 预登记同时记下探针身份、当前身份、差异证明、第三方库记录和 r3 设计的 SHA。探针报告里的代码 SHA 不回填为新代码。
+367:   - 冻结入口本身（构建器与证据校验器）也要冻结进预登记清单，并经非作者复核。
+368:   - 不重跑探针：两个上限只用于截止时间与预算记录，版本记录只影响核对，三者都不在数值路径上（r3 复核核对过）。若复核认为上述规则不足以保证探针仍可作依据，就不设宽松例外，另做一次独立目录、独立预算的新探针。
+
+$ grep -n '' reports/V9-S6-DESIGN/DESIGN-r3.md | sed -n '452p;457p'
+452:| §7 第 5 条 | 探针与冻结代码的身份规则 | 运行器常数一改，代码身份就与探针不同；规则把差异限死在两个数上 |
+457:  - 运行器两个常数；
+
+$ grep -n '' reports/V9-S6-DESIGN/DESIGN-r3.md | sed -n '463,471p'
+463:## 13. 对 r3 复核意见的处理（`r3-review-sub/REPORT.md`）
+464:
+465:| 复核意见 | 处理 |
+466:|---|---|
+467:| 必修 1：MLX 版本没有锁定（记成 unknown） | §7.5 第 5 条：运行器改记 `mlx.core`，冻结入口按安装元数据锁定版本、拒绝 unknown，并写下探针版本的推定；语法树允许的差异加 `THIRD_PARTY` 一处 |
+468:| 应修 1：旧值的读法与新值的写法 | §7.5 第 3 条：旧值只允许数字常量折叠，新值必须是数字字面量 |
+469:| 应修 2：新上限取自当前运行器 | §7.5 第 4 条 |
+470:| 应修 3：校验成本的构成 | §5 写明复训两网是固定成本，外推偏保守 |
+471:| 应修 4：`MLX_*` 环境变量 | §7.5 第 6 条 |
+
+$ grep -n 'versions != pre\|THIRD_PARTY = ' reports/V9-S6-PHASE1/run_s6p1.py
+38:THIRD_PARTY = ("numpy", "mlx")
+95:    if versions != pre["third_party"]:
+
+$ .venv/bin/python -c 'import importlib.metadata as m; print(m.requires("mlx"))'
+['mlx-metal==0.32.2; platform_system == "Darwin"', 'ml_dtypes; extra == "dev"', 'numpy>=2; extra == "dev"', 'pre-commit; extra == "dev"', 'torch>=2.9; extra == "dev"', 'typing_extensions; extra == "dev"', 'mlx-cuda-12==0.32.2; platform_system == "Linux" and extra == "cuda"', 'mlx-cuda-12==0.32.2; platform_system == "Linux" and extra == "cuda12"', 'mlx-cuda-13==0.32.2; platform_system == "Linux" and extra == "cuda13"', 'mlx-cpu==0.32.2; platform_system == "Linux" and extra == "cpu"']

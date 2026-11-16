@@ -1,0 +1,102 @@
+ARGV ["/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python", "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review-sub/evidence/run_tests_sub.py", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt"]
+PYTEST_ARGS ["/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed/tests/v9/experiments/test_s6_prereg.py", "--rootdir", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed", "-p", "no:cacheprovider", "--basetemp", "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt", "-q"]
+..........................F.......................F..................... [ 70%]
+.........FF...................                                           [100%]
+=================================== FAILURES ===================================
+_____________ test_report_damage_refuses_without_writes[zero-eval] _____________
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt/test_report_damage_refuses_wit25/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109c7dfd0>
+damage = 'zero-eval'
+
+    @pytest.mark.parametrize('damage', REPORT_CASES)
+    def test_report_damage_refuses_without_writes(case, monkeypatch, damage):
+        if damage == 'train-over-budget':
+            change_training_time(case, 700.)
+        else:
+            update_report(case, REPORT_CASES[damage])
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+tests/v9/experiments/test_s6_prereg.py:230: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt/test_report_damage_refuses_wit25/repo/candidate.json files frozen: 45 est train 16618 est eval 607
+___________ test_raw_damage_even_rehashed_refuses[timing-round-zero] ___________
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt/test_raw_damage_even_rehashed_14/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x109999b80>
+damage = 'timing-round-zero'
+
+    @pytest.mark.parametrize('damage', RAW_CASES)
+    def test_raw_damage_even_rehashed_refuses(case, monkeypatch, damage):
+        rel, change = RAW_CASES[damage]
+        rewrite(case, rel, change)
+        if '/cells/' in rel:
+            bind_cell(case)
+        if 'eval-s6p1-probe/' in rel:
+            name = Path(rel).name
+            bind_eval(case, name)
+            if name == 'verify.json':
+                update_report(case, lambda p: p.__setitem__('verify', json.loads((case / rel).read_text())))
+        before = tree_hashes(case)
+>       with pytest.raises((ValueError, KeyError, OSError, SystemExit)):
+E       Failed: DID NOT RAISE any of (ValueError, KeyError, OSError, SystemExit)
+
+tests/v9/experiments/test_s6_prereg.py:280: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt/test_raw_damage_even_rehashed_14/repo/candidate.json files frozen: 45 est train 16618 est eval 3033
+____ test_every_duration_rejects_invalid_types_and_values[0-verify_seconds] ____
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt/test_every_duration_rejects_in1/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1098c4dd0>
+field = 'verify_seconds', value = 0
+
+    @pytest.mark.parametrize('field', ['train', 'verify_seconds', 'eval_seconds'])
+    @pytest.mark.parametrize('value', [0, -1, float('nan'), float('inf'), -float('inf'), True, '100'])
+    def test_every_duration_rejects_invalid_types_and_values(case, monkeypatch, field, value):
+        def damage(pr):
+            if field == 'train':
+                pr['train_seconds']['R-r0'] = value
+            else:
+                pr[field] = value
+        update_report(case, damage)
+        before = tree_hashes(case)
+>       with pytest.raises(ValueError):
+E       Failed: DID NOT RAISE ValueError
+
+tests/v9/experiments/test_s6_prereg.py:369: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt/test_every_duration_rejects_in1/repo/candidate.json files frozen: 45 est train 16618 est eval 2427
+_____ test_every_duration_rejects_invalid_types_and_values[0-eval_seconds] _____
+
+case = PosixPath('/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt/test_every_duration_rejects_in2/repo')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x1098c5cd0>
+field = 'eval_seconds', value = 0
+
+    @pytest.mark.parametrize('field', ['train', 'verify_seconds', 'eval_seconds'])
+    @pytest.mark.parametrize('value', [0, -1, float('nan'), float('inf'), -float('inf'), True, '100'])
+    def test_every_duration_rejects_invalid_types_and_values(case, monkeypatch, field, value):
+        def damage(pr):
+            if field == 'train':
+                pr['train_seconds']['R-r0'] = value
+            else:
+                pr[field] = value
+        update_report(case, damage)
+        before = tree_hashes(case)
+>       with pytest.raises(ValueError):
+E       Failed: DID NOT RAISE ValueError
+
+tests/v9/experiments/test_s6_prereg.py:369: Failed
+----------------------------- Captured stdout call -----------------------------
+written /private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed-bt/test_every_duration_rejects_in2/repo/candidate.json files frozen: 45 est train 16618 est eval 607
+=========================== short test summary info ============================
+FAILED tests/v9/experiments/test_s6_prereg.py::test_report_damage_refuses_without_writes[zero-eval]
+FAILED tests/v9/experiments/test_s6_prereg.py::test_raw_damage_even_rehashed_refuses[timing-round-zero]
+FAILED tests/v9/experiments/test_s6_prereg.py::test_every_duration_rejects_invalid_types_and_values[0-verify_seconds]
+FAILED tests/v9/experiments/test_s6_prereg.py::test_every_duration_rejects_invalid_types_and_values[0-eval_seconds]
+4 failed, 98 passed in 65.23s (0:01:05)
+MODULE_ORIGINS {"ainerzero": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed/src/ainerzero/__init__.py", "ainerzero.v9.experiments.s3.run_guard": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed/src/ainerzero/v9/experiments/s3/run_guard.py", "ainerzero.v9.experiments.s6.analysis": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed/src/ainerzero/v9/experiments/s6/analysis.py", "prereg_evidence": "/private/tmp/claude-501/-Users-mac-AinerWorkFlow-AinerZero/5118e0e1-b57e-4d08-9ee5-a303f5852c7e/scratchpad/p262sub/mut/X1-zero-duration-allowed/reports/V9-S6-PHASE1/prereg_evidence.py"}
+ALL_FROM_COPY True
+MLX_IN_SYS_MODULES False
+PYTEST_RC 1

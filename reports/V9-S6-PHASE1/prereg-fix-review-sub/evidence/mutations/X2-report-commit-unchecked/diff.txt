@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -134,7 +134,7 @@
+     require(not git('status', '--porcelain', '--', *code), 'numerical source files are not committed')
+     require(type(report_head) is str and len(report_head) == 40
+             and all(c in '0123456789abcdef' for c in report_head), 'invalid report git_head')
+-    for commit in {head, report_head}:
++    for commit in {head}:
+         run = subprocess.run(['git', 'archive', commit, *code], cwd=repo, capture_output=True)
+         require(run.returncode == 0, f'cannot read committed source tree {commit}')
+         with tarfile.open(fileobj=io.BytesIO(run.stdout), mode='r:') as archive:

@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -53,7 +53,7 @@
+         for i, (a, e) in enumerate(zip(actual, expected)):
+             same(a, e, f"{label}/{i}")
+     elif type(expected) in (float, int):
+-        require(type(actual) is int if type(expected) is int else type(actual) in (float, int), f"{label}: numeric type")
++        require(type(actual) in (float, int), f"{label}: numeric type")
+         require((math.isnan(expected) and math.isnan(actual)) or actual == expected,
+                 f"{label}: value differs")
+     else:

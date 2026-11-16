@@ -1,0 +1,142 @@
+[
+  {
+    "name": "I1-open-ledger",
+    "source_file": "reports/V9-S6-PHASE1/prereg_evidence.py",
+    "target": "test_independent_closed_ledger",
+    "before_sha256": "208f6c4b5361f420b7c69c166319f2ab26d266239b709439f3471cee249f88b6",
+    "after_sha256": "38a667d01f2e6882756a4c7e7d6d399915e715334f203104fb966984b405ee12",
+    "old": "same(row['closed'], True, 'training ledger must be closed')",
+    "new": "pass  # I1",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/evidence/run_tests.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/mutations/I1-open-ledger/snapshot",
+      "I1-open-ledger",
+      "-k",
+      "test_independent_closed_ledger"
+    ],
+    "returncode": 1,
+    "killed": true
+  },
+  {
+    "name": "I2-old-train-code",
+    "source_file": "reports/V9-S6-PHASE1/prereg_evidence.py",
+    "target": "test_independent_old_training_identity",
+    "before_sha256": "208f6c4b5361f420b7c69c166319f2ab26d266239b709439f3471cee249f88b6",
+    "after_sha256": "1e5eaa76304721f830ebd1a70a6e9b2d2dce154f3d9ac837411b3e53857fe83b",
+    "old": "same(row['code_manifest_sha256'], code_sha, 'training/evaluation/current code identity')",
+    "new": "pass  # I2",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/evidence/run_tests.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/mutations/I2-old-train-code/snapshot",
+      "I2-old-train-code",
+      "-k",
+      "test_independent_old_training_identity"
+    ],
+    "returncode": 1,
+    "killed": true
+  },
+  {
+    "name": "I3-no-retraining-records",
+    "source_file": "reports/V9-S6-PHASE1/prereg_evidence.py",
+    "target": "test_independent_missing_all_retraining",
+    "before_sha256": "208f6c4b5361f420b7c69c166319f2ab26d266239b709439f3471cee249f88b6",
+    "after_sha256": "9a37454ce6136e2d7052be8cda1d449930e2c28b1fb9bf89ae3e90c6673dfd7d",
+    "old": "keys(v['retrain'], ('E-r0-n0', 'P-r0-n0'), 'retraining cells')",
+    "new": "pass  # I3",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/evidence/run_tests.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/mutations/I3-no-retraining-records/snapshot",
+      "I3-no-retraining-records",
+      "-k",
+      "test_independent_missing_all_retraining"
+    ],
+    "returncode": 1,
+    "killed": true
+  },
+  {
+    "name": "I4-world-order",
+    "source_file": "reports/V9-S6-PHASE1/prereg_evidence.py",
+    "target": "test_independent_reordered_world_identity",
+    "before_sha256": "208f6c4b5361f420b7c69c166319f2ab26d266239b709439f3471cee249f88b6",
+    "after_sha256": "ad16a44db0ab3355a41d9b0bdd9ce1c2116014908f640f26da12123cedce6f38",
+    "old": "same(worlds, {'main6': [[w, 6] for w in range(50)], 'extrap10': [[1000 + w, 10] for w in range(25)]}, 'test world identities')",
+    "new": "pass  # I4",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/evidence/run_tests.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/mutations/I4-world-order/snapshot",
+      "I4-world-order",
+      "-k",
+      "test_independent_reordered_world_identity"
+    ],
+    "returncode": 1,
+    "killed": true
+  },
+  {
+    "name": "I5-counts-dtype",
+    "source_file": "reports/V9-S6-PHASE1/prereg_evidence.py",
+    "target": "test_independent_float_counts",
+    "before_sha256": "208f6c4b5361f420b7c69c166319f2ab26d266239b709439f3471cee249f88b6",
+    "after_sha256": "9e32816f90e98b8feebce000ceee7aa779074bcd57d386583deb1736fcafede0",
+    "old": "and arr.dtype.kind in ('iu' if key == 'counts' else 'f')",
+    "new": "and True",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/evidence/run_tests.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/mutations/I5-counts-dtype/snapshot",
+      "I5-counts-dtype",
+      "-k",
+      "test_independent_float_counts"
+    ],
+    "returncode": 1,
+    "killed": true
+  },
+  {
+    "name": "I6-weight-hash",
+    "source_file": "reports/V9-S6-PHASE1/prereg_evidence.py",
+    "target": "test_independent_last_saved_weight_integrity",
+    "before_sha256": "208f6c4b5361f420b7c69c166319f2ab26d266239b709439f3471cee249f88b6",
+    "after_sha256": "3773bb6565faa288f63a6aa769a0c06eecb3c61022b93f28a42900cc83fb29a4",
+    "old": "require(actual == want, f'hash differs: {directory / name}')",
+    "new": "pass  # I6",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/evidence/run_tests.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/mutations/I6-weight-hash/snapshot",
+      "I6-weight-hash",
+      "-k",
+      "test_independent_last_saved_weight_integrity"
+    ],
+    "returncode": 1,
+    "killed": true
+  },
+  {
+    "name": "I7-negative-number",
+    "source_file": "reports/V9-S6-PHASE1/prereg_evidence.py",
+    "target": "test_independent_invalid_contact_share",
+    "before_sha256": "208f6c4b5361f420b7c69c166319f2ab26d266239b709439f3471cee249f88b6",
+    "after_sha256": "a381f7956688c5e928af0b23a36dae742f34a230242fefe373f866c01a00f0aa",
+    "old": "and (value >= 0 if zero else value > 0)",
+    "new": "and True",
+    "argv": [
+      "/Users/mac/AinerWorkFlow/AinerZero/.venv-ainerzero/bin/python",
+      "-B",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/evidence/run_tests.py",
+      "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg-fix-review/mutations/I7-negative-number/snapshot",
+      "I7-negative-number",
+      "-k",
+      "test_independent_invalid_contact_share"
+    ],
+    "returncode": 1,
+    "killed": true
+  }
+]

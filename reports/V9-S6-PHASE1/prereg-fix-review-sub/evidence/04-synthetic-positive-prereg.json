@@ -1,0 +1,341 @@
+{
+ "arms": {
+  "learners_per_cell": 3,
+  "pick_seed_T_equals_R": true,
+  "replicates": {
+   "E": 5,
+   "G": 3,
+   "P": 5,
+   "R": 5,
+   "T": 5,
+   "Z": 5
+  }
+ },
+ "budget": {
+  "cloud": false,
+  "device": "local MLX (GPU training, CPU scoring and evaluation)",
+  "estimated_eval_s": 3033,
+  "estimated_train_s": 16618,
+  "eval_limit_s": 3600,
+  "paid": false,
+  "train_cap_s": 21600.0
+ },
+ "code_manifest_sha256": "839063099cd798e73fa3e26cdaba3b859b2d63360f4ed8d3cc2ec54e25d610d3",
+ "design": "reports/V9-S6-DESIGN/DESIGN-r2.md",
+ "design_sha256": "ef0ea63f7efafe38310b09240786c3288a517442a331dbf385e87721265748c4",
+ "expectations_from_exploration": {
+  "GK-F": "expected to fail (round G E/Z free 1.177)",
+  "GZ-D": "borderline (round G -0.014)"
+ },
+ "final_approval_line": "S6-P1-FINAL-READ-APPROVED-TIER1-20261115",
+ "gates": {
+  "GK-A": {
+   "a": "E",
+   "b": "R",
+   "form": "ratio",
+   "interval": [
+    "upper",
+    "<=",
+    1.2
+   ],
+   "point": [
+    "<=",
+    1.1
+   ],
+   "set": "main6",
+   "stat": "all"
+  },
+  "GK-F": {
+   "a": "E",
+   "b": "Z",
+   "form": "ratio",
+   "interval": [
+    "upper",
+    "<=",
+    1.2
+   ],
+   "point": [
+    "<=",
+    1.1
+   ],
+   "set": "main6",
+   "stat": "free"
+  },
+  "GP": {
+   "a": "P",
+   "b": "R",
+   "form": "diff",
+   "interval": [
+    "lower",
+    ">",
+    0.0
+   ],
+   "point": [
+    ">=",
+    0.03
+   ],
+   "set": "main6",
+   "stat": "D"
+  },
+  "GS": {
+   "a": "E",
+   "b": "R",
+   "form": "diff",
+   "interval": [
+    "lower",
+    ">",
+    0.0
+   ],
+   "per_replicate": 0.03,
+   "point": [
+    ">=",
+    0.03
+   ],
+   "set": "main6",
+   "stat": "D"
+  },
+  "GT": {
+   "a": "E",
+   "b": "R",
+   "c": "T",
+   "form": "half_gain",
+   "interval": [
+    "lower",
+    ">",
+    0.0
+   ],
+   "point": null,
+   "set": "main6",
+   "stat": "D"
+  },
+  "GX": {
+   "a": "E",
+   "b": "R",
+   "form": "diff",
+   "interval": [
+    "lower",
+    ">",
+    0.0
+   ],
+   "point": [
+    ">=",
+    0.02
+   ],
+   "set": "extrap10",
+   "stat": "D"
+  },
+  "GZ-D": {
+   "a": "E",
+   "b": "Z",
+   "form": "diff",
+   "interval": [
+    "lower",
+    ">",
+    -0.04
+   ],
+   "point": [
+    ">=",
+    -0.02
+   ],
+   "set": "main6",
+   "stat": "D"
+  },
+  "GZ-W": {
+   "a": "E",
+   "b": "Z",
+   "form": "ratio",
+   "interval": [
+    "upper",
+    "<",
+    1.0
+   ],
+   "point": [
+    "<=",
+    0.95
+   ],
+   "set": "main6",
+   "stat": "wall_pillar"
+  }
+ },
+ "manifest": {
+  "reports/V9-S6-DESIGN/DESIGN-r2.md": "ef0ea63f7efafe38310b09240786c3288a517442a331dbf385e87721265748c4",
+  "reports/V9-S6-PHASE1/make_prereg.py": "0dd9d3be32fd49032b54df73fef3e895d9f3fff28349f3a41a21fb5087438731",
+  "reports/V9-S6-PHASE1/prereg_evidence.py": "208f6c4b5361f420b7c69c166319f2ab26d266239b709439f3471cee249f88b6",
+  "reports/V9-S6-PHASE1/run_s6p1.py": "10998013257f8c781f265b3a150cddc3a838f7fc565aa362d46fdf36fa10de0c",
+  "reports/V9-S6-PHASE1/verify_s6p1.py": "116f45ef23bcbf5e91cf64bb800db15eba9ff52da5a49a3dbcb3c5de4e1d0885",
+  "src/ainerzero/__init__.py": "00857af1f9199c1bd12d20f84a3f4203c4a0ec53b7fc0020f0432da38e73550d",
+  "src/ainerzero/v9/__init__.py": "6adaf00e84aa03dfc8a694a5aa62513d615d3ca0ea751d38b42545deec9657c9",
+  "src/ainerzero/v9/experiments/__init__.py": "e72eabaabefb5e5f2a32977f6a6e48421b86ef0896cf21e51a2ea62ebcb5f614",
+  "src/ainerzero/v9/experiments/s2/__init__.py": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+  "src/ainerzero/v9/experiments/s2/core_math.py": "a6d22a5b9a9b95e873bf16cc6aa12eb3beb5610a77fde28454add6fbd74ffbf4",
+  "src/ainerzero/v9/experiments/s2/spec.py": "629b2d0412e0a0d582bb2a233ea146d7eaac9cf89c972ef3437d455ffaa31df8",
+  "src/ainerzero/v9/experiments/s2/world.py": "143e807e69d329e17b1929c9cc2383d80d3f43ca98f88084db9732bf18a7de78",
+  "src/ainerzero/v9/experiments/s3/__init__.py": "fb0d44222c3188df461c943bd7b2ecea1b6ee9df1278e73da3a43941755e18b0",
+  "src/ainerzero/v9/experiments/s3/content.py": "66370cd4c502dc99b10651b472762102b6d3759801d3871480cb8b5a883ef6fe",
+  "src/ainerzero/v9/experiments/s3/data.py": "f8936e0fa4a4b6e540160609b625da6a124fa7b7aaecb02571803325987a2e34",
+  "src/ainerzero/v9/experiments/s3/run_guard.py": "29b3093e2d1d4252d3e85ff73e9e7829f3cb995163e5bd801080a17a118f6439",
+  "src/ainerzero/v9/experiments/s3/spec.py": "9250427f2cf23154f5ab0d6a282a3dfd9dbaa40917bd11828f1790927b1d09d2",
+  "src/ainerzero/v9/experiments/s3/tour.py": "949a5ec27b653f1f984f95904a7eaf2f3796d266aa90326dfd51855e83f45d7c",
+  "src/ainerzero/v9/experiments/s3/world.py": "fc70d464c125500012a700b731d28c13ee1d7f2d03ab4d91d9a2c68cbcbb7843",
+  "src/ainerzero/v9/experiments/s4/__init__.py": "76b57e473bb554153db489dc6bde97763520e1f3da926d384c3f6746a008d92c",
+  "src/ainerzero/v9/experiments/s4/analysis.py": "be3c8b7cc7cb9d6d05d9ae31f108f88941e2d040d6a068e28331a477464635f7",
+  "src/ainerzero/v9/experiments/s4/assign.py": "9a31a403ef027da03399b4dc91691b373f7fb67ef153bd1eabb16cd49caa5c6d",
+  "src/ainerzero/v9/experiments/s4/filter.py": "3dce5f33aadcd6ebb64fbf85b357681f1506ccfc4ae333715ddc42c1fbfdcde8",
+  "src/ainerzero/v9/experiments/s4/learned_mlx.py": "674c40b3bd5df2a3d5d998926f7859b2c62395df6667e9164c1af8f31c29e66b",
+  "src/ainerzero/v9/experiments/s4/metrics.py": "235c83f7f4c3cb5b1fc9c0206b424aa6a3293a7c9f31b1246a23fc840d35c9c5",
+  "src/ainerzero/v9/experiments/s4/models.py": "c1656a463aca74644288950934ae01feceb4de4d873f31fc5290238ea736c1a3",
+  "src/ainerzero/v9/experiments/s4/world.py": "ef104a2e592c7229e2a0617ad9c974d7c6f2d98875393e891a5d81048be9ae11",
+  "src/ainerzero/v9/experiments/s6/__init__.py": "1962963784164cc4e66c866345043e15b5c797459717a0f55acad34fbd394b3e",
+  "src/ainerzero/v9/experiments/s6/analysis.py": "baf00ede726791984f3b67df9e6cb71ad345131d8871ad9d847925a37ae03b6e",
+  "src/ainerzero/v9/experiments/s6/cells.py": "08cc78493c865981583924a1bf217ae0be890ffc6478b446284f72e2ce1baa2e",
+  "src/ainerzero/v9/experiments/s6/epinet_mlx.py": "9f7831a424b68b7edf682338a7b46082d15887624a457e8a8388cd1f657f127e",
+  "src/ainerzero/v9/experiments/s6/sandbox.py": "efeabd084eedd16f4eab291c9716966a496ddce69357b7e0876c88214a67c10e",
+  "src/ainerzero/v9/interfaces/__init__.py": "1d6a3f372c868c6dfc1ad82cab4d6eb082530241ceb368c0cba6a65929dbd2c7",
+  "src/ainerzero/v9/interfaces/cmfl.py": "380d273f2800e1854be8f77689e5b79fd2ddba8e6ee346f4409363324759501a",
+  "src/ainerzero/v9/interfaces/cmfl_registration.py": "afb93c9ee040b49ad90ccd5c79a01480b3aa2f670b5b8faedf716a29f45e04bd",
+  "src/ainerzero/v9/interfaces/errors.py": "247da064945ee93b6ee8b193e0fca676ccdd624c5831d5ab7d6b760937a447f7",
+  "src/ainerzero/v9/interfaces/geometry_core.py": "471ee0b71339f11e91b68d1768d3f66fa2d5575550a01e9bd7272a65b3014174",
+  "src/ainerzero/v9/interfaces/perception.py": "106e163730333159dd08d3799c15ddf1ce25759d870c49f54b20990dc1bc2f8e",
+  "src/ainerzero/v9/interfaces/planner.py": "59cf46a57cca274fbab739552598dea3043f6093fbe98fab4bd0d1439090d35c",
+  "src/ainerzero/v9/interfaces/scheduler.py": "2470293cc4701a44894c0594cd246962d89ffbdd8e46725063dfeccfdcdbd8be",
+  "src/ainerzero/v9/interfaces/spatial_memory.py": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+  "src/ainerzero/v9/interfaces/timescale.py": "b9037f6bff7270d0ca5bea4a7f510862e58a20557ad33fd08e9f1c2fbe6fd552",
+  "src/ainerzero/v9/interfaces/types.py": "58eedc931fe5928044c17e3ab823f1cd73491494221559f7d4fb9557fcc62254",
+  "src/ainerzero/v9/interfaces/validation.py": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739",
+  "src/ainerzero/v9/interfaces/world_brain.py": "454a6818f17f46449e4fa46be43bb4160e6c90d68cf56f446b0565f382882c1b"
+ },
+ "probe_evidence": {
+  "current_git_head": "95b61e793e490b16cdbd56a1abb21426638db4e9",
+  "files_sha256": {
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/cell.json": "167d3a52b8c48463ca615405188a64c7a1116cca68d152c13b5e9023f774cff4",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r0-n0.safetensors": "3fc784410f1721d6eeacbd9e3f27c7d8c4d30e7d0d4fcc75200283e18a80877f",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r0-n1.safetensors": "4d5f1a39a50803d768407f83e9ff648edcdc393b768881449724ce443fc3b918",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r0-n2.safetensors": "89f7239e4a8588fbb93c9aca411db1a88dc4aa4fa60ca9ae9af8c9d3fe7637f1",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r1-n0.safetensors": "8f30155890f0dd3dc229b4158a8e13aa6d23e3903aadb8aac751fd397348d324",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r1-n1.safetensors": "af4b62378ca2b67f4854663e7075b772e896c04adbe6467b4376fcb510c1dcc7",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r1-n2.safetensors": "8fd9f24e1714e616e88b88b647f0b4262f4fcbdf1b7db6e7571bc06434998a3f",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r2-n0.safetensors": "cdca6a6542fb3eb08436853f14e04270844be5827defdb3d2231051ca77b2d19",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r2-n1.safetensors": "e32d52a1fe7a243c6aa863bbc924ddb34936d70e707b3e14c730f7b7560ab8d5",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r2-n2.safetensors": "223b51ae32fba8f4e629f355c8198f248e1c7535ef9d217e52b6d2874ade5919",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r3-n0.safetensors": "ae76cbb44ae8758c5429acdacc73470c6e1147a264ba3a496c1de4c5844beb3c",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r3-n1.safetensors": "1d688684d10c2014b63c9baccdd3d1cd0ae6047dd1ec46be35138ad76f3d8bfe",
+   "artifacts/v9/s6/phase1/probe/cells/E-r0/r3-n2.safetensors": "0fe4b9d4a04b1a6a9736904d9736c04e37eabb49fdff5edc29b1fda24c4aa5b9",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/cell.json": "09412094bbcf45b534b23b0bccd965f4fb0bcc17ed3c429fa2d87d948ae6cb73",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r0-n0.safetensors": "2c86f0e5fb1b2dcf507417205ee246bc61bb79a47c03e0e29e4bef81d6226697",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r0-n1.safetensors": "54c73d425dea1e1e9dc120dbfa02a22a6b837318a9e3b4cfaf688b1624c2bd9a",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r0-n2.safetensors": "a8526e76439f2e9eea63a9b979e1493fdbf60ffa6da07cb4312db2e430023a75",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r1-n0.safetensors": "a9408748491394b838032f2de3d253b1528410fad0beef401cc570dbc330abca",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r1-n1.safetensors": "2b77ff4bc5196451a79711dc814a04198285fca582c76b07d35b9b6fd8d8fa40",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r1-n2.safetensors": "4dc0037f9bb070a1bec65438b472204669a6e3fe4bea6c871b976706ed18ee24",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r2-n0.safetensors": "a54cdb8cdb896f5d4000d6cef8e9ab7924315825b8717a143fd800fac97a3704",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r2-n1.safetensors": "441ef4fe08dcce6ad4963efab32f1d4cbf48fcf09043a3354dbf027f049b5df8",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r2-n2.safetensors": "d78a6fd74287160570aaea6a7e6235e19a1b50124849794a8e79107062b0f4ca",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r3-n0.safetensors": "f68c8850de5f954b5b4c6b8ee279f8f98b98ec5513a572c7b85a15aaf30215cf",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r3-n1.safetensors": "e67eaa3610efa7a375e0d5413d728edd19abeef3fb1f698062f772a0c63ba9e0",
+   "artifacts/v9/s6/phase1/probe/cells/G-r0/r3-n2.safetensors": "41270370ca2aa11e83aa8548c754840d5122a906c85261ca78240c627afe3769",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/cell.json": "988b96b2713877dcbb6e085e7ac2b81e43db632944c42e4973507229a52e2938",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r0-n0.safetensors": "fd38c5c9e7c358f7bc35544a65a9d991eca3e2190462f1081df3a3de76ddff33",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r0-n1.safetensors": "b5e1a1004c4bc309b160886684903c207fd1fe88b22605131dd42a99ea1ccc51",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r0-n2.safetensors": "d74eb44978a1f81dbddc3918598a5278562f863431df6c904822ce263a25f50a",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r1-n0.safetensors": "40ed759d3df27a62fe4f42441455d9f89abb80a59e73ade9a2a6af3fd0360c7b",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r1-n1.safetensors": "124e6b875990aa46273e30c08d95d2fc75e8fd2e9ac4c8db89fc64f08fab875d",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r1-n2.safetensors": "8abeab31108d495cb71d25ff3444db0b6e5c53e9c82cc3303a0694d9fa74c4cc",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r2-n0.safetensors": "08e4a059f27c697bc4ac64b27fb8d5f435bf8af3e725e870e50fa4701629c866",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r2-n1.safetensors": "9a9a21eb44ea19908f8a9292bf37baae50a6b90934d3292b771740c9fb055430",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r2-n2.safetensors": "e28f9ad3be02d7f839e102868ff326020c546a440b39478d61ad9bd9eb3538a5",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r3-n0.safetensors": "ee2586a4196a06ab553f07067be4c1f6dc843eb0487862fc627e61eae526a902",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r3-n1.safetensors": "5baffe190f51e5344aaed7c70e8941cfc245bed1647678788877df55bf3683bc",
+   "artifacts/v9/s6/phase1/probe/cells/P-r0/r3-n2.safetensors": "744df1e916df47a508d42f13d52d76d11399a9867d98efa9ba9e149524b313dc",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/cell.json": "485890681299c3cc3aa6fd9ac6a0c990a00fbd11359121b5d6a43a8d0b4cfd34",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r0-n0.safetensors": "efaf9c00044f1157ad9d0870891ec6358d7d62994b7da1b874f9a8fbd66736d3",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r0-n1.safetensors": "7464de889a2a0e02162e6b913de0c0e99430572093fb813d2e3558dfc91f5b3b",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r0-n2.safetensors": "182d03e1b9927cda4254fb4e4501aad4087dcf829a3d2b778539db666782c4d9",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r1-n0.safetensors": "0baef666dcb31b1e4acef793baf82065068baf4d326ce570889de2da51bf0875",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r1-n1.safetensors": "d72a2377f99d664fcb2b00e1dda0915cd18271cb719c01ecd449419dc967c6e9",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r1-n2.safetensors": "c0183ac80864766045f6bd5afdd7d9286636c7a34078186fa96ddfccf9994860",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r2-n0.safetensors": "3cd338f926d356c90f97fcd9af6b4603b12e98a1f51d2202db7efcc4e127c838",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r2-n1.safetensors": "8e2dfcc32eb8db672910b56192401d8a6091eb80cf77ebd891f651440dd8ac49",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r2-n2.safetensors": "fc667bd9691c721f115d6e768efb0ed8f3826c370335e44094551cd5a4bf4ef9",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r3-n0.safetensors": "f9e0452b435b8bc14b1597034807fd7640fa84e85dee0be6f31bc904c52381eb",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r3-n1.safetensors": "14823fbddc318979fe13d75c4df4e86f471352f8cc13f8e312179d735a4af6a2",
+   "artifacts/v9/s6/phase1/probe/cells/R-r0/r3-n2.safetensors": "a8a2b19a8c6638e4ab33ac8c1a46480de98794f6b5891a91a3b88b3c3500f866",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/cell.json": "51a02bdad4f9e1928f6458b5a2d6f8b2c86256bafcfe271327220d156ac3e626",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r0-n0.safetensors": "133d2e29cc6219a7e1c8b169a61d8bbf780b1b62fd233c8f8ec0ed49a46d464c",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r0-n1.safetensors": "9f9df040957863e696ad3fd627b1d3a51c1a5c7478ebc6b8a8ada08c86984d81",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r0-n2.safetensors": "5c8d3d1000f707d803c0f3b3d07c5cdd5fff9898aad77cc6bd5c1aeda9440734",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r1-n0.safetensors": "4f6fe1f5fa8f456bccef7ca1c4de0dc45d0aa3ed8cc8528903ee89ce2fd84ef5",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r1-n1.safetensors": "2b4a9649e7decfc9347d5b4fcc8d46a48597bee0f74e094f59864daefac028f7",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r1-n2.safetensors": "0e9105b3f1430b26d72f64c276f7e50a442d264a85614712d84113bf452f90d2",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r2-n0.safetensors": "826d5057baf914dd79823653c4e0e186ab10b44ae16c670c3873cbc16b9ce4ad",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r2-n1.safetensors": "6679957735c7e3003ffdf98d6014ea791cbb04540292697b2fedab12223b4134",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r2-n2.safetensors": "26c167beade6800cef2ddd4d9521c643a3af5a81b17b86bd99c8d6502dbb49d7",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r3-n0.safetensors": "3817a1abb435e70919997cea190cd33ed6e27cb742a47f4b4a0366898911ddf6",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r3-n1.safetensors": "cfe288ddbaa1e4fb8b0630811b6fa7c3aca13e33b90cf61addc439a2c1087c50",
+   "artifacts/v9/s6/phase1/probe/cells/T-r0/r3-n2.safetensors": "5628b97f35eae3a27bd73ada6bd460ea006e09a99b6f8bbe84a44b158ee1061c",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/cell.json": "991b9eb8e9869ddb95867ddaecc5825effbaf0abb8a30a4c04b47a01da6a7989",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r0-n0.safetensors": "ad6863fbfd8e343ff05db49b99eaaf36500d1129606a3ff327a25de7b15c670a",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r0-n1.safetensors": "12783db039019832e39177f64ef3184f25ad2a1965cfb5561ebc0ccea20481a6",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r0-n2.safetensors": "aceb8712229afbc30f669d485eed2de9d38894d8df6eecfdb0351fadbb14d450",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r1-n0.safetensors": "6bc2d6eb55efcd04dcf8500a1551d32d0200122b0a5ed9345bccf96d76ec9589",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r1-n1.safetensors": "e8e240d41b4e7f904852f2e6ce4e786303009653c9147003f57bb8a779e8f330",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r1-n2.safetensors": "09dc897aee1abe17b328404d2368d8c65ce4483b17e5d4f322e7a84fe7ec0132",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r2-n0.safetensors": "58735ff6bd004fb7e3702da2892b3dd2f6848e2950278ea864afdeea0e2aed92",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r2-n1.safetensors": "f720d355aa5158b04727d5b2e6db8166e91bd0f8ac8d1fc3370900e92461cf7f",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r2-n2.safetensors": "3394dc37a0f2e79cb444207eea8062c48307aa54b95a26e5daf14234a4799714",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r3-n0.safetensors": "8562ed8ed410540a8890859f36493b258d7273e97fdef98cf969685953bc7aa6",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r3-n1.safetensors": "c46f483046b32919dfb2fc29105043397b7de4ee0a7d4d7780492353f0b8dfe7",
+   "artifacts/v9/s6/phase1/probe/cells/Z-r0/r3-n2.safetensors": "056a6ef31e06bb86f662470c3295bb509fb2d9bc46c8e3f2cc13ca4a5e8b528f",
+   "artifacts/v9/s6/phase1/probe/eval-s6p1-probe/errors.npz": "2dd69435af316c741afedb2cbc41019d0a731932f139f6d5e5652bc9ae902375",
+   "artifacts/v9/s6/phase1/probe/eval-s6p1-probe/verify.json": "e68cca9673852994198e2b038128a0abb4f7490dd8adf68806dc6b414853455b",
+   "artifacts/v9/s6/phase1/probe/eval-s6p1-probe/worlds.json": "9033a2bec15522315df2229f5731da6051f2854241076c9948df8d0b0f6b32ce",
+   "artifacts/v9/s6/phase1/probe/pools.json": "01bc3140658894dabcae92ea0fbdbea7a48c9b2b33b3293045d1614f7ab336e3",
+   "artifacts/v9/s6/phase1/probe/train-ledger.json": "55719dd14a0e1916439a80f382c84a88a6ddbee5ba151d69cb78ac43dcb1403e",
+   "reports/V9-S6-PHASE1/probe/EVAL-probe.json": "4451f94e9ab7d74cded7ef20d3a5c3d07ae92c67e5dd3fcbf8bfb5cea1f4d397"
+  },
+  "science_all_pass": false,
+  "training_ledger_seconds": 3100.0
+ },
+ "probe_report": "reports/V9-S6-PHASE1/probe/EVAL-probe.json",
+ "probe_report_sha256": "4451f94e9ab7d74cded7ef20d3a5c3d07ae92c67e5dd3fcbf8bfb5cea1f4d397",
+ "schema": "s6.phase1.prereg.v1",
+ "sets": {
+  "final": {
+   "cand_ns": "s6p1-cand",
+   "eval_limit_s": 3600,
+   "reps": {
+    "E": 5,
+    "G": 3,
+    "P": 5,
+    "R": 5,
+    "T": 5,
+    "Z": 5
+   },
+   "sizes": {
+    "cand_worlds": 240,
+    "per": 3000,
+    "pool": 60000,
+    "rounds": 4,
+    "steps": 2500
+   },
+   "test_ns": "s6p1-final",
+   "train_cap_s": 21600.0,
+   "worlds": [
+    200,
+    100
+   ]
+  }
+ },
+ "statistics": {
+  "alpha": 0.05,
+  "bonferroni_m": 8,
+  "interval": "theta_hat -/+ t(K-1, 1-alpha/(2m)) * sqrt(s_rep^2/K + se_w^2); ratio gates on the log scale",
+  "world_bootstrap": {
+   "n": 10000,
+   "seed": 20261114
+  }
+ },
+ "third_party": {
+  "mlx": "unknown",
+  "numpy": "2.5.3"
+ }
+}

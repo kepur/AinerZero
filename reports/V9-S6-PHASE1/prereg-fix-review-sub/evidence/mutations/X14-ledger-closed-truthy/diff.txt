@@ -1,0 +1,11 @@
+--- a/reports/V9-S6-PHASE1/prereg_evidence.py
++++ b/reports/V9-S6-PHASE1/prereg_evidence.py
+@@ -301,7 +301,7 @@
+     recorded, ledger_seconds = {}, 0
+     for row in ledger:
+         keys(row, ('start', 'last_beat', 'closed', 'cells', 'prereg_sha256', 'code_manifest_sha256', 'git_head', 'third_party'), 'ledger row')
+-        same(row['closed'], True, 'training ledger must be closed')
++        require(row['closed'], 'training ledger must be closed')
+         same(row['prereg_sha256'], None, 'ledger prereg identity')
+         same(row['code_manifest_sha256'], code_sha, 'training/evaluation/current code identity')
+         same(row['third_party'], versions, 'training versions')
