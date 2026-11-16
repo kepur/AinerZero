@@ -1,0 +1,59 @@
+=== DESIGN-r3.md:204-209 ===
+| `s6p1-cand` | 候选池。重复 k（k = 0..4）用世界 `240k` 到 `240k+239`（4–8 盘，与一期训练分区的盘数规则相同；240 × 300 = 72000 个状态），从中不放回地取 60000 个互不相同的精确状态，抽样种子按 k 派生 |
+| `s6p1-pcand` | 探针专用的候选池（1 个重复），不与 final 的候选重叠 |
+| `s6p1-probe` | 探针的测试世界：主评测 50 个 6 盘，外推 25 个 10 盘 |
+| `s6p1-final` | final 的测试世界：主评测 200 个 6 盘，外推 100 个 10 盘；登记分区，只读一次 |
+
+=== DESIGN-r3.md:327-335 ===
+| **完整** | 落盘清单如下，缺一项就不过：<br>· 84 个网络各 4 轮的权重；<br>· 每个「臂 × 重复」每轮选中的编号、分数摘要和揭示日志；<br>· 每个网络在每个测试世界上、每类盘步的误差和与计数，覆盖 4 轮 × 2 种测试；<br>· 每格的耗时；<br>· 运行时的代码 SHA 与预登记 SHA。 |
+
+=== PREREG-r1.json:57-60 ===
+  "gates": {
+   "GS": {
+    "set": "main6",
+    "stat": "D",
+    "form": "diff",
+    "a": "E",
+    "b": "R",
+    "point": [
+     ">=",
+     0.03
+    ],
+    "interval": [
+     "lower",
+     ">",
+     0.0
+    ],
+    "per_replicate": 0.03
+   },
+   ...
+   "GK-F": {
+    "set": "main6",
+    "stat": "free",
+    "form": "ratio",
+    "a": "E",
+    "b": "Z",
+    "point": [
+     "<=",
+     1.1
+    ],
+    "interval": [
+     "upper",
+     "<=",
+     1.2
+    ]
+   }
+  },
+  "statistics": {
+   "alpha": 0.05,
+   "bonferroni_m": 8,
+   "world_bootstrap": {
+    "n": 10000,
+    "seed": 20261114
+   },
+   "interval": "theta_hat -/+ t(K-1, 1-alpha/(2m)) * sqrt(s_rep^2/K + se_w^2); ratio gates on the log scale"
+  },
+  "expectations_from_exploration": {
+   "GK-F": "expected to fail (round G E/Z free 1.177)",
+   "GZ-D": "borderline (round G -0.014)"
+  }
