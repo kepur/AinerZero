@@ -1,0 +1,5842 @@
+{
+  "schema": "s6p2-r1-author-check-v1",
+  "role": "auxiliary author-side CPU delivery check, NOT independent design acceptance",
+  "task_owner": "P269 codex (no new claim)",
+  "created_utc": "2026-11-16T21:58:48.069344+00:00",
+  "config": {
+    "recorded_results": {
+      "per": 1500,
+      "rounds": 4,
+      "steps": 1000,
+      "lr": 0.001
+    },
+    "source_expressions_not_historical_env": {
+      "CAND_NS": "os.environ.get(\"S6P2_NS\", \"s6x-p2f-cand\")",
+      "POOL": "60_000",
+      "CAND_WORLDS": "int(os.environ.get(\"S6P2_WORLDS\", 240))",
+      "N_BIG": "int(os.environ.get(\"S6P2_BIG\", 24))",
+      "N_TINY": "int(os.environ.get(\"S6P2_TINY\", 24))",
+      "N_LARGE": "int(os.environ.get(\"S6P2_LARGE\", 0))"
+    },
+    "design_declared_candidate_worlds": {
+      "total": 600,
+      "big": 60,
+      "tiny": 30,
+      "large": 30
+    },
+    "candidate_namespace": "not recorded; do not infer",
+    "pool_size_source_and_log": 60000,
+    "networks_per_arm": 3,
+    "start_path_source": "artifacts/v9/s6/phase1/probe/cells/E-r0/r3-n{j}.safetensors",
+    "old_namespace_source": "s6p1-pcand",
+    "test_namespaces_source": [
+      "s6x-p2a-testB",
+      "s6x-p2a-testA"
+    ],
+    "test_worlds_each_source": 30,
+    "batch_size_source": 256,
+    "exploration_floor_O_source": "per//5 = 300 of 1500 (20%) after first round",
+    "replay_source": "all + arms use old pool on odd t, new pool on even t; 1000 steps/network/round"
+  },
+  "tests": {
+    "argv": [
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/v9/experiments/test_s6_world_b.py",
+      "-q"
+    ],
+    "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+    "started_utc": "2026-11-16T21:58:39.508814+00:00",
+    "finished_utc": "2026-11-16T21:58:42.345609+00:00",
+    "elapsed_s": 2.8365935829933733,
+    "returncode": 0,
+    "environment_overrides": {
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+      "PYTEST_ADDOPTS": "-o cache_dir=/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/pytest-cache --basetemp=/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/pytest-tmp -o log_file=/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/pytest.log",
+      "PYTHONPATH": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/evidence/guard",
+      "TMPDIR": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/tmp"
+    },
+    "reason": "Keep caches, temporary files, and every Python-audited write inside delivery; block MLX before tests; disable external pytest plugin autoload."
+  },
+  "initial_test_attempt": {
+    "argv": [
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/v9/experiments/test_s6_world_b.py",
+      "-q"
+    ],
+    "cwd": "/Users/mac/AinerWorkFlow/AinerZero",
+    "started_utc": "2026-11-16T21:58:19.345375+00:00",
+    "finished_utc": "2026-11-16T21:58:19.628283+00:00",
+    "elapsed_s": 0.2824187500082189,
+    "returncode": 3,
+    "environment_overrides": {
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+      "PYTEST_ADDOPTS": "-o cache_dir=/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/pytest-cache --basetemp=/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/pytest-tmp",
+      "PYTHONPATH": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/evidence/guard",
+      "TMPDIR": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/r1-author-check/tmp"
+    },
+    "reason": "Keep caches, temporary files, and every Python-audited write inside delivery; block MLX before tests; disable external pytest plugin autoload."
+  },
+  "checks": [
+    {
+      "check": "five arms exactly",
+      "pass": true,
+      "detail": [
+        "O+",
+        "U+",
+        "Q+",
+        "W+",
+        "R+"
+      ]
+    },
+    {
+      "check": "unique log row ('O+', 0)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('O+', 1)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('O+', 2)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('O+', 3)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('U+', 0)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('U+', 1)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('U+', 2)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('U+', 3)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('Q+', 0)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('Q+', 1)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('Q+', 2)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('Q+', 3)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('W+', 0)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('W+', 1)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('W+', 2)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('W+', 3)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('R+', 0)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('R+', 1)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('R+', 2)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "unique log row ('R+', 3)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "20 logged rows",
+      "pass": true,
+      "detail": 20
+    },
+    {
+      "check": "O+ rounds 0..3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "O+ per_net count r0",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "O+ per_net count r1",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "O+ per_net count r2",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "O+ per_net count r3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "U+ rounds 0..3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "U+ per_net count r0",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "U+ per_net count r1",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "U+ per_net count r2",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "U+ per_net count r3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "Q+ rounds 0..3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "Q+ per_net count r0",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "Q+ per_net count r1",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "Q+ per_net count r2",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "Q+ per_net count r3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "R+ rounds 0..3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "R+ per_net count r0",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "R+ per_net count r1",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "R+ per_net count r2",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "R+ per_net count r3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "W+ rounds 0..3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "W+ per_net count r0",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "W+ per_net count r1",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "W+ per_net count r2",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "W+ per_net count r3",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "all log numeric fields match their printed precision",
+      "pass": true,
+      "detail": 180
+    },
+    {
+      "check": "all per-net means match JSON aggregate",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "check": "first round exact equality (all metrics, picks, per_net; excludes O-only layouts)",
+      "pass": true,
+      "detail": {
+        "O+": true,
+        "U+": true,
+        "Q+": true,
+        "R+": true,
+        "W+": true
+      }
+    },
+    {
+      "check": "pick fractions consistent with integer counts / per",
+      "pass": true,
+      "detail": 60
+    },
+    {
+      "check": "static test/world/sandbox/world-A imports contain no MLX",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "tiny_world combines tiny and large decoys",
+      "pass": true,
+      "detail": [
+        "tiny[e[\"id\"]] = (rmin <= B.TINY_RADIUS[1]) | ((rmax >= B.LARGE_RADIUS[0] - 1e-6) & (rmax < B.BIG_MIN))"
+      ]
+    },
+    {
+      "check": "phase1 frozen files unchanged",
+      "pass": true,
+      "detail": 46
+    },
+    {
+      "check": "phase1 manifest canonical digest matches",
+      "pass": false,
+      "detail": null
+    },
+    {
+      "check": "CPU pytest rc=0",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "MLX never imported or attempted",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "check": "no test write outside author delivery",
+      "pass": true,
+      "detail": null
+    }
+  ],
+  "failed_checks": [
+    {
+      "check": "phase1 manifest canonical digest matches",
+      "pass": false,
+      "detail": null
+    }
+  ],
+  "rounds": [
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "log_line": 3,
+      "picks": {
+        "ring": 0.06266666666666666,
+        "big_world": 0.08666666666666667,
+        "tiny_world": 0.09066666666666667
+      },
+      "H": -0.08216969525019824,
+      "D_A": 0.8188609107677589,
+      "all_A": 0.025080911042975464
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "log_line": 4,
+      "picks": {
+        "ring": 0.472,
+        "big_world": 0.582,
+        "tiny_world": 0.04933333333333333
+      },
+      "H": 0.0609970189914375,
+      "D_A": 0.8200176932496289,
+      "all_A": 0.026830190874210832
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "log_line": 5,
+      "picks": {
+        "ring": 0.6993333333333334,
+        "big_world": 0.818,
+        "tiny_world": 0.024
+      },
+      "H": 0.23309265601258622,
+      "D_A": 0.823469744720001,
+      "all_A": 0.024946469260321402
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "log_line": 6,
+      "picks": {
+        "ring": 0.6466666666666666,
+        "big_world": 0.7786666666666666,
+        "tiny_world": 0.021333333333333333
+      },
+      "H": 0.3607203758982099,
+      "D_A": 0.83778284649753,
+      "all_A": 0.023787680750778223
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "log_line": 7,
+      "picks": {
+        "ring": 0.06266666666666666,
+        "big_world": 0.08666666666666667,
+        "tiny_world": 0.09066666666666667
+      },
+      "H": -0.08216969525019824,
+      "D_A": 0.8188609107677589,
+      "all_A": 0.025080911042975464
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "log_line": 8,
+      "picks": {
+        "ring": 0.48,
+        "big_world": 0.65,
+        "tiny_world": 0.33066666666666666
+      },
+      "H": 0.06633765400705083,
+      "D_A": 0.8311273564433542,
+      "all_A": 0.026232725357626524
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "log_line": 9,
+      "picks": {
+        "ring": 0.49733333333333335,
+        "big_world": 0.6573333333333333,
+        "tiny_world": 0.31666666666666665
+      },
+      "H": 0.18341774625094906,
+      "D_A": 0.8185589103761064,
+      "all_A": 0.02569143919279067
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "log_line": 10,
+      "picks": {
+        "ring": 0.4846666666666667,
+        "big_world": 0.65,
+        "tiny_world": 0.326
+      },
+      "H": 0.33055769492953957,
+      "D_A": 0.8419839641058937,
+      "all_A": 0.023595321433446868
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "log_line": 11,
+      "picks": {
+        "ring": 0.06266666666666666,
+        "big_world": 0.08666666666666667,
+        "tiny_world": 0.09066666666666667
+      },
+      "H": -0.08216969525019824,
+      "D_A": 0.8188609107677589,
+      "all_A": 0.025080911042975464
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "log_line": 12,
+      "picks": {
+        "ring": 0.3453333333333333,
+        "big_world": 0.472,
+        "tiny_world": 0.4746666666666667
+      },
+      "H": 0.014052070590226543,
+      "D_A": 0.8318602438473301,
+      "all_A": 0.02575737260719845
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "log_line": 13,
+      "picks": {
+        "ring": 0.338,
+        "big_world": 0.46266666666666667,
+        "tiny_world": 0.4693333333333333
+      },
+      "H": 0.16210580774418926,
+      "D_A": 0.832787235063135,
+      "all_A": 0.024617998267620286
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "log_line": 14,
+      "picks": {
+        "ring": 0.3526666666666667,
+        "big_world": 0.482,
+        "tiny_world": 0.458
+      },
+      "H": 0.28820706843566796,
+      "D_A": 0.8468117165338672,
+      "all_A": 0.02339465397078927
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "log_line": 19,
+      "picks": {
+        "ring": 0.06266666666666666,
+        "big_world": 0.08666666666666667,
+        "tiny_world": 0.09066666666666667
+      },
+      "H": -0.08216969525019824,
+      "D_A": 0.8188609107677589,
+      "all_A": 0.025080911042975464
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "log_line": 20,
+      "picks": {
+        "ring": 0.07866666666666666,
+        "big_world": 0.10133333333333333,
+        "tiny_world": 0.088
+      },
+      "H": -0.07662142622898076,
+      "D_A": 0.8324024799522728,
+      "all_A": 0.023960995660084815
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "log_line": 21,
+      "picks": {
+        "ring": 0.07533333333333334,
+        "big_world": 0.10133333333333333,
+        "tiny_world": 0.09733333333333333
+      },
+      "H": -0.06735434719793609,
+      "D_A": 0.8320588506822227,
+      "all_A": 0.023105210683762176
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "log_line": 22,
+      "picks": {
+        "ring": 0.07,
+        "big_world": 0.09733333333333333,
+        "tiny_world": 0.10333333333333333
+      },
+      "H": -0.057719284051699425,
+      "D_A": 0.8413494695572261,
+      "all_A": 0.023025888794718508
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "log_line": 15,
+      "picks": {
+        "ring": 0.06266666666666666,
+        "big_world": 0.08666666666666667,
+        "tiny_world": 0.09066666666666667
+      },
+      "H": -0.08216969525019824,
+      "D_A": 0.8188609107677589,
+      "all_A": 0.025080911042975464
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "log_line": 16,
+      "picks": {
+        "ring": 1.0,
+        "big_world": 1.0,
+        "tiny_world": 0.0
+      },
+      "H": 0.20977087697130095,
+      "D_A": 0.8281073517560933,
+      "all_A": 0.027387482031685565
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "log_line": 17,
+      "picks": {
+        "ring": 1.0,
+        "big_world": 1.0,
+        "tiny_world": 0.0
+      },
+      "H": 0.39094261485268794,
+      "D_A": 0.8318252603294477,
+      "all_A": 0.025760350334308024
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "log_line": 18,
+      "picks": {
+        "ring": 0.958,
+        "big_world": 0.9593333333333334,
+        "tiny_world": 0.0026666666666666666
+      },
+      "H": 0.47994936817289213,
+      "D_A": 0.8408537020705197,
+      "all_A": 0.02402744864962963
+    }
+  ],
+  "log_comparisons": [
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "picks.ring",
+      "json_value": 0.06266666666666666,
+      "log_literal": "0.063",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333333826,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "picks.big_world",
+      "json_value": 0.08666666666666667,
+      "log_literal": "0.087",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "picks.tiny_world",
+      "json_value": 0.09066666666666667,
+      "log_literal": "0.091",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "H",
+      "json_value": -0.08216969525019824,
+      "log_literal": "-0.0822",
+      "decimals": 4,
+      "absolute_difference": 3.0304749801757236e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "json_value": 0.7817925683118497,
+      "log_literal": "0.7818",
+      "decimals": 4,
+      "absolute_difference": 7.431688150316695e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "json_value": 0.04712872686197069,
+      "log_literal": "0.0471",
+      "decimals": 4,
+      "absolute_difference": 2.872686197068902e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "json_value": 0.8188609107677589,
+      "log_literal": "0.8189",
+      "decimals": 4,
+      "absolute_difference": 3.9089232241051874e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "json_value": 0.008435594355643615,
+      "log_literal": "0.0084",
+      "decimals": 4,
+      "absolute_difference": 3.5594355643615155e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "json_value": 0.025080911042975464,
+      "log_literal": "0.0251",
+      "decimals": 4,
+      "absolute_difference": 1.9088957024536446e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "picks.ring",
+      "json_value": 0.472,
+      "log_literal": "0.472",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "picks.big_world",
+      "json_value": 0.582,
+      "log_literal": "0.582",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "picks.tiny_world",
+      "json_value": 0.04933333333333333,
+      "log_literal": "0.049",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333313,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "H",
+      "json_value": 0.0609970189914375,
+      "log_literal": "0.0610",
+      "decimals": 4,
+      "absolute_difference": 2.981008562497056e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "json_value": 0.7821751129165403,
+      "log_literal": "0.7822",
+      "decimals": 4,
+      "absolute_difference": 2.4887083459712578e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "json_value": 0.04787691120639841,
+      "log_literal": "0.0479",
+      "decimals": 4,
+      "absolute_difference": 2.3088793601584723e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "json_value": 0.8200176932496289,
+      "log_literal": "0.8200",
+      "decimals": 4,
+      "absolute_difference": 1.7693249628969454e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "json_value": 0.011429309351609282,
+      "log_literal": "0.0114",
+      "decimals": 4,
+      "absolute_difference": 2.9309351609281553e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "json_value": 0.026830190874210832,
+      "log_literal": "0.0268",
+      "decimals": 4,
+      "absolute_difference": 3.019087421083158e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "picks.ring",
+      "json_value": 0.6993333333333334,
+      "log_literal": "0.699",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333340764,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "picks.big_world",
+      "json_value": 0.818,
+      "log_literal": "0.818",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "picks.tiny_world",
+      "json_value": 0.024,
+      "log_literal": "0.024",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "H",
+      "json_value": 0.23309265601258622,
+      "log_literal": "0.2331",
+      "decimals": 4,
+      "absolute_difference": 7.3439874137826155e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "json_value": 0.7871747700033271,
+      "log_literal": "0.7872",
+      "decimals": 4,
+      "absolute_difference": 2.5229996672870847e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "json_value": 0.04456680353403519,
+      "log_literal": "0.0446",
+      "decimals": 4,
+      "absolute_difference": 3.319646596480763e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "json_value": 0.823469744720001,
+      "log_literal": "0.8235",
+      "decimals": 4,
+      "absolute_difference": 3.0255279999003015e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "json_value": 0.009727129261707315,
+      "log_literal": "0.0097",
+      "decimals": 4,
+      "absolute_difference": 2.7129261707314542e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "json_value": 0.024946469260321402,
+      "log_literal": "0.0249",
+      "decimals": 4,
+      "absolute_difference": 4.6469260321403694e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "picks.ring",
+      "json_value": 0.6466666666666666,
+      "log_literal": "0.647",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333340764,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "picks.big_world",
+      "json_value": 0.7786666666666666,
+      "log_literal": "0.779",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333340764,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "picks.tiny_world",
+      "json_value": 0.021333333333333333,
+      "log_literal": "0.021",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333313,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "H",
+      "json_value": 0.3607203758982099,
+      "log_literal": "0.3607",
+      "decimals": 4,
+      "absolute_difference": 2.0375898209856746e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "json_value": 0.8018039977941412,
+      "log_literal": "0.8018",
+      "decimals": 4,
+      "absolute_difference": 3.997794141286093e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "json_value": 0.04134003786500328,
+      "log_literal": "0.0413",
+      "decimals": 4,
+      "absolute_difference": 4.003786500327705e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "json_value": 0.83778284649753,
+      "log_literal": "0.8378",
+      "decimals": 4,
+      "absolute_difference": 1.7153502470002024e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "json_value": 0.008332606237622657,
+      "log_literal": "0.0083",
+      "decimals": 4,
+      "absolute_difference": 3.260623762265692e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "json_value": 0.023787680750778223,
+      "log_literal": "0.0238",
+      "decimals": 4,
+      "absolute_difference": 1.231924922177885e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "picks.ring",
+      "json_value": 0.06266666666666666,
+      "log_literal": "0.063",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333333826,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "picks.big_world",
+      "json_value": 0.08666666666666667,
+      "log_literal": "0.087",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "picks.tiny_world",
+      "json_value": 0.09066666666666667,
+      "log_literal": "0.091",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "H",
+      "json_value": -0.08216969525019824,
+      "log_literal": "-0.0822",
+      "decimals": 4,
+      "absolute_difference": 3.0304749801757236e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "json_value": 0.7817925683118497,
+      "log_literal": "0.7818",
+      "decimals": 4,
+      "absolute_difference": 7.431688150316695e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "json_value": 0.04712872686197069,
+      "log_literal": "0.0471",
+      "decimals": 4,
+      "absolute_difference": 2.872686197068902e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "json_value": 0.8188609107677589,
+      "log_literal": "0.8189",
+      "decimals": 4,
+      "absolute_difference": 3.9089232241051874e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "json_value": 0.008435594355643615,
+      "log_literal": "0.0084",
+      "decimals": 4,
+      "absolute_difference": 3.5594355643615155e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "json_value": 0.025080911042975464,
+      "log_literal": "0.0251",
+      "decimals": 4,
+      "absolute_difference": 1.9088957024536446e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "picks.ring",
+      "json_value": 0.48,
+      "log_literal": "0.480",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "picks.big_world",
+      "json_value": 0.65,
+      "log_literal": "0.650",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "picks.tiny_world",
+      "json_value": 0.33066666666666666,
+      "log_literal": "0.331",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333335213,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "H",
+      "json_value": 0.06633765400705083,
+      "log_literal": "0.0663",
+      "decimals": 4,
+      "absolute_difference": 3.765400705083022e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "json_value": 0.7979913388371962,
+      "log_literal": "0.7980",
+      "decimals": 4,
+      "absolute_difference": 8.661162803846878e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "json_value": 0.04632435565621688,
+      "log_literal": "0.0463",
+      "decimals": 4,
+      "absolute_difference": 2.4355656216876187e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "json_value": 0.8311273564433542,
+      "log_literal": "0.8311",
+      "decimals": 4,
+      "absolute_difference": 2.7356443354276117e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "json_value": 0.009969781377699731,
+      "log_literal": "0.0100",
+      "decimals": 4,
+      "absolute_difference": 3.0218622300268866e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "json_value": 0.026232725357626524,
+      "log_literal": "0.0262",
+      "decimals": 4,
+      "absolute_difference": 3.2725357626522955e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "picks.ring",
+      "json_value": 0.49733333333333335,
+      "log_literal": "0.497",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333335213,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "picks.big_world",
+      "json_value": 0.6573333333333333,
+      "log_literal": "0.657",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333332966,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "picks.tiny_world",
+      "json_value": 0.31666666666666665,
+      "log_literal": "0.317",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333335213,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "H",
+      "json_value": 0.18341774625094906,
+      "log_literal": "0.1834",
+      "decimals": 4,
+      "absolute_difference": 1.7746250949052245e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "json_value": 0.7833695641449795,
+      "log_literal": "0.7834",
+      "decimals": 4,
+      "absolute_difference": 3.0435855020494174e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "json_value": 0.04532155665046017,
+      "log_literal": "0.0453",
+      "decimals": 4,
+      "absolute_difference": 2.15566504601708e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "json_value": 0.8185589103761064,
+      "log_literal": "0.8186",
+      "decimals": 4,
+      "absolute_difference": 4.1089623893597604e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "json_value": 0.011190917425790098,
+      "log_literal": "0.0112",
+      "decimals": 4,
+      "absolute_difference": 9.082574209902383e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "json_value": 0.02569143919279067,
+      "log_literal": "0.0257",
+      "decimals": 4,
+      "absolute_difference": 8.560807209331833e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "picks.ring",
+      "json_value": 0.4846666666666667,
+      "log_literal": "0.485",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333332966,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "picks.big_world",
+      "json_value": 0.65,
+      "log_literal": "0.650",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "picks.tiny_world",
+      "json_value": 0.326,
+      "log_literal": "0.326",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "H",
+      "json_value": 0.33055769492953957,
+      "log_literal": "0.3306",
+      "decimals": 4,
+      "absolute_difference": 4.230507046043552e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "json_value": 0.8049304196015217,
+      "log_literal": "0.8049",
+      "decimals": 4,
+      "absolute_difference": 3.041960152172507e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "json_value": 0.04147362336147107,
+      "log_literal": "0.0415",
+      "decimals": 4,
+      "absolute_difference": 2.6376638528932683e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "json_value": 0.8419839641058937,
+      "log_literal": "0.8420",
+      "decimals": 4,
+      "absolute_difference": 1.603589410625883e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "json_value": 0.008736492529730444,
+      "log_literal": "0.0087",
+      "decimals": 4,
+      "absolute_difference": 3.6492529730444354e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "json_value": 0.023595321433446868,
+      "log_literal": "0.0236",
+      "decimals": 4,
+      "absolute_difference": 4.678566553131813e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "picks.ring",
+      "json_value": 0.06266666666666666,
+      "log_literal": "0.063",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333333826,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "picks.big_world",
+      "json_value": 0.08666666666666667,
+      "log_literal": "0.087",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "picks.tiny_world",
+      "json_value": 0.09066666666666667,
+      "log_literal": "0.091",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "H",
+      "json_value": -0.08216969525019824,
+      "log_literal": "-0.0822",
+      "decimals": 4,
+      "absolute_difference": 3.0304749801757236e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "json_value": 0.7817925683118497,
+      "log_literal": "0.7818",
+      "decimals": 4,
+      "absolute_difference": 7.431688150316695e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "json_value": 0.04712872686197069,
+      "log_literal": "0.0471",
+      "decimals": 4,
+      "absolute_difference": 2.872686197068902e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "json_value": 0.8188609107677589,
+      "log_literal": "0.8189",
+      "decimals": 4,
+      "absolute_difference": 3.9089232241051874e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "json_value": 0.008435594355643615,
+      "log_literal": "0.0084",
+      "decimals": 4,
+      "absolute_difference": 3.5594355643615155e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "json_value": 0.025080911042975464,
+      "log_literal": "0.0251",
+      "decimals": 4,
+      "absolute_difference": 1.9088957024536446e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "picks.ring",
+      "json_value": 0.3453333333333333,
+      "log_literal": "0.345",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333335213,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "picks.big_world",
+      "json_value": 0.472,
+      "log_literal": "0.472",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "picks.tiny_world",
+      "json_value": 0.4746666666666667,
+      "log_literal": "0.475",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333332966,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "H",
+      "json_value": 0.014052070590226543,
+      "log_literal": "0.0141",
+      "decimals": 4,
+      "absolute_difference": 4.792940977345686e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "json_value": 0.794866204062837,
+      "log_literal": "0.7949",
+      "decimals": 4,
+      "absolute_difference": 3.379593716301699e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "json_value": 0.04632874292569605,
+      "log_literal": "0.0463",
+      "decimals": 4,
+      "absolute_difference": 2.8742925696045862e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "json_value": 0.8318602438473301,
+      "log_literal": "0.8319",
+      "decimals": 4,
+      "absolute_difference": 3.975615266982313e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "json_value": 0.010179578050030039,
+      "log_literal": "0.0102",
+      "decimals": 4,
+      "absolute_difference": 2.0421949969961703e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "json_value": 0.02575737260719845,
+      "log_literal": "0.0258",
+      "decimals": 4,
+      "absolute_difference": 4.2627392801551645e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "picks.ring",
+      "json_value": 0.338,
+      "log_literal": "0.338",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "picks.big_world",
+      "json_value": 0.46266666666666667,
+      "log_literal": "0.463",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333335213,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "picks.tiny_world",
+      "json_value": 0.4693333333333333,
+      "log_literal": "0.469",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333335213,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "H",
+      "json_value": 0.16210580774418926,
+      "log_literal": "0.1621",
+      "decimals": 4,
+      "absolute_difference": 5.807744189262332e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "json_value": 0.7960386411898884,
+      "log_literal": "0.7960",
+      "decimals": 4,
+      "absolute_difference": 3.8641189888388716e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "json_value": 0.04506268866456662,
+      "log_literal": "0.0451",
+      "decimals": 4,
+      "absolute_difference": 3.7311335433380666e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "json_value": 0.832787235063135,
+      "log_literal": "0.8328",
+      "decimals": 4,
+      "absolute_difference": 1.2764936864972931e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "json_value": 0.009698764789804734,
+      "log_literal": "0.0097",
+      "decimals": 4,
+      "absolute_difference": 1.2352101952661787e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "json_value": 0.024617998267620286,
+      "log_literal": "0.0246",
+      "decimals": 4,
+      "absolute_difference": 1.799826762028528e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "picks.ring",
+      "json_value": 0.3526666666666667,
+      "log_literal": "0.353",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333332966,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "picks.big_world",
+      "json_value": 0.482,
+      "log_literal": "0.482",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "picks.tiny_world",
+      "json_value": 0.458,
+      "log_literal": "0.458",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "H",
+      "json_value": 0.28820706843566796,
+      "log_literal": "0.2882",
+      "decimals": 4,
+      "absolute_difference": 7.068435667945128e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "json_value": 0.8094681553289454,
+      "log_literal": "0.8095",
+      "decimals": 4,
+      "absolute_difference": 3.184467105454836e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "json_value": 0.04236229173005641,
+      "log_literal": "0.0424",
+      "decimals": 4,
+      "absolute_difference": 3.7708269943592665e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "json_value": 0.8468117165338672,
+      "log_literal": "0.8468",
+      "decimals": 4,
+      "absolute_difference": 1.1716533867223156e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "json_value": 0.008623951935932324,
+      "log_literal": "0.0086",
+      "decimals": 4,
+      "absolute_difference": 2.3951935932324184e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "json_value": 0.02339465397078927,
+      "log_literal": "0.0234",
+      "decimals": 4,
+      "absolute_difference": 5.346029210730879e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "picks.ring",
+      "json_value": 0.06266666666666666,
+      "log_literal": "0.063",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333333826,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "picks.big_world",
+      "json_value": 0.08666666666666667,
+      "log_literal": "0.087",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "picks.tiny_world",
+      "json_value": 0.09066666666666667,
+      "log_literal": "0.091",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "H",
+      "json_value": -0.08216969525019824,
+      "log_literal": "-0.0822",
+      "decimals": 4,
+      "absolute_difference": 3.0304749801757236e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "json_value": 0.7817925683118497,
+      "log_literal": "0.7818",
+      "decimals": 4,
+      "absolute_difference": 7.431688150316695e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "json_value": 0.04712872686197069,
+      "log_literal": "0.0471",
+      "decimals": 4,
+      "absolute_difference": 2.872686197068902e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "json_value": 0.8188609107677589,
+      "log_literal": "0.8189",
+      "decimals": 4,
+      "absolute_difference": 3.9089232241051874e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "json_value": 0.008435594355643615,
+      "log_literal": "0.0084",
+      "decimals": 4,
+      "absolute_difference": 3.5594355643615155e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "json_value": 0.025080911042975464,
+      "log_literal": "0.0251",
+      "decimals": 4,
+      "absolute_difference": 1.9088957024536446e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "picks.ring",
+      "json_value": 0.07866666666666666,
+      "log_literal": "0.079",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333333826,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "picks.big_world",
+      "json_value": 0.10133333333333333,
+      "log_literal": "0.101",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "picks.tiny_world",
+      "json_value": 0.088,
+      "log_literal": "0.088",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "H",
+      "json_value": -0.07662142622898076,
+      "log_literal": "-0.0766",
+      "decimals": 4,
+      "absolute_difference": 2.1426228980755968e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "json_value": 0.7969604373526135,
+      "log_literal": "0.7970",
+      "decimals": 4,
+      "absolute_difference": 3.956264738658177e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "json_value": 0.045685860600240706,
+      "log_literal": "0.0457",
+      "decimals": 4,
+      "absolute_difference": 1.413939975929146e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "json_value": 0.8324024799522728,
+      "log_literal": "0.8324",
+      "decimals": 4,
+      "absolute_difference": 2.479952272760322e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "json_value": 0.008348263878635133,
+      "log_literal": "0.0083",
+      "decimals": 4,
+      "absolute_difference": 4.826387863513318e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "json_value": 0.023960995660084815,
+      "log_literal": "0.0240",
+      "decimals": 4,
+      "absolute_difference": 3.900433991518501e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "picks.ring",
+      "json_value": 0.07533333333333334,
+      "log_literal": "0.075",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333333826,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "picks.big_world",
+      "json_value": 0.10133333333333333,
+      "log_literal": "0.101",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "picks.tiny_world",
+      "json_value": 0.09733333333333333,
+      "log_literal": "0.097",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "H",
+      "json_value": -0.06735434719793609,
+      "log_literal": "-0.0674",
+      "decimals": 4,
+      "absolute_difference": 4.565280206390854e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "json_value": 0.7934658304852084,
+      "log_literal": "0.7935",
+      "decimals": 4,
+      "absolute_difference": 3.4169514791626554e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "json_value": 0.04488892458069684,
+      "log_literal": "0.0449",
+      "decimals": 4,
+      "absolute_difference": 1.1075419303160916e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "json_value": 0.8320588506822227,
+      "log_literal": "0.8321",
+      "decimals": 4,
+      "absolute_difference": 4.1149317777211536e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "json_value": 0.008124918385256082,
+      "log_literal": "0.0081",
+      "decimals": 4,
+      "absolute_difference": 2.4918385256082753e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "json_value": 0.023105210683762176,
+      "log_literal": "0.0231",
+      "decimals": 4,
+      "absolute_difference": 5.2106837621773705e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "picks.ring",
+      "json_value": 0.07,
+      "log_literal": "0.070",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "picks.big_world",
+      "json_value": 0.09733333333333333,
+      "log_literal": "0.097",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "picks.tiny_world",
+      "json_value": 0.10333333333333333,
+      "log_literal": "0.103",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333333826,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "H",
+      "json_value": -0.057719284051699425,
+      "log_literal": "-0.0577",
+      "decimals": 4,
+      "absolute_difference": 1.9284051699423876e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "json_value": 0.8046951642908701,
+      "log_literal": "0.8047",
+      "decimals": 4,
+      "absolute_difference": 4.835709129902277e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "json_value": 0.04477300559328412,
+      "log_literal": "0.0448",
+      "decimals": 4,
+      "absolute_difference": 2.699440671587866e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "json_value": 0.8413494695572261,
+      "log_literal": "0.8413",
+      "decimals": 4,
+      "absolute_difference": 4.946955722606727e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "json_value": 0.00878834764012032,
+      "log_literal": "0.0088",
+      "decimals": 4,
+      "absolute_difference": 1.165235987968076e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "json_value": 0.023025888794718508,
+      "log_literal": "0.0230",
+      "decimals": 4,
+      "absolute_difference": 2.5888794718507968e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "picks.ring",
+      "json_value": 0.06266666666666666,
+      "log_literal": "0.063",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333333826,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "picks.big_world",
+      "json_value": 0.08666666666666667,
+      "log_literal": "0.087",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "picks.tiny_world",
+      "json_value": 0.09066666666666667,
+      "log_literal": "0.091",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333244,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "H",
+      "json_value": -0.08216969525019824,
+      "log_literal": "-0.0822",
+      "decimals": 4,
+      "absolute_difference": 3.0304749801757236e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "json_value": 0.7817925683118497,
+      "log_literal": "0.7818",
+      "decimals": 4,
+      "absolute_difference": 7.431688150316695e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "json_value": 0.04712872686197069,
+      "log_literal": "0.0471",
+      "decimals": 4,
+      "absolute_difference": 2.872686197068902e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "json_value": 0.8188609107677589,
+      "log_literal": "0.8189",
+      "decimals": 4,
+      "absolute_difference": 3.9089232241051874e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "json_value": 0.008435594355643615,
+      "log_literal": "0.0084",
+      "decimals": 4,
+      "absolute_difference": 3.5594355643615155e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "json_value": 0.025080911042975464,
+      "log_literal": "0.0251",
+      "decimals": 4,
+      "absolute_difference": 1.9088957024536446e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "picks.ring",
+      "json_value": 1.0,
+      "log_literal": "1.000",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "picks.big_world",
+      "json_value": 1.0,
+      "log_literal": "1.000",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "picks.tiny_world",
+      "json_value": 0.0,
+      "log_literal": "0.000",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "H",
+      "json_value": 0.20977087697130095,
+      "log_literal": "0.2098",
+      "decimals": 4,
+      "absolute_difference": 2.912302869903516e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "json_value": 0.7944116019107151,
+      "log_literal": "0.7944",
+      "decimals": 4,
+      "absolute_difference": 1.160191071514216e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "json_value": 0.046688103692529376,
+      "log_literal": "0.0467",
+      "decimals": 4,
+      "absolute_difference": 1.1896307470622702e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "json_value": 0.8281073517560933,
+      "log_literal": "0.8281",
+      "decimals": 4,
+      "absolute_difference": 7.351756093343376e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "json_value": 0.011340904350495408,
+      "log_literal": "0.0113",
+      "decimals": 4,
+      "absolute_difference": 4.090435049540833e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "json_value": 0.027387482031685565,
+      "log_literal": "0.0274",
+      "decimals": 4,
+      "absolute_difference": 1.2517968314435662e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "picks.ring",
+      "json_value": 1.0,
+      "log_literal": "1.000",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "picks.big_world",
+      "json_value": 1.0,
+      "log_literal": "1.000",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "picks.tiny_world",
+      "json_value": 0.0,
+      "log_literal": "0.000",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "H",
+      "json_value": 0.39094261485268794,
+      "log_literal": "0.3909",
+      "decimals": 4,
+      "absolute_difference": 4.261485268791665e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "json_value": 0.7957115830781595,
+      "log_literal": "0.7957",
+      "decimals": 4,
+      "absolute_difference": 1.1583078159516091e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "json_value": 0.043013649555887955,
+      "log_literal": "0.0430",
+      "decimals": 4,
+      "absolute_difference": 1.3649555887958187e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "json_value": 0.8318252603294477,
+      "log_literal": "0.8318",
+      "decimals": 4,
+      "absolute_difference": 2.5260329447718277e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "json_value": 0.01060213971734981,
+      "log_literal": "0.0106",
+      "decimals": 4,
+      "absolute_difference": 2.139717349809722e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "json_value": 0.025760350334308024,
+      "log_literal": "0.0258",
+      "decimals": 4,
+      "absolute_difference": 3.964966569197648e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "picks.ring",
+      "json_value": 0.958,
+      "log_literal": "0.958",
+      "decimals": 3,
+      "absolute_difference": 0.0,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "picks.big_world",
+      "json_value": 0.9593333333333334,
+      "log_literal": "0.959",
+      "decimals": 3,
+      "absolute_difference": 0.00033333333333340764,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "picks.tiny_world",
+      "json_value": 0.0026666666666666666,
+      "log_literal": "0.003",
+      "decimals": 3,
+      "absolute_difference": 0.0003333333333333335,
+      "half_log_unit": 0.0005,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "H",
+      "json_value": 0.47994936817289213,
+      "log_literal": "0.4799",
+      "decimals": 4,
+      "absolute_difference": 4.936817289213913e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "json_value": 0.8040970373082503,
+      "log_literal": "0.8041",
+      "decimals": 4,
+      "absolute_difference": 2.9626917497083127e-06,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "json_value": 0.038855060988742605,
+      "log_literal": "0.0389",
+      "decimals": 4,
+      "absolute_difference": 4.493901125739164e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "json_value": 0.8408537020705197,
+      "log_literal": "0.8409",
+      "decimals": 4,
+      "absolute_difference": 4.629792948029898e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "json_value": 0.008725392304577232,
+      "log_literal": "0.0087",
+      "decimals": 4,
+      "absolute_difference": 2.5392304577232308e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "json_value": 0.02402744864962963,
+      "log_literal": "0.0240",
+      "decimals": 4,
+      "absolute_difference": 2.74486496296307e-05,
+      "half_log_unit": 5e-05,
+      "pass": true
+    }
+  ],
+  "per_net_aggregate_checks": [
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "H",
+      "per_net_mean": -0.08216969525019824,
+      "reported": -0.08216969525019824,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "per_net_mean": 0.7817925683118497,
+      "reported": 0.7817925683118497,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "halo",
+      "per_net_mean": 0.13089438133124778,
+      "reported": 0.13089438133124778,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "free_B",
+      "per_net_mean": 0.009812128363124116,
+      "reported": 0.009812128363124116,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "wall_B",
+      "per_net_mean": 0.6535785743333299,
+      "reported": 0.6535785743333299,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "per_net_mean": 0.04712872686197069,
+      "reported": 0.04712872686197069,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "per_net_mean": 0.8188609107677589,
+      "reported": 0.8188609107677589,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "per_net_mean": 0.008435594355643615,
+      "reported": 0.008435594355643615,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "wall_A",
+      "per_net_mean": 0.6734343723854908,
+      "reported": 0.6734343723854908,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "per_net_mean": 0.025080911042975468,
+      "reported": 0.025080911042975464,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "H",
+      "per_net_mean": 0.0609970189914375,
+      "reported": 0.0609970189914375,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "per_net_mean": 0.7821751129165403,
+      "reported": 0.7821751129165403,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "halo",
+      "per_net_mean": 0.11357757919740703,
+      "reported": 0.11357757919740703,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "free_B",
+      "per_net_mean": 0.015359389535534125,
+      "reported": 0.015359389535534125,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "wall_B",
+      "per_net_mean": 0.6148354227563074,
+      "reported": 0.6148354227563074,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "per_net_mean": 0.0478769112063984,
+      "reported": 0.04787691120639841,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "per_net_mean": 0.8200176932496289,
+      "reported": 0.8200176932496289,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "per_net_mean": 0.011429309351609282,
+      "reported": 0.011429309351609282,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "wall_A",
+      "per_net_mean": 0.6288336089830856,
+      "reported": 0.6288336089830856,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "per_net_mean": 0.026830190874210836,
+      "reported": 0.026830190874210832,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "H",
+      "per_net_mean": 0.23309265601258622,
+      "reported": 0.23309265601258622,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "per_net_mean": 0.7871747700033271,
+      "reported": 0.7871747700033271,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "halo",
+      "per_net_mean": 0.09276166461713213,
+      "reported": 0.09276166461713213,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "free_B",
+      "per_net_mean": 0.015416127141620812,
+      "reported": 0.015416127141620814,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "wall_B",
+      "per_net_mean": 0.6155089880163361,
+      "reported": 0.6155089880163362,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "per_net_mean": 0.04456680353403519,
+      "reported": 0.04456680353403519,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "per_net_mean": 0.823469744720001,
+      "reported": 0.823469744720001,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "per_net_mean": 0.009727129261707315,
+      "reported": 0.009727129261707315,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "wall_A",
+      "per_net_mean": 0.6221774913398109,
+      "reported": 0.6221774913398109,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "per_net_mean": 0.024946469260321402,
+      "reported": 0.024946469260321402,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "H",
+      "per_net_mean": 0.3607203758982099,
+      "reported": 0.3607203758982099,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "per_net_mean": 0.8018039977941412,
+      "reported": 0.8018039977941412,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "halo",
+      "per_net_mean": 0.07732438938343218,
+      "reported": 0.07732438938343218,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "free_B",
+      "per_net_mean": 0.014057424497025841,
+      "reported": 0.014057424497025841,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "wall_B",
+      "per_net_mean": 0.6316150285320219,
+      "reported": 0.6316150285320219,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "per_net_mean": 0.04134003786500328,
+      "reported": 0.04134003786500328,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "per_net_mean": 0.83778284649753,
+      "reported": 0.83778284649753,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "per_net_mean": 0.008332606237622657,
+      "reported": 0.008332606237622657,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "wall_A",
+      "per_net_mean": 0.6312424984559554,
+      "reported": 0.6312424984559554,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "per_net_mean": 0.023787680750778223,
+      "reported": 0.023787680750778223,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "H",
+      "per_net_mean": -0.08216969525019824,
+      "reported": -0.08216969525019824,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "per_net_mean": 0.7817925683118497,
+      "reported": 0.7817925683118497,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "halo",
+      "per_net_mean": 0.13089438133124778,
+      "reported": 0.13089438133124778,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "free_B",
+      "per_net_mean": 0.009812128363124116,
+      "reported": 0.009812128363124116,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "wall_B",
+      "per_net_mean": 0.6535785743333299,
+      "reported": 0.6535785743333299,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "per_net_mean": 0.04712872686197069,
+      "reported": 0.04712872686197069,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "per_net_mean": 0.8188609107677589,
+      "reported": 0.8188609107677589,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "per_net_mean": 0.008435594355643615,
+      "reported": 0.008435594355643615,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "wall_A",
+      "per_net_mean": 0.6734343723854908,
+      "reported": 0.6734343723854908,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "per_net_mean": 0.025080911042975468,
+      "reported": 0.025080911042975464,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "H",
+      "per_net_mean": 0.06633765400705083,
+      "reported": 0.06633765400705083,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "per_net_mean": 0.7979913388371962,
+      "reported": 0.7979913388371962,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "halo",
+      "per_net_mean": 0.11293159999529762,
+      "reported": 0.11293159999529762,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "free_B",
+      "per_net_mean": 0.012526000769868465,
+      "reported": 0.012526000769868468,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "wall_B",
+      "per_net_mean": 0.6536723814275106,
+      "reported": 0.6536723814275106,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "per_net_mean": 0.04632435565621688,
+      "reported": 0.04632435565621688,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "per_net_mean": 0.8311273564433542,
+      "reported": 0.8311273564433542,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "per_net_mean": 0.009969781377699731,
+      "reported": 0.009969781377699731,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "wall_A",
+      "per_net_mean": 0.6622852229471965,
+      "reported": 0.6622852229471965,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "per_net_mean": 0.026232725357626524,
+      "reported": 0.026232725357626524,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "H",
+      "per_net_mean": 0.18341774625094906,
+      "reported": 0.18341774625094906,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "per_net_mean": 0.7833695641449795,
+      "reported": 0.7833695641449795,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "halo",
+      "per_net_mean": 0.09877011838318567,
+      "reported": 0.09877011838318567,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "free_B",
+      "per_net_mean": 0.0163026752152932,
+      "reported": 0.0163026752152932,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "wall_B",
+      "per_net_mean": 0.576930247059208,
+      "reported": 0.576930247059208,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "per_net_mean": 0.045321556650460164,
+      "reported": 0.04532155665046017,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "per_net_mean": 0.8185589103761064,
+      "reported": 0.8185589103761064,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "per_net_mean": 0.011190917425790098,
+      "reported": 0.011190917425790098,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "wall_A",
+      "per_net_mean": 0.5854624119741233,
+      "reported": 0.5854624119741233,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "per_net_mean": 0.025691439192790665,
+      "reported": 0.02569143919279067,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "H",
+      "per_net_mean": 0.33055769492953957,
+      "reported": 0.33055769492953957,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "per_net_mean": 0.8049304196015217,
+      "reported": 0.8049304196015217,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "halo",
+      "per_net_mean": 0.08097273167393876,
+      "reported": 0.08097273167393876,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "free_B",
+      "per_net_mean": 0.01455634563770041,
+      "reported": 0.01455634563770041,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "wall_B",
+      "per_net_mean": 0.5997095761691229,
+      "reported": 0.5997095761691229,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "per_net_mean": 0.04147362336147107,
+      "reported": 0.04147362336147107,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "per_net_mean": 0.8419839641058937,
+      "reported": 0.8419839641058937,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "per_net_mean": 0.008736492529730444,
+      "reported": 0.008736492529730444,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "wall_A",
+      "per_net_mean": 0.6050895965030195,
+      "reported": 0.6050895965030195,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "per_net_mean": 0.023595321433446868,
+      "reported": 0.023595321433446868,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "H",
+      "per_net_mean": -0.08216969525019824,
+      "reported": -0.08216969525019824,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "per_net_mean": 0.7817925683118497,
+      "reported": 0.7817925683118497,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "halo",
+      "per_net_mean": 0.13089438133124778,
+      "reported": 0.13089438133124778,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "free_B",
+      "per_net_mean": 0.009812128363124116,
+      "reported": 0.009812128363124116,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "wall_B",
+      "per_net_mean": 0.6535785743333299,
+      "reported": 0.6535785743333299,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "per_net_mean": 0.04712872686197069,
+      "reported": 0.04712872686197069,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "per_net_mean": 0.8188609107677589,
+      "reported": 0.8188609107677589,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "per_net_mean": 0.008435594355643615,
+      "reported": 0.008435594355643615,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "wall_A",
+      "per_net_mean": 0.6734343723854908,
+      "reported": 0.6734343723854908,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "per_net_mean": 0.025080911042975468,
+      "reported": 0.025080911042975464,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "H",
+      "per_net_mean": 0.014052070590226543,
+      "reported": 0.014052070590226543,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "per_net_mean": 0.794866204062837,
+      "reported": 0.794866204062837,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "halo",
+      "per_net_mean": 0.11925582911012815,
+      "reported": 0.11925582911012815,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "free_B",
+      "per_net_mean": 0.01227199248861781,
+      "reported": 0.01227199248861781,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "wall_B",
+      "per_net_mean": 0.6174363948756726,
+      "reported": 0.6174363948756726,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "per_net_mean": 0.04632874292569603,
+      "reported": 0.04632874292569605,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "per_net_mean": 0.8318602438473301,
+      "reported": 0.8318602438473301,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "per_net_mean": 0.010179578050030039,
+      "reported": 0.010179578050030039,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "wall_A",
+      "per_net_mean": 0.6307525307148045,
+      "reported": 0.6307525307148045,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "per_net_mean": 0.02575737260719845,
+      "reported": 0.02575737260719845,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "H",
+      "per_net_mean": 0.16210580774418926,
+      "reported": 0.16210580774418926,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "per_net_mean": 0.7960386411898884,
+      "reported": 0.7960386411898884,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "halo",
+      "per_net_mean": 0.10134791465493116,
+      "reported": 0.10134791465493116,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "free_B",
+      "per_net_mean": 0.014983394595973061,
+      "reported": 0.014983394595973061,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "wall_B",
+      "per_net_mean": 0.5992321379658568,
+      "reported": 0.5992321379658568,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "per_net_mean": 0.04506268866456662,
+      "reported": 0.04506268866456662,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "per_net_mean": 0.832787235063135,
+      "reported": 0.832787235063135,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "per_net_mean": 0.009698764789804734,
+      "reported": 0.009698764789804734,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "wall_A",
+      "per_net_mean": 0.6093621857343762,
+      "reported": 0.6093621857343762,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "per_net_mean": 0.024617998267620286,
+      "reported": 0.024617998267620286,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "H",
+      "per_net_mean": 0.28820706843566796,
+      "reported": 0.28820706843566796,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "per_net_mean": 0.8094681553289456,
+      "reported": 0.8094681553289454,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "halo",
+      "per_net_mean": 0.0860952730629992,
+      "reported": 0.0860952730629992,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "free_B",
+      "per_net_mean": 0.014913727772988576,
+      "reported": 0.014913727772988576,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "wall_B",
+      "per_net_mean": 0.5920755612604347,
+      "reported": 0.5920755612604348,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "per_net_mean": 0.04236229173005641,
+      "reported": 0.04236229173005641,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "per_net_mean": 0.8468117165338672,
+      "reported": 0.8468117165338672,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "per_net_mean": 0.008623951935932324,
+      "reported": 0.008623951935932324,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "wall_A",
+      "per_net_mean": 0.6041902489651345,
+      "reported": 0.6041902489651344,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "per_net_mean": 0.02339465397078927,
+      "reported": 0.02339465397078927,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "H",
+      "per_net_mean": -0.08216969525019824,
+      "reported": -0.08216969525019824,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "per_net_mean": 0.7817925683118497,
+      "reported": 0.7817925683118497,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "halo",
+      "per_net_mean": 0.13089438133124778,
+      "reported": 0.13089438133124778,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "free_B",
+      "per_net_mean": 0.009812128363124116,
+      "reported": 0.009812128363124116,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "wall_B",
+      "per_net_mean": 0.6535785743333299,
+      "reported": 0.6535785743333299,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "per_net_mean": 0.04712872686197069,
+      "reported": 0.04712872686197069,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "per_net_mean": 0.8188609107677589,
+      "reported": 0.8188609107677589,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "per_net_mean": 0.008435594355643615,
+      "reported": 0.008435594355643615,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "wall_A",
+      "per_net_mean": 0.6734343723854908,
+      "reported": 0.6734343723854908,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "per_net_mean": 0.025080911042975468,
+      "reported": 0.025080911042975464,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "H",
+      "per_net_mean": -0.07662142622898076,
+      "reported": -0.07662142622898076,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "per_net_mean": 0.7969604373526135,
+      "reported": 0.7969604373526135,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "halo",
+      "per_net_mean": 0.13022328765326074,
+      "reported": 0.13022328765326077,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "free_B",
+      "per_net_mean": 0.00968576292651934,
+      "reported": 0.00968576292651934,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "wall_B",
+      "per_net_mean": 0.6134980647565151,
+      "reported": 0.613498064756515,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "per_net_mean": 0.045685860600240706,
+      "reported": 0.045685860600240706,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "per_net_mean": 0.8324024799522728,
+      "reported": 0.8324024799522728,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "per_net_mean": 0.008348263878635133,
+      "reported": 0.008348263878635133,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "wall_A",
+      "per_net_mean": 0.6357083700839072,
+      "reported": 0.6357083700839072,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "per_net_mean": 0.023960995660084815,
+      "reported": 0.023960995660084815,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "H",
+      "per_net_mean": -0.06735434719793609,
+      "reported": -0.06735434719793609,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "per_net_mean": 0.7934658304852084,
+      "reported": 0.7934658304852084,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "halo",
+      "per_net_mean": 0.1291023834347815,
+      "reported": 0.1291023834347815,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "free_B",
+      "per_net_mean": 0.009669099945761253,
+      "reported": 0.009669099945761253,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "wall_B",
+      "per_net_mean": 0.5880254987251842,
+      "reported": 0.5880254987251842,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "per_net_mean": 0.04488892458069684,
+      "reported": 0.04488892458069684,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "per_net_mean": 0.8320588506822227,
+      "reported": 0.8320588506822227,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "per_net_mean": 0.00812491838525608,
+      "reported": 0.008124918385256082,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "wall_A",
+      "per_net_mean": 0.6085043687376906,
+      "reported": 0.6085043687376906,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "per_net_mean": 0.023105210683762176,
+      "reported": 0.023105210683762176,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "H",
+      "per_net_mean": -0.057719284051699425,
+      "reported": -0.057719284051699425,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "per_net_mean": 0.8046951642908701,
+      "reported": 0.8046951642908701,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "halo",
+      "per_net_mean": 0.1279369695120394,
+      "reported": 0.1279369695120394,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "free_B",
+      "per_net_mean": 0.010578263626239428,
+      "reported": 0.010578263626239428,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "wall_B",
+      "per_net_mean": 0.5628316349243704,
+      "reported": 0.5628316349243704,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "per_net_mean": 0.04477300559328412,
+      "reported": 0.04477300559328412,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "per_net_mean": 0.841349469557226,
+      "reported": 0.8413494695572261,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "per_net_mean": 0.00878834764012032,
+      "reported": 0.00878834764012032,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "wall_A",
+      "per_net_mean": 0.5795685538442226,
+      "reported": 0.5795685538442226,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "per_net_mean": 0.023025888794718508,
+      "reported": 0.023025888794718508,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "H",
+      "per_net_mean": -0.08216969525019824,
+      "reported": -0.08216969525019824,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "D_B",
+      "per_net_mean": 0.7817925683118497,
+      "reported": 0.7817925683118497,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "halo",
+      "per_net_mean": 0.13089438133124778,
+      "reported": 0.13089438133124778,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "free_B",
+      "per_net_mean": 0.009812128363124116,
+      "reported": 0.009812128363124116,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "wall_B",
+      "per_net_mean": 0.6535785743333299,
+      "reported": 0.6535785743333299,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "all_B",
+      "per_net_mean": 0.04712872686197069,
+      "reported": 0.04712872686197069,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "D_A",
+      "per_net_mean": 0.8188609107677589,
+      "reported": 0.8188609107677589,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "free_A",
+      "per_net_mean": 0.008435594355643615,
+      "reported": 0.008435594355643615,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "wall_A",
+      "per_net_mean": 0.6734343723854908,
+      "reported": 0.6734343723854908,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "all_A",
+      "per_net_mean": 0.025080911042975468,
+      "reported": 0.025080911042975464,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "H",
+      "per_net_mean": 0.20977087697130095,
+      "reported": 0.20977087697130095,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "D_B",
+      "per_net_mean": 0.7944116019107151,
+      "reported": 0.7944116019107151,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "halo",
+      "per_net_mean": 0.09558256216448703,
+      "reported": 0.09558256216448706,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "free_B",
+      "per_net_mean": 0.016298883438950362,
+      "reported": 0.016298883438950362,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "wall_B",
+      "per_net_mean": 0.6532643178429676,
+      "reported": 0.6532643178429676,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "all_B",
+      "per_net_mean": 0.046688103692529376,
+      "reported": 0.046688103692529376,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "D_A",
+      "per_net_mean": 0.8281073517560933,
+      "reported": 0.8281073517560933,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "free_A",
+      "per_net_mean": 0.011340904350495408,
+      "reported": 0.011340904350495408,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "wall_A",
+      "per_net_mean": 0.6542601233244452,
+      "reported": 0.6542601233244452,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "all_A",
+      "per_net_mean": 0.027387482031685565,
+      "reported": 0.027387482031685565,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "H",
+      "per_net_mean": 0.39094261485268794,
+      "reported": 0.39094261485268794,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "D_B",
+      "per_net_mean": 0.7957115830781594,
+      "reported": 0.7957115830781595,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "halo",
+      "per_net_mean": 0.07366884322671143,
+      "reported": 0.07366884322671141,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "free_B",
+      "per_net_mean": 0.01723583443877419,
+      "reported": 0.01723583443877419,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "wall_B",
+      "per_net_mean": 0.616335152802803,
+      "reported": 0.616335152802803,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "all_B",
+      "per_net_mean": 0.043013649555887955,
+      "reported": 0.043013649555887955,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "D_A",
+      "per_net_mean": 0.8318252603294477,
+      "reported": 0.8318252603294477,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "free_A",
+      "per_net_mean": 0.01060213971734981,
+      "reported": 0.01060213971734981,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "wall_A",
+      "per_net_mean": 0.6143207665876547,
+      "reported": 0.6143207665876548,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "all_A",
+      "per_net_mean": 0.025760350334308024,
+      "reported": 0.025760350334308024,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "H",
+      "per_net_mean": 0.47994936817289213,
+      "reported": 0.47994936817289213,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "D_B",
+      "per_net_mean": 0.8040970373082503,
+      "reported": 0.8040970373082503,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "halo",
+      "per_net_mean": 0.06290298648419979,
+      "reported": 0.06290298648419979,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "free_B",
+      "per_net_mean": 0.014145359962525703,
+      "reported": 0.014145359962525703,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "wall_B",
+      "per_net_mean": 0.6266368117159896,
+      "reported": 0.6266368117159896,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "all_B",
+      "per_net_mean": 0.038855060988742605,
+      "reported": 0.038855060988742605,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "D_A",
+      "per_net_mean": 0.8408537020705197,
+      "reported": 0.8408537020705197,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "free_A",
+      "per_net_mean": 0.008725392304577232,
+      "reported": 0.008725392304577232,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "wall_A",
+      "per_net_mean": 0.6248466508590585,
+      "reported": 0.6248466508590587,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "all_A",
+      "per_net_mean": 0.02402744864962963,
+      "reported": 0.02402744864962963,
+      "pass": true
+    }
+  ],
+  "pick_counts": [
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "ring",
+      "count": 94,
+      "fraction": 0.06266666666666666,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "big_world",
+      "count": 130,
+      "fraction": 0.08666666666666667,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 0,
+      "field": "tiny_world",
+      "count": 136,
+      "fraction": 0.09066666666666667,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "ring",
+      "count": 708,
+      "fraction": 0.472,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "big_world",
+      "count": 873,
+      "fraction": 0.582,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 1,
+      "field": "tiny_world",
+      "count": 74,
+      "fraction": 0.04933333333333333,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "ring",
+      "count": 1049,
+      "fraction": 0.6993333333333334,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "big_world",
+      "count": 1227,
+      "fraction": 0.818,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 2,
+      "field": "tiny_world",
+      "count": 36,
+      "fraction": 0.024,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "ring",
+      "count": 970,
+      "fraction": 0.6466666666666666,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "big_world",
+      "count": 1168,
+      "fraction": 0.7786666666666666,
+      "pass": true
+    },
+    {
+      "arm": "O+",
+      "round_zero_based": 3,
+      "field": "tiny_world",
+      "count": 32,
+      "fraction": 0.021333333333333333,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "ring",
+      "count": 94,
+      "fraction": 0.06266666666666666,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "big_world",
+      "count": 130,
+      "fraction": 0.08666666666666667,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 0,
+      "field": "tiny_world",
+      "count": 136,
+      "fraction": 0.09066666666666667,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "ring",
+      "count": 720,
+      "fraction": 0.48,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "big_world",
+      "count": 975,
+      "fraction": 0.65,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 1,
+      "field": "tiny_world",
+      "count": 496,
+      "fraction": 0.33066666666666666,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "ring",
+      "count": 746,
+      "fraction": 0.49733333333333335,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "big_world",
+      "count": 986,
+      "fraction": 0.6573333333333333,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 2,
+      "field": "tiny_world",
+      "count": 475,
+      "fraction": 0.31666666666666665,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "ring",
+      "count": 727,
+      "fraction": 0.4846666666666667,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "big_world",
+      "count": 975,
+      "fraction": 0.65,
+      "pass": true
+    },
+    {
+      "arm": "U+",
+      "round_zero_based": 3,
+      "field": "tiny_world",
+      "count": 489,
+      "fraction": 0.326,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "ring",
+      "count": 94,
+      "fraction": 0.06266666666666666,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "big_world",
+      "count": 130,
+      "fraction": 0.08666666666666667,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 0,
+      "field": "tiny_world",
+      "count": 136,
+      "fraction": 0.09066666666666667,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "ring",
+      "count": 518,
+      "fraction": 0.3453333333333333,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "big_world",
+      "count": 708,
+      "fraction": 0.472,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 1,
+      "field": "tiny_world",
+      "count": 712,
+      "fraction": 0.4746666666666667,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "ring",
+      "count": 507,
+      "fraction": 0.338,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "big_world",
+      "count": 694,
+      "fraction": 0.46266666666666667,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 2,
+      "field": "tiny_world",
+      "count": 704,
+      "fraction": 0.4693333333333333,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "ring",
+      "count": 529,
+      "fraction": 0.3526666666666667,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "big_world",
+      "count": 723,
+      "fraction": 0.482,
+      "pass": true
+    },
+    {
+      "arm": "Q+",
+      "round_zero_based": 3,
+      "field": "tiny_world",
+      "count": 687,
+      "fraction": 0.458,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "ring",
+      "count": 94,
+      "fraction": 0.06266666666666666,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "big_world",
+      "count": 130,
+      "fraction": 0.08666666666666667,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 0,
+      "field": "tiny_world",
+      "count": 136,
+      "fraction": 0.09066666666666667,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "ring",
+      "count": 118,
+      "fraction": 0.07866666666666666,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "big_world",
+      "count": 152,
+      "fraction": 0.10133333333333333,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 1,
+      "field": "tiny_world",
+      "count": 132,
+      "fraction": 0.088,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "ring",
+      "count": 113,
+      "fraction": 0.07533333333333334,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "big_world",
+      "count": 152,
+      "fraction": 0.10133333333333333,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 2,
+      "field": "tiny_world",
+      "count": 146,
+      "fraction": 0.09733333333333333,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "ring",
+      "count": 105,
+      "fraction": 0.07,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "big_world",
+      "count": 146,
+      "fraction": 0.09733333333333333,
+      "pass": true
+    },
+    {
+      "arm": "R+",
+      "round_zero_based": 3,
+      "field": "tiny_world",
+      "count": 155,
+      "fraction": 0.10333333333333333,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "ring",
+      "count": 94,
+      "fraction": 0.06266666666666666,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "big_world",
+      "count": 130,
+      "fraction": 0.08666666666666667,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 0,
+      "field": "tiny_world",
+      "count": 136,
+      "fraction": 0.09066666666666667,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "ring",
+      "count": 1500,
+      "fraction": 1.0,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "big_world",
+      "count": 1500,
+      "fraction": 1.0,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 1,
+      "field": "tiny_world",
+      "count": 0,
+      "fraction": 0.0,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "ring",
+      "count": 1500,
+      "fraction": 1.0,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "big_world",
+      "count": 1500,
+      "fraction": 1.0,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 2,
+      "field": "tiny_world",
+      "count": 0,
+      "fraction": 0.0,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "ring",
+      "count": 1437,
+      "fraction": 0.958,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "big_world",
+      "count": 1439,
+      "fraction": 0.9593333333333334,
+      "pass": true
+    },
+    {
+      "arm": "W+",
+      "round_zero_based": 3,
+      "field": "tiny_world",
+      "count": 4,
+      "fraction": 0.0026666666666666666,
+      "pass": true
+    }
+  ],
+  "first_round_exact_equal": {
+    "O+": true,
+    "U+": true,
+    "Q+": true,
+    "R+": true,
+    "W+": true
+  },
+  "final_H": {
+    "O+": 0.3607203758982099,
+    "U+": 0.33055769492953957,
+    "Q+": 0.28820706843566796,
+    "R+": -0.057719284051699425,
+    "W+": 0.47994936817289213
+  },
+  "final_H_difference_O_minus": {
+    "U+": 0.030162680968670308,
+    "Q+": 0.07251330746254192,
+    "R+": 0.4184396599499093,
+    "W+": -0.11922899227468226
+  },
+  "GO": {
+    "formula": "(H(O+)-H(R+))-0.5*(H(W+)-H(R+))",
+    "value": 0.14960533383761349,
+    "confidence_interval": null,
+    "formal_gate_accepted": false,
+    "reason": "one exploration repeat; point value only"
+  },
+  "decoy_rounds_2_to_4": {
+    "O+": {
+      "rounds_2_to_4_fractions": [
+        0.04933333333333333,
+        0.024,
+        0.021333333333333333
+      ],
+      "mean": 0.03155555555555555,
+      "pooled_count": 142,
+      "pooled_denominator": 4500
+    },
+    "U+": {
+      "rounds_2_to_4_fractions": [
+        0.33066666666666666,
+        0.31666666666666665,
+        0.326
+      ],
+      "mean": 0.3244444444444445,
+      "pooled_count": 1460,
+      "pooled_denominator": 4500
+    },
+    "Q+": {
+      "rounds_2_to_4_fractions": [
+        0.4746666666666667,
+        0.4693333333333333,
+        0.458
+      ],
+      "mean": 0.4673333333333334,
+      "pooled_count": 2103,
+      "pooled_denominator": 4500
+    },
+    "R+": {
+      "rounds_2_to_4_fractions": [
+        0.088,
+        0.09733333333333333,
+        0.10333333333333333
+      ],
+      "mean": 0.09622222222222221,
+      "pooled_count": 433,
+      "pooled_denominator": 4500
+    },
+    "W+": {
+      "rounds_2_to_4_fractions": [
+        0.0,
+        0.0,
+        0.0026666666666666666
+      ],
+      "mean": 0.0008888888888888888,
+      "pooled_count": 4,
+      "pooled_denominator": 4500
+    }
+  },
+  "tiny_world_semantics": "both tiny (0.15-0.25) and large (0.85-0.95) decoy worlds, not tiny-only",
+  "static_imports": {
+    "tests/v9/experiments/test_s6_world_b.py": [
+      {
+        "line": 2,
+        "module": "__future__",
+        "names": [
+          "annotations"
+        ]
+      },
+      {
+        "line": 4,
+        "module": "ast"
+      },
+      {
+        "line": 5,
+        "module": "inspect"
+      },
+      {
+        "line": 6,
+        "module": "math"
+      },
+      {
+        "line": 8,
+        "module": "numpy"
+      },
+      {
+        "line": 9,
+        "module": "pytest"
+      },
+      {
+        "line": 11,
+        "module": "ainerzero.v9.experiments.s4",
+        "names": [
+          "world"
+        ]
+      },
+      {
+        "line": 12,
+        "module": "ainerzero.v9.experiments.s6",
+        "names": [
+          "sandbox"
+        ]
+      },
+      {
+        "line": 13,
+        "module": "ainerzero.v9.experiments.s6",
+        "names": [
+          "world_b"
+        ]
+      }
+    ],
+    "src/ainerzero/v9/experiments/s6/world_b.py": [
+      {
+        "line": 23,
+        "module": "__future__",
+        "names": [
+          "annotations"
+        ]
+      },
+      {
+        "line": 25,
+        "module": "math"
+      },
+      {
+        "line": 26,
+        "module": "dataclasses",
+        "names": [
+          "dataclass"
+        ]
+      },
+      {
+        "line": 27,
+        "module": "typing",
+        "names": [
+          "Any",
+          "Sequence"
+        ]
+      },
+      {
+        "line": 29,
+        "module": "numpy"
+      },
+      {
+        "line": 31,
+        "module": "ainerzero.v9.experiments.s4",
+        "names": [
+          "world"
+        ]
+      }
+    ],
+    "src/ainerzero/v9/experiments/s4/world.py": [
+      {
+        "line": 20,
+        "module": "__future__",
+        "names": [
+          "annotations"
+        ]
+      },
+      {
+        "line": 22,
+        "module": "hashlib"
+      },
+      {
+        "line": 23,
+        "module": "math"
+      },
+      {
+        "line": 24,
+        "module": "dataclasses",
+        "names": [
+          "dataclass"
+        ]
+      },
+      {
+        "line": 25,
+        "module": "typing",
+        "names": [
+          "Any",
+          "Sequence"
+        ]
+      },
+      {
+        "line": 27,
+        "module": "numpy"
+      }
+    ],
+    "src/ainerzero/v9/experiments/s6/sandbox.py": [
+      {
+        "line": 18,
+        "module": "__future__",
+        "names": [
+          "annotations"
+        ]
+      },
+      {
+        "line": 20,
+        "module": "dataclasses",
+        "names": [
+          "dataclass"
+        ]
+      },
+      {
+        "line": 21,
+        "module": "typing",
+        "names": [
+          "Any",
+          "Callable"
+        ]
+      },
+      {
+        "line": 23,
+        "module": "numpy"
+      },
+      {
+        "line": 25,
+        "module": "ainerzero.v9.experiments.s4",
+        "names": [
+          "world"
+        ]
+      }
+    ]
+  },
+  "pytest_guard": {
+    "guard_active": true,
+    "blocked_mlx_imports": [],
+    "loaded_mlx_modules": [],
+    "blocked_writes": [],
+    "local_loaded_modules": {
+      "sitecustomize": {
+        "path": "reports/V9-S6P2-DESIGN/r1-author-check/evidence/guard/sitecustomize.py",
+        "sha256": "1197b2b612ceacb51ba559b60812d6fb0ec9b08671bc708d7dbccaea563cf303"
+      },
+      "ainerzero": {
+        "path": "src/ainerzero/__init__.py",
+        "sha256": "00857af1f9199c1bd12d20f84a3f4203c4a0ec53b7fc0020f0432da38e73550d"
+      },
+      "ainerzero.v9.interfaces.errors": {
+        "path": "src/ainerzero/v9/interfaces/errors.py",
+        "sha256": "247da064945ee93b6ee8b193e0fca676ccdd624c5831d5ab7d6b760937a447f7"
+      },
+      "ainerzero.v9.interfaces.cmfl": {
+        "path": "src/ainerzero/v9/interfaces/cmfl.py",
+        "sha256": "380d273f2800e1854be8f77689e5b79fd2ddba8e6ee346f4409363324759501a"
+      },
+      "ainerzero.v9.interfaces.cmfl_registration": {
+        "path": "src/ainerzero/v9/interfaces/cmfl_registration.py",
+        "sha256": "afb93c9ee040b49ad90ccd5c79a01480b3aa2f670b5b8faedf716a29f45e04bd"
+      },
+      "ainerzero.v9.interfaces.types": {
+        "path": "src/ainerzero/v9/interfaces/types.py",
+        "sha256": "58eedc931fe5928044c17e3ab823f1cd73491494221559f7d4fb9557fcc62254"
+      },
+      "ainerzero.v9.interfaces.geometry_core": {
+        "path": "src/ainerzero/v9/interfaces/geometry_core.py",
+        "sha256": "471ee0b71339f11e91b68d1768d3f66fa2d5575550a01e9bd7272a65b3014174"
+      },
+      "ainerzero.v9.interfaces.perception": {
+        "path": "src/ainerzero/v9/interfaces/perception.py",
+        "sha256": "106e163730333159dd08d3799c15ddf1ce25759d870c49f54b20990dc1bc2f8e"
+      },
+      "ainerzero.v9.interfaces.planner": {
+        "path": "src/ainerzero/v9/interfaces/planner.py",
+        "sha256": "59cf46a57cca274fbab739552598dea3043f6093fbe98fab4bd0d1439090d35c"
+      },
+      "ainerzero.v9.interfaces.scheduler": {
+        "path": "src/ainerzero/v9/interfaces/scheduler.py",
+        "sha256": "2470293cc4701a44894c0594cd246962d89ffbdd8e46725063dfeccfdcdbd8be"
+      },
+      "ainerzero.v9.interfaces.spatial_memory": {
+        "path": "src/ainerzero/v9/interfaces/spatial_memory.py",
+        "sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208"
+      },
+      "ainerzero.v9.interfaces.timescale": {
+        "path": "src/ainerzero/v9/interfaces/timescale.py",
+        "sha256": "b9037f6bff7270d0ca5bea4a7f510862e58a20557ad33fd08e9f1c2fbe6fd552"
+      },
+      "ainerzero.v9.interfaces.validation": {
+        "path": "src/ainerzero/v9/interfaces/validation.py",
+        "sha256": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739"
+      },
+      "ainerzero.v9.interfaces.world_brain": {
+        "path": "src/ainerzero/v9/interfaces/world_brain.py",
+        "sha256": "454a6818f17f46449e4fa46be43bb4160e6c90d68cf56f446b0565f382882c1b"
+      },
+      "ainerzero.v9.interfaces": {
+        "path": "src/ainerzero/v9/interfaces/__init__.py",
+        "sha256": "1d6a3f372c868c6dfc1ad82cab4d6eb082530241ceb368c0cba6a65929dbd2c7"
+      },
+      "ainerzero.v9": {
+        "path": "src/ainerzero/v9/__init__.py",
+        "sha256": "6adaf00e84aa03dfc8a694a5aa62513d615d3ca0ea751d38b42545deec9657c9"
+      },
+      "ainerzero.v9.experiments": {
+        "path": "src/ainerzero/v9/experiments/__init__.py",
+        "sha256": "e72eabaabefb5e5f2a32977f6a6e48421b86ef0896cf21e51a2ea62ebcb5f614"
+      },
+      "ainerzero.v9.experiments.s1": {
+        "path": "src/ainerzero/v9/experiments/s1/__init__.py",
+        "sha256": "b406eb96528e5e2bd40cc2c66004cc67ad7ab18c7fe718b7b9ac8acb5aa3d273"
+      },
+      "ainerzero.v9.experiments.s1.spec": {
+        "path": "src/ainerzero/v9/experiments/s1/spec.py",
+        "sha256": "fff678e756eb5c3fe091d2c7bd9d4a090df7a0e60b23d4afe64ed8b49db2971f"
+      },
+      "ainerzero.v9.experiments.s1.data": {
+        "path": "src/ainerzero/v9/experiments/s1/data.py",
+        "sha256": "6fd63c55091d79469d5836600e441e0dd986cdf194014d62f7b535d84b2ba409"
+      },
+      "ainerzero.v9.experiments.s1.prereg": {
+        "path": "src/ainerzero/v9/experiments/s1/prereg.py",
+        "sha256": "ee8928e5ecfffabadf233e1cb84ec6bf13fec40bef05f5d33213e115de4cc7e9"
+      },
+      "s1_testkit": {
+        "path": "tests/v9/experiments/s1_testkit.py",
+        "sha256": "ca4186c02b5f93e58aebb882929dc9901546cb41e493cb558ff94be27a113acc"
+      },
+      "conftest": {
+        "path": "tests/v9/experiments/conftest.py",
+        "sha256": "73a42123657fe3fd716c71677e9e07b01204eb58aaa5494e635de3d5e92def1b"
+      },
+      "ainerzero.v9.experiments.s4": {
+        "path": "src/ainerzero/v9/experiments/s4/__init__.py",
+        "sha256": "76b57e473bb554153db489dc6bde97763520e1f3da926d384c3f6746a008d92c"
+      },
+      "ainerzero.v9.experiments.s4.world": {
+        "path": "src/ainerzero/v9/experiments/s4/world.py",
+        "sha256": "ef104a2e592c7229e2a0617ad9c974d7c6f2d98875393e891a5d81048be9ae11"
+      },
+      "ainerzero.v9.experiments.s6": {
+        "path": "src/ainerzero/v9/experiments/s6/__init__.py",
+        "sha256": "1962963784164cc4e66c866345043e15b5c797459717a0f55acad34fbd394b3e"
+      },
+      "ainerzero.v9.experiments.s6.sandbox": {
+        "path": "src/ainerzero/v9/experiments/s6/sandbox.py",
+        "sha256": "efeabd084eedd16f4eab291c9716966a496ddce69357b7e0876c88214a67c10e"
+      },
+      "ainerzero.v9.experiments.s6.world_b": {
+        "path": "src/ainerzero/v9/experiments/s6/world_b.py",
+        "sha256": "4548a05ca450c89629d8329dcdd23a8189c0961291b91eeaedfb717606fb21f6"
+      },
+      "test_s6_world_b": {
+        "path": "tests/v9/experiments/test_s6_world_b.py",
+        "sha256": "bee3f212afdba9df33b430c7a8cf038e24dd66d20f1d2177a2afbe4a2ce8352d"
+      },
+      "ainerzero.v9.experiments.s1.resource_gate": {
+        "path": "src/ainerzero/v9/experiments/s1/resource_gate.py",
+        "sha256": "7171a83282abdfdb31892a3b24d82251b813f3623102148b9ddcc0710e5d578f"
+      }
+    },
+    "numpy_version": "2.5.3",
+    "python": "3.12.2 (v3.12.2:6abddd9f6a, Feb  6 2024, 17:02:06) [Clang 13.0.0 (clang-1300.0.29.30)]"
+  },
+  "phase1_frozen": {
+    "prereg_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/PREREG-r1.json",
+    "manifest_key": "manifest",
+    "file_count": 46,
+    "matches": 46,
+    "files": [
+      {
+        "path": "reports/V9-S6-DESIGN/DESIGN-r3.md",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-DESIGN/DESIGN-r3.md",
+        "expected_sha256": "e6e504e9a8374a8995dc77b1955aacce0d4a2c0fe7e7ae29e19ee3d334f0d3db",
+        "actual_sha256": "e6e504e9a8374a8995dc77b1955aacce0d4a2c0fe7e7ae29e19ee3d334f0d3db",
+        "match": true
+      },
+      {
+        "path": "reports/V9-S6-PHASE1/make_prereg.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/make_prereg.py",
+        "expected_sha256": "63081afbb55098acbed56d90e04ccdab752fc5b483d156dedcc6b1a1553efd26",
+        "actual_sha256": "63081afbb55098acbed56d90e04ccdab752fc5b483d156dedcc6b1a1553efd26",
+        "match": true
+      },
+      {
+        "path": "reports/V9-S6-PHASE1/prereg_evidence.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg_evidence.py",
+        "expected_sha256": "5934ce6ca6e47108fc38d72f3b5a82f330d28f439649da4ad704af29c6b702ae",
+        "actual_sha256": "5934ce6ca6e47108fc38d72f3b5a82f330d28f439649da4ad704af29c6b702ae",
+        "match": true
+      },
+      {
+        "path": "reports/V9-S6-PHASE1/prereg_identity.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg_identity.py",
+        "expected_sha256": "0029a207e245a58fc7eefa995e698b5c4fdef283997d3d9b9c1f8c5b297f6243",
+        "actual_sha256": "0029a207e245a58fc7eefa995e698b5c4fdef283997d3d9b9c1f8c5b297f6243",
+        "match": true
+      },
+      {
+        "path": "reports/V9-S6-PHASE1/run_s6p1.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/run_s6p1.py",
+        "expected_sha256": "919e431d99bf562fc41989ef1bad8240c6070bd002cc5747ff2168c673738b58",
+        "actual_sha256": "919e431d99bf562fc41989ef1bad8240c6070bd002cc5747ff2168c673738b58",
+        "match": true
+      },
+      {
+        "path": "reports/V9-S6-PHASE1/verify_s6p1.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/verify_s6p1.py",
+        "expected_sha256": "116f45ef23bcbf5e91cf64bb800db15eba9ff52da5a49a3dbcb3c5de4e1d0885",
+        "actual_sha256": "116f45ef23bcbf5e91cf64bb800db15eba9ff52da5a49a3dbcb3c5de4e1d0885",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/__init__.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/__init__.py",
+        "expected_sha256": "00857af1f9199c1bd12d20f84a3f4203c4a0ec53b7fc0020f0432da38e73550d",
+        "actual_sha256": "00857af1f9199c1bd12d20f84a3f4203c4a0ec53b7fc0020f0432da38e73550d",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/__init__.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/__init__.py",
+        "expected_sha256": "6adaf00e84aa03dfc8a694a5aa62513d615d3ca0ea751d38b42545deec9657c9",
+        "actual_sha256": "6adaf00e84aa03dfc8a694a5aa62513d615d3ca0ea751d38b42545deec9657c9",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/__init__.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/__init__.py",
+        "expected_sha256": "e72eabaabefb5e5f2a32977f6a6e48421b86ef0896cf21e51a2ea62ebcb5f614",
+        "actual_sha256": "e72eabaabefb5e5f2a32977f6a6e48421b86ef0896cf21e51a2ea62ebcb5f614",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s2/__init__.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s2/__init__.py",
+        "expected_sha256": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+        "actual_sha256": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s2/core_math.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s2/core_math.py",
+        "expected_sha256": "a6d22a5b9a9b95e873bf16cc6aa12eb3beb5610a77fde28454add6fbd74ffbf4",
+        "actual_sha256": "a6d22a5b9a9b95e873bf16cc6aa12eb3beb5610a77fde28454add6fbd74ffbf4",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s2/spec.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s2/spec.py",
+        "expected_sha256": "629b2d0412e0a0d582bb2a233ea146d7eaac9cf89c972ef3437d455ffaa31df8",
+        "actual_sha256": "629b2d0412e0a0d582bb2a233ea146d7eaac9cf89c972ef3437d455ffaa31df8",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s2/world.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s2/world.py",
+        "expected_sha256": "143e807e69d329e17b1929c9cc2383d80d3f43ca98f88084db9732bf18a7de78",
+        "actual_sha256": "143e807e69d329e17b1929c9cc2383d80d3f43ca98f88084db9732bf18a7de78",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s3/__init__.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/__init__.py",
+        "expected_sha256": "fb0d44222c3188df461c943bd7b2ecea1b6ee9df1278e73da3a43941755e18b0",
+        "actual_sha256": "fb0d44222c3188df461c943bd7b2ecea1b6ee9df1278e73da3a43941755e18b0",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s3/content.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/content.py",
+        "expected_sha256": "66370cd4c502dc99b10651b472762102b6d3759801d3871480cb8b5a883ef6fe",
+        "actual_sha256": "66370cd4c502dc99b10651b472762102b6d3759801d3871480cb8b5a883ef6fe",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s3/data.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/data.py",
+        "expected_sha256": "f8936e0fa4a4b6e540160609b625da6a124fa7b7aaecb02571803325987a2e34",
+        "actual_sha256": "f8936e0fa4a4b6e540160609b625da6a124fa7b7aaecb02571803325987a2e34",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s3/run_guard.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/run_guard.py",
+        "expected_sha256": "29b3093e2d1d4252d3e85ff73e9e7829f3cb995163e5bd801080a17a118f6439",
+        "actual_sha256": "29b3093e2d1d4252d3e85ff73e9e7829f3cb995163e5bd801080a17a118f6439",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s3/spec.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/spec.py",
+        "expected_sha256": "9250427f2cf23154f5ab0d6a282a3dfd9dbaa40917bd11828f1790927b1d09d2",
+        "actual_sha256": "9250427f2cf23154f5ab0d6a282a3dfd9dbaa40917bd11828f1790927b1d09d2",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s3/tour.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/tour.py",
+        "expected_sha256": "949a5ec27b653f1f984f95904a7eaf2f3796d266aa90326dfd51855e83f45d7c",
+        "actual_sha256": "949a5ec27b653f1f984f95904a7eaf2f3796d266aa90326dfd51855e83f45d7c",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s3/world.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/world.py",
+        "expected_sha256": "fc70d464c125500012a700b731d28c13ee1d7f2d03ab4d91d9a2c68cbcbb7843",
+        "actual_sha256": "fc70d464c125500012a700b731d28c13ee1d7f2d03ab4d91d9a2c68cbcbb7843",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s4/__init__.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/__init__.py",
+        "expected_sha256": "76b57e473bb554153db489dc6bde97763520e1f3da926d384c3f6746a008d92c",
+        "actual_sha256": "76b57e473bb554153db489dc6bde97763520e1f3da926d384c3f6746a008d92c",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s4/analysis.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/analysis.py",
+        "expected_sha256": "be3c8b7cc7cb9d6d05d9ae31f108f88941e2d040d6a068e28331a477464635f7",
+        "actual_sha256": "be3c8b7cc7cb9d6d05d9ae31f108f88941e2d040d6a068e28331a477464635f7",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s4/assign.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/assign.py",
+        "expected_sha256": "9a31a403ef027da03399b4dc91691b373f7fb67ef153bd1eabb16cd49caa5c6d",
+        "actual_sha256": "9a31a403ef027da03399b4dc91691b373f7fb67ef153bd1eabb16cd49caa5c6d",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s4/filter.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/filter.py",
+        "expected_sha256": "3dce5f33aadcd6ebb64fbf85b357681f1506ccfc4ae333715ddc42c1fbfdcde8",
+        "actual_sha256": "3dce5f33aadcd6ebb64fbf85b357681f1506ccfc4ae333715ddc42c1fbfdcde8",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s4/learned_mlx.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/learned_mlx.py",
+        "expected_sha256": "674c40b3bd5df2a3d5d998926f7859b2c62395df6667e9164c1af8f31c29e66b",
+        "actual_sha256": "674c40b3bd5df2a3d5d998926f7859b2c62395df6667e9164c1af8f31c29e66b",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s4/metrics.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/metrics.py",
+        "expected_sha256": "235c83f7f4c3cb5b1fc9c0206b424aa6a3293a7c9f31b1246a23fc840d35c9c5",
+        "actual_sha256": "235c83f7f4c3cb5b1fc9c0206b424aa6a3293a7c9f31b1246a23fc840d35c9c5",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s4/models.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/models.py",
+        "expected_sha256": "c1656a463aca74644288950934ae01feceb4de4d873f31fc5290238ea736c1a3",
+        "actual_sha256": "c1656a463aca74644288950934ae01feceb4de4d873f31fc5290238ea736c1a3",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s4/world.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/world.py",
+        "expected_sha256": "ef104a2e592c7229e2a0617ad9c974d7c6f2d98875393e891a5d81048be9ae11",
+        "actual_sha256": "ef104a2e592c7229e2a0617ad9c974d7c6f2d98875393e891a5d81048be9ae11",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s6/__init__.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/__init__.py",
+        "expected_sha256": "1962963784164cc4e66c866345043e15b5c797459717a0f55acad34fbd394b3e",
+        "actual_sha256": "1962963784164cc4e66c866345043e15b5c797459717a0f55acad34fbd394b3e",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s6/analysis.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/analysis.py",
+        "expected_sha256": "baf00ede726791984f3b67df9e6cb71ad345131d8871ad9d847925a37ae03b6e",
+        "actual_sha256": "baf00ede726791984f3b67df9e6cb71ad345131d8871ad9d847925a37ae03b6e",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s6/cells.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/cells.py",
+        "expected_sha256": "08cc78493c865981583924a1bf217ae0be890ffc6478b446284f72e2ce1baa2e",
+        "actual_sha256": "08cc78493c865981583924a1bf217ae0be890ffc6478b446284f72e2ce1baa2e",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s6/epinet_mlx.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/epinet_mlx.py",
+        "expected_sha256": "9f7831a424b68b7edf682338a7b46082d15887624a457e8a8388cd1f657f127e",
+        "actual_sha256": "9f7831a424b68b7edf682338a7b46082d15887624a457e8a8388cd1f657f127e",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/experiments/s6/sandbox.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/sandbox.py",
+        "expected_sha256": "efeabd084eedd16f4eab291c9716966a496ddce69357b7e0876c88214a67c10e",
+        "actual_sha256": "efeabd084eedd16f4eab291c9716966a496ddce69357b7e0876c88214a67c10e",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/__init__.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/__init__.py",
+        "expected_sha256": "1d6a3f372c868c6dfc1ad82cab4d6eb082530241ceb368c0cba6a65929dbd2c7",
+        "actual_sha256": "1d6a3f372c868c6dfc1ad82cab4d6eb082530241ceb368c0cba6a65929dbd2c7",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/cmfl.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/cmfl.py",
+        "expected_sha256": "380d273f2800e1854be8f77689e5b79fd2ddba8e6ee346f4409363324759501a",
+        "actual_sha256": "380d273f2800e1854be8f77689e5b79fd2ddba8e6ee346f4409363324759501a",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/cmfl_registration.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/cmfl_registration.py",
+        "expected_sha256": "afb93c9ee040b49ad90ccd5c79a01480b3aa2f670b5b8faedf716a29f45e04bd",
+        "actual_sha256": "afb93c9ee040b49ad90ccd5c79a01480b3aa2f670b5b8faedf716a29f45e04bd",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/errors.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/errors.py",
+        "expected_sha256": "247da064945ee93b6ee8b193e0fca676ccdd624c5831d5ab7d6b760937a447f7",
+        "actual_sha256": "247da064945ee93b6ee8b193e0fca676ccdd624c5831d5ab7d6b760937a447f7",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/geometry_core.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/geometry_core.py",
+        "expected_sha256": "471ee0b71339f11e91b68d1768d3f66fa2d5575550a01e9bd7272a65b3014174",
+        "actual_sha256": "471ee0b71339f11e91b68d1768d3f66fa2d5575550a01e9bd7272a65b3014174",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/perception.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/perception.py",
+        "expected_sha256": "106e163730333159dd08d3799c15ddf1ce25759d870c49f54b20990dc1bc2f8e",
+        "actual_sha256": "106e163730333159dd08d3799c15ddf1ce25759d870c49f54b20990dc1bc2f8e",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/planner.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/planner.py",
+        "expected_sha256": "59cf46a57cca274fbab739552598dea3043f6093fbe98fab4bd0d1439090d35c",
+        "actual_sha256": "59cf46a57cca274fbab739552598dea3043f6093fbe98fab4bd0d1439090d35c",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/scheduler.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/scheduler.py",
+        "expected_sha256": "2470293cc4701a44894c0594cd246962d89ffbdd8e46725063dfeccfdcdbd8be",
+        "actual_sha256": "2470293cc4701a44894c0594cd246962d89ffbdd8e46725063dfeccfdcdbd8be",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/spatial_memory.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/spatial_memory.py",
+        "expected_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+        "actual_sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/timescale.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/timescale.py",
+        "expected_sha256": "b9037f6bff7270d0ca5bea4a7f510862e58a20557ad33fd08e9f1c2fbe6fd552",
+        "actual_sha256": "b9037f6bff7270d0ca5bea4a7f510862e58a20557ad33fd08e9f1c2fbe6fd552",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/types.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/types.py",
+        "expected_sha256": "58eedc931fe5928044c17e3ab823f1cd73491494221559f7d4fb9557fcc62254",
+        "actual_sha256": "58eedc931fe5928044c17e3ab823f1cd73491494221559f7d4fb9557fcc62254",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/validation.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/validation.py",
+        "expected_sha256": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739",
+        "actual_sha256": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739",
+        "match": true
+      },
+      {
+        "path": "src/ainerzero/v9/interfaces/world_brain.py",
+        "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/world_brain.py",
+        "expected_sha256": "454a6818f17f46449e4fa46be43bb4160e6c90d68cf56f446b0565f382882c1b",
+        "actual_sha256": "454a6818f17f46449e4fa46be43bb4160e6c90d68cf56f446b0565f382882c1b",
+        "match": true
+      }
+    ],
+    "registered_manifest_sha256": "dce517dfa554ad57bb60e9fec855c8954eeefd7ee75781f64ac22665dc2b29d1",
+    "computed_manifest_sha256": "f8c4876e5519d93a3a9470b5f4724d196435213e27950a074a188f52785735e5",
+    "manifest_digest_match": false
+  },
+  "input_files": [
+    {
+      "path": "AGENTS.md",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/AGENTS.md",
+      "sha256": "4cfae39dfd2860188ba017fca6b52aea6b815ab4d197ff41b7bc5b692d215549",
+      "bytes": 2436
+    },
+    {
+      "path": "AGENT_TASKS.md",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/AGENT_TASKS.md",
+      "sha256": "a7b38665b9dd8245c3a240341c53994159e3ccea197af8dc602f187eb91b69e3",
+      "bytes": 42911
+    },
+    {
+      "path": "COORDINATION.md",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/COORDINATION.md",
+      "sha256": "13e2c5234162311924bb49e40e8a0e337e2de7ae692c3e791cb4ee0c486295f6",
+      "bytes": 30854
+    },
+    {
+      "path": "README.md",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/README.md",
+      "sha256": "dc77aa21c5c85abe7cf256f5997cc25c8d2670dfd5d46bcbe1c4286c7ae46656",
+      "bytes": 30723
+    },
+    {
+      "path": "RESEARCH_LOG.md",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/RESEARCH_LOG.md",
+      "sha256": "87b66a4a17591bfcf3831ec8649ddfedae6dec3839f9ace276d9ea8258bd7a51",
+      "bytes": 638869
+    },
+    {
+      "path": "pyproject.toml",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/pyproject.toml",
+      "sha256": "9f10311a121f1ebc7604f37ae503cafd467a2128a3e928de0aead595f848ad4e",
+      "bytes": 921
+    },
+    {
+      "path": "reports/V9-S6-DESIGN/DESIGN-r3.md",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-DESIGN/DESIGN-r3.md",
+      "sha256": "e6e504e9a8374a8995dc77b1955aacce0d4a2c0fe7e7ae29e19ee3d334f0d3db",
+      "bytes": 41984
+    },
+    {
+      "path": "reports/V9-S6-PHASE1/PREREG-r1.json",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/PREREG-r1.json",
+      "sha256": "c63d31a0d8a941affaa7de8fefc316fca88d9d6cdfc3e4901aa911810293179b",
+      "bytes": 21243
+    },
+    {
+      "path": "reports/V9-S6-PHASE1/make_prereg.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/make_prereg.py",
+      "sha256": "63081afbb55098acbed56d90e04ccdab752fc5b483d156dedcc6b1a1553efd26",
+      "bytes": 6255
+    },
+    {
+      "path": "reports/V9-S6-PHASE1/prereg_evidence.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg_evidence.py",
+      "sha256": "5934ce6ca6e47108fc38d72f3b5a82f330d28f439649da4ad704af29c6b702ae",
+      "bytes": 21660
+    },
+    {
+      "path": "reports/V9-S6-PHASE1/prereg_identity.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/prereg_identity.py",
+      "sha256": "0029a207e245a58fc7eefa995e698b5c4fdef283997d3d9b9c1f8c5b297f6243",
+      "bytes": 10187
+    },
+    {
+      "path": "reports/V9-S6-PHASE1/run_s6p1.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/run_s6p1.py",
+      "sha256": "919e431d99bf562fc41989ef1bad8240c6070bd002cc5747ff2168c673738b58",
+      "bytes": 17839
+    },
+    {
+      "path": "reports/V9-S6-PHASE1/verify_s6p1.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6-PHASE1/verify_s6p1.py",
+      "sha256": "116f45ef23bcbf5e91cf64bb800db15eba9ff52da5a49a3dbcb3c5de4e1d0885",
+      "bytes": 5159
+    },
+    {
+      "path": "reports/V9-S6P2-DESIGN/DESIGN-r1.md",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/DESIGN-r1.md",
+      "sha256": "84500620b72fed4a8106935f5e6f41a02d440c8fbd9fdc9243dff5ccd29b63dc",
+      "bytes": 37139
+    },
+    {
+      "path": "reports/V9-S6P2-DESIGN/tier1-explore/explore_p2a.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/tier1-explore/explore_p2a.py",
+      "sha256": "26a1b73c7d56f676172054cdd7ddbfac32fa227f43cd9664f5618ea67f1d5517",
+      "bytes": 9944
+    },
+    {
+      "path": "reports/V9-S6P2-DESIGN/tier1-explore/explore_p2f.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/tier1-explore/explore_p2f.py",
+      "sha256": "6bcd15ce4806d82e6c63fef7c4fc8790b78a427bf0045b24a03b3c0a7804b1fb",
+      "bytes": 11270
+    },
+    {
+      "path": "reports/V9-S6P2-DESIGN/tier1-explore/results-p2i.json",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/tier1-explore/results-p2i.json",
+      "sha256": "106e5ae96ed104baf6a3de3d5032352ff5d9732dced15c4f1e137b27d01b75b1",
+      "bytes": 26306
+    },
+    {
+      "path": "reports/V9-S6P2-DESIGN/tier1-explore/run-p2i.log",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/tier1-explore/run-p2i.log",
+      "sha256": "29d0bb576e84320b59067f652b06a80c2786c6f671e93edbf29c78775035954c",
+      "bytes": 2897
+    },
+    {
+      "path": "src/ainerzero/__init__.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/__init__.py",
+      "sha256": "00857af1f9199c1bd12d20f84a3f4203c4a0ec53b7fc0020f0432da38e73550d",
+      "bytes": 103
+    },
+    {
+      "path": "src/ainerzero/v9/__init__.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/__init__.py",
+      "sha256": "6adaf00e84aa03dfc8a694a5aa62513d615d3ca0ea751d38b42545deec9657c9",
+      "bytes": 1462
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/__init__.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/__init__.py",
+      "sha256": "e72eabaabefb5e5f2a32977f6a6e48421b86ef0896cf21e51a2ea62ebcb5f614",
+      "bytes": 384
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s2/__init__.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s2/__init__.py",
+      "sha256": "d083f457255e140af89dc81afe06bc16a3663955f64b8e830bcb750d019d105d",
+      "bytes": 857
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s2/core_math.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s2/core_math.py",
+      "sha256": "a6d22a5b9a9b95e873bf16cc6aa12eb3beb5610a77fde28454add6fbd74ffbf4",
+      "bytes": 24295
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s2/spec.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s2/spec.py",
+      "sha256": "629b2d0412e0a0d582bb2a233ea146d7eaac9cf89c972ef3437d455ffaa31df8",
+      "bytes": 12867
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s2/world.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s2/world.py",
+      "sha256": "143e807e69d329e17b1929c9cc2383d80d3f43ca98f88084db9732bf18a7de78",
+      "bytes": 23684
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s3/__init__.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/__init__.py",
+      "sha256": "fb0d44222c3188df461c943bd7b2ecea1b6ee9df1278e73da3a43941755e18b0",
+      "bytes": 1138
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s3/content.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/content.py",
+      "sha256": "66370cd4c502dc99b10651b472762102b6d3759801d3871480cb8b5a883ef6fe",
+      "bytes": 4655
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s3/data.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/data.py",
+      "sha256": "f8936e0fa4a4b6e540160609b625da6a124fa7b7aaecb02571803325987a2e34",
+      "bytes": 6315
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s3/run_guard.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/run_guard.py",
+      "sha256": "29b3093e2d1d4252d3e85ff73e9e7829f3cb995163e5bd801080a17a118f6439",
+      "bytes": 13824
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s3/spec.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/spec.py",
+      "sha256": "9250427f2cf23154f5ab0d6a282a3dfd9dbaa40917bd11828f1790927b1d09d2",
+      "bytes": 2800
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s3/tour.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/tour.py",
+      "sha256": "949a5ec27b653f1f984f95904a7eaf2f3796d266aa90326dfd51855e83f45d7c",
+      "bytes": 7002
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s3/world.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s3/world.py",
+      "sha256": "fc70d464c125500012a700b731d28c13ee1d7f2d03ab4d91d9a2c68cbcbb7843",
+      "bytes": 8961
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s4/__init__.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/__init__.py",
+      "sha256": "76b57e473bb554153db489dc6bde97763520e1f3da926d384c3f6746a008d92c",
+      "bytes": 242
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s4/analysis.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/analysis.py",
+      "sha256": "be3c8b7cc7cb9d6d05d9ae31f108f88941e2d040d6a068e28331a477464635f7",
+      "bytes": 28940
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s4/assign.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/assign.py",
+      "sha256": "9a31a403ef027da03399b4dc91691b373f7fb67ef153bd1eabb16cd49caa5c6d",
+      "bytes": 1813
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s4/filter.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/filter.py",
+      "sha256": "3dce5f33aadcd6ebb64fbf85b357681f1506ccfc4ae333715ddc42c1fbfdcde8",
+      "bytes": 6129
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s4/learned_mlx.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/learned_mlx.py",
+      "sha256": "674c40b3bd5df2a3d5d998926f7859b2c62395df6667e9164c1af8f31c29e66b",
+      "bytes": 18841
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s4/metrics.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/metrics.py",
+      "sha256": "235c83f7f4c3cb5b1fc9c0206b424aa6a3293a7c9f31b1246a23fc840d35c9c5",
+      "bytes": 6594
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s4/models.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/models.py",
+      "sha256": "c1656a463aca74644288950934ae01feceb4de4d873f31fc5290238ea736c1a3",
+      "bytes": 959
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s4/world.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s4/world.py",
+      "sha256": "ef104a2e592c7229e2a0617ad9c974d7c6f2d98875393e891a5d81048be9ae11",
+      "bytes": 11141
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s6/__init__.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/__init__.py",
+      "sha256": "1962963784164cc4e66c866345043e15b5c797459717a0f55acad34fbd394b3e",
+      "bytes": 55
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s6/analysis.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/analysis.py",
+      "sha256": "baf00ede726791984f3b67df9e6cb71ad345131d8871ad9d847925a37ae03b6e",
+      "bytes": 14300
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s6/cells.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/cells.py",
+      "sha256": "08cc78493c865981583924a1bf217ae0be890ffc6478b446284f72e2ce1baa2e",
+      "bytes": 19959
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s6/epinet_mlx.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/epinet_mlx.py",
+      "sha256": "9f7831a424b68b7edf682338a7b46082d15887624a457e8a8388cd1f657f127e",
+      "bytes": 7152
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s6/sandbox.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/sandbox.py",
+      "sha256": "efeabd084eedd16f4eab291c9716966a496ddce69357b7e0876c88214a67c10e",
+      "bytes": 13344
+    },
+    {
+      "path": "src/ainerzero/v9/experiments/s6/world_b.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/world_b.py",
+      "sha256": "4548a05ca450c89629d8329dcdd23a8189c0961291b91eeaedfb717606fb21f6",
+      "bytes": 7535
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/__init__.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/__init__.py",
+      "sha256": "1d6a3f372c868c6dfc1ad82cab4d6eb082530241ceb368c0cba6a65929dbd2c7",
+      "bytes": 3693
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/cmfl.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/cmfl.py",
+      "sha256": "380d273f2800e1854be8f77689e5b79fd2ddba8e6ee346f4409363324759501a",
+      "bytes": 15250
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/cmfl_registration.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/cmfl_registration.py",
+      "sha256": "afb93c9ee040b49ad90ccd5c79a01480b3aa2f670b5b8faedf716a29f45e04bd",
+      "bytes": 14775
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/errors.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/errors.py",
+      "sha256": "247da064945ee93b6ee8b193e0fca676ccdd624c5831d5ab7d6b760937a447f7",
+      "bytes": 3641
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/geometry_core.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/geometry_core.py",
+      "sha256": "471ee0b71339f11e91b68d1768d3f66fa2d5575550a01e9bd7272a65b3014174",
+      "bytes": 5294
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/perception.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/perception.py",
+      "sha256": "106e163730333159dd08d3799c15ddf1ce25759d870c49f54b20990dc1bc2f8e",
+      "bytes": 2474
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/planner.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/planner.py",
+      "sha256": "59cf46a57cca274fbab739552598dea3043f6093fbe98fab4bd0d1439090d35c",
+      "bytes": 2374
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/scheduler.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/scheduler.py",
+      "sha256": "2470293cc4701a44894c0594cd246962d89ffbdd8e46725063dfeccfdcdbd8be",
+      "bytes": 3013
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/spatial_memory.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/spatial_memory.py",
+      "sha256": "56bbda8a9a564b18a7ca7d4e570edf5094f3bde715c122a07b18d2435f824208",
+      "bytes": 7483
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/timescale.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/timescale.py",
+      "sha256": "b9037f6bff7270d0ca5bea4a7f510862e58a20557ad33fd08e9f1c2fbe6fd552",
+      "bytes": 2323
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/types.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/types.py",
+      "sha256": "58eedc931fe5928044c17e3ab823f1cd73491494221559f7d4fb9557fcc62254",
+      "bytes": 39930
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/validation.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/validation.py",
+      "sha256": "0781a8272898df9bdcf4e036c69557de3cd142ec79bf31ce134e83997af15739",
+      "bytes": 24426
+    },
+    {
+      "path": "src/ainerzero/v9/interfaces/world_brain.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/interfaces/world_brain.py",
+      "sha256": "454a6818f17f46449e4fa46be43bb4160e6c90d68cf56f446b0565f382882c1b",
+      "bytes": 2332
+    },
+    {
+      "path": "tests/conftest.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/tests/conftest.py",
+      "sha256": "15e567c40fda5cff6402dafe4362b66237fc0add41527d79e444c6cfb9885dfb",
+      "bytes": 17523
+    },
+    {
+      "path": "tests/v9/experiments/conftest.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/experiments/conftest.py",
+      "sha256": "73a42123657fe3fd716c71677e9e07b01204eb58aaa5494e635de3d5e92def1b",
+      "bytes": 4668
+    },
+    {
+      "path": "tests/v9/experiments/s1_testkit.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/experiments/s1_testkit.py",
+      "sha256": "ca4186c02b5f93e58aebb882929dc9901546cb41e493cb558ff94be27a113acc",
+      "bytes": 18418
+    },
+    {
+      "path": "tests/v9/experiments/test_s6_world_b.py",
+      "absolute_path": "/Users/mac/AinerWorkFlow/AinerZero/tests/v9/experiments/test_s6_world_b.py",
+      "sha256": "bee3f212afdba9df33b430c7a8cf038e24dd66d20f1d2177a2afbe4a2ce8352d",
+      "bytes": 10195
+    }
+  ],
+  "input_changes_during_check": [],
+  "findings": [
+    {
+      "severity": "harness_failure_preserved",
+      "detail": "Initial test launch exited 3 before test execution: the strict write guard rejected pytest's default /dev/null logging sink. Retry explicitly routes pytest log_file into the delivery directory; no repository code or tests changed.",
+      "evidence": "evidence/attempt1/",
+      "returncode": 3
+    },
+    {
+      "severity": "provenance_limit",
+      "detail": "results config records only per/rounds/steps/lr. Historical environment overrides, candidate namespace, command and input hashes are not embedded in results-p2i.json or run-p2i.log. Current input SHA identifies this check's snapshot, not proven historical execution bytes. Candidate 600/60/30/30 is design-declared, not independently regenerated or proven by rounded pool frequencies."
+    },
+    {
+      "severity": "failed_check",
+      "check": "phase1 manifest canonical digest matches",
+      "pass": false,
+      "detail": null
+    }
+  ],
+  "not_performed": [
+    "MLX imports",
+    "model load/inference/training",
+    "exploration rerun",
+    "checkpoint or final artifact read",
+    "design acceptance",
+    "source/test/design fixes",
+    "git add/commit/push",
+    "Relay card mutation"
+  ],
+  "model_budget_reserved": 0,
+  "model_work_completed": 0
+}

@@ -1,0 +1,125 @@
+=== ARCHITECTURE_V9.md:141 ===
+   141	6. 学习保护：`min L_new(θ)` s.t. `L_old(θ) ≤ L_old(θ_baseline) + ε`（ε、基线在登记时冻结）。
+
+=== ARCHITECTURE_V9.md:183 ===
+   183	| S6 自驱 | 学习缺口、信息增益、沙盒行动、技能晋升与撤销；epinet 对照小集成 | 需批准 | 无教师独立测试、旧技能保留 |
+
+=== ARCHITECTURE_V9.md:211 ===
+   211	| 自驱 | 学习进展、无教师测试、旧技能保留 | 教师答案进入 final、评测反复使用；教师或 LLM 直接写 SLOW |
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:33,40 ===
+    33	所有轮次：起点是一期**探针**格 E-r0 的三个网络（final 的格留给登记运行）；4 轮 × 1500 个新实验，第一轮随机，每轮每网络 1000 步；1 个重复。
+    34	
+    35	- `H`：环内技能，`1 − 环内盘步误差 / 旧规律在环内的误差`。0 是完全不知道新机制，1 是完全学会。起点模型是 −0.11。
+    36	- 旧技能在旧世界测试集上量：碰撞技能 `D_A`（起点 0.821）、全部盘步误差 `all_A`（起点 0.0262）。
+    37	- 「+」表示每隔一批回放学习者自己的旧实验（12000 个，旧世界），「−」表示只用新数据。
+    38	
+    39	| 轮 | 脚本、日志 | 设置 | 发现 |
+    40	|---|---|---|---|
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:105 ===
+   105	- 旧世界：三根柱子，半径 0.4–0.8。
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:121,125 ===
+   121	| `s6p2-promo` | 晋升测试世界。分 5 段互不相交：第 0–3 段给四轮的晋升测试，第 4 段给最后的抽查。每段 20 个大柱子世界、20 个普通世界，都是 6 盘 |
+   122	| `s6p2-probe` | 探针的测试世界：大柱子 40 个、普通 40 个、诱饵 20 个 |
+   123	| `s6p2-final` | final 的测试世界：大柱子 150 个、普通 150 个、诱饵 50 个，都是 6 盘；登记分区，只读一次 |
+   124	
+   125	- 与一期、S1–S5 和 `s6x-*` 的命名空间都不相交。测试一律用替身（`s6t-*`）。
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:147,151 ===
+   147	**「记住惊讶」N 的定义：**
+   148	1. **预期：** 一个小头（输入是已晋升版本第一个网络的隐藏状态与节点特征，64 个隐藏单元），在旧经验上学「这一版模型在这种盘上一步会错多少」（误差取对数）。每个已晋升版本只训练一次。
+   149	2. **惊讶：** 对每个已揭示的新实验，用已晋升版本算每个盘的一步误差，减去预期，取各盘的最大值。碰撞这类一直就难的情形，预期本来就高，会被抵消。
+   150	3. **按布局记：** 把惊讶按候选的柱子布局求平均（同一个世界的候选布局相同）。
+   151	4. **标记与挑选：** 平均惊讶高于「中位数 + 3 个稳健标准差」的布局算有缺口。下一轮的 1500 个实验里，先随机挑 300 个（20% 保底，让没碰过的布局有机会被发现），其余 1200 个在有缺口的布局的候选里随机挑，不够随机补。
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:160,167 ===
+   160	每条「臂 × 重复」是一条版本线：
+   161	
+   162	- **v0** 已晋升。每轮训练后的三个网络是候选 `c_r`（r = 0..3）。
+   163	- **晋升测试**在 `s6p2-promo` 的第 r 段上做，候选晋升当且仅当两条都满足：
+   164	  - (a) 新技能有进步：`H(c_r) − H(当前已晋升版本) ≥ 0.03`，在这一段的大柱子世界上；
+   165	  - (b) 式 6：在这一段的普通世界上，`D_A(c_r) ≥ D_A(v0) − 0.02` 且 `all_A(c_r) ≤ 1.10 × all_A(v0)`。v0 在同一段上量。
+   166	- **没过：** 已晋升版本不变，训练从候选接着做（不回退训练）。
+   167	- **摸底里按这套规则会怎样**（用探索测试集代替晋升测试世界，只作参考）：
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:195,200 ===
+   195	| **GR 不忘（式 6）** | `v*` 的 N+ 对 v0：`D_A` 之差 ≥ −0.02，下界 > −0.04；`all_A` 之比 ≤ 1.05，上界 ≤ 1.10 | +0.02；0.89（H 轮） |
+   196	| **GU 保护有约束力** | N− 四轮候选的 `D_A` 平均值减 v0 的 `D_A` ≤ −0.02，上界 < 0 | −0.040（H 轮）；−0.043（E 轮） |
+   197	
+   198	- GU 是对照：它成立，GR 才有内容。GU 不成立时，结论写「本设置下不加保护也不忘，GR 没有约束力」。
+   199	- GU 用四轮的平均，不用最后一轮：遗忘在前几轮最重，最后一轮已经减轻（H 轮逐轮 −0.056、−0.047、−0.036、−0.020）。
+   200	- GQ-W 的比例按重复算，区间只有重复层（t 区间，自由度 4），没有测试世界这一层。
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:210,212 ===
+   210	| GM4 决定可重放 | 另一个进程重放，全部决定逐个相同 |
+   211	
+   212	**登记的描述量：**
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:219,221 ===
+   219	**统计：** 沿用一期的口径（`s6/analysis.py` 的做法）：点值用全部重复与全部测试世界；重复层用 t 区间（K = 5，自由度 4），世界层用配对 bootstrap，比值在 log 尺度上算。区间判据共 9 个，Bonferroni m = 9：GN、GF、GE、GO、GQ-H、GQ-W、GR 两项、GU。
+   220	
+   221	## 6. 合法性门
+
+=== reports/V9-S6P2-DESIGN/DESIGN-r0.md:258,262 ===
+   258	
+   259	## 9. 风险与这一版不回答
+   260	
+   261	**风险：**
+   262	- **只有一种新机制、一种诱饵。** 结论限于「多了一种带明显输入特征的新东西」。
+
+=== src/ainerzero/v9/experiments/s6/world_b.py:51,58 ===
+    51	    world_index: int
+    52	    n_disks: int
+    53	    pillars: tuple
+    54	    steps: tuple
+    55	
+    56	
+    57	def in_halo(p: np.ndarray, pillars: Sequence[W.Pillar]) -> np.ndarray:
+    58	    """[..., n] bool: the disk's surface is within HALO of a big pillar's surface. p [..., n, 2]."""
+
+=== src/ainerzero/v9/experiments/s6/world_b.py:67,74 ===
+    67	def turn(v: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    68	    """Rotate the masked velocities by TURN (counter-clockwise); the others are returned unchanged."""
+    69	    c, s = math.cos(TURN), math.sin(TURN)
+    70	    rot = np.stack([c * v[..., 0] - s * v[..., 1], s * v[..., 0] + c * v[..., 1]], -1)
+    71	    return np.where(mask[..., None], rot, v)
+    72	
+    73	
+    74	def physics_b(p: np.ndarray, v: np.ndarray, pillars: Sequence[W.Pillar], *, disks: bool = True, log: bool = False):
+
+=== reports/V9-S6P2-DESIGN/tier1-explore/explore_p2d.py:47,56 ===
+    47	def sample_surprise(pool, models, head_old):
+    48	    """Per revealed sample: (layout key, max over disks of log error minus the old-experience expectation)."""
+    49	    out = []
+    50	    for n, e in pool.by_n.items():
+    51	        f = XC.features(models[0], e["p"], e["v"], e["pil"])
+    52	        pred = np.mean([np.array(m(mx.array(e["p"]), mx.array(e["v"]), mx.array(e["pil"]))[1], dtype=np.float64) for m in models], 0)
+    53	        err = np.linalg.norm(pred - e["v1"], axis=-1)
+    54	        s = (np.log(err + XC.EPS) - np.array(head_old(mx.array(f)), dtype=np.float64)).max(-1)
+    55	        out += list(zip(layout_keys(e["pil"]), s.tolist()))
+    56	    return out
+
+=== reports/V9-S6P2-DESIGN/tier1-explore/explore_p2d.py:59,67 ===
+    59	def surprising_layouts(rows):
+    60	    by = {}
+    61	    for k, s in rows:
+    62	        by.setdefault(k, []).append(s)
+    63	    mean = {k: float(np.mean(v)) for k, v in by.items()}
+    64	    vals = np.array(list(mean.values()))
+    65	    med = np.median(vals)
+    66	    mad = 1.4826 * np.median(np.abs(vals - med))
+    67	    return {k for k, v in mean.items() if v > med + 3 * mad}, mean, float(med), float(mad)
+
+=== reports/V9-S6P2-DESIGN/tier1-explore/explore_p2f.py:78,86 ===
+    78	    return (float(r.min()), float(r.max())), (float(sp.min()), float(sp.max()))
+    79	
+    80	
+    81	def novelty_flags(states, ranges):
+    82	    (r_lo, r_hi), (s_lo, s_hi) = ranges
+    83	    total = sum(len(e["id"]) for e in states.values())
+    84	    out = np.zeros(total, dtype=bool)
+    85	    for e in states.values():
+    86	        r = e["pil"][:, :, 2]
+

@@ -1,0 +1,1150 @@
+
+/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/DESIGN-r1.md
+   1 # S6 第二阶段设计稿 r1：世界多了新东西以后——自己找到、学会、不忘旧本事
+   2 
+   3 一级 claude 起草、codex 接续定稿（P269），2026-11-16。**待非作者复核（重点审 r0→r1 的改动及其跨节一致性，见 §10）。** 摸底只有 1 个重复，门槛是暂定值，探针后、冻结前只允许因实现错误而改。本稿与复核卡不授权新训练；起点模型、探针和 final 仍须各自登记预算后运行。
+   4 
+   5 r0 的非作者复核（P268，二级 gemini-w9x4，`r0-review/REPORT.md`）结论是打回，必修三项，一级核对后都成立：
+   6 - 稿里说「盘不会被困住」是错的：环会困住一部分盘；
+   7 - 「强行晋升被撤销」这个门在没有违规对象时会空转；
+   8 - 便宜规则这一族没写透。复核者另试了两条：按半径偏离旧均值挑（D）能到 H 0.20；不减预期、只按原始误差记（K）完全无效。
+   9 
+  10 r1 逐条处理（§10）。诱饵改为旧范围两侧都有；保留单侧 U、双侧 Q 两条便宜规则并分别设非劣门；重复从 5 个加到 10 个（另训 5 个起点模型）；强行晋升采用重度破坏版本，固定分母，未实际违规也按机制门不过计。
+  11 
+  12 ## 0. 问题
+  13 
+  14 架构对 S6（自驱）的要求（`ARCHITECTURE_V9.md` §5、§6）：
+  15 - 内容：学习缺口、信息增益、沙盒行动、技能晋升与撤销；epinet 对照小集成；
+  16 - 过门：无教师独立测试、旧技能保留（式 6）。
+  17 
+  18 一期（2026-11-16 收口，`reports/V9-S6-FINAL/RESULTS.md`）做了其中一半：从零开始时，按自己的不确定性挑实验，学碰撞比随机快。没做的是另一半：**已经有一版模型之后**，怎么继续学而不忘，新版本怎么才算数。
+  19 
+  20 > **S6 二期问：** 学习者已经有一版通过检验的模型（一期 final 的成果）。之后沙盒里偶尔出现一种新东西：10% 的世界里有一根带旋涡环的大柱子。同样多的世界里有一种「看着新、其实没变」的诱饵。没有人告诉它哪里变了。它能否：
+  21 > (1) **找到**：凭自己已做实验的意外程度，把实验预算集中到真正有新规律的地方；
+  22 > (2) **学会**：新技能达到「直接知道答案」的规则的一半以上；
+  23 > (3) **不忘**：旧世界的技能不退化（式 6）；
+  24 > (4) **把关**：只有通过独立测试的版本才晋升；不加保护的学习、被破坏的更新会被拦下；强行晋升的坏版本会被查出并撤回，撤回后的权重与原先逐位相同。
+  25 
+  26 - (1) 回答「学习缺口」：缺口定义为「已晋升的那一版在哪里错得超出预期」。
+  27 - (3) 是式 6：`min L_new(θ)` s.t. `L_old(θ) ≤ L_old(θ_baseline) + ε`，基线是一期的模型，ε 在登记时冻结。
+  28 - (4) 是「技能晋升与撤销」。
+  29 - 测试世界不参与挑样本、训练和调参，标签来自模拟器，不用任何教师。
+  30 
+  31 **结论能说到哪里（摸底已经知道的，见 §1）：**
+  32 - **一期的信号在这里不管用。** 新机制稀有时，三网络分歧找不到它（H −0.03，随机 −0.06）：分歧还是被碰撞这类一直就难的情形占着。本期的主信号换成「记住惊讶」（§3），这是摸底之后选的，不是事先的预言。
+  33 - **「记住惊讶」用了候选的一个结构：** 同一个世界的候选带着相同的柱子布局，学习者按布局累计意外。它不知道新机制是什么，但知道候选可以按布局归组。换成没有这种离散情境的世界，要另想办法（§9）。
+  34 - **不用学习的便宜规则也能找到大柱子：** 双侧 Q 挑「输入超出旧经验范围」，单侧 U 只挑「柱子半径超过旧经验最大值」。I 轮 H 分别为 0.288、0.331，主臂为 0.361，都是 1 个重复。本期不说「只有学习者自己的信号才找得到」，也不据此宣称比便宜规则更好；分别检查新技能不劣于 Q 和 U（GQ-H、GU-H），另检查主臂在诱饵上的预算占比低（GQ-W）。后者不等于从未碰诱饵，主臂有随机保底。
+  35 - **新技能学到的程度有限。** 「直接知道答案」在不同摸底池上的 H 为 0.24–0.48（1 是完全学会）；I 轮为 0.480。本期问的是能否自己取得它相对随机增益的一半以上，不是把新机制学透。
+  36 - **场景是「世界多了一种东西」，不是「世界原地变了」。** 旧经验没有一条被新规律推翻。旧知识部分过期的情形更难，本期不问（§9）。
+  37 
+  38 ## 1. 摸底（`reports/V9-S6P2-DESIGN/tier1-explore/`，不作结论）
+  39 
+  40 所有轮次：起点是一期**探针**格 E-r0 的三个网络（final 的格留给登记运行）；4 轮 × 1500 个新实验，第一轮随机，每轮每网络 1000 步；1 个重复。
+  41 
+  42 - `H`：环内技能，`1 − 环内盘步误差 / 旧规律在环内的误差`。0 是完全不知道新机制，1 是完全学会。起点模型是 −0.11。
+  43 - 旧技能在旧世界测试集上量：碰撞技能 `D_A`（起点 0.821）、全部盘步误差 `all_A`（起点 0.0262）。
+  44 - 「+」表示每隔一批回放学习者自己的旧实验（12000 个，旧世界），「−」表示只用新数据。
+  45 
+  46 | 轮 | 脚本、日志 | 设置 | 发现 |
+  47 |---|---|---|---|
+  48 | A | `explore_p2a.py`、`run-p2a.log` | 候选全是带大柱子的世界 | 学得会；不回放会忘；挑选没用上 |
+  49 | B | `explore_p2b.py`、`run-p2b.log` | 只有 10% 的候选世界带大柱子 | 分歧、版本差都找不到稀有的新机制 |
+  50 | C | `explore_p2c.py`、`run-p2c.log` | 同 B | 预测误差的小头：预期误差无效，惊讶比略有效 |
+  51 | D | `explore_p2d.py`、`run-p2d.log` | 同 B | 按布局记住惊讶有效，但对着当前模型算会自己熄火 |
+  52 | E | `explore_p2d.py`、`run-p2e.log` | 同 B | 对着已晋升版本算惊讶：稳定有效 |
+  53 | F | `explore_p2f.py`、`run-p2f.log` | 10% 大柱子 + 10% 诱饵，240 个世界 | 记住惊讶不碰诱饵，但新技能不比便宜规则高；布局太少 |
+  54 | G | `explore_p2f.py`、`run-p2g.log` | 同 F，改为 600 个世界 | 上界抬高；记住惊讶只认出一半布局 |
+  55 | H | `explore_p2f.py`、`run-p2h.log` | 同 G | 加 20% 随机保底：认出的布局逐轮增加，新技能更高 |
+  56 | 复核 | `r0-review/evidence/cheap_rules.py`、`cheap_rules.log` | 同 G | 复核者的两条规则：K 无效，D 到 0.20 |
+  57 | I | `explore_p2f.py`、`run-p2i.log`、`results-p2i.json` | 600 个世界：60 个大柱子，诱饵两侧各 30 个 | H：主臂 0.361、U 0.331、Q 0.288、知道答案 0.480、随机 −0.058；主臂第 2–4 轮诱饵占比 0.0316 |
+  58 
+  59 **A 轮（新机制常见：20% 的盘步在环内），6000 个新实验后：**
+  60 
+  61 | 臂 | H | D_A | all_A ÷ 起点 |
+  62 |---|---|---|---|
+  63 | 随机 + | 0.62 | 0.827 | 0.91 |
+  64 | 分歧 + | 0.55 | 0.835 | 0.91 |
+  65 | 知道答案 + | 0.64 | 0.823 | 0.92 |
+  66 | 分歧 − | 0.68 | 0.802 | **1.35** |
+  67 
+  68 - 学得会，离学透还远。
+  69 - 不回放：旧世界全部盘步误差高 35%，自由运动误差是起点的 2.1 倍。回放后旧技能还略好于起点（起点模型本来就没训练到头）。
+  70 - 即使回放，第一轮之后 all_A 也比起点高 24%，第二轮回到 5% 以内。所以「旧技能不退化才能晋升」会真的拦下早期版本。
+  71 - 新机制常见时随机就够，挑选帮不上忙。所以正式设置改为稀有。
+  72 
+  73 **B–E 轮（新机制稀有：带环样本占候选的 7.9%），6000 个新实验后：**
+  74 
+  75 | 臂 | 第 2–4 轮挑中带环样本的比例 | H | D_A |
+  76 |---|---|---|---|
+  77 | R 随机 + | 0.08 | −0.06 | 0.848 |
+  78 | E 分歧 +（一期的信号） | 0.19、0.11、0.09 | −0.03 | 0.842 |
+  79 | V 版本差 + | 0.14、0.12、0.08 | −0.03 | 0.848 |
+  80 | Z 最近两盘 + | 0.08 | −0.07 | 0.858 |
+  81 | X 预期误差 + | 0.13、0.09、0.08 | −0.03 | 0.833 |
+  82 | Y 惊讶比 + | 0.21、0.35、0.25 | +0.02 | 0.842 |
+  83 | M 记住惊讶（对当前模型）+ | 0.80、0.15、0.25 | 0.28 | 0.837 |
+  84 | **N 记住惊讶（对已晋升版本）+** | 0.75、0.79、0.83 | **0.31** | 0.832 |
+  85 | N − | 0.75、0.79、0.83 | 0.31 | **0.786** |
+  86 | W 知道答案 + | 1.00 | 0.33 | 0.833 |
+  87 
+  88 - N 第一轮随机之后标出 25 个布局，其中 23 个确实带大柱子（共 24 个）；后两轮各标出 23 个、22 个，其中带大柱子的都是 22 个。
+  89 - N 的新技能逐轮为 −0.08、0.11、0.26、0.31；W 为 −0.08、0.15、0.29、0.33。
+  90 - N 不回放时，碰撞技能比起点低 0.035（第二轮低 0.053）；回放时高 0.011。稀有设置下，挑中的几乎都是环内的自由运动，被忘掉的是碰撞。
+  91 - M 的毛病：学到一点之后，当前模型的惊讶降下来，标记的布局只剩 1–3 个，预算又散回随机。N 对着已晋升版本算，缺口在新版本晋升之前一直算缺口。
+  92 
+  93 **F、G、H 轮（10% 大柱子世界 + 10% 诱饵世界），6000 个新实验后：**
+  94 
+  95 | 臂 | F 轮（240 个世界，24 个大柱子布局）：H | G、H 轮（600 个世界，60 个大柱子布局）：H | 第 2–4 轮挑中样本里诱饵世界的比例（G、H 轮） |
+  96 |---|---|---|---|
+  97 | R 随机 + | 0.02 | −0.07 | 0.10 |
+  98 | Q 输入新颖度 + | 0.20 | 0.17 | 0.47 |
+  99 | N 记住惊讶，无保底 + | 0.17 | 0.23 | 约 0（第四轮候选用完后 0.06） |
+ 100 | **N 记住惊讶 + 20% 保底 +（主臂）** | 未跑 | **0.27** | 0.02 |
+ 101 | N + 保底 − | 未跑 | 0.33 | 0.02 |
+ 102 | W 知道答案 + | 0.24 | 0.37 | 0（第四轮带环候选用完后 0.05） |
+ 103 
+ 104 - **诱饵：** 记住惊讶在三轮里标出的布局没有一个是诱饵。Q 把大柱子世界和诱饵世界全部标上，预算各占约 47%。
+ 105 - **N 对 Q，新技能上没有稳定的胜负：** F 轮 0.17 对 0.20，G 轮 0.23 对 0.17，加保底后 0.27 对 0.17。都是 1 个重复，池与池之间的差别不比臂之间小。
+ 106 - **布局的多样性比样本数要紧：** 24 个布局时，知道答案的规则只到 0.24；60 个布局时到 0.37。F 轮里 N 只用到 18 个布局，Q 覆盖全部 24 个，新技能反而略高。
+ 107 - **无保底时 N 认不全：** 600 个世界时，每个布局第一轮只碰到 2–3 个样本，60 个大柱子布局只认出 30 个，10 个没被碰到；之后它只在已标记的布局里挑，认出的数量不再增加，第四轮候选用完。
+ 108 - **加 20% 随机保底（H 轮）：** 认出的大柱子布局逐轮为 30、35、38 个，诱饵始终 0 个；新技能逐轮为 −0.10、0.01、0.13、0.27。
+ 109 - **不回放（H 轮）：** 新技能更高（0.33），碰撞技能逐轮比起点低 0.056、0.047、0.036、0.020，四轮平均低 0.040。保底里的随机样本大多来自普通世界，本身就起了一点复习的作用，所以最后一轮的遗忘比 E 轮（低 0.035）轻。
+ 110 
+ 111 **复核者在 G 轮的池上另试的两条规则（都带 20% 保底和回放）：**
+ 112 - **K：不减预期，直接按原始误差记布局。** H −0.05，不如随机。普通世界里的碰撞误差本来就大，原始误差的布局均值被它盖住，标不出大柱子。这说明「减去预期」这一步不能省。
+ 113 - **D：标出「某根柱子的半径与旧经验均值相差 0.38 以上」的候选。** H 0.20，诱饵世界占挑中样本的 33%。0.38 这个门槛是照着这个池子定的。
+ 114 
+ 115 **I 轮（诱饵在旧范围两侧，全部 5 臂已完成）：**
+ 116 
+ 117 | 臂（日志代号） | 第 4 轮 H | 第 2–4 轮诱饵样本占比 | 第 4 轮 D_A | 第 4 轮 all_A |
+ 118 |---|---|---|---|---|
+ 119 | 主臂 N+（`O+`） | 0.360720 | 0.031556 | 0.837783 | 0.023788 |
+ 120 | 单侧规则 U+ | 0.330558 | 0.324444 | 0.841984 | 0.023595 |
+ 121 | 双侧规则 Q+ | 0.288207 | 0.467333 | 0.846812 | 0.023395 |
+ 122 | 知道答案 W+ | 0.479949 | 0.000889 | 0.840854 | 0.024027 |
+ 123 | 随机 R+ | −0.057719 | 0.096222 | 0.841349 | 0.023026 |
+ 124 
+ 125 - 5 臂各 4 轮；第一轮选样和指标相同。候选池构建约 137 秒，整轮含 5 臂训练和探索评测共 970 秒。原始 JSON 为未舍入值，日志为显示精度；`tiny_world` / `tiny` 在 I 轮统计小、大两类诱饵的合计。
+ 126 - N 对 U 的 H 差为 +0.030163，对 Q 为 +0.072513，对随机为 +0.418440；GO 的点值为 `0.360720 − (0.479949 − 0.057719)/2 = +0.149605`（等价于 §5 的差分式）。这些是摸底点值，没有区间，不能称门已经通过。
+ 127 - N 的第 2–4 轮诱饵占比分别为 0.049333、0.024000、0.021333。每轮均选 1500 个，合计 142/4500 = 0.031556；最后一轮的 0.021333 不能替代门所用的三轮合计。
+ 128 - **对照裁决：Q、U 都保留。** U 比 Q 更强，而且更少碰诱饵；只留下 Q 会漏掉已测到的强对照。两者均由学习者自己的旧经验定范围，不读新标签、不加按本池调出的半径阈值。分别设新技能非劣门，门槛与 r0 对 Q 的门相同，不据 I 轮结果降低。
+ 129 - **摸底和正式流程的区别：** I 轮 `O+` 是带 20% 保底的惊讶信号，报告里统一叫 N+；脚本始终对固定起点 v0 算惊讶，没有真正执行晋升、头重训、抽查或撤销。正式流程 §4 会在晋升后切换参照，必须在探针中验证；本轮不当作该闭环有效的证据。I 轮没有 E+ 或 N−，它们的数字仍明确来自旧轮次。
+ 130 
+ 131 I 轮原命令（仅供追溯，不要求本次再跑）：环境为 `S6P2_WORLDS=600 S6P2_BIG=60 S6P2_TINY=30 S6P2_LARGE=30 S6P2_NS=s6x-p2i-cand`；在共享锁内运行 `explore_p2f.py <results-p2i.json> O+,U+,Q+,W+,R+ 1500 4 1000 0.001`。复核优先只读重算；需要 MLX 复跑时，另在卡面登记边界和新输出目录，不覆盖原始结果。
+ 132 
+ 133 ## 2. 世界与分区
+ 134 
+ 135 **统一的规律（`src/ainerzero/v9/experiments/s6/world_b.py`，纯 NumPy，不改一期和 S4 的任何文件）：**
+ 136 - 旧世界：三根柱子，半径 0.4–0.8。
+ 137 - 新东西：半径不小于 1.0 的柱子周围有一圈 1.2 宽的旋涡环（从柱面量到盘面）。环内的盘每步开始时速度逆时针转 0.12 弧度，速率不变；然后照旧世界的规律走一步。
+ 138 - 没有大柱子的世界上，这条规律与旧规律逐位相同（有测试）。所以旧经验没有一条被推翻。
+ 139 - 三种世界：
+ 140   - **普通**：旧世界；
+ 141   - **大柱子**：一根柱子半径 1.0–1.3，带环；
+ 142   - **诱饵**：一根柱子的半径在旧范围之外，但规律没变。两种各占一半：特别小的（0.15–0.25）和偏大但不到 1.0 的（0.85–0.95）。r0 只有小的一侧，挡不住「只挑半径比见过的都大」的单侧规则。
+ 143 - 特殊的那根柱子排在三个位置里的随机一个。
+ 144 - 实测（100 个大柱子世界，600 个盘）：
+ 145   - 约 20% 的盘步在环内；旧规律在环内的速度误差约 0.115，是自由运动误差的十几倍。
+ 146   - **环会困住一部分盘。** 环内的自由盘走半径约为 0.83 倍速率的圆。从环外穿进来的盘会沿着圆再穿出去；起始就在环里、或在环里被撞偏的盘，可能一直绕下去。
+ 147   - 7 个盘整个回合（300 步）都在环内，65 个盘连续滞留 100 步以上。环内盘步的 33% 来自这种长滞留，6% 来自全程在环内的盘。
+ 148   - r0 说「盘不会被困住」是错的：当时只看了环内占比随时间稳定。机制不改，因为摸底都是在这个机制上做的；影响写进 §9。
+ 149 
+ 150 **已晋升的起点（v0）：** 10 个起点模型，重复 k 用第 k 个。
+ 151 - **第 0–4 个：** 一期 final 的 E 臂，`E-rk` 第 4 轮的三个网络。权重 SHA 取自一期 final 的格记录。
+ 152 - **第 5–9 个：** 用同一套流程另训（r1 新增，为了把独立重复加到 10 个，见 §5）。
+ 153   - 一期的 `run_cell` 只接受 0–4 号重复，且已冻结，不改。二期写一个构造器，调用一期的学习者、挑选与候选池代码，流程与 E 臂相同。
+ 154   - 网络种子用 16–30（一期用了 1–15），候选池在新命名空间 `s6p2-base`（旧世界）。
+ 155   - 构造器要有等价测试：换回一期探针的命名空间与种子，重建出的探针格 `E-r0` 权重必须逐位相同。
+ 156   - 冻结之前训练一次，权重 SHA 钉进预登记。冻结之前不在任何二期世界上评测它们；摸底继续只用一期的探针格。
+ 157 - 后 5 个没有在一期 final 上测过（那个分区只读一次）。各门另按前 5 个单独报告一遍，只作描述。
+ 158 - 每个起点模型的旧经验是它自己做过的 12000 个实验，由候选池和挑选记录重建；候选池摘要必须与登记的相同。
+ 159 
+ 160 | 命名空间 | 用途 |
+ 161 |---|---|
+ 162 | `s6p2-base` | 第 5–9 个起点模型的候选池：旧世界，规模与一期相同 |
+ 163 | `s6p2-cand` | 沙盒候选。重复 k（0–9）用世界 `600k` 到 `600k+599`：前 60 个大柱子，接着 30 个小诱饵、30 个大诱饵，其余 480 个普通（4–8 盘）；从 18 万个状态里不放回取 60000 个互不相同的；标签揭示时才生成 |
+ 164 | `s6p2-pcand` | 探针用的候选（1 个重复） |
+ 165 | `s6p2-promo` | 晋升测试世界。分 5 段互不相交：第 0–3 段给四轮的晋升测试，第 4 段给最后的抽查。每段 40 个大柱子世界、40 个普通世界，都是 6 盘（r0 是各 20 个，复核认为抽样误差偏大） |
+ 166 | `s6p2-probe` | 探针的测试世界：大柱子 40 个、普通 40 个、两种诱饵各 10 个 |
+ 167 | `s6p2-final` | final 的测试世界：大柱子 150 个、普通 150 个、两种诱饵各 25 个，都是 6 盘；登记分区，只读一次 |
+ 168 
+ 169 - 与一期、S1–S5 和 `s6x-*` 的命名空间都不相交。测试一律用替身（`s6t-*`）。
+ 170 - 晋升测试世界不是 final：学习者的版本选择可以依赖它，结论不能。全部版本线在同一轮用同一段世界，各线之间不比较、不挑选，所以不存在「在这段世界上选优」；它只是每条线各自的一次有噪声的测试。噪声造成的错误晋升由 GM1 在 final 上查。
+ 171 
+ 172 ## 3. 学习者、挑选信号与保护
+ 173 
+ 174 **学习者：** 三个 L-int 网络，从 v0 的权重接着训练。Adam 学习率 1e-3（新建优化器），批 256，裁剪 10，一期的损失。
+ 175 
+ 176 **流程：** 4 轮，每轮 1500 个新实验，共 6000 个标签。第一轮随机，同一重复里各臂相同。每轮在「已揭示的全部新实验」上每个网络训练 1000 步，然后挑下一轮。
+ 177 
+ 178 **保护（式 6 的实现手段）：** 「+」每隔一批回放旧经验（旧世界的 12000 个实验，结果早已揭示，不花新预算）；「−」不回放。
+ 179 
+ 180 | 代号 | 怎么挑 | 保护 | 重复 | 角色 |
+ 181 |---|---|---|---|---|
+ 182 | **N+** | **记住惊讶，每轮 20% 随机保底（见下）** | + | 10 | **主臂** |
+ 183 | R+ | 随机 | + | 10 | 基线 |
+ 184 | E+ | 三网络分歧（一期的主信号） | + | 10 | 对照：一期的信号 |
+ 185 | Q+ | 双侧输入新颖度：任一柱半径或任一盘速率超出自身旧经验的最小–最大范围 | + | 10 | 便宜规则：双侧 |
+ 186 | U+ | 单侧输入新颖度：任一柱半径超过自身旧经验最大值 | + | 10 | 便宜规则：单侧，I 轮更强 |
+ 187 | W+ | 标出有盘在环内的候选，在其中随机挑 | + | 10 | 上界：直接知道答案 |
+ 188 | N− | 同 N | − | 10 | 对照：不加保护 |
+ 189 
+ 190 - **重复（r1）：** 10 个。每个重复有自己的起点模型、旧经验、候选池、第一轮随机样本和挑选用的随机数。r0 是 5 个。
+ 191 - 共 7 臂 × 10 重复 = 70 格，210 个网络，4 轮共 840 份网络权重。一期已经回答了 epinet 对集成，本期不设 epinet 臂。
+ 192 - Q、U 在第一轮之后只在标记的剩余候选里随机挑；不够就从其余候选随机补，不另加 20% 保底（与 I 轮脚本一致）。范围只由本重复 v0 的 12000 个已揭示旧实验确定，随后不更新；不读世界编号、世界种类或新实验标签。第一轮仍与同重复其他臂相同。
+ 193 
+ 194 **「记住惊讶」N 的定义：**
+ 195 1. **预期：** 一个小头（输入是已晋升版本第一个网络的隐藏状态与节点特征，64 个隐藏单元），在旧经验上学「这一版模型在这种盘上一步会错多少」（误差取对数）。每个已晋升版本只训练一次。
+ 196 2. **惊讶：** 对每个已揭示的新实验，用已晋升版本算每个盘的一步误差，减去预期，取各盘的最大值。碰撞这类一直就难的情形，预期本来就高，会被抵消。
+ 197 3. **按布局记：** 把惊讶按候选的柱子布局求平均（同一个世界的候选布局相同）。
+ 198 4. **标记与挑选：** 平均惊讶高于「中位数 + 3 个稳健标准差」的布局算有缺口。下一轮的 1500 个实验里，先随机挑 300 个（20% 保底，让没碰过的布局有机会被发现），其余 1200 个在有缺口的布局的候选里随机挑，不够随机补。
+ 199 5. **晋升之后：** 用新晋升的版本重算第 1–4 步。新版本学会了的地方不再惊讶，预算自然移走。
+ 200 
+ 201 N 只用已揭示实验的结果，不读未选中候选的任何标签，也不知道哪些世界有大柱子。
+ 202 
+ 203 **权威实现：** 候选池用一期的 `s6/sandbox.py`（标签器换成 `world_b.sim_labels_b`）；新代码放新模块（`s6/world_b.py`、二期的格、晋升、统计），不改一期冻结过的文件。
+ 204 
+ 205 ## 4. 晋升与撤销
+ 206 
+ 207 每条「臂 × 重复」是一条版本线：
+ 208 
+ 209 - **v0** 已晋升。每轮训练后的三个网络是候选 `c_r`（r = 0..3）。
+ 210 - **晋升测试**在 `s6p2-promo` 的第 r 段上做，候选晋升当且仅当两条都满足：
+ 211   - (a) 新技能有进步：`H(c_r) − H(当前已晋升版本) ≥ 0.03`，在这一段的大柱子世界上；
+ 212   - (b) 式 6：在这一段的普通世界上，`D_A(c_r) ≥ D_A(v0) − 0.02` 且 `all_A(c_r) ≤ 1.10 × all_A(v0)`。v0 在同一段上量。
+ 213 - **没过：** 已晋升版本不变，训练从候选接着做（不回退训练）。
+ 214 - **摸底里按这套规则会怎样**（用探索测试集代替晋升测试世界，只作参考）：
+ 215   - 主臂（H 轮）：第一轮的候选新技能没有进步，不晋升；第二、三、四轮的候选都满足两条，逐轮晋升。
+ 216   - 不回放的主臂（H 轮）：前三轮碰撞技能比 v0 低 0.036–0.056，不满足 (b)；第四轮低 0.020，正好在线上。
+ 217   - 新机制常见时（A 轮）：带回放的候选第一轮 `all_A` 高 24%，不满足 (b)，第二轮回到 5% 以内。
+ 218 - **过了：** 候选成为新的已晋升版本，权重与 SHA 落盘；N 的惊讶改对着它算。
+ 219 - **抽查与撤销：** 四轮结束后，把最后的已晋升版本放到第 4 段（没用过的世界）再测一次 (b)。不满足就撤销：已晋升版本退回前一版，退回后的文件 SHA 必须等于当初落盘的 SHA。
+ 220 - **机制对照**（在 N+ 的每个重复上各做一次，共 10 次，不另占训练臂）：
+ 221   - **破坏的更新（重度）：** 取第二轮的候选，把新实验的结果在样本之间打乱后再训练 300 步。它必须被晋升测试拦下。这是机制接线对照，不检验门的灵敏度；训练破坏不构成必然违规的数学保证。不因某重复没变坏而换版本、加步数或删掉该重复，结果照实计入 GM2、GM3。
+ 222   - **轻度的坏更新（灵敏度，只作描述）：** 不加保护的前两轮候选（N− 的 `c_0`、`c_1`）。摸底里它们的碰撞技能比 v0 低 0.04–0.06，只比门槛多出 0.02–0.04。登记它们在条件 (b) 上被拦下的比例，不设门。
+ 223   - **强行晋升：** 把重度破坏的那个版本不经测试写成「已晋升」。抽查必须查出并撤销它，撤销后前一版的权重逐位相同。r0 用的是 N− 的最后一个候选，它可能恰好不违规，使这个门空转。r1 改用必然违规的对象；它若在第 4 段上竟然不违反 (b)，这个重复按不过计。
+ 224 - 全部晋升、拒绝、撤销的决定都落盘，并在另一个进程里重放，决定必须逐个相同。
+ 225 
+ 226 ## 5. 指标、门与统计
+ 227 
+ 228 **测试（final 分区）：** 大柱子世界上量 H 和各类误差；普通世界上量 `D_A`、`all_A`；诱饵世界上量全部盘步误差（描述量）。
+ 229 
+ 230 - 挑选的好坏用**最后一个候选** `c_3` 比：各臂都训练了同样的步数、用了同样多的标签，差别只在挑了什么。
+ 231 - 学习者最终「算数」的模型是**最后的已晋升版本**，记作 `v*`。保留与机制的门看它。
+ 232 
+ 233 **门**（「下界」「上界」用 Bonferroni 区间；摸底值是 1 个重复，用探索测试集）：
+ 234 
+ 235 | 门 | 判据 | 摸底值 |
+ 236 |---|---|---|
+ 237 | **GN 学会** | `H(v* 的 N+) − H(v0) ≥ +0.15`，下界 > +0.05 | +0.38（H 轮，若第四轮的候选晋升） |
+ 238 | **GF 找到：胜随机** | `H(c_3 N+) − H(c_3 R+) ≥ +0.10`，下界 > 0 | +0.418（I 轮）；+0.34（G、H 轮） |
+ 239 | **GE 胜一期的信号** | `H(c_3 N+) − H(c_3 E+) ≥ +0.10`，下界 > 0 | +0.34（B、E 轮的池，无诱饵、无保底） |
+ 240 | **GO 接近知道答案** | `[H(N+) − H(R+)] − 0.5 × [H(W+) − H(R+)]` 的下界 > 0，都用 `c_3` | +0.150（I 轮）；+0.12（G、H 轮） |
+ 241 | **GQ-H 新技能不劣于双侧规则** | `H(c_3 N+) − H(c_3 Q+) ≥ −0.03`，下界 > −0.08 | +0.073（I 轮）；旧池 F 轮 −0.02、G 轮 +0.06（无保底） |
+ 242 | **GU-H 新技能不劣于单侧规则** | `H(c_3 N+) − H(c_3 U+) ≥ −0.03`，下界 > −0.08 | +0.030（I 轮） |
+ 243 | **GQ-W 不浪费在诱饵上** | N+ 第 2–4 轮挑中的样本里，来自两类诱饵世界的合计比例 ≤ 0.05，上界 < 0.10（池里诱饵世界合计占 10%） | 0.0316（I 轮；U 0.3244，Q 0.4673）；H 轮 0.02 |
+ 244 | **GR 不忘（式 6）** | `v*` 的 N+ 对 v0：`D_A` 之差 ≥ −0.02，下界 > −0.04；`all_A` 之比 ≤ 1.05，上界 ≤ 1.10 | +0.02；0.89（H 轮） |
+ 245 | **GU 保护有约束力** | N− 四轮候选的 `D_A` 平均值减 v0 的 `D_A` ≤ −0.02，上界 < 0 | −0.040（H 轮）；−0.043（E 轮） |
+ 246 
+ 247 - GU 是对照：它成立，GR 才有内容。GU 不成立时，结论写「本设置下不加保护也不忘，GR 没有约束力」。
+ 248 - GU 用四轮的平均，不用最后一轮：遗忘在前几轮最重，最后一轮已经减轻（H 轮逐轮 −0.056、−0.047、−0.036、−0.020）。
+ 249 - GQ-W 的比例按重复算，区间只有重复层（t 区间，自由度 9），没有测试世界这一层。
+ 250 - 逐门报告，各门对应各自的分结论，不设总体的过或不过。
+ 251 
+ 252 **机制门（按重复计数，不做区间）：**
+ 253 
+ 254 | 门 | 判据 |
+ 255 |---|---|
+ 256 | GM1 没有错误晋升 | 70 条版本线上每个晋升过的版本，在 final 的普通世界上都满足 `D_A ≥ D_A(v0) − 0.04` 且 `all_A ≤ 1.15 × all_A(v0)` |
+ 257 | GM2 破坏的更新被拦下 | 10 个重复里 10 个（重度破坏） |
+ 258 | GM3 强行晋升被撤销 | 10 个重复里 10 个都被查出并撤销，且恢复的权重逐位相同。分母固定为 10；对象不违规的重复按不过计 |
+ 259 | GM4 决定可重放 | 另一个进程重放，全部决定逐个相同 |
+ 260 
+ 261 **登记的描述量：**
+ 262 - 各臂每轮的 H、`D_A`、`all_A` 和挑中样本的构成（环、大柱子世界、诱饵世界的比例）；
+ 263 - 每条版本线的晋升记录；
+ 264 - N 每轮标记的布局数，以及其中真带大柱子、是诱饵的各有多少；
+ 265 - N− 的最终已晋升版本；
+ 266 - 诱饵世界上的误差。
+ 267 
+ 268 **统计：**
+ 269 - 沿用一期的口径（`s6/analysis.py` 的做法）：点值用全部重复与全部测试世界；重复层用 t 区间，世界层用配对 bootstrap，比值在 log 尺度上算。
+ 270 - **重复层 K = 10，自由度 9。** 区间判据共 10 个，Bonferroni m = 10：GN、GF、GE、GO、GQ-H、GU-H、GQ-W、GR 两项、GU。临界值 t(9, 1 − 0.025/10) = 3.689662。GU 是保护约束门，GU-H 是单侧便宜规则非劣门，两者分开登记。
+ 271 - **区间有多宽（复核应修 1）：** 重复层的半宽是 1.166774 × `s_rep`（`s_rep` 是 10 个重复的标准差）。r0 的 K = 5、m = 9 时是 2.4313 × `s_rep`，同样的波动下 r1 的重复层半宽约缩小 52%。这不是最终两层区间的宽度保证，世界层仍须按既定口径合并。
+ 272 - **仍可能被区间卡住的门：**
+ 273 
+ 274   | 门 | 摸底点值 | 重复间标准差超过多少就不过 |
+ 275   |---|---|---|
+ 276   | GO | +0.150（I 轮） | 约 0.128 |
+ 277   | GQ-H、GU-H | +0.073、+0.030（I 轮） | 约 0.131、0.094（仅区间判据） |
+ 278   | GU | −0.040（H 轮） | 约 0.034 |
+ 279 
+ 280   - 摸底只有 1 个重复，`s_rep` 未知。换一个候选池，同一个臂的 H 能差 0.1 左右（§9），但门看的是同一个池上两臂之差，共同的部分会抵消。
+ 281   - 表里只计算重复层；正式区间还包含世界层。上述门若因区间不过，结论照实写「点值达到，区间不足以确认」，不事后改门。
+ 282 
+ 283 ## 6. 合法性门
+ 284 
+ 285 | 门 | 判据 |
+ 286 |---|---|
+ 287 | 标签隔离 | 候选池只存状态，揭示时才模拟。挑选在封印里运行，封印新增 `world_b.physics_b`、`sim_labels_b`、`generate_episode_b`。N 只读已揭示实验的结果。W 是唯一读答案的臂，只作上界 |
+ 288 | 重放 | 另一个进程从落盘的权重与已晋升版本重算每轮的挑选（含惊讶头、布局标记），与落盘的逐个相同 |
+ 289 | 训练可复现 | 预先指定 N+ 重复 0 的第一个网络，另一进程按落盘的挑选重训，4 轮权重逐位相同 |
+ 290 | 起点身份 | 前 5 个起点模型的权重 SHA 与一期 final 的记录一致，后 5 个与预登记钉死的一致；旧经验重建后的候选池摘要与登记的一致；起点模型构造器通过与一期 E 臂的逐位等价测试 |
+ 291 | 分区 | 候选、晋升、探针、final 的世界互不相交；晋升各段只用于各自的轮次；`s6p2-final` 只在登记运行里生成，只读一次 |
+ 292 | 一期不动 | 一期预登记清单里的 46 个文件 SHA 不变 |
+ 293 | 完整 | 210 个网络各 4 轮共 840 份权重、每轮挑选与揭示日志、全部晋升决定、每个网络在每个测试世界上每类盘步的误差和与计数，都落盘 |
+ 294 
+ 295 ## 7. 预算
+ 296 
+ 297 摸底实测：每个臂 4 轮约 3 分钟（含 60 个测试世界的评测），建一个候选池约 2.3 分钟。正式运行每格多出晋升测试和惊讶头，估 4 分钟。一期 final 里一个 E 臂的格用了 7–9 分钟。
+ 298 
+ 299 | 项 | 估计 |
+ 300 |---|---|
+ 301 | 冻结前：另训 5 个起点模型（单独登记，上限待登记） | 约 45 分钟 |
+ 302 | 70 格的训练 | 约 280 分钟 |
+ 303 | 候选池 10 组（各 600 个世界）、旧经验重建 10 组 | 约 35 分钟 |
+ 304 | 机制对照、重放与复训校验 | 约 60 分钟 |
+ 305 | final 评测（350 个世界 × 210 个网络 × 2 个末轮版本） | 约 29 分钟；另须计入 GM1 对全部已晋升中间版本的核查 |
+ 306 | **登记运行估计小计** | **约 404 分钟（6 小时 44 分钟），不含 GM1 可能多出的中间版本评测；待探针实测** |
+ 307 
+ 308 - r0 是 30 格、约 3.7 小时。r1 加到 10 个重复并增设 U，共 70 格；起点模型另估 45 分钟，与上表小计合为约 449 分钟（7 小时 29 分钟），不是已经获批的运行时间。
+ 309 - **待审预算候选：** 主登记训练 6 小时、评测与校验 2 小时，总 8 小时；起点模型另单列，尚未登记。每项如何分段计时、GM1 中间版本上限、探针与起点模型额度，须在运行卡里写实，不能用本文估计代替登记或从空闲时间借额。
+ 310 - 这是估计。按一期的教训，冻结前在已登记探针上实测每一种格和完整校验（含 GM1 全部晋升版本）的耗时，再决定是否能在上述候选上限内冻结；超过就报告阻断，不静默加时。
+ 311 - 本机 MLX。不付费，不用云，不下载。
+ 312 
+ 313 ## 8. 次序
+ 314 
+ 315 1. 本稿送非作者复核（二级卡），只审 r0→r1 的改动（§10）。
+ 316 2. 实现（每项配非作者复核）：
+ 317    - 世界 B（已写，12 项测试）；
+ 318    - 起点模型构造器与等价测试，另训 5 个起点模型；
+ 319    - 二期的格：接着训练、回放、N 的惊讶与布局标记、便宜规则；
+ 320    - 晋升、抽查、撤销与机制对照；
+ 321    - 统计与门；
+ 322    - 运行器、重放与复训校验、预登记入口（沿用一期 r3 的身份核对做法）。
+ 323 3. 探针（每臂 1 个重复）→ 冻结 → final → 非作者独立复算。探针只用来查流程与计时。
+ 324 
+ 325 ## 9. 风险与这一版不回答
+ 326 
+ 327 **风险：**
+ 328 - **只有一种新机制、两种诱饵。** 结论限于「多了一种带明显输入特征的新东西」。
+ 329 - **新机制本身就是一条输入上的门槛规则**（半径不小于 1.0 就有环）。所以任何恰好拿到这个门槛的输入规则都等于「知道答案」。便宜规则与主臂的差别只在于：门槛是别人给的，还是自己从意外里找出来的。
+ 330 - **环会困住盘。** 环内盘步的三分之一来自长时间绕圈的盘，H 的一部分是在这种盘上量的。绕圈的盘运动简单，可能比穿过的盘好学；本期不分开报告，只把两者的占比登记为描述量。
+ 331 - **对主臂不利的诱饵没有放进来（复核意见 3）。** 如果有一种世界，规律没变，但模型在那里本来就错得多、预期头又估不准（比如柱子挤在一起），主臂会把预算花过去。这在摸底里没有试；它算不算浪费也有争议，因为那里的误差也许学得下来。
+ 332 - **按布局记惊讶依赖离散的情境。** 候选能按世界归组，是这个沙盒给的方便。连续情境下要改成按近邻记，本期不做。
+ 333 - **标记的门槛（中位数 + 3 个稳健标准差）和 20% 的保底都是手定的**，各只在一两组世界上看过。
+ 334 - **N 与便宜规则在新技能上没有确证的胜负。** 旧摸底对 Q 三次比较一次略低、两次略高；I 轮 N 对 U 仅高 0.030、对 Q 高 0.073。只有一个重复，不能估计显著性。GQ-H、GU-H 都只设非劣。
+ 335 - **池与池之间差别大。** 同一个臂换一组世界，H 能差 0.1 以上（知道答案的规则：0.24、0.33、0.37，三个池的构成不同）。重复各用各的池，这种波动里两臂不共有的部分会进区间。
+ 336 - **新技能仍没学透。** 知道答案在 I 轮为 0.480，在旧池为 0.24–0.37；GN 沿用既有门槛，不按 I 轮再调低。
+ 337 - **摸底只有 1 个重复、1 个起点模型**，重复间的波动未知；一期里这种波动让一个门没过。
+ 338 - **后 5 个起点模型没有经过一期 final 的检验。** 它们出自同一套冻结流程，但「已通过检验」对它们只是推定。各门另按前 5 个单独报告。
+ 339 - **回放的旧经验全部有效**，因为世界只是多了东西。这回避了最难的情形。
+ 340 
+ 341 **这一版不回答：**
+ 342 
+ 343 | 不回答的问题 | 说明 |
+ 344 |---|---|
+ 345 | 世界原地变了、旧经验部分过期 | 需要先判断哪些旧记忆不能再回放 |
+ 346 | 新机制藏在看着熟悉的输入里 | 输入规则会失效，N 按理仍有效；本期没有验证 |
+ 347 | 规律没变、但模型本来就错得多的世界（对主臂不利的诱饵） | 见风险；留给以后 |
+ 348 | 新机制学透 | 需要更多预算或更合适的表示 |
+ 349 | 学习者自己决定实验量、何时停止 | 本期预算固定 |
+ 350 | 智能体在世界里的主动行动、视觉、教师 | 不在本阶段 |
+ 351 
+ 352 ## 10. 对 r0 复核意见的处理（P268，`r0-review/REPORT.md`）
+ 353 
+ 354 一级核对：困盘的事实另跑 100 个世界确认；复核者两条规则的数字与它的日志一致；t 临界值一致；单臂复跑与原日志逐行相同。复核报告里的引文行号与设计稿对不上，轨道推导把步长写成了 0.05（应为 0.1；全轨道留在环内的速率条件是 0.72 以下，不是 1.44 以下），不影响结论。
+ 355 
+ 356 | 复核意见 | r1 的处理 |
+ 357 |---|---|
+ 358 | 必修 1：「盘不会被困住」不属实 | §2 改正并给出实测：7/600 全程在环内，65/600 滞留 100 步以上，环内盘步的 33% 来自长滞留。机制不改；影响写进 §9。`world_b.py` 的说明与测试同步 |
+ 359 | 必修 2：GM3 在没有违规对象时空转 | 强行晋升的对象改为重度破坏的版本；分母固定为 10；对象不违规按不过计（§4、§5） |
+ 360 | 必修 3：便宜规则一族没写透 | §1 写入复核者的 K、D；I 轮完整报告单侧 U 和双侧 Q；诱饵改为两侧都有；§3 保留 U、Q 两臂，§5 分设 GU-H、GQ-H 并把 Bonferroni m 改为 10；§9 写明「拿到正确门槛的输入规则等于知道答案」 |
+ 361 | 应修 1：GO 等门的区间风险 | 重复从 5 个加到 10 个，另训 5 个起点模型（§2、§5）：同样的波动下区间窄一半多。仍有风险的三个门写明各自能容忍的波动，不过时照实报告 |
+ 362 | 应修 2：晋升测试世界太少、被多条线复用 | 每段加到 40 + 40 个世界；写明各线之间不比较不选优，错误晋升由 GM1 查（§2） |
+ 363 | 应修 3：N 依赖离散的布局 | §0、§9 已写；预登记里再写一遍 |
+ 364 | 意见 3：对 N 不利的诱饵 | 写进 §9 的风险与「不回答」，本期不做 |
+ 365 | 意见 4.4：破坏的更新是稻草人 | 保留为「门接上了没有」的检验；另加轻度的坏更新，登记被拦下的比例，不设门（§4） |
+
+/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/tier1-explore/explore_p2f.py
+   1 #!/usr/bin/env python3
+   2 """S6 phase 2 exploration round F: decoys, and the cheap rule "pick what looks unfamiliar".
+   3 
+   4 Round E: surprise remembered by layout, measured against the promoted version (N), finds a rare new mechanism
+   5 (ring skill H 0.31; random -0.06; the rule that knows the answer 0.33). But a rule with no learning at all
+   6 would also find a big pillar: its radius lies outside everything the old experience contains.
+   7 
+   8 Here the sandbox has three kinds of worlds: 10% with a big pillar and its ring (something new to learn),
+   9 10% with a tiny pillar (looks just as unfamiliar, old law: a decoy), 80% ordinary.
+  10 
+  11 Arms (all with replay):
+  12   N  surprise by layout against the promoted version (round E)
+  13   Q  input novelty: flag candidates with an input outside the range the old experience covered (pillar radius,
+  14      speed), pick among them at random. No learning, no outcome.
+  15   R  random; W the rule that knows the answer (a disk in a ring).
+  16   U  (round I) one-sided input novelty: a pillar larger than any in the old experience. Decoys in round I lie on
+  17      both sides of the old range ("tiny" in the log then counts every decoy world).
+  18   O  (round H) N with an exploration floor: a fifth of every round's experiments are drawn at random, so that
+  19      layouts not yet tried keep being sampled.
+  20 
+  21 Usage (MLX; under the shared lock): explore_p2f.py <out.json> <arms,comma> [per] [rounds] [steps] [lr]
+  22 Namespaces: s6x-p2f-cand, s6x-p2a-testB, s6x-p2a-testA. Exploration only.
+  23 """
+  24 import json
+  25 import sys
+  26 import time
+  27 from pathlib import Path
+  28 
+  29 import mlx.core as mx
+  30 import mlx.nn as nn
+  31 import mlx.optimizers as optim
+  32 import numpy as np
+  33 
+  34 sys.path.insert(0, str(Path(__file__).resolve().parent))
+  35 import explore_p2a as XA  # noqa: E402
+  36 import explore_p2c as XC  # noqa: E402
+  37 import explore_p2d as XD  # noqa: E402
+  38 from ainerzero.v9.experiments.s4 import analysis as A  # noqa: E402
+  39 from ainerzero.v9.experiments.s4 import learned_mlx as L  # noqa: E402
+  40 from ainerzero.v9.experiments.s4 import world as W  # noqa: E402
+  41 from ainerzero.v9.experiments.s6 import cells as C  # noqa: E402
+  42 from ainerzero.v9.experiments.s6 import sandbox as S  # noqa: E402
+  43 from ainerzero.v9.experiments.s6 import world_b as B  # noqa: E402
+  44 
+  45 import os  # noqa: E402
+  46 
+  47 # Round F: 240 worlds (24 big, 24 tiny). Round G: S6P2_WORLDS=600 S6P2_BIG=60 S6P2_TINY=60 S6P2_NS=s6x-p2g-cand
+  48 CAND_NS = os.environ.get("S6P2_NS", "s6x-p2f-cand")
+  49 POOL = 60_000
+  50 CAND_WORLDS = int(os.environ.get("S6P2_WORLDS", 240))
+  51 N_BIG = int(os.environ.get("S6P2_BIG", 24))
+  52 N_TINY = int(os.environ.get("S6P2_TINY", 24))
+  53 N_LARGE = int(os.environ.get("S6P2_LARGE", 0))     # round I: decoys above the old range too (S6P2_TINY=30 S6P2_LARGE=30)
+  54 
+  55 
+  56 def candidates_three_kinds():
+  57     eps = []
+  58     for w in range(CAND_WORLDS):
+  59         n = A.train_disks(CAND_NS, w)
+  60         if w < N_BIG:
+  61             eps.append(B.generate_episode_b(CAND_NS, w, n))
+  62         elif w < N_BIG + N_TINY:
+  63             eps.append(B.generate_episode_b(CAND_NS, w, n, kind="tiny"))
+  64         elif w < N_BIG + N_TINY + N_LARGE:
+  65             eps.append(B.generate_episode_b(CAND_NS, w, n, kind="large"))
+  66         else:
+  67             eps.append(W.generate_episode(CAND_NS, w, n))
+  68     pairs = [(e, t) for e, ep in enumerate(eps) for t in range(len(ep.steps))]
+  69     pick = np.random.default_rng(W.derive_seed(CAND_NS, "pool", 0)).choice(len(pairs), POOL, replace=False)
+  70     chosen = sorted((eps[pairs[i][0]].n_disks, rank, pairs[i][0], pairs[i][1]) for rank, i in enumerate(pick))
+  71     by_n = {}
+  72     for n, _, e, t in chosen:
+  73         row = by_n.setdefault(n, {"p": [], "v": [], "pil": []})
+  74         row["p"].append(eps[e].steps[t].positions); row["v"].append(eps[e].steps[t].velocities)
+  75         row["pil"].append(np.asarray(eps[e].pillars, dtype=np.float64))
+  76     return {n: {k: np.stack(v) for k, v in d.items()} for n, d in sorted(by_n.items())}
+  77 
+  78 
+  79 def input_ranges(pool):
+  80     """What the old experience covered: pillar radius and speed ranges (the learner's own record)."""
+  81     r = np.concatenate([e["pil"][:, :, 2].ravel() for e in pool.by_n.values()])
+  82     sp = np.concatenate([np.linalg.norm(e["v"], axis=-1).ravel() for e in pool.by_n.values()])
+  83     return (float(r.min()), float(r.max())), (float(sp.min()), float(sp.max()))
+  84 
+  85 
+  86 def novelty_flags(states, ranges):
+  87     (r_lo, r_hi), (s_lo, s_hi) = ranges
+  88     total = sum(len(e["id"]) for e in states.values())
+  89     out = np.zeros(total, dtype=bool)
+  90     for e in states.values():
+  91         r = e["pil"][:, :, 2]
+  92         sp = np.linalg.norm(e["v"], axis=-1)
+  93         out[e["id"]] = (r < r_lo).any(-1) | (r > r_hi).any(-1) | (sp < s_lo).any(-1) | (sp > s_hi).any(-1)
+  94     return out
+  95 
+  96 
+  97 def main():
+  98     out = Path(sys.argv[1]); arms = sys.argv[2].split(",")
+  99     per = int(sys.argv[3]) if len(sys.argv) > 3 else 1500
+ 100     rounds = int(sys.argv[4]) if len(sys.argv) > 4 else 4
+ 101     steps = int(sys.argv[5]) if len(sys.argv) > 5 else 1000
+ 102     lr = float(sys.argv[6]) if len(sys.argv) > 6 else 1e-3
+ 103     t0 = time.time()
+ 104     rec = json.loads((XA.BASE / "cell.json").read_text())
+ 105     old_source = C.candidate_source(XA.OLD_NS, 0)
+ 106     assert C.pool_digest(old_source) == rec["pool_sha256"]
+ 107     old_pool = C.make_candidate_pool(old_source).reveal(np.array([i for p in rec["tracks"][0]["picks"] for i in p], dtype=np.int64))
+ 108     cand = candidates_three_kinds()
+ 109     tests_b = [XA.prepare_b(B.generate_episode_b(XA.TEST_B, w, 6)) for w in range(30)]
+ 110     tests_a = [C.prepare_world(W.generate_episode(XA.TEST_A, w, 6)) for w in range(30)]
+ 111     probe = S.CandidatePool(cand, labeller=B.sim_labels_b, pool_type=L.Pool)
+ 112     states0 = probe.states()
+ 113     ring = XA.halo_flags(states0)
+ 114     cand_key = [None] * len(probe)
+ 115     big = np.zeros(len(probe), dtype=bool); tiny = np.zeros(len(probe), dtype=bool)
+ 116     for e in states0.values():
+ 117         for g, k in zip(e["id"], XD.layout_keys(e["pil"])):
+ 118             cand_key[g] = k
+ 119         big[e["id"]] = e["pil"][:, :, 2].max(-1) >= B.BIG_MIN
+ 120         rmax, rmin = e["pil"][:, :, 2].max(-1), e["pil"][:, :, 2].min(-1)
+ 121         tiny[e["id"]] = (rmin <= B.TINY_RADIUS[1]) | ((rmax >= B.LARGE_RADIUS[0] - 1e-6) & (rmax < B.BIG_MIN))   # any decoy world
+ 122     ranges = input_ranges(old_pool)
+ 123     novel = novelty_flags(states0, ranges)
+ 124     above = np.zeros(len(probe), dtype=bool)          # one-sided rule U: a pillar larger than any the old experience had
+ 125     for e in states0.values():
+ 126         above[e["id"]] = e["pil"][:, :, 2].max(-1) > ranges[0][1]
+ 127     mx.set_default_device(mx.cpu)
+ 128     base_models = [C.load_model("E", XA.BASE / f"r3-n{j}.safetensors") for j in range(3)]
+ 129     base_head = XC.fit_head(*XC.error_rows(old_pool, base_models), 107)
+ 130     print(f"pool {len(probe)}: big-world {big.mean():.3f}, tiny-world {tiny.mean():.3f}, ring {ring.mean():.3f}; "
+ 131           f"old ranges radius {ranges[0][0]:.3f}-{ranges[0][1]:.3f} speed {ranges[1][0]:.3f}-{ranges[1][1]:.3f}; "
+ 132           f"novel-input flag {novel.mean():.3f} (big {novel[big].mean():.2f}, tiny {novel[tiny].mean():.2f}, ordinary {novel[~big & ~tiny].mean():.3f}); "
+ 133           f"{time.time() - t0:.0f}s", flush=True)
+ 134     first = S.pick_random(probe.remaining(), per, np.random.default_rng(W.derive_seed(CAND_NS, "first", 0)))
+ 135     res = json.loads(out.read_text()) if out.exists() else {"config": {"per": per, "rounds": rounds, "steps": steps, "lr": lr}, "arms": {}}
+ 136     for arm in arms:
+ 137         pick, protect = arm[0], arm[1] == "+"
+ 138         mx.set_default_device(mx.gpu)
+ 139         cp = S.CandidatePool(cand, labeller=B.sim_labels_b, pool_type=L.Pool)
+ 140         learners = []
+ 141         for j in range(3):
+ 142             m = C.load_model("E", XA.BASE / f"r3-n{j}.safetensors")
+ 143             learners.append({"model": m, "opt": optim.Adam(learning_rate=lr), "vg": nn.value_and_grad(m, L.rollout_loss),
+ 144                              "rng": np.random.default_rng(1000 + j)})
+ 145         rng = np.random.default_rng(W.derive_seed(CAND_NS, "pick", pick, 0))
+ 146         picks = first
+ 147         curve = []
+ 148         for r in range(rounds):
+ 149             cp.reveal(picks)
+ 150             new_pool = cp.revealed_pool()
+ 151             for lr_ in learners:
+ 152                 gen_new = L.batches(new_pool, steps, XA.BATCH, lr_["rng"], coll_share=0.0)
+ 153                 gen_old = L.batches(old_pool, steps, XA.BATCH, lr_["rng"], coll_share=0.0)
+ 154                 for t in range(steps):
+ 155                     src, gen = (old_pool, gen_old) if (protect and t % 2 == 1) else (new_pool, gen_new)
+ 156                     n, idx = next(gen)
+ 157                     b = {k: mx.array(v[idx]) for k, v in src.by_n[n].items()}
+ 158                     loss, grads = lr_["vg"](lr_["model"], b)
+ 159                     grads, _ = optim.clip_grad_norm(grads, max_norm=L.CLIP)
+ 160                     lr_["opt"].update(lr_["model"], grads)
+ 161                     mx.eval(lr_["model"].parameters(), lr_["opt"].state)
+ 162             mx.set_default_device(mx.cpu)
+ 163             models = [l["model"] for l in learners]
+ 164             ev, per_net = XA.evaluate(models, tests_b, tests_a)
+ 165             pk = np.asarray(picks)
+ 166             row = {"round": r, "picks": {"ring": float(ring[pk].mean()), "big_world": float(big[pk].mean()), "tiny_world": float(tiny[pk].mean())},
+ 167                    **ev, "per_net": per_net}
+ 168             if r < rounds - 1:
+ 169                 rem = cp.remaining()
+ 170                 if pick == "R":
+ 171                     picks = S.pick_random(rem, per, rng)
+ 172                 elif pick == "W":
+ 173                     picks = S.pick_geo(ring, rem, per, rng)
+ 174                 elif pick == "Q":
+ 175                     picks = S.pick_geo(novel, rem, per, rng)
+ 176                 elif pick == "U":
+ 177                     picks = S.pick_geo(above, rem, per, rng)
+ 178                 elif pick in ("N", "O"):
+ 179                     flagged, mean, med, mad = XD.surprising_layouts(XD.sample_surprise(new_pool, base_models, base_head))
+ 180                     flags = np.array([k in flagged for k in cand_key])
+ 181                     kb = {k for k, b in zip(cand_key, big) if b}; kt = {k for k, b in zip(cand_key, tiny) if b}
+ 182                     row["layouts"] = {"seen": len(mean), "flagged": len(flagged), "big": len(flagged & kb), "tiny": len(flagged & kt),
+ 183                                       "big_seen": len(set(mean) & kb)}
+ 184                     if pick == "N":
+ 185                         picks = S.pick_geo(flags, rem, per, rng)
+ 186                     else:            # O (round H): a fifth of every round is drawn at random first (an exploration floor)
+ 187                         floor = S.pick_random(rem, per // 5, rng)
+ 188                         picks = np.concatenate([floor, S.pick_geo(flags, np.setdiff1d(rem, floor), per - per // 5, rng)])
+ 189                 else:
+ 190                     raise ValueError(arm)
+ 191             curve.append(row)
+ 192             extra = f" flagged {row['layouts']}" if "layouts" in row else ""
+ 193             print(f"{arm} r{r} picks ring {row['picks']['ring']:.3f} big {row['picks']['big_world']:.3f} tiny {row['picks']['tiny_world']:.3f} | "
+ 194                   + " ".join(f"{k}={v:.4f}" for k, v in ev.items() if k in ("H", "D_B", "all_B", "D_A", "free_A", "all_A")) + extra
+ 195                   + f"  {time.time() - t0:.0f}s", flush=True)
+ 196             mx.set_default_device(mx.gpu)
+ 197         res["arms"][arm] = curve
+ 198         out.write_text(json.dumps(res), encoding="utf-8")
+ 199     print(f"total {time.time() - t0:.0f}s", flush=True)
+ 200 
+ 201 
+ 202 if __name__ == "__main__":
+ 203     main()
+
+/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/tier1-explore/explore_p2a.py
+   1 #!/usr/bin/env python3
+   2 """S6 phase 2 exploration round A: the world gains a new mechanism (world B: a big pillar with a vortex ring).
+   3 
+   4 A learner that already knows world A (the three L-int networks of the phase-1 probe cell
+   5 artifacts/v9/s6/phase1/probe/cells/E-r0, round 3; the final cells are left for the registered run) gets a budget of experiments in world B's sandbox and
+   6 continues training. Three questions before a design can be written:
+   7   1. can the network learn the new mechanism at all with this budget (ring skill H);
+   8   2. does its own disagreement find where the new mechanism is (ring share of the picks, H against random);
+   9   3. does it forget old skills without protection, and does replay of old experience prevent that
+  10      (collision skill D and all-step error on world-A test worlds).
+  11 
+  12 Arms: <pick><protection>. pick: R random, E disagreement of the three networks, Z closest pair (the phase-1
+  13 zero-knowledge rule), W picks states with a disk in the ring (knows the answer; upper bound).
+  14 protection: "+" every other batch replays the learner's old world-A experiments; "-" new data only.
+  15 
+  16 Ring skill H = 1 - err(ring disk-steps) / err_old_law(ring disk-steps): 0 knows nothing new, 1 perfect.
+  17 
+  18 Usage (MLX; under the shared lock): explore_p2a.py <out.json> <arms,comma> [per] [rounds] [steps] [lr]
+  19 Namespaces: s6x-p2a-cand (world B candidates), s6x-p2a-testB, s6x-p2a-testA. Exploration only.
+  20 """
+  21 import json
+  22 import sys
+  23 import time
+  24 from pathlib import Path
+  25 
+  26 import mlx.core as mx
+  27 import mlx.nn as nn
+  28 import mlx.optimizers as optim
+  29 import numpy as np
+  30 
+  31 from ainerzero.v9.experiments.s4 import analysis as A
+  32 from ainerzero.v9.experiments.s4 import learned_mlx as L
+  33 from ainerzero.v9.experiments.s4 import models as Mo
+  34 from ainerzero.v9.experiments.s4 import world as W
+  35 from ainerzero.v9.experiments.s6 import cells as C
+  36 from ainerzero.v9.experiments.s6 import sandbox as S
+  37 from ainerzero.v9.experiments.s6 import world_b as B
+  38 
+  39 REPO = Path(__file__).resolve().parents[3]
+  40 BASE = REPO / "artifacts/v9/s6/phase1/probe/cells/E-r0"
+  41 OLD_NS, CAND_NS, TEST_B, TEST_A = "s6p1-pcand", "s6x-p2a-cand", "s6x-p2a-testB", "s6x-p2a-testA"
+  42 POOL, CAND_WORLDS, BATCH = 60_000, 240, 256
+  43 
+  44 
+  45 def candidates_b():
+  46     eps = [B.generate_episode_b(CAND_NS, w, A.train_disks(CAND_NS, w)) for w in range(CAND_WORLDS)]
+  47     pairs = [(e, t) for e, ep in enumerate(eps) for t in range(len(ep.steps))]
+  48     pick = np.random.default_rng(W.derive_seed(CAND_NS, "pool", 0)).choice(len(pairs), POOL, replace=False)
+  49     chosen = sorted((eps[pairs[i][0]].n_disks, rank, pairs[i][0], pairs[i][1]) for rank, i in enumerate(pick))
+  50     by_n = {}
+  51     for n, _, e, t in chosen:
+  52         row = by_n.setdefault(n, {"p": [], "v": [], "pil": []})
+  53         row["p"].append(eps[e].steps[t].positions); row["v"].append(eps[e].steps[t].velocities)
+  54         row["pil"].append(np.asarray(eps[e].pillars, dtype=np.float64))
+  55     return {n: {k: np.stack(v) for k, v in d.items()} for n, d in sorted(by_n.items())}
+  56 
+  57 
+  58 def prepare_b(ep):
+  59     T = len(ep.steps) - 1
+  60     P = np.stack([s.positions for s in ep.steps[:T]]); V = np.stack([s.velocities for s in ep.steps[:T]])
+  61     tgt = np.stack([s.velocities for s in ep.steps[1:T + 1]])
+  62     kinds = np.stack([B.classify_b(ep, t) for t in range(T)])
+  63     _, vb = Mo.bounce(P, V, ep.pillars)                              # E-B (no disk collisions), for D
+  64     _, vo, _ = W.physics(P, V, ep.pillars)                           # the old law (no vortex), for H
+  65     pil = np.broadcast_to(np.array(ep.pillars, dtype=np.float32), (T, 3, 3)).copy()
+  66     return {"P": P.astype(np.float32), "V": V.astype(np.float32), "tgt": tgt, "kinds": kinds, "pil": pil,
+  67             "eb": np.linalg.norm(vb - tgt, axis=-1), "old": np.linalg.norm(vo - tgt, axis=-1)}
+  68 
+  69 
+  70 def evaluate(models, tests_b, tests_a):
+  71     """Mean over the networks: per-kind errors, D and H on world-B tests; D and all-step error on world-A tests."""
+  72     rows = []
+  73     for m in models:
+  74         sums = np.zeros(5); cnt = np.zeros(5); eb = 0.0; old = 0.0
+  75         for tw in tests_b:
+  76             _, v, _, _ = m(mx.array(tw["P"]), mx.array(tw["V"]), mx.array(tw["pil"]))
+  77             e = np.linalg.norm(np.array(v, dtype=np.float64) - tw["tgt"], axis=-1)
+  78             for k in range(5):
+  79                 sums[k] += e[tw["kinds"] == k].sum(); cnt[k] += (tw["kinds"] == k).sum()
+  80             eb += tw["eb"][tw["kinds"] == 0].sum(); old += tw["old"][tw["kinds"] == 4].sum()
+  81         sa = np.zeros(4); ca = np.zeros(4); eba = 0.0
+  82         for tw in tests_a:
+  83             sa += C.world_sums(m, tw); c, e_ = C.world_counts(tw); ca += c; eba += e_
+  84         rows.append({"H": 1 - sums[4] / old, "D_B": 1 - sums[0] / eb, "halo": sums[4] / cnt[4], "free_B": sums[3] / cnt[3],
+  85                      "wall_B": sums[2] / cnt[2], "all_B": sums.sum() / cnt.sum(),
+  86                      "D_A": 1 - sa[0] / eba, "free_A": sa[3] / ca[3], "wall_A": sa[2] / ca[2], "all_A": sa.sum() / ca.sum()})
+  87     return {k: float(np.mean([r[k] for r in rows])) for k in rows[0]}, rows
+  88 
+  89 
+  90 def halo_flags(states):
+  91     total = sum(len(e["id"]) for e in states.values())
+  92     out = np.zeros(total, dtype=bool)
+  93     for e in states.values():
+  94         for b in range(len(e["id"])):
+  95             out[e["id"][b]] = B.in_halo(e["p"][b].astype(np.float64), [tuple(x) for x in e["pil"][b].astype(np.float64)]).any()
+  96     return out
+  97 
+  98 
+  99 def main():
+ 100     out = Path(sys.argv[1]); arms = sys.argv[2].split(",")
+ 101     per = int(sys.argv[3]) if len(sys.argv) > 3 else 1500
+ 102     rounds = int(sys.argv[4]) if len(sys.argv) > 4 else 4
+ 103     steps = int(sys.argv[5]) if len(sys.argv) > 5 else 1000
+ 104     lr = float(sys.argv[6]) if len(sys.argv) > 6 else 1e-3
+ 105     t0 = time.time()
+ 106     # the learner's old experience: every experiment of the base cell, with its world-A outcomes
+ 107     rec = json.loads((BASE / "cell.json").read_text())
+ 108     old_source = C.candidate_source(OLD_NS, 0)
+ 109     assert C.pool_digest(old_source) == rec["pool_sha256"], "the old candidate pool does not rebuild"
+ 110     old_cp = C.make_candidate_pool(old_source)
+ 111     old_pool = old_cp.reveal(np.array([i for p in rec["tracks"][0]["picks"] for i in p], dtype=np.int64))
+ 112     print(f"old experience {old_pool.size()} samples, {time.time() - t0:.0f}s", flush=True)
+ 113     cand = candidates_b()
+ 114     tests_b = [prepare_b(B.generate_episode_b(TEST_B, w, 6)) for w in range(30)]
+ 115     tests_a = [C.prepare_world(W.generate_episode(TEST_A, w, 6)) for w in range(30)]
+ 116     probe = S.CandidatePool(cand, labeller=B.sim_labels_b, pool_type=L.Pool)
+ 117     flags = halo_flags(probe.states())
+ 118     print(f"world-B pool {len(probe)} states, {flags.mean():.3f} with a disk in the ring; {time.time() - t0:.0f}s", flush=True)
+ 119     first = S.pick_random(probe.remaining(), per, np.random.default_rng(W.derive_seed(CAND_NS, "first", 0)))
+ 120     mx.set_default_device(mx.cpu)
+ 121     base_models = [C.load_model("E", BASE / f"r3-n{j}.safetensors") for j in range(3)]
+ 122     base_eval, _ = evaluate(base_models, tests_b, tests_a)
+ 123     print("base    " + " ".join(f"{k}={v:.4f}" for k, v in base_eval.items()), flush=True)
+ 124     res = json.loads(out.read_text()) if out.exists() else {"config": {"per": per, "rounds": rounds, "steps": steps, "lr": lr},
+ 125                                                               "base": base_eval, "pool_halo_share": float(flags.mean()), "arms": {}}
+ 126     for arm in arms:
+ 127         pick, protect = arm[0], arm[1] == "+"
+ 128         mx.set_default_device(mx.gpu)
+ 129         cp = S.CandidatePool(cand, labeller=B.sim_labels_b, pool_type=L.Pool)
+ 130         learners = []
+ 131         for j in range(3):
+ 132             m = C.load_model("E", BASE / f"r3-n{j}.safetensors")
+ 133             learners.append({"model": m, "opt": optim.Adam(learning_rate=lr), "vg": nn.value_and_grad(m, L.rollout_loss),
+ 134                              "rng": np.random.default_rng(1000 + j)})
+ 135         rng = np.random.default_rng(W.derive_seed(CAND_NS, "pick", pick, 0))
+ 136         picks = first
+ 137         curve = []
+ 138         for r in range(rounds):
+ 139             cp.reveal(picks)
+ 140             new_pool = cp.revealed_pool()
+ 141             for lr_ in learners:
+ 142                 gen_new = L.batches(new_pool, steps, BATCH, lr_["rng"], coll_share=0.0)
+ 143                 gen_old = L.batches(old_pool, steps, BATCH, lr_["rng"], coll_share=0.0)
+ 144                 for t in range(steps):
+ 145                     src, gen = (old_pool, gen_old) if (protect and t % 2 == 1) else (new_pool, gen_new)
+ 146                     n, idx = next(gen)
+ 147                     b = {k: mx.array(v[idx]) for k, v in src.by_n[n].items()}
+ 148                     loss, grads = lr_["vg"](lr_["model"], b)
+ 149                     grads, _ = optim.clip_grad_norm(grads, max_norm=L.CLIP)
+ 150                     lr_["opt"].update(lr_["model"], grads)
+ 151                     mx.eval(lr_["model"].parameters(), lr_["opt"].state)
+ 152             mx.set_default_device(mx.cpu)
+ 153             models = [l["model"] for l in learners]
+ 154             ev, per_net = evaluate(models, tests_b, tests_a)
+ 155             share = float(flags[np.asarray(picks)].mean())
+ 156             curve.append({"round": r, "ring_share_of_picks": share, **ev, "per_net": per_net})
+ 157             print(f"{arm} r{r} ring-share {share:.3f} | " + " ".join(f"{k}={v:.4f}" for k, v in ev.items()) + f"  {time.time() - t0:.0f}s", flush=True)
+ 158             if r < rounds - 1:
+ 159                 st, rem = cp.states(), cp.remaining()
+ 160                 if pick == "R":
+ 161                     picks = S.pick_random(rem, per, rng)
+ 162                 elif pick == "E":
+ 163                     picks = S.pick_top(C.disagreement(st, models), rem, per)
+ 164                 elif pick == "Z":
+ 165                     picks = S.pick_top(C.closest_pair(st), rem, per)
+ 166                 elif pick == "W":
+ 167                     picks = S.pick_geo(flags, rem, per, rng)
+ 168                 else:
+ 169                     raise ValueError(arm)
+ 170             mx.set_default_device(mx.gpu)
+ 171         res["arms"][arm] = curve
+ 172         out.write_text(json.dumps(res), encoding="utf-8")
+ 173     print(f"total {time.time() - t0:.0f}s", flush=True)
+ 174 
+ 175 
+ 176 if __name__ == "__main__":
+ 177     main()
+
+/Users/mac/AinerWorkFlow/AinerZero/src/ainerzero/v9/experiments/s6/world_b.py
+   1 #!/usr/bin/env python3
+   2 """S6 phase 2 world B: the S4 disk world plus one new kind of object, a big pillar with a vortex ring.
+   3 
+   4 World A (``s4.world``) has three pillars of radius 0.4-0.8. World B replaces one of them by a big pillar
+   5 (radius 1.0-1.3). A disk whose surface is within ``HALO`` of a big pillar's surface has its velocity turned
+   6 by ``TURN`` radians (counter-clockwise) at the start of each step; then the ordinary world-A step follows.
+   7 The speed is unchanged, so the speed distribution of the world stays what it was.
+   8 
+   9 One law covers both worlds: ``physics_b`` on a world without a big pillar is exactly ``s4.world.physics``.
+  10 Old-world experience therefore stays valid after the change: nothing it recorded is contradicted, the new
+  11 mechanism lives where the old world had no states (a pillar radius it never saw).
+  12 
+  13 Two more kinds of world are decoys: one pillar is tiny (radius 0.15-0.25) or large but not big (0.85-0.95).
+  14 The old world had neither, but nothing new happens there. They look new and are not, one on each side of the
+  15 old range.
+  16 
+  17 Slow disks can be caught by the ring: the turn makes a free disk move on a circle of radius about 0.83 times
+  18 its speed, and a whole circle fits inside the ring when the speed is below about 0.72. Such a disk stays
+  19 until a collision knocks it out.
+  20 
+  21 Pure NumPy. ``s4.world`` is not modified.
+  22 """
+  23 from __future__ import annotations
+  24 
+  25 import math
+  26 from dataclasses import dataclass
+  27 from typing import Any, Sequence
+  28 
+  29 import numpy as np
+  30 
+  31 from ainerzero.v9.experiments.s4 import world as W
+  32 
+  33 BIG_MIN = 1.0                      # a pillar at least this large carries a vortex ring
+  34 BIG_RADIUS = (1.0, 1.3)
+  35 BIG_CENTRE = (3.2, 6.8)            # the ring stays inside the arena
+  36 TINY_RADIUS = (0.15, 0.25)         # decoy below the old range, old law
+  37 LARGE_RADIUS = (0.85, 0.95)        # decoy above the old range and below BIG_MIN, old law
+  38 KINDS_OF_WORLD = ("big", "tiny", "large")
+  39 _SPECIAL = {"big": BIG_RADIUS, "tiny": TINY_RADIUS, "large": LARGE_RADIUS}
+  40 _SEED_KEY = {"big": "world-b", "tiny": "world-tiny", "large": "world-large"}
+  41 HALO = 1.2                         # ring width, measured from the pillar surface to the disk surface
+  42 TURN = 0.12                        # radians per step
+  43 ROLLOUT = (1, 5, 10)
+  44 
+  45 # Partitions only a registered run may generate.
+  46 REGISTERED = frozenset({"s6p2-final"})
+  47 
+  48 
+  49 @dataclass(frozen=True)
+  50 class StepB:
+  51     positions: np.ndarray
+  52     velocities: np.ndarray
+  53     contacts: tuple
+  54 
+  55 
+  56 @dataclass(frozen=True)
+  57 class EpisodeB:
+  58     namespace: str
+  59     world_index: int
+  60     n_disks: int
+  61     pillars: tuple
+  62     steps: tuple
+  63 
+  64 
+  65 def in_halo(p: np.ndarray, pillars: Sequence[W.Pillar]) -> np.ndarray:
+  66     """[..., n] bool: the disk's surface is within HALO of a big pillar's surface. p [..., n, 2]."""
+  67     out = np.zeros(p.shape[:-1], dtype=bool)
+  68     for cx, cy, r in pillars:
+  69         if r >= BIG_MIN:
+  70             gap = np.hypot(p[..., 0] - cx, p[..., 1] - cy) - r - W.RADIUS
+  71             out |= gap < HALO
+  72     return out
+  73 
+  74 
+  75 def turn(v: np.ndarray, mask: np.ndarray) -> np.ndarray:
+  76     """Rotate the masked velocities by TURN (counter-clockwise); the others are returned unchanged."""
+  77     c, s = math.cos(TURN), math.sin(TURN)
+  78     rot = np.stack([c * v[..., 0] - s * v[..., 1], s * v[..., 0] + c * v[..., 1]], -1)
+  79     return np.where(mask[..., None], rot, v)
+  80 
+  81 
+  82 def physics_b(p: np.ndarray, v: np.ndarray, pillars: Sequence[W.Pillar], *, disks: bool = True, log: bool = False):
+  83     """One step of the unified law: vortex turn inside a big pillar's ring, then the world-A step."""
+  84     p = np.asarray(p, dtype=np.float64)
+  85     v = np.asarray(v, dtype=np.float64)
+  86     mask = in_halo(p, pillars)
+  87     if mask.any():
+  88         v = turn(v, mask)
+  89     return W.physics(p, v, pillars, disks=disks, log=log)
+  90 
+  91 
+  92 def place_pillars_b(rng: np.random.Generator, kind: str = "big") -> tuple[W.Pillar, ...]:
+  93     """One special pillar (big with a ring, or a tiny decoy) and two ordinary ones (the W.PILLAR_GAP rule between
+  94     all three), in a random order."""
+  95     if kind not in KINDS_OF_WORLD:
+  96         raise ValueError(f"unknown kind of world {kind!r}")
+  97     c = rng.uniform(*BIG_CENTRE, 2)
+  98     out: list[W.Pillar] = [(float(c[0]), float(c[1]), float(rng.uniform(*_SPECIAL[kind])))]
+  99     while len(out) < W.N_PILLARS:
+ 100         c = rng.uniform(2, W.ARENA - 2, 2)
+ 101         r = rng.uniform(*W.PILLAR_RADIUS)
+ 102         if all(math.hypot(c[0] - a, c[1] - b) > r + rr + W.PILLAR_GAP for a, b, rr in out):
+ 103             out.append((float(c[0]), float(c[1]), float(r)))
+ 104     order = rng.permutation(W.N_PILLARS)
+ 105     return tuple(out[i] for i in order)
+ 106 
+ 107 
+ 108 def generate_episode_b(namespace: str, world_index: int, n_disks: int, *, steps: int = W.STEPS,
+ 109                        allow_registered: bool = False, kind: str = "big") -> EpisodeB:
+ 110     """One world B (``kind`` "big": a big pillar with its ring; "tiny" or "large": a decoy) and its trajectory under
+ 111     ``physics_b``."""
+ 112     if (namespace in REGISTERED or namespace in W.REGISTERED) and not allow_registered:
+ 113         raise PermissionError(f"{namespace} is a registered partition; only a registered run may generate it")
+ 114     if kind not in KINDS_OF_WORLD:
+ 115         raise ValueError(f"unknown kind of world {kind!r}")
+ 116     rng = np.random.default_rng(W.derive_seed(namespace, _SEED_KEY[kind], world_index))
+ 117     pillars = place_pillars_b(rng, kind)
+ 118     p, v = W._place_disks(rng, n_disks, pillars)
+ 119     out = []
+ 120     for _ in range(steps):
+ 121         pn, vn, cont = physics_b(p[None], v[None], pillars, log=True)
+ 122         out.append(StepB(p.copy(), v.copy(), tuple(cont)))
+ 123         p, v = pn[0], vn[0]
+ 124     return EpisodeB(namespace, world_index, n_disks, pillars, tuple(out))
+ 125 
+ 126 
+ 127 def sim_labels_b(P: np.ndarray, V: np.ndarray, PIL: np.ndarray) -> dict[str, np.ndarray]:
+ 128     """Outcome of each state under ``physics_b``, in the layout of ``sandbox.sim_labels``."""
+ 129     S_, n = P.shape[0], P.shape[1]
+ 130     out = {f"{x}{k}": np.empty((S_, n, 2)) for k in ROLLOUT for x in "pv"}
+ 131     contact = np.zeros((S_, n, n), dtype=np.float32)
+ 132     for b in range(S_):
+ 133         pillars = tuple(map(tuple, PIL[b]))
+ 134         p, v, c = physics_b(P[b:b + 1], V[b:b + 1], pillars, log=True)
+ 135         for kind, i, j in c:
+ 136             if kind == "disk":
+ 137                 contact[b, i, j] = contact[b, j, i] = 1.0
+ 138         for k in range(1, max(ROLLOUT) + 1):
+ 139             if k > 1:
+ 140                 p, v, _ = physics_b(p, v, pillars)
+ 141             if k in ROLLOUT:
+ 142                 out[f"p{k}"][b], out[f"v{k}"][b] = p[0], v[0]
+ 143     return {"contact": contact, **{k: a.astype(np.float32) for k, a in out.items()}}
+ 144 
+ 145 
+ 146 KINDS_B = ("collision", "graze", "wall_pillar", "free", "halo")
+ 147 
+ 148 
+ 149 def classify_b(ep: Any, t: int) -> np.ndarray:
+ 150     """Step kind per disk at step t: 0 disk collision, 1 graze, 2 wall or pillar, 3 free, 4 in the vortex ring
+ 151     (and otherwise free). Kinds 0-3 are those of S6 phase 1; on a world without a big pillar kind 4 never occurs."""
+ 152     s = ep.steps[t]
+ 153     disk = {i for k, i, j in s.contacts if k == "disk"} | {j for k, i, j in s.contacts if k == "disk"}
+ 154     wallp = {i for k, i, j in s.contacts if k in ("wall", "pillar")}
+ 155     nxt = ep.steps[t + 1].positions
+ 156     d = np.linalg.norm(nxt[:, None] - nxt[None], axis=-1) + np.eye(ep.n_disks) * 99
+ 157     halo = in_halo(s.positions, ep.pillars)
+ 158     out = []
+ 159     for i in range(ep.n_disks):
+ 160         if i in disk:
+ 161             out.append(0)
+ 162         elif d[i].min() < 2 * W.RADIUS + 0.3:
+ 163             out.append(1)
+ 164         elif i in wallp:
+ 165             out.append(2)
+ 166         else:
+ 167             out.append(4 if halo[i] else 3)
+ 168     return np.array(out)
+
+/Users/mac/AinerWorkFlow/AinerZero/tests/v9/experiments/test_s6_world_b.py
+   1 """S6 phase 2 world B (pure NumPy): one unified law, the vortex ring, placement, labels, step kinds."""
+   2 from __future__ import annotations
+   3 
+   4 import ast
+   5 import inspect
+   6 import math
+   7 
+   8 import numpy as np
+   9 import pytest
+  10 
+  11 from ainerzero.v9.experiments.s4 import world as W
+  12 from ainerzero.v9.experiments.s6 import sandbox as S
+  13 from ainerzero.v9.experiments.s6 import world_b as B
+  14 
+  15 NS = "s6t-world-b"
+  16 
+  17 
+  18 @pytest.fixture(scope="module")
+  19 def episodes():
+  20     return [B.generate_episode_b(NS, w, n, steps=120) for w, n in enumerate([4, 6, 8, 6])]
+  21 
+  22 
+  23 def test_on_a_world_without_a_big_pillar_the_law_is_world_a():
+  24     ep = W.generate_episode(NS + "-a", 0, 6, steps=60)
+  25     assert max(r for _, _, r in ep.pillars) < B.BIG_MIN
+  26     for t in (0, 17, 44):
+  27         s = ep.steps[t]
+  28         a = W.physics(s.positions[None], s.velocities[None], ep.pillars, log=True)
+  29         b = B.physics_b(s.positions[None], s.velocities[None], ep.pillars, log=True)
+  30         assert np.array_equal(a[0], b[0]) and np.array_equal(a[1], b[1]) and a[2] == b[2]
+  31         assert not B.in_halo(s.positions, ep.pillars).any()
+  32 
+  33 
+  34 def test_ring_membership_by_hand():
+  35     pillars = ((5.0, 5.0, 1.2), (1.0, 1.0, 0.5), (9.0, 9.0, 0.5))
+  36     edge = 1.2 + W.RADIUS + B.HALO                       # centre distance at which the ring ends
+  37     p = np.array([[5.0 + edge - 0.01, 5.0], [5.0 + edge + 0.01, 5.0], [1.0 + 0.5 + W.RADIUS + 0.1, 1.0], [5.0, 5.0 - 1.6]])
+  38     assert B.in_halo(p, pillars).tolist() == [True, False, False, True]     # a small pillar has no ring
+  39     assert not B.in_halo(p, ((5.0, 5.0, 0.99), (1.0, 1.0, 0.5), (9.0, 9.0, 0.5))).any()
+  40 
+  41 
+  42 def test_the_vortex_turns_the_velocity_and_keeps_the_speed():
+  43     pillars = ((5.0, 5.0, 1.2), (1.5, 1.5, 0.5), (8.5, 8.5, 0.5))
+  44     p = np.array([[[7.0, 5.0], [9.0, 2.0]]])             # disk 0 in the ring, disk 1 far away
+  45     v = np.array([[[0.0, 1.0], [0.6, 0.0]]])
+  46     pn, vn, _ = B.physics_b(p, v, pillars)
+  47     c, s = math.cos(B.TURN), math.sin(B.TURN)
+  48     np.testing.assert_allclose(vn[0, 0], [c * 0.0 - s * 1.0, s * 0.0 + c * 1.0])     # counter-clockwise turn
+  49     np.testing.assert_allclose(vn[0, 1], [0.6, 0.0])
+  50     assert np.linalg.norm(vn[0, 0]) == pytest.approx(1.0)
+  51     np.testing.assert_allclose(pn[0, 0], p[0, 0] + vn[0, 0] * W.DT)                 # the turned velocity moves the disk
+  52     # exactly the world-A step applied to the turned velocity
+  53     want = W.physics(p, B.turn(v, np.array([[True, False]])), pillars)
+  54     assert np.array_equal(pn, want[0]) and np.array_equal(vn, want[1])
+  55 
+  56 
+  57 def test_worlds_have_one_big_pillar_in_a_random_slot(episodes):
+  58     slots = []
+  59     for w in range(40):
+  60         pil = B.place_pillars_b(np.random.default_rng(w))
+  61         big = [i for i, (_, _, r) in enumerate(pil) if r >= B.BIG_MIN]
+  62         assert len(pil) == 3 and len(big) == 1
+  63         cx, cy, r = pil[big[0]]
+  64         assert B.BIG_RADIUS[0] <= r <= B.BIG_RADIUS[1]
+  65         assert min(cx, cy) - r - B.HALO - W.RADIUS > 0 and max(cx, cy) + r + B.HALO + W.RADIUS < W.ARENA   # ring inside the arena
+  66         for i in range(3):
+  67             for j in range(i + 1, 3):
+  68                 assert math.hypot(pil[i][0] - pil[j][0], pil[i][1] - pil[j][1]) > pil[i][2] + pil[j][2] + W.PILLAR_GAP
+  69         slots.append(big[0])
+  70     assert set(slots) == {0, 1, 2}
+  71     for ep in episodes:
+  72         assert sum(r >= B.BIG_MIN for _, _, r in ep.pillars) == 1
+  73 
+  74 
+  75 def test_episodes_are_deterministic_follow_the_law_and_keep_disks_legal(episodes):
+  76     again = B.generate_episode_b(NS, 1, 6, steps=120)
+  77     assert all(np.array_equal(a.positions, b.positions) and np.array_equal(a.velocities, b.velocities) and a.contacts == b.contacts
+  78                for a, b in zip(again.steps, episodes[1].steps))
+  79     other = B.generate_episode_b(NS, 5, 6, steps=5)
+  80     assert not np.array_equal(other.steps[0].positions, episodes[1].steps[0].positions)
+  81     ring_steps = 0
+  82     for ep in episodes:
+  83         for t in range(len(ep.steps) - 1):
+  84             s = ep.steps[t]
+  85             pn, vn, cont = B.physics_b(s.positions[None], s.velocities[None], ep.pillars, log=True)
+  86             assert np.array_equal(pn[0], ep.steps[t + 1].positions) and np.array_equal(vn[0], ep.steps[t + 1].velocities)
+  87             assert tuple(cont) == s.contacts
+  88             ring_steps += int(B.in_halo(s.positions, ep.pillars).sum())
+  89         P = np.stack([s.positions for s in ep.steps])
+  90         assert P.min() >= W.RADIUS - 1e-9 and P.max() <= W.ARENA - W.RADIUS + 1e-9
+  91     assert ring_steps > 100                                   # the ring is visited
+  92 
+  93 
+  94 def test_registered_partitions_are_refused():
+  95     for ns in ("s6p2-final", "s6p1-final", "s4p2-final"):
+  96         with pytest.raises(PermissionError):
+  97             B.generate_episode_b(ns, 0, 6, steps=2)
+  98     assert B.REGISTERED == {"s6p2-final"}
+  99 
+ 100 
+ 101 def test_labels_follow_the_unified_law(episodes):
+ 102     ep = episodes[1]
+ 103     ts = [t for t in range(100) if B.in_halo(ep.steps[t].positions, ep.pillars).any()][:2] + [0]
+ 104     P = np.stack([ep.steps[t].positions for t in ts]); V = np.stack([ep.steps[t].velocities for t in ts])
+ 105     PIL = np.broadcast_to(np.asarray(ep.pillars, float), (len(ts), 3, 3)).copy()
+ 106     lab = B.sim_labels_b(P, V, PIL)
+ 107     assert set(lab) == set(S.LABEL_KEYS) and all(a.dtype == np.float32 for a in lab.values()) and B.ROLLOUT == S.ROLLOUT
+ 108     for b, t in enumerate(ts):
+ 109         np.testing.assert_array_equal(lab["v1"][b], ep.steps[t + 1].velocities.astype(np.float32))
+ 110         np.testing.assert_array_equal(lab["p5"][b], ep.steps[t + 5].positions.astype(np.float32))
+ 111         np.testing.assert_array_equal(lab["v10"][b], ep.steps[t + 10].velocities.astype(np.float32))
+ 112     # on a world-A state the labels are sandbox.sim_labels
+ 113     a = W.generate_episode(NS + "-a", 1, 6, steps=20)
+ 114     Pa, Va = a.steps[3].positions[None], a.steps[3].velocities[None]
+ 115     PILa = np.asarray(a.pillars, float)[None]
+ 116     la, lb = S.sim_labels(Pa, Va, PILa), B.sim_labels_b(Pa, Va, PILa)
+ 117     assert all(np.array_equal(la[k], lb[k]) for k in la)
+ 118     # in the ring the old law gives a different outcome
+ 119     old = S.sim_labels(P[:1], V[:1], PIL[:1])
+ 120     assert not np.array_equal(old["v1"], lab["v1"][:1])
+ 121 
+ 122 
+ 123 def test_step_kinds(episodes):
+ 124     seen = set()
+ 125     for ep in episodes:
+ 126         for t in range(len(ep.steps) - 1):
+ 127             kinds = B.classify_b(ep, t)
+ 128             s = ep.steps[t]
+ 129             ring = B.in_halo(s.positions, ep.pillars)
+ 130             hit = {i for k, i, j in s.contacts if k == "disk"} | {j for k, i, j in s.contacts if k == "disk"}
+ 131             for i, k in enumerate(kinds):
+ 132                 assert (k == 0) == (i in hit)
+ 133                 if k == 4:
+ 134                     assert ring[i]
+ 135                 if k == 3:
+ 136                     assert not ring[i]
+ 137             seen |= set(kinds.tolist())
+ 138     assert seen == {0, 1, 2, 3, 4}
+ 139     # on a world-A episode the kinds are those of phase 1 (cells.classify, restated here; cells imports MLX)
+ 140     a = W.generate_episode(NS + "-a", 2, 6, steps=60)
+ 141     for t in range(59):
+ 142         s = a.steps[t]
+ 143         disk = {i for k, i, j in s.contacts if k == "disk"} | {j for k, i, j in s.contacts if k == "disk"}
+ 144         wallp = {i for k, i, j in s.contacts if k in ("wall", "pillar")}
+ 145         nxt = a.steps[t + 1].positions
+ 146         d = np.linalg.norm(nxt[:, None] - nxt[None], axis=-1) + np.eye(6) * 99
+ 147         want = [0 if i in disk else (1 if d[i].min() < 2 * W.RADIUS + 0.3 else (2 if i in wallp else 3)) for i in range(6)]
+ 148         assert B.classify_b(a, t).tolist() == want
+ 149 
+ 150 
+ 151 def test_module_is_pure_numpy_and_leaves_world_a_alone():
+ 152     tree = ast.parse(inspect.getsource(B))
+ 153     mods = set()
+ 154     for node in ast.walk(tree):
+ 155         if isinstance(node, ast.Import):
+ 156             mods |= {a.name for a in node.names}
+ 157         elif isinstance(node, ast.ImportFrom):
+ 158             mods.add(node.module or "")
+ 159     assert not any("mlx" in m for m in mods)
+ 160     assert W.REGISTERED == {"s4p1-final", "s4p2-final", "s6p1-final"}
+ 161 
+ 162 
+ 163 @pytest.mark.parametrize("kind", ["tiny", "large"])
+ 164 def test_decoy_worlds_look_new_and_follow_the_old_law(kind):
+ 165     ep = B.generate_episode_b(NS, 0, 6, steps=40, kind=kind)
+ 166     radii = sorted(r for _, _, r in ep.pillars)
+ 167     lo, hi = (B.TINY_RADIUS, B.LARGE_RADIUS)[kind == "large"]
+ 168     special = radii[0] if kind == "tiny" else radii[-1]
+ 169     assert lo <= special <= hi and special < B.BIG_MIN
+ 170     assert not (W.PILLAR_RADIUS[0] <= special <= W.PILLAR_RADIUS[1])         # outside the old range
+ 171     assert sum(not (W.PILLAR_RADIUS[0] <= r <= W.PILLAR_RADIUS[1]) for r in radii) == 1
+ 172     for t in (0, 9, 30):
+ 173         s = ep.steps[t]
+ 174         assert not B.in_halo(s.positions, ep.pillars).any()
+ 175         a = W.physics(s.positions[None], s.velocities[None], ep.pillars)
+ 176         assert np.array_equal(a[0][0], ep.steps[t + 1].positions) and np.array_equal(a[1][0], ep.steps[t + 1].velocities)
+ 177     big = B.generate_episode_b(NS, 0, 6, steps=5)                       # the default kind is unchanged by the decoy option
+ 178     assert max(r for _, _, r in big.pillars) >= B.BIG_MIN
+ 179     assert not np.array_equal(big.steps[0].positions, ep.steps[0].positions)
+ 180     with pytest.raises(ValueError):
+ 181         B.generate_episode_b(NS, 0, 6, steps=2, kind="other")
+ 182 
+ 183 
+ 184 def test_a_disk_inside_the_ring_can_be_caught_and_one_passing_through_leaves():
+ 185     """A free disk in the ring moves on a circle of radius ~0.83 |v|. Started inside with a small circle it never
+ 186     leaves; a fast disk entering from outside follows its circle back out."""
+ 187     pillars = ((5.0, 5.0, 1.2), (1.2, 1.2, 0.5), (8.8, 8.8, 0.5))
+ 188     assert 0.1 / (2 * math.sin(B.TURN / 2)) == pytest.approx(0.834, abs=1e-3)
+ 189 
+ 190     def stay(p0, v0, steps):
+ 191         p, v = np.array([[p0]], float), np.array([[v0]], float)
+ 192         inside = []
+ 193         for _ in range(steps):
+ 194             inside.append(bool(B.in_halo(p[0], pillars)[0]))
+ 195             p, v, _ = B.physics_b(p, v, pillars)
+ 196         return inside
+ 197 
+ 198     mid = 1.2 + W.RADIUS + B.HALO / 2
+ 199     assert all(stay([5.0 + mid, 5.0], [0.0, 0.5], 300))                      # circle of radius 0.42 inside a 1.2 ring
+ 200     edge = 1.2 + W.RADIUS + B.HALO + 0.05                                    # just outside the ring
+ 201     through = stay([5.0 + edge, 5.0], [-1.3, 0.0], 150)
+ 202     assert not through[0] and any(through) and not through[-1] and sum(through) < 60
+
+/Users/mac/AinerWorkFlow/AinerZero/reports/V9-S6P2-DESIGN/tier1-explore/run-p2i.log
+   1 lock held by 2038
+   2 pool 60000: big-world 0.101, tiny-world 0.101, ring 0.076; old ranges radius 0.401-0.799 speed 0.011-2.452; novel-input flag 0.215 (big 1.00, tiny 1.00, ordinary 0.016); 137s
+   3 O+ r0 picks ring 0.063 big 0.087 tiny 0.091 | H=-0.0822 D_B=0.7818 all_B=0.0471 D_A=0.8189 free_A=0.0084 all_A=0.0251 flagged {'seen': 560, 'flagged': 53, 'big': 37, 'tiny': 2, 'big_seen': 54}  178s
+   4 O+ r1 picks ring 0.472 big 0.582 tiny 0.049 | H=0.0610 D_B=0.7822 all_B=0.0479 D_A=0.8200 free_A=0.0114 all_A=0.0268 flagged {'seen': 578, 'flagged': 39, 'big': 39, 'tiny': 0, 'big_seen': 58}  220s
+   5 O+ r2 picks ring 0.699 big 0.818 tiny 0.024 | H=0.2331 D_B=0.7872 all_B=0.0446 D_A=0.8235 free_A=0.0097 all_A=0.0249 flagged {'seen': 590, 'flagged': 41, 'big': 40, 'tiny': 0, 'big_seen': 60}  263s
+   6 O+ r3 picks ring 0.647 big 0.779 tiny 0.021 | H=0.3607 D_B=0.8018 all_B=0.0413 D_A=0.8378 free_A=0.0083 all_A=0.0238  305s
+   7 U+ r0 picks ring 0.063 big 0.087 tiny 0.091 | H=-0.0822 D_B=0.7818 all_B=0.0471 D_A=0.8189 free_A=0.0084 all_A=0.0251  347s
+   8 U+ r1 picks ring 0.480 big 0.650 tiny 0.331 | H=0.0663 D_B=0.7980 all_B=0.0463 D_A=0.8311 free_A=0.0100 all_A=0.0262  389s
+   9 U+ r2 picks ring 0.497 big 0.657 tiny 0.317 | H=0.1834 D_B=0.7834 all_B=0.0453 D_A=0.8186 free_A=0.0112 all_A=0.0257  432s
+  10 U+ r3 picks ring 0.485 big 0.650 tiny 0.326 | H=0.3306 D_B=0.8049 all_B=0.0415 D_A=0.8420 free_A=0.0087 all_A=0.0236  473s
+  11 Q+ r0 picks ring 0.063 big 0.087 tiny 0.091 | H=-0.0822 D_B=0.7818 all_B=0.0471 D_A=0.8189 free_A=0.0084 all_A=0.0251  514s
+  12 Q+ r1 picks ring 0.345 big 0.472 tiny 0.475 | H=0.0141 D_B=0.7949 all_B=0.0463 D_A=0.8319 free_A=0.0102 all_A=0.0258  556s
+  13 Q+ r2 picks ring 0.338 big 0.463 tiny 0.469 | H=0.1621 D_B=0.7960 all_B=0.0451 D_A=0.8328 free_A=0.0097 all_A=0.0246  597s
+  14 Q+ r3 picks ring 0.353 big 0.482 tiny 0.458 | H=0.2882 D_B=0.8095 all_B=0.0424 D_A=0.8468 free_A=0.0086 all_A=0.0234  638s
+  15 W+ r0 picks ring 0.063 big 0.087 tiny 0.091 | H=-0.0822 D_B=0.7818 all_B=0.0471 D_A=0.8189 free_A=0.0084 all_A=0.0251  680s
+  16 W+ r1 picks ring 1.000 big 1.000 tiny 0.000 | H=0.2098 D_B=0.7944 all_B=0.0467 D_A=0.8281 free_A=0.0113 all_A=0.0274  721s
+  17 W+ r2 picks ring 1.000 big 1.000 tiny 0.000 | H=0.3909 D_B=0.7957 all_B=0.0430 D_A=0.8318 free_A=0.0106 all_A=0.0258  763s
+  18 W+ r3 picks ring 0.958 big 0.959 tiny 0.003 | H=0.4799 D_B=0.8041 all_B=0.0389 D_A=0.8409 free_A=0.0087 all_A=0.0240  804s
+  19 R+ r0 picks ring 0.063 big 0.087 tiny 0.091 | H=-0.0822 D_B=0.7818 all_B=0.0471 D_A=0.8189 free_A=0.0084 all_A=0.0251  846s
+  20 R+ r1 picks ring 0.079 big 0.101 tiny 0.088 | H=-0.0766 D_B=0.7970 all_B=0.0457 D_A=0.8324 free_A=0.0083 all_A=0.0240  888s
+  21 R+ r2 picks ring 0.075 big 0.101 tiny 0.097 | H=-0.0674 D_B=0.7935 all_B=0.0449 D_A=0.8321 free_A=0.0081 all_A=0.0231  929s
+  22 R+ r3 picks ring 0.070 big 0.097 tiny 0.103 | H=-0.0577 D_B=0.8047 all_B=0.0448 D_A=0.8413 free_A=0.0088 all_A=0.0230  970s
+  23 total 970s

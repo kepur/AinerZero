@@ -1,0 +1,43 @@
+{
+  "status": "PASS",
+  "role": "author-side correction of analysis tool; NOT a frozen-file repair",
+  "production_calls": {
+    "formal": {
+      "path": "reports/V9-S6-PHASE1/make_prereg.py",
+      "line": 66,
+      "expression": "GD.build_manifest(REPO, [RUNNER], src_root=REPO / 'src', extra=[design, VERIFY, Path(__file__).resolve(), Path(PE.__file__).resolve(), Path(PI.__file__).resolve()])"
+    },
+    "numerical": {
+      "path": "reports/V9-S6-PHASE1/prereg_identity.py",
+      "line": 142,
+      "expression": "GD.build_manifest(repo, [repo / RUNNER_REL], src_root=repo / 'src', extra=[repo / VERIFY_REL])"
+    },
+    "hash": {
+      "path": "reports/V9-S6-PHASE1/prereg_identity.py",
+      "line": 53,
+      "expression": "def manifest_sha(manifest):\n    return hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(\",\", \":\")).encode()).hexdigest()"
+    }
+  },
+  "formal_frozen_files": 46,
+  "numerical_closure_files": 42,
+  "formal_rebuilt_equals_registered_manifest": true,
+  "numerical_is_exact_subset": true,
+  "formal_minus_numerical": [
+    "reports/V9-S6-DESIGN/DESIGN-r3.md",
+    "reports/V9-S6-PHASE1/make_prereg.py",
+    "reports/V9-S6-PHASE1/prereg_evidence.py",
+    "reports/V9-S6-PHASE1/prereg_identity.py"
+  ],
+  "formal_46_sha256": "f8c4876e5519d93a3a9470b5f4724d196435213e27950a074a188f52785735e5",
+  "numerical_42_sha256": "dce517dfa554ad57bb60e9fec855c8954eeefd7ee75781f64ac22665dc2b29d1",
+  "registered_code_manifest_sha256": "dce517dfa554ad57bb60e9fec855c8954eeefd7ee75781f64ac22665dc2b29d1",
+  "code_digest_match": true,
+  "source_sha256": {
+    "src/ainerzero/v9/experiments/s3/run_guard.py": "29b3093e2d1d4252d3e85ff73e9e7829f3cb995163e5bd801080a17a118f6439",
+    "reports/V9-S6-PHASE1/prereg_identity.py": "0029a207e245a58fc7eefa995e698b5c4fdef283997d3d9b9c1f8c5b297f6243",
+    "reports/V9-S6-PHASE1/make_prereg.py": "63081afbb55098acbed56d90e04ccdab752fc5b483d156dedcc6b1a1553efd26"
+  },
+  "explanation": "The same original compact JSON encoding applies. The original failure compared the wrong file sets: 46-file formal freeze vs 42-file numerical closure. All frozen files and the production numerical digest match.",
+  "preserved_initial_failure": "evidence/analysis1/analysis.stdout.log",
+  "execution": "AST-selected pure Python import-closure/hash functions and two build_manifest call expressions; reads source bytes only, no MLX imports, no model work, no git or writes outside delivery"
+}

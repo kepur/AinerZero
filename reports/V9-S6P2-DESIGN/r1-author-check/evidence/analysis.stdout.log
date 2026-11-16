@@ -1,0 +1,135 @@
+{
+  "failed_checks": [],
+  "log_fields": 180,
+  "per_net_means": 200,
+  "final_H": {
+    "O+": 0.3607203758982099,
+    "U+": 0.33055769492953957,
+    "Q+": 0.28820706843566796,
+    "R+": -0.057719284051699425,
+    "W+": 0.47994936817289213
+  },
+  "O_minus": {
+    "U+": 0.030162680968670308,
+    "Q+": 0.07251330746254192,
+    "R+": 0.4184396599499093,
+    "W+": -0.11922899227468226
+  },
+  "GO": 0.14960533383761349,
+  "decoys": {
+    "O+": {
+      "rounds_2_to_4_fractions": [
+        0.04933333333333333,
+        0.024,
+        0.021333333333333333
+      ],
+      "mean": 0.03155555555555555,
+      "pooled_count": 142,
+      "pooled_denominator": 4500
+    },
+    "U+": {
+      "rounds_2_to_4_fractions": [
+        0.33066666666666666,
+        0.31666666666666665,
+        0.326
+      ],
+      "mean": 0.3244444444444445,
+      "pooled_count": 1460,
+      "pooled_denominator": 4500
+    },
+    "Q+": {
+      "rounds_2_to_4_fractions": [
+        0.4746666666666667,
+        0.4693333333333333,
+        0.458
+      ],
+      "mean": 0.4673333333333334,
+      "pooled_count": 2103,
+      "pooled_denominator": 4500
+    },
+    "R+": {
+      "rounds_2_to_4_fractions": [
+        0.088,
+        0.09733333333333333,
+        0.10333333333333333
+      ],
+      "mean": 0.09622222222222221,
+      "pooled_count": 433,
+      "pooled_denominator": 4500
+    },
+    "W+": {
+      "rounds_2_to_4_fractions": [
+        0.0,
+        0.0,
+        0.0026666666666666666
+      ],
+      "mean": 0.0008888888888888888,
+      "pooled_count": 4,
+      "pooled_denominator": 4500
+    }
+  },
+  "frozen": [
+    46,
+    46
+  ],
+  "input_changes": [
+    {
+      "path": "COORDINATION.md",
+      "before_sha256": "13e2c5234162311924bb49e40e8a0e337e2de7ae692c3e791cb4ee0c486295f6",
+      "after_sha256": "cf93dcbf60a09264cd67e1b4e49fe45686236c39f6444782190c9c754f88ab90",
+      "unchanged": false
+    },
+    {
+      "path": "RESEARCH_LOG.md",
+      "before_sha256": "87b66a4a17591bfcf3831ec8649ddfedae6dec3839f9ace276d9ea8258bd7a51",
+      "after_sha256": "2129a3d2ea4e348c40854192a758b6a7a3c995482dd3a52375b0ae619c19b429",
+      "unchanged": false
+    },
+    {
+      "path": "reports/V9-S6P2-DESIGN/DESIGN-r1.md",
+      "before_sha256": "84500620b72fed4a8106935f5e6f41a02d440c8fbd9fdc9243dff5ccd29b63dc",
+      "after_sha256": "c8c4080aa3baa0bd1574b56580b42174ce4a7c915218c26db2625ebc75fbba42",
+      "unchanged": false
+    }
+  ],
+  "findings": [
+    {
+      "severity": "harness_failure_preserved",
+      "detail": "Initial test launch exited 3 before test execution: the strict write guard rejected pytest's default /dev/null logging sink. Retry explicitly routes pytest log_file into the delivery directory; no repository code or tests changed.",
+      "evidence": "evidence/attempt1/",
+      "returncode": 3
+    },
+    {
+      "severity": "provenance_limit",
+      "detail": "results config records only per/rounds/steps/lr. DESIGN-r1.md line 131 supplies historical command and env (600/60/30/30, s6x-p2i-cand), but these and historical input hashes are not embedded in results-p2i.json or run-p2i.log. Current SHA identifies this check's snapshot, not proven historical execution bytes; no pool regeneration was performed."
+    },
+    {
+      "severity": "checker_correction_preserved",
+      "detail": "Initial analysis incorrectly compared the full 46-file manifest digest to code_manifest_sha256. Read-only tracing of make_prereg.py:66-68 and prereg_identity.py:138-153 shows code_manifest_sha256 binds the numerical 42-file subset. Correct subset matches; all 46 individual frozen SHA values also match. Initial analysis and script retained in evidence/analysis1; no repository defect or source repair."
+    },
+    {
+      "severity": "shared_workspace_drift",
+      "detail": "Files changed externally during check; analysis uses saved before snapshots.",
+      "files": [
+        {
+          "path": "COORDINATION.md",
+          "before_sha256": "13e2c5234162311924bb49e40e8a0e337e2de7ae692c3e791cb4ee0c486295f6",
+          "after_sha256": "cf93dcbf60a09264cd67e1b4e49fe45686236c39f6444782190c9c754f88ab90",
+          "unchanged": false
+        },
+        {
+          "path": "RESEARCH_LOG.md",
+          "before_sha256": "87b66a4a17591bfcf3831ec8649ddfedae6dec3839f9ace276d9ea8258bd7a51",
+          "after_sha256": "2129a3d2ea4e348c40854192a758b6a7a3c995482dd3a52375b0ae619c19b429",
+          "unchanged": false
+        },
+        {
+          "path": "reports/V9-S6P2-DESIGN/DESIGN-r1.md",
+          "before_sha256": "84500620b72fed4a8106935f5e6f41a02d440c8fbd9fdc9243dff5ccd29b63dc",
+          "after_sha256": "c8c4080aa3baa0bd1574b56580b42174ce4a7c915218c26db2625ebc75fbba42",
+          "unchanged": false
+        }
+      ]
+    }
+  ]
+}

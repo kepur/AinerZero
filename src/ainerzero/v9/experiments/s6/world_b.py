@@ -10,8 +10,13 @@ One law covers both worlds: ``physics_b`` on a world without a big pillar is exa
 Old-world experience therefore stays valid after the change: nothing it recorded is contradicted, the new
 mechanism lives where the old world had no states (a pillar radius it never saw).
 
-A third kind of world is a decoy: one pillar is tiny (radius 0.15-0.25), which the old world never had
-either, but nothing new happens there. It looks new and is not.
+Two more kinds of world are decoys: one pillar is tiny (radius 0.15-0.25) or large but not big (0.85-0.95).
+The old world had neither, but nothing new happens there. They look new and are not, one on each side of the
+old range.
+
+Slow disks can be caught by the ring: the turn makes a free disk move on a circle of radius about 0.83 times
+its speed, and a whole circle fits inside the ring when the speed is below about 0.72. Such a disk stays
+until a collision knocks it out.
 
 Pure NumPy. ``s4.world`` is not modified.
 """
@@ -28,8 +33,11 @@ from ainerzero.v9.experiments.s4 import world as W
 BIG_MIN = 1.0                      # a pillar at least this large carries a vortex ring
 BIG_RADIUS = (1.0, 1.3)
 BIG_CENTRE = (3.2, 6.8)            # the ring stays inside the arena
-TINY_RADIUS = (0.15, 0.25)         # decoy: out of the old range, old law
-KINDS_OF_WORLD = ("big", "tiny")
+TINY_RADIUS = (0.15, 0.25)         # decoy below the old range, old law
+LARGE_RADIUS = (0.85, 0.95)        # decoy above the old range and below BIG_MIN, old law
+KINDS_OF_WORLD = ("big", "tiny", "large")
+_SPECIAL = {"big": BIG_RADIUS, "tiny": TINY_RADIUS, "large": LARGE_RADIUS}
+_SEED_KEY = {"big": "world-b", "tiny": "world-tiny", "large": "world-large"}
 HALO = 1.2                         # ring width, measured from the pillar surface to the disk surface
 TURN = 0.12                        # radians per step
 ROLLOUT = (1, 5, 10)
@@ -87,7 +95,7 @@ def place_pillars_b(rng: np.random.Generator, kind: str = "big") -> tuple[W.Pill
     if kind not in KINDS_OF_WORLD:
         raise ValueError(f"unknown kind of world {kind!r}")
     c = rng.uniform(*BIG_CENTRE, 2)
-    out: list[W.Pillar] = [(float(c[0]), float(c[1]), float(rng.uniform(*(BIG_RADIUS if kind == "big" else TINY_RADIUS))))]
+    out: list[W.Pillar] = [(float(c[0]), float(c[1]), float(rng.uniform(*_SPECIAL[kind])))]
     while len(out) < W.N_PILLARS:
         c = rng.uniform(2, W.ARENA - 2, 2)
         r = rng.uniform(*W.PILLAR_RADIUS)
@@ -99,10 +107,13 @@ def place_pillars_b(rng: np.random.Generator, kind: str = "big") -> tuple[W.Pill
 
 def generate_episode_b(namespace: str, world_index: int, n_disks: int, *, steps: int = W.STEPS,
                        allow_registered: bool = False, kind: str = "big") -> EpisodeB:
-    """One world B (``kind`` "big": a big pillar with its ring; "tiny": a decoy) and its trajectory under ``physics_b``."""
+    """One world B (``kind`` "big": a big pillar with its ring; "tiny" or "large": a decoy) and its trajectory under
+    ``physics_b``."""
     if (namespace in REGISTERED or namespace in W.REGISTERED) and not allow_registered:
         raise PermissionError(f"{namespace} is a registered partition; only a registered run may generate it")
-    rng = np.random.default_rng(W.derive_seed(namespace, "world-b" if kind == "big" else "world-tiny", world_index))
+    if kind not in KINDS_OF_WORLD:
+        raise ValueError(f"unknown kind of world {kind!r}")
+    rng = np.random.default_rng(W.derive_seed(namespace, _SEED_KEY[kind], world_index))
     pillars = place_pillars_b(rng, kind)
     p, v = W._place_disks(rng, n_disks, pillars)
     out = []

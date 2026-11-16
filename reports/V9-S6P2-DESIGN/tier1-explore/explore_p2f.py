@@ -13,6 +13,8 @@ Arms (all with replay):
   Q  input novelty: flag candidates with an input outside the range the old experience covered (pillar radius,
      speed), pick among them at random. No learning, no outcome.
   R  random; W the rule that knows the answer (a disk in a ring).
+  U  (round I) one-sided input novelty: a pillar larger than any in the old experience. Decoys in round I lie on
+     both sides of the old range ("tiny" in the log then counts every decoy world).
   O  (round H) N with an exploration floor: a fifth of every round's experiments are drawn at random, so that
      layouts not yet tried keep being sampled.
 
@@ -48,6 +50,7 @@ POOL = 60_000
 CAND_WORLDS = int(os.environ.get("S6P2_WORLDS", 240))
 N_BIG = int(os.environ.get("S6P2_BIG", 24))
 N_TINY = int(os.environ.get("S6P2_TINY", 24))
+N_LARGE = int(os.environ.get("S6P2_LARGE", 0))     # round I: decoys above the old range too (S6P2_TINY=30 S6P2_LARGE=30)
 
 
 def candidates_three_kinds():
@@ -58,6 +61,8 @@ def candidates_three_kinds():
             eps.append(B.generate_episode_b(CAND_NS, w, n))
         elif w < N_BIG + N_TINY:
             eps.append(B.generate_episode_b(CAND_NS, w, n, kind="tiny"))
+        elif w < N_BIG + N_TINY + N_LARGE:
+            eps.append(B.generate_episode_b(CAND_NS, w, n, kind="large"))
         else:
             eps.append(W.generate_episode(CAND_NS, w, n))
     pairs = [(e, t) for e, ep in enumerate(eps) for t in range(len(ep.steps))]
@@ -112,9 +117,13 @@ def main():
         for g, k in zip(e["id"], XD.layout_keys(e["pil"])):
             cand_key[g] = k
         big[e["id"]] = e["pil"][:, :, 2].max(-1) >= B.BIG_MIN
-        tiny[e["id"]] = e["pil"][:, :, 2].min(-1) <= B.TINY_RADIUS[1]
+        rmax, rmin = e["pil"][:, :, 2].max(-1), e["pil"][:, :, 2].min(-1)
+        tiny[e["id"]] = (rmin <= B.TINY_RADIUS[1]) | ((rmax >= B.LARGE_RADIUS[0] - 1e-6) & (rmax < B.BIG_MIN))   # any decoy world
     ranges = input_ranges(old_pool)
     novel = novelty_flags(states0, ranges)
+    above = np.zeros(len(probe), dtype=bool)          # one-sided rule U: a pillar larger than any the old experience had
+    for e in states0.values():
+        above[e["id"]] = e["pil"][:, :, 2].max(-1) > ranges[0][1]
     mx.set_default_device(mx.cpu)
     base_models = [C.load_model("E", XA.BASE / f"r3-n{j}.safetensors") for j in range(3)]
     base_head = XC.fit_head(*XC.error_rows(old_pool, base_models), 107)
@@ -164,6 +173,8 @@ def main():
                     picks = S.pick_geo(ring, rem, per, rng)
                 elif pick == "Q":
                     picks = S.pick_geo(novel, rem, per, rng)
+                elif pick == "U":
+                    picks = S.pick_geo(above, rem, per, rng)
                 elif pick in ("N", "O"):
                     flagged, mean, med, mad = XD.surprising_layouts(XD.sample_surprise(new_pool, base_models, base_head))
                     flags = np.array([k in flagged for k in cand_key])

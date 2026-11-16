@@ -160,10 +160,15 @@ def test_module_is_pure_numpy_and_leaves_world_a_alone():
     assert W.REGISTERED == {"s4p1-final", "s4p2-final", "s6p1-final"}
 
 
-def test_decoy_worlds_look_new_and_follow_the_old_law():
-    ep = B.generate_episode_b(NS, 0, 6, steps=40, kind="tiny")
+@pytest.mark.parametrize("kind", ["tiny", "large"])
+def test_decoy_worlds_look_new_and_follow_the_old_law(kind):
+    ep = B.generate_episode_b(NS, 0, 6, steps=40, kind=kind)
     radii = sorted(r for _, _, r in ep.pillars)
-    assert B.TINY_RADIUS[0] <= radii[0] <= B.TINY_RADIUS[1] and radii[1] >= W.PILLAR_RADIUS[0]
+    lo, hi = (B.TINY_RADIUS, B.LARGE_RADIUS)[kind == "large"]
+    special = radii[0] if kind == "tiny" else radii[-1]
+    assert lo <= special <= hi and special < B.BIG_MIN
+    assert not (W.PILLAR_RADIUS[0] <= special <= W.PILLAR_RADIUS[1])         # outside the old range
+    assert sum(not (W.PILLAR_RADIUS[0] <= r <= W.PILLAR_RADIUS[1]) for r in radii) == 1
     for t in (0, 9, 30):
         s = ep.steps[t]
         assert not B.in_halo(s.positions, ep.pillars).any()
@@ -174,3 +179,24 @@ def test_decoy_worlds_look_new_and_follow_the_old_law():
     assert not np.array_equal(big.steps[0].positions, ep.steps[0].positions)
     with pytest.raises(ValueError):
         B.generate_episode_b(NS, 0, 6, steps=2, kind="other")
+
+
+def test_a_disk_inside_the_ring_can_be_caught_and_one_passing_through_leaves():
+    """A free disk in the ring moves on a circle of radius ~0.83 |v|. Started inside with a small circle it never
+    leaves; a fast disk entering from outside follows its circle back out."""
+    pillars = ((5.0, 5.0, 1.2), (1.2, 1.2, 0.5), (8.8, 8.8, 0.5))
+    assert 0.1 / (2 * math.sin(B.TURN / 2)) == pytest.approx(0.834, abs=1e-3)
+
+    def stay(p0, v0, steps):
+        p, v = np.array([[p0]], float), np.array([[v0]], float)
+        inside = []
+        for _ in range(steps):
+            inside.append(bool(B.in_halo(p[0], pillars)[0]))
+            p, v, _ = B.physics_b(p, v, pillars)
+        return inside
+
+    mid = 1.2 + W.RADIUS + B.HALO / 2
+    assert all(stay([5.0 + mid, 5.0], [0.0, 0.5], 300))                      # circle of radius 0.42 inside a 1.2 ring
+    edge = 1.2 + W.RADIUS + B.HALO + 0.05                                    # just outside the ring
+    through = stay([5.0 + edge, 5.0], [-1.3, 0.0], 150)
+    assert not through[0] and any(through) and not through[-1] and sum(through) < 60
