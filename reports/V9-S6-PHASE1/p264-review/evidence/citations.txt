@@ -1,0 +1,84 @@
+=== make_prereg.py:34, 46-59 ===
+PROBE_REPORT_SHA256 = "4a79000a646e8a817bd2916dd0471fb9ca221b2dac9d30fd67d00bc01ac16e9e"
+...
+    PE.require(design.is_relative_to(REPO.resolve()) and design.name == "DESIGN-r3.md", "design must be the repository's DESIGN-r3.md")
+    environment = PI.mlx_environment()
+    data = probe.read_bytes()
+    PE.require(hashlib.sha256(data).hexdigest() == PROBE_REPORT_SHA256, "probe report SHA differs from the recorded anchor")
+    commit = json.loads(data).get("git_head")
+    with PI.probe_tree(REPO, commit) as (probe_root, probe_code, probe_sha):
+        current = PI.current_identity(REPO, probe_root, probe_code)
+        sets = PE.source_sets(REPO, final_caps=PE.NEW_CAPS)
+        pr, evidence = PE.validate_probe(REPO, probe, probe_root, probe_code, commit, PE.cpu_versions(REPO),
+                                         expected_sha=PROBE_REPORT_SHA256)
+    final = sets["final"]
+    est_train, est_eval = PE.estimate_budget(pr, final)
+    versions = PI.final_versions()
+    dists = PI.distributions()
+
+=== make_prereg.py:66-68 ===
+        "manifest": GD.build_manifest(REPO, [RUNNER], src_root=REPO / "src",
+                                      extra=[design, VERIFY, Path(__file__).resolve(), Path(PE.__file__).resolve(), Path(PI.__file__).resolve()]),
+        "code_manifest_sha256": current["manifest_sha256"],
+
+=== prereg_identity.py:38-40 ===
+OLD = {"train_cap_s": 21600.0, "eval_limit_s": 3600, "third_party": ("numpy", "mlx")}
+NEW = {"train_cap_s": 19800, "eval_limit_s": 5400, "third_party": ("numpy", "mlx.core")}
+DISTRIBUTIONS = ("mlx", "mlx-metal", "numpy")
+
+=== prereg_identity.py:84-93 ===
+def _number(node, *, fold):
+    """A numeric literal; with ``fold`` also a product of two numeric literals. Booleans are not numbers."""
+    def lit(n):
+        return isinstance(n, ast.Constant) and type(n.value) in (int, float)
+    if lit(node):
+        return node.value
+    if fold and isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mult) and lit(node.left) and lit(node.right):
+        return node.left.value * node.right.value
+    raise IdentityError("a registered constant is not a plain numeric literal" + (" or a product of two" if fold else ""))
+
+=== prereg_identity.py:124-137 ===
+def runner_diff(old_src, new_src):
+    """Proof that the new runner differs from the old one only in the three registered values."""
+    old_dump, old_values = _extract(old_src, old=True)
+    new_dump, new_values = _extract(new_src, old=False)
+    require(old_dump == new_dump, "the runner differs from the probe's beyond the three registered constants")
+    for name in ("train_cap_s", "eval_limit_s"):
+        require(old_values[name] == OLD[name], f"probe runner {name} is {old_values[name]}, expected {OLD[name]}")
+        require(new_values[name] == NEW[name], f"frozen runner {name} is {new_values[name]}, expected {NEW[name]}")
+    require(old_values["third_party"] == OLD["third_party"], "probe runner THIRD_PARTY differs from the registered old value")
+    require(new_values["third_party"] == NEW["third_party"], "frozen runner THIRD_PARTY differs from the registered new value")
+    return {"old": {k: list(v) if isinstance(v, tuple) else v for k, v in old_values.items()},
+            "new": {k: list(v) if isinstance(v, tuple) else v for k, v in new_values.items()},
+            "masked_tree_sha256": hashlib.sha256(old_dump.encode()).hexdigest()}
+
+=== prereg_identity.py:140-153 ===
+def current_identity(repo, probe_root, probe_manifest):
+    """The code to freeze: committed and clean, same file set as the probe, byte-identical except the runner."""
+    repo = Path(repo)
+    current = GD.build_manifest(repo, [repo / RUNNER_REL], src_root=repo / "src", extra=[repo / VERIFY_REL])
+    require(set(current) == set(probe_manifest), "the frozen code's file set differs from the probe's")
+    changed = sorted(rel for rel in current if current[rel] != probe_manifest[rel])
+    require(changed == [RUNNER_REL], f"files other than the runner differ from the probe's code: {changed}")
+    require(not _git(repo, "status", "--porcelain", "--", *current), "the code to freeze is not committed")
+    head = _git(repo, "rev-parse", "HEAD")
+    data = _git(repo, "archive", head, *current, binary=True)
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:") as archive:
+        for rel, digest in current.items():
+            require(hashlib.sha256(archive.extractfile(rel).read()).hexdigest() == digest, f"committed {rel} differs")
+    proof = runner_diff((probe_root / RUNNER_REL).read_text(encoding="utf-8"), (repo / RUNNER_REL).read_text(encoding="utf-8"))
+    return {"head": head, "manifest": current, "manifest_sha256": manifest_sha(current), "changed": changed, "runner_diff": proof}
+
+=== prereg_evidence.py:368-379 ===
+def estimate_budget(pr, final):
+    """``final``: the current (frozen) runner's final set, whose caps are DESIGN-r3's (not the probe record's).
+    validate_probe is mandatory before this calculation at the public entry."""
+    keys(final, ('cand_ns', 'test_ns', 'sizes', 'reps', 'worlds', 'train_cap_s', 'eval_limit_s'), 'final set')
+    n_final = sum(final['reps'].values())
+    est_train = 1.15 * (sum(pr['train_seconds'][a + '-r0'] * k for a, k in final['reps'].items()) + 5 * 90)
+    est_eval = 1.30 * (pr['verify_seconds'] * n_final / 6
+                       + pr['eval_seconds'] * n_final / 6 * sum(final['worlds']) / sum(pr['config']['worlds']))
+    require(math.isfinite(est_train) and math.isfinite(est_eval)
+            and est_train <= final['train_cap_s'] and est_eval <= final['eval_limit_s'],
+            f'预计超出上限：训练 {est_train:.6f} 秒（上限 {final["train_cap_s"]}），评测 {est_eval:.6f} 秒（上限 {final["eval_limit_s"]}）')
+    return est_train, est_eval
