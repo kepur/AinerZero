@@ -78,3 +78,54 @@
 ## 交回 `reports/V9-ARCH-R6/peer-review/`
 - `REPORT.md`：开头给结论，三选一：`accept`（建议采纳）、`request_changes`（列出必修与应修）、`reject`。后面按 1–6 逐条写，每条意见指到候选稿的章节或行。
 - 引用的原文附「文件:行号」；`SHA256SUMS.txt`。
+
+## ainerzero.V9.A26（二级，逐句核对限定语，接替 A24；2026-11-17 建卡时的原文）
+
+**架构 r6 候选稿 v2：非作者证据核对（纯 CPU，只读）。** 作者是一级 claude，含同会话别名；作者不得领本卡。上一张同类卡 A24 的报告里有编造的内容，已打回并关闭；它的执行者 gemini-w9x4 及同会话别名也不得领本卡，换 ID 不算独立。
+
+## 对象
+- 候选稿 v2：`reports/V9-ARCH-R6/ARCHITECTURE_V9.r6-candidate.md`。提交与 sha256 见卡面参数 `review_commit`、`candidate_sha256`，先核对。工作树有并发改动时，用 `git show` 导出副本再审，不 checkout、reset、stash。
+- 现行 r5：仓库根的 `ARCHITECTURE_V9.md`，sha256 `0f54a96ace5b9c6fad2f3a16f3e6417a2f521fe131a13400263a0f5d9920f2a4`。
+- 先读 `reports/V9-ARCH-R6/README.md` 和候选稿的 §12–§14。
+- A24 的两次交付在 `reports/V9-ARCH-R6/evidence-review/`，打回原因在 RESEARCH_LOG 的 `R20261117-ARCH-r6-draft` 条。它们只作背景，不能当作你的证据。
+
+## 交付格式是硬性的
+
+交回一个 `claims.json`，格式写在 `reports/V9-ARCH-R6/tools/validate_review.py` 的开头。交回前自己跑通验证器，退出码必须是 0：
+
+```bash
+python3 reports/V9-ARCH-R6/tools/validate_review.py reports/V9-ARCH-R6/evidence-review-2/claims.json --candidate-sha256 <参数里的 candidate_sha256>
+```
+
+验证器检查三件事：
+- **逐字**：每条 `candidate_quote` 是候选稿的子串；每条证据的 `text` 等于那个文件那一行的全文。
+- **完整**：每条 claim 的五个回答都有值，并且各附一条逐字证据，或者写明出处没有写。
+- **覆盖**：r6 新增的文字里有 153 个带小数、百分号或分数的数字，每个都要落在某条 `candidate_quote` 里，或者列进 `not_evidence` 并写明理由。
+
+它查不了回答得对不对，那一部分由一级逐条抽查。两条纪律：
+- `candidate_quote` 和每条证据的 `text`，都用脚本从文件里取出来写进 JSON。不要手抄，不要凭记忆写。
+- 出处没有写的，回答填 `"not_stated": true`，不要猜。上一张卡把 3 个种子写成 5 个，把门槛 0.10 写成 0.50，把开门比例 1.4% 写成约 15%，都是猜出来的。
+
+## 要做的
+1. **逐句核对，这是主体。** 候选稿里 r6 新增的每一句带数字的话，建一条 claim：
+   - 出处行；
+   - 五个回答：数是在哪个事件子集或查询子集上算的；是哪个指标；来自 dev、final、摸底还是事后诊断；是登记的门、登记的描述量、只报告项还是诊断；几个种子或几个重复；
+   - `verdict`：一致、候选稿比出处强、数字不符。不是「一致」的，在 `note` 里写清候选稿丢了什么、建议怎么改。
+2. **否定说法。** 候选稿里「没有做」「未检验」「没有跑」这类话，每条给出处。写在 REPORT 的一节里，不进 `claims.json`。至少覆盖：§1 第三列里标「未检验」的各行、§5.1 的状态列、§7.6 和 §8.3 的「r6 现状」。
+3. **「没有改」是否属实。** 用你自己写的脚本，不导入作者脚本，核对候选稿 §13.1 声明没有改的章节与 r5 逐字相同；在隔离副本里重跑 `build/build_r6.py`，确认产物与提交里的候选稿逐字节相同。
+4. **常设 M2 对照的执行缺口。** 候选稿 §5 说：S3 第三阶段的设计 r0 写了不适用，定稿 r2 没有保留；S4、S5、S6 的设计稿既没有报，也没有写不可比。请通读这几份定稿设计和对应的 final 报告，确认或推翻：
+   - `reports/V9-S3-PHASE3-DESIGN/DESIGN-r2.md`
+   - `reports/V9-S4-DESIGN/DESIGN-r3.md`
+   - `reports/V9-S4-P2-DESIGN/DESIGN-r1.md`
+   - `reports/V9-S5-DESIGN/DESIGN-r1.md`
+   - `reports/V9-S6-DESIGN/DESIGN-r3.md`
+5. **§5.1 的状态列与外部文献。** 对着 RESEARCH_LOG 和 Relay 核对 G1、G3、B2、awz.V9.B9、awz.V9.B11 的状态和各阶段的收口日期；式 14 引的三个 arXiv 编号与标题、作者是否对得上，不能联网就写明没有核。
+
+## 规则
+- 纯 CPU，只读。不导入 MLX，不运行模型，不生成任何登记分区的世界。
+- 只写 `reports/V9-ARCH-R6/evidence-review-2/`。不改候选稿、源码、测试和已有报告；不动 `evidence-review/`；不提交，不推送；不挪别人的文件。
+
+## 交回 `reports/V9-ARCH-R6/evidence-review-2/`
+- `claims.json` 和 `validate.log`（验证器的原始输出，退出码 0）。
+- `REPORT.md`：开头写「数字与出处一致」或「有不一致」，并列出 `verdict` 不是「一致」的全部条目；后面是否定说法一节和第 3–5 项的结果。报告里引用候选稿或出处的每一句，都要能在 `claims.json` 或原文件里逐字找到。
+- 脚本与原始输出、`SHA256SUMS.txt`。
