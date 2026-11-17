@@ -10,7 +10,7 @@ import sys
 
 import numpy as np
 
-PAIRS = [("map_hybrid", "map_analytic"), ("map_hybrid", "map_memory"), ("map_hybrid", "map_ungated"),
+PAIRS = [("map_hybrid", "map_analytic"), ("map_hybrid_self", "map_analytic"), ("map_hybrid_self", "map_hybrid"), ("map_hybrid", "map_memory"), ("map_hybrid", "map_ungated"),
          ("map_hybrid", "map_ungated_aug"), ("map_memory", "map_analytic"), ("gru_belief", "latent_learned"),
          ("latent_learned", "latent_euclid")]
 
@@ -58,21 +58,31 @@ def main(paths: list[str]) -> int:
             if succ:
                 print(f"  {arm:18s} n={n:4d}  成功 {' '.join(f'{s:.2f}' for s in succ)} → {np.mean(succ):.3f}   "
                       f"SPL {' '.join(f'{s:.2f}' for s in spl)} → {np.mean(spl):.3f}")
-    print("\n配对差值（同一回合，所有种子合并；bootstrap 95% 区间，2000 次）")
+    sig = [tuple((r["kind"], r["d_star"]) for r in eps[arms[0]]) for _, _, eps in runs]
+    same = all(s == sig[0] for s in sig)
+    print("\n配对差值（同一回合配对；bootstrap 95% 区间，2000 次）")
+    if same:
+        print(f"  各运行的回合集合相同（只有训练种子不同）：先在 {len(runs)} 个运行间对每个回合取平均，再只在不同回合之间重抽样")
+    else:
+        print("  各运行的回合集合不同：所有回合合并重抽样")
     rng = np.random.default_rng(0)
     for a, b in PAIRS:
         if a not in arms or b not in arms:
             continue
         for kind in ("long", "law_relevant"):
-            ds, dsp = [], []
+            per_run = []
             for _, _, eps in runs:
                 ea, eb = _subset(eps[a], kind), _subset(eps[b], kind)
-                for ra, rb in zip(ea, eb):
-                    ds.append(ra["success"] - rb["success"])
-                    dsp.append(_spl(ra) - _spl(rb))
-            if not ds:
+                per_run.append(([ra["success"] - rb["success"] for ra, rb in zip(ea, eb)],
+                                [_spl(ra) - _spl(rb) for ra, rb in zip(ea, eb)]))
+            if not per_run or not per_run[0][0]:
                 continue
-            ds, dsp = np.array(ds, float), np.array(dsp, float)
+            if same:
+                ds = np.mean([np.array(x[0], float) for x in per_run], axis=0)
+                dsp = np.mean([np.array(x[1], float) for x in per_run], axis=0)
+            else:
+                ds = np.concatenate([np.array(x[0], float) for x in per_run])
+                dsp = np.concatenate([np.array(x[1], float) for x in per_run])
             bs = rng.integers(0, len(ds), (2000, len(ds)))
             lo, hi = np.percentile(ds[bs].mean(1), [2.5, 97.5])
             lo2, hi2 = np.percentile(dsp[bs].mean(1), [2.5, 97.5])

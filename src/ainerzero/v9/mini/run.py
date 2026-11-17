@@ -54,6 +54,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--preset", choices=("quick", "medium", "full"))
+    ap.add_argument("--arms", help="只跑这些臂，逗号分隔（默认全部）")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--steps", type=int)
@@ -113,20 +114,28 @@ def main(argv=None) -> int:
                        near_mask_prob=0.15)
     fms["ungated_aug"] = R.fit("ungated", ax, ay, seed=args.seed)
     curve[f"ungated_aug@{len(ax)}"] = R.accuracy(fms["ungated_aug"], hx, hy)
+    # M3：前进模型的训练标签不用真值，改由只有解析先验的地图智能体自己的定位给出
+    sx, sy, squal = R.collect_self(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0, seed=args.seed)
+    fms["gated_self"] = R.fit("gated", sx, sy, seed=args.seed)
+    curve[f"gated_self@{len(sx)}"] = {**R.accuracy(fms["gated_self"], hx, hy), "n_events_train": fms["gated_self"].n_events}
+    log(f"[m3] 自监督标签 {squal}")
     for k, v in curve.items():
         log(f"[forward] {k:16s} all={v['all']:.4f} event={v['event']:.3f} non_event={v['non_event']:.4f} "
             f"(留出事件 {v['n_event']}/{v['n']}，训练事件 {v.get('n_events_train', '-')})")
     diag = E.cost_diagnostics(model, cfg, preset["diag_layouts"])
     log(f"[cost] {diag}")
-    from .belief import train_belief
-    log(f"[belief] 训练 GRU 信念 {preset['belief_steps']} 步")
-    belief, binfo = train_belief(model, ds, preset["tpl"], steps=preset["belief_steps"], seed=args.seed, log=log)
-    bdiag = E.belief_diagnostics(model, belief, cfg, preset["diag_layouts"])
-    log(f"[belief] {bdiag}")
+    arms = tuple(args.arms.split(",")) if args.arms else E.ARMS
+    belief, binfo, bdiag = None, {}, {}
+    if "gru_belief" in arms:
+        from .belief import train_belief
+        log(f"[belief] 训练 GRU 信念 {preset['belief_steps']} 步")
+        belief, binfo = train_belief(model, ds, preset["tpl"], steps=preset["belief_steps"], seed=args.seed, log=log)
+        bdiag = E.belief_diagnostics(model, belief, cfg, preset["diag_layouts"])
+        log(f"[belief] {bdiag}")
     tasks = E.make_tasks(cfg, preset["eval_layouts"], preset["prefix"], preset["n_short"], preset["n_long"])
     log(f"[tasks] {len(tasks)} 个回合（短 {sum(t['kind'] == 'short' for t in tasks)}，长 {sum(t['kind'] == 'long' for t in tasks)}）")
     log(f"[tasks] 规律相关 {sum(t['law_relevant'] for t in tasks)} 个")
-    ev = E.evaluate_tasks(model, cfg, tasks, fms, seed=args.seed, log=log, belief=belief)
+    ev = E.evaluate_tasks(model, cfg, tasks, fms, arms=arms, seed=args.seed, log=log, belief=belief)
     log("[success]")
     for k, v in ev["summary"].items():
         sr = f"  surprise={v['surprise_rate']:.3f}" if v.get("surprise_rate") is not None else ""
@@ -134,6 +143,7 @@ def main(argv=None) -> int:
     meta["wall_sec"] = round(time.time() - t0, 1)
     result = {"meta": meta, "train": tinfo, "prediction": pred, "forward_model": curve, "cost_diagnostics": diag,
               "belief": {**binfo, "diagnostics": bdiag},
+              "m3_label_quality": squal,
               "success": ev["summary"]}
     (out / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=1))
     (out / "episodes.json").write_text(json.dumps(ev["episodes"], ensure_ascii=False))

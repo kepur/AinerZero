@@ -153,7 +153,7 @@ def run_episode(layout: W.Layout, task: dict, agent, budget: int) -> dict:
 
 
 ARMS = ("random", "latent_euclid", "latent_learned", "graph_memory", "gru_belief",
-        "map_analytic", "map_memory", "map_hybrid", "map_ungated", "map_ungated_aug", "oracle")
+        "map_analytic", "map_memory", "map_hybrid", "map_hybrid_self", "map_ungated", "map_ungated_aug", "oracle")
 
 
 def evaluate_tasks(model: WorldModel, cfg: W.Config, tasks: list[dict], fms: dict, arms=ARMS, seed: int = 0,
@@ -182,6 +182,8 @@ def evaluate_tasks(model: WorldModel, cfg: W.Config, tasks: list[dict], fms: dic
                 ag = MA.MapAgent(cfg, fms["analytic"], memory=True, seed=s)
             elif arm == "map_hybrid":
                 ag = MA.MapAgent(cfg, fms["gated"], memory=True, seed=s)
+            elif arm == "map_hybrid_self":
+                ag = MA.MapAgent(cfg, fms["gated_self"], memory=True, seed=s)
             elif arm == "map_ungated":
                 ag = MA.MapAgent(cfg, fms["ungated"], memory=True, seed=s)
             elif arm == "map_ungated_aug":
