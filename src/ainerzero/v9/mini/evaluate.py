@@ -144,7 +144,9 @@ def run_episode(layout: W.Layout, task: dict, agent, budget: int) -> dict:
     ep = A.Episode(obs, views, [p[2] for p in poses], list(task["prefix_acts"]), W.encode_obs(gv, g[2]), gv, g[2])
     agent.reset(ep)
     pose = task["start"]
-    extra = lambda: {"surprises": getattr(agent, "surprises", None), "lost": getattr(agent, "lost", None)}
+    extra = lambda: {"surprises": getattr(agent, "surprises", None), "lost": getattr(agent, "lost", None),
+                     "prefix_lost": getattr(agent, "prefix_lost", None),
+                     "lost_at_start": getattr(agent, "lost_at_start", None)}
     for t in range(budget):
         if (pose[0], pose[1]) == (g[0], g[1]):
             return {"success": 1, "steps": t, **extra()}

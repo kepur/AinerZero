@@ -167,7 +167,8 @@ class MapAgent:
         for a, v, h in zip(ep.prefix_acts, ep.prefix_views[1:], ep.prefix_heads[1:]):
             self._advance(a, v, h)
         self.prefix_surprises, self.prefix_lost = self.surprises, self.lost
-        self.surprises = self.steps = 0
+        self.lost_at_start = self.frag is not None   # 前缀走完时仍在迷路（任务从碎片里开始）
+        self.surprises = self.steps = self.lost = 0
         self.goal_view, self.goal_head = ep.goal_view, ep.goal_head
         self.last = None
 
