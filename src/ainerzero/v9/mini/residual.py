@@ -144,3 +144,35 @@ def accuracy(fm: ForwardModel, rays: np.ndarray, out: np.ndarray) -> dict:
             "event": float((pred[event] == out[event]).mean()) if event.any() else float("nan"),
             "non_event": float((pred[~event] == out[~event]).mean()),
             "n_event": int(event.sum()), "n": len(out)}
+
+
+def collect_self(cfg: W.Config, n_layouts: int, traj: int, horizon: int, seed0: int,
+                 seed: int = 0) -> tuple[np.ndarray, np.ndarray, dict]:
+    """M3：不用真值位姿的前进样本。
+
+    让只有解析先验的地图智能体在训练图上走同样的游走，射线取自它自己的地图（含未知格），
+    标签取自它自己的定位：一致就是预测位移，射线上重定位成功就是射线上的位移，迷路就记传送。
+    真值只用来统计标签对了多少（返回的 quality），不进训练。
+    """
+    from .agents import Episode
+    from .mapagent import MapAgent
+    rng = random.Random(seed)
+    xs, ys, agree, total = [], [], 0, 0
+    analytic = ForwardModel(kind="analytic")
+    for i in range(n_layouts):
+        layout = W.make_layout(seed0 + i, cfg)
+        for _ in range(traj):
+            poses, acts = W.walk(layout, W.random_pose(layout, rng), horizon, rng)
+            views = [W.ego_view(layout, p) for p in poses]
+            ag = MapAgent(cfg, analytic, memory=False)
+            ag.forward_log = []
+            ep = Episode(None, views, [p[2] for p in poses], list(acts), None, views[-1], poses[-1][2])
+            ag.reset(ep)
+            for r, lab, step in ag.forward_log:   # 迷路期间的前进不记录；按步号取真值，只用于统计
+                xs.append(r)
+                ys.append(lab)
+                total += 1
+                agree += int(lab == W.forward_outcome(layout, poses[step]))
+    quality = {"n": total, "label_agreement_with_truth": agree / max(1, total)}
+    return np.asarray(xs, dtype=np.int64), np.asarray(ys, dtype=np.int64), quality
+

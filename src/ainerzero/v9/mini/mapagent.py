@@ -119,6 +119,18 @@ class MapAgent:
         self.cfg, self.fm, self.memory = cfg, fm, memory
         self.rng = random.Random(seed)
         self.n = 2 * cfg.size + 1
+        self.forward_log = None   # M3：设成列表就记录 (前进前的射线, 自己定位得到的结果)，不用真值
+
+    def _disp(self, before, after) -> int:
+        dx, dy = W.DELTA[before[2]]
+        for k in range(W.RAY_LEN + 1):
+            if (before[0] + k * dx, before[1] + k * dy) == (after[0], after[1]):
+                return k
+        return TELEPORT
+
+    def _log(self, ray, label) -> None:
+        if self.forward_log is not None and ray is not None:
+            self.forward_log.append((ray, label, self.steps - 1))   # 第几步（前缀里的动作序号）
 
     # ------------------------------------------------------------ 前进与转向
     def _next(self, fr: Frame, p, a: int, planning: bool, use_memory: bool):
@@ -189,8 +201,10 @@ class MapAgent:
             self._lost_step(a, view, head)
             return
         before = self.main.pose
+        ray = W.ray(self.main.map, before) if (self.forward_log is not None and a == W.FORWARD) else None
         pred = self._next(self.main, before, a, planning=False, use_memory=self.memory)
         if self.main.check(view, pred)[1] == 0:
+            self._log(ray, self._disp(before, pred))
             self.main.pose = pred
             self.main.write(view, pred)
             return
@@ -200,6 +214,7 @@ class MapAgent:
             cs = self.main.candidates(view, head)
             loc = cs[0] if len(cs) == 1 else None
             if loc is None:   # 迷路：开碎片
+                self._log(ray, TELEPORT)   # 射线上解释不了
                 self.lost += 1
                 c = self.cfg.size
                 self.frag = Frame(self.n, self.cfg, self.fm, (c, c, head))
@@ -208,6 +223,7 @@ class MapAgent:
                 self.lost_from, self.lost_action = before, a
                 self.cands = {p: self.frag.pose for p in cs}
                 return
+        self._log(ray, self._disp(before, loc))
         self._resolved(before, a, loc)
         self.main.pose = loc
         self.main.write(view, loc)
