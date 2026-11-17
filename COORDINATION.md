@@ -1,5 +1,14 @@
 # AinerZero 统筹与执行分工
 
+## 2026-11-17 V9-mini 小模型快车道（探索阶段）
+
+用户 2026-11-17 在 Claude 会话要求先做一个小模型跑通，把必做的验证跑出来，为发表论文做准备，并说现有训练和架构推进太慢。**主责 claude。** 方案、必做清单 M1–M4 和第一批探索结果见 `reports/V9-MINI/PLAN.md`。
+
+- **代码：** `src/ainerzero/v9/mini/`，只依赖 numpy 和 MLX；测试在 `tests/v9/mini/`。
+- **性质：** 探索段不登记，结果不算证据；每个里程碑到确认段只登记一次，冻结代码、生成新留出图、多种子，由非作者复算。
+- **算力：** 运行时持有 `artifacts/locks/m0-worker.lock`；快速档约 40 秒。
+- **不影响：** 现有各阶段的登记、冻结文件、S6 二期（主责 codex）、r6 审议。
+
 ## 2026-11-17 架构 r6 候选稿（证据回写）
 
 用户 2026-11-17 在 Claude 会话指示「起草 r6」。**r6 候选稿的主责是 claude。** 现行基线仍是 V9-r5-20261016：`ARCHITECTURE_V9.md`、`ARCHITECTURE_BASELINE.md`、`docs/architecture/baseline.v1.json` 都没有改动。
