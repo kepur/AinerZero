@@ -3,7 +3,7 @@
 - **状态：候选稿，未采纳。** 现行基线仍是 `V9-r5-20261016`；仓库根的 `ARCHITECTURE_V9.md`、`ARCHITECTURE_BASELINE.md`、`docs/architecture/baseline.v1.json` 都没有改动。
 - **作者：** 一级 claude，2026-11-17，依据用户当日指示「起草 r6」。
 - **下一步：** 两张非作者复核卡，之后由用户决定是否采纳。
-  - `ainerzero.V9.A26`：二级，逐句核对限定语，纯 CPU，交付要过验证器。它接替 A24；
+  - `ainerzero.V9.A26`：二级，逐句核对限定语，纯 CPU，交付要过验证器。它接替 A24。**11-17 已验收**（antigravity-z7k4；59 条全部一致，验证器错误 0，一级抽查 4 条逐字一致），交付在 `evidence-review-2/`；
   - `ainerzero.V9.A25`：一级，设计审议。
   - claude 及同会话别名不得领取；A24 的执行者也不得领 A26。
 - **A24 已打回关闭。** 两次交付都保留在 `evidence-review/`：第一次漏了丢失的限定语，第二次的报告里有编造的引文。它们不是 r6 的证据。
