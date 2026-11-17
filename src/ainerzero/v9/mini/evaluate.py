@@ -22,12 +22,13 @@ def _spearman(x: np.ndarray, y: np.ndarray) -> float:
     return float((rx * ry).sum() / np.sqrt((rx ** 2).sum() * (ry ** 2).sum()))
 
 
-def prediction_metrics(model: WorldModel, cfg: W.Config, n_layouts: int, horizon: int = 200, k: int = 5) -> dict:
+def prediction_metrics(model: WorldModel, cfg: W.Config, n_layouts: int, horizon: int = 200, k: int = 5,
+                       eval_seed0: int = EVAL_SEED0) -> dict:
     """一步与 k 步误差比：预测误差 / 「原地不动」的误差（S2 的一步误差比）。"""
     num1 = den1 = numk = denk = 0.0
     for i in range(n_layouts):
-        layout = W.make_layout(EVAL_SEED0 + i, cfg)
-        rng = random.Random(EVAL_SEED0 + 31 * i)
+        layout = W.make_layout(eval_seed0 + i, cfg)
+        rng = random.Random(eval_seed0 + 31 * i)
         poses, acts = W.walk(layout, W.random_pose(layout, rng), horizon, rng)
         z = model.encode(mx.array(W.iter_views(layout, poses)))
         a = mx.array(np.asarray(acts, dtype=np.int32))
@@ -42,12 +43,13 @@ def prediction_metrics(model: WorldModel, cfg: W.Config, n_layouts: int, horizon
     return {"one_step_ratio": num1 / den1, f"{k}_step_ratio": numk / denk}
 
 
-def cost_diagnostics(model: WorldModel, cfg: W.Config, n_layouts: int, pairs_per_layout: int = 200) -> dict:
+def cost_diagnostics(model: WorldModel, cfg: W.Config, n_layouts: int, pairs_per_layout: int = 200,
+                     eval_seed0: int = EVAL_SEED0) -> dict:
     """代价与真实最少动作数的秩相关，全部配对和长距离（真值 ≥ 20）分开报。"""
     rows = []
     for i in range(n_layouts):
-        layout = W.make_layout(EVAL_SEED0 + i, cfg)
-        rng = random.Random(EVAL_SEED0 + 57 * i)
+        layout = W.make_layout(eval_seed0 + i, cfg)
+        rng = random.Random(eval_seed0 + 57 * i)
         goals = [W.random_pose(layout, rng) for _ in range(8)]
         for g in goals:
             dist = W.reverse_bfs_to_cell(layout, (g[0], g[1]))
@@ -77,12 +79,16 @@ def _unique_views(layout: W.Layout) -> dict:
     return counts
 
 
-def make_tasks(cfg: W.Config, n_layouts: int, prefix_len: int, n_short: int, n_long: int) -> list[dict]:
-    """每张留出图：一段探索前缀（随机游走），任务从前缀终点出发，目标取前缀里见过的、视野唯一的位姿。"""
+def make_tasks(cfg: W.Config, n_layouts: int, prefix_len: int, n_short: int, n_long: int,
+               eval_seed0: int = EVAL_SEED0) -> list[dict]:
+    """每张留出图：一段探索前缀（随机游走），任务从前缀终点出发，目标取前缀里见过的、视野唯一的位姿。
+
+    留出图的种子是 eval_seed0 + i（i < n_layouts）。确认段每个训练种子用不同的 eval_seed0，各套留出图互不重叠。
+    """
     tasks = []
     for i in range(n_layouts):
-        layout = W.make_layout(EVAL_SEED0 + i, cfg)
-        rng = random.Random(EVAL_SEED0 + 101 * i)
+        layout = W.make_layout(eval_seed0 + i, cfg)
+        rng = random.Random(eval_seed0 + 101 * i)
         uniq = _unique_views(layout)
         poses, acts = W.walk(layout, W.random_pose(layout, rng), prefix_len, rng)
         start = poses[-1]
@@ -106,7 +112,7 @@ def make_tasks(cfg: W.Config, n_layouts: int, prefix_len: int, n_short: int, n_l
             rng.shuffle(cs)
             for g, d in cs[:n]:
                 da = _analytic_cell_dist(layout, start, (g[0], g[1]))
-                tasks.append({"layout_seed": EVAL_SEED0 + i, "kind": kind, "start": start, "goal": g,
+                tasks.append({"layout_seed": eval_seed0 + i, "kind": kind, "start": start, "goal": g,
                               "d_star": d, "d_analytic": da, "law_relevant": da != d,
                               "prefix_poses": poses, "prefix_acts": acts})
     return tasks
@@ -191,7 +197,8 @@ def evaluate_tasks(model: WorldModel, cfg: W.Config, tasks: list[dict], fms: dic
             else:
                 ag = A.Oracle(layout, (task["goal"][0], task["goal"][1]), seed=s)
             r = run_episode(layout, task, ag, budget)
-            r.update(kind=task["kind"], d_star=task["d_star"], law_relevant=task["law_relevant"])
+            r.update(kind=task["kind"], d_star=task["d_star"], law_relevant=task["law_relevant"],
+                     layout_seed=task["layout_seed"])
             results[arm].append(r)
         if (ti + 1) % 20 == 0:
             log(f"  episodes {ti + 1}/{len(tasks)}  {time.time() - t0:.0f}s")
@@ -210,13 +217,14 @@ def evaluate_tasks(model: WorldModel, cfg: W.Config, tasks: list[dict], fms: dic
     return {"summary": summary, "episodes": results}
 
 
-def belief_diagnostics(model: WorldModel, belief, cfg: W.Config, n_layouts: int, walk_len: int = 200) -> dict:
+def belief_diagnostics(model: WorldModel, belief, cfg: W.Config, n_layouts: int, walk_len: int = 200,
+                       eval_seed0: int = EVAL_SEED0) -> dict:
     """走完一段游走后，信念到同图随机目标的代价与真实最少动作数的秩相关。"""
     from .belief import NONE_ACTION
     rows = []
     for i in range(n_layouts):
-        layout = W.make_layout(EVAL_SEED0 + i, cfg)
-        rng = random.Random(EVAL_SEED0 + 77 * i)
+        layout = W.make_layout(eval_seed0 + i, cfg)
+        rng = random.Random(eval_seed0 + 77 * i)
         for _ in range(4):
             poses, acts = W.walk(layout, W.random_pose(layout, rng), walk_len, rng)
             z = model.encode(mx.array(W.iter_views(layout, poses)))[None]

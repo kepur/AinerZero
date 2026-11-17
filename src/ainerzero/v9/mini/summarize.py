@@ -58,7 +58,7 @@ def main(paths: list[str]) -> int:
             if succ:
                 print(f"  {arm:18s} n={n:4d}  成功 {' '.join(f'{s:.2f}' for s in succ)} → {np.mean(succ):.3f}   "
                       f"SPL {' '.join(f'{s:.2f}' for s in spl)} → {np.mean(spl):.3f}")
-    sig = [tuple((r["kind"], r["d_star"]) for r in eps[arms[0]]) for _, _, eps in runs]
+    sig = [tuple((r.get("layout_seed"), r["kind"], r["d_star"]) for r in eps[arms[0]]) for _, _, eps in runs]
     same = all(s == sig[0] for s in sig)
     print("\n配对差值（同一回合配对；bootstrap 95% 区间，2000 次）")
     if same:
