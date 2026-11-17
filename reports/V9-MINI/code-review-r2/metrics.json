@@ -1,0 +1,102 @@
+{
+  "task_id": "ainerzero.V9.A28",
+  "review_commit": "c92c0abd5f855b00b7848d8a87cc0f9a561f56b6",
+  "base_commit": "6992312065d183d7fcc66733b20e2534907ab054",
+  "reviewer": "antigravity-z7k4",
+  "session_id": "sess-564b6267373e",
+  "verdict": "can_freeze",
+  "topology_audit": {
+    "total_maps_checked": 1230,
+    "train_maps_checked": 1000,
+    "heldout_explore_maps_checked": 30,
+    "heldout_confirm_maps_checked": 200,
+    "make_layout_runtime_errors": 0,
+    "bidirectional_connectivity_failures": 0,
+    "audit_duration_seconds": 222.5
+  },
+  "replication_results": {
+    "m2_s0_k12": {
+      "map_analytic": {
+        "long_success": 0.5441176470588235,
+        "merges": 36,
+        "merges_wrong": 18,
+        "wrong_pose_steps": 306,
+        "tracked_steps": 40049
+      },
+      "map_hybrid": {
+        "long_success": 0.8382352941176471,
+        "merges": 46,
+        "merges_wrong": 18,
+        "wrong_pose_steps": 357,
+        "tracked_steps": 39998
+      }
+    },
+    "m2_s0_k20": {
+      "map_analytic": {
+        "long_success": 0.6029411764705882,
+        "merges": 36,
+        "merges_wrong": 0,
+        "wrong_pose_steps": 30,
+        "tracked_steps": 40325
+      },
+      "map_hybrid": {
+        "long_success": 0.8382352941176471,
+        "merges": 34,
+        "merges_wrong": 0,
+        "wrong_pose_steps": 65,
+        "tracked_steps": 40290
+      }
+    },
+    "m1_s0_k20": {
+      "map_analytic": {
+        "long_success": 1.0,
+        "merges": 0,
+        "merges_wrong": 0,
+        "wrong_pose_steps": 0,
+        "tracked_steps": 41375
+      },
+      "map_hybrid": {
+        "long_success": 1.0,
+        "merges": 0,
+        "merges_wrong": 0,
+        "wrong_pose_steps": 0,
+        "tracked_steps": 41375
+      }
+    }
+  },
+  "mutation_tests": [
+    {
+      "mutation_id": "Mut-A",
+      "target": "MERGE_MIN_OVERLAP = 0",
+      "description": "Threshold set to 0",
+      "caught": true,
+      "failing_test": "test_merge_waits_for_enough_overlap"
+    },
+    {
+      "mutation_id": "Mut-B",
+      "target": "confl == 0",
+      "description": "Bypassed fragment conflict check",
+      "caught": true,
+      "failing_test": "test_merge_rejects_conflicting_offset"
+    },
+    {
+      "mutation_id": "Mut-C",
+      "target": "_strongly_connected",
+      "description": "Reverted to old weak connectivity criterion",
+      "caught": true,
+      "failing_test": "test_no_traps_with_ice_and_portals"
+    },
+    {
+      "mutation_id": "Mut-D",
+      "target": "_overlap out-of-bounds",
+      "description": "Out of bounds returned (0, 0) instead of (0, 1)",
+      "caught": true,
+      "failing_test": "test_overlap_counts_and_conflicts"
+    }
+  ],
+  "issues_summary": {
+    "blocker": 0,
+    "should_fix": 0,
+    "suggestion": 0
+  }
+}
