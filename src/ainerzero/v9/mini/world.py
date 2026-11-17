@@ -113,10 +113,17 @@ def make_layout(seed: int, cfg: Config | None = None) -> Layout:
 
 
 def _strongly_connected(layout: "Layout") -> bool:
-    """从任一可达位姿都能回到起点所在格（再原地转向就能回到起点位姿）。"""
+    """所有地板格两两可达：从起点格能走到每个地板格，且从任一可达位姿都能回到起点格。
+
+    只查第二条不够（A27 F-02）：传送门入口堵在某间房唯一的门前时，那间房从起点走不进去，
+    第二条只看起点走得到的位姿，会平凡成立；起点所在区域本身出不去时也一样。
+    """
     free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]
     start = (free[0][0], free[0][1], 0)
     reach = pose_bfs(layout, start)
+    cells = {(p[0], p[1]) for p in reach}
+    if not all(c in cells for c in free):
+        return False
     back = reverse_bfs_to_cell(layout, free[0])
     return all(p in back for p in reach)
 

@@ -106,7 +106,7 @@ class Graph(LatentTree):
             return self.plan_to(obs, self.zg)
         # 近邻里经图到目标最近的那个当路点（往前推进最多）
         cand = np.where(near & np.isfinite(self.to_goal))[0]
-        wp = cand[np.argmin(self.to_goal[cand])]
+        wp = int(cand[np.argmin(self.to_goal[cand])])   # 旧版 MLX 不接受 numpy 整数切片（A27 F-01）
         return self.plan_to(obs, self.z_nodes[wp:wp + 1])
 
 

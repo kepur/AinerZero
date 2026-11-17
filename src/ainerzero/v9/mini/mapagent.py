@@ -8,7 +8,9 @@
   1. 先沿朝向那条射线就近找视野一致的位姿（滑动只会落在射线上）；
   2. 找不到就在整张地图上找，唯一一致就采用；
   3. 否则迷路：在一个新的局部碎片里继续建图，同时维护主地图上的候选位姿集，每步用前进模型推进、
-     用视野筛选。候选收敛到一个时，把碎片按偏移并回主地图；
+     用当前视野和整块碎片地图筛选（碎片在该偏移下与主地图有任何一格冲突，这个偏移就作废）。
+     只剩一个候选、且碎片与主地图在该偏移下的重叠格数够 MERGE_MIN_OVERLAP 时，才把碎片并回主地图。
+     整图上唯一一致的位姿也不直接采用，同样走这条路（A27 F-04：只凭当前一帧就并图，约四成并错）；
 - 规划：在位姿图上 BFS 到目标格，目标靠目标视野与地图逐格匹配定位。迷路时如果目标在碎片里，
   就在碎片里规划，否则沿碎片的未知边界探索。
 
@@ -30,6 +32,7 @@ from . import world as W
 from .residual import TELEPORT, ForwardModel
 
 _FOLD = np.array([W.fold_type(v) for v in range(W.N_TYPES)], dtype=np.int64)
+MERGE_MIN_OVERLAP = 20   # 并图前碎片与主地图在候选偏移下至少要有这么多格重叠（且全部一致）
 
 
 class Frame:
@@ -158,6 +161,7 @@ class MapAgent:
         self.trans_mem, self.portal_mem = {}, {}
         self.frag = None          # 迷路时的碎片
         self.cands = None         # 迷路时主地图上的候选：候选位姿 -> 碎片里的对应位姿
+        self.rejected = set()     # 当前碎片已被整块地图否掉的偏移
         self.surprises = self.lost = self.steps = 0
         self.main.write(ep.prefix_views[0], self.main.pose)
         for a, v, h in zip(ep.prefix_acts, ep.prefix_views[1:], ep.prefix_heads[1:]):
@@ -210,19 +214,18 @@ class MapAgent:
             return
         self.surprises += 1
         loc = self._ray_candidate(view, before) if a == W.FORWARD else None
-        if loc is None:
+        if loc is None:   # 射线上解释不了：迷路，开碎片；整图候选（哪怕唯一）留给 _lost_step 用整块碎片验证
             cs = self.main.candidates(view, head)
-            loc = cs[0] if len(cs) == 1 else None
-            if loc is None:   # 迷路：开碎片
-                self._log(ray, TELEPORT)   # 射线上解释不了
-                self.lost += 1
-                c = self.cfg.size
-                self.frag = Frame(self.n, self.cfg, self.fm, (c, c, head))
-                self.frag.write(view, self.frag.pose)
-                self.frag_origin = self.frag.pose
-                self.lost_from, self.lost_action = before, a
-                self.cands = {p: self.frag.pose for p in cs}
-                return
+            self._log(ray, TELEPORT)
+            self.lost += 1
+            c = self.cfg.size
+            self.frag = Frame(self.n, self.cfg, self.fm, (c, c, head))
+            self.frag.write(view, self.frag.pose)
+            self.frag_origin = self.frag.pose
+            self.lost_from, self.lost_action = before, a
+            self.cands = {p: self.frag.pose for p in cs}
+            self.rejected = set()
+            return
         self._log(ray, self._disp(before, loc))
         self._resolved(before, a, loc)
         self.main.pose = loc
@@ -236,6 +239,7 @@ class MapAgent:
             self.frag = fr = Frame(self.n, self.cfg, self.fm, (c, c, head))
             self.frag_origin = fp = fr.pose
             self.cands = {}
+            self.rejected = set()
         fr.pose = fp
         fr.write(view, fp)
         nxt = {}
@@ -245,9 +249,20 @@ class MapAgent:
                 nxt[q] = fp
         if not nxt:
             nxt = {p: fp for p in self.main.candidates(view, head)}
+        overlap = {}
+        for q in list(nxt):   # 整块碎片验证：该偏移下有一格冲突就作废
+            off = (q[0] - fp[0], q[1] - fp[1])
+            known, bad = (0, 1) if off in self.rejected else self._overlap(fr, *off)
+            if bad:
+                self.rejected.add(off)
+                del nxt[q]
+            else:
+                overlap[q] = known
         self.cands = nxt
         if len(nxt) == 1:
             (pose, fpose), = nxt.items()
+            if overlap[pose] < MERGE_MIN_OVERLAP:   # 证据还不够，继续跟踪
+                return
             ox, oy = pose[0] - fpose[0], pose[1] - fpose[1]
             self._merge(fr, ox, oy)
             origin = (self.frag_origin[0] + ox, self.frag_origin[1] + oy, self.frag_origin[2])
@@ -255,6 +270,18 @@ class MapAgent:
             self.main.pose = pose
             self.main.write(view, pose)
             self.frag = self.cands = None
+            self.rejected = set()
+
+    def _overlap(self, fr: Frame, ox: int, oy: int) -> tuple[int, int]:
+        """碎片平移 (ox, oy) 后与主地图的（重叠已知格数，其中不一致的格数）。"""
+        ys, xs = np.nonzero(fr.map != -1)
+        tx, ty = xs + ox, ys + oy
+        inb = (tx >= 0) & (tx < self.n) & (ty >= 0) & (ty < self.n)
+        if not inb.all():
+            return 0, 1   # 碎片出了主地图的范围：偏移不可能对
+        mv = self.main.map[ty, tx]
+        both = mv != -1
+        return int(both.sum()), int((mv[both] != fr.map[ys, xs][both]).sum())
 
     def _merge(self, fr: Frame, ox: int, oy: int) -> None:
         ys, xs = np.nonzero(fr.map != -1)
