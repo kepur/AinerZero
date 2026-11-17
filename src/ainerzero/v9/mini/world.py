@@ -39,8 +39,8 @@ class Config:
     room_size: int = 5        # 房间内部边长
     view_radius: int = 2      # 视野 (2r+1)×(2r+1)
     extra_door_prob: float = 0.35  # 生成树之外的门，越小路越绕
-    ice: bool = False
-    portals: int = 0
+    ice_rooms: int = 0        # 整间铺冰的房间数（未知规律：前进后一直滑到被挡住或离开冰面）
+    portals: int = 0          # 单向传送门数（未知规律：踏上入口就到出口）
 
     @property
     def size(self) -> int:
@@ -100,12 +100,25 @@ def make_layout(seed: int, cfg: Config | None = None) -> Layout:
         if ra != rb or rng.random() < cfg.extra_door_prob:
             parent[ra] = rb
             _open_door(grid, a, b, cfg, rng)
-    layout = Layout(seed=seed, cfg=cfg, grid=grid)
-    if cfg.ice:
-        _place_ice(layout, rng)
-    if cfg.portals:
-        _place_portals(layout, rng)
-    return layout
+    base = grid.copy()
+    for _attempt in range(100):
+        layout = Layout(seed=seed, cfg=cfg, grid=base.copy())
+        if cfg.ice_rooms:
+            _place_ice(layout, rng)
+        if cfg.portals:
+            _place_portals(layout, rng)
+        if not (cfg.ice_rooms or cfg.portals) or _strongly_connected(layout):
+            return layout
+    raise RuntimeError(f"seed {seed}: 100 次都放不出没有陷阱的冰带/传送门")
+
+
+def _strongly_connected(layout: "Layout") -> bool:
+    """从任一可达位姿都能回到起点所在格（再原地转向就能回到起点位姿）。"""
+    free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]
+    start = (free[0][0], free[0][1], 0)
+    reach = pose_bfs(layout, start)
+    back = reverse_bfs_to_cell(layout, free[0])
+    return all(p in back for p in reach)
 
 
 def _open_door(grid, a, b, cfg: Config, rng: random.Random) -> None:
@@ -123,16 +136,32 @@ def _open_door(grid, a, b, cfg: Config, rng: random.Random) -> None:
 
 
 def _place_ice(layout: Layout, rng: random.Random) -> None:
-    free = [c for c in layout.free_cells()]
-    for x, y in rng.sample(free, k=max(1, len(free) // 12)):
-        layout.grid[y, x] = ICE
+    cfg = layout.cfg
+    rs = cfg.room_size
+    rooms = [(rx, ry) for ry in range(cfg.rooms) for rx in range(cfg.rooms)]
+    # 每间选中的房间里放一条 2 格宽、贯穿房间的冰带。踩上去会滑过整条冰带；整间铺冰会把智能体困死，不用。
+    for rx, ry in rng.sample(rooms, k=cfg.ice_rooms):
+        x0, y0 = rx * (rs + 1) + 1, ry * (rs + 1) + 1
+        off = rng.randrange(1, rs - 2)
+        if rng.random() < 0.5:
+            layout.grid[y0 + off:y0 + off + 2, x0:x0 + rs] = ICE
+        else:
+            layout.grid[y0:y0 + rs, x0 + off:x0 + off + 2] = ICE
 
 
 def _place_portals(layout: Layout, rng: random.Random) -> None:
-    free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]
-    picks = rng.sample(free, k=2 * layout.cfg.portals)
-    for i in range(layout.cfg.portals):
-        src, dst = picks[2 * i], picks[2 * i + 1]
+    """入口和出口放在房间内部的地板格上，两者至少隔 8 格（曼哈顿），做成捷径。"""
+    rs = layout.cfg.room_size
+    free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0
+            and c[0] % (rs + 1) != 0 and c[1] % (rs + 1) != 0]
+    used: set = set()
+    for _ in range(layout.cfg.portals):
+        for _try in range(200):
+            src, dst = rng.sample(free, k=2)
+            if src in used or dst in used or abs(src[0] - dst[0]) + abs(src[1] - dst[1]) < 8:
+                continue
+            break
+        used.update((src, dst))
         layout.grid[src[1], src[0]] = PORTAL
         layout.portal_to[src] = dst
 
@@ -320,3 +349,44 @@ def walk(layout: Layout, start: Pose, n: int, rng: random.Random,
 
 def iter_views(layout: Layout, poses: Iterable[Pose]) -> np.ndarray:
     return np.stack([encode_obs(ego_view(layout, p), p[2]) for p in poses])
+
+
+# ---------------------------------------------------------------- 残差模型的输入：前方射线
+
+RAY_LEN = 6
+RAY_CLASSES = 5   # 0 未知 1 墙 2 冰 3 传送门 4 地板（颜色折叠掉：规律与颜色无关，这是规范化的一步）
+
+
+def fold_type(v: int) -> int:
+    if v < 0:
+        return 0
+    if v == WALL or v == OOB:
+        return 1
+    if v == ICE:
+        return 2
+    if v == PORTAL:
+        return 3
+    return 4
+
+
+def ray(cells: np.ndarray, pose: Pose, length: int = RAY_LEN) -> np.ndarray:
+    """cells：真值网格或智能体地图（-1 表示未知）。返回 (length,) 折叠后的类型，越界算墙。"""
+    x, y, h = pose
+    dx, dy = DELTA[h]
+    n = cells.shape[0]
+    out = np.zeros(length, dtype=np.int64)
+    for k in range(1, length + 1):
+        cx, cy = x + k * dx, y + k * dy
+        out[k - 1] = fold_type(int(cells[cy, cx])) if 0 <= cx < n and 0 <= cy < n else 1
+    return out
+
+
+def forward_outcome(layout: Layout, pose: Pose) -> int:
+    """前进一步的真实结果：沿朝向移动的格数 0..RAY_LEN；不在射线上（传送）记 RAY_LEN+1。"""
+    x, y, h = pose
+    nx, ny, _ = step(layout, pose, FORWARD)
+    dx, dy = DELTA[h]
+    for k in range(0, RAY_LEN + 1):
+        if (x + k * dx, y + k * dy) == (nx, ny):
+            return k
+    return RAY_LEN + 1

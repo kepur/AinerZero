@@ -4,13 +4,11 @@
 - LatentTree(cost="learned")：同一个潜空间、同一个规划器，代价换成学到的可达性（式 14 ①）。
 - Graph：拓扑地图即记忆（式 14 ②）。节点是探索前缀里见过的潜状态，边是观察到的转移和
   学到的可达性 ≤ δ 的近邻；图上最短路选下一个路点，再用学到的代价做局部规划。
-- AnalyticMap：便宜规则，不学习。按指南针朝向和「前方不是墙就前进」做里程计，把视野写进
-  自己坐标系的栅格地图，把目标视野和地图逐格匹配定位，再在地图上 BFS。
+- 度量地图类的臂（便宜规则、事件记忆、V9 混合）在 mapagent.py。
 - Oracle：真值地图上的最短路（上界，只作可行性检查）。Random：随机动作。
 """
 from __future__ import annotations
 
-import collections
 import itertools
 import random
 
@@ -110,89 +108,6 @@ class Graph(LatentTree):
         cand = np.where(near & np.isfinite(self.to_goal))[0]
         wp = cand[np.argmin(self.to_goal[cand])]
         return self.plan_to(obs, self.z_nodes[wp:wp + 1])
-
-
-class AnalyticMap:
-    """便宜规则：里程计 + 栅格地图 + 视野匹配定位 + BFS。不学习，不用坐标真值。"""
-
-    def __init__(self, cfg: W.Config, seed: int = 0):
-        self.cfg = cfg
-        self.rng = random.Random(seed)
-        self.n = 2 * cfg.size + 1
-
-    def _write(self, view: np.ndarray, pose) -> None:
-        x, y, h = pose
-        for row, col, dx, dy in W.ego_offsets(self.cfg.view_radius, h):
-            v = view[row, col]
-            if v != W.OOB:
-                self.map[y + dy, x + dx] = v
-
-    def reset(self, ep: Episode) -> None:
-        c = self.cfg.size
-        self.map = np.full((self.n, self.n), -1, dtype=np.int16)
-        self.pose = (c, c, ep.prefix_heads[0])
-        self._write(ep.prefix_views[0], self.pose)
-        for a, v in zip(ep.prefix_acts, ep.prefix_views[1:]):
-            self.pose = W.analytic_step(self.map, self.pose, a)
-            self._write(v, self.pose)
-        self.goal_view, self.goal_head = ep.goal_view, ep.goal_head
-        self.goal = None
-        self.last = None
-
-    def _localize_goal(self):
-        offs = W.ego_offsets(self.cfg.view_radius, self.goal_head)
-        need = [(dx, dy, self.goal_view[r, c]) for r, c, dx, dy in offs if self.goal_view[r, c] != W.OOB]
-        best, best_n = None, -1
-        ys, xs = np.nonzero(self.map >= W.FLOOR0)
-        for x, y in zip(xs.tolist(), ys.tolist()):
-            known = ok = 0
-            for dx, dy, v in need:
-                mv = self.map[y + dy, x + dx] if 0 <= y + dy < self.n and 0 <= x + dx < self.n else -1
-                if mv == -1:
-                    continue
-                known += 1
-                if mv != v:
-                    ok = -1
-                    break
-            if ok == 0 and known >= 0.8 * len(need) and known > best_n:
-                best, best_n = (x, y), known
-        return best
-
-    def _bfs_first_action(self, targets) -> int | None:
-        start = self.pose
-        prev = {start: None}
-        q = collections.deque([start])
-        while q:
-            p = q.popleft()
-            if (p[0], p[1]) in targets:
-                while prev[p] is not None and prev[p][0] != start:
-                    p = prev[p][0]
-                return prev[p][1] if prev[p] is not None else None
-            for a in range(W.N_ACTIONS):
-                nxt = W.analytic_step(self.map, p, a)
-                if nxt not in prev and 0 < nxt[0] < self.n - 1 and 0 < nxt[1] < self.n - 1:
-                    prev[nxt] = (p, a)
-                    q.append(nxt)
-        return None
-
-    def act(self, obs: np.ndarray, view: np.ndarray, head: int) -> int:
-        if self.last is not None:
-            self.pose = W.analytic_step(self.map, self.pose, self.last)
-        self._write(view, self.pose)
-        if self.goal is None:
-            self.goal = self._localize_goal()
-        if self.goal is not None:
-            a = self._bfs_first_action({self.goal})
-        else:   # 没定位到目标：去最近的未知边界
-            ys, xs = np.nonzero(self.map == -1)
-            frontier = {(x, y) for x, y in zip(xs.tolist(), ys.tolist())
-                        if any(0 <= y + dy < self.n and 0 <= x + dx < self.n and self.map[y + dy, x + dx] >= W.FLOOR0
-                               for dx, dy in W.DELTA)}
-            a = self._bfs_first_action(frontier)
-        if a is None:
-            a = self.rng.randrange(W.N_ACTIONS)
-        self.last = a
-        return a
 
 
 class Oracle:

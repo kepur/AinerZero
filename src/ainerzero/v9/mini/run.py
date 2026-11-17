@@ -25,6 +25,7 @@ import mlx.core as mx
 
 from . import data as D
 from . import evaluate as E
+from . import residual as R
 from . import world as W
 from .train import TrainConfig, train
 
@@ -32,10 +33,12 @@ ROOT = Path(__file__).resolve().parents[4]
 LOCK = ROOT / "artifacts" / "locks" / "m0-worker.lock"
 
 PRESETS = {
+    "medium": dict(layouts=200, tpl=4, horizon=200, steps=6000, eval_layouts=30, prefix=400, n_short=2, n_long=4,
+                   diag_layouts=12, belief_steps=3000),
     "quick": dict(layouts=60, tpl=4, horizon=200, steps=3000, eval_layouts=12, prefix=400, n_short=2, n_long=4,
-                  diag_layouts=6),
+                  diag_layouts=6, belief_steps=1500),
     "full": dict(layouts=400, tpl=4, horizon=200, steps=12000, eval_layouts=50, prefix=400, n_short=3, n_long=4,
-                 diag_layouts=20),
+                 diag_layouts=20, belief_steps=4000),
 }
 
 
@@ -50,11 +53,14 @@ def _code_sha() -> str:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--preset", choices=("quick", "medium", "full"))
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--steps", type=int)
+    ap.add_argument("--world", choices=("m1", "m2"), default="m1",
+                    help="m1：规律全部已知；m2：两间冰房 + 两个单向传送门（解析先验不知道）")
     args = ap.parse_args(argv)
-    preset = dict(PRESETS["quick" if args.quick else "full"])
+    preset = dict(PRESETS[args.preset or ("quick" if args.quick else "full")])
     if args.steps:
         preset["steps"] = args.steps
 
@@ -74,7 +80,7 @@ def main(argv=None) -> int:
         logf.write(msg + "\n")
         logf.flush()
 
-    cfg = W.Config()
+    cfg = W.Config() if args.world == "m1" else W.Config(ice_rooms=2, portals=2)
     t0 = time.time()
     meta = {"preset": preset, "seed": args.seed, "world": cfg.__dict__, "code_sha256": _code_sha(),
             "git_head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip(),
@@ -87,16 +93,47 @@ def main(argv=None) -> int:
     log(f"[train] 参数 {tinfo['params']}，{tinfo['train_sec']} 秒")
     pred = E.prediction_metrics(model, cfg, preset["diag_layouts"])
     log(f"[pred] {pred}")
+    # 前进模型：解析先验 / 门控残差 / 不门控，训练图与世界模型相同；样本量曲线在留出图上测
+    seed0 = D.TRAIN_SEED0 + 1000 * args.seed
+    rx, ry = R.collect(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0, seed=args.seed)
+    hx, hy = R.collect(cfg, preset["diag_layouts"] * 4, 4, preset["horizon"], D.EVAL_SEED0, seed=args.seed + 99)
+    fms = {"analytic": R.fit("analytic", rx, ry)}
+    curve = {"analytic": R.accuracy(fms["analytic"], hx, hy)}
+    import numpy as _np
+    rs = _np.random.default_rng(args.seed)
+    for n in (300, 1000, 3000, 10000, len(rx)):
+        n = min(n, len(rx))
+        idx = rs.permutation(len(rx))[:n]
+        for kind in ("gated", "ungated"):
+            fm = R.fit(kind, rx[idx], ry[idx], seed=args.seed)
+            curve[f"{kind}@{n}"] = {**R.accuracy(fm, hx, hy), "n_events_train": fm.n_events}
+            if n == len(rx):
+                fms[kind] = fm
+    ax, ay = R.collect(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0, seed=args.seed,
+                       near_mask_prob=0.15)
+    fms["ungated_aug"] = R.fit("ungated", ax, ay, seed=args.seed)
+    curve[f"ungated_aug@{len(ax)}"] = R.accuracy(fms["ungated_aug"], hx, hy)
+    for k, v in curve.items():
+        log(f"[forward] {k:16s} all={v['all']:.4f} event={v['event']:.3f} non_event={v['non_event']:.4f} "
+            f"(留出事件 {v['n_event']}/{v['n']}，训练事件 {v.get('n_events_train', '-')})")
     diag = E.cost_diagnostics(model, cfg, preset["diag_layouts"])
     log(f"[cost] {diag}")
+    from .belief import train_belief
+    log(f"[belief] 训练 GRU 信念 {preset['belief_steps']} 步")
+    belief, binfo = train_belief(model, ds, preset["tpl"], steps=preset["belief_steps"], seed=args.seed, log=log)
+    bdiag = E.belief_diagnostics(model, belief, cfg, preset["diag_layouts"])
+    log(f"[belief] {bdiag}")
     tasks = E.make_tasks(cfg, preset["eval_layouts"], preset["prefix"], preset["n_short"], preset["n_long"])
     log(f"[tasks] {len(tasks)} 个回合（短 {sum(t['kind'] == 'short' for t in tasks)}，长 {sum(t['kind'] == 'long' for t in tasks)}）")
-    ev = E.evaluate_tasks(model, cfg, tasks, seed=args.seed, log=log)
+    log(f"[tasks] 规律相关 {sum(t['law_relevant'] for t in tasks)} 个")
+    ev = E.evaluate_tasks(model, cfg, tasks, fms, seed=args.seed, log=log, belief=belief)
     log("[success]")
     for k, v in ev["summary"].items():
-        log(f"  {k:28s} n={v['n']:3d}  success={v['success']:.3f}  spl={v['spl']:.3f}")
+        sr = f"  surprise={v['surprise_rate']:.3f}" if v.get("surprise_rate") is not None else ""
+        log(f"  {k:30s} n={v['n']:3d}  success={v['success']:.3f}  spl={v['spl']:.3f}{sr}")
     meta["wall_sec"] = round(time.time() - t0, 1)
-    result = {"meta": meta, "train": tinfo, "prediction": pred, "cost_diagnostics": diag,
+    result = {"meta": meta, "train": tinfo, "prediction": pred, "forward_model": curve, "cost_diagnostics": diag,
+              "belief": {**binfo, "diagnostics": bdiag},
               "success": ev["summary"]}
     (out / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=1))
     (out / "episodes.json").write_text(json.dumps(ev["episodes"], ensure_ascii=False))

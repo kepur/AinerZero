@@ -74,7 +74,7 @@ def test_reverse_bfs_agrees_with_forward_bfs():
 
 
 def test_ice_slides_and_portal_teleports():
-    cfg = W.Config(ice=True, portals=1)
+    cfg = W.Config(ice_rooms=2, portals=1)
     L = W.make_layout(5, cfg)
     src, dst = next(iter(L.portal_to.items()))
     for h in range(4):
@@ -85,3 +85,15 @@ def test_ice_slides_and_portal_teleports():
             break
     ice = [c for c in L.free_cells() if L.grid[c[1], c[0]] == W.ICE]
     assert ice
+
+
+def test_no_traps_with_ice_and_portals():
+    """任何可达位姿都还能回到任何格子：冰带和单向门不会把智能体困死。"""
+    cfg = W.Config(ice_rooms=2, portals=2)
+    for seed in range(8):
+        L = W.make_layout(seed, cfg)
+        free = [c for c in L.free_cells() if L.grid[c[1], c[0]] >= W.FLOOR0]
+        reach = W.pose_bfs(L, (*free[0], 0))
+        target = free[-1]
+        back = W.reverse_bfs_to_cell(L, target)
+        assert all(p in back for p in reach)
