@@ -167,6 +167,26 @@ CITES: list[tuple[str, Path, list[str]]] = [
     ("V10-E2a", AWZ / "reports/V-V9-B9/报告.md", [
         "**50.94%**", "作者报 54.69%", "432/432 tick", "回退率 93.75%、比全量慢 43.8%",
         "建议限范围验收 `awz.V9.B9`"]),
+    ("限定语：S4 一期", ROOT / "reports/V9-S4-PHASE1/final/FINAL-REPORT.md", [
+        "有碰撞事件上，L-int 的准确率比 L-ind 高 0.123", "| 档 | ΔD | Δ有碰撞准确率 |"]),
+    ("限定语：S4 二期", ROOT / "reports/V9-S4-PHASE2/FINAL-REPORT.md", [
+        "| GR | 有碰撞事件：L-int-g − L-sc-g | +0.072 |"]),
+    ("限定语：S4 设计里 E-P 的定义", ROOT / "reports/V9-S4-DESIGN/DESIGN-r3.md", [
+        "| E-P | 真实物理（生成器） | 否 |"]),
+    ("限定语：S5 的 R2 与只报告项", ROOT / "reports/V9-S5-DESIGN/DESIGN-r1.md", [
+        "**R2 圆盘占据图：**"]),
+    ("限定语：S5 只报告项", ROOT / "reports/V9-S5-FINAL/RESULTS/REPORT.md", [
+        "## 只报告项（final，种子平均；R2 AP）", "以下都只报告"]),
+    ("限定语：S2 诊断的范围", ROOT / "reports/V9-S2-CLOSE/REPORT.md", [
+        "诊断只用 train 留出世界和种子 42 的检查点"]),
+    ("限定语：S6 一期的指标", ROOT / "reports/V9-S6-FINAL/RESULTS.md", [
+        "碰撞预测明显好过随机（+0.095）", "自由误差比随机高约 21%、比代用规则高约 7%"]),
+    ("S3 没有做 Titans 与多频率", ROOT / "reports/V9-S3-DESIGN/DESIGN-r2.md", [
+        "**第一阶段不回答：** 跨回合记忆、巩固、FAST→MID→SLOW 晋升、Titans、Nested Learning"]),
+    ("S3 二阶段没有做 Titans", ROOT / "reports/V9-S3-PHASE2-DESIGN/DESIGN-r2.md", [
+        "容量受限的情景库、Titans 式记忆。这些才是下一步的新问题"]),
+    ("S3 三阶段没有做 Titans", ROOT / "reports/V9-S3-PHASE3-DESIGN/DESIGN-r2.md", [
+        "| 容量受限的情景库、教师写入、Titans 式记忆、多次换代 | 不在本阶段 |"]),
     ("r5 出版副本", ROOT / "docs/architecture/baseline.v1.json", [
         "0f54a96ace5b9c6fad2f3a16f3e6417a2f521fe131a13400263a0f5d9920f2a4"]),
     ("训练暂停解除", ROOT / "CLAUDE.md", [

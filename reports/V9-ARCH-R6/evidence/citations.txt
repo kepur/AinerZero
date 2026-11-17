@@ -129,6 +129,39 @@
   18: 8. **其他发现（非阻断）**：Event/v1 最小校验缺两条 fail-closed（重复 `affected_ids` 被接受且效果叠加两次，实测 vel=2×impulse；非 actual 层 `state_effect=true` 被静默忽略），`contact.begin/end` 未登记（接触事件作为 S_t 双方种子未建模）；20% 高稀疏回退成本确认（回退率 93.75%、比全量慢 43.8%），策略分支交统筹；预登记路线（开发中调整后冻结）仍需统筹确认。
   19: 9. **结论：建议限范围验收 `awz.V9.B9`**——参考实现语义、登记确定性域内、5%≥30% 研究目标成立；不是 P3-I2 集成，不构成训练/能力/跨平台确定性结论。
 
+== 限定语：S4 一期：AinerZero/reports/V9-S4-PHASE1/final/FINAL-REPORT.md
+  34: 5. **交互本身对重识别有价值（H2）：** 有碰撞事件上，L-int 的准确率比 L-ind 高 0.123，区间 [0.091, 0.153]。门槛 ≥ 0.05，下界 > 0。
+  100: | 档 | ΔD | Δ有碰撞准确率 |
+
+== 限定语：S4 二期：AinerZero/reports/V9-S4-PHASE2/FINAL-REPORT.md
+  56: | GR | 有碰撞事件：L-int-g − L-sc-g | +0.072 | [+0.045, +0.101] | ≥ 0，下界 > 0 | 过 |
+
+== 限定语：S4 设计里 E-P 的定义：AinerZero/reports/V9-S4-DESIGN/DESIGN-r3.md
+  126: | E-P | 真实物理（生成器） | 否 |
+
+== 限定语：S5 的 R2 与只报告项：AinerZero/reports/V9-S5-DESIGN/DESIGN-r1.md
+  118: - **R2 圆盘占据图：** 取每段最后一帧，把画面里看得见的圆盘放到自我中心网格上：方位 12 格覆盖 90° 视场，距离 7 格按对数从 0.5 到 7.0。每格是 0/1 占据：同一格里有几个圆盘都记 1，不记计数、不记编号。完全被挡住的圆盘不算。
+
+== 限定语：S5 只报告项：AinerZero/reports/V9-S5-FINAL/RESULTS/REPORT.md
+  21: ## 只报告项（final，种子平均；R2 AP）
+  55: 2. **教师的作用主要在 512 段标签。** 以下都只报告：
+
+== 限定语：S2 诊断的范围：AinerZero/reports/V9-S2-CLOSE/REPORT.md
+  40: 诊断只用 train 留出世界和种子 42 的检查点，在账本副本上读取。
+
+== 限定语：S6 一期的指标：AinerZero/reports/V9-S6-FINAL/RESULTS.md
+  45: - 只看自己集成的分歧挑实验，碰撞预测明显好过随机（+0.095）；
+  50: 3. **代价在自由运动（GK-F 不过）：** 分歧挑样本时偏向碰撞和墙柱，自由运动的样本变少，自由误差比随机高约 21%、比代用规则高约 7%。重复之间波动大，按预登记判为不过。
+
+== S3 没有做 Titans 与多频率：AinerZero/reports/V9-S3-DESIGN/DESIGN-r2.md
+  50: **第一阶段不回答：** 跨回合记忆、巩固、FAST→MID→SLOW 晋升、Titans、Nested Learning，留给第二阶段。任何阳性都只说明这个任务上的结论，不宣称通用记忆能力，也不外推到规划。
+
+== S3 二阶段没有做 Titans：AinerZero/reports/V9-S3-PHASE2-DESIGN/DESIGN-r2.md
+  203: - 跨回合记忆、FAST→MID→SLOW 晋升与回滚、容量受限的情景库、Titans 式记忆。这些才是下一步的新问题，等这版收口后单独设计。
+
+== S3 三阶段没有做 Titans：AinerZero/reports/V9-S3-PHASE3-DESIGN/DESIGN-r2.md
+  200: | 容量受限的情景库、教师写入、Titans 式记忆、多次换代 | 不在本阶段 |
+
 == r5 出版副本：AinerZero/docs/architecture/baseline.v1.json
   22: "sha256": "0f54a96ace5b9c6fad2f3a16f3e6417a2f521fe131a13400263a0f5d9920f2a4",
 
