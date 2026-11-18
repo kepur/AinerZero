@@ -160,12 +160,12 @@ def run_episode(layout: W.Layout, task: dict, agent, budget: int) -> dict:
     return {"success": ok, "steps": budget, **extra()}
 
 
-ARMS = ("random", "latent_euclid", "latent_learned", "graph_memory", "gru_belief",
+ARMS = ("random", "latent_euclid", "latent_learned", "graph_memory", "gru_belief", "latent_topo",
         "map_analytic", "map_memory", "map_hybrid", "map_hybrid_self", "map_ungated", "map_ungated_aug", "oracle")
 
 
 def evaluate_tasks(model: WorldModel, cfg: W.Config, tasks: list[dict], fms: dict, arms=ARMS, seed: int = 0,
-                   log=print, belief=None) -> dict:
+                   log=print, belief=None, topo=None) -> dict:
     results = {arm: [] for arm in arms}
     t0 = time.time()
     for ti, task in enumerate(tasks):
@@ -184,6 +184,9 @@ def evaluate_tasks(model: WorldModel, cfg: W.Config, tasks: list[dict], fms: dic
             elif arm == "gru_belief":
                 from .belief import BeliefTree
                 ag = BeliefTree(model, belief, seed=s)
+            elif arm == "latent_topo":
+                from .topo import TopoAgent
+                ag = TopoAgent(topo, seed=s)
             elif arm == "map_analytic":
                 ag = MA.MapAgent(cfg, fms["analytic"], memory=False, seed=s)
             elif arm == "map_memory":

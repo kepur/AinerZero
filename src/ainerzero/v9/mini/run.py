@@ -143,11 +143,16 @@ def main(argv=None) -> int:
         belief, binfo = train_belief(model, ds, preset["tpl"], steps=preset["belief_steps"], seed=args.seed, log=log)
         bdiag = E.belief_diagnostics(model, belief, cfg, preset["diag_layouts"], eval_seed0=eval_seed0)
         log(f"[belief] {bdiag}")
+    topo, tpinfo = None, {}
+    if "latent_topo" in arms:
+        from .topo import TopoConfig, train_topo
+        log(f"[topo] 训练 SPTM 式拓扑组的可达性与运动网络 {preset['steps']} 步")
+        topo, tpinfo = train_topo(ds, TopoConfig(steps=preset["steps"], seed=args.seed), log=log)
     tasks = E.make_tasks(cfg, preset["eval_layouts"], preset["prefix"], preset["n_short"], preset["n_long"],
                          eval_seed0=eval_seed0)
     log(f"[tasks] {len(tasks)} 个回合（短 {sum(t['kind'] == 'short' for t in tasks)}，长 {sum(t['kind'] == 'long' for t in tasks)}）")
     log(f"[tasks] 规律相关 {sum(t['law_relevant'] for t in tasks)} 个")
-    ev = E.evaluate_tasks(model, cfg, tasks, fms, arms=arms, seed=args.seed, log=log, belief=belief)
+    ev = E.evaluate_tasks(model, cfg, tasks, fms, arms=arms, seed=args.seed, log=log, belief=belief, topo=topo)
     log("[success]")
     for k, v in ev["summary"].items():
         sr = f"  surprise={v['surprise_rate']:.3f}" if v.get("surprise_rate") is not None else ""
@@ -155,6 +160,7 @@ def main(argv=None) -> int:
     meta["wall_sec"] = round(time.time() - t0, 1)
     result = {"meta": meta, "train": tinfo, "prediction": pred, "forward_model": curve, "cost_diagnostics": diag,
               "belief": {**binfo, "diagnostics": bdiag},
+              "topo": tpinfo,
               "m3_label_quality": squal,
               "success": ev["summary"]}
     (out / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=1))

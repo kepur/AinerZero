@@ -16,7 +16,7 @@ import numpy as np
 
 PAIRS = [("map_hybrid", "map_analytic"), ("map_hybrid_self", "map_analytic"), ("map_hybrid_self", "map_hybrid"), ("map_hybrid", "map_memory"), ("map_hybrid", "map_ungated"),
          ("map_hybrid", "map_ungated_aug"), ("map_memory", "map_analytic"), ("gru_belief", "latent_learned"),
-         ("latent_learned", "latent_euclid")]
+         ("latent_learned", "latent_euclid"), ("latent_topo", "latent_learned"), ("map_hybrid", "latent_topo")]
 
 
 def _spl(r) -> float:
