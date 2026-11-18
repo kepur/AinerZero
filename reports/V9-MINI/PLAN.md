@@ -589,5 +589,5 @@ latent_attn 各种子的值：
 2. **`attn.py` 和接线的非作者代码复核：** 卡 A32，gemini-k7a4 已领。
 3. **M5 预登记：** r0 草稿在 `reports/V9-MINI/M5/M5-PREREG.md`。
    - 只重判 H1；地图一方用 map_hybrid_self；最好的潜空间组从 6 组里取，包括 latent_topo 和 latent_attn。
-   - 登记规模检查在跑（`explore/scale80-m5/`，留出图 7_960_000 起）。
+   - 登记规模检查已做（`explore/scale80-m5/`，留出图 7_960_000 起）：m2 2648 秒、m1 2389 秒，完整流程跑通。
    - 跑完后放预登记的非作者复核卡。
