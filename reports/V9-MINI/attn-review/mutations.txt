@@ -1,0 +1,135 @@
+================================================================================
+变异测试报告（基于 git archive 49de583c 隔离副本，PYTHONPATH=/tmp/attn_mutation_copy/src）
+================================================================================
+
+测试环境：
+- 导出提交：49de583cb3b5d27806f4770281b378b273ecb150
+- 隔离目录：/tmp/attn_mutation_copy
+
+--------------------------------------------------------------------------------
+变异 1：查询头分组顺序颠倒为 [目标, 头]（破坏 GQA 读出头对应关系）
+--------------------------------------------------------------------------------
+代码修改位置：src/ainerzero/v9/mini/attn.py:122
+Diff:
+--- a/src/ainerzero/v9/mini/attn.py
++++ b/src/ainerzero/v9/mini/attn.py
+@@ -119,7 +119,7 @@ def q_values(self, h: mx.array, x: mx.array, og: mx.array, last_only: bool = False
+         hb = mx.broadcast_to(hq[:, None], (B, G, Lq, d))
+         gb = mx.broadcast_to(eg[:, :, None], (B, G, Lq, d))
+         q = self.rq(mx.concatenate([hb, gb], axis=-1))                       # (B, G, Lq, d)
+-        q = q.reshape(B, G, Lq, H, dh).transpose(0, 3, 1, 2, 4).reshape(B, H * G, Lq, dh)   # 查询头按 [头, 目标] 排，对应 GQA 的分组
++        q = q.reshape(B, G, Lq, H, dh).transpose(0, 1, 3, 2, 4).reshape(B, G * H, Lq, dh)   # MUTATION 1: [goal, head]
+         kv = mx.concatenate([h, x], axis=-1)
+         k = self.rk(kv).reshape(B, L, H, dh).transpose(0, 2, 1, 3)
+         v = self.rv(kv).reshape(B, L, H, dh).transpose(0, 2, 1, 3)
+
+测试输出：
+============================= test session starts ==============================
+collected 10 items / 9 deselected / 1 selected
+
+test_attn.py::test_readout_matches_naive_per_goal_attention FAILED [100%]
+
+=================================== FAILURES ===================================
+________________ test_readout_matches_naive_per_goal_attention _________________
+>       assert np.allclose(q, ref, atol=1e-4)
+E       assert False
+E        +  where False = np.allclose(q, ref, atol=0.0001)
+/tmp/attn_mutation_copy/tests/v9/mini/test_attn.py:56: AssertionError
+======================= 1 failed, 9 deselected in 3.02s ========================
+
+
+--------------------------------------------------------------------------------
+变异 2：hindsight 上界计算差一（nxt_after = nxt[..., :-1] 代替 nxt[..., 1:]）
+--------------------------------------------------------------------------------
+代码修改位置：src/ainerzero/v9/mini/attn.py:167
+Diff:
+--- a/src/ainerzero/v9/mini/attn.py
++++ b/src/ainerzero/v9/mini/attn.py
+@@ -164,7 +164,7 @@ def hindsight_labels(wid: np.ndarray, gid: np.ndarray):
+     eq = wid[:, None, :] == gid[:, :, None]                                  # (B, G, L)
+     pos = np.where(eq, np.arange(L)[None, None], np.iinfo(np.int64).max)
+     nxt = np.minimum.accumulate(pos[..., ::-1], axis=-1)[..., ::-1]          # nxt[t] = t 及之后第一次出现
+-    nxt_after = nxt[..., 1:]                                                 # t+1 及之后
++    nxt_after = nxt[..., :-1]                                                # MUTATION 2: off-by-one (t instead of t+1)
+     t = np.arange(L - 1)[None, None]
+     ub = np.where(nxt_after < np.iinfo(np.int64).max, nxt_after - t, np.inf).astype(np.float64)
+     return ub, eq[..., 1:], ~eq[..., :-1]
+
+测试输出：
+============================= test session starts ==============================
+collected 10 items / 9 deselected / 1 selected
+
+test_attn.py::test_hindsight_labels_hand_case FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_hindsight_labels_hand_case ________________________
+>       assert ub[0, 0].tolist() == [2, 1, 4, 3, 2, 1, np.inf]
+E       assert [2.0, 1.0, 0.0, 3.0, 2.0, 1.0, 0.0] == [2, 1, 4, 3, 2, 1, inf]
+E         At index 2 diff: 0.0 != 4
+/tmp/attn_mutation_copy/tests/v9/mini/test_attn.py:88: AssertionError
+======================= 1 failed, 9 deselected in 3.15s ========================
+
+
+--------------------------------------------------------------------------------
+变异 3：valid 掩码不排除已经到达目标的帧（破坏 valid = ~eq[..., :-1]）
+--------------------------------------------------------------------------------
+代码修改位置：src/ainerzero/v9/mini/attn.py:170
+Diff:
+--- a/src/ainerzero/v9/mini/attn.py
++++ b/src/ainerzero/v9/mini/attn.py
+@@ -167,7 +167,7 @@ def hindsight_labels(wid: np.ndarray, gid: np.ndarray):
+     nxt_after = nxt[..., 1:]                                                 # t+1 及之后
+     t = np.arange(L - 1)[None, None]
+     ub = np.where(nxt_after < np.iinfo(np.int64).max, nxt_after - t, np.inf).astype(np.float64)
+-    return ub, eq[..., 1:], ~eq[..., :-1]
++    return ub, eq[..., 1:], np.ones_like(eq[..., :-1], dtype=bool)  # MUTATION 3: valid does not exclude reached frames
+
+测试输出：
+============================= test session starts ==============================
+collected 10 items / 9 deselected / 1 selected
+
+test_attn.py::test_hindsight_labels_hand_case FAILED [100%]
+
+=================================== FAILURES ===================================
+_______________________ test_hindsight_labels_hand_case ________________________
+>       assert valid[0, 0].tolist() == [True, True, False, True, True, True, False]
+E       assert [True, True, True, True, True, True, True] == [True, True, False, True, True, True, False]
+E         At index 2 diff: True != False
+/tmp/attn_mutation_copy/tests/v9/mini/test_attn.py:90: AssertionError
+======================= 1 failed, 9 deselected in 1.78s ========================
+
+
+--------------------------------------------------------------------------------
+变异 4：智能体第一步重复追加前缀终帧（移除 if not self.first:）
+--------------------------------------------------------------------------------
+代码修改位置：src/ainerzero/v9/mini/attn.py:264-266
+Diff:
+--- a/src/ainerzero/v9/mini/attn.py
++++ b/src/ainerzero/v9/mini/attn.py
+@@ -261,9 +261,9 @@ def q_last(self) -> np.ndarray:
+         return np.array(self.nets.q_values(h, x, self.og, last_only=True)).reshape(-1)
+ 
+     def act(self, obs: np.ndarray, view, head) -> int:
+-        if not self.first:          # 前缀最后一帧就是任务第一帧，已经在历史里
+-            self.obs.append(np.asarray(obs, dtype=np.float32))
+-            self.prev.append(self.last)
++        # MUTATION 4: unconditionally append frame on step 1 (duplicate prefix end)
++        self.obs.append(np.asarray(obs, dtype=np.float32))
++        self.prev.append(self.last)
+         self.first = False
+         if self.rng.random() < self.eps:
+             a = self.rng.randrange(W.N_ACTIONS)
+
+测试输出：
+============================= test session starts ==============================
+collected 10 items / 9 deselected / 1 selected
+
+test_attn.py::test_agent_history_appends_obs_and_own_actions FAILED [100%]
+
+=================================== FAILURES ===================================
+________________ test_agent_history_appends_obs_and_own_actions ________________
+    def q_last(self) -> np.ndarray:
+>       h, x = self.nets.encode(mx.array(np.stack(self.obs)[None]), mx.array(np.array([self.prev], dtype=np.int32)))
+E       TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+/tmp/attn_mutation_copy/src/ainerzero/v9/mini/attn.py:260: TypeError
+======================= 1 failed, 9 deselected in 2.75s ========================

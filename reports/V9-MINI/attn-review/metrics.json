@@ -1,0 +1,31 @@
+{
+  "review_target": "49de583c",
+  "verdict": "修改后可以进（列出必须改的）",
+  "verdict_code": 2,
+  "blocking_issues": 1,
+  "suggestion_issues": 1,
+  "mutations_tested": 4,
+  "mutations_caught": 4,
+  "episodes_matched": 100,
+  "must_fix": [
+    {
+      "file": "src/ainerzero/v9/mini/attn.py",
+      "line": 128,
+      "current": "q = self.rope(q, offset=L - 1)",
+      "target": "q = self.rope(q, offset=mx.full((B,), L - 1, dtype=mx.int32))",
+      "reason": "修复 MLX 0.31.1 Metal GPU 下 B>1, T=1 导致批次大于 0 结果置零的内核缺陷，使 test_last_only_equals_last_position_of_full 单测在 GPU 下通过"
+    }
+  ],
+  "table1_recheck": {
+    "random_short": 0.150,
+    "random_long": 0.0,
+    "latent_learned_short": 0.083,
+    "latent_learned_long": 0.0,
+    "latent_attn_short": 0.133,
+    "latent_attn_long": 0.0,
+    "latent_topo_short": 0.533,
+    "latent_topo_long": 0.075,
+    "map_hybrid_short": 1.000,
+    "map_hybrid_long": 1.000
+  }
+}
