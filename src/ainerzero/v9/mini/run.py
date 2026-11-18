@@ -148,11 +148,18 @@ def main(argv=None) -> int:
         from .topo import TopoConfig, train_topo
         log(f"[topo] 训练 SPTM 式拓扑组的可达性与运动网络 {preset['steps']} 步")
         topo, tpinfo = train_topo(ds, TopoConfig(steps=preset["steps"], seed=args.seed), log=log)
+    attn, atinfo = None, {}
+    if "latent_attn" in arms:
+        from .attn import AttnConfig, long_walks, train_attn
+        dl = long_walks(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0=seed0)
+        log(f"[attn] 训练注意力记忆组 {preset['steps']} 步（{dl.n_traj} 条 × {dl.horizon} 步游走，训练图与环境步数同上）")
+        attn, atinfo = train_attn(dl, AttnConfig(steps=preset["steps"], seed=args.seed), log=log)
+        del dl
     tasks = E.make_tasks(cfg, preset["eval_layouts"], preset["prefix"], preset["n_short"], preset["n_long"],
                          eval_seed0=eval_seed0)
     log(f"[tasks] {len(tasks)} 个回合（短 {sum(t['kind'] == 'short' for t in tasks)}，长 {sum(t['kind'] == 'long' for t in tasks)}）")
     log(f"[tasks] 规律相关 {sum(t['law_relevant'] for t in tasks)} 个")
-    ev = E.evaluate_tasks(model, cfg, tasks, fms, arms=arms, seed=args.seed, log=log, belief=belief, topo=topo)
+    ev = E.evaluate_tasks(model, cfg, tasks, fms, arms=arms, seed=args.seed, log=log, belief=belief, topo=topo, attn=attn)
     log("[success]")
     for k, v in ev["summary"].items():
         sr = f"  surprise={v['surprise_rate']:.3f}" if v.get("surprise_rate") is not None else ""
@@ -161,6 +168,7 @@ def main(argv=None) -> int:
     result = {"meta": meta, "train": tinfo, "prediction": pred, "forward_model": curve, "cost_diagnostics": diag,
               "belief": {**binfo, "diagnostics": bdiag},
               "topo": tpinfo,
+              "attn": atinfo,
               "m3_label_quality": squal,
               "success": ev["summary"]}
     (out / "result.json").write_text(json.dumps(result, ensure_ascii=False, indent=1))
