@@ -53,8 +53,12 @@ def main() -> int:
         keys = [(0, r["layout_seed"]) for r in runs[0][arms[0]] if r["kind"] == "long"]
         best = max(LATENT, key=lambda a: (longs[a].mean(), a))
         print(f"  最好的潜空间组（长目标，事后取最大）：{best} {longs[best].mean():.3f}")
-        for a, b in (("map_hybrid_self", best), ("map_hybrid", best), ("map_hybrid_self", "latent_topo"),
-                     ("map_hybrid_self", "latent_attn"), ("latent_attn", "random"), ("latent_attn", "latent_topo")):
+        pairs = []
+        for pr in (("map_hybrid_self", best), ("map_hybrid", best), ("map_hybrid_self", "latent_topo"),
+                   ("map_hybrid_self", "latent_attn"), ("latent_attn", "random"), ("latent_attn", "latent_topo")):
+            if pr not in pairs:              # 最好的组就是 latent_topo 时不重复算
+                pairs.append(pr)
+        for a, b in pairs:
             d = longs[a] - longs[b]
             lo, hi, _, _, n = cluster_ci(d, d, keys, rng)
             print(f"  {a} − {b} [long, 回合 {len(d)}，图 {n}]：{d.mean():+.3f} [{lo:+.3f}, {hi:+.3f}]")
