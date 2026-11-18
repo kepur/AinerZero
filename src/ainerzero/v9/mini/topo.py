@@ -341,3 +341,28 @@ class TopoAgent:
         target = self.eg if val is None else self.E[val:val + 1]
         logits = np.array(self.nets.action_logits(et, target)).reshape(-1)
         return int(np.argmax(logits))
+
+
+class TopoOracleControl(TopoAgent):
+    """特权参照组（只报告，不进任何门，也不算「最好的潜空间组」的候选）。
+
+    记忆图、定位、路径选择都与 latent_topo 完全相同，只是「goto」不用学到的运动网络，
+    改用真值最短路走向目标节点所在的格（或目标格）。用来把差距拆开：
+    latent_topo 与它的差，来自学到的运动网络；它与度量地图的差，来自记忆结构本身。
+    """
+
+    def reset(self, ep) -> None:
+        super().reset(ep)
+        self._rbfs: dict = {}
+
+    def act_privileged(self, obs: np.ndarray, pose, layout: W.Layout, task: dict) -> int:
+        kind, val, _ = self.decide(obs)
+        if kind in ("random", "replay"):
+            return int(val)
+        g = task["goal"]
+        p = task["prefix_poses"][val] if val is not None else g
+        cell = (p[0], p[1])
+        if cell not in self._rbfs:
+            self._rbfs[cell] = W.reverse_bfs_to_cell(layout, cell)
+        dm = self._rbfs[cell]
+        return int(np.argmin([dm.get(W.step(layout, pose, a), 10 ** 6) for a in range(W.N_ACTIONS)]))

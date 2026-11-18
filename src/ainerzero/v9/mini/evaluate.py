@@ -146,12 +146,16 @@ def run_episode(layout: W.Layout, task: dict, agent, budget: int) -> dict:
     pose = task["start"]
     extra = lambda: {"surprises": getattr(agent, "surprises", None), "lost": getattr(agent, "lost", None),
                      "prefix_lost": getattr(agent, "prefix_lost", None),
-                     "lost_at_start": getattr(agent, "lost_at_start", None)}
+                     "lost_at_start": getattr(agent, "lost_at_start", None),
+                     "relocalizations": getattr(agent, "relocalizations", None)}
     for t in range(budget):
         if (pose[0], pose[1]) == (g[0], g[1]):
             return {"success": 1, "steps": t, **extra()}
         if isinstance(agent, A.Oracle):
             a = agent.act_pose(pose)
+        elif hasattr(agent, "act_privileged"):   # 只作诊断的特权参照组：执行时用真值
+            v = W.ego_view(layout, pose)
+            a = agent.act_privileged(W.encode_obs(v, pose[2]), pose, layout, task)
         else:
             v = W.ego_view(layout, pose)
             a = agent.act(W.encode_obs(v, pose[2]), v, pose[2])
@@ -160,7 +164,7 @@ def run_episode(layout: W.Layout, task: dict, agent, budget: int) -> dict:
     return {"success": ok, "steps": budget, **extra()}
 
 
-ARMS = ("random", "latent_euclid", "latent_learned", "graph_memory", "gru_belief", "latent_topo",
+ARMS = ("random", "latent_euclid", "latent_learned", "graph_memory", "gru_belief", "latent_topo", "topo_oracle_ctrl",
         "map_analytic", "map_memory", "map_hybrid", "map_hybrid_self", "map_ungated", "map_ungated_aug", "oracle")
 
 
@@ -187,6 +191,9 @@ def evaluate_tasks(model: WorldModel, cfg: W.Config, tasks: list[dict], fms: dic
             elif arm == "latent_topo":
                 from .topo import TopoAgent
                 ag = TopoAgent(topo, seed=s)
+            elif arm == "topo_oracle_ctrl":
+                from .topo import TopoOracleControl
+                ag = TopoOracleControl(topo, seed=s)
             elif arm == "map_analytic":
                 ag = MA.MapAgent(cfg, fms["analytic"], memory=False, seed=s)
             elif arm == "map_memory":

@@ -144,7 +144,7 @@ def main(argv=None) -> int:
         bdiag = E.belief_diagnostics(model, belief, cfg, preset["diag_layouts"], eval_seed0=eval_seed0)
         log(f"[belief] {bdiag}")
     topo, tpinfo = None, {}
-    if "latent_topo" in arms:
+    if "latent_topo" in arms or "topo_oracle_ctrl" in arms:
         from .topo import TopoConfig, train_topo
         log(f"[topo] 训练 SPTM 式拓扑组的可达性与运动网络 {preset['steps']} 步")
         topo, tpinfo = train_topo(ds, TopoConfig(steps=preset["steps"], seed=args.seed), log=log)

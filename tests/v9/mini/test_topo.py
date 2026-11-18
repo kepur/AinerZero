@@ -111,7 +111,32 @@ def test_agent_replays_prefix_to_goal():
     task = {"prefix_poses": poses, "prefix_acts": acts, "goal": goal, "start": poses[-1]}
     r = E.run_episode(lay, task, ag, budget=10)
     assert r["success"] == 1 and r["steps"] == 3
+    assert r["relocalizations"] == 0 and r["lost"] is None   # 不与地图组的 lost 字段混
 
 
 def test_arm_registered():
-    assert "latent_topo" in E.ARMS
+    assert "latent_topo" in E.ARMS and "topo_oracle_ctrl" in E.ARMS
+
+
+def test_oracle_control_goto_follows_true_shortest_path():
+    """特权参照组：decide 给出 goto 时，动作是真值最短路的第一步；重放与随机动作原样返回。"""
+    lay, a0 = _straight_line()
+    poses = [a0, W.step(lay, a0, W.FORWARD)]
+    obs = W.iter_views(lay, poses)
+    goal = (a0[0] + 3, a0[1], 1)
+    ep = A.Episode(obs, None, None, [W.FORWARD], W.encode_obs(W.ego_view(lay, goal), goal[2]), None, goal[2])
+    ag = T.TopoOracleControl(_IdentityNets(), T.TopoPlanConfig(eps=0.0, near=False))
+    ag.reset(ep)
+    task = {"prefix_poses": poses, "goal": goal}
+    start = (a0[0], a0[1], 3)                      # 背对目标：最短路第一步必须是转身
+    dm = W.reverse_bfs_to_cell(lay, (goal[0], goal[1]))
+    best = min(dm.get(W.step(lay, start, a), 10 ** 6) for a in range(W.N_ACTIONS))
+    ag.decide = lambda o: ("goto", None, None)
+    a = ag.act_privileged(None, start, lay, task)
+    assert a != W.FORWARD and dm[W.step(lay, start, a)] == best
+    ag.decide = lambda o: ("goto", 0, None)        # 去第 0 帧所在的格
+    a = ag.act_privileged(None, poses[1], lay, task)
+    d0 = W.reverse_bfs_to_cell(lay, (a0[0], a0[1]))
+    assert d0[W.step(lay, poses[1], a)] == min(d0.get(W.step(lay, poses[1], b), 10 ** 6) for b in range(W.N_ACTIONS))
+    ag.decide = lambda o: ("replay", W.LEFT, None)
+    assert ag.act_privileged(None, start, lay, task) == W.LEFT
