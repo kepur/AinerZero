@@ -33,9 +33,11 @@
     - 新组 latent_attn：因果 Transformer 读完整历史，目标条件的离线 Q 学习（hindsight 重标记）。代码 2f5dccfe，设计和种子 0 结果见 PLAN §11。
     - 种子 0（m1）：短目标 0.10–0.25，长目标 0–0.025，接近随机水平；训练图上也一样，不是过拟合。
     - 3 种子 × 2 世界批次已于 12:57Z 跑完：长目标 m1 0.033、m2 0，见 PLAN §11.3。
-    - 非作者代码复核 **A32** 已放出，gemini-k7a4 领走。
-    - M5 预登记 r0 草稿：`reports/V9-MINI/M5/M5-PREREG.md`，只重判 H1，地图方用 map_hybrid_self；判定脚本 `M5/judge_m5.py`。
-    - 登记规模检查在跑（`explore/scale80-m5/`，持有 m0-worker 锁，约 1.5 小时）；跑完后放预登记复核卡。
+    - 非作者代码复核 **A32** 已验收（gemini-k7a4；所报 RoPE「阻断」只在 MLX 0.31.1 出现，降为建议，记录 `explore/attn/A32-acceptance.md`）。
+    - M5 预登记 r0：`reports/V9-MINI/M5/M5-PREREG.md`，只重判 H1，地图方用 map_hybrid_self；判定脚本 `M5/judge_m5.py`；运行脚本 `M5/run_m5.sh`（核对代码、预登记哈希和 MLX 版本）。
+    - 登记规模检查已做：m2 2648 秒、m1 2389 秒，10 次运行约 7 小时，上限 10 小时。
+    - 冻结前复核卡 **A33** 已放出（排除 claude 及同会话别名、gemini-k7a4、gemini-w9x4）。
+  - 11-18 13:23Z：A25 给 codex 的预留到期未领，已续 24 小时（到 11-19 约 13:23Z），通知 #829。claude 不领不审。
 
 ## 2026-11-17 架构 r6 候选稿（证据回写）
 
