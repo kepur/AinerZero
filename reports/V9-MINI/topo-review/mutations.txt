@@ -1,0 +1,180 @@
+================================================================================
+变异测试报告（基于 git archive 7c617f7e 隔离副本，PYTHONPATH=/tmp/topo_mutation_copy/src）
+================================================================================
+
+测试环境：
+- 导出提交：7c617f7e5b5c2f164d49b9c3a7b48219a73e0948
+- 隔离目录：/tmp/topo_mutation_copy
+- 基准测试：tests/v9/mini/test_topo.py 6 个用例全部 PASSED (1.27s)
+
+--------------------------------------------------------------------------------
+变异 1：负例全改成正例（破坏时间间隔标签负例采样）
+--------------------------------------------------------------------------------
+代码修改位置：src/ainerzero/v9/mini/topo.py:96
+Diff:
+--- a/src/ainerzero/v9/mini/topo.py
++++ b/src/ainerzero/v9/mini/topo.py
+@@ -93,7 +93,7 @@ def sample_reach(ds: Dataset, rng: np.random.Generator, b: int, k_pos: int, k_neg: int):
+         raise ValueError("k_neg 超过轨迹长度")
+     i = rng.integers(0, ds.n_traj, b)
+     t1 = rng.integers(0, T + 1, b)
+-    y = (rng.random(b) < 0.5).astype(np.float32)
++    y = np.ones(b, dtype=np.float32)
+     off = rng.integers(-k_pos, k_pos + 1, b)
+     t2 = np.clip(t1 + off, 0, T)
+
+测试输出：
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0
+collected 6 items
+
+tests/v9/mini/test_topo.py::test_sample_reach_labels_follow_time_gap FAILED [ 16%]
+tests/v9/mini/test_topo.py::test_sample_loc_targets_within_k PASSED [ 33%]
+tests/v9/mini/test_topo.py::test_build_graph_edge_kinds_and_costs PASSED [ 50%]
+tests/v9/mini/test_topo.py::test_dist_path_and_hops PASSED [ 66%]
+tests/v9/mini/test_topo.py::test_agent_replays_prefix_to_goal PASSED [ 83%]
+tests/v9/mini/test_topo.py::test_arm_registered PASSED [100%]
+
+=================================== FAILURES ===================================
+___________________ test_sample_reach_labels_follow_time_gap ___________________
+
+    def test_sample_reach_labels_follow_time_gap():
+        ds = _ds()
+        rng = np.random.default_rng(0)
+        i, t1, t2, y = T.sample_reach(ds, rng, 4000, k_pos=3, k_neg=25)
+        gap = np.abs(t2 - t1)
+        assert ((t2 >= 0) & (t2 <= ds.horizon)).all()
+        assert (gap[y == 1] <= 3).all()
+        assert (gap[y == 0] >= 25).all()
+>       assert 0.4 < y.mean() < 0.6
+E       assert np.float32(1.0) < 0.6
+E        +  where np.float32(1.0) = array([1., 1., 1., ..., 1., 1., 1.], shape=(4000,), dtype=float32).mean
+
+/tmp/topo_mutation_copy/tests/v9/mini/test_topo.py:26: AssertionError
+========================= 1 failed, 5 passed in 1.28s ==========================
+
+
+--------------------------------------------------------------------------------
+变异 2：漏掉跨时刻观察完全相同的「同一处」边（SAME 边）
+--------------------------------------------------------------------------------
+代码修改位置：src/ainerzero/v9/mini/topo.py:183-187
+Diff:
+--- a/src/ainerzero/v9/mini/topo.py
++++ b/src/ainerzero/v9/mini/topo.py
+@@ -180,11 +180,8 @@ def build_graph(p_pair: np.ndarray, keys: list[bytes], cfg: TopoPlanConfig) ->
+     groups: dict[bytes, list[int]] = {}
+     for v, k in enumerate(keys):
+         groups.setdefault(k, []).append(v)
+-    for vs in groups.values():
+-        for a in vs:
+-            for b in vs:
+-                if a != b and abs(a - b) > 1:
+-                    out[a].append((b, cfg.w_same, SAME))
++    # MUTATION 2: omit cross-time same observation edges
++    pass
+     if cfg.near:
+         gap = np.abs(np.arange(n)[:, None] - np.arange(n)[None])
+
+测试输出：
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0
+collected 6 items
+
+tests/v9/mini/test_topo.py::test_sample_reach_labels_follow_time_gap PASSED [ 16%]
+tests/v9/mini/test_topo.py::test_sample_loc_targets_within_k PASSED [ 33%]
+tests/v9/mini/test_topo.py::test_build_graph_edge_kinds_and_costs FAILED [ 50%]
+tests/v9/mini/test_topo.py::test_dist_path_and_hops FAILED [ 66%]
+tests/v9/mini/test_topo.py::test_agent_replays_prefix_to_goal FAILED [ 83%]
+tests/v9/mini/test_topo.py::test_arm_registered PASSED [100%]
+
+=================================== FAILURES ===================================
+____________________ test_build_graph_edge_kinds_and_costs _____________________
+>       assert e[(0, 5)] == (cfg.w_same, T.SAME) and e[(5, 0)] == (cfg.w_same, T.SAME)
+E       KeyError: (0, 5)
+/tmp/topo_mutation_copy/tests/v9/mini/test_topo.py:54: KeyError
+___________________________ test_dist_path_and_hops ____________________________
+>       assert path == [(0, T.SAME), (1, T.FWD), (2, T.FWD), (3, T.FWD)]
+E       assert [(4, 1), (3, 1)] == [(0, 2), (1, 0), (2, 0), (3, 0)]
+/tmp/topo_mutation_copy/tests/v9/mini/test_topo.py:68: AssertionError
+______________________ test_agent_replays_prefix_to_goal _______________________
+    def action_logits(self, et, ew):
+>       raise AssertionError("这条用例只该用到重放")
+E       AssertionError: 这条用例只该用到重放
+/tmp/topo_mutation_copy/tests/v9/mini/test_topo.py:86: AssertionError
+========================= 3 failed, 3 passed in 1.24s ==========================
+
+
+--------------------------------------------------------------------------------
+变异 3：hops 中将 0-1 BFS 改为普通 BFS（同一处边也计为 1 跳）
+--------------------------------------------------------------------------------
+代码修改位置：src/ainerzero/v9/mini/topo.py:229
+Diff:
+--- a/src/ainerzero/v9/mini/topo.py
++++ b/src/ainerzero/v9/mini/topo.py
+@@ -226,7 +226,7 @@ def hops(out, src: int, k: int) -> dict[int, int]:
+     while q:
+         v = q.popleft()
+         for u, _, kind in out[v]:
+-            du = d[v] + (0 if kind == SAME else 1)
++            du = d[v] + 1  # MUTATION 3: standard BFS
+             if du <= k and du < d.get(u, k + 1):
+                 d[u] = du
+                 if kind == SAME:
+
+测试输出：
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0
+collected 6 items
+
+tests/v9/mini/test_topo.py::test_sample_reach_labels_follow_time_gap PASSED [ 16%]
+tests/v9/mini/test_topo.py::test_sample_loc_targets_within_k PASSED [ 33%]
+tests/v9/mini/test_topo.py::test_build_graph_edge_kinds_and_costs PASSED [ 50%]
+tests/v9/mini/test_topo.py::test_dist_path_and_hops FAILED [ 66%]
+tests/v9/mini/test_topo.py::test_agent_replays_prefix_to_goal PASSED [ 83%]
+tests/v9/mini/test_topo.py::test_arm_registered PASSED [100%]
+
+=================================== FAILURES ===================================
+___________________________ test_dist_path_and_hops ____________________________
+        h = T.hops(out, 5, 1)
+>       assert h[0] == 0 and h[1] == 1 and 2 not in h   # 同一处的边不计跳数
+E       assert (1 == 0)
+/tmp/topo_mutation_copy/tests/v9/mini/test_topo.py:71: AssertionError
+========================= 1 failed, 5 passed in 1.26s ==========================
+
+
+--------------------------------------------------------------------------------
+变异 4：沿正向重放时取错动作帧（取 self.acts[u] 代替 self.acts[v]）
+--------------------------------------------------------------------------------
+代码修改位置：src/ainerzero/v9/mini/topo.py:332
+Diff:
+--- a/src/ainerzero/v9/mini/topo.py
++++ b/src/ainerzero/v9/mini/topo.py
+@@ -329,7 +329,7 @@ def decide(self, obs: np.ndarray) -> tuple[str, int | None, mx.array]:
+                 continue
+             if kind == FWD:            # 沿前缀正向：重放当时记下的动作（智能体自己的动作，不是真值）
+                 self.expect = u
+-                return "replay", int(self.acts[v]), et
++                return "replay", int(self.acts[u]), et  # MUTATION 4: wrong action index u
+             self.expect = v            # 逆向或学到的捷径：交给运动网络
+             return "goto", u, et
+
+测试输出：
+============================= test session starts ==============================
+platform darwin -- Python 3.12.4, pytest-7.4.4, pluggy-1.6.0
+collected 6 items
+
+tests/v9/mini/test_topo.py::test_sample_reach_labels_follow_time_gap PASSED [ 16%]
+tests/v9/mini/test_topo.py::test_sample_loc_targets_within_k PASSED [ 33%]
+tests/v9/mini/test_topo.py::test_build_graph_edge_kinds_and_costs PASSED [ 50%]
+tests/v9/mini/test_topo.py::test_dist_path_and_hops PASSED [ 66%]
+tests/v9/mini/test_topo.py::test_agent_replays_prefix_to_goal FAILED [ 83%]
+tests/v9/mini/test_topo.py::test_arm_registered PASSED [100%]
+
+=================================== FAILURES ===================================
+______________________ test_agent_replays_prefix_to_goal _______________________
+        task = {"prefix_poses": poses, "prefix_acts": acts, "goal": goal, "start": poses[-1]}
+        r = E.run_episode(lay, task, ag, budget=10)
+>       assert r["success"] == 1 and r["steps"] == 3
+E       assert (0 == 1)
+/tmp/topo_mutation_copy/tests/v9/mini/test_topo.py:113: AssertionError
+========================= 1 failed, 5 passed in 1.27s ==========================
