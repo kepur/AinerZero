@@ -1,6 +1,6 @@
 # Write Down the Geometry, Learn the Exceptions: A Small Confirmatory Study of Memory and Planning under Unknown Dynamics
 
-*Working draft r2, 2026-11-19 (r1 plus figures and a scripted check of every reference). Internal; not for distribution. Authors, affiliations and repository link to be filled in. See "Notes for the authors" at the end before any submission.*
+*Working draft r2.1, 2026-11-19 (r1 plus figures and a scripted check of every reference; wording fixes after the non-author check A36). Internal; not for distribution. Authors, affiliations and repository link to be filled in. See "Notes for the authors" at the end before any submission.*
 
 ---
 
@@ -103,7 +103,7 @@ We do not claim that explicit maps are better than learned memories in general. 
 
 ![Figure 1](figures/fig1_map.png)
 
-**Figure 1. A held-out map of world m2 with its task.** The 400-step exploration prefix (grey), the start (black dot, the last prefix pose) and the six goals drawn on this map (two share a cell). The starred goal (d* = 20, law-relevant) is shown on the right as the agent observes it. Two ice strips (blue) make the agent slide; two one-way teleporters (filled square to open square) move it across the map. Neither law is known to the analytic prior. Floor colours are omitted. The map is seed 8,100,000 of run m2-s0 in M5, chosen as the first map of that run with a law-relevant long goal that map_hybrid_self reached and latent_topo did not; it illustrates the task and is not a typical case.
+**Figure 1. A held-out map of world m2 with its task.** The 400-step exploration prefix (grey), the start (black dot, the last prefix pose) and the six goals drawn on this map (two share a cell). The starred goal (d* = 20, law-relevant) is shown on the right as the agent observes it. Two ice strips (blue) make the agent slide; two one-way teleporters (filled square to open square) move it across the map. Neither law is known to the analytic prior. Floor colours are omitted. The map is seed 8,100,000 of run m2-s0 in M5, chosen as the first map of that run with a law-relevant long goal that map_hybrid_self reached and latent_topo did not (27 of the 80 maps of that run have such a goal). It illustrates the task.
 
 ## 4 Agents
 
@@ -336,7 +336,7 @@ M5 used fresh held-out maps (m1: 762 long episodes on 196 clusters; m2: 936 on 2
   - Allowing reverse traversal at true cost: 0.45 and 0.10.
   - In m1, a memory that may stand on any visited cell in any direction reaches 1.00. Getting there requires knowing that a move from A north to B implies a move from B south to A, and that seen-but-unvisited cells are traversable. This is exactly the geometry the metric map writes down. (In m2 the same bound is 0.59.)
 - latent_topo fails long goals with many more whole-graph relocalizations per episode than when it succeeds (m1 6.6 vs 0.5; m2 5.1 vs 0.6). This is not normalized for episode length.
-- Figure 4 shows the same pattern by distance: latent_topo falls from about 0.6 at d* = 4–5 to at most 0.07 (m1) and 0.14 (m2) at d* ≥ 20, while the map agents stay near the oracle in m1. In m2 the gap between map_hybrid_self and map_analytic widens with distance, from 0.956 vs 0.787 at d* = 20 to 0.719 vs 0.331 at d* ≥ 30.
+- Figure 4 shows the same pattern by distance: latent_topo falls from about 0.6 at d* = 4–5 to at most 0.073 (m1) and 0.141 (m2) at d* ≥ 20, while the map agents stay near the oracle in m1. In m2 the gap between map_hybrid_self and map_analytic is largest at d* ≥ 30 (0.719 vs 0.331) and smallest at d* = 21–22 (0.867 vs 0.783), so it does not grow steadily with distance.
 
 ![Figure 4](figures/fig4_distance.png)
 
@@ -471,6 +471,6 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 1. **References.** `paper/check_refs.py` verifies all 29 entries (title, first author, year, venue, and the full author list where the entry gives one) against saved records. It reports ALL OK, and it fails on a changed year, title, author list, venue or draft line. It checks bibliographic data only, not that each cited work supports the sentence that cites it; read the cited passages before submission. The ICLR 2020 venues (Chaplot et al. 2020a, Hafner et al. 2020) come from OpenReview's mirror of dblp records; the ICLR 2018 venues come from the official poster schedule.
 2. **Disclosure.** The experiments, analysis code, preregistrations and this draft were produced with AI coding agents. The non-author recomputations were done by a different AI agent from the one that wrote the code. Check the target venue's policy on AI assistance and describe these roles accurately; §5's "reviewer who did not write the code" should not be read as a human reviewer.
 3. **"Preregistered".** Registration is internal (frozen documents with hashes in the repository history), not on a public registry. Either keep the wording "registered internally" as in §2 and §5, or register future milestones publicly.
-4. **Figures.** Five figures are in `figures/` as PDF (for LaTeX) and PNG. Figures 3–5 are descriptive; their intervals and bins are not part of any registered analysis. Figure 1's map was chosen by a stated rule; it is an illustration, not a typical case.
+4. **Figures.** Five figures are in `figures/` as PDF (for LaTeX) and PNG. Figures 3–5 are descriptive; their intervals and bins are not part of any registered analysis. Figure 1's map was chosen by a stated rule (the first of 27 qualifying maps among 80); it is an illustration.
 5. **Biggest reviewer risk.** Scale and realism (§7, limitation 1). The planned next milestone, a larger or harder world, is meant to address it.
 6. **External steps** (arXiv, an mlx-examples pull request) need the project owner's approval.

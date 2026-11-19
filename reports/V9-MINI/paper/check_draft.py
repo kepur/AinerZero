@@ -82,10 +82,17 @@ f5 = fd["fig5"]
 lt = {w: [b["rate"]["latent_topo"] for b in f4[w] if b["bin"][0] >= 20] for w in ("m1", "m2")}
 expect = {
     "about 0.6 at d* = 4–5": all(abs(f4[w][0]["rate"]["latent_topo"] - 0.6) < 0.05 for w in ("m1", "m2")),
-    f"at most {max(lt['m1']):.2f} (m1) and {max(lt['m2']):.2f} (m2) at d* ≥ 20": True,
-    "from {:.3f} vs {:.3f} at d* = 20 to {:.3f} vs {:.3f} at d* ≥ 30".format(
-        f4["m2"][3]["rate"]["map_hybrid_self"], f4["m2"][3]["rate"]["map_analytic"],
-        f4["m2"][-1]["rate"]["map_hybrid_self"], f4["m2"][-1]["rate"]["map_analytic"]): True,
+    f"at most {max(lt['m1']):.3f} (m1) and {max(lt['m2']):.3f} (m2) at d* ≥ 20": True,
+    "largest at d* ≥ 30 ({:.3f} vs {:.3f}) and smallest at d* = 21–22 ({:.3f} vs {:.3f})".format(
+        f4["m2"][-1]["rate"]["map_hybrid_self"], f4["m2"][-1]["rate"]["map_analytic"],
+        f4["m2"][4]["rate"]["map_hybrid_self"], f4["m2"][4]["rate"]["map_analytic"]):
+        # the bins named in the sentence must really hold the largest and smallest long-goal gap
+        [f4["m2"][k]["bin"] for k in (4, 7)] == [[21, 22], [30, 99]] and
+        (lambda g: g.index(max(g)) == 4 and g.index(min(g)) == 1)(
+            [b["rate"]["map_hybrid_self"] - b["rate"]["map_analytic"] for b in f4["m2"][3:]]),
+    "({} of the {} maps of that run have such a goal)".format(fd["fig1"]["n_satisfying_rule"], fd["fig1"]["n_layouts"]): True,
+    "the first of {} qualifying maps among {}".format(fd["fig1"]["n_satisfying_rule"], fd["fig1"]["n_layouts"]): True,
+    "no goals between 11 and 19": fd["fig4"]["m1_n_between_short_and_long"] == 0 and fd["fig4"]["m2_n_between_short_and_long"] == 0,
     "m1 {}–{}, except {} (26–29) and {} (≥ 30); m2 {}–{}".format(
         min(b["n"] for b in f4["m1"][:-2]), max(b["n"] for b in f4["m1"]), f4["m1"][-2]["n"], f4["m1"][-1]["n"],
         min(b["n"] for b in f4["m2"]), max(b["n"] for b in f4["m2"])): True,

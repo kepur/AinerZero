@@ -270,24 +270,32 @@ F4 = [("map_hybrid_self", COL["map_hybrid_self"], "-", "o"), ("map_analytic", CO
 
 def fig4() -> None:
     d = D["fig4"]
+    # Labels that state facts are checked against the data before they are drawn.
+    oracle_all_one = all(b["rate"]["oracle"] == 1.0 for w in ("m1", "m2") for b in d[w])
+    m1_coincide = all(b["rate"]["map_hybrid_self"] == b["rate"]["map_analytic"] for b in d["m1"])
     fig, axes = plt.subplots(1, 2, figsize=(6.8, 2.8), sharey=True, gridspec_kw={"wspace": 0.08})
     for ax, w in zip(axes, ("m1", "m2")):
         bins = d[w]
-        ax.axvspan(10.8, 19.2, color=GRID, alpha=0.45, lw=0)
-        ax.text(15, 0.5, "no goals with\n11 ≤ d* ≤ 19", ha="center", va="center", fontsize=6.8, color=INK2)
+        lo, hi = bins[2]["bin"][1], bins[3]["bin"][0]          # end of the short range, start of the long range
+        assert d[f"{w}_n_between_short_and_long"] == 0, "the gap band claims there are no goals in between"
+        ax.axvspan(lo + 0.8, hi - 0.8, color=GRID, alpha=0.45, lw=0)
+        ax.text((lo + hi) / 2, 0.5, f"no goals with\n{lo + 1} ≤ d* ≤ {hi - 1}", ha="center", va="center", fontsize=6.8, color=INK2)
         for arm, col, ls, mk in F4:
             for part in (bins[:3], bins[3:]):
                 ax.plot([b["mean_d"] for b in part], [b["rate"][arm] for b in part], ls=ls, marker=mk, color=col,
                         ms=4.5, lw=1.6 if ls == "-" else 1.3, mec="white", mew=0.6)
-        ax.axhline(1.0, color=INK, lw=0.8, ls=(0, (1, 2)))
+        if oracle_all_one:
+            ax.axhline(1.0, color=INK, lw=0.8, ls=(0, (1, 2)))
         ax.set_xlim(3, max(b["mean_d"] for b in bins) + 2)
         ax.set_ylim(-0.03, 1.06)
         ax.set_xlabel("shortest-path distance d* (actions), bin mean")
         ax.set_title(f"World {w} ({'known laws' if w == 'm1' else 'hidden laws'})", loc="left", color=INK)
         hgrid(ax)
     axes[0].set_ylabel("success rate")
+    assert oracle_all_one, "the dotted line at 1 is labelled oracle"
     axes[0].text(34, 1.015, "oracle", fontsize=6.8, color=INK, va="bottom", ha="right")
-    axes[0].text(34, 0.9, "map_hybrid_self and\nmap_analytic coincide", fontsize=6.6, color=INK2, va="top", ha="right")
+    if m1_coincide:
+        axes[0].text(34, 0.9, "map_hybrid_self and\nmap_analytic coincide", fontsize=6.6, color=INK2, va="top", ha="right")
     h = [plt.Line2D([], [], color=c, ls=ls, marker=m, ms=4.5, lw=1.6, mec="white", mew=0.6) for _, c, ls, m in F4]
     fig.legend(h, [a for a, *_ in F4], loc="lower center", ncol=5, frameon=False, bbox_to_anchor=(0.5, -0.14))
     save(fig, "fig4_distance")

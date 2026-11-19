@@ -63,11 +63,16 @@ def fig1() -> dict:
     pre = res["meta"]["preset"]
     e = load("M5", "m2")[0]
     n_layouts = len({r["layout_seed"] for r in e["oracle"]})
+
+    def rule_hits(seed):
+        idx = [j for j, r in enumerate(e["oracle"]) if r["layout_seed"] == seed]
+        return idx, [j for j in idx if e["oracle"][j]["kind"] == "long" and e["oracle"][j]["law_relevant"]
+                     and e["map_hybrid_self"][j]["success"] and not e["latent_topo"][j]["success"]]
+
+    n_satisfying = sum(bool(rule_hits(eval_seed0 + i)[1]) for i in range(n_layouts))
     for i in range(n_layouts):
         seed = eval_seed0 + i
-        idx = [j for j, r in enumerate(e["oracle"]) if r["layout_seed"] == seed]
-        hits = [j for j in idx if e["oracle"][j]["kind"] == "long" and e["oracle"][j]["law_relevant"]
-                and e["map_hybrid_self"][j]["success"] and not e["latent_topo"][j]["success"]]
+        idx, hits = rule_hits(seed)
         if hits:
             break
     else:
@@ -83,7 +88,8 @@ def fig1() -> dict:
     k = idx.index(hits[0])
     goal = tasks[k]["goal"]
     return {
-        "run": "M5/m2-s0", "layout_seed": seed, "layout_index": i, "selection_rule": "first map of M5/m2-s0 with a "
+        "run": "M5/m2-s0", "layout_seed": seed, "layout_index": i, "n_layouts": n_layouts, "n_satisfying_rule": n_satisfying,
+        "selection_rule": "first map of M5/m2-s0 with a "
         "law-relevant long goal where map_hybrid_self succeeded and latent_topo failed",
         "grid": layout.grid.tolist(), "portal_to": [[list(a), list(b)] for a, b in layout.portal_to.items()],
         "cell_types": {"wall": W.WALL, "oob": W.OOB, "ice": W.ICE, "portal": W.PORTAL, "floor0": W.FLOOR0},
@@ -114,6 +120,7 @@ def fig4() -> dict:
     out = {}
     for w in WORLDS:
         runs = load("M5", w)
+        out[w + "_n_between_short_and_long"] = len(rows(runs, "oracle", lambda r: SHORT_BINS[-1][1] < r["d_star"] < LONG_BINS[0][0]))
         out[w] = []
         for a, b in SHORT_BINS + LONG_BINS:
             sel = lambda r, a=a, b=b: a <= r["d_star"] <= b
@@ -144,6 +151,9 @@ def main() -> int:
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps(data, indent=1))
     f1 = data["fig1"]
+    print(f"fig1: {f1['n_satisfying_rule']} of {f1['n_layouts']} maps of the run satisfy the selection rule")
+    print(f"fig4: episodes with d* between the short and long ranges: m1 {data['fig4']['m1_n_between_short_and_long']}, "
+          f"m2 {data['fig4']['m2_n_between_short_and_long']}")
     print(f"fig1: {f1['run']} layout {f1['layout_seed']} (index {f1['layout_index']}), {len(f1['goals'])} goals, "
           f"highlight goal {f1['highlight_goal']}: {f1['goals'][f1['highlight_goal']]}")
     for w in WORLDS:
