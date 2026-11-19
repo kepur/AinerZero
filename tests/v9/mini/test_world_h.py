@@ -103,3 +103,30 @@ def test_analytic_step_matches_true_step_in_h1():
         for h in range(4):
             for a in range(W.N_ACTIONS):
                 assert W.analytic_step(lay.grid, (x, y, h), a) == W.step(lay, (x, y, h), a)
+
+
+def test_fast_strong_connectivity_matches_reference():
+    """新写法与 M6 之前的写法判定相同：正例取已生成的图，反例取放置过程中被拒的图。"""
+    import random as _r
+    cfg = W.Config(**WORLDS["h2"])
+    checked = {True: 0, False: 0}
+    for seed in range(7_950_200, 7_950_212):
+        for name in ("m2", "h2"):                                    # 正例：生成器产出的图
+            g = W.make_layout(seed, W.Config(**WORLDS[name]))
+            assert W._strongly_connected(g) and W._strongly_connected_ref(g)
+            checked[True] += 1
+        rng = _r.Random(seed)
+        base = W.make_layout(seed, W.Config(rooms=5)).grid.copy()
+        for _ in range(4):
+            lay = W.Layout(seed=seed, cfg=cfg, grid=base.copy())
+            W._place_ice(lay, rng)
+            W._place_portals(lay, rng)
+            W._place_pads(lay, rng)
+            free = [c for c in lay.free_cells() if W._room_interior(lay, c) is False and W.is_floor(lay.grid[c[1], c[0]])]
+            for c in rng.sample(free, k=min(8, len(free))):          # 随机放单向门，不查连通，制造反例
+                d = rng.choice((1, 3) if c[0] % (cfg.room_size + 1) == 0 else (0, 2))
+                lay.grid[c[1], c[0]] = W.GATE0 + d
+            fast, ref = W._strongly_connected(lay), W._strongly_connected_ref(lay)
+            assert fast == ref
+            checked[ref] += 1
+    assert checked[True] > 0 and checked[False] > 0

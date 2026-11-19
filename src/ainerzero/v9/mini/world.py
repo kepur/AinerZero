@@ -84,8 +84,25 @@ def is_floor(v: int) -> bool:
     return FLOOR0 <= v < FLOOR0 + N_COLORS
 
 
+_LAYOUTS: dict = {}
+
+
 def make_layout(seed: int, cfg: Config | None = None) -> Layout:
+    """同一个种子和配置只生成一次（一次运行里同一张图会被数据、残差、自监督标签、任务各取一遍）。
+
+    缓存的网格设为只读，调用方误写会直接报错。
+    """
     cfg = cfg or Config()
+    key = (seed, tuple(sorted(cfg.__dict__.items())))
+    lay = _LAYOUTS.get(key)
+    if lay is None:
+        lay = _make_layout(seed, cfg)
+        lay.grid.flags.writeable = False
+        _LAYOUTS[key] = lay
+    return lay
+
+
+def _make_layout(seed: int, cfg: Config) -> Layout:
     rng = random.Random(seed)
     n, rs, s = cfg.rooms, cfg.room_size, cfg.size
     grid = np.full((s, s), WALL, dtype=np.int8)
@@ -127,6 +144,8 @@ def make_layout(seed: int, cfg: Config | None = None) -> Layout:
         if cfg.pads:        # m1/m2 不进这两个分支，随机数序列与 M4/M5 一致
             _place_pads(layout, rng)
         if cfg.gates:
+            if not _strongly_connected(layout):   # 冰带、传送门、跳板本身已有陷阱：不必再放门，直接重来
+                continue
             _place_gates(layout, rng)
         if not (cfg.ice_rooms or cfg.portals or cfg.pads or cfg.gates) or _strongly_connected(layout):
             return layout
@@ -138,8 +157,48 @@ def _strongly_connected(layout: "Layout") -> bool:
 
     只查第二条不够（A27 F-02）：传送门入口堵在某间房唯一的门前时，那间房从起点走不进去，
     第二条只看起点走得到的位姿，会平凡成立；起点所在区域本身出不去时也一样。
+
+    M6 起改成先建一次位姿转移表（只有前进要模拟，转向是纯旋转），正反两次 BFS 都在表上做；
+    判定与原来的 pose_bfs + reverse_bfs_to_cell 写法相同（_strongly_connected_ref 留作对照测试）。
     """
-    free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]   # 含跳板和单向门格
+    free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]
+    cells = layout.free_cells()
+    idx = {(x, y, h): 4 * i + h for i, (x, y) in enumerate(cells) for h in range(4)}
+    n = len(idx)
+    nxt = [None] * n
+    for (x, y, h), i in idx.items():
+        nxt[i] = (idx[step(layout, (x, y, h), FORWARD)], 4 * (i // 4) + (h - 1) % 4, 4 * (i // 4) + (h + 1) % 4)
+    s0 = idx[(free[0][0], free[0][1], 0)]
+    seen = bytearray(n)
+    seen[s0] = 1
+    stack = [s0]
+    while stack:
+        for j in nxt[stack.pop()]:
+            if not seen[j]:
+                seen[j] = 1
+                stack.append(j)
+    reached_cells = {cells[i // 4] for i in range(n) if seen[i]}
+    if not all(c in reached_cells for c in free):
+        return False
+    rev = [[] for _ in range(n)]
+    for i, js in enumerate(nxt):
+        for j in js:
+            rev[j].append(i)
+    back = bytearray(n)
+    stack = [idx[(free[0][0], free[0][1], h)] for h in range(4)]
+    for i in stack:
+        back[i] = 1
+    while stack:
+        for j in rev[stack.pop()]:
+            if not back[j]:
+                back[j] = 1
+                stack.append(j)
+    return all(back[i] for i in range(n) if seen[i])
+
+
+def _strongly_connected_ref(layout: "Layout") -> bool:
+    """M6 之前的写法，只留给测试对照。"""
+    free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]
     start = (free[0][0], free[0][1], 0)
     reach = pose_bfs(layout, start)
     cells = {(p[0], p[1]) for p in reach}
@@ -234,9 +293,10 @@ def _rooms_strongly_connected(n: int, edges: list) -> bool:
 def _place_gates(layout: Layout, rng: random.Random) -> None:
     """单向门放在房间之间的门洞上（墙线上的非墙格），方向沿门洞的轴随机取一边。
 
-    逐个放：放下后房间图仍强连通才留下，否则换另一个方向，再不行就跳过这个门洞
-    （生成树上唯一的门做成单向会把一片房间困住）。冰带、传送门、跳板与门的组合
-    由 make_layout 最后的整图位姿强连通检查兜底。门洞不够时少放，测试会查个数。
+    逐个放：先查房间图（快），再查整图位姿强连通（慢，但把冰带、传送门、跳板都算进去），
+    两样都过才留下，否则换另一个方向，再不行就跳过这个门洞。只查房间图不够：门洞正对冰带
+    尽头或传送门入口时，这个门洞只有一边进得去，房间图看不出来（种子 7_100_109 因此
+    100 次都放不出）。门洞不够时少放，测试会查个数。
     """
     cfg = layout.cfg
     rs, n = cfg.room_size, cfg.rooms
@@ -262,9 +322,12 @@ def _place_gates(layout: Layout, rng: random.Random) -> None:
         for d in rng.sample(dirs, k=2):
             state[(x, y)] = 1 if d in (1, 2) else -1     # 朝东或朝南进门：只能从 a（西/北）到 b
             if ok():
+                old = layout.grid[y, x]
                 layout.grid[y, x] = GATE0 + d
-                placed += 1
-                break
+                if _strongly_connected(layout):
+                    placed += 1
+                    break
+                layout.grid[y, x] = old
             state[(x, y)] = 0
 
 
