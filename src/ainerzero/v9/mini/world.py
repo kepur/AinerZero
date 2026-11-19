@@ -5,7 +5,8 @@
 - 每个房间有一种地板颜色，颜色到房间的分配每张图随机打乱。颜色只在一张图内区分房间，
   不泄露全局坐标；
 - 动作只有三个：前进、左转、右转；
-- 可选「未知规律」（v1 再开）：冰面（前进后一直滑到被挡住）与单向传送门。
+- 可选「未知规律」（v1 再开）：冰面（前进后一直滑到被挡住）与单向传送门；
+  M6 的大图（h 世界）再加两条：跳板（踏上去再向前跳 2 格，可越过墙）与单向门（只能顺着门的方向进门）。
 
 学生观察：朝向 one-hot（指南针）＋自我中心视野。不给坐标。
 """
@@ -25,7 +26,9 @@ ICE = 2          # v1 的未知规律之一，v0 不放
 PORTAL = 3       # v1：单向传送门入口
 FLOOR0 = 4       # 地板颜色 FLOOR0 .. FLOOR0+N_COLORS-1
 N_COLORS = 9
-N_TYPES = FLOOR0 + N_COLORS
+PAD = FLOOR0 + N_COLORS      # M6：跳板（未知规律）
+GATE0 = PAD + 1              # M6：单向门 GATE0 + d，d 是允许进门的朝向（0 北 1 东 2 南 3 西）
+N_TYPES = GATE0 + 4
 
 FORWARD, LEFT, RIGHT = 0, 1, 2
 N_ACTIONS = 3
@@ -41,6 +44,8 @@ class Config:
     extra_door_prob: float = 0.35  # 生成树之外的门，越小路越绕
     ice_rooms: int = 0        # 整间铺冰的房间数（未知规律：前进后一直滑到被挡住或离开冰面）
     portals: int = 0          # 单向传送门数（未知规律：踏上入口就到出口）
+    pads: int = 0             # M6 跳板数（未知规律：踏上去再沿朝向跳 2 格，落点须是普通地板，可越过墙）
+    gates: int = 0            # M6 单向门数（未知规律：门格只能顺着门的方向进入）
 
     @property
     def size(self) -> int:
@@ -65,6 +70,18 @@ class Layout:
     def free_cells(self) -> list[tuple[int, int]]:
         ys, xs = np.nonzero(self.grid != WALL)
         return list(zip(xs.tolist(), ys.tolist()))
+
+    def can_enter(self, x: int, y: int, h: int) -> bool:
+        """朝 h 方向走进 (x, y)：不越界、不是墙；单向门只能顺着门的方向进。"""
+        if not self.passable(x, y):
+            return False
+        v = self.grid[y, x]
+        return not (GATE0 <= v < GATE0 + 4 and v - GATE0 != h)
+
+
+def is_floor(v: int) -> bool:
+    """普通地板（带房间颜色），不含冰、传送门、跳板、单向门。"""
+    return FLOOR0 <= v < FLOOR0 + N_COLORS
 
 
 def make_layout(seed: int, cfg: Config | None = None) -> Layout:
@@ -107,9 +124,13 @@ def make_layout(seed: int, cfg: Config | None = None) -> Layout:
             _place_ice(layout, rng)
         if cfg.portals:
             _place_portals(layout, rng)
-        if not (cfg.ice_rooms or cfg.portals) or _strongly_connected(layout):
+        if cfg.pads:        # m1/m2 不进这两个分支，随机数序列与 M4/M5 一致
+            _place_pads(layout, rng)
+        if cfg.gates:
+            _place_gates(layout, rng)
+        if not (cfg.ice_rooms or cfg.portals or cfg.pads or cfg.gates) or _strongly_connected(layout):
             return layout
-    raise RuntimeError(f"seed {seed}: 100 次都放不出没有陷阱的冰带/传送门")
+    raise RuntimeError(f"seed {seed}: 100 次都放不出没有陷阱的未知规律布局")
 
 
 def _strongly_connected(layout: "Layout") -> bool:
@@ -118,7 +139,7 @@ def _strongly_connected(layout: "Layout") -> bool:
     只查第二条不够（A27 F-02）：传送门入口堵在某间房唯一的门前时，那间房从起点走不进去，
     第二条只看起点走得到的位姿，会平凡成立；起点所在区域本身出不去时也一样。
     """
-    free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]
+    free = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]   # 含跳板和单向门格
     start = (free[0][0], free[0][1], 0)
     reach = pose_bfs(layout, start)
     cells = {(p[0], p[1]) for p in reach}
@@ -173,6 +194,80 @@ def _place_portals(layout: Layout, rng: random.Random) -> None:
         layout.portal_to[src] = dst
 
 
+def _room_interior(layout: Layout, c) -> bool:
+    rs = layout.cfg.room_size
+    return c[0] % (rs + 1) != 0 and c[1] % (rs + 1) != 0
+
+
+def _place_pads(layout: Layout, rng: random.Random) -> None:
+    """跳板放在房间内部的普通地板上，不挨着传送门的出口（出口落在跳板上会接着跳，规律叠在一起不好学）。"""
+    exits = set(layout.portal_to.values())
+    free = [c for c in layout.free_cells() if is_floor(layout.grid[c[1], c[0]]) and _room_interior(layout, c)
+            and c not in exits]
+    for c in rng.sample(free, k=layout.cfg.pads):
+        layout.grid[c[1], c[0]] = PAD
+
+
+def _rooms_strongly_connected(n: int, edges: list) -> bool:
+    """房间图：edges 是 (a, b, 方向)，方向 0 表示双向，1 只能 a→b，-1 只能 b→a。"""
+    fwd = {r: [] for r in range(n * n)}
+    bwd = {r: [] for r in range(n * n)}
+    for a, b, d in edges:
+        if d >= 0:
+            fwd[a].append(b)
+            bwd[b].append(a)
+        if d <= 0:
+            fwd[b].append(a)
+            bwd[a].append(b)
+    for g in (fwd, bwd):
+        seen, stack = {0}, [0]
+        while stack:
+            for m in g[stack.pop()]:
+                if m not in seen:
+                    seen.add(m)
+                    stack.append(m)
+        if len(seen) != n * n:
+            return False
+    return True
+
+
+def _place_gates(layout: Layout, rng: random.Random) -> None:
+    """单向门放在房间之间的门洞上（墙线上的非墙格），方向沿门洞的轴随机取一边。
+
+    逐个放：放下后房间图仍强连通才留下，否则换另一个方向，再不行就跳过这个门洞
+    （生成树上唯一的门做成单向会把一片房间困住）。冰带、传送门、跳板与门的组合
+    由 make_layout 最后的整图位姿强连通检查兜底。门洞不够时少放，测试会查个数。
+    """
+    cfg = layout.cfg
+    rs, n = cfg.room_size, cfg.rooms
+    doors = []   # (x, y, 可选方向, 房间 a, 房间 b)，a 在西或北
+    for x, y in layout.free_cells():
+        on_v, on_h = x % (rs + 1) == 0, y % (rs + 1) == 0
+        if on_v != on_h and is_floor(layout.grid[y, x]):
+            if on_v:   # 竖墙上的门洞只能东西向穿过
+                ry, rx = y // (rs + 1), x // (rs + 1)
+                doors.append((x, y, (1, 3), ry * n + rx - 1, ry * n + rx))
+            else:
+                ry, rx = y // (rs + 1), x // (rs + 1)
+                doors.append((x, y, (0, 2), (ry - 1) * n + rx, ry * n + rx))
+    state = {(x, y): 0 for x, y, *_ in doors}
+
+    def ok() -> bool:
+        return _rooms_strongly_connected(n, [(a, b, state[(x, y)]) for x, y, _, a, b in doors])
+
+    placed = 0
+    for x, y, dirs, a, b in rng.sample(doors, k=len(doors)):
+        if placed == cfg.gates:
+            break
+        for d in rng.sample(dirs, k=2):
+            state[(x, y)] = 1 if d in (1, 2) else -1     # 朝东或朝南进门：只能从 a（西/北）到 b
+            if ok():
+                layout.grid[y, x] = GATE0 + d
+                placed += 1
+                break
+            state[(x, y)] = 0
+
+
 # ---------------------------------------------------------------- 动力学
 
 Pose = tuple[int, int, int]   # (x, y, heading)
@@ -185,17 +280,22 @@ def step(layout: Layout, pose: Pose, action: int) -> Pose:
     if action == RIGHT:
         return (x, y, (h + 1) % 4)
     dx, dy = DELTA[h]
-    if not layout.passable(x + dx, y + dy):
+    if not layout.can_enter(x + dx, y + dy, h):
         return pose
     x, y = x + dx, y + dy
-    # 未知规律：冰面一直滑；传送门入口立刻送到出口
+    # 未知规律：冰面一直滑；传送门入口立刻送到出口；跳板再向前跳 2 格（落点是普通地板才跳）；
+    # 单向门只能顺着门的方向进（滑行也一样）。m1/m2 里没有跳板和单向门，can_enter 与 passable 相同。
     for _ in range(layout.cfg.size):
-        if layout.grid[y, x] == PORTAL and (x, y) in layout.portal_to:
+        v = layout.grid[y, x]
+        if v == PORTAL and (x, y) in layout.portal_to:
             x, y = layout.portal_to[(x, y)]
             break
-        if layout.grid[y, x] == ICE and layout.passable(x + dx, y + dy):
+        if v == ICE and layout.can_enter(x + dx, y + dy, h):
             x, y = x + dx, y + dy
             continue
+        if v == PAD and layout.passable(x + 2 * dx, y + 2 * dy) and is_floor(layout.grid[y + 2 * dy, x + 2 * dx]):
+            x, y = x + 2 * dx, y + 2 * dy
+            break
         break
     return (x, y, h)
 
@@ -336,7 +436,7 @@ def reverse_bfs_to_cell(layout: Layout, cell: tuple[int, int]) -> dict[Pose, int
 
 
 def random_pose(layout: Layout, rng: random.Random) -> Pose:
-    cells = [c for c in layout.free_cells() if layout.grid[c[1], c[0]] >= FLOOR0]
+    cells = [c for c in layout.free_cells() if is_floor(layout.grid[c[1], c[0]])]   # m 世界里与旧写法 >= FLOOR0 相同
     x, y = rng.choice(cells)
     return (x, y, rng.randrange(4))
 
@@ -361,10 +461,12 @@ def iter_views(layout: Layout, poses: Iterable[Pose]) -> np.ndarray:
 # ---------------------------------------------------------------- 残差模型的输入：前方射线
 
 RAY_LEN = 6
-RAY_CLASSES = 5   # 0 未知 1 墙 2 冰 3 传送门 4 地板（颜色折叠掉：规律与颜色无关，这是规范化的一步）
+# 0 未知 1 墙 2 冰 3 传送门 4 地板（颜色折叠掉：规律与颜色无关，这是规范化的一步）
+# M6 加：5 跳板 6 顺向的单向门 7 逆向或横向的单向门（门的方向按射线朝向折成相对方向，与视野旋转同属已知几何）
+RAY_CLASSES = 8
 
 
-def fold_type(v: int) -> int:
+def fold_type(v: int, heading: int = 0) -> int:
     if v < 0:
         return 0
     if v == WALL or v == OOB:
@@ -373,6 +475,10 @@ def fold_type(v: int) -> int:
         return 2
     if v == PORTAL:
         return 3
+    if v == PAD:
+        return 5
+    if GATE0 <= v < GATE0 + 4:
+        return 6 if v - GATE0 == heading else 7
     return 4
 
 
@@ -384,7 +490,7 @@ def ray(cells: np.ndarray, pose: Pose, length: int = RAY_LEN) -> np.ndarray:
     out = np.zeros(length, dtype=np.int64)
     for k in range(1, length + 1):
         cx, cy = x + k * dx, y + k * dy
-        out[k - 1] = fold_type(int(cells[cy, cx])) if 0 <= cx < n and 0 <= cy < n else 1
+        out[k - 1] = fold_type(int(cells[cy, cx]), h) if 0 <= cx < n and 0 <= cy < n else 1
     return out
 
 

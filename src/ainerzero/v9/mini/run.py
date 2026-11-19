@@ -39,6 +39,19 @@ PRESETS = {
                   diag_layouts=6, belief_steps=1500),
     "full": dict(layouts=400, tpl=4, horizon=200, steps=12000, eval_layouts=50, prefix=400, n_short=3, n_long=4,
                  diag_layouts=20, belief_steps=4000),
+    # M6 大图（h 世界，31×31、5×5 个房间）：前缀 800 步；训练游走每条 300 步（环境步数 24 万）；注意力组窗口 1000 帧
+    "hquick": dict(layouts=60, tpl=4, horizon=300, steps=3000, eval_layouts=12, prefix=800, n_short=2, n_long=4,
+                   diag_layouts=6, belief_steps=1500, attn_window=1000),
+    "hmedium": dict(layouts=200, tpl=4, horizon=300, steps=6000, eval_layouts=30, prefix=800, n_short=2, n_long=4,
+                    diag_layouts=12, belief_steps=3000, attn_window=1000),
+}
+
+# 世界：m1/m2 是 M4/M5 的 19×19 世界；h1/h2 是 M6 的 31×31 世界（25 个房间共用 9 种地板颜色，视野会重复）
+WORLDS = {
+    "m1": dict(),
+    "m2": dict(ice_rooms=2, portals=2),
+    "h1": dict(rooms=5),
+    "h2": dict(rooms=5, ice_rooms=4, portals=4, pads=6, gates=6),
 }
 
 
@@ -53,7 +66,7 @@ def _code_sha() -> str:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
-    ap.add_argument("--preset", choices=("quick", "medium", "full"))
+    ap.add_argument("--preset", choices=tuple(PRESETS))
     ap.add_argument("--arms", help="只跑这些臂，逗号分隔（默认全部）")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--seed", type=int, default=0)
@@ -61,8 +74,9 @@ def main(argv=None) -> int:
     ap.add_argument("--eval-layouts", type=int, help="留出图张数（覆盖预设）")
     ap.add_argument("--eval-seed0", type=int,
                     help="留出图种子起点（默认 data.EVAL_SEED0，探索段三个种子共用）；确认段每个种子传不同的值，留出图互不重叠")
-    ap.add_argument("--world", choices=("m1", "m2"), default="m1",
-                    help="m1：规律全部已知；m2：两间冰房 + 两个单向传送门（解析先验不知道）")
+    ap.add_argument("--world", choices=tuple(WORLDS), default="m1",
+                    help="m1：规律全部已知；m2：两间冰房 + 两个单向传送门（解析先验不知道）；"
+                         "h1/h2：M6 的 31×31 大图，h2 加冰带、传送门、跳板、单向门")
     args = ap.parse_args(argv)
     preset = dict(PRESETS[args.preset or ("quick" if args.quick else "full")])
     if args.steps:
@@ -92,7 +106,7 @@ def main(argv=None) -> int:
         logf.write(msg + "\n")
         logf.flush()
 
-    cfg = W.Config() if args.world == "m1" else W.Config(ice_rooms=2, portals=2)
+    cfg = W.Config(**WORLDS[args.world])
     t0 = time.time()
     meta = {"preset": preset, "seed": args.seed, "eval_seed0": eval_seed0, "world": cfg.__dict__, "code_sha256": _code_sha(),
             "git_head": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip(),
@@ -153,7 +167,10 @@ def main(argv=None) -> int:
         from .attn import AttnConfig, long_walks, train_attn
         dl = long_walks(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0=seed0)
         log(f"[attn] 训练注意力记忆组 {preset['steps']} 步（{dl.n_traj} 条 × {dl.horizon} 步游走，训练图与环境步数同上）")
-        attn, atinfo = train_attn(dl, AttnConfig(steps=preset["steps"], seed=args.seed), log=log)
+        acfg = AttnConfig(steps=preset["steps"], seed=args.seed)
+        if "attn_window" in preset:
+            acfg.window = preset["attn_window"]
+        attn, atinfo = train_attn(dl, acfg, log=log)
         del dl
     tasks = E.make_tasks(cfg, preset["eval_layouts"], preset["prefix"], preset["n_short"], preset["n_long"],
                          eval_seed0=eval_seed0)

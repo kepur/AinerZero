@@ -31,7 +31,7 @@ import numpy as np
 from . import world as W
 from .residual import TELEPORT, ForwardModel
 
-_FOLD = np.array([W.fold_type(v) for v in range(W.N_TYPES)], dtype=np.int64)
+_FOLD = np.array([[W.fold_type(v, h) for v in range(W.N_TYPES)] for h in range(4)], dtype=np.int64)   # (朝向, 类型)
 MERGE_MIN_OVERLAP = 20   # 并图前碎片与主地图在候选偏移下至少要有这么多格重叠（且全部一致）
 
 
@@ -83,10 +83,10 @@ class Frame:
         if self._tv == self.version:
             return self._tab
         L, n = W.RAY_LEN, self.n
-        folded = np.where(self.map < 0, 0, _FOLD[np.clip(self.map, 0, None)])
-        pad = np.pad(folded, L, constant_values=1)
         rays = np.zeros((n, n, 4, L), dtype=np.int64)
         for h, (dx, dy) in enumerate(W.DELTA):
+            folded = np.where(self.map < 0, 0, _FOLD[h][np.clip(self.map, 0, None)])   # 单向门按朝向折叠
+            pad = np.pad(folded, L, constant_values=1)
             for k in range(1, L + 1):
                 rays[:, :, h, k - 1] = pad[L + k * dy:L + k * dy + n, L + k * dx:L + k * dx + n]
         self._tab = self.fm.predict(rays)
