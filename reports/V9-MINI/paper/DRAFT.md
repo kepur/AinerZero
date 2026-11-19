@@ -50,7 +50,7 @@ We do not claim that explicit maps are better than learned memories in general. 
 
 **Latent world models and planning.**
 - Latent dynamics models support planning and policy learning in imagination [Ha & Schmidhuber 2018; Hafner et al. 2020; 2023].
-- Joint-embedding predictive architectures predict in representation space rather than pixel space [LeCun 2022; Assran et al. 2023; Bardes et al. 2024]. Recent work regularizes the embedding distribution to avoid collapse [Balestriero & LeCun 2025].
+- Joint-embedding predictive architectures predict in representation space rather than pixel space [LeCun 2022; Assran et al. 2023; Bardes et al. 2024]. Recent work regularizes the embedding distribution towards an isotropic Gaussian to avoid collapse [Balestriero & LeCun 2025], and trains action-conditioned JEPA world models for planning [Assran et al. 2025; Maes et al. 2026].
 - Our shared world model belongs to this family. We find that an inverse-dynamics term is needed to keep action-relevant information in the latent (§6.4), and that a latent that predicts well does not by itself give a usable planning cost.
 
 **Goal-conditioned values and quasimetrics.**
@@ -389,7 +389,8 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 
 - Andrychowicz, M. et al. Hindsight experience replay. NeurIPS 2017.
 - Assran, M. et al. Self-supervised learning from images with a joint-embedding predictive architecture. CVPR 2023.
-- Balestriero, R. & LeCun, Y. LeJEPA: provable and scalable self-supervised learning without the heuristics. arXiv 2025. *(verify title, year and that SIGReg is introduced there)*
+- Assran, M. et al. V-JEPA 2: self-supervised video models enable understanding, prediction and planning. arXiv:2506.09985, 2025. *(arXiv id checked in the project's literature registry; verify title and author list)*
+- Balestriero, R. & LeCun, Y. LeJEPA: provable and scalable self-supervised learning without the heuristics. arXiv:2511.08544, 2025. *(arXiv id and SIGReg attribution checked in the project's literature registry; verify exact title)*
 - Bardes, A. et al. Revisiting feature prediction for learning visual representations from video (V-JEPA). TMLR 2024. *(verify venue)*
 - Chaplot, D. S. et al. Learning to explore using Active Neural SLAM. ICLR 2020a.
 - Chaplot, D. S. et al. Neural topological SLAM for visual navigation. CVPR 2020b.
@@ -402,6 +403,7 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 - Johannink, T. et al. Residual reinforcement learning for robot control. ICRA 2019.
 - Kaelbling, L. P. Learning to achieve goals. IJCAI 1993.
 - LeCun, Y. A path towards autonomous machine intelligence. OpenReview, 2022.
+- Maes, L. et al. LeWorldModel (LeWM). arXiv:2603.19312, 2026. *(arXiv id checked in the project's literature registry; verify title and author list)*
 - Nosek, B. A. et al. The preregistration revolution. PNAS 2018.
 - Parisotto, E. & Salakhutdinov, R. Neural Map: structured memory for deep reinforcement learning. ICLR 2018.
 - Parisotto, E. et al. Stabilizing transformers for reinforcement learning. ICML 2020.
@@ -434,7 +436,7 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 
 ## Notes for the authors (remove before submission)
 
-1. **References.** All references were written from memory and must be checked: titles, years, venues, and in particular whether SIGReg is due to the cited LeJEPA paper.
+1. **References.** Three arXiv ids (LeJEPA 2511.08544, V-JEPA 2 2506.09985, LeWM 2603.19312) and the SIGReg attribution come from the project's checked literature registry (`docs/research/ADAPTER_REGISTRY.md`, `docs/research/V9_FRONTIER_COST_SURVEY.md`). All other references were written from memory and must be checked: titles, years, venues. A web check was attempted on 2026-11-19 but web search was unavailable.
 2. **Disclosure.** The experiments, analysis code, preregistrations and this draft were produced with AI coding agents. The non-author recomputations were done by a different AI agent from the one that wrote the code. Check the target venue's policy on AI assistance and describe these roles accurately; §5's "reviewer who did not write the code" should not be read as a human reviewer.
 3. **"Preregistered".** Registration is internal (frozen documents with hashes in the repository history), not on a public registry. Either keep the wording "registered internally" as in §2 and §5, or register future milestones publicly.
 4. **Figures to make.** An example map with prefix, start and goal; the agent pipeline; a bar chart of long-goal success per agent and world (Tables 3 and 5); and the localization split of §6.3.
