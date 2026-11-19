@@ -1,6 +1,6 @@
-# Write Down the Geometry, Learn the Exceptions: A Preregistered Small-Scale Study of Memory and Planning under Unknown Dynamics
+# Write Down the Geometry, Learn the Exceptions: A Small Confirmatory Study of Memory and Planning under Unknown Dynamics
 
-*Working draft r0, 2026-11-19. Internal; not for distribution. Authors, affiliations and repository link to be filled in. See "Notes for the authors" at the end before any submission.*
+*Working draft r1, 2026-11-19 (r0 corrected after the non-author check A35). Internal; not for distribution. Authors, affiliations and repository link to be filled in. See "Notes for the authors" at the end before any submission.*
 
 ---
 
@@ -12,9 +12,9 @@ We compare agents that differ in what they write down and what they learn:
 - six learned-memory agents: a JEPA-style world model with Euclidean or learned quasimetric costs, a latent topological graph, a GRU belief, an SPTM-style topological memory, and a causal Transformer over the full history trained by hindsight goal-conditioned Q-learning;
 - agents that keep an explicit metric map and plan on it, whose forward model is either an analytic prior, the prior plus per-map event memory, or the prior plus a gated learned residual.
 
-All claims were registered before the confirmatory runs, with frozen code and thresholds, fresh held-out maps and five training seeds. Every gate was recomputed from the episode logs by a reviewer who did not write the analysis code.
+All claims were registered internally before the confirmatory runs, with frozen code and thresholds, fresh held-out maps and five training seeds. Every gate was recomputed from the episode logs by a reviewer who did not write the analysis code.
 
-On long goals (shortest path ≥ 20 actions), the metric-map planner with a gated residual trained on self-supervised labels beats the best of the six learned-memory agents by +0.948 [0.921, 0.971] success in the world with known laws and +0.772 [0.724, 0.819] in the world with hidden laws (95% cluster-bootstrap intervals over maps). With hidden laws, the gated residual improves over the analytic prior by +0.171 [0.122, 0.219] and over per-map event memory by +0.112 [0.066, 0.159]. With known laws it does not hurt. Replacing ground-truth training labels with the agent's own localization keeps the gain (+0.174 [0.124, 0.224] over the prior).
+On long goals (shortest path ≥ 20 actions), the metric-map planner with a gated residual trained on self-supervised labels beats the best of the six learned-memory agents by +0.948 [0.921, 0.971] success in the world with known laws and +0.772 [0.724, 0.819] in the world with hidden laws (95% cluster-bootstrap intervals over maps). In an earlier milestone with the same protocol, the map agent whose residual is trained on ground-truth labels improves over the analytic prior by +0.171 [0.122, 0.219] and over per-map event memory by +0.112 [0.066, 0.159] when laws are hidden, and does not hurt when laws are known. Replacing ground-truth training labels with the agent's own localization keeps the gain (+0.174 [0.124, 0.224] over the prior).
 
 Diagnostics suggest that the gap to the learned memories comes mostly from memory structure rather than from weak learning components. The results are limited to this small world and to these implementations.
 
@@ -145,7 +145,9 @@ The first four learned agents share one model trained on random walks from 200 t
   - a reachability network R(o_i, o_j): positives are frames ≤ 3 steps apart on a training walk, negatives ≥ 25 steps apart;
   - a locomotion network predicts the action that leads from o_t towards o_{t+k}, for 1 ≤ k ≤ 4.
 - **Memory graph:** one node per prefix frame. Temporal edges join consecutive frames in both directions, with reverse traversal penalized. Shortcut edges join frames at least 4 steps apart on which R is confident (≥ 0.95).
-- **Acting:** the goal is localized by R. At each step the agent localizes within a 4-hop neighbourhood of its previous estimate, falling back to the whole graph. It then follows the farthest reachable waypoint among the next few nodes of the graph shortest path.
+- **Goal:** prefix frames whose observation is identical to the goal observation become goal nodes. Only if there are none is the goal localized by R. Frames with identical observations are also joined by near-zero-cost edges.
+- **Localization:** frames identical to the current observation are used first: the one within 4 hops closest to the expected node, else the first such frame. Otherwise the agent takes the most similar frame (by R) within 4 hops of its expected node. If that is below 0.5, it takes the most similar frame on the whole graph. If that is also below 0.5, it keeps its estimate.
+- **Acting:** if R judges the goal directly reachable, the locomotion network heads for the goal. Otherwise the agent walks along the graph shortest path (looking at most 30 edges ahead). On a forward temporal edge it replays the action it took at that point of the prefix. On a reverse or shortcut edge it hands the edge's end node to the locomotion network.
 - Everything is trained from temporal offsets only, without poses or distances.
 
 **latent_attn (Transformer over the full history).** A causal Transformer (4 layers, width 128, 4 heads, rotary position embeddings [Su et al. 2024], pre-LayerNorm; 1,240,707 parameters) encodes the prefix and the episode so far.
@@ -162,11 +164,11 @@ All map agents share mapping, localization and planning. None of them uses coord
 - **Odometry and mapping:** the compass gives heading. A forward model predicts the next pose, and the view is written into the agent's own grid.
 - **Surprise and relocalization:** a *surprise* is a mismatch between the predicted view and known map cells. The agent then relocalizes in three stages:
   1. along the heading ray;
-  2. failing that, by a unique consistent pose on the whole map;
-  3. failing that, it is *lost*: it maps a new fragment while tracking candidate offsets. A fragment is merged back only when one candidate remains and at least 20 overlapping cells all agree.
+  2. failing that, it is *lost*: it maps a new fragment and keeps every pose on the main map consistent with the current view as a candidate, even if there is only one;
+  3. it advances and filters the candidates each step, using the forward model, the current view and the whole fragment. A fragment is merged back only when one candidate remains and at least 20 overlapping cells all agree. (Merging on a single consistent view was wrong about four times in ten in exploration.)
 - **Planning:** breadth-first search on the pose graph under the agent's forward model. The goal is located by matching the goal view against the map. When lost, the agent plans within its fragment or explores its frontier.
 
-The agents differ only in the forward model, which predicts how far one forward action moves given the 6 cells ahead (unknown, wall, ice, teleporter, floor; colour folded):
+The agents differ only in the forward model, which predicts how far one forward action moves given the 6 cells ahead (unknown, wall, ice, teleporter, floor; colour folded). When forward models are trained, each ray cell beyond the view radius is set to unknown with probability 0.5, to mimic a partly seen map:
 - **map_analytic:** the prior. Forward moves one cell unless the next cell is a wall; unknown cells are assumed free.
 - **map_memory:** the prior plus per-map event memory. It remembers where a forward move from a given pose actually ended, and where a teleporter led.
 - **map_hybrid:** a gated residual and event memory.
@@ -191,7 +193,7 @@ The agents differ only in the forward model, which predicts how far one forward 
 | View geometry (view cell → world offset) and the analytic "walls block, forward moves one cell" prior | map agents | hand-written known structure; this is what the hybrid writes down |
 | Folding cell colours into one floor type | forward models | hand-written canonicalization |
 | Forward-model training labels from true poses | map_hybrid, map_ungated* | removed in map_hybrid_self |
-| True poses at test time | none | — |
+| True poses (and the true map) at test time | oracle, topo_oracle_ctrl | references only, report-only; no compared agent uses them |
 | Goal view unique on the map | task design | not an agent input |
 
 ## 5 Protocol
@@ -210,13 +212,13 @@ The agents differ only in the forward model, which predicts how far one forward 
 - Every gate compares two agents on the same episodes (paired), on long goals.
 - The point estimate is the mean paired difference in success. Episodes of all five runs of a world are pooled.
 - Intervals are 95% percentile intervals from a cluster bootstrap: clusters are (training seed × held-out map), 4,000 resamples, and the statistic is the sum of differences over resampled clusters divided by their episode count.
-- Clustering by map matters. Episodes on one map share the prefix and start, and per-episode intervals would be about half as wide.
+- Clustering by map matters. Episodes on one map share the prefix and start. For the M5 gate, treating episodes as independent would give intervals only 0.57–0.60 times as wide (`paper/tables.txt`).
 
 **Recomputation.**
 - After each confirmation, a reviewer who did not write the code recomputed every gate from `episodes.json` with their own script.
 - They also checked integrity: code hash, library version, seed ranges, episode counts, identical task sequences across agents, oracle success, and run times against the budget.
 - Both recomputations agreed with the author's numbers (§6). The reviewers' resampling followed the same random-number order as the author's script, so intervals agree to all digits. This shows a correct reimplementation of the same algorithm, not robustness to a different resampler.
-- For M5 we additionally recomputed the main gate with five other random seeds and a multinomial-weights resampler: endpoints moved by at most 0.003.
+- As an author-side check (not part of the independent recomputation), we recomputed the M5 gate with five other random seeds and a multinomial-weights resampler: endpoints moved by at most 0.003.
 
 **Pre-freeze changes.** Thresholds were set after exploration, and the M4 document went through two revisions before freezing (r0 → r1 → r1.1):
 - **H4.** It was rewritten from a non-inferiority bound on map_hybrid_self − map_hybrid. After a bug fix, exploration showed that bound was not a test the claim could be expected to pass, because of single-map variance. It became the two-part test in Table 2. The old comparison is reported without a gate.
@@ -317,10 +319,10 @@ M5 used fresh held-out maps (m1: 762 long episodes on 196 clusters; m2: 936 on 2
 **The learned side is limited by memory structure.**
 - latent_topo is clearly not a straw man. On short goals it reaches 0.45–0.47, against 0.08–0.17 for the other learned agents.
 - On long goals it stays at 0.05–0.07. Giving it perfect local control (topo_oracle_ctrl) only raises this to about 0.08.
-- An exploration-stage bound with ground truth explains why: a memory whose nodes are prefix frames and whose edges are traversed transitions can reach at most a fraction of long goals even with perfect control.
+- An exploration-stage bound with ground truth (not evidence) explains why: a memory whose nodes are prefix frames and whose edges are traversed transitions can reach at most a fraction of long goals even with perfect control.
   - The bound uses the exploration held-out maps (40 long goals in m1, 68 in m2). Replaying directed prefix transitions reaches 0.20 in m1 and 0 in m2.
   - Allowing reverse traversal at true cost: 0.45 and 0.10.
-  - Reaching 1.00 requires knowing that a move from A north to B implies a move from B south to A, and that seen-but-unvisited cells are traversable. This is exactly the geometry the metric map writes down.
+  - In m1, a memory that may stand on any visited cell in any direction reaches 1.00. Getting there requires knowing that a move from A north to B implies a move from B south to A, and that seen-but-unvisited cells are traversable. This is exactly the geometry the metric map writes down. (In m2 the same bound is 0.59.)
 - latent_topo fails long goals with many more whole-graph relocalizations per episode than when it succeeds (m1 6.6 vs 0.5; m2 5.1 vs 0.6). This is not normalized for episode length.
 
 **latent_attn did not learn long-horizon navigation at this data scale.**
@@ -369,10 +371,10 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 ## 8 Reproducibility
 
 - **Software:** Python 3.12 with NumPy and MLX 0.32.2 [Hannun et al. 2023]; nothing else.
-- **Hardware:** one Apple M2 Max laptop.
+- **Hardware:** one Apple M2 Max laptop (the run logs record only `arm64`; the chip name is from `sysctl`).
 - **One run** trains every agent, evaluates every task and writes `result.json` (code hash, git head, MLX version, timings) and `episodes.json` (every episode). Command:
 
-  `python -m ainerzero.v9.mini.run --preset medium --world {m1|m2} --seed s --eval-seed0 <seed> --eval-layouts 80`
+  `python -m ainerzero.v9.mini.run --preset medium --world {m1|m2} --seed s --eval-seed0 <seed> --eval-layouts 80 --out <dir>`
 
 - **Run times:**
   - M4: about 9 minutes per run; 5,594 s for all ten runs.
@@ -389,21 +391,21 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 
 - Andrychowicz, M. et al. Hindsight experience replay. NeurIPS 2017.
 - Assran, M. et al. Self-supervised learning from images with a joint-embedding predictive architecture. CVPR 2023.
-- Assran, M. et al. V-JEPA 2: self-supervised video models enable understanding, prediction and planning. arXiv:2506.09985, 2025. *(arXiv id checked in the project's literature registry; verify title and author list)*
-- Balestriero, R. & LeCun, Y. LeJEPA: provable and scalable self-supervised learning without the heuristics. arXiv:2511.08544, 2025. *(arXiv id and SIGReg attribution checked in the project's literature registry; verify exact title)*
+- Assran, M. et al. V-JEPA 2: self-supervised video models enable understanding, prediction and planning. arXiv:2506.09985, 2025. *(checked)*
+- Balestriero, R. & LeCun, Y. LeJEPA: provable and scalable self-supervised learning without the heuristics. arXiv:2511.08544, 2025. *(checked; SIGReg attribution from the project's literature registry)*
 - Bardes, A. et al. Revisiting feature prediction for learning visual representations from video (V-JEPA). TMLR 2024. *(verify venue)*
 - Chaplot, D. S. et al. Learning to explore using Active Neural SLAM. ICLR 2020a.
 - Chaplot, D. S. et al. Neural topological SLAM for visual navigation. CVPR 2020b.
 - Chen, L. et al. Decision Transformer: reinforcement learning via sequence modeling. NeurIPS 2021.
 - Davison, A. C. & Hinkley, D. V. Bootstrap Methods and Their Application. Cambridge University Press, 1997.
-- Ha, D. & Schmidhuber, J. World models. arXiv 2018 / NeurIPS 2018.
+- Ha, D. & Schmidhuber, J. World models. arXiv:1803.10122, 2018. *(checked; the NeurIPS 2018 version is titled "Recurrent world models facilitate policy evolution")*
 - Hafner, D. et al. Dream to control: learning behaviors by latent imagination. ICLR 2020.
-- Hafner, D. et al. Mastering diverse domains through world models (DreamerV3). arXiv 2023. *(cite journal version if available)*
+- Hafner, D. et al. Mastering diverse control tasks through world models (DreamerV3). Nature, 2025. doi:10.1038/s41586-025-08744-2. *(title checked)*
 - Hannun, A. et al. MLX: efficient and flexible machine learning on Apple silicon. GitHub, 2023.
 - Johannink, T. et al. Residual reinforcement learning for robot control. ICRA 2019.
 - Kaelbling, L. P. Learning to achieve goals. IJCAI 1993.
 - LeCun, Y. A path towards autonomous machine intelligence. OpenReview, 2022.
-- Maes, L. et al. LeWorldModel (LeWM). arXiv:2603.19312, 2026. *(arXiv id checked in the project's literature registry; verify title and author list)*
+- Maes, L., Le Lidec, Q., Scieur, D., LeCun, Y. & Balestriero, R. LeWorldModel: stable end-to-end joint-embedding predictive architecture from pixels. arXiv:2603.19312, 2026. *(checked)*
 - Nosek, B. A. et al. The preregistration revolution. PNAS 2018.
 - Parisotto, E. & Salakhutdinov, R. Neural Map: structured memory for deep reinforcement learning. ICLR 2018.
 - Parisotto, E. et al. Stabilizing transformers for reinforcement learning. ICML 2020.
@@ -428,7 +430,7 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 | gru_belief | 3,000 steps |
 | latent_topo | embedding 64, hidden 256; positives ≤ 3 steps, negatives ≥ 25 steps; locomotion horizon ≤ 4; shortcut threshold 0.95; localization threshold 0.5 within 4 hops; 6,000 steps, batch 256; 266,564 parameters |
 | latent_attn | 4 layers, width 128, 4 heads, RoPE, pre-LN; window 600; 16 sequences × 8 goals; τ = 0.02; initial cost 100; cap 200; 6,000 steps, lr 3e-4; ε = 0.05; 1,240,707 parameters |
-| Forward models | input: 6 cells ahead, 5 classes; gate and residual: MLP with 64 hidden units, 600 steps; residual trained on event samples only; near-cell masking 0.15 for map_ungated_aug |
+| Forward models | input: 6 cells ahead, 5 classes; cells beyond the view radius masked with probability 0.5 in training; gate and residual: MLP with 64 hidden units, 600 steps; residual trained on event samples only; additional near-cell masking 0.15 for map_ungated_aug |
 | Map merging | ≥ 20 overlapping cells, all consistent |
 | Task | prefix 400 steps; short 4 ≤ d* ≤ 10, long d* ≥ 20; ≤ 2 short and ≤ 4 long goals per map; budget 2d* + 20 |
 
@@ -436,7 +438,7 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 
 ## Notes for the authors (remove before submission)
 
-1. **References.** Three arXiv ids (LeJEPA 2511.08544, V-JEPA 2 2506.09985, LeWM 2603.19312) and the SIGReg attribution come from the project's checked literature registry (`docs/research/ADAPTER_REGISTRY.md`, `docs/research/V9_FRONTIER_COST_SURVEY.md`). All other references were written from memory and must be checked: titles, years, venues. A web check was attempted on 2026-11-19 but web search was unavailable.
+1. **References.** The non-author check A35 (`reports/V9-MINI/paper-review/refs.json`) opened primary pages for 16 of 29 references: 13 matched and 3 did not (Ha & Schmidhuber, DreamerV3, LeWM; all three now corrected and confirmed by the author against arXiv and nature.com). The other 13 are still unchecked, including the V-JEPA venue. Check them before submission.
 2. **Disclosure.** The experiments, analysis code, preregistrations and this draft were produced with AI coding agents. The non-author recomputations were done by a different AI agent from the one that wrote the code. Check the target venue's policy on AI assistance and describe these roles accurately; §5's "reviewer who did not write the code" should not be read as a human reviewer.
 3. **"Preregistered".** Registration is internal (frozen documents with hashes in the repository history), not on a public registry. Either keep the wording "registered internally" as in §2 and §5, or register future milestones publicly.
 4. **Figures to make.** An example map with prefix, start and goal; the agent pipeline; a bar chart of long-goal success per agent and world (Tables 3 and 5); and the localization split of §6.3.

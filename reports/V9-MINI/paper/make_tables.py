@@ -65,7 +65,27 @@ def main() -> int:
             if w == "m2":
                 res["m3_label_agreement"] = [round(r["m3_label_quality"]["label_agreement_with_truth"], 4) for r, _ in runs]
                 res["prediction"] = [{k: round(v, 4) for k, v in r["prediction"].items() if isinstance(v, float)} for r, _ in runs]
+            if m == "M5":
+                # Width of the H1s interval when maps are clusters vs when episodes are treated as independent
+                # (illustration for the protocol section; 4000 resamples, default_rng(0) for both).
+                a = np.array([r["success"] for _, e in runs for r in e["map_hybrid_self"] if r["kind"] == "long"], float)
+                b = np.array([r["success"] for _, e in runs for r in e["latent_topo"] if r["kind"] == "long"], float)
+                keys = [(i, r["layout_seed"]) for i, (_, e) in enumerate(runs) for r in e["oracle"] if r["kind"] == "long"]
+                d = a - b
+                uniq = {k: j for j, k in enumerate(sorted(set(keys)))}
+                g = np.array([uniq[k] for k in keys])
+                s1 = np.bincount(g, weights=d, minlength=len(uniq))
+                c = np.bincount(g, minlength=len(uniq)).astype(float)
+                bi = np.random.default_rng(0).integers(0, len(uniq), (4000, len(uniq)))
+                lo_c, hi_c = np.percentile(s1[bi].sum(1) / c[bi].sum(1), [2.5, 97.5])
+                be = np.random.default_rng(0).integers(0, len(d), (4000, len(d)))
+                lo_e, hi_e = np.percentile(d[be].mean(1), [2.5, 97.5])
+                res["h1s_width"] = {"cluster": round(float(hi_c - lo_c), 4), "episode": round(float(hi_e - lo_e), 4),
+                                    "ratio_episode_to_cluster": round(float((hi_e - lo_e) / (hi_c - lo_c)), 3)}
             out[f"{m}-{w}"] = res
+            if "h1s_width" in res:
+                print(f"\n[{m} {w}] H1s interval width: by map cluster {res['h1s_width']['cluster']}, "
+                      f"by episode {res['h1s_width']['episode']}, ratio {res['h1s_width']['ratio_episode_to_cluster']}")
             print(f"\n===== {m} {w}: {res['n_episodes']} episodes; long-goal clusters (run x layout) {res['n_layouts_long']}; "
                   f"code {res['code_sha256']}; MLX {res['mlx']}; wall {res['wall_sec_total']} s; world-model params {res['wm_params']}")
             if m == "M5":
