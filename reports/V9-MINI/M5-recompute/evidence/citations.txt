@@ -1,0 +1,238 @@
+=== FREEZE.json lines 1-20 (code, mlx, prereg, budget) ===
+$ sed -n "1,20p" reports/V9-MINI/M5/FREEZE.json
+{
+ "frozen_at": "2026-11-18T18:18Z",
+ "code_commit": "2f5dccfe42cad4ad8e20752ae1c407d5dcae947e",
+ "code_sha256": "37d3392f0bfd60e50f93a44016101663c2674c4d1685bc9eb2ccdf35c19c1e22",
+ "mlx": "0.32.2",
+ "prereg_path": "reports/V9-MINI/M5/M5-PREREG.md",
+ "prereg_sha256": "b5802ddd30651f48c1c31b27bd98d061651fa05babb90d1f2ee211fc9590c0c6",
+ "reviews": [
+  "ainerzero.V9.A31",
+  "ainerzero.V9.A32",
+  "ainerzero.V9.A33"
+ ],
+ "user_instruction": "2026-11-18 通过就开跑（A33 通过后直接冻结运行）",
+ "eval_seed0": "8100000 + 1000*s, 80 layouts, s=0..4",
+ "budget": {
+  "expected_sec": 25185,
+  "cap_total_sec": 36000,
+  "cap_run_sec": 3600
+ }
+}
+
+
+=== ledger.txt lines 1-11 (all runs wall time & cumulative) ===
+$ sed -n "1,11p" reports/V9-MINI/M5/ledger.txt
+2026-11-18T19:00:19Z m2 s0 exit=0 用时 2467s 累计 2467s
+2026-11-18T19:37:25Z m2 s1 exit=0 用时 2226s 累计 4693s
+2026-11-18T20:12:36Z m2 s2 exit=0 用时 2111s 累计 6804s
+2026-11-18T20:50:43Z m2 s3 exit=0 用时 2287s 累计 9091s
+2026-11-18T21:28:29Z m2 s4 exit=0 用时 2266s 累计 11357s
+2026-11-18T22:04:35Z m1 s0 exit=0 用时 2166s 累计 13523s
+2026-11-18T22:41:01Z m1 s1 exit=0 用时 2186s 累计 15709s
+2026-11-18T23:16:48Z m1 s2 exit=0 用时 2147s 累计 17856s
+2026-11-18T23:52:59Z m1 s3 exit=0 用时 2171s 累计 20027s
+2026-11-19T00:28:10Z m1 s4 exit=0 用时 2111s 累计 22138s
+全部完成，累计 22138s
+
+
+=== M5-PREREG.md §1 H1s definition ===
+$ sed -n "15,35p" reports/V9-MINI/M5/M5-PREREG.md
+## 1. 要检验的主张
+
+**判定方法与 M4 相同：**
+- 每条门看同一回合配对的成功率差（长目标子集）；
+- 区间是按图整簇重抽样的 95% bootstrap 区间：簇是「训练种子 × 留出图」，重抽样 4000 次，随机种子 0；
+- 实现：`ainerzero.v9.mini.summarize.cluster_ci`。
+
+| 编号 | 主张 | 世界 | 门（长目标成功率） | 探索的值（3 个种子共用 30 张图，按图算区间） |
+|---|---|---|---|---|
+| H1s | 规划要接在显式几何上：全自监督的度量地图规划，胜过最好的学到的记忆 | m1、m2 各判一次 | map_hybrid_self 减最好的潜空间组 ≥ 0.50，且下界 > 0 | m1：+0.933 [+0.833, +1.000]（10 张图）；m2：+0.784 [+0.588, +0.946]（17 张图）。m1 最好的潜空间组是 latent_topo；m2 的 6 组长目标都是 0 |
+
+**最好的潜空间组：** 在下面 6 组里按确认段结果事后取长目标成功率最高的一组。事后取最大对潜空间一方有利。
+- M4 的 4 组：latent_euclid、latent_learned、graph_memory、gru_belief；
+- 拓扑记忆 latent_topo（SPTM / ViNG 式，PLAN §10，代码复核 A31 已验收）；
+- 注意力记忆 latent_attn（Transformer 读整段历史，离线目标条件 Q 学习，PLAN §11，代码复核 A32）。
+
+**地图一方为什么用 map_hybrid_self，不用 M4 的 map_hybrid：**
+- map_hybrid 的前进模型用真值位姿作训练标签；map_hybrid_self 的标签来自只有解析先验的地图智能体自己的定位（M4 的 H4 已确认它和 map_hybrid 相当：m2 +0.003 [−0.006, +0.013]）。
+- 这样两边都不用真值标签，差别只剩记忆的结构：地图一方写进了几何先验，潜空间一方要从数据里学。
+- map_hybrid 照跑，只报告。
+
+
+
+=== M5-PREREG.md §1 Report-only & conclusions ===
+$ sed -n "36,46p" reports/V9-MINI/M5/M5-PREREG.md
+**只报告、不设门：**
+- map_hybrid 减最好的潜空间组；map_hybrid_self 分别减 latent_topo、latent_attn；
+- topo_oracle_ctrl（特权参照组：拓扑记忆的局部控制换成真值最短路），以及它与 latent_topo、map_hybrid_self 的差；
+- 短目标、m2 规律相关回合的子集、SPL；
+- latent_topo 的 `relocalizations`。
+
+**结论怎么写：**
+- 每个世界单独报「过 / 不过」；不过的照实写，不改门、不换指标、不加种子。
+- 过了也只说「在这个小世界里，度量地图胜过这几类学到的记忆」，不说「架构被证明正确」，也不说「潜空间方法不行」：只比了这几种实现、这个数据量。
+
+## 2. 设计
+
+
+=== M5-PREREG.md §2 Analysis and judge specification ===
+$ sed -n "59,60p" reports/V9-MINI/M5/M5-PREREG.md
+- **分析：** `.venv/bin/python -m ainerzero.v9.mini.summarize reports/V9-MINI/M5/m2-s{0..4}`，m1 同样；判门用 `reports/V9-MINI/M5/judge_m5.py`：所有运行的长目标回合合在一起，取最好的潜空间组，按「运行 × 留出图」整簇重抽样，判 §1 的门。
+
+
+
+=== M5-RESULT.md §1 Integrity & ledger quote ===
+$ sed -n "14,24p" reports/V9-MINI/M5/M5-RESULT.md
+## 1. 完整性
+
+- **代码与环境：** 10 个 `result.json` 的 `meta.code_sha256` 都等于冻结值 37d3392f…，`meta.mlx` 都是 0.32.2。
+  - m2-s0 的 `git_head` 是 959c4dfe，其余 9 个是 e57381ab。两者之间只差一个记录提交（RESEARCH_LOG 和 COORDINATION），代码哈希相同。
+  - 运行脚本每次开跑前核对代码哈希、预登记哈希和 MLX 版本，账本第一行是「冻结一致 37d3392f0bfd b5802ddd3065 0.32.2」。
+- **留出图：** 种子 s 的 `meta.eval_seed0` 是 8_100_000 + 1000·s，回合的 `layout_seed` 都在 [eval_seed0, eval_seed0 + 80) 之内，每个种子正好 80 张，种子之间不重叠。
+- **回合数：** m1 1562 个（长目标 762），m2 1736 个（长目标 936），与冻结前 oracle 检查 `prefreeze/oracle_check.json` 相同。
+- **任务序列：** 每个运行里 12 组的任务序列逐个回合一致，比较的是 (layout_seed, kind, d_star, law_relevant)，所以按顺序配对是成立的。
+- **上界：** oracle 全部到达。
+- **一处标签：** `meta.status` 写的是 "exploratory, not evidence"。这是 `run.py` 里写死的字符串，M4 也一样。本批的登记身份以 `FREEZE.json` 和冻结预登记为准。
+
+
+
+=== M5-RESULT.md §2 H1s table ===
+$ sed -n "25,35p" reports/V9-MINI/M5/M5-RESULT.md
+## 2. 门（长目标成功率；区间是按图整簇 bootstrap 95%，4000 次）
+
+| 编号 | 世界 | 回合 / 簇 | 最好的潜空间组 | map_hybrid_self | 差值 [95% 区间] | 门 | 判定 |
+|---|---|---|---|---|---|---|---|
+| H1s | m1 | 762 / 196 | latent_topo 0.049 | 0.996 | +0.948 [+0.921, +0.971] | ≥ 0.50 且下界 > 0 | **过** |
+| H1s | m2 | 936 / 240 | latent_topo 0.065 | 0.838 | +0.772 [+0.724, +0.819] | ≥ 0.50 且下界 > 0 | **过** |
+
+**最好的潜空间组怎么取。** 按预登记，在 6 组里事后取长目标成功率最高的一组：所有运行的长目标回合合在一起比较。两个世界都是 latent_topo，没有并列。
+
+| 组 | m1 长目标 | m2 长目标 |
+|---|---|---|
+
+
+=== M5-RESULT.md §2 Two averaging standards ===
+$ sed -n "45,49p" reports/V9-MINI/M5/M5-RESULT.md
+**两种平均口径。**
+- `judge_m5.py` 把 5 个运行的回合合在一起算成功率；`summarize` 的「→」那一列是 5 个种子成功率的平均。
+- 所以同一个组会差一点，例如 m2 的 latent_topo：合在一起 0.065，按种子平均 0.063。
+- 门按预登记 §2 用合在一起的口径。差值本来就是按回合配对的，两种口径一致。
+
+
+
+=== M5-RESULT.md §3.1 Report-only pairs ===
+$ sed -n "52,65p" reports/V9-MINI/M5/M5-RESULT.md
+### 3.1 配对差（长目标）
+
+| 比较 | m1 | m2 |
+|---|---|---|
+| map_hybrid − latent_topo（最好的潜空间组） | +0.948 [+0.921, +0.971] | +0.780 [+0.732, +0.826] |
+| map_hybrid_self − latent_attn | +0.992 [+0.982, +0.999] | +0.835 [+0.790, +0.879] |
+| topo_oracle_ctrl − latent_topo | +0.035 [+0.013, +0.058] | +0.011 [−0.004, +0.026] |
+| map_hybrid_self − topo_oracle_ctrl | +0.912 [+0.876, +0.945] | +0.762 [+0.712, +0.809] |
+
+- 两个世界里最好的潜空间组都是 latent_topo，所以 map_hybrid_self − latent_topo 就是 H1s 那一行，不重复列出。
+- **区间出处：** 上表取自 `judge_m5.py`，它对所有配对依次用同一个随机数发生器。
+  - `summarize` 也输出了 map_hybrid − latent_topo：m1 +0.948 [+0.920, +0.971]，m2 +0.780 [+0.731, +0.824]。
+  - 两边点估计相同，区间端点差别不超过 0.002，是随机数顺序不同造成的。
+
+
+
+=== M5-RESULT.md §3.2 Success rates ===
+$ sed -n "66,89p" reports/V9-MINI/M5/M5-RESULT.md
+### 3.2 各组成功率（所有运行的回合合在一起）
+
+| 组 | m1 短目标 | m1 长目标 | m2 短目标 | m2 长目标 | m2 规律相关 |
+|---|---|---|---|---|---|
+| 回合数 | 800 | 762 | 800 | 936 | 517 |
+| oracle | 1.000 | 1.000 | 1.000 | 1.000 | 1.000 |
+| map_hybrid | 1.000 | 0.996 | 0.988 | 0.845 | 0.818 |
+| map_hybrid_self | 1.000 | 0.996 | 0.988 | 0.838 | 0.803 |
+| map_analytic | 1.000 | 0.996 | 0.975 | 0.656 | 0.532 |
+| topo_oracle_ctrl | 0.542 | 0.084 | 0.573 | 0.076 | 0.157 |
+| latent_topo | 0.446 | 0.049 | 0.474 | 0.065 | 0.122 |
+| latent_euclid | 0.168 | 0.005 | 0.122 | 0 | 0.021 |
+| latent_attn | 0.126 | 0.004 | 0.114 | 0.002 | 0.023 |
+| latent_learned | 0.084 | 0 | 0.109 | 0 | 0.021 |
+| graph_memory | 0.080 | 0 | 0.109 | 0 | 0.021 |
+| gru_belief | 0.095 | 0 | 0.086 | 0 | 0.010 |
+| random | 0.095 | 0 | 0.109 | 0 | 0.021 |
+
+- m2 的规律相关子集落在 178 张图上。
+- **SPL**（`summarize`，5 个种子平均，长目标）：
+  - map_hybrid_self：m1 0.972，m2 0.707；
+  - latent_topo：m1 0.039，m2 0.049；
+  - 其余潜空间组都不超过 0.003。
+
+
+
+=== M5-RESULT.md §3.3 Relocalizations ===
+$ sed -n "90,100p" reports/V9-MINI/M5/M5-RESULT.md
+### 3.3 latent_topo 的 `relocalizations`
+
+`relocalizations` 是「预期节点附近找不到当前帧、改成全图重定位」的次数（`topo.py:262`）。
+
+| 组 | 世界 | 每回合均值 | 中位数 | 最大 | 长目标成功回合的均值 | 长目标失败回合的均值 |
+|---|---|---|---|---|---|---|
+| latent_topo | m1 | 4.1 | 0 | 81 | 0.5 | 6.6 |
+| latent_topo | m2 | 3.2 | 0 | 93 | 0.6 | 5.1 |
+| topo_oracle_ctrl | m1 | 0.9 | 0 | 36 | 0.5 | 1.3 |
+| topo_oracle_ctrl | m2 | 0.8 | 0 | 65 | 0.3 | 1.2 |
+
+
+
+=== M5-RESULT.md §5 Conclusions and limitations ===
+$ sed -n "120,135p" reports/V9-MINI/M5/M5-RESULT.md
+## 5. 结论（按预登记的写法）
+
+- **m1：过。** 在 m1 这个小世界里，全自监督的度量地图规划（map_hybrid_self）在长目标上胜过这 6 类学到的记忆里最好的一组（latent_topo）：+0.948 [+0.921, +0.971]，5 个训练种子，196 张留出图。
+- **m2：过。** 在 m2（加了冰带和单向传送门）里，同一个比较是 +0.772 [+0.724, +0.819]，5 个训练种子，240 张留出图。
+- **这是作者自判，非作者复算（A34）通过前不对外引用。**
+- 这不等于「架构被证明正确」，也不说明「潜空间方法不行」。只比了这几种实现、这个数据量。
+
+**限定：**
+1. **世界很小。** 3 个房间、5×5，视野半径 2；未知规律只有冰带和单向传送门两种。
+2. **潜空间组都是本项目自己的小实现。**
+   - latent_topo 是 SPTM / ViNG 式的拓扑记忆，latent_attn 是读整段历史的 Transformer 加离线目标条件 Q 学习。两组都是按思路重写的，不是原论文的代码和规模。
+   - 数据量是每个种子 200 张训练图、16 万环境步；latent_attn 约 124 万参数，训练 6000 步。
+3. **地图一方写进了手写的几何先验。** H1s 比的正是「写进几何先验」与「从数据里学」；两边都不用真值标签，但归纳偏置不对等，这本身就是要检验的主张。
+4. **种子与图。** 每个世界 5 个训练种子，区间按图算。留出图只代表这个生成器的分布。
+
+## 6. 后续
+
+
+=== judge_m5.py primary lines ===
+$ sed -n "22,51p" reports/V9-MINI/M5/judge_m5.py
+LATENT = ("latent_euclid", "latent_learned", "graph_memory", "gru_belief", "latent_topo", "latent_attn")
+GATE = 0.50
+
+
+def judge(dirs: list[Path], rng: np.random.Generator) -> dict:
+    runs = [json.loads((d / "episodes.json").read_text()) for d in dirs]
+    def longs(arm):
+        rs = [(ri, r) for ri, e in enumerate(runs) for r in e[arm] if r["kind"] == "long"]
+        return np.array([r["success"] for _, r in rs], float), [(ri, r["layout_seed"]) for ri, r in rs]
+    ref, keys = longs("oracle")
+    out = {"n_long": len(ref), "n_clusters": len(set(keys)), "long_success": {}}
+    for arm in runs[0]:
+        v, k = longs(arm)
+        assert k == keys, f"{arm} 的长目标回合与 oracle 不一致"
+        out["long_success"][arm] = float(v.mean())
+    best = max(LATENT, key=lambda a: (out["long_success"][a], a))
+    out["best_latent"] = best
+    pairs = [("map_hybrid_self", best), ("map_hybrid", best), ("map_hybrid_self", "latent_topo"),
+             ("map_hybrid_self", "latent_attn"), ("topo_oracle_ctrl", "latent_topo"), ("map_hybrid_self", "topo_oracle_ctrl")]
+    out["pairs"] = {}
+    for a, b in pairs:
+        key = f"{a} - {b}"
+        if key in out["pairs"]:
+            continue
+        d = longs(a)[0] - longs(b)[0]
+        lo, hi, _, _, n = cluster_ci(d, d, keys, rng)
+        out["pairs"][key] = {"diff": float(d.mean()), "lo": float(lo), "hi": float(hi), "clusters": n}
+    g = out["pairs"][f"map_hybrid_self - {best}"]
+    out["H1s"] = {"diff": g["diff"], "lo": g["lo"], "pass": bool(g["diff"] >= GATE and g["lo"] > 0)}
+    return out
+

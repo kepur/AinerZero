@@ -1,0 +1,250 @@
+================================================================================
+V9-mini M5 CONFIRMATORY RECOMPUTATION (INDEPENDENT L2 RE-EVALUATION)
+================================================================================
+
+[FREEZE.json] code_sha256: 37d3392f0bfd60e50f93a44016101663c2674c4d1685bc9eb2ccdf35c19c1e22
+[FREEZE.json] mlx: 0.32.2
+[FREEZE.json] budget: expected=25185s, cap_total=36000s, cap_run=3600s
+
+--------------------------------------------------------------------------------
+1. INTEGRITY CHECKS
+--------------------------------------------------------------------------------
+Check 1 [meta.code_sha256 == FREEZE.json]: PASS
+Check 2 [meta.mlx == 0.32.2]: PASS
+Check 3 [eval_seed0, 80 layouts/seed, disjoint]: PASS
+  m1 episode counts per seed: short=[160, 160, 160, 160, 160] (total=800), long=[188, 166, 139, 159, 110] (total=762)
+  m2 episode counts per seed: short=[160, 160, 160, 160, 160] (total=800), long=[213, 166, 208, 181, 168] (total=936), law_relevant=[102, 102, 122, 104, 87] (total=517)
+Check 4 [Episode counts: m1 1562 (762 long), m2 1736 (936 long, 517 law)]: PASS
+Check 5 [Task sequence identical across all 12 arms]: PASS
+Check 6 [Oracle 100% success across all episodes]: PASS
+  m1-s0: wall_sec=2164.8s, ledger=2166s, diff=1.2s, exit=0
+  m1-s1: wall_sec=2183.8s, ledger=2186s, diff=2.2s, exit=0
+  m1-s2: wall_sec=2145.7s, ledger=2147s, diff=1.3s, exit=0
+  m1-s3: wall_sec=2169.8s, ledger=2171s, diff=1.2s, exit=0
+  m1-s4: wall_sec=2108.2s, ledger=2111s, diff=2.8s, exit=0
+  m2-s0: wall_sec=2462.1s, ledger=2467s, diff=4.9s, exit=0
+  m2-s1: wall_sec=2222.5s, ledger=2226s, diff=3.5s, exit=0
+  m2-s2: wall_sec=2108.0s, ledger=2111s, diff=3.0s, exit=0
+  m2-s3: wall_sec=2281.3s, ledger=2287s, diff=5.7s, exit=0
+  m2-s4: wall_sec=2266.2s, ledger=2266s, diff=0.2s, exit=0
+  Total ledger wall time: 22138s <= budget cap 36000s (cap_run=3600s)
+Check 7 [ledger.txt matches result.json & within budget]: PASS
+
+All 7 integrity checks: ALL PASSED
+
+--------------------------------------------------------------------------------
+2. PRIMARY CONFIRMATORY GATE H1s & PAIRWISE DIFFERENCES
+--------------------------------------------------------------------------------
+
+===== World m1 =====
+Total long episodes: 762, Unique clusters (run x layout): 196
+  random             long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  latent_euclid      long pooled: 0.0052 (0.005) | per-seed: [0.0106, 0.0, 0.0144, 0.0, 0.0] (rounded 3dec: [0.011, 0.0, 0.014, 0.0, 0.0]) | run-mean: 0.0050
+  latent_learned     long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  graph_memory       long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  gru_belief         long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  latent_topo        long pooled: 0.0486 (0.049) | per-seed: [0.0319, 0.0422, 0.0647, 0.0377, 0.0818] (rounded 3dec: [0.032, 0.042, 0.065, 0.038, 0.082]) | run-mean: 0.0517
+  topo_oracle_ctrl   long pooled: 0.0840 (0.084) | per-seed: [0.0426, 0.1084, 0.1079, 0.0566, 0.1273] (rounded 3dec: [0.043, 0.108, 0.108, 0.057, 0.127]) | run-mean: 0.0886
+  latent_attn        long pooled: 0.0039 (0.004) | per-seed: [0.0, 0.006, 0.0, 0.0126, 0.0] (rounded 3dec: [0.0, 0.006, 0.0, 0.013, 0.0]) | run-mean: 0.0037
+  map_analytic       long pooled: 0.9961 (0.996) | per-seed: [1.0, 1.0, 1.0, 0.9811, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 0.981, 1.0]) | run-mean: 0.9962
+  map_hybrid         long pooled: 0.9961 (0.996) | per-seed: [1.0, 1.0, 1.0, 0.9811, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 0.981, 1.0]) | run-mean: 0.9962
+  map_hybrid_self    long pooled: 0.9961 (0.996) | per-seed: [1.0, 1.0, 1.0, 0.9811, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 0.981, 1.0]) | run-mean: 0.9962
+  oracle             long pooled: 1.0000 (1.000) | per-seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run-mean: 1.0000
+  --> Best latent arm: latent_topo (pooled success: 0.0486)
+  map_hybrid_self - latent_topo         : diff = +0.9475 (rounded +0.948)  95% CI: [+0.9209, +0.9711] ([+0.921, +0.971])
+  map_hybrid - latent_topo              : diff = +0.9475 (rounded +0.948)  95% CI: [+0.9212, +0.9710] ([+0.921, +0.971])
+  map_hybrid_self - latent_attn         : diff = +0.9921 (rounded +0.992)  95% CI: [+0.9818, +0.9987] ([+0.982, +0.999])
+  topo_oracle_ctrl - latent_topo        : diff = +0.0354 (rounded +0.035)  95% CI: [+0.0133, +0.0583] ([+0.013, +0.058])
+  map_hybrid_self - topo_oracle_ctrl    : diff = +0.9121 (rounded +0.912)  95% CI: [+0.8760, +0.9450] ([+0.876, +0.945])
+  --> H1s Verdict: PASS (diff=+0.9475 >= 0.5, CI lo=+0.9209 > 0)
+
+===== World m2 =====
+Total long episodes: 936, Unique clusters (run x layout): 240
+  random             long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  latent_euclid      long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  latent_learned     long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  graph_memory       long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  gru_belief         long pooled: 0.0000 (0.000) | per-seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run-mean: 0.0000
+  latent_topo        long pooled: 0.0652 (0.065) | per-seed: [0.1033, 0.0542, 0.0769, 0.0442, 0.0357] (rounded 3dec: [0.103, 0.054, 0.077, 0.044, 0.036]) | run-mean: 0.0629
+  topo_oracle_ctrl   long pooled: 0.0759 (0.076) | per-seed: [0.0986, 0.0843, 0.0865, 0.0387, 0.0655] (rounded 3dec: [0.099, 0.084, 0.087, 0.039, 0.065]) | run-mean: 0.0747
+  latent_attn        long pooled: 0.0021 (0.002) | per-seed: [0.0, 0.006, 0.0, 0.0, 0.006] (rounded 3dec: [0.0, 0.006, 0.0, 0.0, 0.006]) | run-mean: 0.0024
+  map_analytic       long pooled: 0.6560 (0.656) | per-seed: [0.7089, 0.6566, 0.6394, 0.5967, 0.6726] (rounded 3dec: [0.709, 0.657, 0.639, 0.597, 0.673]) | run-mean: 0.6549
+  map_hybrid         long pooled: 0.8451 (0.845) | per-seed: [0.8216, 0.8855, 0.875, 0.7956, 0.8512] (rounded 3dec: [0.822, 0.886, 0.875, 0.796, 0.851]) | run-mean: 0.8458
+  map_hybrid_self    long pooled: 0.8376 (0.838) | per-seed: [0.8216, 0.8494, 0.8702, 0.8011, 0.8452] (rounded 3dec: [0.822, 0.849, 0.87, 0.801, 0.845]) | run-mean: 0.8375
+  oracle             long pooled: 1.0000 (1.000) | per-seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run-mean: 1.0000
+  --> Best latent arm: latent_topo (pooled success: 0.0652)
+  map_hybrid_self - latent_topo         : diff = +0.7724 (rounded +0.772)  95% CI: [+0.7243, +0.8192] ([+0.724, +0.819])
+  map_hybrid - latent_topo              : diff = +0.7799 (rounded +0.780)  95% CI: [+0.7322, +0.8260] ([+0.732, +0.826])
+  map_hybrid_self - latent_attn         : diff = +0.8355 (rounded +0.835)  95% CI: [+0.7904, +0.8791] ([+0.790, +0.879])
+  topo_oracle_ctrl - latent_topo        : diff = +0.0107 (rounded +0.011)  95% CI: [-0.0043, +0.0265] ([-0.004, +0.026])
+  map_hybrid_self - topo_oracle_ctrl    : diff = +0.7618 (rounded +0.762)  95% CI: [+0.7120, +0.8093] ([+0.712, +0.809])
+  --> H1s Verdict: PASS (diff=+0.7724 >= 0.5, CI lo=+0.7243 > 0)
+
+--------------------------------------------------------------------------------
+3. REPORT-ONLY ITEMS RECOMPUTATION
+--------------------------------------------------------------------------------
+
+===== World m1 Report-Only Metrics =====
+  short (total=800, per_seed=[160, 160, 160, 160, 160]):
+    random             pooled: 0.0950 (0.095) | per_seed: [0.1, 0.1125, 0.075, 0.0813, 0.1062] (rounded 3dec: [0.1, 0.113, 0.075, 0.081, 0.106]) | run_mean: 0.0950
+    latent_euclid      pooled: 0.1675 (0.168) | per_seed: [0.1875, 0.2125, 0.1313, 0.1125, 0.1938] (rounded 3dec: [0.188, 0.212, 0.131, 0.113, 0.194]) | run_mean: 0.1675
+    latent_learned     pooled: 0.0838 (0.084) | per_seed: [0.1313, 0.0563, 0.0563, 0.0688, 0.1062] (rounded 3dec: [0.131, 0.056, 0.056, 0.069, 0.106]) | run_mean: 0.0838
+    graph_memory       pooled: 0.0800 (0.080) | per_seed: [0.125, 0.05, 0.0563, 0.0688, 0.1] (rounded 3dec: [0.125, 0.05, 0.056, 0.069, 0.1]) | run_mean: 0.0800
+    gru_belief         pooled: 0.0950 (0.095) | per_seed: [0.0938, 0.1062, 0.0688, 0.1125, 0.0938] (rounded 3dec: [0.094, 0.106, 0.069, 0.113, 0.094]) | run_mean: 0.0950
+    latent_topo        pooled: 0.4462 (0.446) | per_seed: [0.4688, 0.4062, 0.4562, 0.4313, 0.4688] (rounded 3dec: [0.469, 0.406, 0.456, 0.431, 0.469]) | run_mean: 0.4463
+    topo_oracle_ctrl   pooled: 0.5425 (0.542) | per_seed: [0.55, 0.525, 0.5813, 0.525, 0.5312] (rounded 3dec: [0.55, 0.525, 0.581, 0.525, 0.531]) | run_mean: 0.5425
+    latent_attn        pooled: 0.1263 (0.126) | per_seed: [0.1812, 0.1187, 0.1125, 0.1375, 0.0813] (rounded 3dec: [0.181, 0.119, 0.113, 0.138, 0.081]) | run_mean: 0.1263
+    map_analytic       pooled: 1.0000 (1.000) | per_seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run_mean: 1.0000
+    map_hybrid         pooled: 1.0000 (1.000) | per_seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run_mean: 1.0000
+    map_hybrid_self    pooled: 1.0000 (1.000) | per_seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run_mean: 1.0000
+    oracle             pooled: 1.0000 (1.000) | per_seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run_mean: 1.0000
+  long (total=762, per_seed=[188, 166, 139, 159, 110]):
+    random             pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    latent_euclid      pooled: 0.0052 (0.005) | per_seed: [0.0106, 0.0, 0.0144, 0.0, 0.0] (rounded 3dec: [0.011, 0.0, 0.014, 0.0, 0.0]) | run_mean: 0.0050
+    latent_learned     pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    graph_memory       pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    gru_belief         pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    latent_topo        pooled: 0.0486 (0.049) | per_seed: [0.0319, 0.0422, 0.0647, 0.0377, 0.0818] (rounded 3dec: [0.032, 0.042, 0.065, 0.038, 0.082]) | run_mean: 0.0517
+    topo_oracle_ctrl   pooled: 0.0840 (0.084) | per_seed: [0.0426, 0.1084, 0.1079, 0.0566, 0.1273] (rounded 3dec: [0.043, 0.108, 0.108, 0.057, 0.127]) | run_mean: 0.0886
+    latent_attn        pooled: 0.0039 (0.004) | per_seed: [0.0, 0.006, 0.0, 0.0126, 0.0] (rounded 3dec: [0.0, 0.006, 0.0, 0.013, 0.0]) | run_mean: 0.0037
+    map_analytic       pooled: 0.9961 (0.996) | per_seed: [1.0, 1.0, 1.0, 0.9811, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 0.981, 1.0]) | run_mean: 0.9962
+    map_hybrid         pooled: 0.9961 (0.996) | per_seed: [1.0, 1.0, 1.0, 0.9811, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 0.981, 1.0]) | run_mean: 0.9962
+    map_hybrid_self    pooled: 0.9961 (0.996) | per_seed: [1.0, 1.0, 1.0, 0.9811, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 0.981, 1.0]) | run_mean: 0.9962
+    oracle             pooled: 1.0000 (1.000) | per_seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run_mean: 1.0000
+  latent_topo        relocations: mean=4.14 (rep 4.1), median=0.0, max=81, long_success_mean=0.46, long_fail_mean=6.64 (rep 6.6)
+  topo_oracle_ctrl   relocations: mean=0.86 (rep 0.9), median=0.0, max=36, long_success_mean=0.48, long_fail_mean=1.29 (rep 1.3)
+
+===== World m2 Report-Only Metrics =====
+  short (total=800, per_seed=[160, 160, 160, 160, 160]):
+    random             pooled: 0.1087 (0.109) | per_seed: [0.0875, 0.1313, 0.1125, 0.1125, 0.1] (rounded 3dec: [0.087, 0.131, 0.113, 0.113, 0.1]) | run_mean: 0.1087
+    latent_euclid      pooled: 0.1225 (0.122) | per_seed: [0.1125, 0.075, 0.1875, 0.15, 0.0875] (rounded 3dec: [0.113, 0.075, 0.188, 0.15, 0.087]) | run_mean: 0.1225
+    latent_learned     pooled: 0.1087 (0.109) | per_seed: [0.1313, 0.0875, 0.1625, 0.075, 0.0875] (rounded 3dec: [0.131, 0.087, 0.163, 0.075, 0.087]) | run_mean: 0.1087
+    graph_memory       pooled: 0.1087 (0.109) | per_seed: [0.1313, 0.0875, 0.1625, 0.075, 0.0875] (rounded 3dec: [0.131, 0.087, 0.163, 0.075, 0.087]) | run_mean: 0.1087
+    gru_belief         pooled: 0.0862 (0.086) | per_seed: [0.1125, 0.075, 0.1062, 0.075, 0.0625] (rounded 3dec: [0.113, 0.075, 0.106, 0.075, 0.062]) | run_mean: 0.0863
+    latent_topo        pooled: 0.4738 (0.474) | per_seed: [0.4875, 0.4562, 0.4625, 0.5, 0.4625] (rounded 3dec: [0.487, 0.456, 0.463, 0.5, 0.463]) | run_mean: 0.4738
+    topo_oracle_ctrl   pooled: 0.5725 (0.573) | per_seed: [0.6062, 0.5687, 0.6125, 0.5125, 0.5625] (rounded 3dec: [0.606, 0.569, 0.613, 0.512, 0.562]) | run_mean: 0.5725
+    latent_attn        pooled: 0.1138 (0.114) | per_seed: [0.0563, 0.1187, 0.1437, 0.1062, 0.1437] (rounded 3dec: [0.056, 0.119, 0.144, 0.106, 0.144]) | run_mean: 0.1137
+    map_analytic       pooled: 0.9750 (0.975) | per_seed: [0.9875, 1.0, 0.9563, 0.9437, 0.9875] (rounded 3dec: [0.988, 1.0, 0.956, 0.944, 0.988]) | run_mean: 0.9750
+    map_hybrid         pooled: 0.9875 (0.988) | per_seed: [0.9938, 0.9875, 0.9812, 0.9812, 0.9938] (rounded 3dec: [0.994, 0.988, 0.981, 0.981, 0.994]) | run_mean: 0.9875
+    map_hybrid_self    pooled: 0.9875 (0.988) | per_seed: [0.9938, 0.9875, 0.9812, 0.9812, 0.9938] (rounded 3dec: [0.994, 0.988, 0.981, 0.981, 0.994]) | run_mean: 0.9875
+    oracle             pooled: 1.0000 (1.000) | per_seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run_mean: 1.0000
+  long (total=936, per_seed=[213, 166, 208, 181, 168]):
+    random             pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    latent_euclid      pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    latent_learned     pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    graph_memory       pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    gru_belief         pooled: 0.0000 (0.000) | per_seed: [0.0, 0.0, 0.0, 0.0, 0.0] (rounded 3dec: [0.0, 0.0, 0.0, 0.0, 0.0]) | run_mean: 0.0000
+    latent_topo        pooled: 0.0652 (0.065) | per_seed: [0.1033, 0.0542, 0.0769, 0.0442, 0.0357] (rounded 3dec: [0.103, 0.054, 0.077, 0.044, 0.036]) | run_mean: 0.0629
+    topo_oracle_ctrl   pooled: 0.0759 (0.076) | per_seed: [0.0986, 0.0843, 0.0865, 0.0387, 0.0655] (rounded 3dec: [0.099, 0.084, 0.087, 0.039, 0.065]) | run_mean: 0.0747
+    latent_attn        pooled: 0.0021 (0.002) | per_seed: [0.0, 0.006, 0.0, 0.0, 0.006] (rounded 3dec: [0.0, 0.006, 0.0, 0.0, 0.006]) | run_mean: 0.0024
+    map_analytic       pooled: 0.6560 (0.656) | per_seed: [0.7089, 0.6566, 0.6394, 0.5967, 0.6726] (rounded 3dec: [0.709, 0.657, 0.639, 0.597, 0.673]) | run_mean: 0.6549
+    map_hybrid         pooled: 0.8451 (0.845) | per_seed: [0.8216, 0.8855, 0.875, 0.7956, 0.8512] (rounded 3dec: [0.822, 0.886, 0.875, 0.796, 0.851]) | run_mean: 0.8458
+    map_hybrid_self    pooled: 0.8376 (0.838) | per_seed: [0.8216, 0.8494, 0.8702, 0.8011, 0.8452] (rounded 3dec: [0.822, 0.849, 0.87, 0.801, 0.845]) | run_mean: 0.8375
+    oracle             pooled: 1.0000 (1.000) | per_seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run_mean: 1.0000
+  law_relevant (total=517, per_seed=[102, 102, 122, 104, 87]):
+    random             pooled: 0.0213 (0.021) | per_seed: [0.0098, 0.0392, 0.0246, 0.0288, 0.0] (rounded 3dec: [0.01, 0.039, 0.025, 0.029, 0.0]) | run_mean: 0.0205
+    latent_euclid      pooled: 0.0213 (0.021) | per_seed: [0.0196, 0.0, 0.041, 0.0288, 0.0115] (rounded 3dec: [0.02, 0.0, 0.041, 0.029, 0.011]) | run_mean: 0.0202
+    latent_learned     pooled: 0.0213 (0.021) | per_seed: [0.0098, 0.0294, 0.0492, 0.0096, 0.0] (rounded 3dec: [0.01, 0.029, 0.049, 0.01, 0.0]) | run_mean: 0.0196
+    graph_memory       pooled: 0.0213 (0.021) | per_seed: [0.0098, 0.0294, 0.0492, 0.0096, 0.0] (rounded 3dec: [0.01, 0.029, 0.049, 0.01, 0.0]) | run_mean: 0.0196
+    gru_belief         pooled: 0.0097 (0.010) | per_seed: [0.0098, 0.0, 0.0164, 0.0096, 0.0115] (rounded 3dec: [0.01, 0.0, 0.016, 0.01, 0.011]) | run_mean: 0.0095
+    latent_topo        pooled: 0.1219 (0.122) | per_seed: [0.1275, 0.098, 0.1393, 0.0962, 0.1494] (rounded 3dec: [0.127, 0.098, 0.139, 0.096, 0.149]) | run_mean: 0.1221
+    topo_oracle_ctrl   pooled: 0.1567 (0.157) | per_seed: [0.1275, 0.1471, 0.1639, 0.1154, 0.2414] (rounded 3dec: [0.127, 0.147, 0.164, 0.115, 0.241]) | run_mean: 0.1590
+    latent_attn        pooled: 0.0232 (0.023) | per_seed: [0.0, 0.0294, 0.0328, 0.0, 0.0575] (rounded 3dec: [0.0, 0.029, 0.033, 0.0, 0.057]) | run_mean: 0.0239
+    map_analytic       pooled: 0.5319 (0.532) | per_seed: [0.6176, 0.5784, 0.5492, 0.3654, 0.5517] (rounded 3dec: [0.618, 0.578, 0.549, 0.365, 0.552]) | run_mean: 0.5325
+    map_hybrid         pooled: 0.8182 (0.818) | per_seed: [0.8235, 0.8725, 0.8525, 0.7308, 0.8046] (rounded 3dec: [0.824, 0.873, 0.852, 0.731, 0.805]) | run_mean: 0.8168
+    map_hybrid_self    pooled: 0.8027 (0.803) | per_seed: [0.8235, 0.8137, 0.8443, 0.7308, 0.7931] (rounded 3dec: [0.824, 0.814, 0.844, 0.731, 0.793]) | run_mean: 0.8011
+    oracle             pooled: 1.0000 (1.000) | per_seed: [1.0, 1.0, 1.0, 1.0, 1.0] (rounded 3dec: [1.0, 1.0, 1.0, 1.0, 1.0]) | run_mean: 1.0000
+  latent_topo        relocations: mean=3.25 (rep 3.2), median=0.0, max=93, long_success_mean=0.57, long_fail_mean=5.06 (rep 5.1)
+  topo_oracle_ctrl   relocations: mean=0.78 (rep 0.8), median=0.0, max=65, long_success_mean=0.32, long_fail_mean=1.17 (rep 1.2)
+
+--------------------------------------------------------------------------------
+4. COMPARISON OF TWO AVERAGING STANDARDS (POOLED VS RUN-MEAN)
+--------------------------------------------------------------------------------
+
+===== World m1 Averaging Standard Comparison =====
+  --- Subset: short ---
+    random             Pooled=0.0950  Run-Mean=0.0950  Delta=+0.0000 (runs: [0.1, 0.1125, 0.075, 0.0813, 0.1062])
+    latent_euclid      Pooled=0.1675  Run-Mean=0.1675  Delta=+0.0000 (runs: [0.1875, 0.2125, 0.1313, 0.1125, 0.1938])
+    latent_learned     Pooled=0.0838  Run-Mean=0.0838  Delta=+0.0000 (runs: [0.1313, 0.0563, 0.0563, 0.0688, 0.1062])
+    graph_memory       Pooled=0.0800  Run-Mean=0.0800  Delta=+0.0000 (runs: [0.125, 0.05, 0.0563, 0.0688, 0.1])
+    gru_belief         Pooled=0.0950  Run-Mean=0.0950  Delta=+0.0000 (runs: [0.0938, 0.1062, 0.0688, 0.1125, 0.0938])
+    latent_topo        Pooled=0.4462  Run-Mean=0.4463  Delta=-0.0000 (runs: [0.4688, 0.4062, 0.4562, 0.4313, 0.4688])
+    topo_oracle_ctrl   Pooled=0.5425  Run-Mean=0.5425  Delta=-0.0000 (runs: [0.55, 0.525, 0.5813, 0.525, 0.5312])
+    latent_attn        Pooled=0.1263  Run-Mean=0.1263  Delta=-0.0000 (runs: [0.1812, 0.1187, 0.1125, 0.1375, 0.0813])
+    map_analytic       Pooled=1.0000  Run-Mean=1.0000  Delta=+0.0000 (runs: [1.0, 1.0, 1.0, 1.0, 1.0])
+    map_hybrid         Pooled=1.0000  Run-Mean=1.0000  Delta=+0.0000 (runs: [1.0, 1.0, 1.0, 1.0, 1.0])
+    map_hybrid_self    Pooled=1.0000  Run-Mean=1.0000  Delta=+0.0000 (runs: [1.0, 1.0, 1.0, 1.0, 1.0])
+    oracle             Pooled=1.0000  Run-Mean=1.0000  Delta=+0.0000 (runs: [1.0, 1.0, 1.0, 1.0, 1.0])
+  --- Subset: long ---
+    random             Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    latent_euclid      Pooled=0.0052  Run-Mean=0.0050  Delta=+0.0002 (runs: [0.0106, 0.0, 0.0144, 0.0, 0.0])
+    latent_learned     Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    graph_memory       Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    gru_belief         Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    latent_topo        Pooled=0.0486  Run-Mean=0.0517  Delta=-0.0031 (runs: [0.0319, 0.0422, 0.0647, 0.0377, 0.0818])
+    topo_oracle_ctrl   Pooled=0.0840  Run-Mean=0.0886  Delta=-0.0046 (runs: [0.0426, 0.1084, 0.1079, 0.0566, 0.1273])
+    latent_attn        Pooled=0.0039  Run-Mean=0.0037  Delta=+0.0002 (runs: [0.0, 0.006, 0.0, 0.0126, 0.0])
+    map_analytic       Pooled=0.9961  Run-Mean=0.9962  Delta=-0.0002 (runs: [1.0, 1.0, 1.0, 0.9811, 1.0])
+    map_hybrid         Pooled=0.9961  Run-Mean=0.9962  Delta=-0.0002 (runs: [1.0, 1.0, 1.0, 0.9811, 1.0])
+    map_hybrid_self    Pooled=0.9961  Run-Mean=0.9962  Delta=-0.0002 (runs: [1.0, 1.0, 1.0, 0.9811, 1.0])
+    oracle             Pooled=1.0000  Run-Mean=1.0000  Delta=+0.0000 (runs: [1.0, 1.0, 1.0, 1.0, 1.0])
+
+===== World m2 Averaging Standard Comparison =====
+  --- Subset: short ---
+    random             Pooled=0.1087  Run-Mean=0.1087  Delta=+0.0000 (runs: [0.0875, 0.1313, 0.1125, 0.1125, 0.1])
+    latent_euclid      Pooled=0.1225  Run-Mean=0.1225  Delta=-0.0000 (runs: [0.1125, 0.075, 0.1875, 0.15, 0.0875])
+    latent_learned     Pooled=0.1087  Run-Mean=0.1087  Delta=+0.0000 (runs: [0.1313, 0.0875, 0.1625, 0.075, 0.0875])
+    graph_memory       Pooled=0.1087  Run-Mean=0.1087  Delta=+0.0000 (runs: [0.1313, 0.0875, 0.1625, 0.075, 0.0875])
+    gru_belief         Pooled=0.0862  Run-Mean=0.0863  Delta=-0.0000 (runs: [0.1125, 0.075, 0.1062, 0.075, 0.0625])
+    latent_topo        Pooled=0.4738  Run-Mean=0.4738  Delta=+0.0000 (runs: [0.4875, 0.4562, 0.4625, 0.5, 0.4625])
+    topo_oracle_ctrl   Pooled=0.5725  Run-Mean=0.5725  Delta=+0.0000 (runs: [0.6062, 0.5687, 0.6125, 0.5125, 0.5625])
+    latent_attn        Pooled=0.1138  Run-Mean=0.1137  Delta=+0.0000 (runs: [0.0563, 0.1187, 0.1437, 0.1062, 0.1437])
+    map_analytic       Pooled=0.9750  Run-Mean=0.9750  Delta=+0.0000 (runs: [0.9875, 1.0, 0.9563, 0.9437, 0.9875])
+    map_hybrid         Pooled=0.9875  Run-Mean=0.9875  Delta=-0.0000 (runs: [0.9938, 0.9875, 0.9812, 0.9812, 0.9938])
+    map_hybrid_self    Pooled=0.9875  Run-Mean=0.9875  Delta=-0.0000 (runs: [0.9938, 0.9875, 0.9812, 0.9812, 0.9938])
+    oracle             Pooled=1.0000  Run-Mean=1.0000  Delta=+0.0000 (runs: [1.0, 1.0, 1.0, 1.0, 1.0])
+  --- Subset: long ---
+    random             Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    latent_euclid      Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    latent_learned     Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    graph_memory       Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    gru_belief         Pooled=0.0000  Run-Mean=0.0000  Delta=+0.0000 (runs: [0.0, 0.0, 0.0, 0.0, 0.0])
+    latent_topo        Pooled=0.0652  Run-Mean=0.0629  Delta=+0.0023 (runs: [0.1033, 0.0542, 0.0769, 0.0442, 0.0357])
+    topo_oracle_ctrl   Pooled=0.0759  Run-Mean=0.0747  Delta=+0.0011 (runs: [0.0986, 0.0843, 0.0865, 0.0387, 0.0655])
+    latent_attn        Pooled=0.0021  Run-Mean=0.0024  Delta=-0.0003 (runs: [0.0, 0.006, 0.0, 0.0, 0.006])
+    map_analytic       Pooled=0.6560  Run-Mean=0.6549  Delta=+0.0011 (runs: [0.7089, 0.6566, 0.6394, 0.5967, 0.6726])
+    map_hybrid         Pooled=0.8451  Run-Mean=0.8458  Delta=-0.0007 (runs: [0.8216, 0.8855, 0.875, 0.7956, 0.8512])
+    map_hybrid_self    Pooled=0.8376  Run-Mean=0.8375  Delta=+0.0001 (runs: [0.8216, 0.8494, 0.8702, 0.8011, 0.8452])
+    oracle             Pooled=1.0000  Run-Mean=1.0000  Delta=+0.0000 (runs: [1.0, 1.0, 1.0, 1.0, 1.0])
+  --- Subset: law_relevant ---
+    random             Pooled=0.0213  Run-Mean=0.0205  Delta=+0.0008 (runs: [0.0098, 0.0392, 0.0246, 0.0288, 0.0])
+    latent_euclid      Pooled=0.0213  Run-Mean=0.0202  Delta=+0.0011 (runs: [0.0196, 0.0, 0.041, 0.0288, 0.0115])
+    latent_learned     Pooled=0.0213  Run-Mean=0.0196  Delta=+0.0017 (runs: [0.0098, 0.0294, 0.0492, 0.0096, 0.0])
+    graph_memory       Pooled=0.0213  Run-Mean=0.0196  Delta=+0.0017 (runs: [0.0098, 0.0294, 0.0492, 0.0096, 0.0])
+    gru_belief         Pooled=0.0097  Run-Mean=0.0095  Delta=+0.0002 (runs: [0.0098, 0.0, 0.0164, 0.0096, 0.0115])
+    latent_topo        Pooled=0.1219  Run-Mean=0.1221  Delta=-0.0002 (runs: [0.1275, 0.098, 0.1393, 0.0962, 0.1494])
+    topo_oracle_ctrl   Pooled=0.1567  Run-Mean=0.1590  Delta=-0.0024 (runs: [0.1275, 0.1471, 0.1639, 0.1154, 0.2414])
+    latent_attn        Pooled=0.0232  Run-Mean=0.0239  Delta=-0.0007 (runs: [0.0, 0.0294, 0.0328, 0.0, 0.0575])
+    map_analytic       Pooled=0.5319  Run-Mean=0.5325  Delta=-0.0006 (runs: [0.6176, 0.5784, 0.5492, 0.3654, 0.5517])
+    map_hybrid         Pooled=0.8182  Run-Mean=0.8168  Delta=+0.0014 (runs: [0.8235, 0.8725, 0.8525, 0.7308, 0.8046])
+    map_hybrid_self    Pooled=0.8027  Run-Mean=0.8011  Delta=+0.0016 (runs: [0.8235, 0.8137, 0.8443, 0.7308, 0.7931])
+    oracle             Pooled=1.0000  Run-Mean=1.0000  Delta=+0.0000 (runs: [1.0, 1.0, 1.0, 1.0, 1.0])
+
+--------------------------------------------------------------------------------
+5. VERIFICATION AGAINST AUTHOR'S DELIVERABLES
+--------------------------------------------------------------------------------
+  Match exact: m1 pair map_hybrid_self - latent_topo diff and CI identical to 1e-9
+  Match exact: m1 pair map_hybrid - latent_topo diff and CI identical to 1e-9
+  Match exact: m1 pair map_hybrid_self - latent_attn diff and CI identical to 1e-9
+  Match exact: m1 pair topo_oracle_ctrl - latent_topo diff and CI identical to 1e-9
+  Match exact: m1 pair map_hybrid_self - topo_oracle_ctrl diff and CI identical to 1e-9
+  Match exact: m2 pair map_hybrid_self - latent_topo diff and CI identical to 1e-9
+  Match exact: m2 pair map_hybrid - latent_topo diff and CI identical to 1e-9
+  Match exact: m2 pair map_hybrid_self - latent_attn diff and CI identical to 1e-9
+  Match exact: m2 pair topo_oracle_ctrl - latent_topo diff and CI identical to 1e-9
+  Match exact: m2 pair map_hybrid_self - topo_oracle_ctrl diff and CI identical to 1e-9
+
+Discrepancies found with author deliverables: 0
+  --> PERFECT REPLICATION: 0 discrepancies across all point estimates, pairs, CIs, and metrics!
+
+Saved structured results to /Users/mac/AinerWorkFlow/AinerZero/reports/V9-MINI/M5-recompute/recompute.json
