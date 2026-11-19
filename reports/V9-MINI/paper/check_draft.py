@@ -3,6 +3,7 @@
 1. Tables 3 and 5 (success rates) against make_tables.py output (tables.txt, last line JSON).
 2. Every bracketed interval "+a [+b, +c]" in the draft must appear verbatim in a registered result report,
    an acceptance record or a judge output (M4/M5), after normalising signs and spacing.
+3. Numbers in the text and captions that come from the figure data must match figures/fig_data.json.
 
 Usage: .venv/bin/python reports/V9-MINI/paper/check_draft.py
 """
@@ -73,4 +74,34 @@ for f in sorted(found):
             bad += 1
             print(f"NOT FOUND in sources: {f}")
 print(f"intervals checked: {len(found)}")
+
+# 3. Numbers in the text and figure captions that come from figures/fig_data.json (fig_data.py).
+fd = json.loads((HERE / "figures" / "fig_data.json").read_text())
+f4 = {w: fd["fig4"][w] for w in ("m1", "m2")}
+f5 = fd["fig5"]
+lt = {w: [b["rate"]["latent_topo"] for b in f4[w] if b["bin"][0] >= 20] for w in ("m1", "m2")}
+expect = {
+    "about 0.6 at d* = 4–5": all(abs(f4[w][0]["rate"]["latent_topo"] - 0.6) < 0.05 for w in ("m1", "m2")),
+    f"at most {max(lt['m1']):.2f} (m1) and {max(lt['m2']):.2f} (m2) at d* ≥ 20": True,
+    "from {:.3f} vs {:.3f} at d* = 20 to {:.3f} vs {:.3f} at d* ≥ 30".format(
+        f4["m2"][3]["rate"]["map_hybrid_self"], f4["m2"][3]["rate"]["map_analytic"],
+        f4["m2"][-1]["rate"]["map_hybrid_self"], f4["m2"][-1]["rate"]["map_analytic"]): True,
+    "m1 {}–{}, except {} (26–29) and {} (≥ 30); m2 {}–{}".format(
+        min(b["n"] for b in f4["m1"][:-2]), max(b["n"] for b in f4["m1"]), f4["m1"][-2]["n"], f4["m1"][-1]["n"],
+        min(b["n"] for b in f4["m2"]), max(b["n"] for b in f4["m2"])): True,
+    "{} of {} ({:.0%})".format(f5["lost"]["n"], f5["lost"]["n"] + f5["localized"]["n"], f5["share_lost_among_long"]): True,
+    "lost: {} episodes on {} map clusters; localized: {} on {}".format(
+        f5["lost"]["n"], f5["lost"]["clusters"], f5["localized"]["n"], f5["localized"]["clusters"]): True,
+    "map_hybrid succeeds on {:.3f} vs {:.3f}, map_analytic on {:.3f} vs {:.3f}".format(
+        f5["lost"]["rate"]["map_hybrid"], f5["localized"]["rate"]["map_hybrid"],
+        f5["lost"]["rate"]["map_analytic"], f5["localized"]["rate"]["map_analytic"]): True,
+    "These account for {:.0f}% of map_hybrid's long-goal failures".format(100 * f5["share_lost_among_map_hybrid_long_failures"]): True,
+    "coincide on long goals ({:.3f})".format(fd["fig3"]["m1"]["map_hybrid_self"]["long"]["rate"]): True,
+}
+for k, cond in expect.items():
+    ok = cond and k in draft
+    if not ok:
+        bad += 1
+        print(f"FIGURE NUMBER NOT FOUND OR WRONG: {k}")
+print(f"figure-derived numbers checked: {len(expect)}")
 print("ALL OK" if bad == 0 else f"{bad} problem(s)")

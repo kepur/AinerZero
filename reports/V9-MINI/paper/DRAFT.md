@@ -1,6 +1,6 @@
 # Write Down the Geometry, Learn the Exceptions: A Small Confirmatory Study of Memory and Planning under Unknown Dynamics
 
-*Working draft r1, 2026-11-19 (r0 corrected after the non-author check A35). Internal; not for distribution. Authors, affiliations and repository link to be filled in. See "Notes for the authors" at the end before any submission.*
+*Working draft r2, 2026-11-19 (r1 plus figures and a scripted check of every reference). Internal; not for distribution. Authors, affiliations and repository link to be filled in. See "Notes for the authors" at the end before any submission.*
 
 ---
 
@@ -101,6 +101,10 @@ We do not claim that explicit maps are better than learned memories in general. 
 - A goal is *law-relevant* (m2 only) if its shortest path under the analytic prior differs from the true shortest path.
 - The agent receives the prefix observations and actions and the goal observation, never coordinates.
 
+![Figure 1](figures/fig1_map.png)
+
+**Figure 1. A held-out map of world m2 with its task.** The 400-step exploration prefix (grey), the start (black dot, the last prefix pose) and the six goals drawn on this map (two share a cell). The starred goal (d* = 20, law-relevant) is shown on the right as the agent observes it. Two ice strips (blue) make the agent slide; two one-way teleporters (filled square to open square) move it across the map. Neither law is known to the analytic prior. Floor colours are omitted. The map is seed 8,100,000 of run m2-s0 in M5, chosen as the first map of that run with a law-relevant long goal that map_hybrid_self reached and latent_topo did not; it illustrates the task and is not a typical case.
+
 ## 4 Agents
 
 All agents see the same prefix, start and goal. Table 1 lists them. Hyperparameters are in Appendix A.
@@ -180,6 +184,10 @@ The agents differ only in the forward model, which predicts how far one forward 
 - **map_hybrid_self:** as map_hybrid, but the labels come from the agent's own localization. An analytic-prior map agent walks the same training walks; its label is the predicted displacement when the view agrees, the displacement found on the ray when relocalization succeeds, and "teleported" otherwise. Moves made while lost are discarded.
   - Ground truth is used only to measure label quality: agreement 1.000 in m1 and 0.9993–0.9996 in m2 (per seed, M5 runs).
 - **map_ungated / map_ungated_aug:** a single classifier predicts every forward outcome without the prior. The *aug* variant additionally masks near cells during training, so that "unknown cell ahead" inputs are seen in training.
+
+![Figure 2](figures/fig2_agent.png)
+
+**Figure 2. The metric-map agents.** All map agents share observation handling, localization, the map and the planner. They differ in the forward model (blue) and in whether they keep per-map event memory (all but map_analytic). map_hybrid and map_hybrid_self differ only in where the residual's training labels come from.
 
 ### 4.4 References
 
@@ -314,6 +322,10 @@ M5 used fresh held-out maps (m1: 762 long episodes on 196 clusters; m2: 936 on 2
 - topo_oracle_ctrl − latent_topo: m1 +0.035 [+0.013, +0.058]; m2 +0.011 [−0.004, +0.026].
 - The map side replicates M4 on new maps: m2 long goals 0.845 (map_hybrid), 0.838 (map_hybrid_self), 0.656 (map_analytic).
 
+![Figure 3](figures/fig3_success.png)
+
+**Figure 3. Success per agent in M5** (Table 5 with intervals). Filled: long goals; open: short goals. Lines are 95% cluster-bootstrap intervals over (run × held-out map), shown for description only; the confirmatory comparison is Table 4. In m1 the three map agents coincide on long goals (0.996).
+
 ### 6.3 Where the remaining gaps are (descriptive)
 
 **The learned side is limited by memory structure.**
@@ -324,6 +336,11 @@ M5 used fresh held-out maps (m1: 762 long episodes on 196 clusters; m2: 936 on 2
   - Allowing reverse traversal at true cost: 0.45 and 0.10.
   - In m1, a memory that may stand on any visited cell in any direction reaches 1.00. Getting there requires knowing that a move from A north to B implies a move from B south to A, and that seen-but-unvisited cells are traversable. This is exactly the geometry the metric map writes down. (In m2 the same bound is 0.59.)
 - latent_topo fails long goals with many more whole-graph relocalizations per episode than when it succeeds (m1 6.6 vs 0.5; m2 5.1 vs 0.6). This is not normalized for episode length.
+- Figure 4 shows the same pattern by distance: latent_topo falls from about 0.6 at d* = 4–5 to at most 0.07 (m1) and 0.14 (m2) at d* ≥ 20, while the map agents stay near the oracle in m1. In m2 the gap between map_hybrid_self and map_analytic widens with distance, from 0.956 vs 0.787 at d* = 20 to 0.719 vs 0.331 at d* ≥ 30.
+
+![Figure 4](figures/fig4_distance.png)
+
+**Figure 4. Success against shortest-path distance in M5** (pooled over five runs). Bins: 4–5, 6–7, 8–10, 20, 21–22, 23–25, 26–29 and ≥ 30 actions, plotted at the bin mean; the task has no goals between 11 and 19. Episodes per bin: m1 174–304, except 124 (26–29) and 46 (≥ 30); m2 121–279. The oracle succeeds everywhere. Descriptive.
 
 **latent_attn did not learn long-horizon navigation at this data scale.**
 - Its short-goal success (0.114–0.126) is at the level of random (0.095–0.109), and long-goal success is at most 0.004.
@@ -334,6 +351,11 @@ M5 used fresh held-out maps (m1: 762 long episodes on 196 clusters; m2: 936 on 2
 - In about 37% of episodes, the map agents are still lost when the prefix ends. These account for 87% of map_hybrid's long-goal failures.
 - Splitting long goals by whether map_hybrid starts lost (399 episodes) or localized (508): map_hybrid succeeds on 0.699 vs 0.965, map_analytic on 0.441 vs 0.862.
 - When the agent starts localized, the hybrid is close to the oracle, and its gain over the prior is larger on episodes that start lost.
+- Among long goals the share that starts lost is higher, 399 of 907 (44%) (Figure 5).
+
+![Figure 5](figures/fig5_localization.png)
+
+**Figure 5. Long-goal success in M4, world m2, split by whether map_hybrid was still lost when the prefix ended** (lost: 399 episodes on 101 map clusters; localized: 508 on 130). The split uses map_hybrid's flag for every agent, so all bars in a group are the same episodes. The oracle succeeds on all of them. Descriptive.
 
 ### 6.4 Exploration-stage observations (not evidence)
 
@@ -386,38 +408,46 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 - **Table sources:**
   - Tables 2 and 4 are copied from the registered result reports.
   - Tables 3 and 5 are generated by `reports/V9-MINI/paper/make_tables.py`. That script pools episodes over runs; the M4 report used per-seed means, which differ in the third decimal.
+  - `paper/check_draft.py` compares Tables 3 and 5 and every bracketed interval in the text with their sources.
+- **Figures:**
+  - `paper/fig_data.py` computes every plotted number from the registered episode logs and writes `figures/fig_data.json`. For Figure 1 it regenerates the map and tasks with the project's own generator and checks them against the logged episodes.
+  - `paper/make_figures.py` only draws from that file. It runs in a separate plotting environment (matplotlib 3.10.9), so the registered environment is unchanged. The PDFs are byte-identical across reruns.
+- **References:** `paper/check_refs.py` fetches a record for every entry (arXiv API, Crossref, proceedings pages, OpenReview, the ICLR 2018 poster schedule, Open Library, the MLX README). It saves the bibliographic part of each response in `paper/refs-evidence/`, with the size and SHA-256 of the full response, and compares title, authors, year and venue. `--offline` re-checks the saved records.
 
-## References (to be verified before submission)
+## References
+
+*Each entry was checked against a primary or registry record by `paper/check_refs.py` (§8).*
+
 
 - Andrychowicz, M. et al. Hindsight experience replay. NeurIPS 2017.
 - Assran, M. et al. Self-supervised learning from images with a joint-embedding predictive architecture. CVPR 2023.
-- Assran, M. et al. V-JEPA 2: self-supervised video models enable understanding, prediction and planning. arXiv:2506.09985, 2025. *(checked)*
-- Balestriero, R. & LeCun, Y. LeJEPA: provable and scalable self-supervised learning without the heuristics. arXiv:2511.08544, 2025. *(checked; SIGReg attribution from the project's literature registry)*
-- Bardes, A. et al. Revisiting feature prediction for learning visual representations from video (V-JEPA). TMLR 2024. *(verify venue)*
+- Assran, M. et al. V-JEPA 2: self-supervised video models enable understanding, prediction and planning. arXiv:2506.09985, 2025.
+- Balestriero, R. & LeCun, Y. LeJEPA: provable and scalable self-supervised learning without the heuristics. arXiv:2511.08544, 2025.
+- Bardes, A. et al. Revisiting feature prediction for learning visual representations from video (V-JEPA). Transactions on Machine Learning Research (TMLR), 2024.
 - Chaplot, D. S. et al. Learning to explore using Active Neural SLAM. ICLR 2020a.
 - Chaplot, D. S. et al. Neural topological SLAM for visual navigation. CVPR 2020b.
 - Chen, L. et al. Decision Transformer: reinforcement learning via sequence modeling. NeurIPS 2021.
 - Davison, A. C. & Hinkley, D. V. Bootstrap Methods and Their Application. Cambridge University Press, 1997.
-- Ha, D. & Schmidhuber, J. World models. arXiv:1803.10122, 2018. *(checked; the NeurIPS 2018 version is titled "Recurrent world models facilitate policy evolution")*
+- Ha, D. & Schmidhuber, J. World models. arXiv:1803.10122, 2018.
 - Hafner, D. et al. Dream to control: learning behaviors by latent imagination. ICLR 2020.
-- Hafner, D. et al. Mastering diverse control tasks through world models (DreamerV3). Nature, 2025. doi:10.1038/s41586-025-08744-2. *(title checked)*
-- Hannun, A. et al. MLX: efficient and flexible machine learning on Apple silicon. GitHub, 2023.
+- Hafner, D. et al. Mastering diverse control tasks through world models (DreamerV3). Nature, 2025. doi:10.1038/s41586-025-08744-2.
+- Hannun, A., Digani, J., Katharopoulos, A. & Collobert, R. MLX: efficient and flexible machine learning on Apple silicon. GitHub, 2023. https://github.com/ml-explore/mlx
 - Johannink, T. et al. Residual reinforcement learning for robot control. ICRA 2019.
 - Kaelbling, L. P. Learning to achieve goals. IJCAI 1993.
 - LeCun, Y. A path towards autonomous machine intelligence. OpenReview, 2022.
-- Maes, L., Le Lidec, Q., Scieur, D., LeCun, Y. & Balestriero, R. LeWorldModel: stable end-to-end joint-embedding predictive architecture from pixels. arXiv:2603.19312, 2026. *(checked)*
+- Maes, L., Le Lidec, Q., Scieur, D., LeCun, Y. & Balestriero, R. LeWorldModel: stable end-to-end joint-embedding predictive architecture from pixels. arXiv:2603.19312, 2026.
 - Nosek, B. A. et al. The preregistration revolution. PNAS 2018.
 - Parisotto, E. & Salakhutdinov, R. Neural Map: structured memory for deep reinforcement learning. ICLR 2018.
 - Parisotto, E. et al. Stabilizing transformers for reinforcement learning. ICML 2020.
 - Savinov, N., Dosovitskiy, A. & Koltun, V. Semi-parametric topological memory for navigation. ICLR 2018.
 - Schaul, T. et al. Universal value function approximators. ICML 2015.
 - Shah, D. et al. ViNG: learning open-world navigation with visual goals. ICRA 2021.
-- Silver, T. et al. Residual policy learning. arXiv 2018.
+- Silver, T. et al. Residual policy learning. arXiv:1812.06298, 2018.
 - Su, J. et al. RoFormer: enhanced transformer with rotary position embedding. Neurocomputing 2024.
 - Thrun, S., Burgard, W. & Fox, D. Probabilistic Robotics. MIT Press, 2005.
 - Wang, T. et al. Optimal goal-reaching reinforcement learning via quasimetric learning. ICML 2023.
-- Wayne, G. et al. Unsupervised predictive memory in a goal-directed agent (MERLIN). arXiv 2018.
-- Zeng, A. et al. TossingBot: learning to throw arbitrary objects with residual physics. IEEE T-RO 2020 (RSS 2019).
+- Wayne, G. et al. Unsupervised predictive memory in a goal-directed agent (MERLIN). arXiv:1803.10760, 2018.
+- Zeng, A. et al. TossingBot: learning to throw arbitrary objects with residual physics. IEEE Transactions on Robotics, 2020 (also RSS 2019).
 
 ## Appendix A. Hyperparameters
 
@@ -438,9 +468,9 @@ The following come from unregistered exploration runs, mostly single-seed, and m
 
 ## Notes for the authors (remove before submission)
 
-1. **References.** The non-author check A35 (`reports/V9-MINI/paper-review/refs.json`) opened primary pages for 16 of 29 references: 13 matched and 3 did not (Ha & Schmidhuber, DreamerV3, LeWM; all three now corrected and confirmed by the author against arXiv and nature.com). The other 13 are still unchecked, including the V-JEPA venue. Check them before submission.
+1. **References.** `paper/check_refs.py` verifies all 29 entries (title, first author, year, venue, and the full author list where the entry gives one) against saved records. It reports ALL OK, and it fails on a changed year, title, author list, venue or draft line. It checks bibliographic data only, not that each cited work supports the sentence that cites it; read the cited passages before submission. The ICLR 2020 venues (Chaplot et al. 2020a, Hafner et al. 2020) come from OpenReview's mirror of dblp records; the ICLR 2018 venues come from the official poster schedule.
 2. **Disclosure.** The experiments, analysis code, preregistrations and this draft were produced with AI coding agents. The non-author recomputations were done by a different AI agent from the one that wrote the code. Check the target venue's policy on AI assistance and describe these roles accurately; §5's "reviewer who did not write the code" should not be read as a human reviewer.
 3. **"Preregistered".** Registration is internal (frozen documents with hashes in the repository history), not on a public registry. Either keep the wording "registered internally" as in §2 and §5, or register future milestones publicly.
-4. **Figures to make.** An example map with prefix, start and goal; the agent pipeline; a bar chart of long-goal success per agent and world (Tables 3 and 5); and the localization split of §6.3.
+4. **Figures.** Five figures are in `figures/` as PDF (for LaTeX) and PNG. Figures 3–5 are descriptive; their intervals and bins are not part of any registered analysis. Figure 1's map was chosen by a stated rule; it is an illustration, not a typical case.
 5. **Biggest reviewer risk.** Scale and realism (§7, limitation 1). The planned next milestone, a larger or harder world, is meant to address it.
 6. **External steps** (arXiv, an mlx-examples pull request) need the project owner's approval.
