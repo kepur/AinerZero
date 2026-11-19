@@ -1,0 +1,176 @@
+$ grep -n 'memory=False\|memory=True' src/ainerzero/v9/mini/evaluate.py
+201:                ag = MA.MapAgent(cfg, fms["analytic"], memory=False, seed=s)
+203:                ag = MA.MapAgent(cfg, fms["analytic"], memory=True, seed=s)
+205:                ag = MA.MapAgent(cfg, fms["gated"], memory=True, seed=s)
+207:                ag = MA.MapAgent(cfg, fms["gated_self"], memory=True, seed=s)
+209:                ag = MA.MapAgent(cfg, fms["ungated"], memory=True, seed=s)
+211:                ag = MA.MapAgent(cfg, fms["ungated_aug"], memory=True, seed=s)
+
+$ grep -n 'RAY_LEN\|RAY_CLASSES' src/ainerzero/v9/mini/world.py
+363:RAY_LEN = 6
+364:RAY_CLASSES = 5   # 0 未知 1 墙 2 冰 3 传送门 4 地板（颜色折叠掉：规律与颜色无关，这是规范化的一步）
+379:def ray(cells: np.ndarray, pose: Pose, length: int = RAY_LEN) -> np.ndarray:
+392:    """前进一步的真实结果：沿朝向移动的格数 0..RAY_LEN；不在射线上（传送）记 RAY_LEN+1。"""
+396:    for k in range(0, RAY_LEN + 1):
+399:    return RAY_LEN + 1
+
+$ sed -n '363,377p' src/ainerzero/v9/mini/world.py
+RAY_LEN = 6
+RAY_CLASSES = 5   # 0 未知 1 墙 2 冰 3 传送门 4 地板（颜色折叠掉：规律与颜色无关，这是规范化的一步）
+
+
+def fold_type(v: int) -> int:
+    if v < 0:
+        return 0
+    if v == WALL or v == OOB:
+        return 1
+    if v == ICE:
+        return 2
+    if v == PORTAL:
+        return 3
+    return 4
+
+
+$ grep -n 'MERGE_MIN_OVERLAP' src/ainerzero/v9/mini/mapagent.py
+12:     只剩一个候选、且碎片与主地图在该偏移下的重叠格数够 MERGE_MIN_OVERLAP 时，才把碎片并回主地图。
+35:MERGE_MIN_OVERLAP = 20   # 并图前碎片与主地图在候选偏移下至少要有这么多格重叠（且全部一致）
+265:            if overlap[pose] < MERGE_MIN_OVERLAP:   # 证据还不够，继续跟踪
+
+$ sed -n '263,266p' src/ainerzero/v9/mini/mapagent.py
+        if len(nxt) == 1:
+            (pose, fpose), = nxt.items()
+            if overlap[pose] < MERGE_MIN_OVERLAP:   # 证据还不够，继续跟踪
+                return
+
+$ sed -n '130,136p' src/ainerzero/v9/mini/residual.py
+    event = out != analytic_outcome(rays)
+    fm.n_events = int(event.sum())
+    fm.gate = _MLP(x.shape[-1], 2, seed=seed)
+    fm.gate.fit(x, event.astype(np.int64), steps=steps, seed=seed)
+    if event.any():
+        fm.resid = _MLP(x.shape[-1], N_OUT, seed=seed + 1)
+        fm.resid.fit(x[event], out[event], steps=steps, seed=seed + 1)
+
+$ sed -n '149,175p' src/ainerzero/v9/mini/residual.py
+def collect_self(cfg: W.Config, n_layouts: int, traj: int, horizon: int, seed0: int,
+                 seed: int = 0) -> tuple[np.ndarray, np.ndarray, dict]:
+    """M3：不用真值位姿的前进样本。
+
+    让只有解析先验的地图智能体在训练图上走同样的游走，射线取自它自己的地图（含未知格），
+    标签取自它自己的定位：一致就是预测位移，射线上重定位成功就是射线上的位移，迷路就记传送。
+    真值只用来统计标签对了多少（返回的 quality），不进训练。
+    """
+    from .agents import Episode
+    from .mapagent import MapAgent
+    rng = random.Random(seed)
+    xs, ys, agree, total = [], [], 0, 0
+    analytic = ForwardModel(kind="analytic")
+    for i in range(n_layouts):
+        layout = W.make_layout(seed0 + i, cfg)
+        for _ in range(traj):
+            poses, acts = W.walk(layout, W.random_pose(layout, rng), horizon, rng)
+            views = [W.ego_view(layout, p) for p in poses]
+            ag = MapAgent(cfg, analytic, memory=False)
+            ag.forward_log = []
+            ep = Episode(None, views, [p[2] for p in poses], list(acts), None, views[-1], poses[-1][2])
+            ag.reset(ep)
+            for r, lab, step in ag.forward_log:   # 迷路期间的前进不记录；按步号取真值，只用于统计
+                xs.append(r)
+                ys.append(lab)
+                total += 1
+                agree += int(lab == W.forward_outcome(layout, poses[step]))
+
+$ sed -n '108,131p' src/ainerzero/v9/mini/run.py
+    # 前进模型：解析先验 / 门控残差 / 不门控，训练图与世界模型相同；样本量曲线在留出图上测
+    seed0 = D.TRAIN_SEED0 + 1000 * args.seed
+    rx, ry = R.collect(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0, seed=args.seed)
+    hx, hy = R.collect(cfg, preset["diag_layouts"] * 4, 4, preset["horizon"], eval_seed0, seed=args.seed + 99)
+    fms = {"analytic": R.fit("analytic", rx, ry)}
+    curve = {"analytic": R.accuracy(fms["analytic"], hx, hy)}
+    import numpy as _np
+    rs = _np.random.default_rng(args.seed)
+    for n in (300, 1000, 3000, 10000, len(rx)):
+        n = min(n, len(rx))
+        idx = rs.permutation(len(rx))[:n]
+        for kind in ("gated", "ungated"):
+            fm = R.fit(kind, rx[idx], ry[idx], seed=args.seed)
+            curve[f"{kind}@{n}"] = {**R.accuracy(fm, hx, hy), "n_events_train": fm.n_events}
+            if n == len(rx):
+                fms[kind] = fm
+    ax, ay = R.collect(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0, seed=args.seed,
+                       near_mask_prob=0.15)
+    fms["ungated_aug"] = R.fit("ungated", ax, ay, seed=args.seed)
+    curve[f"ungated_aug@{len(ax)}"] = R.accuracy(fms["ungated_aug"], hx, hy)
+    # M3：前进模型的训练标签不用真值，改由只有解析先验的地图智能体自己的定位给出
+    sx, sy, squal = R.collect_self(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0, seed=args.seed)
+    fms["gated_self"] = R.fit("gated", sx, sy, seed=args.seed)
+    curve[f"gated_self@{len(sx)}"] = {**R.accuracy(fms["gated_self"], hx, hy), "n_events_train": fms["gated_self"].n_events}
+
+$ grep -n 'layouts.: 200' src/ainerzero/v9/mini/run.py
+
+$ grep -n 'view_radius' src/ainerzero/v9/mini/world.py | head -5
+40:    view_radius: int = 2      # 视野 (2r+1)×(2r+1)
+51:        return 2 * self.view_radius + 1
+266:    r = layout.cfg.view_radius
+
+$ grep -n '400-step\|5×5\|≥ 20\|6 cells\|200' reports/V9-MINI/paper/make_figures.py
+46:    fig.savefig(FIG / f"{name}.png", bbox_inches="tight", dpi=200, metadata={"Software": None})
+126:    ax.set_title(f"Held-out map {f['layout_seed']} (world m2): 400-step prefix, start and goals", loc="left", color=INK)
+141:    axv.set_title("Goal observation\n(5×5 egocentric view, ahead = up)", loc="left", color=INK)
+181:    box(ax, 0.0, top, 0.13, th, "Observation", "5×5 egocentric\nview + compass\nheading\n\nprefix, then\nthe episode;\ngoal view once")
+184:        "On a surprise: search the ray;\nelse open a fragment, filter\ncandidates, merge back at\n≥ 20 agreeing cells")
+191:        "input: the 6 cells ahead (unknown, wall, ice, teleporter,\nfloor)\n"
+198:        "random walks on 200\ntraining maps per seed.\nLabels:\n• true poses (map_hybrid)\n"
+260:    fig.legend(h, ["long goals (d* ≥ 20)", "short goals (4 ≤ d* ≤ 10)"], loc="lower center", ncol=2, frameon=False,
+
+$ grep -n 'def draft_refs\|TITLE_ONLY\|surnames\|status' reports/V9-MINI/paper/check_refs.py
+46:# key: (expected title, first-author surname, year, accepted venue strings or None, all surnames or None, sources)
+48:TITLE_ONLY = {"year": False, "venue": False}
+52:        ("arxiv", "1707.01495", TITLE_ONLY)]),
+55:        ("arxiv", "2301.08243", TITLE_ONLY)]),
+63:        ("arxiv", "2404.08471", TITLE_ONLY)]),
+66:        ("arxiv", "2004.05155", TITLE_ONLY)]),
+71:        ("arxiv", "2106.01345", TITLE_ONLY)]),
+77:        ("arxiv", "1912.01603", TITLE_ONLY)]),
+84:        ("crossref", "10.1109/ICRA.2019.8794127", {}), ("arxiv", "1812.03201", TITLE_ONLY)]),
+96:        ("listing", ICLR18, {}), ("arxiv", "1702.08360", TITLE_ONLY)]),
+98:        ("html", "https://proceedings.mlr.press/v119/parisotto20a.html", {}), ("arxiv", "1910.06764", TITLE_ONLY)]),
+102:        ("listing", ICLR18, {}), ("arxiv", "1803.00653", TITLE_ONLY)]),
+106:        ("crossref", "10.1109/ICRA48506.2021.9561936", {}), ("arxiv", "2012.09812", TITLE_ONLY)]),
+313:def draft_refs() -> list[str]:
+327:    for key, (title, first, year, venues, surnames, sources) in REFS.items():
+328:        rec = {"expected": {"title": title, "first_author": first, "year": year, "venues": venues, "authors": surnames},
+351:            if surnames and chk is not TITLE_ONLY:
+352:                if len(got["authors"]) != len(surnames) or not all(norm(x) in norm(a) for x, a in zip(surnames, got["authors"])):
+362:        rec["status"] = "verified" if not rec["problems"] else "PROBLEM"
+365:        report.append(f"[{rec['status']}] {key}: {title} ({first}, {year})")
+382:    report.append(f"verified {sum(r['status'] == 'verified' for r in out.values())} of {len(out)}; "
+
+$ .venv/bin/python kind-vs-dstar
+kind_dstar_checked 60012
+kind_dstar_mismatches 0
+
+$ grep -n "layouts=200" src/ainerzero/v9/mini/run.py
+36:    "medium": dict(layouts=200, tpl=4, horizon=200, steps=6000, eval_layouts=30, prefix=400, n_short=2, n_long=4,
+
+$ grep -n "4000\|2.5, 97.5" reports/V9-MINI/paper-review-r2/recompute_figures.py
+55:    Cluster ids are the rank of the sorted unique keys. 4000 resamples with
+65:    draw = np.random.default_rng(0).integers(0, n_groups, size=(4000, n_groups))
+67:    lo, hi = np.percentile(rates, [2.5, 97.5])
+
+$ preset layouts in registered result.json
+M5/m1-s0 layouts 200 prefix 400 eval_layouts 80
+M5/m1-s1 layouts 200 prefix 400 eval_layouts 80
+M5/m1-s2 layouts 200 prefix 400 eval_layouts 80
+M5/m1-s3 layouts 200 prefix 400 eval_layouts 80
+M5/m1-s4 layouts 200 prefix 400 eval_layouts 80
+M5/m2-s0 layouts 200 prefix 400 eval_layouts 80
+M5/m2-s1 layouts 200 prefix 400 eval_layouts 80
+M5/m2-s2 layouts 200 prefix 400 eval_layouts 80
+M5/m2-s3 layouts 200 prefix 400 eval_layouts 80
+M5/m2-s4 layouts 200 prefix 400 eval_layouts 80
+M4/m2-s0 layouts 200 prefix 400 eval_layouts 80
+M4/m2-s1 layouts 200 prefix 400 eval_layouts 80
+M4/m2-s2 layouts 200 prefix 400 eval_layouts 80
+M4/m2-s3 layouts 200 prefix 400 eval_layouts 80
+M4/m2-s4 layouts 200 prefix 400 eval_layouts 80
