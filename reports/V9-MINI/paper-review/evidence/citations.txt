@@ -1,0 +1,465 @@
+$ git -C /Users/mac/AinerWorkFlow/AinerZero log -1 --oneline f7c7e8a2
+f7c7e8a2 V9-mini paper draft: add registry-checked references (LeJEPA, V-JEPA 2, LeWM)
+
+$ git -C /Users/mac/AinerWorkFlow/AinerZero diff --stat f7c7e8a2 HEAD -- reports/V9-MINI/paper src/ainerzero/v9/mini
+
+$ sed -n '17p;147,148p;163,166p;189,195p;213p;219p;320,323p;372,375p' reports/V9-MINI/paper/DRAFT.md
+On long goals (shortest path ≥ 20 actions), the metric-map planner with a gated residual trained on self-supervised labels beats the best of the six learned-memory agents by +0.948 [0.921, 0.971] success in the world with known laws and +0.772 [0.724, 0.819] in the world with hidden laws (95% cluster-bootstrap intervals over maps). With hidden laws, the gated residual improves over the analytic prior by +0.171 [0.122, 0.219] and over per-map event memory by +0.112 [0.066, 0.159]. With known laws it does not hurt. Replacing ground-truth training labels with the agent's own localization keeps the gain (+0.174 [0.124, 0.224] over the prior).
+- **Memory graph:** one node per prefix frame. Temporal edges join consecutive frames in both directions, with reverse traversal penalized. Shortcut edges join frames at least 4 steps apart on which R is confident (≥ 0.95).
+- **Acting:** the goal is localized by R. At each step the agent localizes within a 4-hop neighbourhood of its previous estimate, falling back to the whole graph. It then follows the farthest reachable waypoint among the next few nodes of the graph shortest path.
+- **Surprise and relocalization:** a *surprise* is a mismatch between the predicted view and known map cells. The agent then relocalizes in three stages:
+  1. along the heading ray;
+  2. failing that, by a unique consistent pose on the whole map;
+  3. failing that, it is *lost*: it maps a new fragment while tracking candidate offsets. A fragment is merged back only when one candidate remains and at least 20 overlapping cells all agree.
+|---|---|---|
+| Compass heading | all | given (as in prior work on this task family) |
+| View geometry (view cell → world offset) and the analytic "walls block, forward moves one cell" prior | map agents | hand-written known structure; this is what the hybrid writes down |
+| Folding cell colours into one floor type | forward models | hand-written canonicalization |
+| Forward-model training labels from true poses | map_hybrid, map_ungated* | removed in map_hybrid_self |
+| True poses at test time | none | — |
+| Goal view unique on the map | task design | not an agent input |
+- Clustering by map matters. Episodes on one map share the prefix and start, and per-episode intervals would be about half as wide.
+- For M5 we additionally recomputed the main gate with five other random seeds and a multinomial-weights resampler: endpoints moved by at most 0.003.
+- An exploration-stage bound with ground truth explains why: a memory whose nodes are prefix frames and whose edges are traversed transitions can reach at most a fraction of long goals even with perfect control.
+  - The bound uses the exploration held-out maps (40 long goals in m1, 68 in m2). Replaying directed prefix transitions reaches 0.20 in m1 and 0 in m2.
+  - Allowing reverse traversal at true cost: 0.45 and 0.10.
+  - Reaching 1.00 requires knowing that a move from A north to B implies a move from B south to A, and that seen-but-unvisited cells are traversable. This is exactly the geometry the metric map writes down.
+- **Hardware:** one Apple M2 Max laptop.
+- **One run** trains every agent, evaluates every task and writes `result.json` (code hash, git head, MLX version, timings) and `episodes.json` (every episode). Command:
+
+  `python -m ainerzero.v9.mini.run --preset medium --world {m1|m2} --seed s --eval-seed0 <seed> --eval-layouts 80`
+
+$ sed -n '8,13p;203,229p' src/ainerzero/v9/mini/mapagent.py
+  1. 先沿朝向那条射线就近找视野一致的位姿（滑动只会落在射线上）；
+  2. 找不到就在整张地图上找，唯一一致就采用；
+  3. 否则迷路：在一个新的局部碎片里继续建图，同时维护主地图上的候选位姿集，每步用前进模型推进、
+     用当前视野和整块碎片地图筛选（碎片在该偏移下与主地图有任何一格冲突，这个偏移就作废）。
+     只剩一个候选、且碎片与主地图在该偏移下的重叠格数够 MERGE_MIN_OVERLAP 时，才把碎片并回主地图。
+     整图上唯一一致的位姿也不直接采用，同样走这条路（A27 F-04：只凭当前一帧就并图，约四成并错）；
+    def _advance(self, a: int, view: np.ndarray, head: int) -> None:
+        self.steps += 1
+        if self.frag is not None:
+            self._lost_step(a, view, head)
+            return
+        before = self.main.pose
+        ray = W.ray(self.main.map, before) if (self.forward_log is not None and a == W.FORWARD) else None
+        pred = self._next(self.main, before, a, planning=False, use_memory=self.memory)
+        if self.main.check(view, pred)[1] == 0:
+            self._log(ray, self._disp(before, pred))
+            self.main.pose = pred
+            self.main.write(view, pred)
+            return
+        self.surprises += 1
+        loc = self._ray_candidate(view, before) if a == W.FORWARD else None
+        if loc is None:   # 射线上解释不了：迷路，开碎片；整图候选（哪怕唯一）留给 _lost_step 用整块碎片验证
+            cs = self.main.candidates(view, head)
+            self._log(ray, TELEPORT)
+            self.lost += 1
+            c = self.cfg.size
+            self.frag = Frame(self.n, self.cfg, self.fm, (c, c, head))
+            self.frag.write(view, self.frag.pose)
+            self.frag_origin = self.frag.pose
+            self.lost_from, self.lost_action = before, a
+            self.cands = {p: self.frag.pose for p in cs}
+            self.rejected = set()
+            return
+
+$ sed -n '12,16p;54,64p;278,335p;346,368p' src/ainerzero/v9/mini/topo.py
+- 目标：R 判为与目标画面同一处的节点（多源）；没有足够确信的就取最像的一个。
+- 定位：任务从前缀终点出发（地图组也知道这一点）。之后每步先在上一估计的图邻域内按 R 取最像的节点；
+  邻域里都不像时全图重定位；全图也不像就保持原估计。
+- 路点：从当前节点沿图上最短路往目标走，取前 H_WP 个节点里 R 判为可达的最远一个；运动网络朝路点走。
+  当前画面已判为能到达目标时，直接朝目标走。
+    near: bool = True          # 是否加 SPTM 的学到的捷径边（R 很确信、观察不同的两帧）
+    s_near: float = 0.95       # 捷径边的 R 门槛
+    w_near: float = 2.0        # 走一条捷径边按几步算（交给运动网络）
+    min_gap: int = 4           # 捷径边只连时间上隔 ≥ min_gap 的两帧（更近的已由时间边连上）
+    w_same: float = 0.01       # 观察完全相同的两帧之间的代价（接近 0，留一点免得走零代价环）
+    w_rev: float = 3.0         # 逆着前缀走一条时间边的代价（不知道怎么倒回去，交给运动网络）
+    s_loc: float = 0.5         # 定位门槛
+    loc_hops: int = 4          # 定位只在预期节点的这么多跳以内找（同一处的边不计跳数）
+    s_reach: float = 0.5       # 当前画面判为能直接到达目标的门槛
+    h_path: int = 30           # 每步沿最短路最多看这么多条边
+    eps: float = 0.05          # 随机动作概率，与其他学到的组相同
+        gk = obs_keys(ep.goal_obs[None])[0]
+        if gk in self.by_key:                                                  # 前缀里有与目标画面完全相同的帧
+            self.goal_nodes = np.array(self.by_key[gk])
+        else:
+            self.goal_nodes = np.array([int(np.argmax(self._p(self.eg, self.E)))])
+        self.d_goal = dist_to(self.out, self.goal_nodes)
+        self.cur = n - 1               # 任务从前缀终点出发
+        self.expect = n - 1            # 上一步动作之后预期所在的节点
+        self.first = True
+
+    def _localize(self, key: bytes, p_cur: np.ndarray) -> None:
+        c = self.cfg
+        if self.first:                 # 第一帧就是前缀最后一帧
+            self.first = False
+            return
+        near = hops(self.out, self.expect, c.loc_hops)
+        same = self.by_key.get(key, [])
+        if same:                       # 观察完全相同的帧：取离预期节点最近的；都不在附近就取第一个
+            inn = [v for v in same if v in near]
+            if inn:
+                self.cur = min(inn, key=lambda v: (near[v], -v))
+            else:
+                self.relocalizations += 1
+                self.cur = same[0]
+            return
+        cand = np.array(sorted(near))
+        j = int(cand[int(np.argmax(p_cur[cand]))])
+        if p_cur[j] >= c.s_loc:
+            self.cur = j
+            return
+        self.relocalizations += 1
+        j = int(np.argmax(p_cur))
+        if p_cur[j] >= c.s_loc:
+            self.cur = j
+
+    def decide(self, obs: np.ndarray) -> tuple[str, int | None, mx.array]:
+        """定位并决定这一步做什么。返回 (种类, 值, 当前嵌入)：
+        ("random", 动作)、("replay", 动作)、("goto", 目标节点；None 表示目标画面本身)。"""
+        c = self.cfg
+        et = self.nets.embed(mx.array(obs[None]))
+        p_cur = self._p(et, self.E)                                           # (n,)
+        self._localize(obs_keys(obs[None])[0], p_cur)
+        self.expect = self.cur
+        if self.rng.random() < c.eps:
+            return "random", self.rng.randrange(W.N_ACTIONS), et
+        if float(self._p(et, self.eg).reshape(-1)[0]) >= c.s_reach:
+            return "goto", None, et
+        v = self.cur
+        for u, kind in path_ahead(self.out, self.d_goal, self.cur, c.h_path):
+            if kind == SAME:           # 同一处，不用动
+                v = u
+                continue
+            if kind == FWD:            # 沿前缀正向：重放当时记下的动作（智能体自己的动作，不是真值）
+                self.expect = u
+                return "replay", int(self.acts[v]), et
+            self.expect = v            # 逆向或学到的捷径：交给运动网络
+            return "goto", u, et
+        return "goto", None, et
+class TopoOracleControl(TopoAgent):
+    """特权参照组（只报告，不进任何门，也不算「最好的潜空间组」的候选）。
+
+    记忆图、定位、路径选择都与 latent_topo 完全相同，只是「goto」不用学到的运动网络，
+    改用真值最短路走向目标节点所在的格（或目标格）。用来把差距拆开：
+    latent_topo 与它的差，来自学到的运动网络；它与度量地图的差，来自记忆结构本身。
+    """
+
+    def reset(self, ep) -> None:
+        super().reset(ep)
+        self._rbfs: dict = {}
+
+    def act_privileged(self, obs: np.ndarray, pose, layout: W.Layout, task: dict) -> int:
+        kind, val, _ = self.decide(obs)
+        if kind in ("random", "replay"):
+            return int(val)
+        g = task["goal"]
+        p = task["prefix_poses"][val] if val is not None else g
+        cell = (p[0], p[1])
+        if cell not in self._rbfs:
+            self._rbfs[cell] = W.reverse_bfs_to_cell(layout, cell)
+        dm = self._rbfs[cell]
+        return int(np.argmin([dm.get(W.step(layout, pose, a), 10 ** 6) for a in range(W.N_ACTIONS)]))
+
+$ sed -n '152,161p' src/ainerzero/v9/mini/evaluate.py
+        if (pose[0], pose[1]) == (g[0], g[1]):
+            return {"success": 1, "steps": t, **extra()}
+        if isinstance(agent, A.Oracle):
+            a = agent.act_pose(pose)
+        elif hasattr(agent, "act_privileged"):   # 只作诊断的特权参照组：执行时用真值
+            v = W.ego_view(layout, pose)
+            a = agent.act_privileged(W.encode_obs(v, pose[2]), pose, layout, task)
+        else:
+            v = W.ego_view(layout, pose)
+            a = agent.act(W.encode_obs(v, pose[2]), v, pose[2])
+
+$ sed -n '45,47p;58p' src/ainerzero/v9/mini/model.py
+    def predict(self, z: mx.array, a: mx.array) -> mx.array:
+        oh = mx.eye(self.n_actions)[a]
+        return z + self.predictor(mx.concatenate([z, oh], axis=-1))
+        return sym + asym
+
+$ sed -n '36,39p;69,85p' src/ainerzero/v9/mini/agents.py
+    def __init__(self, model: WorldModel, cost: str, horizon: int = 3, eps: float = 0.05, seed: int = 0):
+        self.m, self.cost, self.eps = model, cost, eps
+        self.rng = random.Random(seed)
+        self.seqs = mx.array(np.array(list(itertools.product(range(W.N_ACTIONS), repeat=horizon)), dtype=np.int32))
+    def __init__(self, model: WorldModel, delta: float = 3.0, **kw):
+        super().__init__(model, cost="learned", **kw)
+        self.delta = delta
+
+    def reset(self, ep: Episode) -> None:
+        super().reset(ep)
+        z = self.m.encode(mx.array(ep.prefix_obs))
+        s, a = self.m.cost_embed(z)
+        sg, ag = self.m.cost_embed(self.zg)
+        self.z_nodes = z
+        self.s, self.a = np.array(s), np.array(a)
+        n = self.s.shape[0]
+        dmat = np.sqrt(((self.s[:, None] - self.s[None]) ** 2).sum(-1) + 1e-8) + \
+            np.maximum(self.a[:, None] - self.a[None], 0).sum(-1)
+        w = np.where(dmat <= self.delta, dmat, np.inf)
+        idx = np.arange(n - 1)
+        w[idx, idx + 1] = np.minimum(w[idx, idx + 1], 1.0)   # 观察到的转移
+
+$ sed -n '94,98p;121,136p' src/ainerzero/v9/mini/residual.py
+            mask_prob: float = 0.5, seed: int = 0, near_mask_prob: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
+    """前进样本：射线（视野以外的格按 mask_prob 随机置为未知，模拟地图没看全）和真实结果。
+
+    near_mask_prob > 0 时，视野内的近处格也按这个概率置为未知（增强：让模型见过「前方未知」的输入）。
+    被遮住的格不改标签，标签仍是真实结果。
+def fit(kind: str, rays: np.ndarray, out: np.ndarray, seed: int = 0, steps: int = 600) -> ForwardModel:
+    fm = ForwardModel(kind=kind, n_train=len(rays))
+    if kind == "analytic":
+        return fm
+    x = _onehot(rays)
+    if kind == "ungated":
+        fm.full = _MLP(x.shape[-1], N_OUT, seed=seed)
+        fm.full.fit(x, out, steps=steps, seed=seed)
+        return fm
+    event = out != analytic_outcome(rays)
+    fm.n_events = int(event.sum())
+    fm.gate = _MLP(x.shape[-1], 2, seed=seed)
+    fm.gate.fit(x, event.astype(np.int64), steps=steps, seed=seed)
+    if event.any():
+        fm.resid = _MLP(x.shape[-1], N_OUT, seed=seed + 1)
+        fm.resid.fit(x[event], out[event], steps=steps, seed=seed + 1)
+
+$ sed -n '54,77p' src/ainerzero/v9/mini/run.py
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--preset", choices=("quick", "medium", "full"))
+    ap.add_argument("--arms", help="只跑这些臂，逗号分隔（默认全部）")
+    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--steps", type=int)
+    ap.add_argument("--eval-layouts", type=int, help="留出图张数（覆盖预设）")
+    ap.add_argument("--eval-seed0", type=int,
+                    help="留出图种子起点（默认 data.EVAL_SEED0，探索段三个种子共用）；确认段每个种子传不同的值，留出图互不重叠")
+    ap.add_argument("--world", choices=("m1", "m2"), default="m1",
+                    help="m1：规律全部已知；m2：两间冰房 + 两个单向传送门（解析先验不知道）")
+    args = ap.parse_args(argv)
+    preset = dict(PRESETS[args.preset or ("quick" if args.quick else "full")])
+    if args.steps:
+        preset["steps"] = args.steps
+    if args.eval_layouts:
+        preset["eval_layouts"] = args.eval_layouts
+    eval_seed0 = D.EVAL_SEED0 if args.eval_seed0 is None else args.eval_seed0
+    train_lo = D.TRAIN_SEED0 + 1000 * args.seed
+    train_hi = train_lo + preset["layouts"]
+    eval_hi = eval_seed0 + max(preset["eval_layouts"], preset["diag_layouts"] * 4)
+    if eval_seed0 < train_hi and train_lo < eval_hi:
+        raise SystemExit(f"留出图种子 [{eval_seed0}, {eval_hi}) 与训练图种子 [{train_lo}, {train_hi}) 重叠")
+
+$ sed -n '38,43p;145,156p' src/ainerzero/v9/mini/world.py
+    rooms: int = 3            # rooms × rooms 个房间
+    room_size: int = 5        # 房间内部边长
+    view_radius: int = 2      # 视野 (2r+1)×(2r+1)
+    extra_door_prob: float = 0.35  # 生成树之外的门，越小路越绕
+    ice_rooms: int = 0        # 整间铺冰的房间数（未知规律：前进后一直滑到被挡住或离开冰面）
+    portals: int = 0          # 单向传送门数（未知规律：踏上入口就到出口）
+def _place_ice(layout: Layout, rng: random.Random) -> None:
+    cfg = layout.cfg
+    rs = cfg.room_size
+    rooms = [(rx, ry) for ry in range(cfg.rooms) for rx in range(cfg.rooms)]
+    # 每间选中的房间里放一条 2 格宽、贯穿房间的冰带。踩上去会滑过整条冰带；整间铺冰会把智能体困死，不用。
+    for rx, ry in rng.sample(rooms, k=cfg.ice_rooms):
+        x0, y0 = rx * (rs + 1) + 1, ry * (rs + 1) + 1
+        off = rng.randrange(1, rs - 2)
+        if rng.random() < 0.5:
+            layout.grid[y0 + off:y0 + off + 2, x0:x0 + rs] = ICE
+        else:
+            layout.grid[y0:y0 + rs, x0 + off:x0 + off + 2] = ICE
+
+$ sed -n '48,50p' reports/V9-MINI/M4/M4-PREREG.md
+**结论怎么写：**
+- 每条门单独报「过 / 不过」；不过的照实写，不改门、不换指标、不加种子。
+- 全部过了，也只说「这几条主张在这个小世界里得到确认性支持」，不说「架构被证明正确」。
+
+$ sed -n '42,44p' reports/V9-MINI/M5/M5-PREREG.md
+**结论怎么写：**
+- 每个世界单独报「过 / 不过」；不过的照实写，不改门、不换指标、不加种子。
+- 过了也只说「在这个小世界里，度量地图胜过这几类学到的记忆」，不说「架构被证明正确」，也不说「潜空间方法不行」：只比了这几种实现、这个数据量。
+
+$ sed -n '99,101p' reports/V9-MINI/M4/M4-RESULT.md
+## 4. 结论（按预登记的写法）
+
+H1、H2、H2′、H3、H4 这几条主张在 GridMini 这个小世界里得到确认性支持，**已经非作者独立复算（A30）**。这不等于「架构被证明正确」。
+
+$ sed -n '121,127p' reports/V9-MINI/M5/M5-RESULT.md
+## 5. 结论（按预登记的写法）
+
+- **m1：过。** 在 m1 这个小世界里，全自监督的度量地图规划（map_hybrid_self）在长目标上胜过这 6 类学到的记忆里最好的一组（latent_topo）：+0.948 [+0.921, +0.971]，5 个训练种子，196 张留出图。
+- **m2：过。** 在 m2（加了冰带和单向传送门）里，同一个比较是 +0.772 [+0.724, +0.819]，5 个训练种子，240 张留出图。
+- **已经非作者独立复算（A34）。** 引用时要带下面的限定。
+- 这不等于「架构被证明正确」，也不说明「潜空间方法不行」。只比了这几种实现、这个数据量。
+
+
+$ sed -n '34,39p' reports/V9-MINI/M5/analysis/A34-acceptance.md
+5. **区间的独立性（与 A30 相同的限定）。**
+   - 复算脚本照着 `judge_m5.py` 的随机数顺序重写重抽样（default_rng(0)，配对顺序相同），所以区间与作者逐位相同。这说明的是「重写同一算法得到同样结果」。
+   - 一级另做了作者侧的自查（不算非作者复算）：换 5 个随机种子、改用多项式簇权重的写法重算 H1s 区间。
+     - m1 下界 0.920–0.921，上界 0.971；
+     - m2 下界 0.723–0.724，上界 0.818–0.821。
+     - 区间端点变动不超过 0.003，判定不变。
+
+$ sed -n '98,101p;436,456p' reports/V9-MINI/PLAN.md
+    - 生成时检查位姿图强连通，有陷阱就重放。
+  - **单向传送门**：两个，入口与出口至少隔 8 格，相当于捷径。
+  - 随机游走里，前进时触发这两条规律的约占 1%，属于稀有事件。
+- **规律相关回合**：在真值网格上只按解析先验算出的最短步数，与真实最短步数不同的回合。
+### 10.4 上界诊断：只靠前缀记忆，最多能做到多好（真值，只作分析；`explore/topo/bounds.txt`）
+
+长目标在步数预算（2 × 真值最短步数 + 20）之内能到达的比例：
+
+| 记忆里允许走的 | m1 | m2 |
+|---|---|---|
+| 前缀里站过的格，任意朝向、任意方向移动 | 1.00 | 0.59 |
+| 前缀里出现过的位姿（含朝向） | 0.20 | 0.06 |
+| 只重放前缀里走过的有向转移 | 0.20 | 0 |
+| 前缀转移双向都能走，逆向按真实最少步数计（完美的局部控制） | 0.45 | 0.10 |
+| 地点图：按格合并，原地转身随时可做，前进只能沿前缀里走过的方向 | 0.20 | 0 |
+
+### 10.5 读法
+
+1. **latent_topo 不是稻草人。** 短目标从随机水平（约 0.1）升到约 0.5。
+2. **长目标仍接近 0。** 局部控制换成真值最短路，m1 也只有 0.1 左右，m2 是 0。
+3. **原因是结构性的。**
+   - 以帧为节点的记忆，只记得走过的转移。
+   - 就算局部控制完美，m1 的上限也只有 0.45。
+   - 按格合并成地点、但前进只能沿走过的方向时，上限是 0.20。
+   - 要到 1.00，必须知道「从 A 往北走到 B，就能从 B 往南走回 A」，以及看见过、没站过的格也能走。这正是度量地图按设计写进去的几何。
+
+$ sed -n '26,28p' reports/V9-MINI/M4/analysis/judge.txt
+H3 [m2] map_hybrid − map_memory（长目标，回合 907，图 231）：+0.112 [+0.068, +0.159]  门：≥ +0.05 且下界 > 0  → 过
+      作者自写重抽样，随机种子 0..4 的下界：+0.068, +0.069, +0.069, +0.068, +0.068
+H4① [m2] map_hybrid_self − map_analytic（长目标，回合 907，图 231）：+0.174 [+0.126, +0.223]  门：≥ +0.08 且下界 > 0  → 过
+
+$ cmp reports/V9-MINI/paper/tables.txt /tmp/v9mini-make_tables.txt && echo CMP_OK
+CMP_OK
+
+$ .venv/bin/python reports/V9-MINI/paper/check_draft.py
+Table 3. checked 13 rows
+Table 5. checked 13 rows
+intervals checked: 20
+ALL OK
+
+
+$ sed -n '331,334p' reports/V9-MINI/paper/DRAFT.md
+**The map side is limited by localization at the end of the prefix** (M4, m2).
+- In about 37% of episodes, the map agents are still lost when the prefix ends. These account for 87% of map_hybrid's long-goal failures.
+- Splitting long goals by whether map_hybrid starts lost (399 episodes) or localized (508): map_hybrid succeeds on 0.699 vs 0.965, map_analytic on 0.441 vs 0.862.
+- When the agent starts localized, the hybrid is close to the oracle, and its gain over the prior is larger on episodes that start lost.
+
+$ sed -n '90,96p' reports/V9-MINI/M4/M4-RESULT.md
+**迷路（m2）。** 字段 `lost` 是开碎片的次数，不是迷路步数。
+- 约 37% 的回合在前缀走完时仍在迷路（`lost_at_start`），各地图组接近。
+- map_hybrid 的 138 个长目标失败里，87% 是开局即迷路的回合。
+- 按 map_hybrid 开局是否迷路拆分长目标（399 对 508 个回合）：
+  - map_hybrid：0.699 对 0.965；
+  - map_analytic：0.441 对 0.862；
+  - hybrid 相对 analytic 的增益在开局迷路的回合上更大。
+
+$ sed -n '405p' reports/V9-MINI/PLAN.md
+- 回合数：m1 短 60、长 40；m2 短 60、长 68。
+
+
+$ sed -n '3p;388,418p' reports/V9-MINI/paper/DRAFT.md
+*Working draft r0, 2026-11-19. Internal; not for distribution. Authors, affiliations and repository link to be filled in. See "Notes for the authors" at the end before any submission.*
+## References (to be verified before submission)
+
+- Andrychowicz, M. et al. Hindsight experience replay. NeurIPS 2017.
+- Assran, M. et al. Self-supervised learning from images with a joint-embedding predictive architecture. CVPR 2023.
+- Assran, M. et al. V-JEPA 2: self-supervised video models enable understanding, prediction and planning. arXiv:2506.09985, 2025. *(arXiv id checked in the project's literature registry; verify title and author list)*
+- Balestriero, R. & LeCun, Y. LeJEPA: provable and scalable self-supervised learning without the heuristics. arXiv:2511.08544, 2025. *(arXiv id and SIGReg attribution checked in the project's literature registry; verify exact title)*
+- Bardes, A. et al. Revisiting feature prediction for learning visual representations from video (V-JEPA). TMLR 2024. *(verify venue)*
+- Chaplot, D. S. et al. Learning to explore using Active Neural SLAM. ICLR 2020a.
+- Chaplot, D. S. et al. Neural topological SLAM for visual navigation. CVPR 2020b.
+- Chen, L. et al. Decision Transformer: reinforcement learning via sequence modeling. NeurIPS 2021.
+- Davison, A. C. & Hinkley, D. V. Bootstrap Methods and Their Application. Cambridge University Press, 1997.
+- Ha, D. & Schmidhuber, J. World models. arXiv 2018 / NeurIPS 2018.
+- Hafner, D. et al. Dream to control: learning behaviors by latent imagination. ICLR 2020.
+- Hafner, D. et al. Mastering diverse domains through world models (DreamerV3). arXiv 2023. *(cite journal version if available)*
+- Hannun, A. et al. MLX: efficient and flexible machine learning on Apple silicon. GitHub, 2023.
+- Johannink, T. et al. Residual reinforcement learning for robot control. ICRA 2019.
+- Kaelbling, L. P. Learning to achieve goals. IJCAI 1993.
+- LeCun, Y. A path towards autonomous machine intelligence. OpenReview, 2022.
+- Maes, L. et al. LeWorldModel (LeWM). arXiv:2603.19312, 2026. *(arXiv id checked in the project's literature registry; verify title and author list)*
+- Nosek, B. A. et al. The preregistration revolution. PNAS 2018.
+- Parisotto, E. & Salakhutdinov, R. Neural Map: structured memory for deep reinforcement learning. ICLR 2018.
+- Parisotto, E. et al. Stabilizing transformers for reinforcement learning. ICML 2020.
+- Savinov, N., Dosovitskiy, A. & Koltun, V. Semi-parametric topological memory for navigation. ICLR 2018.
+- Schaul, T. et al. Universal value function approximators. ICML 2015.
+- Shah, D. et al. ViNG: learning open-world navigation with visual goals. ICRA 2021.
+- Silver, T. et al. Residual policy learning. arXiv 2018.
+- Su, J. et al. RoFormer: enhanced transformer with rotary position embedding. Neurocomputing 2024.
+- Thrun, S., Burgard, W. & Fox, D. Probabilistic Robotics. MIT Press, 2005.
+- Wang, T. et al. Optimal goal-reaching reinforcement learning via quasimetric learning. ICML 2023.
+- Wayne, G. et al. Unsupervised predictive memory in a goal-directed agent (MERLIN). arXiv 2018.
+- Zeng, A. et al. TossingBot: learning to throw arbitrary objects with residual physics. IEEE T-RO 2020 (RSS 2019).
+
+
+$ sed -n '98,99p;179p;431p' reports/V9-MINI/paper/DRAFT.md
+- Let d* be the shortest number of actions from the start to the goal cell. A goal is *short* if 4 ≤ d* ≤ 10 and *long* if d* ≥ 20.
+- Up to 2 short and 4 long goals are drawn per map. The step budget is 2d* + 20.
+  - Ground truth is used only to measure label quality: agreement 1.000 in m1 and 0.9993–0.9996 in m2 (per seed, M5 runs).
+| Forward models | input: 6 cells ahead, 5 classes; gate and residual: MLP with 64 hidden units, 600 steps; residual trained on event samples only; near-cell masking 0.15 for map_ungated_aug |
+
+$ sed -n '56,75p;140,155p' reports/V9-MINI/PLAN.md
+| 运行 | 一步误差比 | 5 步误差比 | 代价秩相关（全部 / ≥20 步） |
+|---|---|---|---|
+| quick-0：预测 + SIGReg | 0.994 | 0.981 | 欧氏 0.33 / 0.02；学到 0.37 / 0.07 |
+| quick-1：再加逆动力学项 | **0.019** | 0.055 | 欧氏 0.05 / 0.06；学到 0.29 / 0.05 |
+
+quick-1 的成功率（短 24 个回合，长 24 个回合）：
+
+| 臂 | 短 | 长 |
+|---|---|---|
+| 随机 | 0.083 | 0 |
+| 潜空间欧氏（S2 的做法） | 0.125 | 0 |
+| 学到的可达性 | 0.167 | 0 |
+| 拓扑图记忆 + 学到的可达性 | 0.167 | 0 |
+| 便宜规则（里程计 + 栅格地图 + BFS，不学习） | 1.000 | 1.000 |
+| 真值最短路（上界） | 1.000 | 1.000 |
+
+读法（都是单种子、探索性的）：
+
+1. **不加逆动力学项，潜空间坍塌到慢特征**：预测器跟「原地不动」一样准（0.994）。潜空间只记住了房间颜色这类不变量，动作带来的变化没有进去。加上之后降到 0.019，比 S2 的扁平 JEPA 臂（0.036）还低。r5 §1 写了「每层加本层宏动作的逆动力学项」，这是第一次看到它是必需的，而不只是可选。
+2. **预测准不等于能规划，再次复现**：欧氏距离与真实距离的秩相关约 0.05，和 S2 的 −0.087 同一个结论。
+1. **加逆动力学项，潜空间才不坍塌**：一步误差比从 0.994 降到 0.019（§4）。
+2. **在程序生成的世界里，代价必须接在这张图的显式记忆上**：
+   - 远距离秩相关：单帧代价 0.05，GRU 信念 0.13，潜空间欧氏距离约 0.06；
+   - 长目标上，这三种做法和拓扑图都是 0，度量地图 100%（m1）。
+   - 原因：两个视野隔多远取决于这张图的布局，光看观察定不下来。几百步的历史压进 128 维向量也存不下布局，这和 S3 里 GRU 的长间隔读回很差一致。
+3. **不门控的前进模型在分布外失效，门控的会退回先验**：
+   - 训练数据里「前方第一格未知」的样本数是 0；
+   - 遇到这种射线时，不门控的分类器 70% 判成走不动，把未探索区域当成墙，长目标成功率掉到 0.53；
+   - 门控版本 90% 退回解析先验（走一格）。
+   - 两者在留出数据上的前进准确率几乎一样（全量训练时事件准确率门控 0.989、不门控 0.979），差别只在分布外。
+   - 审稿人一定会问的对照（map_ungated_aug：训练时也遮住近处格）已经加进批次。
+4. **样本量曲线上，门控没有省样本的优势**（m2-quick-1）：
+   - 300 个样本时，事件准确率不门控 0.79、门控 0.51（门控只见到 3 个事件）；
+   - 1000 到 1 万个样本时，不门控持平或略高；
+   - 全量 3.3 万时，门控略高（0.989 对 0.979）。
+
+
+$ sed -n '38,44p' reports/V9-MINI/M4/M4-RESULT.md
+**区间出处。**
+- H2、H2′、H3、H4 ① 取登记分析命令（`summarize`）的输出。它对所有配对共用一个随机数序列。
+- `summarize` 不输出 H1，所以 H1 取 `judge.py` 的值：调用同一个 `cluster_ci`，每条门新建一个 `default_rng(0)`。
+- `judge.py` 对 H2–H4 也重算了一遍：
+  - 下界差别不超过 0.002，例如 H3 是 [+0.068, +0.159]；
+  - 作者另写的重抽样换 5 个随机种子，下界变动不超过 0.003；
+  - 每条门都离门槛很远。
+
+$ sed -n '120,126p' src/ainerzero/v9/mini/run.py
+            fm = R.fit(kind, rx[idx], ry[idx], seed=args.seed)
+            curve[f"{kind}@{n}"] = {**R.accuracy(fm, hx, hy), "n_events_train": fm.n_events}
+            if n == len(rx):
+                fms[kind] = fm
+    ax, ay = R.collect(cfg, preset["layouts"], preset["tpl"], preset["horizon"], seed0, seed=args.seed,
+                       near_mask_prob=0.15)
+    fms["ungated_aug"] = R.fit("ungated", ax, ay, seed=args.seed)
+
