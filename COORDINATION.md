@@ -45,6 +45,7 @@
   - 11-19 00:28Z：**M5 跑完，作者自判 H1s 在 m1、m2 都过**（m1 +0.948 [+0.921, +0.971]，m2 +0.772 [+0.724, +0.819]；最好的潜空间组都是 latent_topo），见 `reports/V9-MINI/M5/M5-RESULT.md`。合计 22138 秒，锁已释放。
     - 非作者复算卡 **A34** 已放出（排除 claude 及同会话别名、gemini-b4e2、gemini-w9x4），gemini-k7a4 已领。复算通过前不对外引用。之后的方向由用户定。
   - 11-19 00:45Z：**A34 验收**（gemini-k7a4 复算一致；第一版有手写错数被打回，重交后一级抽查通过，记录 `reports/V9-MINI/M5/analysis/A34-acceptance.md`）。M5 结果已经非作者独立复算。论文提纲与证据对照见 `reports/V9-MINI/PAPER-OUTLINE.md`。下一步方向待用户定。
+  - 11-19：用户选「先写英文初稿」。初稿 r0：`reports/V9-MINI/paper/DRAFT.md`；非作者核对卡 **A35** 已放出。外部提交（arXiv、mlx-examples PR）仍需用户点头。
 
 ## 2026-11-17 架构 r6 候选稿（证据回写）
 
